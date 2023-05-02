@@ -1,17 +1,3 @@
-var bannerContainer = document.querySelector(".info-banner-container")
-var bannerSearch = document.querySelector(".info-banner-search")
-var bannerSearchIcon = document.getElementById("banner-search")
-var bannerSearchInput = document.getElementById("banner-search-input")
-
-bannerSearch.addEventListener("click", function () {
-  bannerContainer.classList.add("searching")
-  bannerSearchInput.focus()
-})
-
-bannerSearchInput.addEventListener("blur", function () {
-  bannerContainer.classList.remove("searching")
-})
-
 function getCookie(cname) {
   var name = cname + "="
   var ca = document.cookie.split(";")

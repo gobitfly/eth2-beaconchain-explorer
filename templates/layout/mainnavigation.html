@@ -1,19 +1,24 @@
 {{ define "mainNavigation" }}
   <nav id="nav" class="main-navigation navbar navbar-expand-lg navbar-light">
     <div class="container">
-      <a class="navbar-brand" href="/">
-        {{ includeSvg "brand_svg" }}
-        <span class="brand-text">beaconcha.in</span>
-      </a>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+      <div id="nav-bar-header" class="w-100">
+        <a class="navbar-brand d-flex align-content-center" href="/">
+          {{ includeSvg "brand_svg" }}
+          <span class="brand-text ml-2">beaconcha.in</span>
+        </a>
+        <div class="d-flex align-items-center">
+          <div class="currency-selection">{{ template "currencySelection" . }}</div>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+        </div>
+      </div>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav ml-auto">
-          {{ range . }}
+          {{ range .MainMenuItems }}
             {{ $hasBigGroups := .HasBigGroups }}
             {{ $numberOfGroups := (len .Groups) }}
-            <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }}">
+            <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }} {{ .CustomClass }}">
               {{ if len .Groups }}
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <span class="nav-text">{{ .Label }}</span>

@@ -20,6 +20,7 @@ var layoutTemplateFiles = []string{
 	"layout.html",
 	"layout/mainnavigation.html",
 	"layout/ad_handler.html",
+	"components/currencySelection.html",
 }
 
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string, mainTemplates []string) *types.PageData {
@@ -77,7 +78,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
 			CurrentSymbol:          GetCurrencySymbol(r),
 		},
-		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
+		Mainnet:             isMainnet,
 		DepositContract:     utils.Config.Indexer.Eth1DepositContractAddress,
 		ClientsUpdated:      ethclients.ClientsUpdated(),
 		ChainConfig:         utils.Config.Chain.Config,
@@ -88,7 +89,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		ShowSyncingMessage:  services.IsSyncing(),
 		GlobalNotification:  services.GlobalNotificationMessage(),
 		AvailableCurrencies: price.GetAvailableCurrencies(),
-		MainMenuItems:       createMenuItems(active, isMainnet),
+		MainMenuItems:       createMenuItems(active, isMainnet, user),
 	}
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)
@@ -220,13 +221,56 @@ func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
 
 }
 
-func createMenuItems(active string, isMain bool) []types.MainMenuItem {
+func createMenuItems(active string, isMain bool, user *types.User) []types.MainMenuItem {
 	hiddenFor := []string{"confirmation", "login", "register"}
 
 	if utils.SliceContains(hiddenFor, active) {
 		return []types.MainMenuItem{}
 	}
-	return []types.MainMenuItem{
+	userMenuItems := []types.MainMenuItem{}
+	if user != nil && user.Authenticated {
+		userMenuItems = append(userMenuItems, types.MainMenuItem{
+			Label:       "Notifications",
+			Path:        "/user/notifications",
+			CustomClass: "mobile",
+		}, types.MainMenuItem{
+			Label:       "Settings",
+			Path:        "/user/settings",
+			CustomClass: "mobile",
+		})
+		if user.UserGroup == "ADMIN" {
+			userMenuItems = append(userMenuItems, types.MainMenuItem{
+				Label:       "Global Notification",
+				Path:        "/user/global_notification",
+				CustomClass: "mobile",
+			}, types.MainMenuItem{
+				Label:       "Ad Configuration",
+				Path:        "/user/ad_configuration",
+				CustomClass: "mobile",
+			}, types.MainMenuItem{
+				Label:       "Explorer Configuration",
+				Path:        "/user/explorer_configuration",
+				CustomClass: "mobile",
+			})
+		}
+		userMenuItems = append(userMenuItems, types.MainMenuItem{
+			Label:       "Log out",
+			Path:        "/logout",
+			CustomClass: "mobile",
+		})
+	} else {
+		userMenuItems = append(userMenuItems, types.MainMenuItem{
+			Label:       "Log in",
+			Path:        "/login",
+			CustomClass: "mobile",
+		}, types.MainMenuItem{
+			Label:       "Sign Up",
+			Path:        "/register",
+			CustomClass: "mobile",
+		})
+	}
+
+	return append([]types.MainMenuItem{
 		{
 			Label:    "Blockchain",
 			IsActive: active == "blockchain",
@@ -478,5 +522,5 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 				},
 			},
 		},
-	}
+	}, userMenuItems...)
 }
