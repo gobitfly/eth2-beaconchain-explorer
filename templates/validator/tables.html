@@ -803,7 +803,7 @@
         <td><span data-toggle="tooltip" data-placement="top" title="Entering">{{ .NetworkStats.EnteringValidators }}</span>/<span data-toggle="tooltip" data-placement="top" title="Exiting">{{ .NetworkStats.ExitingValidators }}</span></td>
       </tr>
       <tr>
-        <th scope="row">Staked Ether</th>
+        <th scope="row">Staked {{ config.Frontend.ClCurrencySymbol }}</th>
         <td>{{ .NetworkStats.StakedEther }}</td>
       </tr>
       <tr>

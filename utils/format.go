@@ -1125,7 +1125,7 @@ func FormatBlockReward(blockNumber int64) template.HTML {
 		reward = big.NewInt(2e+18)
 	}
 
-	return FormatAmount(reward, "Ether", 5)
+	return FormatAmount(reward, Config.Frontend.ElCurrencySymbol, 5)
 }
 
 func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {

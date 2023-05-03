@@ -1844,7 +1844,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), utils.Config.Frontend.ElCurrencySymbol, 6),
 		}
 	}
 
@@ -1934,7 +1934,7 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 			utils.FormatBlockNumber(b.Number),
 			utils.FormatTimeFromNow(b.Time.AsTime()),
 			utils.FormatBlockUsage(b.GasUsed, b.GasLimit),
-			utils.FormatAmount(reward, "Ether", 6),
+			utils.FormatAmount(reward, utils.Config.Frontend.ElCurrencySymbol, 6),
 		}
 	}
 
@@ -2021,7 +2021,7 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 			utils.FormatBlockNumber(u.Number),
 			utils.FormatTimeFromNow(u.Time.AsTime()),
 			utils.FormatDifficulty(new(big.Int).SetBytes(u.Difficulty)),
-			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), "Ether", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), utils.Config.Frontend.ElCurrencySymbol, 6),
 		}
 	}
 
@@ -2125,7 +2125,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), utils.Config.Frontend.ElCurrencySymbol, 6),
 			t.Type,
 		}
 	}
@@ -2207,7 +2207,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		data[i] = types.Transfer{
 			From:   from,
 			To:     to,
-			Amount: utils.FormatBytesAmount(t.Value, "Ether", 8),
+			Amount: utils.FormatBytesAmount(t.Value, utils.Config.Frontend.ElCurrencySymbol, 8),
 		}
 	}
 	return data, nil
@@ -2804,7 +2804,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	if len(address) == 1 {
 		return &types.ERC20Metadata{
 			Decimals:    big.NewInt(18).Bytes(),
-			Symbol:      "Ether",
+			Symbol:      utils.Config.Frontend.ElCurrencySymbol,
 			TotalSupply: []byte{},
 		}, nil
 	}

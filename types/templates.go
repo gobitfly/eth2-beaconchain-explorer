@@ -52,7 +52,6 @@ type PageData struct {
 	GlobalNotification  template.HTML
 	AvailableCurrencies []string
 	MainMenuItems       []MainMenuItem
-	ClCurrencySymbol    string
 }
 
 type MainMenuItem struct {
@@ -204,6 +203,8 @@ type IndexPageData struct {
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
 	SlotVizData               *SlotVizPageData `json:"slotVizData"`
+	ClCurrencySymbol          string
+	ElCurrencySymbol          string
 }
 
 type SlotVizPageData struct {

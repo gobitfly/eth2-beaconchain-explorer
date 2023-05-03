@@ -155,7 +155,7 @@
         <div class="d-flex flex-column">
           <span style="font-weight: bold; font-size:18px;">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</span>
           <span style="font-size: 0.8rem; color: gray"
-            >{{ formatEffectiveBalance .EffectiveBalance "ETH" }}
+            >{{ formatEffectiveBalance .EffectiveBalance config.Frontend.ElCurrencySymbol }}
             <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
               ><a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
           ></span>

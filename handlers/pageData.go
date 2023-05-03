@@ -89,7 +89,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		GlobalNotification:  services.GlobalNotificationMessage(),
 		AvailableCurrencies: price.GetAvailableCurrencies(),
 		MainMenuItems:       createMenuItems(active, isMainnet),
-		ClCurrencySymbol:    utils.Config.Frontend.ClCurrencySymbol,
 	}
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)
@@ -222,6 +221,10 @@ func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
 }
 
 func createMenuItems(active string, isMain bool) []types.MainMenuItem {
+	if utils.Config.Chain.Name == "gnosis" {
+		return createMenuItemsGnosis(active, isMain)
+	}
+
 	hiddenFor := []string{"confirmation", "login", "register"}
 
 	if utils.SliceContains(hiddenFor, active) {
@@ -357,7 +360,8 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Icon:  "fa-rocket",
 						},
 					},
-				}, {
+				},
+				{
 					Label: "Stats",
 					Links: []types.NavigationLink{
 						{
@@ -474,6 +478,209 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Label: "Slot Finder",
 							Path:  "/slots/finder",
 							Icon:  "fa-cube",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
+	hiddenFor := []string{"confirmation", "login", "register"}
+
+	if utils.SliceContains(hiddenFor, active) {
+		return []types.MainMenuItem{}
+	}
+	return []types.MainMenuItem{
+		{
+			Label:    "Blockchain",
+			IsActive: active == "blockchain",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Epochs",
+							Path:  "/epochs",
+							Icon:  "fa-history",
+						},
+						{
+							Label: "Slots",
+							Path:  "/slots",
+							Icon:  "fa-cube",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Blocks",
+							Path:  "/blocks",
+							Icon:  "fa-cubes",
+						},
+						{
+							Label: "Txs",
+							Path:  "/transactions",
+							Icon:  "fa-credit-card",
+						},
+						{
+							Label: "Mempool",
+							Path:  "/mempool",
+							Icon:  "fa-upload",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Validators",
+			IsActive: active == "validators",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Overview",
+							Path:  "/validators",
+							Icon:  "fa-table",
+						},
+						{
+							Label: "Slashings",
+							Path:  "/validators/slashings",
+							Icon:  "fa-user-slash",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Validator Leaderboard",
+							Path:  "/validators/leaderboard",
+							Icon:  "fa-medal",
+						},
+						{
+							Label: "Deposit Leaderboard",
+							Path:  "/validators/deposit-leaderboard",
+							Icon:  "fa-file-import",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Deposits",
+							Path:  "/validators/deposits",
+							Icon:  "fa-file-signature",
+						},
+						{
+							Label: "Withdrawals",
+							Path:  "/validators/withdrawals",
+							Icon:  "fa-money-bill",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Dashboard",
+			IsActive: active == "dashboard",
+			Path:     "/dashboard",
+		},
+		{
+			Label:    "Notifications",
+			IsActive: false,
+			Path:     "/user/notifications",
+		},
+		{
+			Label:        "More",
+			IsActive:     active == "more",
+			HasBigGroups: true,
+			Groups: []types.NavigationGroup{
+				{
+					Label: "Stats",
+					Links: []types.NavigationLink{
+						{
+							Label: "Charts",
+							Path:  "/charts",
+							Icon:  "fa-chart-bar",
+						},
+						{
+							Label: "Income History",
+							Path:  "/rewards",
+							Icon:  "fa-money-bill-alt",
+						},
+						{
+							Label: "Profit Calculator",
+							Path:  "/calculator",
+							Icon:  "fa-calculator",
+						},
+						{
+							Label: "Block Viz",
+							Path:  "/vis",
+							Icon:  "fa-project-diagram",
+						},
+						{
+							Label:    "Correlations",
+							Path:     "/correlations",
+							Icon:     "fa-chart-line",
+							IsHidden: !isMain,
+						},
+					},
+				},
+				{
+					Label: "Tools",
+					Links: []types.NavigationLink{
+						{
+							Label: "beaconcha.in App",
+							Path:  "/mobile",
+							Icon:  "fa-mobile-alt",
+						},
+						{
+							Label: "beaconcha.in Premium",
+							Path:  "/premium",
+							Icon:  "fa-gem",
+						},
+						{
+							Label:      "Webhooks",
+							Path:       "/user/webhooks",
+							CustomIcon: "webhook_logo_svg",
+						},
+						{
+							Label: "API Docs",
+							Path:  "/api/v1/docs/index.html",
+							Icon:  "fa-book-reader",
+						},
+						{
+							Label: "API Pricing",
+							Path:  "/pricing",
+							Icon:  "fa-laptop-code",
+						},
+						{
+							Label: "Broadcast Signed Messages",
+							Path:  "/tools/broadcast",
+							Icon:  "fa-bullhorn",
+						},
+					},
+				},
+				{
+					Label: "Services",
+					Links: []types.NavigationLink{
+						{
+							Label:         "Eversteel",
+							Path:          "https://eversteel.io/",
+							CustomIcon:    "eversteel_logo_svg",
+							IsHighlighted: true,
+						},
+						{
+							Label: "Knowledge Base",
+							Path:  "https://kb.beaconcha.in",
+							Icon:  "fa-external-link-alt",
+						},
+						{
+							Label: "Notifications",
+							Path:  "/user/notifications",
+							Icon:  "fa-bell",
+						},
+						{
+							Label: "Graffiti Wall",
+							Path:  "/graffitiwall",
+							Icon:  "fa-paint-brush",
 						},
 					},
 				},

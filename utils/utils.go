@@ -140,6 +140,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
 		"getCurrencyLabel":                        price.GetCurrencyLabel,
+		"config":                                  func() *types.Config { return Config },
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -497,6 +498,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 		"depositChainID":         cfg.Chain.Config.DepositChainID,
 		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
 		"depositContractAddress": cfg.Chain.Config.DepositContractAddress,
+		"clCurrencySymbol":       cfg.Frontend.ClCurrencySymbol,
+		"elCurrencySymbol":       cfg.Frontend.ElCurrencySymbol,
 	}).Infof("did init config")
 
 	return nil
