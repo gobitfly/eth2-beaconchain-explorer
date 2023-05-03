@@ -357,12 +357,11 @@ func FormatTransactionType(txnType uint8) string {
 func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 	if currency == Config.Frontend.ClCurrencySymbol {
 		exchangeRate := ExchangeRateForCurrency(currency)
-		balance := float64(balanceInt) / float64(1e9)
+		balance := float64(balanceInt) / float64(Config.Frontend.ClCurrencyDivisor)
 		return template.HTML(fmt.Sprintf("%.5f %v", balance*exchangeRate, currency))
 	} else {
 		exchangeRate := ExchangeRateForCurrency(currency)
-		balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
-
+		balance := FormatFloat((float64(balanceInt)/float64(Config.Frontend.ClCurrencyDivisor))*float64(exchangeRate), 2)
 		return template.HTML(fmt.Sprintf(`%s %v`, balance, currency))
 	}
 }
@@ -370,14 +369,14 @@ func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 // FormatDepositAmount will return the deposit amount formated as string
 func FormatDepositAmount(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt) / float64(1e9)
+	balance := float64(balanceInt) / float64(Config.Frontend.ClCurrencyDivisor)
 	return template.HTML(fmt.Sprintf("%.0f %v", balance*exchangeRate, currency))
 }
 
 // FormatEffectiveBalance will return the effective balance formated as string with 1 digit after the comma
 func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt) / float64(1e9)
+	balance := float64(balanceInt) / float64(Config.Frontend.ClCurrencyDivisor)
 	return template.HTML(fmt.Sprintf("%.1f %v", balance*exchangeRate, currency))
 }
 
@@ -1185,8 +1184,8 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 			<svg style="width: 1rem; height: 1rem;">
 				<use xlink:href="#ethereum-diamond-logo"/>
 			</svg> 
-			<span class="token-holdings">%%.%df Ether</span>
-		</div>`, e.Int64()), balEth))
+			<span class="token-holdings">%%.%df %v</span>
+		</div>`, e.Int64(), Config.Frontend.ElCurrencySymbol), balEth))
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {

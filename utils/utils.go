@@ -474,11 +474,11 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.Frontend.ClCurrencySymbol == "" {
 		switch cfg.Chain.Name {
 		case "gnosis":
-			cfg.Frontend.ClCurrencySymbol = "mGNO"
-			cfg.Frontend.ClCurrencyDivisor = 1
+			cfg.Frontend.ClCurrencySymbol = "GNO"
+			cfg.Frontend.ClCurrencyDivisor = 32e9
 		default:
 			cfg.Frontend.ClCurrencySymbol = "ETH"
-			cfg.Frontend.ClCurrencyDivisor = 1
+			cfg.Frontend.ClCurrencyDivisor = 1e9
 		}
 	}
 
