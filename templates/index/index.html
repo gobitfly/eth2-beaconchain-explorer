@@ -143,8 +143,8 @@
                 fromNow(date) {
                     return getRelativeTime(luxon.DateTime.fromISO(date));
                 },
-                toTimestamp(date){
-                    return new Date(date).getTime() / 1000
+                timestampTooltip(date){
+                    return formatTimestampsTooltip(luxon.DateTime.fromISO(date))
                 }
             },
             created: function () {
