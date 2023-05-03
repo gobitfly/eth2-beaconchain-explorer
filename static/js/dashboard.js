@@ -529,7 +529,7 @@ $(document).ready(function () {
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data ? data[0] : null
           if (data === null) return "No Attestation found"
-          return `<span>${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}</span>`
+          return `${data[1]}`
         },
       },
       {

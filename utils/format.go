@@ -15,7 +15,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/shopspring/decimal"
@@ -803,7 +802,7 @@ func FormatMachineName(machineName string) template.HTML {
 
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0).Format("2006-01-02 15:04:05"), ts))
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", ts))
 }
 
 // FormatTsWithoutTooltip will return a timestamp formated as html. This is supposed to be used together with client-side js

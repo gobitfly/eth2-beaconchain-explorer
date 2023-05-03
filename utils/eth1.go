@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -406,14 +405,6 @@ func FormatDifficulty(number *big.Int) string {
 	f.Quo(f, big.NewFloat(1e12))
 	r, _ := f.Float64()
 	return fmt.Sprintf("%.1f T", r)
-}
-
-func FormatTime(t time.Time) template.HTML {
-	return template.HTML(fmt.Sprintf("<span aria-ethereum-date=\"%v\">%v</span>", t.Unix(), t))
-}
-
-func FormatTimeFromNow(t time.Time) template.HTML {
-	return template.HTML(HumanizeTime(t))
 }
 
 func FormatHashrate(h float64) template.HTML {

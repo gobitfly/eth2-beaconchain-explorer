@@ -132,6 +132,7 @@
                     }
                 },
                 drawCallback: function() {
+                    formatTimestamps()
                     $('#validators').find('[data-toggle="tooltip"]').tooltip();
                     validatorsDataTable.columns.adjust().responsive.recalc()
                 },
@@ -188,7 +189,7 @@
                             // 9223372036854775808 gets rounded up as it is above the Number.MAX_SAFE_INTEGER value
                             if (data === null || data[0] === 9223372036854776000)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('yyyy-MM-dd HH:mm:ss')}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
+                            return `<span><span class="timestamp" data-toggle="tooltip" data-placement="top" data-timestamp="${data[1]}"></span> (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -197,7 +198,7 @@
                         render: function(data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('yyyy-MM-dd HH:mm:ss')}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
+                            return `<span><span class="timestamp" data-toggle="tooltip" data-placement="top" data-timestamp="${data[1]}"></span> (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -206,7 +207,7 @@
                         render: function(data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('yyyy-MM-dd HH:mm:ss')}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
+                            return `<span><span class="timestamp" data-toggle="tooltip" data-placement="top" data-timestamp="${data[1]}"></span> (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -215,7 +216,7 @@
                         render: function(data, type, row, meta) {
                             if (data === null)
                                 return 'No Attestation found';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('yyyy-MM-dd HH:mm:ss')}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/slot/${data[0]}">Block ${addCommas(data[0])}</a>)</span>`
+                            return `<span><span class="timestamp" data-toggle="tooltip" data-placement="top" data-timestamp="${data[1]}"></span> (<a href="/slot/${data[0]}">Block ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {

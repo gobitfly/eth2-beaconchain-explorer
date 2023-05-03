@@ -21,7 +21,7 @@
           <tbody v-if="page && page.epochs && page.epochs.length">
             <tr v-for="epoch in page.epochs">
               <td><a v-bind:href="'/epoch/' + epoch.epoch" v-html="addCommas(epoch.epoch)"></a></td>
-              <td>${ epoch.ts | fromNow }</td>
+              <td><span class="timestamp" data-toggle="tooltip" data-placement="top" data-timestamp="${epoch.ts.Unix}"></span></td>
               <td v-html="epoch.finalized_formatted"></td>
               <td v-html="epoch.eligibleether_formatted"></td>
               <td v-html="epoch.globalparticipationrate_formatted"></td>

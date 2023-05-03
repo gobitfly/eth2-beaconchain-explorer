@@ -220,9 +220,6 @@
                 this.page = {{.}}
         },
         filters: {
-            fromNow(date) {
-                return getRelativeTime(luxon.DateTime.fromISO(date));
-            },
             toFixed(number, digits) {
                 return number.toFixed(digits)
             },
@@ -811,7 +808,7 @@
                   <td>${ block.gas_used }</td>
                   <td><span class="badge badge-pill text-white badge-success">${ block.mining_reward | formatETH(5)} ETH</span></td>
                   <td>${ block.tx_count }</td>
-                  <td>${ block.time | fromNow }</td>
+                  <td><span class="timestamp" data-toggle="tooltip" data-placement="top" data-timestamp="${block.time.Unix}"></span></td>
                   <td><span class="badge badge-pill text-white badge-info">${ block.base_fee_per_gas | formatGWei(2)} GWei</span></td>
                   <td><span class="badge badge-pill text-white badge-warning">${ block.burned_fees | formatETH(5)} ETH</span></td>
                 </tr>

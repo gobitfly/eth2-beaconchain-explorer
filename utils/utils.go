@@ -121,7 +121,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
 		"formatTimestamp":                         FormatTimestamp,
 		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
-		"formatTime":                              FormatTime,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"formatValidatorTags":                     FormatValidatorTags,
