@@ -60,7 +60,7 @@
             </button>
           </div>
           <div class="modal-body">
-            <p>In order to save any validator details you will need to provide a signed message of the eth account that sent the first valid deposit ({{ formatEth1Address .Eth1DepositAddress }}) for verification. Currently we support signatures generated with <a target="_blank" href="https://www.mycrypto.com/sign-and-verify-message/sign">MyCrypto</a> and <a target="_blank" href="https://www.myetherwallet.com/interface/sign-message">MyEtherWallet</a>.</p>
+            <p>In order to save any validator details you will need to provide a signed message of the eth account that sent the first valid deposit ({{ formatEth1Address .Eth1DepositAddress }}) for verification. You can for example use <a target="_blank" href="https://www.mycrypto.com/sign-and-verify-message/sign">MyCrypto</a> or <a target="_blank" href="https://www.myetherwallet.com/wallet/sign">MyEtherWallet</a> to generate the signature.</p>
             <p>The signature text MUST CONTAIN the string <b>beaconcha.in</b>.</p>
             <input type="hidden" value="0x{{ printf "%x" .PublicKey }}" name="pubkey" />
             <div class="form-group">
