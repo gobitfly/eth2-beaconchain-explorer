@@ -795,11 +795,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			syncStats := struct {
 				ParticipatedSync uint64 `db:"participated_sync"`
 				MissedSync       uint64 `db:"missed_sync"`
-				OrphanedSync     uint64 `db:"orphaned_sync"`
 				ScheduledSync    uint64
 			}{}
 			if lastStatsDay > 0 {
-				err = db.ReaderDb.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
+				err = db.ReaderDb.Get(&syncStats, `
+					SELECT
+						COALESCE(SUM(participated_sync), 0) as participated_sync,
+						COALESCE(SUM(missed_sync), 0) as missed_sync
+					FROM validator_stats
+					WHERE validatorindex = $1`, index)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator syncStats: %v", err)
 				}
@@ -818,14 +822,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				syncStats.ScheduledSync += syncStatsBt.ScheduledSlots
 			}
 
-			validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSync
+			// if validator is part of current sync committee, add slots done
+			if actualSyncPeriods[0].LastEpoch >= latestEpoch {
+				slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+				syncStats.ScheduledSync += slotsPerSyncCommittee - ((syncStats.MissedSync + syncStats.ParticipatedSync + syncStats.ScheduledSync) % slotsPerSyncCommittee)
+				validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSync
+			}
 
 			validatorPageData.ParticipatedSyncCountSlots = syncStats.ParticipatedSync
 			validatorPageData.MissedSyncCountSlots = syncStats.MissedSync
-			validatorPageData.OrphanedSyncCountSlots = syncStats.OrphanedSync
 			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSync
 			// actual sync duty count and percentage
-			syncCountSlotsIncludingScheduled := validatorPageData.ParticipatedSyncCountSlots + validatorPageData.MissedSyncCountSlots + validatorPageData.OrphanedSyncCountSlots + validatorPageData.ScheduledSyncCountSlots
+			syncCountSlotsIncludingScheduled := validatorPageData.ParticipatedSyncCountSlots + validatorPageData.MissedSyncCountSlots + validatorPageData.ScheduledSyncCountSlots
 			validatorPageData.SyncCount = uint64(math.Ceil(float64(syncCountSlotsIncludingScheduled) / float64(validatorPageData.SlotsPerSyncCommittee)))
 			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
 		}

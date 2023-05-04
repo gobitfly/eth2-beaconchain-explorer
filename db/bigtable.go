@@ -1080,10 +1080,6 @@ func (bigtable *Bigtable) GetValidatorSyncCommitteesStats(validators []uint64, s
 		}
 	}
 
-	// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
-	slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-	retv.ScheduledSlots += slotsPerSyncCommittee - ((retv.MissedSlots + retv.ParticipatedSlots + retv.ScheduledSlots) % slotsPerSyncCommittee)
-
 	return retv, nil
 }
 
