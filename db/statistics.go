@@ -200,7 +200,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 
 		logrus.Infof("saving validator proposer rewards gwei batch %v completed", b)
-		stmt = fmt.Sprint(`
+		stmt = `
 		INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
 		(
 			SELECT cur.validatorindex, cur.day,  COALESCE(cur.end_balance, 0) -  COALESCE(last.end_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount,0)  as cl_rewards_gwei
@@ -211,9 +211,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			WHERE cur.day = $1 and cur.validatorindex >= $2 and cur.validatorindex <= $3
 		) 
 		ON CONFLICT (validatorindex, day) do
-			update set cl_rewards_gwei = excluded.cl_rewards_gwei;`)
+			update set cl_rewards_gwei = excluded.cl_rewards_gwei;`
 		if day == 0 {
-			stmt = fmt.Sprint(`
+			stmt = `
 			INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
 			(
 				SELECT cur.validatorindex, cur.day,  COALESCE(cur.end_balance, 0) -  COALESCE(cur.start_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount,0)  as cl_rewards_gwei
@@ -221,7 +221,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				WHERE cur.day = $1 and cur.validatorindex >= $2 and cur.validatorindex <= $3
 			) 
 			ON CONFLICT (validatorindex, day) do
-				update set cl_rewards_gwei = excluded.cl_rewards_gwei;`)
+				update set cl_rewards_gwei = excluded.cl_rewards_gwei;`
 		}
 		_, err = tx.Exec(stmt, day, start, end)
 		if err != nil {
