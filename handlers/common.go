@@ -129,6 +129,47 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	lastDay := int64(0)
+
+	err = db.ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+	if err != nil {
+		return nil, nil, err
+	}
+	firstEpoch := (lastDay + 1) * int64(utils.EpochsPerDay())
+
+	var lastDeposits uint64
+	err = db.ReaderDb.Get(&lastDeposits, `
+	SELECT 
+		COALESCE(SUM(amount), 0) 
+	FROM blocks_deposits d
+	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3
+	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray, firstEpoch, latestFinalizedEpoch)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var lastWithdrawals uint64
+	err = db.ReaderDb.Get(&lastWithdrawals, `
+	SELECT 
+        COALESCE(SUM(amount), 0) 
+    FROM blocks_withdrawals d
+    INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3        
+    WHERE validatorindex =  ANY($1)`, validatorsPQArray, firstEpoch, latestFinalizedEpoch)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var lastBalance uint64
+	err = db.ReaderDb.Get(&lastBalance, `
+	SELECT 
+        COALESCE(SUM(end_balance), 0) 
+    FROM validator_stats     
+    WHERE day=$2 AND validatorindex = ANY($1)`, validatorsPQArray, lastDay)
+	if err != nil {
+		return nil, nil, err
+	}
+	currentDayIncome := int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)
+
 	// calculate combined el and cl earnings
 	earnings1d := income.ClIncome1d + income.ElIncome1d
 	earnings7d := income.ClIncome7d + income.ElIncome7d
@@ -164,7 +205,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	// retrieve cl income not yet in stats
-	currentDayIncome, currentDayProposerIncome, err := db.GetCurrentDayClIncomeTotal(validators)
+	_, currentDayProposerIncome, err := db.GetCurrentDayClIncomeTotal(validators)
 	if err != nil {
 		return nil, nil, err
 	}
