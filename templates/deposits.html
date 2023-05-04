@@ -5,121 +5,131 @@
   <script type="text/javascript" src="/js/highcharts/highcharts-global-options.js"></script>
     <script>
         $(document).ready(function() {
-            var usp = new URLSearchParams(window.location.search)
-            var q = usp.get('q')
-            {{ if len .DepositContract }}
+          var usp = new URLSearchParams(window.location.search)
+          var q = usp.get('q')
+          {{ if len .DepositContract }}
             var tbl = $('#initiated-deposits').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: true,
-                stateSave: true,
-                order: [[4, 'desc']],
-                searching: true,
-                ajax: '/validators/initiated-deposits/data',
-                pagingType: 'input',
-                preDrawCallback: function() {
-                    // this does not always work.. not sure how to solve the staying tooltip
-                    try {
-                        $('#deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
-                    } catch (e) {
-                    }
-                },
-                drawCallback: function(settings) {
-                    formatTimestamps('#initiated-deposits')
-                },
-                language: {
-                    searchPlaceholder: 'Address | Val. Key | Withd. Cred. | Tx Hash',
-                    search: '',
-                    paginate: {
-                        previous: '<i class="fas fa-chevron-left"></i>',
-                        next: '<i class="fas fa-chevron-right"></i>'
-                    }
-                }
-            })
-            {{end}}
-
-
-            var tblIncluded = $("#included-deposits").DataTable({
-        processing: true,
-        serverSide: true,
-        ordering: true,
-        stateSave: true,
-        order: [[0, "desc"]],
-        searching: true,
-        ajax: "/validators/included-deposits/data",
-        pagingType: "input",
-        language: {
-          searchPlaceholder: "Slot / Validator Key / Withdrawal Credentials",
-          search: "",
-          paginate: {
-            previous: '<i class="fas fa-chevron-left"></i>',
-            next: '<i class="fas fa-chevron-right"></i>',
-          },
-        },
-        drawCallback: function (settings) {
-          $('[data-toggle="tooltip"]').tooltip()
-        },
-        columnDefs: [
-          {
-            targets: 3,
-            data: "3",
-            render: function (data, type, row, meta) {
-              // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
-              const clipboardtext = $(row[5]).text()
-              if (clipboardtext.startsWith("0x01")) {
-                data = `<a href="/address/${clipboardtext.replace("010000000000000000000000", "")}">${data}</a>`
+              processing: true,
+              serverSide: true,
+              ordering: true,
+              stateSave: true,
+              stateSaveCallback: function (settings, data) {
+                data.start = 0
+                localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+              },
+              stateLoadCallback: function (settings) {
+                return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              },
+              order: [[4, 'desc']],
+              searching: true,
+              ajax: '/validators/initiated-deposits/data',
+              pagingType: 'input',
+              preDrawCallback: function() {
+                  // this does not always work.. not sure how to solve the staying tooltip
+                  try {
+                      $('#deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
+                  } catch (e) {
+                  }
+              },
+              drawCallback: function(settings) {
+                  formatTimestamps('#initiated-deposits')
+              },
+              language: {
+                  searchPlaceholder: 'Address | Val. Key | Withd. Cred. | Tx Hash',
+                  search: '',
+                  paginate: {
+                      previous: '<i class="fas fa-chevron-left"></i>',
+                      next: '<i class="fas fa-chevron-right"></i>'
+                  }
               }
-              return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
+            })
+          {{end}}
+          var tblIncluded = $("#included-deposits").DataTable({
+            processing: true,
+            serverSide: true,
+            ordering: true,
+            stateSave: true,
+            stateSaveCallback: function (settings, data) {
+              data.start = 0
+              localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
             },
-          },
-          {
-            targets: 4,
-            data: "4",
-            render: function (data, type, row, meta) {
-              const clipboardtext = $(row[6]).text()
-              return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
+            stateLoadCallback: function (settings) {
+              return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
             },
-          },
-        ],
-      })
-      if (q) {
-          tblIncluded.search(q);
-          tblIncluded.draw();
-      }
-      $("#included-deposits_filter > label > input").on('input', function(ev) {
-          if (ev && ev.target && ev.target.value) {
-              var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-              q = ev.target.value
-              window.history.replaceState(null, 'Deposits', newUrl)
-          } else {
-              window.history.replaceState(null, 'Deposits', window.location.pathname)
-              q = ""
-          }
-          if(tbl) {
-            tbl.search(q || "");
-            tbl.draw();
-          }
-      })
-
-      if (q) {
-          tbl.search(q);
-          tbl.draw();
-      }
-      $("#initiated-deposits_filter > label > input").on('input', function(ev) {
-          if (ev && ev.target && ev.target.value) {
-              var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-              q = ev.target.value
-              window.history.replaceState(null, 'Deposits', newUrl)
-          } else {
-              window.history.replaceState(null, 'Deposits', window.location.pathname)
-              q = ""
-          }
-          if(tblIncluded) {
-              tblIncluded.search(q || "");
+            order: [[0, "desc"]],
+            searching: true,
+            ajax: "/validators/included-deposits/data",
+            pagingType: "input",
+            language: {
+              searchPlaceholder: "Slot / Validator Key / Withdrawal Credentials",
+              search: "",
+              paginate: {
+                previous: '<i class="fas fa-chevron-left"></i>',
+                next: '<i class="fas fa-chevron-right"></i>',
+              },
+            },
+            drawCallback: function (settings) {
+              $('[data-toggle="tooltip"]').tooltip()
+            },
+            columnDefs: [
+              {
+                targets: 3,
+                data: "3",
+                render: function (data, type, row, meta) {
+                  // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
+                  const clipboardtext = $(row[5]).text()
+                  if (clipboardtext.startsWith("0x01")) {
+                    data = `<a href="/address/${clipboardtext.replace("010000000000000000000000", "")}">${data}</a>`
+                  }
+                  return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
+                },
+              },
+              {
+                targets: 4,
+                data: "4",
+                render: function (data, type, row, meta) {
+                  const clipboardtext = $(row[6]).text()
+                  return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
+                },
+              },
+            ],
+          })
+          if (q) {
+              tblIncluded.search(q);
               tblIncluded.draw();
           }
-      })
-
+          $("#included-deposits_filter > label > input").on('input', function(ev) {
+              if (ev && ev.target && ev.target.value) {
+                  var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+                  q = ev.target.value
+                  window.history.replaceState(null, 'Deposits', newUrl)
+              } else {
+                  window.history.replaceState(null, 'Deposits', window.location.pathname)
+                  q = ""
+              }
+              if(tbl) {
+                tbl.search(q || "");
+                tbl.draw();
+              }
+          })
+          if (q) {
+              tbl.search(q);
+              tbl.draw();
+          }
+          $("#initiated-deposits_filter > label > input").on('input', function(ev) {
+              if (ev && ev.target && ev.target.value) {
+                  var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+                  q = ev.target.value
+                  window.history.replaceState(null, 'Deposits', newUrl)
+              } else {
+                  window.history.replaceState(null, 'Deposits', window.location.pathname)
+                  q = ""
+              }
+              if(tblIncluded) {
+                  tblIncluded.search(q || "");
+                  tblIncluded.draw();
+              }
+          })
         })
     </script>
 {{ end }}
