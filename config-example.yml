@@ -55,5 +55,4 @@ indexer:
     type: "prysm" # can be either prysm or lighthouse
     pageSize: 500 # the amount of entries to fetch per paged rpc call
   eth1Endpoint: "https://goerli.infura.io/v3/<api-token>"
-  eth1DepositContractAddress: "0x5cA1e00004366Ac85f492887AAab12d0e6418876"
   eth1DepositContractFirstBlock: 2523557
