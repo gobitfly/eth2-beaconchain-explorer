@@ -798,8 +798,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// if sync duties of last period haven't fully been exported yet
-			// fetch remaining duties from bigtable
+			// if sync duties of last period haven't fully been exported yet fetch remaining duties from bigtable
 			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
 			if actualSyncPeriods[0].LastEpoch > lastExportedEpoch {
 				lookback := int64(latestEpoch - lastExportedEpoch)
