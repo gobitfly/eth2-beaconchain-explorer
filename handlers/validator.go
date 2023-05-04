@@ -121,7 +121,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
 			// logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			SetPageDataTitle(data, "Validator not found")
+			data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", vars["index"]), "", validatorNotFoundTemplateFiles)
+
+			if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
@@ -130,8 +135,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			var name string
 			err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
-				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				// logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
+				SetPageDataTitle(data, "Validatoooooorr not found")
+				data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", name), "", validatorNotFoundTemplateFiles)
+
+				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+					return // an error has occurred and was processed
+				}
 				return
 				// err == sql.ErrNoRows -> unnamed
 			} else {
@@ -257,7 +267,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		if err != nil {
-			http.Error(w, "Validator not found", 404)
+			SetPageDataTitle(data, "Validator not found")
+			data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", vars["index"]), "", validatorNotFoundTemplateFiles)
+
+			if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 	}
@@ -1770,7 +1785,9 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 // Validator returns validator data using a go template
 func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "validator_stats_table.html")
+	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
 	var validatorStatsTableTemplate = templates.GetTemplate(templateFiles...)
+	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -1785,7 +1802,12 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
 			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			SetPageDataTitle(data, "Validator not found")
+			data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", vars["index"]), "", validatorNotFoundTemplateFiles)
+
+			if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
@@ -1800,7 +1822,12 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		// Request is not a valid index number
 		if err != nil {
 			logger.Errorf("error parsing validator index: %v", err)
-			http.Error(w, "Validator not found", http.StatusNotFound)
+			SetPageDataTitle(data, "Validator not found")
+			data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", vars["index"]), "", validatorNotFoundTemplateFiles)
+
+			if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+				return // an error has occurred and was processed
+			}
 			return
 		}
 	}
