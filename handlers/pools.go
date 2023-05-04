@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
+	"fmt"
 	"net/http"
 	// "strings"
 )
@@ -21,6 +22,22 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview", templateFiles)
 
+	poolsData, err := poolsPageData()
+	if err != nil {
+		logger.Errorf("unable to retrieve data for %v route", r.URL.String())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	data.Data = poolsData
+
+	if handleTemplateError(w, r, "pools.go", "Pools", "Done", poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
+	}
+}
+
+func poolsPageData() (*types.PoolsData, error) {
+	data := &types.PoolsData{}
+
 	cpd := services.LatestChartsPageData()
 	var distributionData *types.GenericChartData
 	var performanceData *types.GenericChartData
@@ -35,24 +52,20 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if distributionData == nil || performanceData == nil {
-		logger.Errorf("unable to retrieve data for %v route", r.URL.String())
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return nil, fmt.Errorf("unable to retrieve distribution or performance data")
 	}
 
-	poolData := services.LatestPoolsPageData()
+	data.PoolsResp = services.LatestPoolsPageData()
 
-	poolData.PoolsDistribution.Data = distributionData
-	poolData.PoolsDistribution.Height = 500
-	poolData.PoolsDistribution.Path = "pools_distribution"
+	data.PoolsDistribution.Data = distributionData
+	data.PoolsDistribution.Height = 500
+	data.PoolsDistribution.Path = "pools_distribution"
 
-	poolData.HistoricPoolPerformance.Data = performanceData
-	poolData.HistoricPoolPerformance.Height = 500
-	poolData.HistoricPoolPerformance.Path = "historic_pool_performance"
+	data.HistoricPoolPerformance.Data = performanceData
+	data.HistoricPoolPerformance.Height = 500
+	data.HistoricPoolPerformance.Path = "historic_pool_performance"
 
-	data.Data = poolData
+	data.Disclaimer = services.EthStoreDisclaimer()
 
-	if handleTemplateError(w, r, "pools.go", "Pools", "Done", poolsServicesTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-		return // an error has occurred and was processed
-	}
+	return data, nil
 }

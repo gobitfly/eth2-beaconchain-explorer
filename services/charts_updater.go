@@ -561,7 +561,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 		}
 		// create eth store series
 		ethStoreSeries := types.GenericChartDataSeries{
-			Name:  "ETH.STORE",
+			Name:  "ETH.STORE®",
 			Data:  poolSeriesData["ETH.STORE"],
 			Color: "#ed1c24",
 		}
@@ -571,13 +571,14 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	//create chart struct, hypertext color is hardcoded into subtitle text
 	chartData := &types.GenericChartData{
 		Title:         "Historical Pool Performance",
-		Subtitle:      "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus & execution rewards.",
+		Subtitle:      "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE®</a>* to measure pool performance for consensus & execution rewards.",
 		XAxisTitle:    "",
 		YAxisTitle:    "APR [%] (Logarithmic)",
 		StackingMode:  "false",
 		Type:          "line",
 		TooltipShared: false,
 		Series:        chartSeries,
+		Footer:        "*" + EthStoreDisclaimer(),
 	}
 
 	return chartData, nil

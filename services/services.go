@@ -449,9 +449,9 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	}
 
 	for _, pool := range poolData.PoolInfos {
-		pool.EthstoreCompoarison1d = pool.AvgPerformance1d*100/ethstoreData.AvgPerformance1d - 100
-		pool.EthstoreCompoarison7d = pool.AvgPerformance7d*100/ethstoreData.AvgPerformance7d - 100
-		pool.EthstoreCompoarison31d = pool.AvgPerformance31d*100/ethstoreData.AvgPerformance31d - 100
+		pool.EthstoreComparison1d = pool.AvgPerformance1d*100/ethstoreData.AvgPerformance1d - 100
+		pool.EthstoreComparison7d = pool.AvgPerformance7d*100/ethstoreData.AvgPerformance7d - 100
+		pool.EthstoreComparison31d = pool.AvgPerformance31d*100/ethstoreData.AvgPerformance31d - 100
 	}
 	poolData.PoolInfos = append([]*types.PoolInfo{ethstoreData}, poolData.PoolInfos...)
 
@@ -1020,6 +1020,10 @@ func LatestEthStoreStatistics() *types.EthStoreStatistics {
 		logger.Errorf("error retrieving ETH.STORE statistics data from cache: %v", err)
 	}
 	return &types.EthStoreStatistics{}
+}
+
+func EthStoreDisclaimer() string {
+	return "ETH.STORE® is not made available for use as a benchmark, whether in relation to a financial instrument, financial contract or to measure the performance of an investment fund, or otherwise in a way that would require it to be administered by a benchmark administrator pursuant to the EU Benchmarks Regulation. Currently Bitfly does not grant any right to access or use ETH.STORE® for such purpose."
 }
 
 // LatestIndexPageData returns the latest index page data
