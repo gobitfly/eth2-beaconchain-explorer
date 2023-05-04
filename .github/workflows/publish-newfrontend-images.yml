@@ -2,10 +2,10 @@ name: Publish Docker newfrontend images
 
 on:
   # Trigger the workflow on push or pull request,
-  # but only for the newfrontend branch
+  # but only for the feature/newfrontend branch
   push:
     branches:
-      - newfrontend
+      - feature/newfrontend
 
 jobs:
   build:
