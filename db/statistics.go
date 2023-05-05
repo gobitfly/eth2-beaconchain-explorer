@@ -511,7 +511,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		(
 			select proposer, $3, sum(case when status = '1' then 1 else 0 end), sum(case when status = '2' then 1 else 0 end), sum(case when status = '3' then 1 else 0 end)
 			from blocks
-			where epoch >= $1 and epoch <= $2 and status = '1'
+			where epoch >= $1 and epoch <= $2
 			group by proposer
 		) 
 		on conflict (validatorindex, day) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
