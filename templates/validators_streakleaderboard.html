@@ -9,6 +9,13 @@
         ordering: true,
         searching: true,
         stateSave: true,
+        stateSaveCallback: function (settings, data) {
+          data.start = 0
+          localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+        },
+        stateLoadCallback: function (settings) {
+          return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+        },
         ajax: "/validators/streakleaderboard/data",
         pagingType: "input",
         pageLength: 50,

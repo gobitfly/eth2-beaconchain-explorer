@@ -53,6 +53,13 @@
             processing: true,
             serverSide: true,
             stateSave: true,
+            stateSaveCallback: function (settings, data) {
+              data.start = 0
+              localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+            },
+            stateLoadCallback: function (settings) {
+              return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+            },
             ordering: true,
             order: [[1, "desc"]],
             lengthChange: false,

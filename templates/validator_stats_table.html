@@ -9,6 +9,13 @@
     $("#stats-table").DataTable({
       pageLength: 400,
       stateSave: true,
+      stateSaveCallback: function (settings, data) {
+        data.start = 0
+        localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+      },
+      stateLoadCallback: function (settings) {
+        return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+      },
       lengthChange: false,
       dom: "Bfrtip",
       buttons: ["copyHtml5", "excelHtml5", "csvHtml5", "pdfHtml5"],
