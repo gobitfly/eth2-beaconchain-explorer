@@ -1,61 +1,7 @@
 {{ define "js" }}
-  <script src="https://www.google.com/recaptcha/api.js" async></script>
-  <script>
-    function onSubmit(token) {
-      var form = document.getElementById("contact")
-      if (form.reportValidity()) {
-        form.submit()
-      }
-    }
-  </script>
 {{ end }}
 
 {{ define "css" }}
-  <!-- <style>
-        @media (min-width: 1140px) {
-            .max-lg-300 {
-                max-width: 300px;
-            }
-        }
-                @media (max-width: 960px) {
-                    table {
-                          width: 100%;
-                    }
-                    table, thead, tbody, th, td, tr {
-                        display: block
-                    }
-                    thead tr {
-                        position: absolute;
-                        top: -9999px;
-                        left: -9999px;
-                    }
-                    tr {
-                        border: 1px solid var(--border-color);
-                        margin: 1rem 0;
-                    }
-                    td {
-                        /* Behave  like a "row" */
-                        border: none;
-                        border-bottom: 1px solid var(--border-color-transparent);
-                        position: relative;
-                        padding-left: 40% !important;
-                    }
-                    td:before {
-                        /* Now like a table header */
-                        position: absolute;
-                        /* Top/left values mimic padding */
-                        left: 1rem;
-                        width: 35%;
-                        padding-right: 1rem;
-                        white-space: nowrap;
-                        /* Label the data */
-                        content: attr(data-column);
-
-                        color: var(--body-color);
-                        font-weight: bold;
-                    }
-                }
-    </style> -->
 {{ end }}
 
 {{ define "content" }}
@@ -730,69 +676,8 @@
               <div class="col-md-12 col-lg-10 text-center">
                 <h1 class="h4 ">Request to add your Staking Service</h1>
                 <p class="text-muted col-md-8 px-0 mx-auto">
-                  If you have a staking service and want it to be listed above please fill out the form below or create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/stakingServices.html">pull request <i class="fab fa-github"></i></a>
+                  If you have a staking service and want it to be listed above please create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/stakingServices.html">pull request <i class="fab fa-github"></i></a>
                 </p>
-                <form id="contact" action="/stakingServices" method="post">
-                  <div class="text-left">
-                    <div class="form-row">
-                      <div class="form-group col-md-6">
-                        <label for="name">Service Name (required)</label>
-                        <input type="text" class="form-control" id="name" placeholder="Ex. Example Pool" required name="name" />
-                      </div>
-                      <div class="form-group col-md-6">
-                        <label for="url">Website URL (required)</label>
-                        <input type="text" class="form-control" id="url" placeholder="Ex.: https://www.example.com" required name="url" />
-                      </div>
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group col-md-6">
-                        <label for="Validator key owner">Validator key owner (required)</label>
-                        <input type="text" class="form-control" id="Validator key owner" placeholder="Ex.:  User / Service / User & Service" required name="Validator key owner" />
-                      </div>
-                      <div class="form-group col-md-6">
-                        <label for="stake">Withdrawal key owner (required)</label>
-                        <input type="text" class="form-control" id="Withdrawal key owner" placeholder="Ex.:  User / Service / User & Service" required name="Withdrawal key owner" />
-                      </div>
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group col-md-6">
-                        <label for="Pool token">Pool token (required)</label>
-                        <input type="text" class="form-control" id="Pool token" placeholder="Ex.:  Yes / No" required name="Pool token" />
-                      </div>
-                      <div class="form-group col-md-6">
-                        <label for="3rdPartySoftware">Install 3rd Party Software (required)</label>
-                        <input type="text" class="form-control" id="3rdPartySoftware" placeholder="Ex.: Yes / No (User needs to run software)" required name="3rdPartySoftware" />
-                      </div>
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group col-md-6">
-                        <label for="fee">Fee (required)</label>
-                        <input type="text" class="form-control" id="fee" required name="fee" placeholder="Ex. 5%" />
-                      </div>
-
-                      <div class="form-group col-md-6">
-                        <label for="stake">Min Stake (required)</label>
-                        <input type="text" class="form-control" id="stake" placeholder="Ex.: 32 ETH" required name="stake" />
-                      </div>
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group col-md-6">
-                        <label for="open">Open Source (required)</label>
-                        <input type="text" class="form-control" id="open" required name="open" placeholder="Ex. Yes, https://github.com/repo" />
-                      </div>
-                      <div class="form-group col-md-6">
-                        <label for="links">Social Links (required)</label>
-                        <input type="text" class="form-control" id="links" required name="links" placeholder="Ex. https://discord.com/xyz, https://twitter.com/example...." />
-                      </div>
-                    </div>
-
-                    <div class="form-group">
-                      <label for="inputQuestions">Comments & Questions</label>
-                      <textarea class="form-control" id="inputQuestions" name="comments"></textarea>
-                    </div>
-                  </div>
-                  <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Request</button>
-                </form>
               </div>
             </div>
           </div>
