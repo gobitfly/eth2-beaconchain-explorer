@@ -281,11 +281,15 @@ func main() {
 
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
-				errMsg := fmt.Sprintf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+				errMsg := "error indexing from node"
+				errFields := map[string]interface{}{
+					"start":       int64(lastBlockFromBlocksTable) - *offsetBlocks,
+					"end":         int64(lastBlockFromNode),
+					"concurrency": *concurrencyBlocks}
 				if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
-					utils.LogFatal(err, errMsg, 0)
+					utils.LogFatal(err, errMsg, 0, errFields)
 				} else {
-					utils.LogError(err, errMsg, 0)
+					utils.LogError(err, errMsg, 0, errFields)
 				}
 				continue
 			} else {
