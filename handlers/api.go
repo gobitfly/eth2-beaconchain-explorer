@@ -2531,7 +2531,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.ReaderDb.Query(`
-	SELECT ` + summarize_query + `
+	SELECT `+summarize_query+`
 		x,
 		y,
 		color,
