@@ -38,7 +38,7 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		logger.Errorf("error parsing form: %v", err)
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, "stake_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 		return
