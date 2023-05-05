@@ -78,7 +78,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			CurrentSymbol:          GetCurrencySymbol(r),
 		},
 		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
-		DepositContract:     utils.Config.Indexer.Eth1DepositContractAddress,
+		DepositContract:     utils.Config.Chain.Config.DepositContractAddress,
 		ClientsUpdated:      ethclients.ClientsUpdated(),
 		ChainConfig:         utils.Config.Chain.Config,
 		Lang:                "en-US",
