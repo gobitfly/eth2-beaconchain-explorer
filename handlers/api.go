@@ -60,7 +60,7 @@ import (
 // @tag.name SyncCommittee
 // @tag.name Execution
 // @tag.description layer information about addresses, blocks and transactions
-// @tag.name ETH.STORE
+// @tag.name ETH.STORE®
 // @tag.description is the transparent Ethereum staking reward reference rate.
 // @tag.docs.url https://staking.ethermine.org/statistics
 // @tag.docs.description More info
@@ -197,13 +197,13 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEthStoreDay godoc
-// @Summary Get ETH.STORE reference rate for a specified beaconchain-day or the latest day
-// @Tags ETH.STORE
-// @Description ETH.STORE represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
+// @Summary Get ETH.STORE® reference rate for a specified beaconchain-day or the latest day
+// @Tags ETH.STORE®
+// @Description ETH.STORE® represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
 // @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
 // @Description See https://github.com/gobitfly/eth.store for further information.
 // @Produce json
-// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE for. Must be a number or the string 'latest'."
+// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE® for. Must be a number or the string 'latest'."
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/ethstore/{day} [get]
