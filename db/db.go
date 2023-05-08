@@ -2311,13 +2311,21 @@ func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
 }
 
 // GetAddressWithdrawals returns the withdrawals for an address
-func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*types.Withdrawals, error) {
+func GetAddressWithdrawals(address []byte, limit uint64, pageToken uint64) ([]*types.Withdrawals, uint64, error) {
 	var withdrawals []*types.Withdrawals
 	if limit == 0 {
 		limit = 100
 	}
 
-	err := ReaderDb.Select(&withdrawals, `
+	var err error
+	if pageToken == 0 {
+		pageToken, err = GetTotalWithdrawals()
+		if err != nil {
+			return nil, 0, fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
+		}
+	}
+
+	err = ReaderDb.Select(&withdrawals, `
 	SELECT 
 		w.block_slot as slot, 
 		w.withdrawalindex as index, 
@@ -2326,15 +2334,23 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 		w.amount 
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE w.address = $1 ORDER BY w.withdrawalindex DESC LIMIT $2 OFFSET $3`, address, limit, offset)
+	WHERE w.address = $1 AND w.withdrawalindex <= $2
+	ORDER BY w.withdrawalindex DESC LIMIT $3`, address, pageToken, limit+1)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return withdrawals, nil
+			return withdrawals, 0, nil
 		}
-		return nil, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+		return nil, 0, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
 	}
 
-	return withdrawals, nil
+	// Get the next page token and remove that withdrawal from the results
+	nextPageToken := uint64(0)
+	if len(withdrawals) == int(limit+1) {
+		nextPageToken = withdrawals[limit].Index
+		withdrawals = withdrawals[:limit]
+	}
+
+	return withdrawals, nextPageToken, nil
 }
 
 func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error) {
