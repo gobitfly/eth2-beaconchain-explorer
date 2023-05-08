@@ -1,6 +1,6 @@
 module eth2-exporter
 
-go 1.18
+go 1.20
 
 require (
 	cloud.google.com/go/bigtable v1.16.0
@@ -13,7 +13,7 @@ require (
 	github.com/awa/go-iap v1.3.7
 	github.com/aybabtme/uniplot v0.0.0-20151203143629-039c559e5e7e
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ethereum/go-ethereum v1.11.3
+	github.com/ethereum/go-ethereum v1.11.7-0.20230508070114-7ac08ba4e0bf
 	github.com/evanw/esbuild v0.8.23
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gobitfly/eth-rewards v0.1.2-0.20230403064929-411ddc40a5f7
@@ -91,6 +91,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v0.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
+	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
@@ -130,7 +131,7 @@ require (
 	github.com/goccy/go-yaml v1.10.0 // indirect
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/snappy v0.0.4 // indirect
+	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/googleapis/gax-go/v2 v2.6.0 // indirect
