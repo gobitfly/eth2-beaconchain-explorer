@@ -1015,10 +1015,24 @@ type ClElFloat64 struct {
 	Total float64
 }
 
+type ValidatorPropsalData struct {
+	Proposals                [][]uint64
+	BlocksCount              uint64
+	ScheduledBlocksCount     uint64
+	MissedBlocksCount        uint64
+	OrphanedBlocksCount      uint64
+	ProposedBlocksCount      uint64
+	UnmissedBlocksPercentage float64 // missed/(executed+orphaned+scheduled)
+	ProposalLuck             float64
+	AvgSlotInterval          *time.Duration
+	ProposalEstimate         *time.Time
+}
+
 type ValidatorEarnings struct {
 	Income1d                ClElInt64     `json:"income1d"`
 	Income7d                ClElInt64     `json:"income7d"`
 	Income31d               ClElInt64     `json:"income31d"`
+	IncomeToday             ClElInt64     `json:"incomeToday"`
 	IncomeTotal             ClElInt64     `json:"incomeTotal"`
 	Apr7d                   ClElFloat64   `json:"apr"`
 	Apr31d                  ClElFloat64   `json:"apr31d"`
@@ -1036,6 +1050,7 @@ type ValidatorEarnings struct {
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
 	TotalBalance            template.HTML `json:"totalBalance"`
+	ProposalData            ValidatorPropsalData
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing

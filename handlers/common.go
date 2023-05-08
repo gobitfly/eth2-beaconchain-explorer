@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -19,7 +20,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/lib/pq"
+	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
 )
 
@@ -169,10 +172,124 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	incomeToday := types.ClElInt64{
+		El:    0,
+		Cl:    currentDayIncome,
+		Total: currentDayIncome,
+	}
+
+	proposals := []struct {
+		Slot            uint64 `db:"slot"`
+		Status          uint64 `db:"status"`
+		ExecBlockNumber uint64 `db:"exec_block_number"`
+	}{}
+
+	var lastStatsDay uint64
+	err = db.ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting lastStatsDay %v", err)
+	}
+
+	err = db.ReaderDb.Select(&proposals, `
+		SELECT 
+			slot, 1
+			status, 
+			COALESCE(exec_block_number, 0) as exec_block_number
+		FROM blocks 
+		WHERE proposer = ANY($1)
+		ORDER BY slot ASC`, validatorsPQArray)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error retrieving block-proposals: %v", err)
+	}
+
+	proposedToday := []uint64{}
+	todayStartEpoch := uint64(lastStatsDay+1) * utils.EpochsPerDay()
+	validatorPropsalData := types.ValidatorPropsalData{}
+	validatorPropsalData.Proposals = make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		validatorPropsalData.Proposals[i] = []uint64{
+			uint64(utils.SlotToTime(b.Slot).Unix()),
+			b.Status,
+		}
+		if b.Status == 0 {
+			validatorPropsalData.ScheduledBlocksCount++
+		} else if b.Status == 1 {
+			validatorPropsalData.ProposedBlocksCount++
+			// add to list of blocks proposed today if epoch hasn't been exported into stats yet
+			if utils.EpochOfSlot(b.Slot) >= todayStartEpoch && b.ExecBlockNumber > 0 {
+				proposedToday = append(proposedToday, b.ExecBlockNumber)
+			}
+		} else if b.Status == 2 {
+			validatorPropsalData.MissedBlocksCount++
+		} else if b.Status == 3 {
+			validatorPropsalData.OrphanedBlocksCount++
+		}
+	}
+
+	validatorPropsalData.BlocksCount = uint64(len(proposals))
+	if validatorPropsalData.BlocksCount > 0 {
+		validatorPropsalData.UnmissedBlocksPercentage = float64(validatorPropsalData.BlocksCount-validatorPropsalData.MissedBlocksCount) / float64(len(proposals))
+	} else {
+		validatorPropsalData.UnmissedBlocksPercentage = 1.0
+	}
+
+	var slots []uint64
+	for _, p := range proposals {
+		if p.ExecBlockNumber > 0 {
+			slots = append(slots, p.Slot)
+		}
+	}
+
+	lookbackAmount := getProposalLuckBlockLookbackAmount(1)
+	startPeriod := len(slots) - lookbackAmount
+	if startPeriod < 0 {
+		startPeriod = 0
+	}
+
+	validatorPropsalData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
+	avgSlotInterval := uint64(getAvgSlotInterval(1))
+	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
+	validatorPropsalData.AvgSlotInterval = &avgSlotIntervalAsDuration
+	if len(slots) > 0 {
+		nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
+		validatorPropsalData.ProposalEstimate = &nextSlotEstimate
+	}
+
+	if len(proposedToday) > 0 {
+		// get el data
+		execBlocks, err := db.BigtableClient.GetBlocksIndexedMultiple(proposedToday, 10000)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error retrieving execution blocks data from bigtable: %v", err)
+		}
+
+		// get mev data
+		relaysData, err := db.GetRelayDataForIndexedBlocks(execBlocks)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error retrieving mev bribe data: %v", err)
+		}
+
+		incomeTodayEl := new(big.Int)
+		for _, execBlock := range execBlocks {
+
+			blockEpoch := utils.TimeToEpoch(execBlock.Time.AsTime())
+			if blockEpoch > int64(latestFinalizedEpoch) {
+				continue
+			}
+			// add mev bribe if present
+			if relaysDatum, hasMevBribes := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribes {
+				incomeTodayEl = new(big.Int).Add(incomeTodayEl, relaysDatum.MevBribe.Int)
+			} else {
+				incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
+			}
+		}
+		incomeToday.El = int64(eth.WeiToGwei(incomeTodayEl))
+		incomeToday.Total = incomeToday.Total + incomeToday.El
+	}
+
 	incomeTotal := types.ClElInt64{
-		El:    income.ElIncomeTotal,
-		Cl:    income.ClIncomeTotal + currentDayIncome,
-		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+		El:    income.ElIncomeTotal + incomeToday.El,
+		Cl:    income.ClIncomeTotal + incomeToday.Cl,
+		Total: income.ClIncomeTotal + income.ElIncomeTotal + incomeToday.Total,
 	}
 
 	incomeTotalProposer := types.ClElInt64{
@@ -197,6 +314,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    income.ClIncome31d,
 			Total: earnings31d,
 		},
+		IncomeToday: incomeToday,
 		IncomeTotal: incomeTotal,
 		Apr7d: types.ClElFloat64{
 			El:    elApr7d,
@@ -221,6 +339,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
 		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
 		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
+		ProposalData:           validatorPropsalData,
 	}, balancesMap, nil
 }
 
