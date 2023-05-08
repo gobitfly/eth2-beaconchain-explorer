@@ -129,10 +129,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 
+	elClPrice := price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, utils.Config.Frontend.ClCurrencySymbol)
+
 	// calculate combined el and cl earnings
-	earnings1d := income.ClIncome1d + income.ElIncome1d
-	earnings7d := income.ClIncome7d + income.ElIncome7d
-	earnings31d := income.ClIncome31d + income.ElIncome31d
+	earnings1d := float64(income.ClIncome1d) + elClPrice*float64(income.ElIncome1d)
+	earnings7d := float64(income.ClIncome7d) + elClPrice*float64(income.ElIncome7d)
+	earnings31d := float64(income.ClIncome31d) + elClPrice*float64(income.ElIncome31d)
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
 	if clApr7d < float64(-1) {
@@ -171,14 +173,14 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	incomeTotal := types.ClElInt64{
 		El:    income.ElIncomeTotal,
-		Cl:    income.ClIncomeTotal + currentDayIncome,
-		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+		Cl:    income.ClIncomeTotal,
+		Total: float64(income.ClIncomeTotal) + elClPrice*float64(income.ElIncomeTotal) + float64(currentDayIncome),
 	}
 
 	incomeTotalProposer := types.ClElInt64{
 		El:    income.ElIncomeTotal,
 		Cl:    income.ClProposerIncomeTotal + currentDayProposerIncome,
-		Total: income.ClProposerIncomeTotal + income.ElIncomeTotal + currentDayProposerIncome,
+		Total: float64(income.ClProposerIncomeTotal) + elClPrice*float64(income.ElIncomeTotal) + float64(currentDayProposerIncome),
 	}
 
 	return &types.ValidatorEarnings{
@@ -214,13 +216,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Total: clApr365d + elApr365d,
 		},
 		TotalDeposits:          int64(totalDeposits),
-		LastDayFormatted:       utils.FormatIncome(earnings1d, currency),
-		LastWeekFormatted:      utils.FormatIncome(earnings7d, currency),
-		LastMonthFormatted:     utils.FormatIncome(earnings31d, currency),
+		LastDayFormatted:       utils.FormatIncome(int64(earnings1d), currency, true),
+		LastWeekFormatted:      utils.FormatIncome(int64(earnings7d), currency, true),
+		LastMonthFormatted:     utils.FormatIncome(int64(earnings31d), currency, true),
 		TotalFormatted:         utils.FormatIncomeClElInt64(incomeTotal, currency),
 		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
-		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
-		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
+		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency, true),
+		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency, true),
 	}, balancesMap, nil
 }
 
@@ -367,8 +369,8 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 	data := services.LatestState()
 	// data.Currency = currency
-	data.EthPrice = price.GetEthPrice(currency)
-	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
+	data.EthPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
+	data.EthRoundPrice = uint64(data.EthPrice)
 	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
 
 	err := json.NewEncoder(w).Encode(data)
@@ -418,13 +420,13 @@ func GetCurrencySymbol(r *http.Request) string {
 func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
-		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+		return uint64(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
 	}
 
 	if cookie.Value == utils.Config.Frontend.ClCurrencySymbol {
-		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+		return uint64(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
 	}
-	return price.GetEthRoundPrice(price.GetEthPrice(cookie.Value))
+	return uint64(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, cookie.Value))
 }
 
 func GetCurrentPriceFormatted(r *http.Request) template.HTML {

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
@@ -895,7 +896,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	validatorPageData.IncomeToday.Total = validatorPageData.IncomeToday.Cl + validatorPageData.IncomeToday.El
+	validatorPageData.IncomeToday.Total = float64(validatorPageData.IncomeToday.Cl) + price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, utils.Config.Frontend.ClCurrencySymbol)*float64(validatorPageData.IncomeToday.El)
 
 	data.Data = validatorPageData
 

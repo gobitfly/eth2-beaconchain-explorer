@@ -104,7 +104,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
-		"formatIncomeNoCurrency":                  FormatIncomeNoCurrency,
+		"formatIncomeEx":                          FormatIncomeEx,
 		"formatIncomeSql":                         FormatIncomeSql,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
@@ -776,10 +776,6 @@ func GenerateRandomAPIKey() (string, error) {
 
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
-}
-
-func ExchangeRateForCurrency(currency string) float64 {
-	return price.GetEthPrice(currency)
 }
 
 // Glob walks through a directory and returns files with a given extension

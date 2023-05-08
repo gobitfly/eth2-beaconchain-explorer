@@ -73,7 +73,7 @@
           {{ range .Rows }}
             <tr>
               <td data-order="{{ .Day }}">{{ (dayToTime .Day).Format "02 Jan 2006" }}</td>
-              <td>{{ formatIncome .Income $.Rates.Currency }}</td>
+              <td>{{ formatIncome .Income $.Rates.Currency true }}</td>
               <td>{{ formatBalanceSql .StartBalance $.Rates.Currency }}</td>
               <td>{{ formatBalanceSql .EndBalance $.Rates.Currency }}</td>
               <td>{{ formatSqlInt64 .MissedAttestations }}</td>

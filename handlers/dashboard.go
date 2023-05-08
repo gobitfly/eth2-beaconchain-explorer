@@ -406,10 +406,9 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 		}
 
 		//balanceTs := blocks[i].GetTime().AsTime().Unix()
-
 		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-			X:     float64(utils.DayToTime(day).Unix() * 1000), //float64(balanceTs * 1000),
-			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
+			X:     float64(utils.DayToTime(day).Unix() * 1000),
+			Y:     price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, currency) * totalReward,
 			Color: color,
 		}
 	}
@@ -650,8 +649,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
-				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
+				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency), currency),
+				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency), currency),
 			},
 			v.State,
 		}
@@ -703,7 +702,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		// })
 
 		// tableData[i] = append(tableData[i], fmt.Sprintf("%.4f ETH", float64(v.Performance7d)/float64(1e9)))
-		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency))
+		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency, true))
 	}
 
 	type dataType struct {

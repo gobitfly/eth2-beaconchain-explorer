@@ -608,12 +608,11 @@ function addCommas(number) {
     .replace(/\B(?=(\d{3})+(?!\d))/g, "<span class='thousands-separator'></span>")
 }
 
-function getIncomeChartValueString(value, currency, ethPrice) {
-  if (this.currency === "ETH") {
-    return `${value.toFixed(5)} ETH`
+function getIncomeChartValueString(value, currency, priceCurrency, price) {
+  if (currency == priceCurrency || (currency == "xDAI" && priceCurrency == "DAI")) {
+    return `${value.toFixed(5)} ${currency}`
   }
-
-  return `${(value / ethPrice).toFixed(5)} ETH (${value.toFixed(2)} ${currency})`
+  return `${(value/price).toFixed(5)} ${currency} (${value.toFixed(5)} ${priceCurrency})`
 }
 
 $("[data-tooltip-date=true]").each(function (item) {

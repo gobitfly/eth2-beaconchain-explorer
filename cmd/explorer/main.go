@@ -390,7 +390,7 @@ func main() {
 		// logrus.Infof("frontend services initiated")
 
 		logrus.Infof("initializing prices")
-		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
+		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrencySymbol, utils.Config.Frontend.ElCurrencySymbol)
 		logrus.Infof("prices initialized")
 		if !utils.Config.Frontend.Debug {
 			logrus.Infof("initializing ethclients")

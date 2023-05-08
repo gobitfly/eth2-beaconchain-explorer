@@ -40,6 +40,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			NoTrack:     false,
 			Templates:   strings.Join(mainTemplates, ","),
 		},
+
 		Active:                active,
 		Data:                  &types.Empty{},
 		User:                  user,
@@ -56,28 +57,31 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			EthPrice:               0,
 			EthRoundPrice:          0,
 			EthTruncPrice:          "",
-			UsdRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("USD")),
+			UsdRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD")),
 			UsdTruncPrice:          "",
-			EurRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("EUR")),
+			EurRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "EUR")),
 			EurTruncPrice:          "",
-			GbpRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("GBP")),
+			GbpRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "GBP")),
 			GbpTruncPrice:          "",
-			CnyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CNY")),
+			CnyRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CNY")),
 			CnyTruncPrice:          "",
-			RubRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("RUB")),
+			RubRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "RUB")),
 			RubTruncPrice:          "",
-			CadRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CAD")),
+			CadRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CAD")),
 			CadTruncPrice:          "",
-			AudRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("AUD")),
+			AudRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "AUD")),
 			AudTruncPrice:          "",
-			JpyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("JPY")),
+			JpyRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "JPY")),
 			JpyTruncPrice:          "",
 			Currency:               GetCurrency(r),
 			CurrentPriceFormatted:  GetCurrentPriceFormatted(r),
 			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
 			CurrentSymbol:          GetCurrencySymbol(r),
+
+			ElPrice: price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, GetCurrency(r)),
+			ClPrice: price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, GetCurrency(r)),
 		},
-		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
+		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet" || utils.Config.Chain.Config.ConfigName == "gnosis",
 		DepositContract:     utils.Config.Indexer.Eth1DepositContractAddress,
 		ClientsUpdated:      ethclients.ClientsUpdated(),
 		ChainConfig:         utils.Config.Chain.Config,
@@ -112,8 +116,10 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			data.DebugSession = jsn
 		}
 	}
-	data.Rates.EthPrice = price.GetEthPrice(data.Rates.Currency)
-	data.Rates.ExchangeRate = price.GetEthPrice(data.Rates.Currency)
+	data.Rates.ElPrice = price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, data.Rates.Currency)
+	data.Rates.ClPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
+	data.Rates.EthPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
+	data.Rates.ExchangeRate = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
 	data.Rates.EthRoundPrice = price.GetEthRoundPrice(data.Rates.EthPrice)
 	data.Rates.EthTruncPrice = utils.KFormatterEthPrice(data.Rates.EthRoundPrice)
 	data.Rates.UsdTruncPrice = utils.KFormatterEthPrice(data.Rates.UsdRoundPrice)

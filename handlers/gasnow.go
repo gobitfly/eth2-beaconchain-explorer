@@ -81,7 +81,7 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 	if currency == utils.Config.Frontend.ClCurrencySymbol {
 		currency = "USD"
 	}
-	gasnowData.Data.Price = price.GetEthPrice(currency)
+	gasnowData.Data.Price = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
 	gasnowData.Data.Currency = currency
 
 	err := json.NewEncoder(w).Encode(gasnowData)

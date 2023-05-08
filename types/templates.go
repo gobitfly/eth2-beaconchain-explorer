@@ -101,6 +101,11 @@ type PageRates struct {
 	CurrentPriceKFormatted template.HTML
 	CurrentSymbol          string
 	ExchangeRate           float64
+
+	ElPrice      float64
+	ClPrice      float64
+	ElRoundPrice uint64
+	ClRoundPrice uint64
 }
 
 // Meta is a struct to hold metadata about the page
@@ -145,6 +150,13 @@ type LatestState struct {
 	JpyRoundPrice         uint64        `json:"jpyRoundPrice"`
 	JpyTruncPrice         template.HTML `json:"jpyTruncPrice"`
 	Currency              string        `json:"currency"`
+
+	ClPrice      float64 `json:"clPrice"`
+	ClRoundPrice float64 `json:"clRoundPrice"`
+	ClTruncPrice float64 `json:"clTruncPrice"`
+	ElPrice      float64 `json:"elPrice"`
+	ElRoundPrice float64 `json:"elRoundPrice"`
+	ElTruncPrice float64 `json:"elTruncPrice"`
 }
 
 type Stats struct {
@@ -1008,13 +1020,13 @@ type DashboardValidatorBalanceHistory struct {
 type ClElInt64 struct {
 	El    int64
 	Cl    int64
-	Total int64
+	Total float64
 }
 
 type ClElFloat64 struct {
 	El    float64
 	Cl    float64
-	Total float64
+	Total float64 // in ClCurrency if El and Cl have different currencies
 }
 
 type ValidatorEarnings struct {

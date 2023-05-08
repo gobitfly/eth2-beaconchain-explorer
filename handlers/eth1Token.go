@@ -94,7 +94,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
 		marketCap, _ = tokenPrice.Mul(num.Div(mul)).Float64()
 
-		ethUsdRate := decimal.NewFromFloat(price.GetEthPrice("USD"))
+		ethUsdRate := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
 		logger.Infof("usd rate %s", ethUsdRate)
 		if !ethUsdRate.IsZero() {
 			ethExchangeRate, _ = tokenPrice.Div(ethUsdRate).Float64()

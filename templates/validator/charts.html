@@ -155,10 +155,13 @@
     </div>
     {{ if .IncomeHistoryChartData }}
         <script>
-            var incomeHistory = {{.IncomeHistoryChartData}}
-            var executionIncomeHistory = {{ .ExecutionIncomeHistoryData }}
+            var clIncomeHistory = {{.IncomeHistoryChartData}}
+            var elIncomeHistory = {{.ExecutionIncomeHistoryData}}
             var currency = {{$.Rates.Currency}}
-            var ethPrice = {{$.Rates.EthPrice}}
+            var elCurrency = {{config.Frontend.ElCurrencySymbol}}
+            var clCurrency = {{config.Frontend.ClCurrencySymbol}}
+            var elPrice = {{$.Rates.ElPrice}}
+            var clPrice = {{$.Rates.ClPrice}}
 
                 window.addEventListener('load', function () {
                     Highcharts.stockChart('income-chart', {
@@ -179,7 +182,7 @@
                         },
                         navigator: {
                             series: {
-                                data: incomeHistory,
+                                data: clIncomeHistory,
                                 color: '#7cb5ec',
                             }
                         },
@@ -209,29 +212,31 @@
                                 }
                             }
                         },
-                        yAxis: [{
-                            title: {
-                                text: `Income [${currency}]`
-                            },
-                            opposite: false,
-                            labels: {
-                                formatter: function() {
-                                    if (currency !== "ETH") {
-                                          return this.value.toFixed(2)
-                                    }
-                                    return this.value.toFixed(5)
+                        yAxis: [
+                            {
+                                title: {
+                                    text: `Income [${currency}]`
                                 },
-                            }
-                        }],
+                                opposite: false,
+                                labels: {
+                                    formatter: function() {
+                                        if (currency !== "ETH" || currency !== "GNO") {
+                                            return this.value.toFixed(3)
+                                        }
+                                        return this.value.toFixed(5)
+                                    },
+                                }
+                            }, 
+                        ],
                         series: [{
                             name: "Consensus Income",
-                            data: incomeHistory,
-                            index: 2
+                            data: clIncomeHistory,
+                            index: 2,
                         },
                         {
                             name: "Execution Income",
-                            data: executionIncomeHistory,
-                            index: 1
+                            data: elIncomeHistory,
+                            index: 1,
                         }
                         ],
                         tooltip: {
@@ -245,18 +250,25 @@
                                 const startEpoch = timeToEpoch(tooltip.chart.hoverPoint.x)
                                 const timeForOneDay = 24 * 60* 60 * 1000
                                 const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
-                                text += `${new Date(tooltip.chart.hoverPoints[0].x).toLocaleDateString()} (Epochs ${startEpoch} - ${endEpoch})<br/>`;
+                                text += `${new Date(tooltip.chart.hoverPoints[0].x).toLocaleDateString()} (Epochs ${startEpoch} - ${endEpoch})`;
 
                                 // income
                                 for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
-                                    const value = tooltip.chart.hoverPoints[i].y;
-                                    text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, ethPrice)}<br/>`
+                                    const value = tooltip.chart.hoverPoints[i].y
+                                    const series = tooltip.chart.hoverPoints[i].series
+                                    var iPrice = clPrice
+                                    var iCurrency = clCurrency
+                                    if (series.name == "Execution Income") {
+                                        iPrice = elPrice
+                                        iCurrency = elCurrency
+                                    }
+                                    text += `<br/><span style="color:${series.color}">\u25CF</span> <b>${series.name}:</b> ${getIncomeChartValueString(value, iCurrency, currency, iPrice)}`
+
                                     total += value
                                 }
 
-                                // add total if hovered point contains rewards for both EL and CL
                                 if (tooltip.chart.hoverPoints.length > 1) {
-                                    text += `<b>Total:</b> ${getIncomeChartValueString(total, currency, ethPrice)}`
+                                    text += `<br/><b>Total:</b> ${getIncomeChartValueString(total, currency, currency, clPrice)}`
                                 }
 
                                 return text
