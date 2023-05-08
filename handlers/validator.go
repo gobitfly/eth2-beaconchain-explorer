@@ -127,9 +127,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			var name string
 			err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
-				// logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
 				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				validatorNotFound(data, w, r, vars, "")
 				return
 				// err == sql.ErrNoRows -> unnamed
 			} else {
@@ -140,7 +139,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
 				logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				validatorNotFound(data, w, r, vars, "")
 				return
 				// err == sql.ErrNoRows -> (no pool set)
 			} else {
@@ -294,7 +293,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		logger.Errorf("error getting validator for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		validatorNotFound(data, w, r, vars, "")
 		return
 	}
 
@@ -1834,7 +1833,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving validator stats history: %v", err)
-		http.Error(w, "Validator not found", http.StatusNotFound)
+		validatorNotFound(data, w, r, vars, "/stats")
 		return
 	}
 
