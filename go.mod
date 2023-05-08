@@ -21,7 +21,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/gomodule/redigo v1.8.0
-	github.com/google/go-querystring v1.1.0
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/csrf v1.7.0
 	github.com/gorilla/mux v1.8.0
