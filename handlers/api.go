@@ -3007,7 +3007,8 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
 					validator_performance.rank7d, 
 					validator_performance.validatorindex,
-					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
+					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee,
+					TRUNC(rplm.node_deposit_balance::decimal / 1e9, 10)::float  AS minipool_deposit  
 				FROM validators 
 				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex 
 				LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
