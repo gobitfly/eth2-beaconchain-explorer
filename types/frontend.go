@@ -556,8 +556,9 @@ type MempoolTxPageData struct {
 }
 
 type SyncCommitteesStats struct {
-	ParticipatedSlots uint64 `json:"participatedSlots"`
-	MissedSlots       uint64 `json:"missedSlots"`
+	ParticipatedSlots uint64 `db:"participated_sync" json:"participatedSlots"`
+	MissedSlots       uint64 `db:"missed_sync" json:"missedSlots"`
+	OrphanedSlots     uint64 `db:"orphaned_sync" json:"-"`
 	ScheduledSlots    uint64 `json:"scheduledSlots"`
 }
 

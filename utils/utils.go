@@ -1172,3 +1172,13 @@ func GetSigningDomain() ([]byte, error) {
 
 	return domain, err
 }
+
+func SlotsPerSyncCommittee() uint64 {
+	return Config.Chain.Config.EpochsPerSyncCommitteePeriod * Config.Chain.Config.SlotsPerEpoch
+}
+
+func GetRemainingScheduledSync(stats types.SyncCommitteesStats, exportedEpochCount uint64) uint64 {
+	exportedSlots := exportedEpochCount * Config.Chain.Config.SlotsPerEpoch
+	slotsPerSyncCommittee := SlotsPerSyncCommittee()
+	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
+}
