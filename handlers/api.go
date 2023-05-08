@@ -2462,7 +2462,9 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Param starty query int false "Start Y offset" default(0)
 // @Param endx query int false "End X limit" default(999)
 // @Param endy query int false "End Y limit" default(999)
-// @Param slot query string false "Slot to query"
+// @Param startSlot query string false "Start slot to query (end slot - 10000 if empty)"
+// @Param slot query string false "End slot to query"
+// @Param summarize query bool false "Only return end state of each pixel" default(true)
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/graffitiwall [get]
@@ -2470,19 +2472,37 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
-	slotQuery := uint64(0)
+	startSlot := uint64(0)
+	endSlot := uint64(0)
 	if q.Get("slot") == "" {
-		slotQuery = services.LatestSlot()
+		endSlot = services.LatestSlot()
 	} else {
 		var err error
-		slotQuery, err = strconv.ParseUint(q.Get("slot"), 10, 64)
+		endSlot, err = strconv.ParseUint(q.Get("slot"), 10, 64)
 		if err != nil {
 			logger.WithError(err).Errorf("invalid slot provided: %v", err)
 			sendErrorResponse(w, r.URL.String(), "invalid slot provided")
 			return
 		}
 	}
-	slotQuery = utilMath.MaxU64(slotQuery, 10000)
+	endSlot = utilMath.MaxU64(endSlot, 10000)
+
+	if q.Get("startSlot") == "" {
+		startSlot = endSlot - 10000
+	} else {
+		var err error
+		startSlot, err = strconv.ParseUint(q.Get("startSlot"), 10, 64)
+		if err != nil {
+			logger.WithError(err).Errorf("invalid startSlot provided: %v", err)
+			sendErrorResponse(w, r.URL.String(), "invalid startSlot provided")
+			return
+		}
+		if startSlot > endSlot {
+			logger.Errorf("start slot greater than end slot")
+			sendErrorResponse(w, r.URL.String(), "start slot greater than end slot")
+			return
+		}
+	}
 
 	defaultStartPxl := uint64(0)
 	defaultEndPxl := uint64(999)
@@ -2498,8 +2518,20 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	summarize, err := strconv.ParseBool(q.Get("summarize"))
+	if err != nil {
+		logger.WithError(err).Errorf("invalid value for summarize provided: %v", err)
+		sendErrorResponse(w, r.URL.String(), "invalid value for summarize provided")
+		return
+	}
+	summarize_query := ""
+	if summarize {
+		// only pick latest pixel update
+		summarize_query = "DISTINCT ON (x, y) "
+	}
+
 	rows, err := db.ReaderDb.Query(`
-	SELECT 
+	SELECT `+summarize_query+`
 		x,
 		y,
 		color,
@@ -2507,7 +2539,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 		validator
 	FROM graffitiwall
 	WHERE slot BETWEEN $1 AND $2 AND x BETWEEN $3 AND $4 AND y BETWEEN $5 AND $6
-	ORDER BY slot desc, x, y`, slotQuery-10000, slotQuery, startX, endX, startY, endY)
+	ORDER BY x, y, slot DESC`, startSlot, endSlot, startX, endX, startY, endY)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")

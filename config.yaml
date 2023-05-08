@@ -42,6 +42,5 @@ indexer:
     type: "lighthouse" # can be either prysm or lighthouse
     pageSize: 100 # the amount of entries to fetch per paged rpc call, TODO set to 500
   eth1Endpoint: 'http://localhost:8545'
-  eth1DepositContractAddress: '0x4242424242424242424242424242424242424242'
   # Note: 0 is correct, but due to an underflow bug (being fixed), doesn't work.
   eth1DepositContractFirstBlock: 1

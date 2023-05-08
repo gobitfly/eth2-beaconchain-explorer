@@ -912,11 +912,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 			validator
 		)
 		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (x, y) DO UPDATE SET
-										 color         = EXCLUDED.color,
-										 slot          = EXCLUDED.slot,
-										 validator     = EXCLUDED.validator
-		WHERE excluded.slot > graffitiwall.slot;
+		ON CONFLICT (x, y, slot) DO NOTHING;
 		`)
 	if err != nil {
 		return err
