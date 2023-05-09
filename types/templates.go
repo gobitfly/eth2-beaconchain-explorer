@@ -355,12 +355,6 @@ type ValidatorPageData struct {
 	ActivationTs                             time.Time
 	ExitTs                                   time.Time
 	Status                                   string `db:"status"`
-	BlocksCount                              uint64
-	ScheduledBlocksCount                     uint64
-	MissedBlocksCount                        uint64
-	OrphanedBlocksCount                      uint64
-	ProposedBlocksCount                      uint64
-	UnmissedBlocksPercentage                 float64 // missed/(executed+orphaned+scheduled)
 	AttestationsCount                        uint64
 	ExecutedAttestationsCount                uint64
 	MissedAttestationsCount                  uint64
@@ -390,16 +384,12 @@ type ValidatorPageData struct {
 	Apr7d                                    ClElFloat64    `json:"apr7d"`
 	Apr31d                                   ClElFloat64    `json:"apr31d"`
 	Apr365d                                  ClElFloat64    `json:"apr365d"`
-	ProposalLuck                             float64
 	SyncLuck                                 float64
-	ProposalEstimate                         *time.Time
 	SyncEstimate                             *time.Time
-	AvgSlotInterval                          *time.Duration
 	AvgSyncInterval                          *time.Duration
 	Rank7d                                   int64 `db:"rank7d"`
 	RankCount                                int64 `db:"rank_count"`
 	RankPercentage                           float64
-	Proposals                                [][]uint64
 	IncomeHistoryChartData                   []*ChartDataPoint
 	ExecutionIncomeHistoryData               []*ChartDataPoint
 	Deposits                                 *ValidatorDeposits
@@ -428,6 +418,7 @@ type ValidatorPageData struct {
 	EstimatedNextWithdrawal                  template.HTML
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
 	NextWithdrawalRow                        [][]interface{}
+	ValidatorPropsalData
 }
 
 type RocketpoolValidatorPageData struct {

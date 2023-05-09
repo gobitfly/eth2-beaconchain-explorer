@@ -178,17 +178,17 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Total: currentDayIncome,
 	}
 
-	proposals := []struct {
-		Slot            uint64 `db:"slot"`
-		Status          uint64 `db:"status"`
-		ExecBlockNumber uint64 `db:"exec_block_number"`
-	}{}
-
 	var lastStatsDay uint64
 	err = db.ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting lastStatsDay %v", err)
 	}
+
+	proposals := []struct {
+		Slot            uint64 `db:"slot"`
+		Status          uint64 `db:"status"`
+		ExecBlockNumber uint64 `db:"exec_block_number"`
+	}{}
 
 	err = db.ReaderDb.Select(&proposals, `
 		SELECT 
@@ -204,33 +204,33 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	proposedToday := []uint64{}
 	todayStartEpoch := uint64(lastStatsDay+1) * utils.EpochsPerDay()
-	validatorPropsalData := types.ValidatorPropsalData{}
-	validatorPropsalData.Proposals = make([][]uint64, len(proposals))
+	validatorProposalData := types.ValidatorPropsalData{}
+	validatorProposalData.Proposals = make([][]uint64, len(proposals))
 	for i, b := range proposals {
-		validatorPropsalData.Proposals[i] = []uint64{
+		validatorProposalData.Proposals[i] = []uint64{
 			uint64(utils.SlotToTime(b.Slot).Unix()),
 			b.Status,
 		}
 		if b.Status == 0 {
-			validatorPropsalData.ScheduledBlocksCount++
+			validatorProposalData.ScheduledBlocksCount++
 		} else if b.Status == 1 {
-			validatorPropsalData.ProposedBlocksCount++
+			validatorProposalData.ProposedBlocksCount++
 			// add to list of blocks proposed today if epoch hasn't been exported into stats yet
 			if utils.EpochOfSlot(b.Slot) >= todayStartEpoch && b.ExecBlockNumber > 0 {
 				proposedToday = append(proposedToday, b.ExecBlockNumber)
 			}
 		} else if b.Status == 2 {
-			validatorPropsalData.MissedBlocksCount++
+			validatorProposalData.MissedBlocksCount++
 		} else if b.Status == 3 {
-			validatorPropsalData.OrphanedBlocksCount++
+			validatorProposalData.OrphanedBlocksCount++
 		}
 	}
 
-	validatorPropsalData.BlocksCount = uint64(len(proposals))
-	if validatorPropsalData.BlocksCount > 0 {
-		validatorPropsalData.UnmissedBlocksPercentage = float64(validatorPropsalData.BlocksCount-validatorPropsalData.MissedBlocksCount) / float64(len(proposals))
+	validatorProposalData.BlocksCount = uint64(len(proposals))
+	if validatorProposalData.BlocksCount > 0 {
+		validatorProposalData.UnmissedBlocksPercentage = float64(validatorProposalData.BlocksCount-validatorProposalData.MissedBlocksCount) / float64(len(proposals))
 	} else {
-		validatorPropsalData.UnmissedBlocksPercentage = 1.0
+		validatorProposalData.UnmissedBlocksPercentage = 1.0
 	}
 
 	var slots []uint64
@@ -246,13 +246,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		startPeriod = 0
 	}
 
-	validatorPropsalData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
+	validatorProposalData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
 	avgSlotInterval := uint64(getAvgSlotInterval(1))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
-	validatorPropsalData.AvgSlotInterval = &avgSlotIntervalAsDuration
+	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 	if len(slots) > 0 {
 		nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
-		validatorPropsalData.ProposalEstimate = &nextSlotEstimate
+		validatorProposalData.ProposalEstimate = &nextSlotEstimate
 	}
 
 	if len(proposedToday) > 0 {
@@ -283,7 +283,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			}
 		}
 		incomeToday.El = int64(eth.WeiToGwei(incomeTodayEl))
-		incomeToday.Total = incomeToday.Total + incomeToday.El
+		incomeToday.Total += incomeToday.El
 	}
 
 	incomeTotal := types.ClElInt64{
@@ -339,7 +339,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
 		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayIncome+int64(totalDeposits), currency),
 		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
-		ProposalData:           validatorPropsalData,
+		ProposalData:           validatorProposalData,
 	}, balancesMap, nil
 }
 
