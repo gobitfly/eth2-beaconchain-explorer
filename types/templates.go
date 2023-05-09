@@ -945,6 +945,7 @@ type GenericChartData struct {
 	ColumnDataGroupingApproximation string                    // "average", "averages", "open", "high", "low", "close" and "sum"
 	Series                          []*GenericChartDataSeries `json:"series"`
 	Drilldown                       interface{}               `json:"drilldown"`
+	Footer                          string                    `json:"footer"`
 }
 
 type SeriesDataItem struct {
@@ -961,9 +962,6 @@ type GenericChartDataSeries struct {
 	Color string      `json:"color,omitempty"`
 }
 
-// ChartsPageData is an array to hold charts for the charts-page
-type ChartsPageData []*ChartsPageDataChart
-
 // ChartsPageDataChart is a struct to hold a chart for the charts-page
 type ChartsPageDataChart struct {
 	Order  int
@@ -972,6 +970,11 @@ type ChartsPageDataChart struct {
 	Height int
 }
 
+// ChartsPageData is a struct to hold charts for the charts-page and a disclaimer
+type ChartsPageData struct {
+	ChartsPageDataCharts []ChartsPageDataChart
+	Disclaimer           string
+}
 type HeatmapData struct {
 	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
 	// Earnings       ValidatorEarnings                `json:"earnings"`
@@ -1476,15 +1479,20 @@ type PoolsResp struct {
 	PoolInfos               []*PoolInfo
 }
 
+type PoolsData struct {
+	*PoolsResp
+	Disclaimer string
+}
+
 type PoolInfo struct {
-	Name                   string  `db:"name"`
-	Count                  int64   `db:"count"`
-	AvgPerformance31d      float64 `db:"avg_performance_31d"`
-	AvgPerformance7d       float64 `db:"avg_performance_7d"`
-	AvgPerformance1d       float64 `db:"avg_performance_1d"`
-	EthstoreCompoarison1d  float64
-	EthstoreCompoarison7d  float64
-	EthstoreCompoarison31d float64
+	Name                  string  `db:"name"`
+	Count                 int64   `db:"count"`
+	AvgPerformance31d     float64 `db:"avg_performance_31d"`
+	AvgPerformance7d      float64 `db:"avg_performance_7d"`
+	AvgPerformance1d      float64 `db:"avg_performance_1d"`
+	EthstoreComparison1d  float64
+	EthstoreComparison7d  float64
+	EthstoreComparison31d float64
 }
 
 type AddValidatorWatchlistModal struct {
@@ -1928,6 +1936,10 @@ type EthStoreStatistics struct {
 	StartEpoch                uint64
 }
 
+type EthStoreData struct {
+	*EthStoreStatistics
+	Disclaimer string
+}
 type BLSChange struct {
 	Slot           uint64 `db:"slot" json:"slot,omitempty"`
 	BlockRoot      []byte `db:"block_rot" json:"blockroot,omitempty"`

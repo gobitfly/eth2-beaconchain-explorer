@@ -50,9 +50,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		"validator/countdown.html",
 		"components/flashMessage.html",
 		"components/rocket.html")
-	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
 	var validatorTemplate = templates.GetTemplate(validatorTemplateFiles...)
-	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
 
 	currency := GetCurrency(r)
 
@@ -120,8 +118,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// Request came with a hash
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
-			// logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			validatorNotFound(data, w, r, vars, "")
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
@@ -131,7 +128,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
 				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				validatorNotFound(data, w, r, vars, "")
 				return
 				// err == sql.ErrNoRows -> unnamed
 			} else {
@@ -142,7 +139,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
 				logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				validatorNotFound(data, w, r, vars, "")
 				return
 				// err == sql.ErrNoRows -> (no pool set)
 			} else {
@@ -159,12 +156,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
-				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
-				data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
-
-				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-					return // an error has occurred and was processed
-				}
+				validatorNotFound(data, w, r, vars, "")
 				return
 			}
 
@@ -257,7 +249,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		if err != nil {
-			http.Error(w, "Validator not found", 404)
+			validatorNotFound(data, w, r, vars, "")
 			return
 		}
 	}
@@ -297,14 +289,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
-		data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
-		if handleTemplateError(w, r, "validator.go", "Validator", "no rows", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-			return // an error has occurred and was processed
-		}
+		validatorNotFound(data, w, r, vars, "")
 		return
 	} else if err != nil {
 		logger.Errorf("error getting validator for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		validatorNotFound(data, w, r, vars, "")
 		return
 	}
 
@@ -1785,13 +1774,15 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
 			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+
+			validatorNotFound(data, w, r, vars, "/stats")
+
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
 			logger.Errorf("error parsing validator pubkey: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
 	} else {
@@ -1800,7 +1791,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		// Request is not a valid index number
 		if err != nil {
 			logger.Errorf("error parsing validator index: %v", err)
-			http.Error(w, "Validator not found", http.StatusNotFound)
+			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
 	}
@@ -1842,7 +1833,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving validator stats history: %v", err)
-		http.Error(w, "Validator not found", http.StatusNotFound)
+		validatorNotFound(data, w, r, vars, "/stats")
 		return
 	}
 
@@ -2062,5 +2053,19 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+}
+
+// validatorNotFound will print the appropriate error message for when the requested validator cannot be found
+func validatorNotFound(data *types.PageData, w http.ResponseWriter, r *http.Request, vars map[string]string, page string) {
+	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
+	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
+
+	SetPageDataTitle(data, "Validator not found")
+	d := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v%v", vars["index"], page), "", validatorNotFoundTemplateFiles)
+
+	err := handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", d))
+	if err != nil {
+		return // an error has occurred and was processed
 	}
 }

@@ -79,7 +79,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		ElIncome31d           int64 `db:"el_performance_31d"`
 		ElIncome365d          int64 `db:"el_performance_365d"`
 		ElIncomeTotal         int64 `db:"el_performance_total"`
-		ClIncomeToday         int64
 	}
 
 	// el rewards are converted from wei to gwei

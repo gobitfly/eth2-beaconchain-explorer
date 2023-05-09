@@ -42,7 +42,7 @@ func Broadcast(w http.ResponseWriter, r *http.Request) {
 func BroadcastPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		logger.Warnf("error parsing form: %v", err)
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, "info_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/tools/broadcast", http.StatusSeeOther)
 		return
