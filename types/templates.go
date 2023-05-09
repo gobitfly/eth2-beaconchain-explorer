@@ -2056,3 +2056,23 @@ type BroadcastStatusPageData struct {
 	JobJson      string
 	Validators   *[]NodeJobValidatorInfo
 }
+
+type ValidatorIncomePerformance struct {
+	ClIncome1d            int64 `db:"cl_performance_1d"`
+	ClIncome7d            int64 `db:"cl_performance_7d"`
+	ClIncome31d           int64 `db:"cl_performance_31d"`
+	ClIncome365d          int64 `db:"cl_performance_365d"`
+	ClIncomeTotal         int64 `db:"cl_performance_total"`
+	ClProposerIncomeTotal int64 `db:"cl_proposer_performance_total"`
+	ElIncome1d            int64 `db:"el_performance_1d"`
+	ElIncome7d            int64 `db:"el_performance_7d"`
+	ElIncome31d           int64 `db:"el_performance_31d"`
+	ElIncome365d          int64 `db:"el_performance_365d"`
+	ElIncomeTotal         int64 `db:"el_performance_total"`
+}
+
+type ValidatorProposalInfo struct {
+	Slot            uint64 `db:"slot"`
+	Status          uint64 `db:"status"`
+	ExecBlockNumber uint64 `db:"exec_block_number"`
+}

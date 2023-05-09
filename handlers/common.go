@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/lib/pq"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
@@ -44,129 +44,77 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
-	validatorsPQArray := pq.Array(validators)
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		return nil, nil, err
+	}
+	firstEpoch := (lastStatsDay + 1) * utils.EpochsPerDay()
+
 	balancesMap := make(map[uint64]*types.Validator, 0)
-
-	latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestFinalizedEpoch, latestFinalizedEpoch)
-	if err != nil {
-		logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
-		return nil, nil, err
-	}
-
 	totalBalance := uint64(0)
-	for balanceIndex, balance := range latestBalances {
-		if len(balance) == 0 {
-			continue
+
+	g := errgroup.Group{}
+	g.Go(func() error {
+		latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestFinalizedEpoch, latestFinalizedEpoch)
+		if err != nil {
+			logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
+			return err
 		}
 
-		if balancesMap[balanceIndex] == nil {
-			balancesMap[balanceIndex] = &types.Validator{}
+		for balanceIndex, balance := range latestBalances {
+			if len(balance) == 0 {
+				continue
+			}
+
+			if balancesMap[balanceIndex] == nil {
+				balancesMap[balanceIndex] = &types.Validator{}
+			}
+			balancesMap[balanceIndex].Balance = balance[0].Balance
+			balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
+
+			totalBalance += balance[0].Balance
 		}
-		balancesMap[balanceIndex].Balance = balance[0].Balance
-		balancesMap[balanceIndex].EffectiveBalance = balance[0].EffectiveBalance
+		return nil
+	})
 
-		totalBalance += balance[0].Balance
-	}
-
-	var income struct {
-		ClIncome1d            int64 `db:"cl_performance_1d"`
-		ClIncome7d            int64 `db:"cl_performance_7d"`
-		ClIncome31d           int64 `db:"cl_performance_31d"`
-		ClIncome365d          int64 `db:"cl_performance_365d"`
-		ClIncomeTotal         int64 `db:"cl_performance_total"`
-		ClProposerIncomeTotal int64 `db:"cl_proposer_performance_total"`
-		ElIncome1d            int64 `db:"el_performance_1d"`
-		ElIncome7d            int64 `db:"el_performance_7d"`
-		ElIncome31d           int64 `db:"el_performance_31d"`
-		ElIncome365d          int64 `db:"el_performance_365d"`
-		ElIncomeTotal         int64 `db:"el_performance_total"`
-	}
-
-	// el rewards are converted from wei to gwei
-	err = db.ReaderDb.Get(&income, `
-		SELECT 
-		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
-		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d,
-		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
-		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
-		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
-		COALESCE(SUM(cl_proposer_performance_total), 0) AS cl_proposer_performance_total,
-		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
-		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
-		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
-		CAST(COALESCE(SUM(mev_performance_365d), 0) / 1e9 AS bigint) AS el_performance_365d,
-		CAST(COALESCE(SUM(mev_performance_total), 0) / 1e9 AS bigint) AS el_performance_total
-		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
-	if err != nil {
-		return nil, nil, err
-	}
+	income := types.ValidatorIncomePerformance{}
+	g.Go(func() error {
+		return db.GetValidatorIncomePerforamance(validators, &income)
+	})
 
 	var totalDeposits uint64
-
-	err = db.ReaderDb.Get(&totalDeposits, `
-	SELECT 
-		COALESCE(SUM(amount), 0) 
-	FROM blocks_deposits d
-	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
-	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray)
-	if err != nil {
-		return nil, nil, err
-	}
-	if totalDeposits == 0 {
-		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance
-	}
+	g.Go(func() error {
+		return db.GetTotalValidatorDeposits(validators, &totalDeposits)
+	})
 
 	var totalWithdrawals uint64
-
-	err = db.ReaderDb.Get(&totalWithdrawals, `
-	SELECT 
-		COALESCE(sum(w.amount), 0)
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE validatorindex = ANY($1)
-	`, validatorsPQArray)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	lastDay := int64(0)
-
-	err = db.ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
-	if err != nil {
-		return nil, nil, err
-	}
-	firstEpoch := (lastDay + 1) * int64(utils.EpochsPerDay())
+	g.Go(func() error {
+		return db.GetTotalValidatorWithdrawals(validators, &totalWithdrawals)
+	})
 
 	var lastDeposits uint64
-	err = db.ReaderDb.Get(&lastDeposits, `
-	SELECT 
-		COALESCE(SUM(amount), 0) 
-	FROM blocks_deposits d
-	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3
-	WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))`, validatorsPQArray, firstEpoch, latestFinalizedEpoch)
-	if err != nil {
-		return nil, nil, err
-	}
+	g.Go(func() error {
+		return db.GetValidatorDepositsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastDeposits)
+	})
 
 	var lastWithdrawals uint64
-	err = db.ReaderDb.Get(&lastWithdrawals, `
-	SELECT 
-        COALESCE(SUM(amount), 0) 
-    FROM blocks_withdrawals d
-    INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3        
-    WHERE validatorindex =  ANY($1)`, validatorsPQArray, firstEpoch, latestFinalizedEpoch)
-	if err != nil {
-		return nil, nil, err
-	}
+	g.Go(func() error {
+		return db.GetValidatorWithdrawalsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastWithdrawals)
+	})
 
 	var lastBalance uint64
-	err = db.ReaderDb.Get(&lastBalance, `
-	SELECT 
-        COALESCE(SUM(end_balance), 0) 
-    FROM validator_stats     
-    WHERE day=$2 AND validatorindex = ANY($1)`, validatorsPQArray, lastDay)
+	g.Go(func() error {
+		return db.GetValidatorBalanceForDay(validators, lastStatsDay, &lastBalance)
+	})
+
+	proposals := []types.ValidatorProposalInfo{}
+	g.Go(func() error {
+		return db.GetValidatorPropsosals(validators, &proposals)
+	})
+
+	err = g.Wait()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -176,6 +124,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	earnings1d := income.ClIncome1d + income.ElIncome1d
 	earnings7d := income.ClIncome7d + income.ElIncome7d
 	earnings31d := income.ClIncome31d + income.ElIncome31d
+
+	if totalDeposits == 0 {
+		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance
+	}
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
 	if clApr7d < float64(-1) {
@@ -216,30 +168,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		El:    0,
 		Cl:    currentDayClIncome,
 		Total: currentDayClIncome,
-	}
-
-	var lastStatsDay uint64
-	err = db.ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
-	if err != nil {
-		return nil, nil, fmt.Errorf("error getting lastStatsDay %v", err)
-	}
-
-	proposals := []struct {
-		Slot            uint64 `db:"slot"`
-		Status          uint64 `db:"status"`
-		ExecBlockNumber uint64 `db:"exec_block_number"`
-	}{}
-
-	err = db.ReaderDb.Select(&proposals, `
-		SELECT 
-			slot, 1
-			status, 
-			COALESCE(exec_block_number, 0) as exec_block_number
-		FROM blocks 
-		WHERE proposer = ANY($1)
-		ORDER BY slot ASC`, validatorsPQArray)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error retrieving block-proposals: %v", err)
 	}
 
 	proposedToday := []uint64{}
