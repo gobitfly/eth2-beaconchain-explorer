@@ -167,7 +167,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	if err != nil {
 		return nil, nil, err
 	}
-	currentDayIncome := int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)
+	currentDayClIncome := int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)
 
 	// calculate combined el and cl earnings
 	earnings1d := income.ClIncome1d + income.ElIncome1d
@@ -204,15 +204,15 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	// retrieve cl income not yet in stats
-	_, currentDayProposerIncome, err := db.GetCurrentDayClIncomeTotal(validators)
+	currentDayProposerIncome, err := db.GetCurrentDayProposerIncomeTotal(validators)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	incomeTotal := types.ClElInt64{
 		El:    income.ElIncomeTotal,
-		Cl:    income.ClIncomeTotal + currentDayIncome,
-		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayIncome,
+		Cl:    income.ClIncomeTotal + currentDayClIncome,
+		Total: income.ClIncomeTotal + income.ElIncomeTotal + currentDayClIncome,
 	}
 
 	incomeTotalProposer := types.ClElInt64{

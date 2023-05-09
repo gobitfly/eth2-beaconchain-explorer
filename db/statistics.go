@@ -202,26 +202,25 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		logrus.Infof("saving validator proposer rewards gwei batch %v completed", b)
 		stmt = `
 		INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
-		(
-			SELECT cur.validatorindex, cur.day,  COALESCE(cur.end_balance, 0) -  COALESCE(last.end_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount,0)  as cl_rewards_gwei
-			FROM validator_stats cur
-			INNER JOIN validator_stats last 
-				on cur.validatorindex = last.validatorindex AND
-						last.day = GREATEST(cur.day -1, 0)
-			WHERE cur.day = $1 and cur.validatorindex >= $2 and cur.validatorindex <= $3
-		) 
-		ON CONFLICT (validatorindex, day) do
-			update set cl_rewards_gwei = excluded.cl_rewards_gwei;`
+        (
+            SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(last.end_balance, 0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+            FROM validator_stats cur
+            INNER JOIN validator_stats last 
+                ON cur.validatorindex = last.validatorindex AND last.day = GREATEST(cur.day - 1, 0)
+            WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+        )
+        ON CONFLICT (validatorindex, day) DO
+            UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
 		if day == 0 {
 			stmt = `
 			INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
-			(
-				SELECT cur.validatorindex, cur.day,  COALESCE(cur.end_balance, 0) -  COALESCE(cur.start_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount,0)  as cl_rewards_gwei
-				FROM validator_stats cur
-				WHERE cur.day = $1 and cur.validatorindex >= $2 and cur.validatorindex <= $3
-			) 
-			ON CONFLICT (validatorindex, day) do
-				update set cl_rewards_gwei = excluded.cl_rewards_gwei;`
+            (
+                SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(cur.start_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+                FROM validator_stats cur
+                WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+            )
+            ON CONFLICT (validatorindex, day) DO
+                UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
 		}
 		_, err = tx.Exec(stmt, day, start, end)
 		if err != nil {
