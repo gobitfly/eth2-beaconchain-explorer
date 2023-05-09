@@ -25,6 +25,13 @@
                 processing: true,
                 serverSide: true,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 ordering: true,
                 order: [[0, 'desc']],
                 lengthChange: false,
@@ -109,6 +116,13 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     ordering: false,
                     order: [[0, 'desc']],
                     lengthChange: false,
@@ -171,6 +185,13 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     ordering: true,
                     order: [[0, 'desc']],
                     lengthChange: false,
@@ -249,6 +270,13 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     searching: false,
                     ajax: '/validator/' + index + '/sync',
                     pagingType: 'input',
@@ -316,6 +344,13 @@
                 ordering: false,
                 lengthChange: false,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 searching: false,
                 ajax: '/validator/' + index + '/slashings',
                 pagingType: 'input',
@@ -591,6 +626,13 @@
                 ordering: false,
                 searching: false,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 ajax: '/validator/' + index + '/history',
                 pagingType: 'input',
                 pageLength: 10,

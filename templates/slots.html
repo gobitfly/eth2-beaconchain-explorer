@@ -46,7 +46,7 @@
         preDrawCallback: function () {
           // this does not always work.. not sure how to solve the staying tooltip
           try {
-            $("#blocks").find('[data-toggle="tooltip"]').tooltip("dispose")
+            $("#slots").find('[data-toggle="tooltip"]').tooltip("dispose")
           } catch (e) {
             console.error(e)
           }
@@ -55,7 +55,7 @@
         },
         drawCallback: function (settings) {
           formatTimestamps()
-          $("#blocks").find('[data-toggle="tooltip"]').tooltip()
+          $("#slots").find('[data-toggle="tooltip"]').tooltip()
         },
       }
       var usp = new URLSearchParams(window.location.search)
@@ -63,22 +63,22 @@
       if (q) {
         tblOpts.search = { search: q }
       }
-      $("#blocks").DataTable(tblOpts)
-      $("#blocks_filter > label > input").on("input", function (ev) {
+      $("#slots").DataTable(tblOpts)
+      $("#slots_filter > label > input").on("input", function (ev) {
         if (ev && ev.target && ev.target.value) {
           var emptygraffiticheckbox = document.getElementById("showonlyemptygraffiti")
           if (emptygraffiticheckbox) {
             emptygraffiticheckbox.checked = false
-            var t = $("#blocks").DataTable()
+            var t = $("#slots").DataTable()
             if (t) {
               t.columns(11).search("")
             }
           }
 
           var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-          window.history.replaceState(null, "Blocks", newUrl)
+          window.history.replaceState(null, "Slots", newUrl)
         } else {
-          window.history.replaceState(null, "Blocks", window.location.pathname)
+          window.history.replaceState(null, "Slots", window.location.pathname)
         }
       })
 
@@ -86,22 +86,22 @@
       if (emptygraffiticheckbox) {
         emptygraffiticheckbox.checked = !!usp.get("g") && !usp.get("q")
         if (emptygraffiticheckbox.checked) {
-          var t = $("#blocks").DataTable()
+          var t = $("#slots").DataTable()
           if (t) {
             t.search("").columns(11).search("#showonlyemptygraffiti").draw()
           }
         }
 
         emptygraffiticheckbox.addEventListener("change", (event) => {
-          var t = $("#blocks").DataTable()
+          var t = $("#slots").DataTable()
           if (event.currentTarget.checked) {
-            window.history.replaceState(null, "Blocks", window.location.pathname + "?g=true")
+            window.history.replaceState(null, "Slots", window.location.pathname + "?g=true")
 
             if (t) {
               t.search("").columns(11).search("#showonlyemptygraffiti").draw()
             }
           } else {
-            window.history.replaceState(null, "Blocks", window.location.pathname)
+            window.history.replaceState(null, "Slots", window.location.pathname)
 
             if (t) {
               t.columns(11).search("").draw()
@@ -136,7 +136,7 @@
         <div id="header-placeholder" style="height:39px;"></div>
         <div class="card-body px-0 py-3">
           <div class="table-responsive px-0 py-1">
-            <table class="table dataTable no-footer" id="blocks" aria-describedby="blocks_info" role="grid">
+            <table class="table dataTable no-footer" id="slots" aria-describedby="slots_info" role="grid">
               <thead>
                 <tr>
                   <th>Epoch</th>

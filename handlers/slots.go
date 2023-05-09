@@ -37,9 +37,10 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 	search := ""
 	searchForEmpty := false
 
-	if state.Length == 0 {
-		length = 50
+	if state.Length != 0 {
+		length = state.Length
 	}
+
 	if state.Search.Search != "" {
 		search = state.Search.Search
 	}
@@ -67,7 +68,7 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// BlocksData will return information about blocks
+// SlotsData will return information about slots
 func SlotsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
