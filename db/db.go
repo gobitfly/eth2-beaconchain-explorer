@@ -905,14 +905,18 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 
 	stmtGraffitiwall, err := tx.Prepare(`
 		INSERT INTO graffitiwall (
-			x,
-			y,
-			color,
-			slot,
-			validator
-		)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (x, y, slot) DO NOTHING;
+            x,
+            y,
+            color,
+            slot,
+            validator
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (slot) DO UPDATE SET
+            x = EXCLUDED.x,
+            y = EXCLUDED.y,
+            color = EXCLUDED.color,
+            validator = EXCLUDED.validator;
 		`)
 	if err != nil {
 		return err
