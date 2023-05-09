@@ -162,7 +162,7 @@
       <div style="text-align: center;">
         <div>
           <h1>ETH.STORE®</h1>
-          <h3 class="subline">The Transparent Ethereum Staking Reward Reference Rate</h3>
+          <h3 class="subline">The Transparent Ethereum Staking Reward Reference Rate<sup>1</sup></h3>
         </div>
       </div>
       <section class="my-5">
@@ -343,10 +343,14 @@
           <p>Yes, you can run the calculations yourself with our open source ETH.STORE® tool and verify the integrity of the ETH.STORE® listed here. Check out <a href="https://github.com/gobitfly/eth.store/" target="_blank">ETH.STORE® on Github</a>.</p>
         </div>
       </section>
-
-      <div>{{ .Data.Disclaimer }}</div>
-
-      <div style="padding-bottom: 5vh;"></div>
+    </div>
+    <div style="padding-top: 5vh; font-size: 12px; font-style: italic;">
+      <div style="display:flex;">
+        <div style="padding-right: 5px;">
+          <sup>1</sup>
+        </div>
+        <div>{{ .Data.Disclaimer }}</div>
+      </div>
     </div>
   </div>
 {{ end }}

@@ -571,14 +571,14 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	//create chart struct, hypertext color is hardcoded into subtitle text
 	chartData := &types.GenericChartData{
 		Title:         "Historical Pool Performance",
-		Subtitle:      "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE®</a>* to measure pool performance for consensus & execution rewards.",
+		Subtitle:      "Uses a neutral & verifiable formula <a href=\"https://github.com/gobitfly/eth.store\">ETH.STORE®</a><sup>1</sup> to measure pool performance for consensus & execution rewards.",
 		XAxisTitle:    "",
 		YAxisTitle:    "APR [%] (Logarithmic)",
 		StackingMode:  "false",
 		Type:          "line",
 		TooltipShared: false,
 		Series:        chartSeries,
-		Footer:        "*" + EthStoreDisclaimer(),
+		Footer:        EthStoreDisclaimer(),
 	}
 
 	return chartData, nil
