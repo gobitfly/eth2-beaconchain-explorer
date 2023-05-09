@@ -336,7 +336,7 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							IsHighlighted: true,
 						},
 						{
-							Label:      "ETH.STORE",
+							Label:      "ETH.STORE®",
 							Path:       "/ethstore",
 							CustomIcon: "ethermine_stake_logo_svg",
 						},

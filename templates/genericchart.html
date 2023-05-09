@@ -149,6 +149,9 @@
           <div id="chart" height="600"></div>
         </div>
       </div>
+      {{ with .Footer }}
+        <div class="container mt-2">{{ . }}</div>
+      {{ end }}
     </div>
   {{ end }}
 {{ end }}

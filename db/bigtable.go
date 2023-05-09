@@ -1755,25 +1755,20 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[ui
 	return dayIncome, dayProposerIncome, nil
 }
 
-func GetCurrentDayClIncomeTotal(validator_indices []uint64) (int64, int64, error) {
-	income, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
+func GetCurrentDayProposerIncomeTotal(validator_indices []uint64) (int64, error) {
+	_, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
 
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
-	total := int64(0)
 	proposerTotal := int64(0)
 
 	for _, i := range proposerIncome {
 		proposerTotal += i
 	}
 
-	for _, i := range income {
-		total += i
-	}
-
-	return total, proposerTotal, nil
+	return proposerTotal, nil
 }
 
 func reversePaddedUserID(userID uint64) string {

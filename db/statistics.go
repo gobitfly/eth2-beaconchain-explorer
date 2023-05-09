@@ -132,7 +132,27 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	start = time.Now()
-	logger.Infof("exporting cl_rewards_gwei and el_rewards_wei statistics")
+	logger.Infof("exporting withdrawals and withdrawals_amount statistics")
+	withdrawalsQuery := `
+		insert into validator_stats (validatorindex, day, withdrawals, withdrawals_amount) 
+		(
+			select validatorindex, $3, count(*), sum(amount)
+			from blocks_withdrawals
+			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
+			where block_slot >= $1 and block_slot < $2 and blocks.status = '1'
+			group by validatorindex
+		) 
+		on conflict (validatorindex, day) do
+			update set withdrawals = excluded.withdrawals, 
+			withdrawals_amount = excluded.withdrawals_amount;`
+	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
+	logger.Infof("exporting el_rewards_wei statistics")
 	incomeStats, err := BigtableClient.GetAggregatedValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
@@ -146,7 +166,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	numArgs := 4
+	numArgs := 3
 	batchSize = 65500 / numArgs // max parameters: 65535
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
@@ -159,30 +179,54 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 		for i := start; i <= end; i++ {
-			clRewards := int64(0)
 			clProposerRewards := uint64(0)
 
 			if incomeStats[uint64(i)] != nil {
-				clRewards = incomeStats[uint64(i)].TotalClRewards()
 				clProposerRewards = incomeStats[uint64(i)].ProposerAttestationInclusionReward + incomeStats[uint64(i)].ProposerSlashingInclusionReward + incomeStats[uint64(i)].ProposerSyncInclusionReward
 			}
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3, (i-start)*numArgs+4))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3))
 			valueArgs = append(valueArgs, i)
 			valueArgs = append(valueArgs, day)
-			valueArgs = append(valueArgs, clRewards)
 			valueArgs = append(valueArgs, clProposerRewards)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, cl_rewards_gwei, cl_proposer_rewards_gwei) VALUES
+		insert into validator_stats (validatorindex, day, cl_proposer_rewards_gwei) VALUES
 		%s
-		on conflict (validatorindex, day) do update set cl_rewards_gwei = excluded.cl_rewards_gwei, cl_proposer_rewards_gwei = excluded.cl_proposer_rewards_gwei;`,
+		on conflict (validatorindex, day) do update set cl_proposer_rewards_gwei = excluded.cl_proposer_rewards_gwei;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		logrus.Infof("saving validator income details batch %v completed", b)
+		logrus.Infof("saving validator proposer rewards gwei batch %v completed", b)
+		stmt = `
+		INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
+        (
+            SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(last.end_balance, 0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+            FROM validator_stats cur
+            INNER JOIN validator_stats last 
+                ON cur.validatorindex = last.validatorindex AND last.day = GREATEST(cur.day - 1, 0)
+            WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+        )
+        ON CONFLICT (validatorindex, day) DO
+            UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+		if day == 0 {
+			stmt = `
+			INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
+            (
+                SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(cur.start_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+                FROM validator_stats cur
+                WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+            )
+            ON CONFLICT (validatorindex, day) DO
+                UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+		}
+		_, err = tx.Exec(stmt, day, start, end)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("saving validator cl rewards gwei batch %v completed", b)
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))
@@ -511,7 +555,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		(
 			select proposer, $3, sum(case when status = '1' then 1 else 0 end), sum(case when status = '2' then 1 else 0 end), sum(case when status = '3' then 1 else 0 end)
 			from blocks
-			where epoch >= $1 and epoch <= $2 and status = '1'
+			where epoch >= $1 and epoch <= $2
 			group by proposer
 		) 
 		on conflict (validatorindex, day) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
@@ -533,26 +577,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		) 
 		on conflict (validatorindex, day) do update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`,
 		firstEpoch, lastEpoch, day)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-
-	start = time.Now()
-	logger.Infof("exporting withdrawals and withdrawals_amount statistics")
-	withdrawalsQuery := `
-		insert into validator_stats (validatorindex, day, withdrawals, withdrawals_amount) 
-		(
-			select validatorindex, $3, count(*), sum(amount)
-			from blocks_withdrawals
-			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
-			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
-			group by validatorindex
-		) 
-		on conflict (validatorindex, day) do
-			update set withdrawals = excluded.withdrawals, 
-			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch, day)
 	if err != nil {
 		return err
 	}
