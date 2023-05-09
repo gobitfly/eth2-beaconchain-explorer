@@ -364,6 +364,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.WithError(err).Errorf("error getting address withdrawals data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
 	}
 
 	tableData := make([][]interface{}, len(withdrawals))
