@@ -1177,8 +1177,36 @@ func SlotsPerSyncCommittee() uint64 {
 	return Config.Chain.Config.EpochsPerSyncCommitteePeriod * Config.Chain.Config.SlotsPerEpoch
 }
 
-func GetRemainingScheduledSync(stats types.SyncCommitteesStats, exportedEpochCount uint64) uint64 {
-	exportedSlots := exportedEpochCount * Config.Chain.Config.SlotsPerEpoch
-	slotsPerSyncCommittee := SlotsPerSyncCommittee()
+func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesStats, lastExportedEpoch, firstEpochOfPeriod uint64) uint64 {
+	var exportedEpochs uint64
+	if lastExportedEpoch >= firstEpochOfPeriod {
+		exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
+	}
+	exportedSlots := exportedEpochs * Config.Chain.Config.SlotsPerEpoch * uint64(validatorCount)
+	slotsPerSyncCommittee := SlotsPerSyncCommittee() * uint64(validatorCount)
 	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
+}
+
+func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
+	if stats == nil {
+		stats = &types.SyncCommitteesStats{}
+	}
+	for _, validator := range validators {
+		v := syncDutiesHistory[validator]
+		for _, r := range v {
+			slotTime := SlotToTime(r.Slot)
+			if r.Status == 0 && time.Since(slotTime) <= time.Minute {
+				r.Status = 2
+			}
+			switch r.Status {
+			case 0:
+				stats.MissedSlots++
+			case 1:
+				stats.ParticipatedSlots++
+			case 2:
+				stats.ScheduledSlots++
+			}
+		}
+	}
+	return *stats
 }

@@ -809,17 +809,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			lastSyncPeriod := actualSyncPeriods[0]
 			if lastSyncPeriod.LastEpoch > lastExportedEpoch {
 				lookback := int64(latestEpoch - lastExportedEpoch)
-				syncStatsBt, err := db.BigtableClient.GetValidatorSyncCommitteesStats([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
+				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				}
+				syncStatsBt := utils.AddSyncStats([]uint64{index}, res, nil)
 				// if last sync period is the current one, add remaining scheduled slots
 				if lastSyncPeriod.LastEpoch >= latestEpoch {
-					var exportedEpochs uint64
-					if lastExportedEpoch >= lastSyncPeriod.FirstEpoch {
-						exportedEpochs = lastExportedEpoch - lastSyncPeriod.FirstEpoch + 1
-					}
-					syncStatsBt.ScheduledSlots += utils.GetRemainingScheduledSync(syncStatsBt, exportedEpochs)
+					syncStatsBt.ScheduledSlots += utils.GetRemainingScheduledSync(1, syncStatsBt, lastExportedEpoch, lastSyncPeriod.FirstEpoch)
 				}
 
 				syncStats.MissedSlots += syncStatsBt.MissedSlots

@@ -1121,34 +1121,39 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 	epochsPerDay := utils.EpochsPerDay()
 	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
 
-	// if epoch is not yet exported, we need to collect the data from bigtable
+	// if epoch is not yet exported, we may need to collect the data from bigtable
 	if lastExportedEpoch < epoch {
-		// get relevant periods
+		// get relevant period
 		periodOfEpoch := utils.SyncPeriodOfEpoch(epoch)
 		periods := []int64{int64(periodOfEpoch)}
 		firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(periodOfEpoch)
-		// if the committee period before the "relevant" one is not yet fully exported, add it to the query
+		// if the committee period before the relevant one is also not yet fully exported, add it to the query
 		if periods[0] > 0 && lastExportedEpoch < firstEpochOfPeriod-1 {
 			periods = append(periods, periods[0]-1)
 		}
 
-		// get all validators part of the relevant committees
+		// get all validators part of the relevant committees, grouped by period
 		var syncCommitteeValidators []struct {
-			Period     uint64        `db:"period"`
 			Validators pq.Int64Array `db:"validators"`
 		}
-		err = db.ReaderDb.Select(&syncCommitteeValidators, `
-			SELECT period, COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators
+		query, args, err := sqlx.In(`
+			SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators
 			FROM sync_committees
 			WHERE period IN (?) AND validatorindex IN (?)
 			GROUP BY period
+			ORDER BY period DESC
 		`, periods, validators)
 		if err != nil {
 			return types.SyncCommitteesStats{}, err
 		}
+		err = db.ReaderDb.Select(&syncCommitteeValidators, db.ReaderDb.Rebind(query), args...)
+		if err != nil {
+			return types.SyncCommitteesStats{}, err
+		}
 
+		// if there validators are present in relevant periods, query bigtable
 		if len(syncCommitteeValidators) > 0 {
-			// get and add up2date sync committee statistics from bigtable
+			// flatten validator list
 			vs := []uint64{}
 			for _, scv := range syncCommitteeValidators {
 				for _, v := range scv.Validators {
@@ -1156,18 +1161,20 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 				}
 			}
 
-			syncStats, err := db.BigtableClient.GetValidatorSyncCommitteesStats(vs, lastExportedEpoch, epoch)
+			// get sync stats from bigtable
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch, epoch)
 			if err != nil {
 				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
-			// if relevant sync period is the active one, add remaining scheduled slots
+			// add sync stats for validators in latest period
+			latestPeriodCount := len(syncCommitteeValidators[0].Validators)
+			syncStats := utils.AddSyncStats(vs[:latestPeriodCount], res, nil)
+			// if latest sync period is the active one, add remaining scheduled slots
 			if utils.FirstEpochOfSyncPeriod(periodOfEpoch+1)-1 >= services.LatestEpoch() {
-				var exportedEpochs uint64
-				if lastExportedEpoch >= firstEpochOfPeriod {
-					exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
-				}
-				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(syncStats, exportedEpochs) * uint64(len(syncCommitteeValidators[0].Validators))
+				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
 			}
+			// add sync stats for validators in previous period
+			utils.AddSyncStats(vs[latestPeriodCount:], res, &syncStats)
 			retv.MissedSlots += syncStats.MissedSlots
 			retv.ParticipatedSlots += syncStats.ParticipatedSlots
 			retv.ScheduledSlots += syncStats.ScheduledSlots
