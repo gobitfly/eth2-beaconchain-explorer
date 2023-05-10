@@ -13,7 +13,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math"
 	"math/big"
 	"net/http"
 	"sort"
@@ -362,8 +361,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
 	avgSyncIntervalAsDuration := time.Duration(
 		utils.Config.Chain.Config.SecondsPerSlot*
-			utils.Config.Chain.Config.SlotsPerEpoch*
-			utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*
+			utils.SlotsPerSyncCommittee()*
 			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 
@@ -750,7 +748,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
-		validatorPageData.SlotsPerSyncCommittee = utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+		validatorPageData.SlotsPerSyncCommittee = utils.SlotsPerSyncCommittee()
 
 		// sync participation
 		// get all sync periods this validator has been part of
@@ -780,14 +778,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		if len(actualSyncPeriods) > 0 {
 			// get sync stats from validator_stats
-			syncStats := struct {
-				ParticipatedSync uint64 `db:"participated_sync"`
-				MissedSync       uint64 `db:"missed_sync"`
-				OrphanedSync     uint64 `db:"orphaned_sync"`
-				ScheduledSync    uint64
-			}{}
+			syncStats := types.SyncCommitteesStats{}
 			if lastStatsDay > 0 {
-				err = db.ReaderDb.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
+				err = db.ReaderDb.Get(&syncStats, `
+					SELECT
+						COALESCE(SUM(participated_sync), 0) as participated_sync,
+						COALESCE(SUM(missed_sync), 0) as missed_sync,
+						COALESCE(SUM(orphaned_sync), 0) as orphaned_sync
+					FROM validator_stats
+					WHERE validatorindex = $1`, index)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator syncStats: %v", err)
 				}
@@ -795,26 +794,31 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			// if sync duties of last period haven't fully been exported yet, fetch remaining duties from bigtable
 			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
-			if actualSyncPeriods[0].LastEpoch > lastExportedEpoch {
+			lastSyncPeriod := actualSyncPeriods[0]
+			if lastSyncPeriod.LastEpoch > lastExportedEpoch {
 				lookback := int64(latestEpoch - lastExportedEpoch)
-				syncStatsBt, err := db.BigtableClient.GetValidatorSyncCommitteesStats([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
+				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				}
-				syncStats.MissedSync += syncStatsBt.MissedSlots
-				syncStats.ParticipatedSync += syncStatsBt.ParticipatedSlots
-				syncStats.ScheduledSync += syncStatsBt.ScheduledSlots
+				syncStatsBt := utils.AddSyncStats([]uint64{index}, res, nil)
+				// if last sync period is the current one, add remaining scheduled slots
+				if lastSyncPeriod.LastEpoch >= latestEpoch {
+					syncStatsBt.ScheduledSlots += utils.GetRemainingScheduledSync(1, syncStatsBt, lastExportedEpoch, lastSyncPeriod.FirstEpoch)
+				}
+
+				syncStats.MissedSlots += syncStatsBt.MissedSlots
+				syncStats.ParticipatedSlots += syncStatsBt.ParticipatedSlots
+				syncStats.ScheduledSlots += syncStatsBt.ScheduledSlots
 			}
+			validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSlots
 
-			validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSync
-
-			validatorPageData.ParticipatedSyncCountSlots = syncStats.ParticipatedSync
-			validatorPageData.MissedSyncCountSlots = syncStats.MissedSync
-			validatorPageData.OrphanedSyncCountSlots = syncStats.OrphanedSync
-			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSync
+			validatorPageData.ParticipatedSyncCountSlots = syncStats.ParticipatedSlots
+			validatorPageData.MissedSyncCountSlots = syncStats.MissedSlots
+			validatorPageData.OrphanedSyncCountSlots = syncStats.OrphanedSlots
+			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSlots
 			// actual sync duty count and percentage
-			syncCountSlotsIncludingScheduled := validatorPageData.ParticipatedSyncCountSlots + validatorPageData.MissedSyncCountSlots + validatorPageData.OrphanedSyncCountSlots + validatorPageData.ScheduledSyncCountSlots
-			validatorPageData.SyncCount = uint64(math.Ceil(float64(syncCountSlotsIncludingScheduled) / float64(validatorPageData.SlotsPerSyncCommittee)))
+			validatorPageData.SyncCount = uint64(len(actualSyncPeriods))
 			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
 		}
 		// sync luck

@@ -1087,7 +1087,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	}
 
 	// transform committees to slots
-	expectedSlots = uint64(expectedCommitties * float64(utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch))
+	expectedSlots = uint64(expectedCommitties * float64(utils.SlotsPerSyncCommittee()))
 
 	return expectedSlots, nil
 }
@@ -1121,37 +1121,62 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 	epochsPerDay := utils.EpochsPerDay()
 	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
 
+	// if epoch is not yet exported, we may need to collect the data from bigtable
 	if lastExportedEpoch < epoch {
-		// a sync committee takes abouth 27h so in the span of a day we migh have a maximum of two different sync committees (one being unfinished)
-		// to lower the bigtable workload, we only check for validators that are querried AND in the current or the last sync committee
-		periods := []int64{int64(utils.SyncPeriodOfEpoch(epoch))}
-		if periods[0] > 0 {
+		// get relevant period
+		periodOfEpoch := utils.SyncPeriodOfEpoch(epoch)
+		periods := []int64{int64(periodOfEpoch)}
+		// if the committee period before the relevant one is also not yet fully exported, add it to the query
+		if periods[0] > 0 && lastExportedEpoch < utils.FirstEpochOfSyncPeriod(periodOfEpoch)-1 {
 			periods = append(periods, periods[0]-1)
 		}
 
-		var validatorsInSyncCommittees struct {
+		// get all validators part of the relevant committees, grouped by period
+		var syncCommitteeValidators []struct {
+			Period     uint64        `db:"period"`
 			Validators pq.Int64Array `db:"validators"`
 		}
-		query, args, err := sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
+		query, args, err := sqlx.In(`
+			SELECT period, COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators
+			FROM sync_committees
+			WHERE period IN (?) AND validatorindex IN (?)
+			GROUP BY period
+			ORDER BY period DESC
+		`, periods, validators)
 		if err != nil {
 			return types.SyncCommitteesStats{}, err
 		}
-		err = db.ReaderDb.Get(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
+		err = db.ReaderDb.Select(&syncCommitteeValidators, db.ReaderDb.Rebind(query), args...)
 		if err != nil {
 			return types.SyncCommitteesStats{}, err
 		}
 
-		if len(validatorsInSyncCommittees.Validators) > 0 {
-			// get and add up2date sync committee statistics from bigtable
+		// if there validators are present in relevant periods, query bigtable
+		if len(syncCommitteeValidators) > 0 {
+			// flatten validator list
 			vs := []uint64{}
-			for _, v := range validatorsInSyncCommittees.Validators {
-				vs = append(vs, uint64(v))
+			for _, scv := range syncCommitteeValidators {
+				for _, v := range scv.Validators {
+					vs = append(vs, uint64(v))
+				}
 			}
 
-			syncStats, err := db.BigtableClient.GetValidatorSyncCommitteesStats(vs, lastExportedEpoch, epoch)
+			// get sync stats from bigtable
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch, epoch)
 			if err != nil {
 				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
+			// add sync stats for validators in latest returned period
+			latestPeriodCount := len(syncCommitteeValidators[0].Validators)
+			syncStats := utils.AddSyncStats(vs[:latestPeriodCount], res, nil)
+			// if latest returned period is the active one, add remaining scheduled slots
+			firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(syncCommitteeValidators[0].Period)
+			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
+			if lastEpochOfPeriod >= services.LatestEpoch() {
+				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
+			}
+			// add sync stats for validators in previous returned period
+			utils.AddSyncStats(vs[latestPeriodCount:], res, &syncStats)
 			retv.MissedSlots += syncStats.MissedSlots
 			retv.ParticipatedSlots += syncStats.ParticipatedSlots
 			retv.ScheduledSlots += syncStats.ScheduledSlots

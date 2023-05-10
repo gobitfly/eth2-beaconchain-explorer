@@ -910,7 +910,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) ([]*types.ValidatorSyncParticipation, error) {
-	res, err := bigtable.getValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
+	res, err := bigtable.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -920,7 +920,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex ui
 	return res[validatorIndex], nil
 }
 
-func (bigtable *Bigtable) getValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
+func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
@@ -1029,7 +1029,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorSyncDutiesStatistic, error) {
-	data, err := bigtable.getValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
+	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
 
 	if err != nil {
 		return nil, err
@@ -1054,37 +1054,6 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 	}
 
 	return res, nil
-}
-
-func (bigtable *Bigtable) GetValidatorSyncCommitteesStats(validators []uint64, startEpoch uint64, endEpoch uint64) (types.SyncCommitteesStats, error) {
-	res, err := bigtable.getValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
-	if err != nil {
-		return types.SyncCommitteesStats{}, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
-	}
-
-	retv := types.SyncCommitteesStats{}
-	for _, v := range res {
-		for _, r := range v {
-			slotTime := utils.SlotToTime(r.Slot)
-			if r.Status == 0 && time.Since(slotTime) <= time.Minute {
-				r.Status = 2
-			}
-			switch r.Status {
-			case 0:
-				retv.MissedSlots++
-			case 1:
-				retv.ParticipatedSlots++
-			case 2:
-				retv.ScheduledSlots++
-			}
-		}
-	}
-
-	// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
-	slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-	retv.ScheduledSlots += slotsPerSyncCommittee - ((retv.MissedSlots + retv.ParticipatedSlots + retv.ScheduledSlots) % slotsPerSyncCommittee)
-
-	return retv, nil
 }
 
 // returns the validator attestation effectiveness in %
