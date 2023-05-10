@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 	protomath "github.com/protolambda/zrnt/eth2/util/math"
@@ -296,8 +295,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lastStatsDay uint64
-	err = db.ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
 	if err != nil {
 		logger.Errorf("error getting lastStatsDay for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -372,7 +370,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		validatorPageData.IncomeHistoryChartData, validatorPageData.IncomeToday.Cl, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
+		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
 
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
@@ -412,6 +410,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.Apr365d = earnings.Apr365d
 		validatorPageData.IncomeTotal = earnings.IncomeTotal
 		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
+		validatorPageData.IncomeToday = earnings.IncomeToday
+		validatorPageData.ValidatorProposalData = earnings.ProposalData
+
 		if utils.Config.Frontend.Validator.ShowProposerRewards {
 			validatorPageData.IncomeProposerFormatted = &earnings.ProposerTotalFormatted
 		}
@@ -559,110 +560,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
 			validatorPageData.EstimatedActivationTs = estimatedDequeueTs
 		}
-		return nil
-	})
-
-	g.Go(func() error {
-		proposals := []struct {
-			Slot            uint64 `db:"slot"`
-			Status          uint64 `db:"status"`
-			ExecBlockNumber uint64 `db:"exec_block_number"`
-		}{}
-
-		err = db.ReaderDb.Select(&proposals, `
-			SELECT 
-				slot, 
-				status, 
-				COALESCE(exec_block_number, 0) as exec_block_number
-			FROM blocks 
-			WHERE proposer = $1
-			ORDER BY slot ASC`, index)
-		if err != nil {
-			return fmt.Errorf("error retrieving block-proposals: %v", err)
-		}
-
-		proposedToday := []uint64{}
-		todayStartEpoch := uint64(lastStatsDay+1) * utils.EpochsPerDay()
-		validatorPageData.Proposals = make([][]uint64, len(proposals))
-		for i, b := range proposals {
-			validatorPageData.Proposals[i] = []uint64{
-				uint64(utils.SlotToTime(b.Slot).Unix()),
-				b.Status,
-			}
-			if b.Status == 0 {
-				validatorPageData.ScheduledBlocksCount++
-			} else if b.Status == 1 {
-				validatorPageData.ProposedBlocksCount++
-				// add to list of blocks proposed today if epoch hasn't been exported into stats yet
-				if utils.EpochOfSlot(b.Slot) >= todayStartEpoch && b.ExecBlockNumber > 0 {
-					proposedToday = append(proposedToday, b.ExecBlockNumber)
-				}
-			} else if b.Status == 2 {
-				validatorPageData.MissedBlocksCount++
-			} else if b.Status == 3 {
-				validatorPageData.OrphanedBlocksCount++
-			}
-		}
-
-		validatorPageData.BlocksCount = uint64(len(proposals))
-		if validatorPageData.BlocksCount > 0 {
-			validatorPageData.UnmissedBlocksPercentage = float64(validatorPageData.BlocksCount-validatorPageData.MissedBlocksCount) / float64(len(proposals))
-		} else {
-			validatorPageData.UnmissedBlocksPercentage = 1.0
-		}
-
-		var slots []uint64
-		for _, p := range proposals {
-			if p.ExecBlockNumber > 0 {
-				slots = append(slots, p.Slot)
-			}
-		}
-
-		lookbackAmount := getProposalLuckBlockLookbackAmount(1)
-		startPeriod := len(slots) - lookbackAmount
-		if startPeriod < 0 {
-			startPeriod = 0
-		}
-
-		validatorPageData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
-		avgSlotInterval := uint64(getAvgSlotInterval(1))
-		avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
-		validatorPageData.AvgSlotInterval = &avgSlotIntervalAsDuration
-		if len(slots) > 0 {
-			nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
-			validatorPageData.ProposalEstimate = &nextSlotEstimate
-		}
-
-		if len(proposedToday) > 0 {
-			// get el data
-			execBlocks, err := db.BigtableClient.GetBlocksIndexedMultiple(proposedToday, 10000)
-			if err != nil {
-				return fmt.Errorf("error retrieving execution blocks data from bigtable: %v", err)
-			}
-
-			// get mev data
-			relaysData, err := db.GetRelayDataForIndexedBlocks(execBlocks)
-			if err != nil {
-				return fmt.Errorf("error retrieving mev bribe data: %v", err)
-			}
-
-			incomeTodayEl := new(big.Int)
-			for _, execBlock := range execBlocks {
-
-				blockEpoch := utils.TimeToEpoch(execBlock.Time.AsTime())
-				if blockEpoch > int64(lastFinalizedEpoch) {
-					continue
-				}
-				// add mev bribe if present
-				if relaysDatum, hasMevBribes := relaysData[common.BytesToHash(execBlock.Hash)]; hasMevBribes {
-					incomeTodayEl = new(big.Int).Add(incomeTodayEl, relaysDatum.MevBribe.Int)
-				} else {
-					incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
-				}
-			}
-			validatorPageData.IncomeToday.El = incomeTodayEl.Int64() / 1e9
-		}
-
 		return nil
 	})
 

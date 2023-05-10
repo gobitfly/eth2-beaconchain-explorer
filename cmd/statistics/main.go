@@ -211,8 +211,7 @@ func statisticsLoop() {
 		}
 
 		if opt.statisticsValidatorToggle {
-			var lastExportedDayValidator uint64
-			err := db.WriterDb.Get(&lastExportedDayValidator, "select COALESCE(max(day), 0) from validator_stats_status where status")
+			lastExportedDayValidator, err := db.GetLastExportedStatisticDay()
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}

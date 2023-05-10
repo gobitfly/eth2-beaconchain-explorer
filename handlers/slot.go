@@ -101,7 +101,9 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), slotFutureTemplateFiles)
 		data.Meta.Path = "/slot/" + slotOrHash
 		futurePageData := types.BlockPageData{
-			Slot:         slot,
+			ValidatorProposalInfo: types.ValidatorProposalInfo{
+				Slot: slot,
+			},
 			Epoch:        utils.EpochOfSlot(slot),
 			Ts:           utils.SlotToTime(slot),
 			NextSlot:     slot + 1,

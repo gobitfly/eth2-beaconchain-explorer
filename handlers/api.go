@@ -1113,8 +1113,7 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
-	var lastExportedDay uint64
-	err = db.WriterDb.Get(&lastExportedDay, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
+	lastExportedDay, err := db.GetLastExportedStatisticDay()
 	if err != nil {
 		return types.SyncCommitteesStats{}, err
 	}

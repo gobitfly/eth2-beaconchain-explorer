@@ -3032,3 +3032,100 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 
 	return count, nil
 }
+
+func GetLastExportedStatisticDay() (uint64, error) {
+	var lastStatsDay uint64
+	err := ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
+
+	if err != nil {
+		return 0, fmt.Errorf("error getting lastStatsDay %v", err)
+	}
+	return lastStatsDay, nil
+}
+
+func GetValidatorIncomePerforamance(validators []uint64, incomePerformance *types.ValidatorIncomePerformance) error {
+	validatorsPQArray := pq.Array(validators)
+	// el rewards are converted from wei to gwei
+	return ReaderDb.Get(incomePerformance, `
+		SELECT 
+		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
+		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d,
+		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
+		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
+		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
+		COALESCE(SUM(cl_proposer_performance_total), 0) AS cl_proposer_performance_total,
+		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
+		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
+		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
+		CAST(COALESCE(SUM(mev_performance_365d), 0) / 1e9 AS bigint) AS el_performance_365d,
+		CAST(COALESCE(SUM(mev_performance_total), 0) / 1e9 AS bigint) AS el_performance_total
+		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
+}
+
+func GetTotalValidatorDeposits(validators []uint64, totalDeposits *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(totalDeposits, `
+		SELECT 
+			COALESCE(SUM(amount), 0) 
+		FROM blocks_deposits d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
+		WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))
+	`, validatorsPQArray)
+}
+
+func GetTotalValidatorWithdrawals(validators []uint64, totalWithdrawals *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(totalWithdrawals, `
+		SELECT 
+			COALESCE(sum(w.amount), 0)
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+		WHERE validatorindex = ANY($1)
+	`, validatorsPQArray)
+}
+
+func GetValidatorDepositsForEpochs(validators []uint64, fromEpoch uint64, toEpoch uint64, deposits *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(deposits, `
+		SELECT 
+			COALESCE(SUM(amount), 0) 
+		FROM blocks_deposits d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3
+		WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))
+	`, validatorsPQArray, fromEpoch, toEpoch)
+}
+
+func GetValidatorWithdrawalsForEpochs(validators []uint64, fromEpoch uint64, toEpoch uint64, withdrawals *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(withdrawals, `
+		SELECT 
+			COALESCE(SUM(amount), 0) 
+		FROM blocks_withdrawals d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3        
+		WHERE validatorindex = ANY($1)
+	`, validatorsPQArray, fromEpoch, toEpoch)
+}
+
+func GetValidatorBalanceForDay(validators []uint64, day uint64, balance *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(balance, `
+		SELECT 
+			COALESCE(SUM(end_balance), 0) 
+		FROM validator_stats     
+		WHERE day=$2 AND validatorindex = ANY($1)
+	`, validatorsPQArray, day)
+}
+
+func GetValidatorPropsosals(validators []uint64, proposals *[]types.ValidatorProposalInfo) error {
+	validatorsPQArray := pq.Array(validators)
+
+	return ReaderDb.Select(proposals, `
+		SELECT
+			slot,
+			status,
+			COALESCE(exec_block_number, 0) as exec_block_number
+		FROM blocks
+		WHERE proposer = ANY($1)
+		ORDER BY slot ASC
+		`, validatorsPQArray)
+}
