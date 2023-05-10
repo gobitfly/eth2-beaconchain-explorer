@@ -184,7 +184,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				boundContract := bind.NewBoundContract(*txPageData.To, *cmEntry.meta.ABI, nil, nil, nil)
 
 				for name, event := range cmEntry.meta.ABI.Events {
-					if bytes.Equal(event.ID.Bytes(), log.Topics[0].Bytes()) {
+					if log != nil && len(log.Topics) > 0 && bytes.Equal(event.ID.Bytes(), log.Topics[0].Bytes()) {
 						logData := make(map[string]interface{})
 						err := boundContract.UnpackLogIntoMap(logData, name, *log)
 
