@@ -71,16 +71,35 @@ table {
 }
 
 @media (max-width: 960px) {
+  #mobile-search-bar,
+  #hero-container {
+    margin-top: 49px;
+  }
   .main-navigation {
     padding: 0;
+    margin-bottom: 49px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    max-height: 100%;
+    z-index: 999;
+    overflow-y: auto;
   }
 
   .main-navigation #nav-bar-header {
     padding: 0.5rem 1rem;
     background-color: var(--banner-background);
   }
+
   .main-navigation .navbar-collapse {
     padding: 0.5rem 1rem;
+    background: var(--bg);
+    overflow-y: auto;
+    max-height: calc(100% - 49px);
+  }
+  [data-theme="light"] .main-navigation .navbar-collapse {
+    background-color: white;
   }
 
   .main-navigation #nav-bar-header .cls-1 {
