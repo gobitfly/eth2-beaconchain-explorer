@@ -186,8 +186,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		} else if b.Status == 1 {
 			validatorProposalData.ProposedBlocksCount++
 			// add to list of blocks proposed today if epoch hasn't been exported into stats yet
-			if utils.EpochOfSlot(b.Slot) >= todayStartEpoch && b.ExecBlockNumber > 0 {
-				proposedToday = append(proposedToday, b.ExecBlockNumber)
+			if utils.EpochOfSlot(b.Slot) >= todayStartEpoch && b.ExecBlockNumber.Int64 > 0 {
+				proposedToday = append(proposedToday, uint64(b.ExecBlockNumber.Int64))
 			}
 		} else if b.Status == 2 {
 			validatorProposalData.MissedBlocksCount++
@@ -205,7 +205,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	var slots []uint64
 	for _, p := range proposals {
-		if p.ExecBlockNumber > 0 {
+		if p.ExecBlockNumber.Int64 > 0 {
 			slots = append(slots, p.Slot)
 		}
 	}

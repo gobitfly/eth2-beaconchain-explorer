@@ -2070,7 +2070,7 @@ type ValidatorIncomePerformance struct {
 }
 
 type ValidatorProposalInfo struct {
-	Slot            uint64 `db:"slot"`
-	Status          uint64 `db:"status"`
-	ExecBlockNumber uint64 `db:"exec_block_number"`
+	Slot            uint64        `db:"slot"`
+	Status          uint64        `db:"status"`
+	ExecBlockNumber sql.NullInt64 `db:"exec_block_number"`
 }

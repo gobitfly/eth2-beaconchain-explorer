@@ -124,7 +124,7 @@ func main() {
 		if *statisticsValidatorToggle {
 			logrus.Infof("exporting validator statistics for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
-				_, err := db.GetLastExportedStatisticDay()
+				_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", d)
 				if err != nil {
 					logrus.Fatalf("error resetting status for day %v: %v", d, err)
 				}
