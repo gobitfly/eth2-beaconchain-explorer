@@ -4,7 +4,7 @@
       <div class="d-flex mb-1">
         <h1 class="h4 mb-1 mb-md-0 d-flex align-items-center">
           <!-- using nonconventional characters for whitespaces because of linter -->
-          <span class="mr-2">Validator <span class="d-inline">{{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }}{{ .Index }}{{ end }}{{ if ne .Name "" }}&nbsp;({{ formatValidatorName .Name }}){{ end }}</span></span>
+          <span class="mr-2">Validator <span class="d-inline">{{ if or (gt .Index 0) (and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")) }}{{ .Index }}{{ end }}{{ if ne .Name "" }}&nbsp;({{ formatValidatorName .Name }}){{ end }}</span></span>
           <span class="mx-1" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{ printf "%x" .PublicKey }}">
             <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button">
               <i class="fa fa-copy"></i>
