@@ -961,28 +961,19 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 }
 
 func poolsDistributionChartData() (*types.GenericChartData, error) {
-	var err error
 
 	type seriesDataItem struct {
 		Name      string `json:"name"`
 		Address   string `json:"address"`
-		Y         uint64 `json:"y"`
+		Y         int64  `json:"y"`
 		Drilldown string `json:"drilldown"`
 	}
 
-	rows := []struct {
-		Name  string
-		Count uint64
-	}{}
+	poolData := LatestPoolsPageData().PoolInfos
 
-	err = db.ReaderDb.Select(&rows, `
-	select coalesce(pool, 'Unknown') as name, count(*) as count from validators left outer join validator_pool on validators.pubkey = validator_pool.publickey where validators.status in ('active_online', 'active_offline') group by pool order by count(*) desc`)
-	if err != nil {
-		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
-	}
-	seriesData := make([]seriesDataItem, 0, len(rows))
+	seriesData := make([]seriesDataItem, 0, len(poolData))
 
-	for _, row := range rows {
+	for _, row := range poolData {
 		seriesData = append(seriesData, seriesDataItem{
 			Name: row.Name,
 			Y:    row.Count,
