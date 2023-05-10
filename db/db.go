@@ -3002,7 +3002,8 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetLastExportedStatisticDay() (uint64, error) {
-	lastStatsDay, err := GetLastExportedStatisticDay()
+	var lastStatsDay uint64
+	err := ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
 
 	if err != nil {
 		return 0, fmt.Errorf("error getting lastStatsDay %v", err)
