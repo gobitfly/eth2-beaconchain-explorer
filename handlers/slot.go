@@ -101,7 +101,9 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), slotFutureTemplateFiles)
 		data.Meta.Path = "/slot/" + slotOrHash
 		futurePageData := types.BlockPageData{
-			Slot:         slot,
+			ValidatorProposalInfo: types.ValidatorProposalInfo{
+				Slot: slot,
+			},
 			Epoch:        utils.EpochOfSlot(slot),
 			Ts:           utils.SlotToTime(slot),
 			NextSlot:     slot + 1,
@@ -120,9 +122,9 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if blockPageData.ExecBlockNumber.Int64 != 0 && blockPageData.Status == 1 {
+	if blockPageData.ExecBlockNumber != 0 && blockPageData.Status == 1 {
 		// slot has corresponding execution block, fetch execution data
-		eth1BlockPageData, err := GetExecutionBlockPageData(uint64(blockPageData.ExecBlockNumber.Int64), 10)
+		eth1BlockPageData, err := GetExecutionBlockPageData(blockPageData.ExecBlockNumber, 10)
 		// if err != nil, simply show slot view without block
 		if err == nil {
 			blockPageData.ExecutionData = eth1BlockPageData
