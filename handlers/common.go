@@ -128,7 +128,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	earnings31d := income.ClIncome31d + income.ElIncome31d
 
 	if totalDeposits == 0 {
-		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance + uint64(len(validators))
+		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance * uint64(len(validators))
 	}
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
