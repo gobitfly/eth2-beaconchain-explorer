@@ -620,12 +620,10 @@ type BlockPageData struct {
 	Epoch                  uint64  `db:"epoch"`
 	EpochFinalized         bool    `db:"epoch_finalized"`
 	EpochParticipationRate float64 `db:"epoch_participation_rate"`
-	Slot                   uint64  `db:"slot"`
 	Ts                     time.Time
 	NextSlot               uint64
 	PreviousSlot           uint64
 	Proposer               uint64  `db:"proposer"`
-	Status                 uint64  `db:"status"`
 	BlockRoot              []byte  `db:"blockroot"`
 	ParentRoot             []byte  `db:"parentroot"`
 	StateRoot              []byte  `db:"stateroot"`
@@ -657,7 +655,6 @@ type BlockPageData struct {
 	ExecReceiptsRoot      []byte        `db:"exec_receipts_root"`
 	ExecLogsBloom         []byte        `db:"exec_logs_bloom"`
 	ExecRandom            []byte        `db:"exec_random"`
-	ExecBlockNumber       sql.NullInt64 `db:"exec_block_number"`
 	ExecGasLimit          sql.NullInt64 `db:"exec_gas_limit"`
 	ExecGasUsed           sql.NullInt64 `db:"exec_gas_used"`
 	ExecTimestamp         sql.NullInt64 `db:"exec_timestamp"`
@@ -682,6 +679,7 @@ type BlockPageData struct {
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
+	ValidatorProposalInfo
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {

@@ -1726,9 +1726,7 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) gcp
 func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
 	dayIncome := make(map[uint64]int64)
 	dayProposerIncome := make(map[uint64]int64)
-	lastDay := int64(0)
-
-	err := ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+	lastDay, err := GetLastExportedStatisticDay()
 	if err != nil {
 		return dayIncome, dayProposerIncome, err
 	}

@@ -124,7 +124,7 @@ func main() {
 		if *statisticsValidatorToggle {
 			logrus.Infof("exporting validator statistics for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
-				_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", d)
+				_, err := db.GetLastExportedStatisticDay()
 				if err != nil {
 					logrus.Fatalf("error resetting status for day %v: %v", d, err)
 				}
@@ -211,8 +211,7 @@ func statisticsLoop() {
 		}
 
 		if opt.statisticsValidatorToggle {
-			var lastExportedDayValidator uint64
-			err := db.WriterDb.Get(&lastExportedDayValidator, "select COALESCE(max(day), 0) from validator_stats_status where status")
+			lastExportedDayValidator, err := db.GetLastExportedStatisticDay()
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}

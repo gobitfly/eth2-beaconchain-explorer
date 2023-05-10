@@ -641,17 +641,17 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	// retrieve rewards for epochs not yet in stats
 	currentDayIncome := int64(0)
 	if upperBoundDay == 65536 {
-		lastDay := int64(0)
+		lastDay := uint64(0)
 		if len(result) > 0 {
-			lastDay = result[len(result)-1].Day
+			lastDay = uint64(result[len(result)-1].Day)
 		} else {
-			err = ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+			lastDay, err = GetLastExportedStatisticDay()
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		currentDay := uint64(lastDay + 1)
+		currentDay := lastDay + 1
 		startEpoch := currentDay * utils.EpochsPerDay()
 		endEpoch := startEpoch + utils.EpochsPerDay() - 1
 		income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)

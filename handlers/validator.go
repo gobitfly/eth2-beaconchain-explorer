@@ -296,8 +296,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var lastStatsDay uint64
-	err = db.ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
 	if err != nil {
 		logger.Errorf("error getting lastStatsDay for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -414,16 +413,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.IncomeTotal = earnings.IncomeTotal
 		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
 		validatorPageData.IncomeToday = earnings.IncomeToday
-		validatorPageData.Proposals = earnings.ProposalData.Proposals
-		validatorPageData.BlocksCount = earnings.ProposalData.BlocksCount
-		validatorPageData.ScheduledBlocksCount = earnings.ProposalData.ScheduledBlocksCount
-		validatorPageData.MissedBlocksCount = earnings.ProposalData.MissedBlocksCount
-		validatorPageData.OrphanedBlocksCount = earnings.ProposalData.OrphanedBlocksCount
-		validatorPageData.ProposedBlocksCount = earnings.ProposalData.ProposedBlocksCount
-		validatorPageData.UnmissedBlocksPercentage = earnings.ProposalData.UnmissedBlocksPercentage
-		validatorPageData.ProposalLuck = earnings.ProposalData.ProposalLuck
-		validatorPageData.AvgSlotInterval = earnings.ProposalData.AvgSlotInterval
-		validatorPageData.ProposalEstimate = earnings.ProposalData.ProposalEstimate
+		validatorPageData.ValidatorProposalData = earnings.ProposalData
 
 		if utils.Config.Frontend.Validator.ShowProposerRewards {
 			validatorPageData.IncomeProposerFormatted = &earnings.ProposerTotalFormatted

@@ -44,6 +44,9 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
+	if len(validators) == 0 {
+		return nil, nil, errors.New("no validators provided")
+	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	lastStatsDay, err := db.GetLastExportedStatisticDay()
 	if err != nil {
@@ -125,7 +128,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	earnings31d := income.ClIncome31d + income.ElIncome31d
 
 	if totalDeposits == 0 {
-		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance
+		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance + uint64(len(validators))
 	}
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
