@@ -1173,12 +1173,12 @@ func GetSigningDomain() ([]byte, error) {
 	return domain, err
 }
 
-// GetSyncCommitteePubKeys returns the count of slots per sync committee period
+// SlotsPerSyncCommittee returns the count of slots per sync committee period
 func SlotsPerSyncCommittee() uint64 {
 	return Config.Chain.Config.EpochsPerSyncCommitteePeriod * Config.Chain.Config.SlotsPerEpoch
 }
 
-// GetSyncCommitteePubKeys returns the remaining count of schuled slots given the stats of the current period, while also accounting for exported slots.
+// GetRemainingScheduledSync returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
 //
 // Parameters:
 //   - `validatorCount` : the count of validators associated with the stats.
@@ -1195,7 +1195,7 @@ func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesSta
 	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
 }
 
-// AddSyncStats adds the sync stats of a validator from a given syncDutiesHistory to the given stats, if stats is nil a new stats object is created.
+// AddSyncStats adds the sync stats of a set of validators from a given syncDutiesHistory to the given stats, if stats is nil a new stats object is created.
 // Parameters:
 //   - `validators` : the validators to add the stats for
 //   - `syncDutiesHistory` : the sync duties history of all queried validators

@@ -1126,18 +1126,18 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 		// get relevant period
 		periodOfEpoch := utils.SyncPeriodOfEpoch(epoch)
 		periods := []int64{int64(periodOfEpoch)}
-		firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(periodOfEpoch)
 		// if the committee period before the relevant one is also not yet fully exported, add it to the query
-		if periods[0] > 0 && lastExportedEpoch < firstEpochOfPeriod-1 {
+		if periods[0] > 0 && lastExportedEpoch < utils.FirstEpochOfSyncPeriod(periodOfEpoch)-1 {
 			periods = append(periods, periods[0]-1)
 		}
 
 		// get all validators part of the relevant committees, grouped by period
 		var syncCommitteeValidators []struct {
+			Period     uint64        `db:"period"`
 			Validators pq.Int64Array `db:"validators"`
 		}
 		query, args, err := sqlx.In(`
-			SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators
+			SELECT period, COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators
 			FROM sync_committees
 			WHERE period IN (?) AND validatorindex IN (?)
 			GROUP BY period
@@ -1166,14 +1166,16 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			if err != nil {
 				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
-			// add sync stats for validators in latest period
+			// add sync stats for validators in latest returned period
 			latestPeriodCount := len(syncCommitteeValidators[0].Validators)
 			syncStats := utils.AddSyncStats(vs[:latestPeriodCount], res, nil)
-			// if latest sync period is the active one, add remaining scheduled slots
-			if utils.FirstEpochOfSyncPeriod(periodOfEpoch+1)-1 >= services.LatestEpoch() {
+			// if latest returned period is the active one, add remaining scheduled slots
+			firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(syncCommitteeValidators[0].Period)
+			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
+			if lastEpochOfPeriod >= services.LatestEpoch() {
 				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
 			}
-			// add sync stats for validators in previous period
+			// add sync stats for validators in previous returned period
 			utils.AddSyncStats(vs[latestPeriodCount:], res, &syncStats)
 			retv.MissedSlots += syncStats.MissedSlots
 			retv.ParticipatedSlots += syncStats.ParticipatedSlots
