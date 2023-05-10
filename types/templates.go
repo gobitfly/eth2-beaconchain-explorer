@@ -418,7 +418,7 @@ type ValidatorPageData struct {
 	EstimatedNextWithdrawal                  template.HTML
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
 	NextWithdrawalRow                        [][]interface{}
-	ValidatorPropsalData
+	ValidatorProposalData
 }
 
 type RocketpoolValidatorPageData struct {
@@ -1009,7 +1009,7 @@ type ClElFloat64 struct {
 	Total float64
 }
 
-type ValidatorPropsalData struct {
+type ValidatorProposalData struct {
 	Proposals                [][]uint64
 	BlocksCount              uint64
 	ScheduledBlocksCount     uint64
@@ -1044,7 +1044,7 @@ type ValidatorEarnings struct {
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
 	TotalBalance            template.HTML `json:"totalBalance"`
-	ProposalData            ValidatorPropsalData
+	ProposalData            ValidatorProposalData
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing

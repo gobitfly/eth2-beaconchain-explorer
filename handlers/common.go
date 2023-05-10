@@ -171,7 +171,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	proposedToday := []uint64{}
 	todayStartEpoch := uint64(lastStatsDay+1) * utils.EpochsPerDay()
-	validatorProposalData := types.ValidatorPropsalData{}
+	validatorProposalData := types.ValidatorProposalData{}
 	validatorProposalData.Proposals = make([][]uint64, len(proposals))
 	for i, b := range proposals {
 		validatorProposalData.Proposals[i] = []uint64{
