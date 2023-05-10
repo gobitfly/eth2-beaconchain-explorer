@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/price"
@@ -2504,7 +2505,7 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 		var err error
 		endSlot, err = strconv.ParseUint(q.Get("slot"), 10, 64)
 		if err != nil {
-			logger.WithError(err).Errorf("invalid slot provided: %v", err)
+			// logger.WithError(err).Errorf("invalid slot provided: %v", err)
 			sendErrorResponse(w, r.URL.String(), "invalid slot provided")
 			return
 		}
@@ -2517,12 +2518,12 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 		var err error
 		startSlot, err = strconv.ParseUint(q.Get("startSlot"), 10, 64)
 		if err != nil {
-			logger.WithError(err).Errorf("invalid startSlot provided: %v", err)
+			// logger.WithError(err).Errorf("invalid startSlot provided: %v", err)
 			sendErrorResponse(w, r.URL.String(), "invalid startSlot provided")
 			return
 		}
 		if startSlot > endSlot {
-			logger.Errorf("start slot greater than end slot")
+			// logger.Errorf("start slot greater than end slot")
 			sendErrorResponse(w, r.URL.String(), "start slot greater than end slot")
 			return
 		}
@@ -2537,14 +2538,14 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	endY := utilMath.MinU64(parseUintWithDefault(q.Get("endy"), defaultEndPxl), defaultEndPxl)
 
 	if startX > endX || startY > endY {
-		logger.Error("invalid area provided by the coordinates")
+		// logger.Error("invalid area provided by the coordinates")
 		sendErrorResponse(w, r.URL.String(), "invalid area provided by the coordinates")
 		return
 	}
 
 	summarize, err := strconv.ParseBool(q.Get("summarize"))
 	if err != nil {
-		logger.WithError(err).Errorf("invalid value for summarize provided: %v", err)
+		// logger.WithError(err).Errorf("invalid value for summarize provided: %v", err)
 		sendErrorResponse(w, r.URL.String(), "invalid value for summarize provided")
 		return
 	}
@@ -2565,7 +2566,9 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	WHERE slot BETWEEN $1 AND $2 AND x BETWEEN $3 AND $4 AND y BETWEEN $5 AND $6
 	ORDER BY x, y, slot DESC`, startSlot, endSlot, startX, endX, startY, endY)
 	if err != nil {
-		logger.WithError(err).Error("could not retrieve db results")
+		if !errors.Is(err, sql.ErrNoRows) {
+			logger.WithError(err).Error("could not retrieve db results")
+		}
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
