@@ -3070,7 +3070,7 @@ func GetValidatorWithdrawalsForEpochs(validators []uint64, fromEpoch uint64, toE
 			COALESCE(SUM(amount), 0) 
 		FROM blocks_withdrawals d
 		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3        
-		WHERE validatorindex =  ANY($1)
+		WHERE validatorindex = ANY($1)
 	`, validatorsPQArray, fromEpoch, toEpoch)
 }
 
