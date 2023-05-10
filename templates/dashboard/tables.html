@@ -89,6 +89,9 @@
                 next: '<i class="fas fa-chevron-right"></i>',
               },
             },
+            drawCallback: function (settings) {
+              formatTimestamps()
+            },
           })
           initializedWithdrawalTable = true
         } else {

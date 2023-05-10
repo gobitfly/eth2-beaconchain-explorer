@@ -489,17 +489,17 @@ function formatAriaEthereumDate(elem) {
     format = "ff"
   }
 
+  var local = luxon.DateTime.fromMillis(dt * 1000)
   if (format === "FROMNOW") {
-    $(elem).text(getRelativeTime(luxon.DateTime.fromMillis(dt * 1000)))
-    $(elem).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(elem).text(getRelativeTime(local))
+    $(elem).attr("data-original-title", formatTimestampsTooltip(local))
     $(elem).attr("data-toggle", "tooltip")
   } else if (format === "LOCAL") {
-    var local = luxon.DateTime.fromMillis(dt * 1000)
     $(elem).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
-    $(elem).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(elem).attr("data-original-title", formatTimestampsTooltip(local))
     $(elem).attr("data-toggle", "tooltip")
   } else {
-    $(elem).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
+    $(elem).text(local.toFormat(format))
   }
 }
 
@@ -510,10 +510,10 @@ function formatTimestamps(selStr) {
   }
   sel.find(".timestamp").each(function () {
     var ts = $(this).data("timestamp")
-    var tsLuxon = luxon.DateTime.fromMillis(ts * 1000)
-    $(this).attr("data-original-title", tsLuxon.toFormat("ff"))
+    var local = luxon.DateTime.fromMillis(ts * 1000)
 
-    $(this).text(getRelativeTime(tsLuxon))
+    $(this).text(getRelativeTime(local))
+    $(this).attr("data-original-title", formatTimestampsTooltip(local))
   })
 
   if (sel.find('[data-toggle="tooltip"]').tooltip) {
@@ -521,12 +521,19 @@ function formatTimestamps(selStr) {
   }
 }
 
+function formatTimestampsTooltip(local) {
+  var toolTipFormat = "yyyy-MM-dd HH:mm:ss"
+  var tooltip = local.toFormat(toolTipFormat)
+
+  return tooltip
+}
+
 function getLuxonDateFromTimestamp(ts) {
   if (!ts) {
     return
   }
 
-  // Parse Date depanding on the format we get it
+  // Parse Date depending on the format we get it
   if (`${ts}`.includes("T")) {
     if (ts === "0001-01-01T00:00:00Z") {
       return

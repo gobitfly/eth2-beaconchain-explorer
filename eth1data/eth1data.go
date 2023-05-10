@@ -87,7 +87,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		return nil, fmt.Errorf("error retrieving block header data for tx %v: %v", hash, err)
 	}
 	txPageData.BlockNumber = header.Number.Int64()
-	txPageData.Timestamp = header.Time
+	txPageData.Timestamp = time.Unix(int64(header.Time), 0)
 
 	msg, err := tx.AsMessage(geth_types.NewLondonSigner(tx.ChainId()), header.BaseFee)
 	if err != nil {

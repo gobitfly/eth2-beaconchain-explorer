@@ -750,8 +750,7 @@
                               Grant account access (required)
                             </span>
                             <br /><br />
-                            <span>Paired:</span><i> {{ formatTimestampTs $value.CreatedAt }}</i>
-
+                            <span>Paired:</span><i> {{ formatTimestamp $value.CreatedAt.Unix }}</i>
                             {{ if lt $key $lastPairedElement }}
                               <hr style="width: 98%; margin-top:28px;margin-bottom:28px;" />
                             {{ end }}

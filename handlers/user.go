@@ -2519,7 +2519,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		ls := template.HTML(`N/A`)
 
 		if wh.LastSent.Valid {
-			ls = utils.FormatTimestampTs(wh.LastSent.Time)
+			ls = utils.FormatTimestamp(wh.LastSent.Time.Unix())
 		}
 
 		whErr := types.UserWebhookRowError{}

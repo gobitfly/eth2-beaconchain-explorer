@@ -36,7 +36,7 @@
                 <span style="background: #e7e1d7" class="badge text-dark">Genesis</span>
               </td>
               <td v-else v-html="block.status_formatted"></td>
-              <td>${ block.ts | fromNow }</td>
+              <td><span data-toggle="tooltip" data-placement="top" v-bind:data-original-title="block.ts | timestampTooltip">${block.ts | fromNow}</span></td>
               <td v-if="block.slot !== 0" v-html="block.proposer_formatted"></td>
               <td v-else>N/A</td>
               <!-- <td class="text-monospace">

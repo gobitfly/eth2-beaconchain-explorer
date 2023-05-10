@@ -142,6 +142,9 @@
             filters: {
                 fromNow(date) {
                     return getRelativeTime(luxon.DateTime.fromISO(date));
+                },
+                timestampTooltip(date){
+                    return formatTimestampsTooltip(luxon.DateTime.fromISO(date))
                 }
             },
             created: function () {
