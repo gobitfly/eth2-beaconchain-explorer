@@ -626,7 +626,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
 	data.NetworkName = utils.Config.Chain.Config.ConfigName
-	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
+	data.DepositContract = utils.Config.Chain.Config.DepositContractAddress
 
 	var epoch uint64
 	err := db.ReaderDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
