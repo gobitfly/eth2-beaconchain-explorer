@@ -357,7 +357,7 @@ func contains(s []RocketpoolRewardTreeDownloadable, e uint64) bool {
 func (rp *RocketpoolExporter) Update(count int64) error {
 	var wg errgroup.Group
 	wg.Go(func() error {
-		if count%5 == 4 { // run download one iteration before we update nodes
+		if count == 0 || count%5 == 4 { // run download one iteration before we update nodes
 			return rp.DownloadMissingRewardTrees()
 		}
 		return nil
