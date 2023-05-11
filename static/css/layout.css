@@ -490,8 +490,11 @@ table {
 }
 
 @media (max-width: 1140px) {
-  .dropdown-item {
-    padding: 0.5rem 1.5rem;
+  .main-navigation .dropdown-item {
+    padding: 0 1.5rem;
+  }
+  .main-navigation .dropdown-item .btn {
+    padding: 0 0.25rem;
   }
 
   .nav-icon {
