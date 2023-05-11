@@ -320,7 +320,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			tableData[i] = append(tableData[i], nil)
 		}
 
-		if v.LastAttestationSlot != nil {
+		if v.LastAttestationSlot != nil && *v.LastAttestationSlot > 0 {
 			tableData[i] = append(tableData[i], []interface{}{
 				*v.LastAttestationSlot,
 				utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
