@@ -2,10 +2,7 @@
   <script type="text/javascript">
     var pixels = {{.}}
     function drawGraffiti() {
-      var warning = document.getElementById("nsfwWarning")
-      if (warning) {
-        warning.parentNode.removeChild(warning)
-      }
+      document.getElementById("nsfwWarning").classList.add("d-none")
       var c = document.getElementById("graffitiwall")
       var ctx = c.getContext("2d")
       ctx.fillStyle = "#FFFFFF"
@@ -31,6 +28,8 @@
 
     if (document.cookie.indexOf("graffiti=accepted") != -1) {
       drawGraffiti()
+    } else {
+      document.getElementById("nsfwWarning").classList.remove("d-none")
     }
 
     function acceptNSFW() {
@@ -46,6 +45,7 @@
       position: relative;
     }
     #nsfwWarning {
+      display: flex;
       left: 0;
       right: 0;
       top: 0;
@@ -122,9 +122,9 @@
     <div class="row">
       <div class="col-md-12 text-center" id="graffitiwallContainer">
         <canvas id="graffitiwall" width="1000" height="1050" style="image-rendering:pixelated;"></canvas>
-        <div id="nsfwWarning" class="mt-5 d-flex flex-column align-items-center position-absolute">
+        <div id="nsfwWarning" class="mt-5 d-none flex-column align-items-center position-absolute hidden">
           <h4>Warning: This canvas is unmoderated and may contain NSFW content. Do you want to continue?</h4>
-          <div class="btn btn-primary btn-sm d-none d-md-flex mt-2" onclick="acceptNSFW()">Accept</div>
+          <div class="btn btn-primary btn-sm d-flex mt-2 text-white" onclick="acceptNSFW()">Accept</div>
         </div>
       </div>
     </div>
