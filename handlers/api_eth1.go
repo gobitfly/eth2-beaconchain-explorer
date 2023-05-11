@@ -911,6 +911,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	if latestEpoch < 7200 {
 		monthRange = 0
 	}
+	validatorsPQArray := pq.Array(queryIndices)
 
 	var execBlocks []types.ExecBlockProposer
 	err := db.ReaderDb.Select(&execBlocks,
@@ -922,7 +923,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		AND exec_block_number IS NOT NULL 
 		AND exec_block_number > 0 
 		AND epoch > $2`,
-		pq.Array(queryIndices),
+		validatorsPQArray,
 		monthRange, // 32d range
 	)
 	if err != nil {
@@ -940,19 +941,54 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 
 	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
-		// logger.WithError(err).Errorf("can not get relays data")
 		return nil, fmt.Errorf("error can not get relays data: %w", err)
 	}
+
+	type LongPerformanceResponse struct {
+		Performance365d  int64  `db:"el_performance_365d" json:"performance365d"`
+		PerformanceTotal int64  `db:"el_performance_total" json:"performanceTotal"`
+		ValidatorIndex   uint64 `db:"validatorindex" json:"validatorindex"`
+	}
+
+	performanceList := []LongPerformanceResponse{}
+
+	err = db.ReaderDb.Select(&performanceList, `
+		SELECT 
+		validatorindex,
+		CAST(COALESCE(mev_performance_365d, 0) AS bigint) AS el_performance_365d,
+		CAST(COALESCE(mev_performance_total, 0) AS bigint) AS el_performance_total
+		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
+	if err != nil {
+		return nil, fmt.Errorf("error can cl performance from db: %w", err)
+	}
+	for _, val := range performanceList {
+		resultPerProposer[val.ValidatorIndex] = types.ExecutionPerformanceResponse{
+			Performance1d:    big.NewInt(0),
+			Performance7d:    big.NewInt(0),
+			Performance31d:   big.NewInt(0),
+			Performance365d:  big.NewInt(val.Performance365d),
+			PerformanceTotal: big.NewInt(val.PerformanceTotal),
+			ValidatorIndex:   val.ValidatorIndex,
+		}
+	}
+
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		return nil, fmt.Errorf("error getting last statistic day: %w", err)
+	}
+	firstEpochTime := utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
 
 	for _, block := range blocks {
 		proposer := blockToProposerMap[block.Number].Proposer
 		result, ok := resultPerProposer[proposer]
 		if !ok {
 			result = types.ExecutionPerformanceResponse{
-				Performance1d:  big.NewInt(0),
-				Performance7d:  big.NewInt(0),
-				Performance31d: big.NewInt(0),
-				ValidatorIndex: proposer,
+				Performance1d:    big.NewInt(0),
+				Performance7d:    big.NewInt(0),
+				Performance31d:   big.NewInt(0),
+				Performance365d:  big.NewInt(0),
+				PerformanceTotal: big.NewInt(0),
+				ValidatorIndex:   proposer,
 			}
 		}
 
@@ -973,6 +1009,10 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 			producerReward = mevBribe
 		}
 
+		if block.Time.AsTime().After(firstEpochTime) {
+			result.PerformanceTotal = result.PerformanceTotal.Add(result.PerformanceTotal, producerReward)
+			result.Performance365d = result.Performance365d.Add(result.Performance365d, producerReward)
+		}
 		if block.Time.AsTime().After(last30dTimestamp) {
 			result.Performance31d = result.Performance31d.Add(result.Performance31d, producerReward)
 		}
