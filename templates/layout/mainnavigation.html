@@ -9,7 +9,7 @@
         <div class="d-flex align-items-center">
           <div class="currency-selection">{{ template "currencySelection" . }}</div>
           <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+            {{ includeSvg "menu_svg" }}
           </button>
         </div>
       </div>
@@ -28,7 +28,7 @@
                   {{ range $groupIndex, $group := .Groups }}
                     {{ if $hasBigGroups }}
                       <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                        <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">{{ .Label }}</span>
+                        <h5 class="ml-4">{{ .Label }}</h5>
                         {{ range .Links }}
                           {{ template "mainNavigationItem" . }}
                         {{ end }}

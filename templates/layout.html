@@ -186,8 +186,8 @@
       </div>
       <!-- Banner end -->
       {{ template "mainNavigation" . }}
-      {{ if not (or (eq .Active "index") (or (eq .Active "login") (or (eq .Active "login") (eq .Active "register")))) }}
-        <div id="mobile-search-bar" class="info-banner-center p-2 w-100">
+      {{ if not (or (eq .Active "index") (eq .Active "login") (eq .Active "register")) }}
+        <div id="mobile-search-bar" class="info-banner-center pb-2 pt-2 w-100 container">
           <div class="info-banner-search">
             <div class="search-container">
               <form class="form-inline" action="/search" method="POST">

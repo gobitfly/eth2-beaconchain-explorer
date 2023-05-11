@@ -5,6 +5,12 @@ import "html/template"
 func IncludeSvg(name string) template.HTML {
 	svg := ""
 	switch name {
+	case "menu_svg":
+		svg = `
+		<svg width="26" height="18" viewBox="0 0 26 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path d="M0 1.5C0 0.671719 0.831652 0 1.85714 0H24.1429C25.1701 0 26 0.671719 26 1.5C26 2.32969 25.1701 3 24.1429 3H1.85714C0.831652 3 0 2.32969 0 1.5ZM0 9C0 8.17031 0.831652 7.5 1.85714 7.5H24.1429C25.1701 7.5 26 8.17031 26 9C26 9.82969 25.1701 10.5 24.1429 10.5H1.85714C0.831652 10.5 0 9.82969 0 9ZM24.1429 18H1.85714C0.831652 18 0 17.3297 0 16.5C0 15.6703 0.831652 15 1.85714 15H13H24.1429C25.1701 15 26 15.6703 26 16.5C26 17.3297 25.1701 18 24.1429 18Z"/>
+		</svg>
+		`
 	case "brand_svg":
 		svg = `
 		<svg class="cls-1" width="22" height="27" viewBox="0 0 22 27" fill="none" xmlns="http://www.w3.org/2000/svg">

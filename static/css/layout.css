@@ -1,3 +1,8 @@
+:root {
+  --header-bar-height: 3.125rem;
+  --banner-text: white;
+}
+
 /* Revive ad server responsive images */
 ins[data-revive-zoneid] > a > img {
   max-width: 100%;
@@ -38,6 +43,12 @@ table {
 .cursor-pointer {
   cursor: pointer;
 }
+@media (max-width: 1140px) {
+  .dropdown-menu {
+    border: var(--body-color) solid 1px;
+    border-radius: 0.4375rem;
+  }
+}
 
 .dropdown-menu .nav-icon i {
   width: 1rem;
@@ -51,6 +62,12 @@ table {
   display: flex;
 }
 
+.main-navigation .dropdown-item {
+  font-size: 1em;
+  line-height: 1.6875rem;
+  font-weight: 300;
+}
+
 .main-navigation .dropdown-item svg {
   width: 1rem;
   margin-right: 0.5rem;
@@ -59,25 +76,38 @@ table {
 #nav-bar-header {
   display: flex;
   justify-content: space-between;
-  height: 49px;
+  height: var(--header-bar-height);
+  overflow-y: hidden;
 }
 
 @media (min-width: 961px) {
   .currency-selection,
-  .mobile-search-bar,
+  #mobile-search-bar,
   .main-navigation .mobile {
     display: none;
   }
 }
 
+.main-navigation .navbar-toggler {
+  border: none;
+}
+
+.main-navigation .navbar-toggler svg {
+  fill: var(--body-color, #dee2e6);
+}
+
 @media (max-width: 960px) {
   #mobile-search-bar,
   #hero-container {
-    margin-top: 49px;
+    margin-top: var(--header-bar-height);
+  }
+  #mobile-search-bar {
+    margin-left: auto;
+    margin-right: auto;
   }
   .main-navigation {
     padding: 0;
-    margin-bottom: 49px;
+    margin-bottom: var(--header-bar-height);
     position: fixed;
     top: 0;
     left: 0;
@@ -96,22 +126,24 @@ table {
     padding: 0.5rem 1rem;
     background: var(--bg);
     overflow-y: auto;
-    max-height: calc(100% - 49px);
+    max-height: calc(100% - var(--header-bar-height));
+    color: var(--body-color);
   }
+  .main-navigation.navbar-light .navbar-collapse .navbar-nav .nav-link {
+    color: inherit;
+  }
+
   [data-theme="light"] .main-navigation .navbar-collapse {
     background-color: white;
   }
 
-  .main-navigation #nav-bar-header .cls-1 {
+  .main-navigation #nav-bar-header .cls-1,
+  .main-navigation .navbar-toggler svg {
     fill: #fff !important;
   }
 
   .main-navigation #nav-bar-header .cls-2 {
     fill: var(--banner-background) !important;
-  }
-
-  .main-navigation .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.5%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
   }
 
   .main-navigation .currency-dropdown-toggle,
@@ -483,6 +515,7 @@ table {
     justify-self: flex-end;
     margin-left: auto;
     margin-right: 1rem;
+    font-size: 1.7rem;
   }
 }
 

@@ -1,12 +1,12 @@
 .info-banner-container {
   position: fixed;
-  height: 46px;
+  height: var(--header-bar-height);
   z-index: 999;
   width: 100%;
   min-width: 320px;
   background-color: var(--banner-background);
   color: var(--banner-text);
-  /* font-size: 90%; */
+  font-size: 1.125rem;
 }
 
 .info-banner-content {
@@ -121,7 +121,7 @@
 .info-banner-search .search-button i {
   position: absolute;
   display: initial;
-  color: grey;
+  color: inherit;
   top: 50%;
   transform: translateY(-50%);
   right: 0.5rem;
@@ -148,11 +148,10 @@
 }
 
 .info-banner-search .typeahead {
-  /* visibility: hidden; */
   border: none;
   border-radius: 0.25rem;
   background-clip: padding-box;
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 400;
   line-height: 1.5;
   width: 100%;
@@ -162,6 +161,12 @@
   border: none;
   color: var(--banner-text) !important;
   padding-right: 2rem;
+}
+
+.info-banner-search .typeahead::placeholder {
+  color: var(--banner-text) !important;
+  font-weight: 300;
+  opacity: 0.4;
 }
 
 .info-banner-search .search-container form > span {
