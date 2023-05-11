@@ -513,7 +513,8 @@ func SlotDepositData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatPublicKey(deposit.PublicKey),
 			utils.FormatBalance(deposit.Amount, currency),
 			utils.FormatWithdawalCredentials(deposit.WithdrawalCredentials, true),
-			deposit.Signature,
+			fmt.Sprintf("0x%v", hex.EncodeToString(deposit.Signature)),
+			utils.FormatHash(deposit.Signature, true),
 		})
 	}
 
