@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -182,6 +183,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			b.Status,
 		}
 		if b.Status == 0 {
+			validatorProposalData.LastScheduledSlot = utilMath.MaxU64(validatorProposalData.LastScheduledSlot, b.Slot)
 			validatorProposalData.ScheduledBlocksCount++
 		} else if b.Status == 1 {
 			validatorProposalData.ProposedBlocksCount++
