@@ -25,7 +25,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/protolambda/zrnt/eth2/util/math"
 	protomath "github.com/protolambda/zrnt/eth2/util/math"
-	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/csrf"
@@ -414,7 +413,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
 		validatorPageData.IncomeToday = earnings.IncomeToday
 		validatorPageData.ValidatorProposalData = earnings.ProposalData
-		validatorPageData.FutureDutiesEpoch = utilMath.MaxU64(validatorPageData.FutureDutiesEpoch, earnings.ProposalData.LastScheduledSlot/data.ChainConfig.SlotsPerEpoch)
+		validatorPageData.FutureDutiesEpoch = protomath.MaxU64(validatorPageData.FutureDutiesEpoch, earnings.ProposalData.LastScheduledSlot/data.ChainConfig.SlotsPerEpoch)
 
 		if utils.Config.Frontend.Validator.ShowProposerRewards {
 			validatorPageData.IncomeProposerFormatted = &earnings.ProposerTotalFormatted
@@ -669,7 +668,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(allSyncPeriods) > 0 && allSyncPeriods[0].LastEpoch > latestEpoch {
-			validatorPageData.FutureDutiesEpoch = utilMath.MaxU64(validatorPageData.FutureDutiesEpoch, allSyncPeriods[0].LastEpoch)
+			validatorPageData.FutureDutiesEpoch = protomath.MaxU64(validatorPageData.FutureDutiesEpoch, allSyncPeriods[0].LastEpoch)
 		}
 
 		// remove scheduled committees
