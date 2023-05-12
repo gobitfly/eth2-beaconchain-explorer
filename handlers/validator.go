@@ -23,7 +23,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
-	"github.com/protolambda/zrnt/eth2/util/math"
 	protomath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
@@ -1573,7 +1572,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		lastActionEpoch := (lastActoinDay + 1) * utils.EpochsPerDay()
 		if lastActionEpoch > currentEpoch {
-			extraEpochs = math.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
+			extraEpochs = protomath.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
 		}
 	}
 
