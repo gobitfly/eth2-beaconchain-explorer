@@ -79,8 +79,6 @@ func initRPConfig() *smartnodeCfg.SmartnodeConfig {
 	})
 	if utils.Config.Chain.Name == "mainnet" {
 		config.Network.Value = smartnodeNetwork.Network_Mainnet
-	} else if utils.Config.Chain.Name == "zhejiang" {
-		config.Network.Value = smartnodeNetwork.Network_Zhejiang
 	} else if utils.Config.Chain.Name == "prater" {
 		config.Network.Value = smartnodeNetwork.Network_Prater
 	} else {

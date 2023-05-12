@@ -47,7 +47,7 @@ require (
 	github.com/prysmaticlabs/go-ssz v0.0.0-20210121151755-f6208871c388
 	github.com/prysmaticlabs/prysm/v3 v3.2.0
 	github.com/rocket-pool/rocketpool-go v1.10.1-0.20230228020137-d5a680907dff
-	github.com/rocket-pool/smartnode v1.9.0-rc1
+	github.com/rocket-pool/smartnode v1.9.3
 	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
