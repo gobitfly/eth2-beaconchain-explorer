@@ -1576,7 +1576,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tableData := make([][]interface{}, 0, 0)
+	tableData := make([][]interface{}, 0)
 
 	if extraEpochs > 0 {
 		startEpoch := currentEpoch + 1
