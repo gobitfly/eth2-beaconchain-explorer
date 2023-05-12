@@ -910,6 +910,11 @@ type SearchAheadValidatorsResult []struct {
 	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
 }
 
+// SearchAheadPubkeyResult is a struct to hold the search ahead public key results
+type SearchAheadPubkeyResult []struct {
+	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
+}
+
 // GenericChartData is a struct to hold chart data
 type GenericChartData struct {
 	IsNormalChart                   bool

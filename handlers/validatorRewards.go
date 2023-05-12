@@ -109,7 +109,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	validatorIndexArr, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
@@ -136,7 +136,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := services.GetValidatorHist(validatorArr, currency, start, end)
+	data := services.GetValidatorHist(validatorIndexArr, currency, start, end)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
@@ -150,7 +150,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	validatorIndexArr, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
@@ -177,7 +177,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	hist := services.GetValidatorHist(validatorArr, currency, start, end)
+	hist := services.GetValidatorHist(validatorIndexArr, currency, start, end)
 
 	if len(hist.History) == 0 {
 		w.Write([]byte("No data available"))
@@ -224,7 +224,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	validatorArr := q.Get("validators")
 	validatorLimit := getUserPremium(r).MaxValidators
-	_, err = parseValidatorsFromQueryString(validatorArr, validatorLimit)
+	_, _, _, err = parseValidatorsFromQueryString(validatorArr, validatorLimit)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)

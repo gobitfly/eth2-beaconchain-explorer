@@ -554,6 +554,17 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  var bhPubkey = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.index
+    },
+    remote: {
+      url: "/search/validators_by_pubkey/%QUERY",
+      wildcard: "%QUERY",
+    },
+  })
   var bhEth1Addresses = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -604,6 +615,18 @@ $(document).ready(function () {
         header: "<h3>Validators</h3>",
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate high-contrast">${data.index}: ${data.pubkey}</div>`
+        },
+      },
+    },
+    {
+      limit: 5,
+      name: "pubkeys",
+      source: bhPubkey,
+      display: "pubkey",
+      templates: {
+        header: "<h3>Validators by Public Key</h3>",
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate high-contrast">${data.pubkey}</div>`
         },
       },
     },
@@ -662,8 +685,10 @@ $(document).ready(function () {
   $(".typeahead-dashboard").on("typeahead:select", function (ev, sug) {
     if (sug.validator_indices) {
       addValidators(sug.validator_indices)
-    } else {
+    } else if (sug.index != null) {
       addValidator(sug.index)
+    } else {
+      addValidator("0x" + sug.pubkey)
     }
     boxAnimationDirection = "in"
     // addValidatorUpdateUI()
@@ -724,6 +749,10 @@ $(document).ready(function () {
   renderSelectedValidators()
   updateState()
 
+  function isValidatorPubkey(identifier) {
+    return identifier.startsWith("0x") && identifier.length === 98
+  }
+
   function renderSelectedValidators() {
     if (state.validators.length > VALLIMIT) return
     var elHolder = document.getElementById("selected-validators")
@@ -741,7 +770,11 @@ $(document).ready(function () {
       var elItem = document.createElement("li")
       elItem.classList = "item"
       elItem.dataset.validatorIndex = v
-      elItem.innerHTML = '<i class="fas fa-times-circle remove-validator"></i> <span>' + v + "</span>"
+      var validatorDisplay = v
+      if (isValidatorPubkey(v)) {
+        validatorDisplay = v.slice(0, 6) + "..." + v.slice(-4)
+      }
+      elItem.innerHTML = '<i class="fas fa-times-circle remove-validator"></i> <span>' + validatorDisplay + "</span>"
       elsItems.push(elItem)
     }
     elHolder.prepend(...elsItems)
@@ -800,6 +833,11 @@ $(document).ready(function () {
       return
     }
     state.validators = validatorsStr.split(",")
+    for (var i = 0; i < state.validators.length; i++) {
+      if (isValidatorPubkey(state.validators[i])) {
+        state.validators[i] = state.validators[i].toLowerCase()
+      }
+    }
     state.validators = state.validators.filter((v, i) => {
       v = escape(v)
       if (isNaN(parseInt(v))) return false
@@ -895,6 +933,7 @@ $(document).ready(function () {
   function sortValidators(a, b) {
     var ai = parseInt(a)
     var bi = parseInt(b)
+
     return ai - bi
   }
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,9 +29,9 @@ import (
 
 var ErrTooManyValidators = errors.New("too many validators")
 
-func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, error) {
+func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, [][]byte, bool, error) {
 	if str == "" {
-		return []uint64{}, nil
+		return []uint64{}, [][]byte{}, false, nil
 	}
 
 	strSplit := strings.Split(str, ",")
@@ -38,26 +39,90 @@ func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, e
 
 	// we only support up to [validatorLimit] validators
 	if strSplitLen > validatorLimit {
-		return []uint64{}, ErrTooManyValidators
+		return []uint64{}, [][]byte{}, false, ErrTooManyValidators
 	}
 
-	validators := make([]uint64, strSplitLen)
-	keys := make(map[uint64]bool, strSplitLen)
+	var validatorIndices []uint64
+	var validatorPubkeys [][]byte
+	var pubkeyConverted bool
+	keys := make(map[interface{}]bool, strSplitLen)
 
-	for i, vStr := range strSplit {
+	// Find all pubkeys
+	for _, vStr := range strSplit {
+		if !searchPubkeyExactRE.MatchString(vStr) {
+			continue
+		}
+		if !strings.HasPrefix(vStr, "0x") {
+			// Query string public keys have to have 0x prefix
+			return []uint64{}, [][]byte{}, false, fmt.Errorf("invalid pubkey")
+		}
+		// make sure keys are unique
+		if exists := keys[vStr]; exists {
+			continue
+		}
+		keys[vStr] = true
+		validatorPubkeys = append(validatorPubkeys, common.FromHex(vStr))
+
+	}
+
+	// Convert pubkeys to indices if possible
+	if len(validatorPubkeys) > 0 {
+		validatorInfos := []struct {
+			Index  uint64
+			Pubkey []byte
+		}{}
+		err := db.ReaderDb.Select(&validatorInfos, `SELECT validatorindex as index, pubkey FROM validators WHERE pubkey = ANY($1)`, validatorPubkeys)
+		if err != nil {
+			return []uint64{}, [][]byte{}, false, err
+		}
+
+		for _, info := range validatorInfos {
+			validatorIndices = append(validatorIndices, info.Index)
+			keys[info.Index] = true
+			pubkeyConverted = true
+			for idx, pubkey := range validatorPubkeys {
+				if bytes.Contains(pubkey, info.Pubkey) {
+					validatorPubkeys = append(validatorPubkeys[:idx], validatorPubkeys[idx+1:]...)
+					break
+				}
+			}
+		}
+	}
+
+	// Find all indices
+	for _, vStr := range strSplit {
+		if searchPubkeyExactRE.MatchString(vStr) {
+			continue
+		}
 		v, err := strconv.ParseUint(vStr, 10, 64)
 		if err != nil {
-			return []uint64{}, err
+			return []uint64{}, [][]byte{}, false, err
 		}
-		// make sure keys are uniq
+		// make sure keys are unique
 		if exists := keys[v]; exists {
 			continue
 		}
 		keys[v] = true
-		validators[i] = v
+		validatorIndices = append(validatorIndices, v)
 	}
 
-	return validators, nil
+	return validatorIndices, validatorPubkeys, pubkeyConverted, nil
+}
+
+func updateValidatorsQueryString(w http.ResponseWriter, r *http.Request, validatorIndices []uint64, validatorPubkeys [][]byte) {
+	strValidators := make([]string, len(validatorIndices)+len(validatorPubkeys))
+	for i, n := range validatorIndices {
+		strValidators[i] = fmt.Sprintf("%v", n)
+	}
+	for i, n := range validatorPubkeys {
+		strValidators[i+len(validatorIndices)] = fmt.Sprintf("%#x", n)
+	}
+
+	q := r.URL.Query()
+	q.Set("validators", strings.Join(strValidators, ","))
+	r.URL.RawQuery = q.Encode()
+
+	fmt.Fprintf(w, `<script>window.history.replaceState(null, "Dashboard", "%s");</script>`, r.URL.String())
 }
 
 func Heatmap(w http.ResponseWriter, r *http.Request) {
@@ -156,11 +221,14 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 
 	q := r.URL.Query()
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	queryValidatorIndices, queryValidatorPubkeys, pubkeyConverted, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && err != ErrTooManyValidators {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
+	}
+	if pubkeyConverted {
+		updateValidatorsQueryString(w, r, queryValidatorIndices, queryValidatorPubkeys)
 	}
 
 	dashboardData := types.DashboardData{}
@@ -169,7 +237,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
-	dashboardData.NextWithdrawalRow, err = getNextWithdrawalRow(queryValidators)
+	dashboardData.NextWithdrawalRow, err = getNextWithdrawalRow(queryValidatorIndices)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -325,13 +393,13 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
 
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	queryValidatorIndices, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	if len(queryValidators) < 1 {
+	if len(queryValidatorIndices) < 1 {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -340,12 +408,12 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	var incomeHistoryChartData []*types.ChartDataPoint
 	var executionChartData []*types.ChartDataPoint
 	g.Go(func() error {
-		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency)
 		return err
 	})
 
 	g.Go(func() error {
-		executionChartData, err = getExecutionChartData(queryValidators, currency)
+		executionChartData, err = getExecutionChartData(queryValidatorIndices, currency)
 		return err
 	})
 
@@ -429,18 +497,18 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	queryValidatorIndices, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	if len(queryValidators) < 1 {
+	if len(queryValidatorIndices) < 1 {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
 
-	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency)
 	if err != nil {
 		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -460,7 +528,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	filterArr, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
@@ -505,7 +573,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	validators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	validatorIndices, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
@@ -545,14 +613,14 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, err := db.GetDashboardWithdrawalsCount(validators)
+	withdrawalCount, err := db.GetDashboardWithdrawalsCount(validatorIndices)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error retrieving dashboard validator withdrawals count: %v", err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	withdrawals, err := db.GetDashboardWithdrawals(validators, length, start, orderBy, orderDir)
+	withdrawals, err := db.GetDashboardWithdrawals(validatorIndices, length, start, orderBy, orderDir)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error retrieving validator withdrawals: %v", err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -594,16 +662,16 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	validatorIndexArr, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	filter := pq.Array(filterArr)
+	filter := pq.Array(validatorIndexArr)
 
-	var validators []*types.ValidatorsPageDataValidators
-	err = db.ReaderDb.Select(&validators, `
+	var validatorsByIndex []*types.ValidatorsPageDataValidators
+	err = db.ReaderDb.Select(&validatorsByIndex, `
 		SELECT
 			validators.validatorindex,
 			validators.pubkey,
@@ -630,14 +698,14 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(filterArr, services.LatestEpoch(), services.LatestEpoch())
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validatorIndexArr, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
 
-	for _, validator := range validators {
+	for _, validator := range validatorsByIndex {
 		for balanceIndex, balance := range balances {
 			if len(balance) == 0 {
 				continue
@@ -649,8 +717,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
+	tableData := make([][]interface{}, len(validatorsByIndex))
+	for i, v := range validatorsByIndex {
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
@@ -734,14 +802,14 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	queryValidatorIndices, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
 
-	earnings, _, err := GetValidatorEarnings(queryValidators, GetCurrency(r))
+	earnings, _, err := GetValidatorEarnings(queryValidatorIndices, GetCurrency(r))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator earnings")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -764,7 +832,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	filterArr, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
@@ -810,7 +878,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	filterArr, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
