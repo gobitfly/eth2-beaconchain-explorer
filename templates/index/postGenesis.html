@@ -15,7 +15,7 @@
 {{ end }}
 
 {{ define "postGenesis" }}
-  <div style="position:relative;" class="card mt-3 index-stats">
+  <div class="card mt-3 index-stats">
     {{ if not .ShowSyncingMessage }}
       <div style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; height:1.5rem;" class="progress w-100 style-slots-left" data-placement="bottom" :title="'This epoch is '+ epochCompletePercent +'% complete'">
         <div :style="'width:' + epochCompletePercent + '%;padding: 0 .3rem;'" class="progress-bar bg-secondary" role="progressbar" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32">
@@ -25,6 +25,12 @@
     {{ end }}
     {{ template "networkStats" $ }}
   </div>
+  {{ if .Data.SlotVizData }}
+    <div class="card p-5" style="margin-top: 10px">
+      {{ template "SlotViz" . }}
+      <div id="slotsViz"></div>
+    </div>
+  {{ end }}
   <div id="pg-tablesrow" class="row">
     <div class="col-lg-6" style="margin-top: 10px">
       {{ template "recentBlocks" }}
