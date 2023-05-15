@@ -13,6 +13,10 @@
     var vizChart
 
     function setupChart() {
+      if (vizChart) {
+        vizChart.parentNode.innerHTML = ""
+        vizChart = null
+      }
       const width = $(selector)?.width() || 0
       /// Chat Dimensions
       const margin = { top: 20, right: 30, bottom: 0, left: 30 }
@@ -425,6 +429,18 @@
       addWaterMark()
       processLaunchMetrics(epochs)
       setInterval(fetchMetrics, 3000)
+    })
+
+    var resizeDebounceDelay
+    window.addEventListener("resize", function (){
+      if (resizeDebounceDelay) {
+        clearTimeout(resizeDebounceDelay)
+      }
+      resizeDebounceDelay = setTimeout(function (){
+        setupChart()
+        addWaterMark()
+        fetchMetrics()
+      }, 500)
     })
 
     function addWaterMark() {
