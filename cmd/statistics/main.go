@@ -132,6 +132,7 @@ func main() {
 				err = db.WriteValidatorStatisticsForDay(uint64(d))
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", d, err)
+					break
 				}
 			}
 		}
@@ -147,6 +148,7 @@ func main() {
 				err = db.WriteChartSeriesForDay(int64(d))
 				if err != nil {
 					logrus.Errorf("error exporting chart series from day %v: %v", d, err)
+					break
 				}
 			}
 		}
@@ -225,6 +227,7 @@ func statisticsLoop() {
 					err := db.WriteValidatorStatisticsForDay(day)
 					if err != nil {
 						logrus.Errorf("error exporting stats for day %v: %v", day, err)
+						break
 					}
 				}
 			}
@@ -247,6 +250,7 @@ func statisticsLoop() {
 						err = db.WriteChartSeriesForDay(int64(day))
 						if err != nil {
 							logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+							break
 						}
 					}
 				}

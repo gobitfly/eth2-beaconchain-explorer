@@ -13,6 +13,10 @@
     var vizChart
 
     function setupChart() {
+      if (vizChart) {
+        vizChart.parentNode.innerHTML = ""
+        vizChart = null
+      }
       const width = $(selector)?.width() || 0
       /// Chat Dimensions
       const margin = { top: 20, right: 30, bottom: 0, left: 30 }
@@ -358,12 +362,16 @@
             )
         },
       })
+      addWaterMark()
     }
+
+    var lastSlotVizData;
 
     function fetchMetrics() {
       fetch("/launchMetrics")
         .then((res) => res.json())
         .then((data) => {
+          lastSlotVizData = data
           processLaunchMetrics(data)
         })
         .catch((error) => {
@@ -422,9 +430,13 @@
         updateCountdown()
       }
       setupChart()
-      addWaterMark()
       processLaunchMetrics(epochs)
       setInterval(fetchMetrics, 3000)
+    })
+
+    window.addEventListener("resize", function (){
+      setupChart()
+      processLaunchMetrics(lastSlotVizData);
     })
 
     function addWaterMark() {
