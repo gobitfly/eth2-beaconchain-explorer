@@ -365,10 +365,13 @@
       addWaterMark()
     }
 
+    var lastSlotVizData;
+
     function fetchMetrics() {
       fetch("/launchMetrics")
         .then((res) => res.json())
         .then((data) => {
+          lastSlotVizData = data
           processLaunchMetrics(data)
         })
         .catch((error) => {
@@ -431,15 +434,9 @@
       setInterval(fetchMetrics, 3000)
     })
 
-    var resizeDebounceDelay
     window.addEventListener("resize", function (){
-      if (resizeDebounceDelay) {
-        clearTimeout(resizeDebounceDelay)
-      }
-      resizeDebounceDelay = setTimeout(function (){
-        setupChart()
-        fetchMetrics()
-      }, 500)
+      setupChart()
+      processLaunchMetrics(lastSlotVizData);
     })
 
     function addWaterMark() {
