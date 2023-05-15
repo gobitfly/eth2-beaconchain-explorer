@@ -28,13 +28,13 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
-	latestDbEpoch, err := GetLatestEpoch()
+	finalizedCount, err := CountFinalizedEpochs(firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
 
-	if lastEpoch > latestDbEpoch {
-		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", lastEpoch, latestDbEpoch)
+	if finalizedCount < epochsPerDay {
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
 	}
 
 	start := time.Now()
@@ -699,13 +699,13 @@ func WriteChartSeriesForDay(day int64) error {
 	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
-	latestDbEpoch, err := GetLatestEpoch()
+	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
 	if err != nil {
 		return err
 	}
 
-	if (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch) > latestDbEpoch {
-		return fmt.Errorf("delaying statistics export as epoch %v has not yet been indexed. LatestDB: %v", (uint64(lastSlot) / utils.Config.Chain.Config.SlotsPerEpoch), latestDbEpoch)
+	if finalizedCount < epochsPerDay {
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
 	}
 
 	firstBlock, err := GetBlockNumber(uint64(firstSlot))
