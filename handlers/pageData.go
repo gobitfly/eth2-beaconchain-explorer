@@ -40,6 +40,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			NoTrack:     false,
 			Templates:   strings.Join(mainTemplates, ","),
 		},
+
 		Active:                active,
 		Data:                  &types.Empty{},
 		User:                  user,
@@ -56,28 +57,31 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			EthPrice:               0,
 			EthRoundPrice:          0,
 			EthTruncPrice:          "",
-			UsdRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("USD")),
+			UsdRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD")),
 			UsdTruncPrice:          "",
-			EurRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("EUR")),
+			EurRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "EUR")),
 			EurTruncPrice:          "",
-			GbpRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("GBP")),
+			GbpRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "GBP")),
 			GbpTruncPrice:          "",
-			CnyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CNY")),
+			CnyRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CNY")),
 			CnyTruncPrice:          "",
-			RubRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("RUB")),
+			RubRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "RUB")),
 			RubTruncPrice:          "",
-			CadRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CAD")),
+			CadRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CAD")),
 			CadTruncPrice:          "",
-			AudRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("AUD")),
+			AudRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "AUD")),
 			AudTruncPrice:          "",
-			JpyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("JPY")),
+			JpyRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "JPY")),
 			JpyTruncPrice:          "",
 			Currency:               GetCurrency(r),
 			CurrentPriceFormatted:  GetCurrentPriceFormatted(r),
 			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
 			CurrentSymbol:          GetCurrencySymbol(r),
+
+			ElPrice: price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, GetCurrency(r)),
+			ClPrice: price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, GetCurrency(r)),
 		},
-		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
+		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet" || utils.Config.Chain.Config.ConfigName == "gnosis",
 		DepositContract:     utils.Config.Chain.Config.DepositContractAddress,
 		ClientsUpdated:      ethclients.ClientsUpdated(),
 		ChainConfig:         utils.Config.Chain.Config,
@@ -112,8 +116,10 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			data.DebugSession = jsn
 		}
 	}
-	data.Rates.EthPrice = price.GetEthPrice(data.Rates.Currency)
-	data.Rates.ExchangeRate = price.GetEthPrice(data.Rates.Currency)
+	data.Rates.ElPrice = price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, data.Rates.Currency)
+	data.Rates.ClPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
+	data.Rates.EthPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
+	data.Rates.ExchangeRate = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
 	data.Rates.EthRoundPrice = price.GetEthRoundPrice(data.Rates.EthPrice)
 	data.Rates.EthTruncPrice = utils.KFormatterEthPrice(data.Rates.EthRoundPrice)
 	data.Rates.UsdTruncPrice = utils.KFormatterEthPrice(data.Rates.UsdRoundPrice)
@@ -221,6 +227,10 @@ func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
 }
 
 func createMenuItems(active string, isMain bool) []types.MainMenuItem {
+	if utils.Config.Chain.Name == "gnosis" {
+		return createMenuItemsGnosis(active, isMain)
+	}
+
 	hiddenFor := []string{"confirmation", "login", "register"}
 
 	if utils.SliceContains(hiddenFor, active) {
@@ -356,7 +366,8 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Icon:  "fa-rocket",
 						},
 					},
-				}, {
+				},
+				{
 					Label: "Stats",
 					Links: []types.NavigationLink{
 						{
@@ -473,6 +484,209 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Label: "Slot Finder",
 							Path:  "/slots/finder",
 							Icon:  "fa-cube",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
+	hiddenFor := []string{"confirmation", "login", "register"}
+
+	if utils.SliceContains(hiddenFor, active) {
+		return []types.MainMenuItem{}
+	}
+	return []types.MainMenuItem{
+		{
+			Label:    "Blockchain",
+			IsActive: active == "blockchain",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Epochs",
+							Path:  "/epochs",
+							Icon:  "fa-history",
+						},
+						{
+							Label: "Slots",
+							Path:  "/slots",
+							Icon:  "fa-cube",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Blocks",
+							Path:  "/blocks",
+							Icon:  "fa-cubes",
+						},
+						{
+							Label: "Txs",
+							Path:  "/transactions",
+							Icon:  "fa-credit-card",
+						},
+						{
+							Label: "Mempool",
+							Path:  "/mempool",
+							Icon:  "fa-upload",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Validators",
+			IsActive: active == "validators",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Overview",
+							Path:  "/validators",
+							Icon:  "fa-table",
+						},
+						{
+							Label: "Slashings",
+							Path:  "/validators/slashings",
+							Icon:  "fa-user-slash",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Validator Leaderboard",
+							Path:  "/validators/leaderboard",
+							Icon:  "fa-medal",
+						},
+						{
+							Label: "Deposit Leaderboard",
+							Path:  "/validators/deposit-leaderboard",
+							Icon:  "fa-file-import",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Deposits",
+							Path:  "/validators/deposits",
+							Icon:  "fa-file-signature",
+						},
+						{
+							Label: "Withdrawals",
+							Path:  "/validators/withdrawals",
+							Icon:  "fa-money-bill",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Dashboard",
+			IsActive: active == "dashboard",
+			Path:     "/dashboard",
+		},
+		{
+			Label:    "Notifications",
+			IsActive: false,
+			Path:     "/user/notifications",
+		},
+		{
+			Label:        "More",
+			IsActive:     active == "more",
+			HasBigGroups: true,
+			Groups: []types.NavigationGroup{
+				{
+					Label: "Stats",
+					Links: []types.NavigationLink{
+						{
+							Label: "Charts",
+							Path:  "/charts",
+							Icon:  "fa-chart-bar",
+						},
+						{
+							Label: "Income History",
+							Path:  "/rewards",
+							Icon:  "fa-money-bill-alt",
+						},
+						{
+							Label: "Profit Calculator",
+							Path:  "/calculator",
+							Icon:  "fa-calculator",
+						},
+						{
+							Label: "Block Viz",
+							Path:  "/vis",
+							Icon:  "fa-project-diagram",
+						},
+						{
+							Label:    "Correlations",
+							Path:     "/correlations",
+							Icon:     "fa-chart-line",
+							IsHidden: !isMain,
+						},
+					},
+				},
+				{
+					Label: "Tools",
+					Links: []types.NavigationLink{
+						{
+							Label: "beaconcha.in App",
+							Path:  "/mobile",
+							Icon:  "fa-mobile-alt",
+						},
+						{
+							Label: "beaconcha.in Premium",
+							Path:  "/premium",
+							Icon:  "fa-gem",
+						},
+						{
+							Label:      "Webhooks",
+							Path:       "/user/webhooks",
+							CustomIcon: "webhook_logo_svg",
+						},
+						{
+							Label: "API Docs",
+							Path:  "/api/v1/docs/index.html",
+							Icon:  "fa-book-reader",
+						},
+						{
+							Label: "API Pricing",
+							Path:  "/pricing",
+							Icon:  "fa-laptop-code",
+						},
+						{
+							Label: "Broadcast Signed Messages",
+							Path:  "/tools/broadcast",
+							Icon:  "fa-bullhorn",
+						},
+					},
+				},
+				{
+					Label: "Services",
+					Links: []types.NavigationLink{
+						{
+							Label:         "Eversteel",
+							Path:          "https://eversteel.io/",
+							CustomIcon:    "eversteel_logo_svg",
+							IsHighlighted: true,
+						},
+						{
+							Label: "Knowledge Base",
+							Path:  "https://kb.beaconcha.in",
+							Icon:  "fa-external-link-alt",
+						},
+						{
+							Label: "Notifications",
+							Path:  "/user/notifications",
+							Icon:  "fa-bell",
+						},
+						{
+							Label: "Graffiti Wall",
+							Path:  "/graffitiwall",
+							Icon:  "fa-paint-brush",
 						},
 					},
 				},

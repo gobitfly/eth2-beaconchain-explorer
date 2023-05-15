@@ -342,16 +342,16 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:                           "Staked Ether",
-		Subtitle:                        "History of daily staked Ether, which is the sum of all Effective Balances.",
+		Title:                           fmt.Sprintf("Staked %v", utils.Config.Frontend.ClCurrencySymbol),
+		Subtitle:                        fmt.Sprintf("History of daily staked %v, which is the sum of all Effective Balances.", utils.Config.Frontend.ClCurrencySymbol),
 		XAxisTitle:                      "",
-		YAxisTitle:                      "Ether",
+		YAxisTitle:                      utils.Config.Frontend.ElCurrencySymbol,
 		StackingMode:                    "false",
 		Type:                            "column",
 		ColumnDataGroupingApproximation: "close",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Staked Ether",
+				Name: fmt.Sprintf("Staked %v", utils.Config.Frontend.ClCurrencySymbol),
 				Data: dailyStakedEther,
 			},
 		},
@@ -389,13 +389,13 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		Title:                           "Validator Balance",
 		Subtitle:                        "Average Daily Validator Balance.",
 		XAxisTitle:                      "",
-		YAxisTitle:                      "Ether",
+		YAxisTitle:                      utils.Config.Frontend.ElCurrencySymbol,
 		StackingMode:                    "false",
 		Type:                            "column",
 		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Average Balance [ETH]",
+				Name: fmt.Sprintf("Average Balance [%s]", utils.Config.Frontend.ClCurrencySymbol),
 				Data: dailyAverageBalance,
 			},
 		},

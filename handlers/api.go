@@ -3650,11 +3650,12 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	})
 
 	balanceHistoryChartData := make([][4]float64, len(data))
+	clPrice := price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
 	for i, item := range data {
 		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
 		balanceHistoryChartData[i][1] = item.ValidatorCount
-		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * price.GetEthPrice(currency)
-		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * price.GetEthPrice(currency)
+		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * clPrice
+		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * clPrice
 	}
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)

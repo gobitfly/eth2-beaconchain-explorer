@@ -104,7 +104,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
-		"formatIncomeNoCurrency":                  FormatIncomeNoCurrency,
+		"formatIncomeEx":                          FormatIncomeEx,
 		"formatIncomeSql":                         FormatIncomeSql,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
@@ -138,6 +138,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
 		"getCurrencyLabel":                        price.GetCurrencyLabel,
+		"config":                                  func() *types.Config { return Config },
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -467,6 +468,26 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Chain.DomainVoluntaryExit = "0x04000000"
 	}
 
+	if cfg.Frontend.ClCurrencySymbol == "" {
+		switch cfg.Chain.Name {
+		case "gnosis":
+			cfg.Frontend.ClCurrencySymbol = "GNO"
+			cfg.Frontend.ClCurrencyDivisor = 32e9
+		default:
+			cfg.Frontend.ClCurrencySymbol = "ETH"
+			cfg.Frontend.ClCurrencyDivisor = 1e9
+		}
+	}
+
+	if cfg.Frontend.ElCurrencySymbol == "" {
+		switch cfg.Chain.Name {
+		case "gnosis":
+			cfg.Frontend.ElCurrencySymbol = "xDAI"
+		default:
+			cfg.Frontend.ElCurrencySymbol = "ETH"
+		}
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
 		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,
@@ -474,6 +495,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 		"depositChainID":         cfg.Chain.Config.DepositChainID,
 		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
 		"depositContractAddress": cfg.Chain.Config.DepositContractAddress,
+		"clCurrencySymbol":       cfg.Frontend.ClCurrencySymbol,
+		"elCurrencySymbol":       cfg.Frontend.ElCurrencySymbol,
 	}).Infof("did init config")
 
 	return nil
@@ -750,10 +773,6 @@ func GenerateRandomAPIKey() (string, error) {
 
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
-}
-
-func ExchangeRateForCurrency(currency string) float64 {
-	return price.GetEthPrice(currency)
 }
 
 // Glob walks through a directory and returns files with a given extension

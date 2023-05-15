@@ -725,8 +725,8 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 			Method:        methodFormatted,
 			FromFormatted: v.FromFormatted,
 			ToFormatted:   v.ToFormatted,
-			Value:         utils.FormatAmountFormatted(v.Value, "Ether", 5, 0, true, true, false),
-			Fee:           utils.FormatAmountFormatted(v.Fee, "Ether", 5, 0, true, true, false),
+			Value:         utils.FormatAmountFormatted(v.Value, utils.Config.Frontend.ElCurrencySymbol, 5, 0, true, true, false),
+			Fee:           utils.FormatAmountFormatted(v.Fee, utils.Config.Frontend.ElCurrencySymbol, 5, 0, true, true, false),
 			GasPrice:      utils.FormatAmountFormatted(v.GasPrice, "GWei", 5, 0, true, true, false),
 		}
 	}
@@ -823,7 +823,7 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), utils.Config.Frontend.ElCurrencySymbol, 6))),
 		})
 	}
 

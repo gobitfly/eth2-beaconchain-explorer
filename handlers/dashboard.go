@@ -310,7 +310,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "Ether", 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), utils.Config.Frontend.ElCurrencySymbol, 6))),
 	})
 
 	return nextData, nil
@@ -412,9 +412,10 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 			totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
 		}
 
+		//balanceTs := blocks[i].GetTime().AsTime().Unix()
 		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-			X:     ts,
-			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
+			X:     float64(utils.DayToTime(day).Unix() * 1000),
+			Y:     price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, currency) * totalReward,
 			Color: color,
 		}
 	}
@@ -568,7 +569,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), utils.Config.Frontend.ElCurrencySymbol, 6))),
 		})
 	}
 
@@ -655,8 +656,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
-				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
+				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency), currency),
+				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency), currency),
 			},
 			v.State,
 		}
@@ -709,7 +710,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		// })
 
 		// tableData[i] = append(tableData[i], fmt.Sprintf("%.4f ETH", float64(v.Performance7d)/float64(1e9)))
-		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency))
+		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency, true))
 	}
 
 	type dataType struct {

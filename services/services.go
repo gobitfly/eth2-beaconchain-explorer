@@ -621,7 +621,7 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
-	currency := "ETH"
+	currency := utils.Config.Frontend.ClCurrencySymbol
 
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
@@ -832,7 +832,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				Finalized:                        false,
 				FinalizedFormatted:               utils.FormatYesNo(false),
 				EligibleEther:                    0,
-				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, "ETH"),
+				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, utils.Config.Frontend.ClCurrencySymbol),
 				GlobalParticipationRate:          0,
 				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRate(0, 1, ""),
 				VotedEther:                       0,
@@ -902,7 +902,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.StakedEtherChartData = make([][]float64, len(epochHistory))
 	data.ActiveValidatorsChartData = make([][]float64, len(epochHistory))
 	for i, history := range epochHistory {
-		data.StakedEtherChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.EligibleEther) / 1000000000}
+		data.StakedEtherChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.EligibleEther) / float64(utils.Config.Frontend.ClCurrencyDivisor)}
 		data.ActiveValidatorsChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.ValidatorsCount)}
 	}
 
@@ -1138,21 +1138,21 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = LatestProposedSlot()
 	data.FinalityDelay = FinalizationDelay()
 	data.IsSyncing = IsSyncing()
-	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
 	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)
-	data.EurRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("EUR"))
+	data.EurRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "EUR"))
 	data.EurTruncPrice = utils.KFormatterEthPrice(data.EurRoundPrice)
-	data.GbpRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("GBP"))
+	data.GbpRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "GBP"))
 	data.GbpTruncPrice = utils.KFormatterEthPrice(data.GbpRoundPrice)
-	data.CnyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CNY"))
+	data.CnyRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CNY"))
 	data.CnyTruncPrice = utils.KFormatterEthPrice(data.CnyRoundPrice)
-	data.RubRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("RUB"))
+	data.RubRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "RUB"))
 	data.RubTruncPrice = utils.KFormatterEthPrice(data.RubRoundPrice)
-	data.CadRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CAD"))
+	data.CadRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CAD"))
 	data.CadTruncPrice = utils.KFormatterEthPrice(data.CadRoundPrice)
-	data.AudRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("AUD"))
+	data.AudRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "AUD"))
 	data.AudTruncPrice = utils.KFormatterEthPrice(data.AudRoundPrice)
-	data.JpyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("JPY"))
+	data.JpyRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "JPY"))
 	data.JpyTruncPrice = utils.KFormatterEthPrice(data.JpyRoundPrice)
 
 	return data
@@ -1336,7 +1336,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		logrus.WithError(err).Error("error updating gas now history")
 	}
 
-	gpoData.Data.Price = price.GetEthPrice("USD")
+	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD")
 	gpoData.Data.Currency = "USD"
 
 	// gpoData.RapidUSD = gpoData.Rapid * 21000 * params.GWei / params.Ether * usd

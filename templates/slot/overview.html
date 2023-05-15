@@ -40,9 +40,9 @@
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Block Reward paid out to the Proposer as reported by the Relay">MEV Block Reward:</span></div>
             <div class="col-md-10">
               {{ if .IsValidMev }}
-                {{ formatAmount .MevBribe "Ether" 5 }}
+                {{ formatAmount .MevBribe config.Frontend.ElCurrencySymbol 5 }}
               {{ else }}
-                <s>{{ formatAmount .MevBribe "Ether" 5 }}</s> <i data-toggle="tooltip" data-placement="top" title="This Reward was flagged as invalid" class="fas fa-question-circle text-warning"></i>
+                <s>{{ formatAmount .MevBribe config.Frontend.ElCurrencySymbol 5 }}</s> <i data-toggle="tooltip" data-placement="top" title="This Reward was flagged as invalid" class="fas fa-question-circle text-warning"></i>
               {{ end }}
             </div>
           </div>
@@ -56,7 +56,7 @@
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Tx Reward:</span></div>
             <div class="col-md-10">
-              {{ formatAmount .Reward "Ether" 5 }}
+              {{ formatAmount .Reward config.Frontend.ElCurrencySymbol 5 }}
             </div>
           </div>
         {{ end }}
@@ -221,7 +221,7 @@
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction rewards from block {{ .Number }}">Reward:</span></div>
                   <div class="col-md-10 text-monospace text-break">
-                    {{ formatAmount .Reward "Ether" 5 }}
+                    {{ formatAmount .Reward config.Frontend.ElCurrencySymbol 5 }}
                   </div>
                 </div>
 
@@ -242,7 +242,7 @@
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedFees "Ether" 5 }}</div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedFees config.Frontend.ElCurrencySymbol 5 }}</div>
                 </div>
 
                 <div class="row p-1">

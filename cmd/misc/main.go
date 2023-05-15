@@ -28,6 +28,7 @@ var opts = struct {
 	StartDay      uint64
 	EndDay        uint64
 	Validator     uint64
+	Validators    string
 }{}
 
 func main() {
@@ -39,6 +40,7 @@ func main() {
 	flag.Uint64Var(&opts.StartDay, "day-start", 0, "start day to debug")
 	flag.Uint64Var(&opts.EndDay, "day-end", 0, "end day to debug")
 	flag.Uint64Var(&opts.Validator, "validator", 0, "validator to check for")
+	flag.StringVar(&opts.Validators, "validators", "", "comma separated list of validators (pubkey of index)")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
 	flag.Parse()
 
@@ -125,9 +127,32 @@ func main() {
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator)
-
+	case "debug-balances":
+		DebugBalances(opts.StartDay, opts.EndDay, opts.Validator)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
+	}
+}
+
+func DebugBalances(startDay, endDay, validator uint64) {
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	if err != nil {
+		logrus.Fatalf("error connecting to bigtable: %v", err)
+	}
+	defer bt.Close()
+
+	for day := startDay; day <= endDay; day++ {
+		startEpoch := day * utils.EpochsPerDay()
+		endEpoch := startEpoch + utils.EpochsPerDay() - 1
+		hist, err := bt.GetValidatorBalanceHistory([]uint64{validator}, startEpoch, endEpoch)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		for _, v := range hist {
+			for _, b := range v {
+				fmt.Printf("%+v\n", b)
+			}
+		}
 	}
 }
 

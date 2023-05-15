@@ -168,11 +168,6 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		return nil, fmt.Errorf("error getting withdrawals: %w", err)
 	}
 
-	formatCurrency := currency
-	if currency == "ETH" {
-		formatCurrency = "Ether"
-	}
-
 	tableData := make([][]interface{}, len(withdrawals))
 	for i, w := range withdrawals {
 		tableData[i] = []interface{}{
@@ -182,7 +177,7 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), currency, 6))),
 		}
 	}
 

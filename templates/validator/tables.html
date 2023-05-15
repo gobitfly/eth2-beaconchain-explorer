@@ -698,9 +698,9 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatIncome .IncomeToday.Cl $.Rates.Currency }} <br> 
-                EL: {{ formatIncome .IncomeToday.El $.Rates.Currency }}">
-              {{ formatIncome .IncomeToday.Total $.Rates.Currency }}
+                CL: {{ formatIncomeEx .IncomeToday.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} <br> 
+                EL: {{ formatIncomeEx .IncomeToday.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }}">
+              {{ formatIncome .IncomeToday.Total $.Rates.Currency true }}
             </span>
           </td>
         </tr>
@@ -712,10 +712,10 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatIncome .Income1d.Cl $.Rates.Currency }} | {{ formatIncome .Income7d.Cl $.Rates.Currency }} | {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br> 
-                EL: {{ formatIncome .Income1d.El $.Rates.Currency }} | {{ formatIncome .Income7d.El $.Rates.Currency }} | {{ formatIncome .Income31d.El $.Rates.Currency }}">
-              {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} |
-              {{ formatIncomeNoCurrency .Income31d.Total $.Rates.Currency }}
+                CL: {{ formatIncomeEx .Income1d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income7d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income31d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} <br> 
+                EL: {{ formatIncomeEx .Income1d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income7d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income31d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }}">
+              {{ formatIncome .Income1d.Total $.Rates.Currency false }} | {{ formatIncome .Income7d.Total $.Rates.Currency false }} |
+              {{ formatIncome .Income31d.Total $.Rates.Currency false }}
             </span>
           </td>
         </tr>
@@ -744,10 +744,10 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                  CL: 1d: {{ formatIncomeNoCurrency .Income1d.Cl $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Cl $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br /> 
-                  EL: 1d: {{ formatIncomeNoCurrency .Income1d.El $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.El $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.El $.Rates.Currency }} <br /> 
-                  All: 1d: {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Total $.Rates.Currency }}">
-              {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }}
+                  CL: 1d: {{ formatIncomeEx .Income1d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 7d: {{ formatIncomeEx .Income7d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 31d: {{ formatIncomeEx .Income31d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} <br /> 
+                  EL: 1d: {{ formatIncomeEx .Income1d.El config.Frontend.ElCurrencySymbol $.Rates.Currency false }} | 7d: {{ formatIncomeEx .Income7d.El config.Frontend.ElCurrencySymbol $.Rates.Currency false }} | 31d: {{ formatIncomeEx .Income31d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }} <br /> 
+                  All: 1d: {{ formatIncomeEx .Income1d.Total config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 7d: {{ formatIncomeEx .Income7d.Total config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 31d: {{ formatIncomeEx .Income31d.Total config.Frontend.ClCurrencySymbol $.Rates.Currency true }}">
+              {{ formatIncome .Income7d.Total $.Rates.Currency true }}
               <i class="far fa-question-circle"></i>
             </span>
           </td>
