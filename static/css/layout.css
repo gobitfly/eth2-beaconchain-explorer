@@ -43,7 +43,10 @@ table {
 .cursor-pointer {
   cursor: pointer;
 }
-@media (max-width: 1140px) {
+@media (max-width: 1139px) {
+  .main-navigation .container {
+    max-width: 100%;
+  }
   .dropdown-menu {
     border: var(--body-color) solid 1px;
     border-radius: 0.4375rem;
@@ -80,7 +83,7 @@ table {
   overflow-y: hidden;
 }
 
-@media (min-width: 961px) {
+@media (min-width: 1140px) {
   .currency-selection,
   #mobile-search-bar,
   .main-navigation .mobile {
@@ -96,7 +99,7 @@ table {
   fill: var(--body-color, #dee2e6);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1139px) {
   #mobile-search-bar,
   #hero-container {
     margin-top: var(--header-bar-height);
@@ -489,7 +492,13 @@ table {
   aspect-ratio: 1;
 }
 
-@media (max-width: 1140px) {
+.main-navigation .nav-header {
+  font-size: 1.375rem;
+  line-height: 2.3125rem;
+  font-weight: 300;
+}
+
+@media (max-width: 1139px) {
   .main-navigation .dropdown-item {
     padding: 0 1.5rem;
   }
