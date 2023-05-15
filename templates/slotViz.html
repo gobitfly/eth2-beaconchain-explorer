@@ -362,6 +362,7 @@
             )
         },
       })
+      addWaterMark()
     }
 
     function fetchMetrics() {
@@ -426,7 +427,6 @@
         updateCountdown()
       }
       setupChart()
-      addWaterMark()
       processLaunchMetrics(epochs)
       setInterval(fetchMetrics, 3000)
     })
@@ -438,7 +438,6 @@
       }
       resizeDebounceDelay = setTimeout(function (){
         setupChart()
-        addWaterMark()
         fetchMetrics()
       }, 500)
     })
