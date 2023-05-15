@@ -2543,12 +2543,22 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	summarize := true
+	summarizeParam := q.Get("summarize")
+	if summarizeParam != "" {
+		var err error
+		summarize, err = strconv.ParseBool(summarizeParam)
+		if err != nil {
+			// logger.WithError(err).Errorf("invalid value for summarize provided: %v", err)
+			sendErrorResponse(w, r.URL.String(), "invalid value for summarize provided")
+			return
+		}
+	}
+
 	summarize_query := ""
-	summarize, err := strconv.ParseBool(q.Get("summarize"))
-	if err == nil && summarize {
+	if summarize {
 		// only pick latest pixel update
 		summarize_query = "DISTINCT ON (x, y) "
-		return
 	}
 
 	rows, err := db.ReaderDb.Query(`
