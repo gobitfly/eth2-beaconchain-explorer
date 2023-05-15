@@ -34,7 +34,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 
 	if finalizedCount < epochsPerDay {
-		return fmt.Errorf("delaying statistics export as not all epochs for this day are finalized. LatestDB: %v", day)
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
 	}
 
 	start := time.Now()
@@ -705,7 +705,7 @@ func WriteChartSeriesForDay(day int64) error {
 	}
 
 	if finalizedCount < epochsPerDay {
-		return fmt.Errorf("delaying chart series export as not all epochs for this day are finalized. LatestDB: %v", day)
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
 	}
 
 	firstBlock, err := GetBlockNumber(uint64(firstSlot))

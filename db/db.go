@@ -479,7 +479,7 @@ func GetAllEpochs() ([]uint64, error) {
 	return epochs, nil
 }
 
-// Count finalized epochs in range
+// Count finalized epochs in range (including start and end epoch)
 func CountFinalizedEpochs(startEpoch uint64, endEpoch uint64) (uint64, error) {
 	var count uint64
 	err := WriterDb.Get(&count, "SELECT COUNT(*) FROM epochs WHERE epoch >= $1 AND epoch <= $2 AND finalized", startEpoch, endEpoch)
