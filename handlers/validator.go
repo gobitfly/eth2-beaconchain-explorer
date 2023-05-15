@@ -1553,6 +1553,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
 
 		var lastActionDay uint64
+		// let's get the last day where validator had duties which can be after the exit epoch of the validator
 		err = db.ReaderDb.Get(&lastActionDay, `
 			SELECT COALESCE(MAX(day), 0) 
 			FROM validator_stats 
@@ -1571,6 +1572,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		lastActionEpoch := (lastActionDay + 1) * utils.EpochsPerDay()
+		// if the validator had some duties after the exit epoch we calculate how many extra epochs we have to check after the exit epoch
 		if lastActionEpoch > currentEpoch {
 			extraEpochs = protomath.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
 		}
@@ -1586,10 +1588,12 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// if there are additional epochs with duties we have to go through all of them as there can be gaps (after the exit before the duty)
 		for i := endEpoch; i >= startEpoch && len(tableData) < pageLength; i-- {
 			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
 				continue
 			}
+			// for paging we skip the first X epochs with duties
 			if start > 0 {
 				start--
 				continue
@@ -1600,8 +1604,9 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	extraItemLength := len(tableData)
+	// if we have already found enough items we can skip the 'normal' step.
 	if extraItemLength < pageLength {
-		startEpoch := currentEpoch - start - uint64(pageLength-1-extraItemLength)
+		startEpoch := currentEpoch - start - uint64(pageLength-1-extraItemLength) // we only get the exact number of epochs to get to the page length
 		endEpoch := currentEpoch - start
 		if startEpoch > endEpoch { // handle underflows of startEpoch
 			startEpoch = 0
@@ -1614,7 +1619,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 		for i := endEpoch; i >= startEpoch && len(tableData) < pageLength; i-- {
 			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
-				if i+extraEpochs <= endEpoch {
+				if i <= endEpoch {
 					tableData = append(tableData, []interface{}{
 						utils.FormatEpoch(i),
 						"pending...",
