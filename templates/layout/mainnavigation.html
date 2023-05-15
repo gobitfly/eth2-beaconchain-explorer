@@ -1,29 +1,34 @@
 {{ define "mainNavigation" }}
   <nav id="nav" class="main-navigation navbar navbar-expand-lg navbar-light">
     <div class="container">
-      <a class="navbar-brand" href="/">
-        {{ includeSvg "brand_svg" }}
-        <span class="brand-text">beaconcha.in</span>
-      </a>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+      <div id="nav-bar-header" class="w-100">
+        <a class="navbar-brand d-flex align-content-center" href="/">
+          {{ includeSvg "brand_svg" }}
+          <span class="brand-text ml-2">beaconcha.in</span>
+        </a>
+        <div class="d-flex align-items-center">
+          <div class="currency-selection">{{ template "currencySelection" . }}</div>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            {{ includeSvg "menu_svg" }}
+          </button>
+        </div>
+      </div>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav ml-auto">
-          {{ range . }}
+          {{ range .MainMenuItems }}
             {{ $hasBigGroups := .HasBigGroups }}
             {{ $numberOfGroups := (len .Groups) }}
-            <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }}">
+            <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }} {{ .CustomClass }}">
               {{ if len .Groups }}
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <span class="nav-text">{{ .Label }}</span>
+                  <span class="nav-text nav-header">{{ .Label }}</span>
                 </a>
 
                 <div class="dropdown-menu {{ if $hasBigGroups }}dropdown-menu-right p-sm-2 p-md-4 px-lg-2 align-content-between flex-wrap flex-lg-nowrap{{ end }}" aria-labelledby="navbarDropdown{ .Label }}">
                   {{ range $groupIndex, $group := .Groups }}
                     {{ if $hasBigGroups }}
                       <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
-                        <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">{{ .Label }}</span>
+                        <h5 class="ml-4">{{ .Label }}</h5>
                         {{ range .Links }}
                           {{ template "mainNavigationItem" . }}
                         {{ end }}
@@ -41,7 +46,7 @@
                 </div>
               {{ else }}
                 <a class="nav-link" href="{{ .Path }}">
-                  <span class="nav-text">{{ .Label }}</span>
+                  <span class="nav-text nav-header">{{ .Label }}</span>
                 </a>
               {{ end }}
             </li>

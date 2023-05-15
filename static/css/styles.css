@@ -25,7 +25,6 @@
   --bg: #fbf0e822;
 
   --banner-background: var(--charade);
-  --banner-text: var(--manhattan);
   --highlight: rgba(251, 166, 105, 0.5);
   --shadow-only-light: 0 1px 4px var(--shadow-light);
 }

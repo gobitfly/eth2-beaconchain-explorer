@@ -57,6 +57,7 @@ type PageData struct {
 type MainMenuItem struct {
 	Label        string
 	Path         string
+	CustomClass  string
 	IsActive     bool
 	HasBigGroups bool // if HasBigGroups is set to true then the NavigationGroups will be ordered horizontally and their Label will be shown
 	Groups       []NavigationGroup
