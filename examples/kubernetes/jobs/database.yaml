@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-explorer-tables
+  namespace: chiado
+  labels:
+    app: create-explorer-tables
+spec:
+  completions: 1
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: "Never"
+      containers:
+      - name: create-tables
+        image: postgres:13.0
+        imagePullPolicy: 'IfNotPresent'
+        command: [
+          "psql",
+          "-f", "/scripts/tables.sql"
+        ]
+        volumeMounts:
+          - name: explorer-config
+            mountPath: /scripts/tables.sql
+            subPath: tables.sql
+        env:
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "explorer-postgres"
+                key: pgpassword
+          - name: DB
+            valueFrom:
+              secretKeyRef:
+                name: "explorer-postgres"
+                key: db
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: "explorer-postgres"
+                key: host
+          - name: DB_PORT
+            valueFrom:
+              secretKeyRef:
+                name: "explorer-postgres"
+                key: port
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: "explorer-postgres"
+                key: user
+      volumes:
+        - name: explorer-config
+          configMap:
+            name: explorer-config
+        - name: explorer
+          secret:
+            secretName: explorer

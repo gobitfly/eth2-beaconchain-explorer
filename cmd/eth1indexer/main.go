@@ -110,6 +110,14 @@ func main() {
 		utils.LogFatal(nil, "no erigon node url provided", 0)
 	}
 
+	if bigtableProject == nil || *bigtableProject == "" {
+		logrus.Fatal("no BigTable Project provided")
+	}
+
+	if bigtableInstance == nil || *bigtableInstance == "" {
+		logrus.Fatal("no BigTable Instance provided")
+	}
+
 	logrus.Infof("using erigon node at %v", *erigonEndpoint)
 	client, err := rpc.NewErigonClient(*erigonEndpoint)
 	if err != nil {
