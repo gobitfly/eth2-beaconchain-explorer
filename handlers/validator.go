@@ -1548,12 +1548,12 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	currentEpoch := services.LatestEpoch() - 1
 	var extraEpochs uint64 = 0
-	// for an exited validator we show the history until his exit
+	// for an exited validator we show the history until his exit or (in rare cases) until his last sync / propose duties are finished
 	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && currentEpoch > (activationAndExitEpoch.ExitEpoch-1) {
 		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
 
-		var lastActoinDay uint64
-		err = db.ReaderDb.Get(&lastActoinDay, `
+		var lastActionDay uint64
+		err = db.ReaderDb.Get(&lastActionDay, `
 			SELECT COALESCE(MAX(day), 0) 
 			FROM validator_stats 
 			WHERE 
@@ -1566,11 +1566,11 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 					OR orphaned_blocks > 0 
 			);`, index)
 		if err != nil {
-			logger.Errorf("error retrieving lastActoinDay for validator-history: %v", err)
+			logger.Errorf("error retrieving lastActionDay for validator-history: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		lastActionEpoch := (lastActoinDay + 1) * utils.EpochsPerDay()
+		lastActionEpoch := (lastActionDay + 1) * utils.EpochsPerDay()
 		if lastActionEpoch > currentEpoch {
 			extraEpochs = protomath.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
 		}

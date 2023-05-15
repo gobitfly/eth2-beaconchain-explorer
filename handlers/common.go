@@ -43,7 +43,7 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 	return validatorOnlineThresholdSlot
 }
 
-// GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
+// GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators, including proposal and statisic information - infused with data from the current b. day
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	if len(validators) == 0 {
 		return nil, nil, errors.New("no validators provided")
