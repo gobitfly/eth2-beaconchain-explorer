@@ -479,6 +479,18 @@ func GetAllEpochs() ([]uint64, error) {
 	return epochs, nil
 }
 
+// Count finalized epochs in range
+func CountFinalizedEpochs(startEpoch uint64, endEpoch uint64) (uint64, error) {
+	var count uint64
+	err := WriterDb.Get(&count, "SELECT COUNT(*) FROM epochs WHERE epoch >= $1 AND epoch <= $2 AND finalized", startEpoch, endEpoch)
+
+	if err != nil {
+		return 0, fmt.Errorf("error counting finalized epochs [%v -> %v] from DB: %w", startEpoch, endEpoch, err)
+	}
+
+	return count, nil
+}
+
 // GetLastPendingAndProposedBlocks will return all proposed and pending blocks (ignores missed slots) from the database
 func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
