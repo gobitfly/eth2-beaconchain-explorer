@@ -2481,6 +2481,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the most recent pixels that have been painted during the last 10000 slots.
 // @Description Optionally set the slot query parameter to look back further.
 // @Description Boundary coordinates are included.
+// @Description X = 0 and Y = 0 start at the upper left corner.
 // @Description Returns an error if an invalid area is provided by the coordinates.
 // @Produce  json
 // @Param startx query int false "Start X offset" default(0)
