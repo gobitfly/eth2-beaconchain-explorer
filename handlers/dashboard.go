@@ -156,7 +156,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 
 	q := r.URL.Query()
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	_, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && err != ErrTooManyValidators {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
@@ -168,13 +168,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
-
-	dashboardData.NextWithdrawalRow, err = getNextWithdrawalRow(queryValidators)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
 
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
@@ -559,7 +552,18 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, 0, len(withdrawals))
+	var tableData [][]interface{}
+	NextWithdrawalRow, err := getNextWithdrawalRow(validators)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
+	} else {
+		if NextWithdrawalRow == nil {
+			tableData = make([][]interface{}, 0, len(withdrawals))
+		} else {
+			tableData = make([][]interface{}, 0, len(withdrawals)+1)
+			tableData = append(NextWithdrawalRow, tableData...)
+		}
+	}
 
 	for _, w := range withdrawals {
 		tableData = append(tableData, []interface{}{
