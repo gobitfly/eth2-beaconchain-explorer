@@ -204,10 +204,10 @@ type IndexPageData struct {
 	DepositChart           *ChartsPageDataChart
 	DepositDistribution    *ChartsPageDataChart
 	Countdown              interface{}
-	SlotVizData            *SlotVizPageData
-	EpochParticipationRate float64 `json:"epoch_participation_rate"`
-	EthStore               float64 `json:"eth_store"`
-	ChurnRate              uint64  `json:"churn_rate"`
+	SlotVizData            *SlotVizPageData `json:"slotVizData"`
+	EpochParticipationRate float64          `json:"epoch_participation_rate"`
+	EthStore               float64          `json:"eth_store"`
+	ChurnRate              uint64           `json:"churn_rate"`
 }
 
 type SlotVizPageData struct {
