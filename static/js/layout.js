@@ -14,6 +14,7 @@ function applyTTFix() {
   $("button, a").on("mousedown", (evt) => {
     evt.preventDefault() // prevent setting the browser focus on all mouse buttons, which prevents tooltips from disapearing
   })
+  truncateTooltip()
 }
 
 // FAB toggle
@@ -501,6 +502,23 @@ function formatAriaEthereumDate(elem) {
   } else {
     $(elem).text(local.toFormat(format))
   }
+}
+
+function truncateTooltip() {
+  let nodes = $("[truncate-tooltip]")
+  nodes.each((_, node) => {
+    console.log(node)
+    let title = ""
+    if (node.scrollWidth > node.offsetWidth) {
+      title = node.attributes["truncate-tooltip"].value
+    }
+    if (node.attributes["title"]?.value != title) {
+      node.setAttribute("title", title)
+      if (title > 0) {
+        $(node).tooltip()
+      }
+    }
+  })
 }
 
 function formatTimestamps(selStr) {
