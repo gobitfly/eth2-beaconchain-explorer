@@ -503,6 +503,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
+	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
 
 	logger.Infof("exporting sync statistics")
