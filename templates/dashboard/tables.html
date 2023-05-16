@@ -49,8 +49,7 @@
 
       function createWithdrawalTable() {
         if (!table) {
-          table = $("#withdrawal-table")
-          .DataTable({
+          table = $("#withdrawal-table").DataTable({
             processing: true,
             serverSide: true,
             stateSave: true,
@@ -69,7 +68,7 @@
               url: `/dashboard/data/withdrawal`,
               data: function (d) {
                 d.validators = getValidatorString()
-              }
+              },
             },
             pagingType: "input",
             pageLength: 10,
