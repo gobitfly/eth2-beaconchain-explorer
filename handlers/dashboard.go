@@ -553,13 +553,17 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var tableData [][]interface{}
+
+	// check if there is a NextWithdrawal and append
 	NextWithdrawalRow, err := getNextWithdrawalRow(validators)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
+		tableData = make([][]interface{}, 0, len(withdrawals))
 	} else {
 		if NextWithdrawalRow == nil {
 			tableData = make([][]interface{}, 0, len(withdrawals))
 		} else {
+			// make the array +1 larger to append the NextWithdrawal row
 			tableData = make([][]interface{}, 0, len(withdrawals)+1)
 			tableData = append(NextWithdrawalRow, tableData...)
 		}
