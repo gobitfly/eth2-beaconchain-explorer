@@ -1643,7 +1643,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	totalCount = protomath.MaxU64(totalCount, uint64(pageLength*maxPages))
+	totalCount = protomath.MinU64(totalCount, uint64(pageLength*maxPages))
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
