@@ -128,6 +128,32 @@ func updateValidatorsQueryString(w http.ResponseWriter, r *http.Request, validat
 	fmt.Fprintf(w, `<script>window.history.replaceState(null, "Dashboard", "%s");</script>`, r.URL.String())
 }
 
+func checkValidatorsQuery(validatorIndices []uint64, validatorPubkeys [][]byte) error {
+	validatorCount := 0
+
+	if len(validatorIndices) > 0 {
+		err := db.ReaderDb.Get(&validatorCount, `SELECT COUNT(*) FROM validators WHERE validatorindex = ANY($1)`, validatorIndices)
+		if err != nil {
+			return err
+		}
+		if validatorCount != len(validatorIndices) {
+			return fmt.Errorf("invalid validator index")
+		}
+	}
+
+	if len(validatorPubkeys) > 0 {
+		err := db.ReaderDb.Get(&validatorCount, `SELECT COUNT(DISTINCT publickey) AS distinct_count FROM eth1_deposits WHERE publickey = ANY($1)`, validatorPubkeys)
+		if err != nil {
+			return err
+		}
+		if validatorCount != len(validatorPubkeys) {
+			return fmt.Errorf("invalid validator public key")
+		}
+	}
+
+	return nil
+}
+
 func Heatmap(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "heatmap.html")
 	var heatmapTemplate = templates.GetTemplate(templateFiles...)
@@ -216,12 +242,6 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func HandlerFunc(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	q.Set("parameter", "123456")
-	r.URL.RawQuery = q.Encode()
-}
-
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "dashboard.html", "dashboard/tables.html")
 	var dashboardTemplate = templates.GetTemplate(templateFiles...)
@@ -233,6 +253,13 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	queryValidatorIndices, queryValidatorPubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && err != ErrTooManyValidators {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
+	err = checkValidatorsQuery(queryValidatorIndices, queryValidatorPubkeys)
+	if err != nil {
+		utils.LogError(err, fmt.Errorf("error finding validators in database from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -505,8 +532,8 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	validatorLimit := getUserPremium(r).MaxValidators
-	queryValidatorIndices, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
-	if err != nil {
+	queryValidatorIndices, queryValidatorPubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	if err != nil || len(queryValidatorPubkeys) > 0 {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
@@ -862,6 +889,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
+
 	filter := pq.Array(filterArr)
 
 	var activeValidators []uint64
@@ -908,6 +936,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
+
 	filter := pq.Array(filterArr)
 
 	proposals := []struct {

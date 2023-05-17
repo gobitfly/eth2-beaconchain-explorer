@@ -33,6 +33,11 @@ function appendBlocks(blocks) {
 }
 
 var selectedBTNindex = null
+var incomeChart = null
+var incomeChartDefault = document.getElementById("balance-chart").innerHTML
+var proposedChart = null
+var proposedChartDefault = document.getElementById("proposed-chart").innerHTML
+var summaryDefaultValue = "0.000"
 var VALLIMIT = 280
 
 function hideValidatorHist() {
@@ -778,10 +783,28 @@ $(document).ready(function () {
       $("#dash-validator-history-info").removeClass("d-none")
       $("#dash-validator-history-index-div").removeClass("d-none")
       $("#dash-validator-history-index-div").addClass("d-flex")
+
+      fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
+        method: "GET",
+      }).then((res) => {
+        res.json().then((data) => {
+          let sum = 0.0
+          for (let eff of data) {
+            sum += eff
+          }
+          sum = sum / data.length
+          setValidatorEffectiveness("validator-eff-total", sum)
+        })
+      })
+
+      showProposedHistoryTable()
     } else {
       $("#dash-validator-history-info").addClass("d-none")
       $("#dash-validator-history-index-div").removeClass("d-flex")
       $("#dash-validator-history-index-div").addClass("d-none")
+
+      $("#validator-eff-total").html(summaryDefaultValue)
+      renderProposedHistoryTable([])
     }
 
     // $('#selected-validators-input-button-val').removeClass('d-none')
@@ -795,20 +818,6 @@ $(document).ready(function () {
       $("#selected-validators-input-button-box").removeClass("zoomanim")
       $("#selected-validators-input-button-val").removeClass(anim)
     }, 1100)
-
-    fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
-      method: "GET",
-    }).then((res) => {
-      res.json().then((data) => {
-        let sum = 0.0
-        for (let eff of data) {
-          sum += eff
-        }
-        sum = sum / data.length
-        setValidatorEffectiveness("validator-eff-total", sum)
-      })
-    })
-    showProposedHistoryTable()
   }
 
   function renderDashboardInfo() {
@@ -1011,36 +1020,8 @@ $(document).ready(function () {
     }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
-      // if(state.validators.length >= 9) {
-      //   appendBlocks(xBlocks)
-      // } else {
-      //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
-      // }
-      document.querySelector("#rewards-button").style.visibility = "visible"
-      document.querySelector("#bookmark-button").style.visibility = "visible"
       document.querySelector("#copy-button").style.visibility = "visible"
       document.querySelector("#clear-search").style.visibility = "visible"
-
-      if (firstValidatorWithIndex() !== null) {
-        $.ajax({
-          url: "/dashboard/data/earnings" + qryStr,
-          success: function (result) {
-            var t1 = Date.now()
-            console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
-            if (!result) return
-
-            document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || "0.000"
-            document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || "0.000"
-            document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || "0.000"
-            document.querySelector("#earnings-total").innerHTML = result.totalFormatted || "0.000"
-            $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
-            document.querySelector("#balance-total").innerHTML = result.totalBalance || "0.000"
-            $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
-            $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
-            // addChange("#earnings-total-change", result.total)
-          },
-        })
-      }
 
       $.ajax({
         url: "/dashboard/data/validators" + qryStr,
@@ -1089,17 +1070,53 @@ $(document).ready(function () {
           renderDashboardInfo()
         },
       })
+
+      if (firstValidatorWithIndex() !== null) {
+        document.querySelector("#rewards-button").style.visibility = "visible"
+        document.querySelector("#bookmark-button").style.visibility = "visible"
+
+        $.ajax({
+          url: "/dashboard/data/earnings" + qryStr,
+          success: function (result) {
+            var t1 = Date.now()
+            console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
+            if (!result) return
+
+            document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || summaryDefaultValue
+            document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || summaryDefaultValue
+            document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || summaryDefaultValue
+            document.querySelector("#earnings-total").innerHTML = result.totalFormatted || summaryDefaultValue
+            $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
+            document.querySelector("#balance-total").innerHTML = result.totalBalance || summaryDefaultValue
+            $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
+            $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
+            // addChange("#earnings-total-change", result.total)
+          },
+        })
+      } else {
+        document.querySelector("#rewards-button").style.visibility = "hidden"
+        document.querySelector("#bookmark-button").style.visibility = "hidden"
+
+        document.querySelector("#earnings-day").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-week").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-month").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-total").innerHTML = summaryDefaultValue
+        document.querySelector("#balance-total").innerHTML = summaryDefaultValue
+      }
     } else {
       document.querySelector("#copy-button").style.visibility = "hidden"
       document.querySelector("#rewards-button").style.visibility = "hidden"
       document.querySelector("#bookmark-button").style.visibility = "hidden"
       document.querySelector("#clear-search").style.visibility = "hidden"
-      // window.location = "/dashboard"
     }
 
     $("#copy-button").attr("data-clipboard-text", window.location.href)
 
-    renderCharts()
+    if (state.validators && firstValidatorWithIndex() !== null) {
+      renderCharts()
+    } else {
+      hideCharts()
+    }
   }
 
   window.onpopstate = function (event) {
@@ -1123,6 +1140,20 @@ $(document).ready(function () {
     updateState()
   })
 
+  function hideCharts() {
+    if (incomeChart) {
+      incomeChart.destroy()
+      incomeChart = null
+    }
+    document.getElementById("balance-chart").innerHTML = incomeChartDefault
+
+    if (proposedChart) {
+      proposedChart.destroy()
+      proposedChart = null
+    }
+    document.getElementById("proposed-chart").innerHTML = proposedChartDefault
+  }
+
   function renderCharts() {
     var t0 = Date.now()
     // if (state.validators.length === 0) {
@@ -1130,57 +1161,55 @@ $(document).ready(function () {
     //   return
     // }
     // document.getElementById('chart-holder').style.display = 'flex'
-    if (state.validators && firstValidatorWithIndex() !== null) {
-      var qryStr = "?validators=" + state.validators.join(",")
-      $.ajax({
-        url: "/dashboard/data/allbalances" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          // let prevDayIncome = 0
-          // let prevDay = null
-          // let prevIncome = 0
-          // for (var i = 0; i < result.length; i++) {
-          //   var res = result[i]
+    var qryStr = "?validators=" + state.validators.join(",")
+    $.ajax({
+      url: "/dashboard/data/allbalances" + qryStr,
+      success: function (result) {
+        var t1 = Date.now()
+        // let prevDayIncome = 0
+        // let prevDay = null
+        // let prevIncome = 0
+        // for (var i = 0; i < result.length; i++) {
+        //   var res = result[i]
 
-          //   let day = new Date(res[0])
-          //   if (prevDay===null) prevDay=day
-          //   // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
-          //   prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
-          //   prevIncome = res[2]
-          //   // console.log(day!==prevDay, day, prevDay, res[0])
-          //   if (day.getDay()!==prevDay.getDay()){
-          //     income.push([day.getTime(), prevDayIncome])
-          //     prevDayIncome = 0
-          //     prevDay=day
-          //   }
-          // }
+        //   let day = new Date(res[0])
+        //   if (prevDay===null) prevDay=day
+        //   // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
+        //   prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
+        //   prevIncome = res[2]
+        //   // console.log(day!==prevDay, day, prevDay, res[0])
+        //   if (day.getDay()!==prevDay.getDay()){
+        //     income.push([day.getTime(), prevDayIncome])
+        //     prevDayIncome = 0
+        //     prevDay=day
+        //   }
+        // }
 
-          var t2 = Date.now()
-          createIncomeChart(result.consensusChartData, result.executionChartData)
-          var t3 = Date.now()
-          console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
-        },
-      })
-      $.ajax({
-        url: "/dashboard/data/proposals" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          var t2 = Date.now()
-          if (result && result.length) {
-            createProposedChart(result)
-          }
-          var t3 = Date.now()
-          console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
-        },
-      })
-    }
+        var t2 = Date.now()
+        createIncomeChart(result.consensusChartData, result.executionChartData)
+        var t3 = Date.now()
+        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
+      },
+    })
+    $.ajax({
+      url: "/dashboard/data/proposals" + qryStr,
+      success: function (result) {
+        var t1 = Date.now()
+        var t2 = Date.now()
+        if (result && result.length) {
+          createProposedChart(result)
+        }
+        var t3 = Date.now()
+        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
+      },
+    })
   }
 })
 
 function createIncomeChart(income, executionIncomeHistory) {
   executionIncomeHistory = executionIncomeHistory || []
   // console.log("u", utilization)
-  Highcharts.stockChart("balance-chart", {
+  incomeChart = Highcharts.stockChart("balance-chart", {
     exporting: {
       scale: 1,
     },
@@ -1285,7 +1314,7 @@ function createProposedChart(data) {
     else if (d[1] == 2) missed.push([d[0] * 1000, 1])
     else if (d[1] == 3) orphaned.push([d[0] * 1000, 1])
   })
-  Highcharts.stockChart("proposed-chart", {
+  proposedChart = Highcharts.stockChart("proposed-chart", {
     chart: {
       type: "column",
     },

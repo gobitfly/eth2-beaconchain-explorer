@@ -238,10 +238,10 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if thresholdHexLikeRE.MatchString(search) {
 			// Find the validators that have made a deposit but have no index yet and therefore are not in the validators table
 			err = db.ReaderDb.Select(result, `
-				SELECT
+				SELECT DISTINCT
 					ENCODE(eth1_deposits.publickey, 'hex') AS pubkey
 					FROM eth1_deposits
-					LEFT JOIN validators on validators.pubkey = eth1_deposits.publickey
+					LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey
 					WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, search)
 			if err != nil {
 				logger.Errorf("error reading result data: %v", err)
