@@ -791,7 +791,11 @@
         </tr>
         {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
           <tr>
-            <th scope="row">Exited since</th>
+            {{ if ge .Epoch .ExitEpoch }}
+              <th scope="row">Exited since</th>
+            {{ else }}
+              <th scope="row">Exiting on</th>
+            {{ end }}
             <td class="pl-0">
               <a href="/epoch/{{ .ExitEpoch }}">
                 <span title="Epoch: {{ .ExitEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .ExitTs.Unix }}"></span>

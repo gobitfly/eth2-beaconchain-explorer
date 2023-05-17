@@ -272,13 +272,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
 
-	dashboardData.NextWithdrawalRow, err = getNextWithdrawalRow(queryValidatorIndices)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
 
@@ -662,7 +655,22 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, 0, len(withdrawals))
+	var tableData [][]interface{}
+
+	// check if there is a NextWithdrawal and append
+	NextWithdrawalRow, err := getNextWithdrawalRow(validatorIndices)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
+		tableData = make([][]interface{}, 0, len(withdrawals))
+	} else {
+		if NextWithdrawalRow == nil {
+			tableData = make([][]interface{}, 0, len(withdrawals))
+		} else {
+			// make the array +1 larger to append the NextWithdrawal row
+			tableData = make([][]interface{}, 0, len(withdrawals)+1)
+			tableData = append(NextWithdrawalRow, tableData...)
+		}
+	}
 
 	for _, w := range withdrawals {
 		tableData = append(tableData, []interface{}{

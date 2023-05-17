@@ -368,6 +368,7 @@ type ValidatorPageData struct {
 	PendingCount                             uint64
 	SyncCount                                uint64 // amount of sync committees the validator was (and is) part of
 	SlotsPerSyncCommittee                    uint64
+	FutureDutiesEpoch                        uint64
 	SlotsDoneInCurrentSyncCommittee          uint64
 	ScheduledSyncCountSlots                  uint64
 	ParticipatedSyncCountSlots               uint64
@@ -987,7 +988,6 @@ type DashboardData struct {
 	Csrf                string `json:"csrf"`
 	ValidatorLimit      int    `json:"valLimit"`
 	CappellaHasHappened bool
-	NextWithdrawalRow   [][]interface{}
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -1016,6 +1016,7 @@ type ValidatorProposalData struct {
 	Proposals                [][]uint64
 	BlocksCount              uint64
 	ScheduledBlocksCount     uint64
+	LastScheduledSlot        uint64
 	MissedBlocksCount        uint64
 	OrphanedBlocksCount      uint64
 	ProposedBlocksCount      uint64

@@ -80,6 +80,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData := types.ValidatorPageData{}
 
 	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	futureProposalEpoch := uint64(0)
+	futureSyncDutyEpoch := uint64(0)
 
 	stats := services.GetLatestStats()
 	churnRate := stats.ValidatorChurnLimit
@@ -413,6 +415,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.IncomeToday = earnings.IncomeToday
 		validatorPageData.ValidatorProposalData = earnings.ProposalData
 
+		if latestEpoch < earnings.ProposalData.LastScheduledSlot/data.ChainConfig.SlotsPerEpoch {
+			futureProposalEpoch = earnings.ProposalData.LastScheduledSlot / data.ChainConfig.SlotsPerEpoch
+		}
+
 		if utils.Config.Frontend.Validator.ShowProposerRewards {
 			validatorPageData.IncomeProposerFormatted = &earnings.ProposerTotalFormatted
 		}
@@ -665,6 +671,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("error getting sync participation count data of sync-assignments: %v", err)
 		}
 
+		if len(allSyncPeriods) > 0 && allSyncPeriods[0].LastEpoch > latestEpoch {
+			futureSyncDutyEpoch = allSyncPeriods[0].LastEpoch
+		}
+
 		// remove scheduled committees
 		for i, syncPeriod := range allSyncPeriods {
 			if syncPeriod.FirstEpoch <= latestEpoch {
@@ -785,6 +795,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	validatorPageData.FutureDutiesEpoch = protomath.MaxU64(futureProposalEpoch, futureSyncDutyEpoch)
 	validatorPageData.IncomeToday.Total = validatorPageData.IncomeToday.Cl + validatorPageData.IncomeToday.El
 
 	data.Data = validatorPageData
@@ -1483,6 +1495,8 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	currency := GetCurrency(r)
+	pageLength := 10
+	maxPages := 10
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
@@ -1508,8 +1522,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//length := 10
-
 	var activationAndExitEpoch = struct {
 		ActivationEpoch uint64 `db:"activationepoch"`
 		ExitEpoch       uint64 `db:"exitepoch"`
@@ -1532,29 +1544,124 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		totalCount += services.LatestFinalizedEpoch() - activationAndExitEpoch.ActivationEpoch + 1
 	}
 
-	if totalCount > 100 {
-		totalCount = 100
-	}
-
-	if start > 90 {
-		start = 90
+	if start > uint64((maxPages-1)*pageLength) {
+		start = uint64((maxPages - 1) * pageLength)
 	}
 
 	currentEpoch := services.LatestEpoch() - 1
-	// for an exited validator we show the history until his exit
+	var postExitEpochs uint64 = 0
+	// for an exited validator we show the history until his exit or (in rare cases) until his last sync / propose duties are finished
 	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && currentEpoch > (activationAndExitEpoch.ExitEpoch-1) {
 		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
+
+		var lastActionDay uint64
+		// let's get the last day where validator had duties which can be after the exit epoch of the validator
+		err = db.ReaderDb.Get(&lastActionDay, `
+			SELECT COALESCE(MAX(day), 0) 
+			FROM validator_stats 
+			WHERE 
+				validatorindex = $1 AND 
+				( missed_sync > 0 
+					OR orphaned_sync > 0 
+					OR participated_sync > 0 
+					OR proposed_blocks > 0 
+					OR missed_blocks > 0 
+					OR orphaned_blocks > 0 
+			);`, index)
+		if err != nil {
+			logger.Errorf("error retrieving lastActionDay for validator-history: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		lastActionEpoch := (lastActionDay + 1) * utils.EpochsPerDay()
+		// if the validator had some duties after the exit epoch we calculate how many epochs we have to check after the exit epoch
+		if lastActionEpoch > currentEpoch {
+			postExitEpochs = protomath.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
+		}
 	}
 
-	var validatorHistory []*types.ValidatorHistory
+	tableData := make([][]interface{}, 0)
 
+	if postExitEpochs > 0 {
+		startEpoch := currentEpoch + 1
+		endEpoch := startEpoch + postExitEpochs
+		withdrawalMap, incomeDetails, err := getWithdrawalAndIncome(index, startEpoch, endEpoch)
+		if err != nil {
+			return
+		}
+
+		// if there are additional epochs with duties we have to go through all of them as there can be gaps (after the exit before the duty)
+		for i := endEpoch; i >= startEpoch; i-- {
+			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
+				continue
+			}
+			totalCount++
+			// for paging we skip the first X epochs with duties
+			if start > 0 {
+				start--
+				continue
+			} else if len(tableData) >= pageLength {
+				continue
+			}
+			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+		}
+	}
+
+	postExitItemLength := len(tableData)
+	// if we have already found enough items we can skip the 'normal' step.
+	if postExitItemLength < pageLength {
+		startEpoch := currentEpoch - start - uint64(pageLength-1-postExitItemLength) // we only get the exact number of epochs to get to the page length
+		endEpoch := currentEpoch - start
+		if startEpoch > endEpoch { // handle underflows of startEpoch
+			startEpoch = 0
+		}
+
+		withdrawalMap, incomeDetails, err := getWithdrawalAndIncome(index, startEpoch, endEpoch)
+		if err != nil {
+			return
+		}
+
+		for i := endEpoch; i >= startEpoch && len(tableData) < pageLength; i-- {
+			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
+				if i <= endEpoch {
+					tableData = append(tableData, []interface{}{
+						utils.FormatEpoch(i),
+						"pending...",
+						template.HTML(""),
+						template.HTML(""),
+					})
+				}
+				continue
+			}
+			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+		}
+	}
+
+	if len(tableData) == 0 {
+		tableData = append(tableData, []interface{}{
+			template.HTML("Validator no longer active"),
+		})
+	}
+
+	totalCount = protomath.MinU64(totalCount, uint64(pageLength*maxPages))
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorWithdrawal, map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
 	g := new(errgroup.Group)
-
-	startEpoch := currentEpoch - start - 9
-	endEpoch := currentEpoch - start
-	if startEpoch > endEpoch { // handle underflows of startEpoch
-		startEpoch = 0
-	}
 
 	var withdrawals []*types.WithdrawalsByEpoch
 	g.Go(func() error {
@@ -1578,13 +1685,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	err = g.Wait()
-
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
+	err := g.Wait()
 	withdrawalMap := make(map[uint64]*types.ValidatorWithdrawal)
 	for _, withdrawals := range withdrawals {
 		withdrawalMap[withdrawals.Epoch] = &types.ValidatorWithdrawal{
@@ -1594,66 +1695,36 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			Slot:   withdrawals.Epoch * utils.Config.Chain.Config.SlotsPerEpoch,
 		}
 	}
+	return withdrawalMap, incomeDetails, err
+}
 
-	tableData := make([][]interface{}, 0, len(validatorHistory))
-
-	for i := endEpoch; i >= startEpoch; i-- {
-		if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
-			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(i),
-				"pending...",
-				template.HTML(""),
-				template.HTML(""),
-			})
-			continue
-		}
-		events := template.HTML("")
-		if incomeDetails[index][i].AttestationSourcePenalty > 0 && incomeDetails[index][i].AttestationTargetPenalty > 0 {
-			events += utils.FormatAttestationStatusShort(2)
-		} else {
-			events += utils.FormatAttestationStatusShort(1)
-		}
-
-		if incomeDetails[index][i].ProposerAttestationInclusionReward > 0 {
-			block := utils.FormatBlockStatusShort(1)
-			events += block
-		} else if incomeDetails[index][i].ProposalsMissed > 0 {
-			block := utils.FormatBlockStatusShort(2)
-			events += block
-		}
-
-		if withdrawalMap[i] != nil {
-			withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[i].Slot), withdrawalMap[i].Amount)
-			events += withdrawal
-		}
-
-		rewards := incomeDetails[index][i].TotalClRewards()
-		tableData = append(tableData, []interface{}{
-			utils.FormatEpoch(i),
-			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][i]),
-			template.HTML(""),
-			template.HTML(events),
-		})
+func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
+	events := template.HTML("")
+	if income.AttestationSourcePenalty > 0 && income.AttestationTargetPenalty > 0 {
+		events += utils.FormatAttestationStatusShort(2)
+	} else {
+		events += utils.FormatAttestationStatusShort(1)
 	}
 
-	if len(tableData) == 0 {
-		tableData = append(tableData, []interface{}{
-			template.HTML("Validator no longer active"),
-		})
+	if income.ProposerAttestationInclusionReward > 0 {
+		block := utils.FormatBlockStatusShort(1)
+		events += block
+	} else if income.ProposalsMissed > 0 {
+		block := utils.FormatBlockStatusShort(2)
+		events += block
 	}
 
-	data := &types.DataTableResponse{
-		Draw:            draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
-		Data:            tableData,
+	if withdrawal != nil {
+		withdrawal := utils.FormatWithdrawalShort(uint64(withdrawal.Slot), withdrawal.Amount)
+		events += withdrawal
 	}
 
-	err = json.NewEncoder(w).Encode(data)
-	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	rewards := income.TotalClRewards()
+	return []interface{}{
+		utils.FormatEpoch(epoch),
+		utils.FormatBalanceChangeFormated(&rewards, currency, income),
+		template.HTML(""),
+		template.HTML(events),
 	}
 }
 
