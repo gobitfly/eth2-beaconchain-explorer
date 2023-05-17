@@ -17,7 +17,7 @@ import (
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
-	epochTemplateFiles := append(layoutTemplateFiles, "epoch.html")
+	epochTemplateFiles := append(layoutTemplateFiles, "epoch.html", "components/timeToggle.html")
 	epochFutureTemplateFiles := append(layoutTemplateFiles, "epochFuture.html")
 	epochNotFoundTemplateFiles := append(layoutTemplateFiles, "epochnotfound.html")
 	var epochTemplate = templates.GetTemplate(epochTemplateFiles...)
