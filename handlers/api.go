@@ -3595,7 +3595,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	queryValidatorIndices, _, _, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
+	queryValidatorIndices, _, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)

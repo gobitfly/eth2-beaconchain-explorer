@@ -1627,15 +1627,18 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	indices := make([]string, 0)
-	err = json.Unmarshal(body, &indices)
+	validators := make([]string, 0)
+	err = json.Unmarshal(body, &validators)
 	if err != nil {
 		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	indicesParsed := make([]int64, 0)
-	for _, i := range indices {
+	for _, i := range validators {
+		if searchPubkeyExactRE.MatchString(i) {
+			continue
+		}
 		parsed, err := strconv.ParseInt(i, 10, 64)
 		if err != nil {
 			logger.Errorf("error could not parse validator indices: %v, %v", r.URL.String(), err)
@@ -1643,6 +1646,11 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		indicesParsed = append(indicesParsed, parsed)
+	}
+
+	if len(indicesParsed) == 0 {
+		// No validators with index in the dashboard
+		return
 	}
 
 	publicKeys := make([]string, 0)

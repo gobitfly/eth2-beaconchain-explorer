@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
@@ -236,23 +235,19 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 	case "validators_by_pubkey":
 		result = &types.SearchAheadPubkeyResult{}
-		pubKey, err := hex.DecodeString(strings.Replace(search, "0x", "", -1))
-		if err != nil {
-			break
-		}
-		_, err = db.GetValidatorIndex(pubKey)
-		if err == sql.ErrNoRows {
+		if thresholdHexLikeRE.MatchString(search) {
+			// Find the validators that have made a deposit but have no index yet and therefore are not in the validators table
 			err = db.ReaderDb.Select(result, `
-				SELECT ENCODE(publickey, 'hex') as pubkey FROM eth1_deposits WHERE publickey = $1 LIMIT 1`, pubKey)
+				SELECT
+					ENCODE(eth1_deposits.publickey, 'hex') AS pubkey
+					FROM eth1_deposits
+					LEFT JOIN validators on validators.pubkey = eth1_deposits.publickey
+					WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, search)
 			if err != nil {
 				logger.Errorf("error reading result data: %v", err)
 				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 				return
 			}
-		} else if err != nil {
-			logger.Errorf("error reading result data: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-			return
 		}
 	case "indexed_validators_by_eth1_addresses":
 		if len(search) <= 1 || len(search) > 40 {

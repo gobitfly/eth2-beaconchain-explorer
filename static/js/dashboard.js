@@ -34,6 +34,19 @@ function appendBlocks(blocks) {
 
 var selectedBTNindex = null
 var VALLIMIT = 280
+
+function hideValidatorHist() {
+  if ($.fn.dataTable.isDataTable("#dash-validator-history-table")) {
+    $("#dash-validator-history-table").DataTable().destroy()
+  }
+
+  $("#dash-validator-history-table").addClass("d-none")
+  $("#dash-validator-history-art").removeClass("d-none")
+  $("#dash-validator-history-art").addClass("d-flex")
+  $("#dash-validator-history-index").text("")
+  selectedBTNindex = null
+}
+
 function showValidatorHist(index) {
   if ($.fn.dataTable.isDataTable("#dash-validator-history-table")) {
     $("#dash-validator-history-table").DataTable().destroy()
@@ -82,7 +95,8 @@ function showValidatorHist(index) {
   $("#validator-history-table_paginate").attr("style", "padding-right: 0 !important")
   $("#validator-history-table_info").attr("style", "padding-top: 0;")
   $("#dash-validator-history-table").removeClass("d-none")
-  $("#dash-validator-history-art").attr("class", "d-none")
+  $("#dash-validator-history-art").removeClass("d-flex")
+  $("#dash-validator-history-art").addClass("d-none")
   $("#dash-validator-history-index").text(index)
   selectedBTNindex = index
   showSelectedValidator()
@@ -179,39 +193,6 @@ window.addEventListener("load", function () {
     }
   })
 })
-
-function addValidatorUpdateUI() {
-  $("#validators-tab").removeClass("disabled")
-  $("#validator-art").attr("class", "d-none")
-  $("#dash-validator-history-info").removeClass("d-none")
-  $("#dash-validator-history-index-div").removeClass("d-none")
-  $("#dash-validator-history-index-div").addClass("d-flex")
-  // $('#selected-validators-input-button-val').removeClass('d-none')
-  let anim = "goinboxanim"
-  if (boxAnimationDirection === "out") anim = "gooutboxanim"
-
-  $("#selected-validators-input-button-box").addClass("zoomanim")
-  $("#selected-validators-input-button-val").addClass(anim)
-  setTimeout(() => {
-    // $('#selected-validators-input-button-val').addClass('d-none')
-    $("#selected-validators-input-button-box").removeClass("zoomanim")
-    $("#selected-validators-input-button-val").removeClass(anim)
-  }, 1100)
-
-  fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
-    method: "GET",
-  }).then((res) => {
-    res.json().then((data) => {
-      let sum = 0.0
-      for (let eff of data) {
-        sum += eff
-      }
-      sum = sum / data.length
-      setValidatorEffectiveness("validator-eff-total", sum)
-    })
-  })
-  showProposedHistoryTable()
-}
 
 function showSelectedValidator() {
   setTimeout(function () {
@@ -468,10 +449,11 @@ $(document).ready(function () {
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
-                      ${data}
-                  </span>
-                 `
+          if (isNaN(parseInt(data))) {
+            return `<span class="m-0 p-2">${data}</span>`
+          } else {
+            return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">${data}</span>`
+          }
         },
       },
       {
@@ -691,7 +673,6 @@ $(document).ready(function () {
       addValidator("0x" + sug.pubkey)
     }
     boxAnimationDirection = "in"
-    // addValidatorUpdateUI()
     $(".typeahead-dashboard").typeahead("val", "")
   })
 
@@ -753,6 +734,15 @@ $(document).ready(function () {
     return identifier.startsWith("0x") && identifier.length === 98
   }
 
+  function firstValidatorWithIndex() {
+    for (var i = 0; i < state.validators.length; i++) {
+      if (!isValidatorPubkey(state.validators[i])) {
+        return state.validators[i]
+      }
+    }
+    return null
+  }
+
   function renderSelectedValidators() {
     if (state.validators.length > VALLIMIT) return
     var elHolder = document.getElementById("selected-validators")
@@ -780,6 +770,47 @@ $(document).ready(function () {
     elHolder.prepend(...elsItems)
   }
 
+  function addValidatorUpdateUI() {
+    $("#validators-tab").removeClass("disabled")
+    $("#validator-art").attr("class", "d-none")
+
+    if (firstValidatorWithIndex() !== null) {
+      $("#dash-validator-history-info").removeClass("d-none")
+      $("#dash-validator-history-index-div").removeClass("d-none")
+      $("#dash-validator-history-index-div").addClass("d-flex")
+    } else {
+      $("#dash-validator-history-info").addClass("d-none")
+      $("#dash-validator-history-index-div").removeClass("d-flex")
+      $("#dash-validator-history-index-div").addClass("d-none")
+    }
+
+    // $('#selected-validators-input-button-val').removeClass('d-none')
+    let anim = "goinboxanim"
+    if (boxAnimationDirection === "out") anim = "gooutboxanim"
+
+    $("#selected-validators-input-button-box").addClass("zoomanim")
+    $("#selected-validators-input-button-val").addClass(anim)
+    setTimeout(() => {
+      // $('#selected-validators-input-button-val').addClass('d-none')
+      $("#selected-validators-input-button-box").removeClass("zoomanim")
+      $("#selected-validators-input-button-val").removeClass(anim)
+    }, 1100)
+
+    fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
+      method: "GET",
+    }).then((res) => {
+      res.json().then((data) => {
+        let sum = 0.0
+        for (let eff of data) {
+          sum += eff
+        }
+        sum = sum / data.length
+        setValidatorEffectiveness("validator-eff-total", sum)
+      })
+    })
+    showProposedHistoryTable()
+  }
+
   function renderDashboardInfo() {
     var el = document.getElementById("dashboard-info")
     var slashedText = ""
@@ -791,9 +822,13 @@ $(document).ready(function () {
     if (state.validators.length > 0) {
       showSelectedValidator()
       addValidatorUpdateUI()
-      if (selectedBTNindex != state.validators[0]) {
-        // don't query if not necessary
-        showValidatorHist(state.validators[0])
+
+      firstValidatorWithHistory = firstValidatorWithIndex()
+      if (firstValidatorWithHistory === null) {
+        hideValidatorHist()
+      } else if (selectedBTNindex !== firstValidatorWithHistory) {
+        // don't query if not necessary)
+        showValidatorHist(firstValidatorWithHistory)
       }
       // showValidatorsInSearch(3)
     } else {
@@ -833,11 +868,6 @@ $(document).ready(function () {
       return
     }
     state.validators = validatorsStr.split(",")
-    for (var i = 0; i < state.validators.length; i++) {
-      if (isValidatorPubkey(state.validators[i])) {
-        state.validators[i] = state.validators[i].toLowerCase()
-      }
-    }
     state.validators = state.validators.filter((v, i) => {
       v = escape(v)
       if (isNaN(parseInt(v))) return false
@@ -991,24 +1021,27 @@ $(document).ready(function () {
       document.querySelector("#copy-button").style.visibility = "visible"
       document.querySelector("#clear-search").style.visibility = "visible"
 
-      $.ajax({
-        url: "/dashboard/data/earnings" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
-          if (!result) return
+      if (firstValidatorWithIndex() !== null) {
+        $.ajax({
+          url: "/dashboard/data/earnings" + qryStr,
+          success: function (result) {
+            var t1 = Date.now()
+            console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
+            if (!result) return
 
-          document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || "0.000"
-          document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || "0.000"
-          document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || "0.000"
-          document.querySelector("#earnings-total").innerHTML = result.totalFormatted || "0.000"
-          $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
-          document.querySelector("#balance-total").innerHTML = result.totalBalance || "0.000"
-          $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
-          $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
-          // addChange("#earnings-total-change", result.total)
-        },
-      })
+            document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || "0.000"
+            document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || "0.000"
+            document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || "0.000"
+            document.querySelector("#earnings-total").innerHTML = result.totalFormatted || "0.000"
+            $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
+            document.querySelector("#balance-total").innerHTML = result.totalBalance || "0.000"
+            $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
+            $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
+            // addChange("#earnings-total-change", result.total)
+          },
+        })
+      }
+
       $.ajax({
         url: "/dashboard/data/validators" + qryStr,
         success: function (result) {
@@ -1097,7 +1130,7 @@ $(document).ready(function () {
     //   return
     // }
     // document.getElementById('chart-holder').style.display = 'flex'
-    if (state.validators && state.validators.length) {
+    if (state.validators && firstValidatorWithIndex() !== null) {
       var qryStr = "?validators=" + state.validators.join(",")
       $.ajax({
         url: "/dashboard/data/allbalances" + qryStr,
@@ -1123,7 +1156,7 @@ $(document).ready(function () {
           // }
 
           var t2 = Date.now()
-          createBalanceChart(result.consensusChartData, result.executionChartData)
+          createIncomeChart(result.consensusChartData, result.executionChartData)
           var t3 = Date.now()
           console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
         },
@@ -1144,7 +1177,7 @@ $(document).ready(function () {
   }
 })
 
-function createBalanceChart(income, executionIncomeHistory) {
+function createIncomeChart(income, executionIncomeHistory) {
   executionIncomeHistory = executionIncomeHistory || []
   // console.log("u", utilization)
   Highcharts.stockChart("balance-chart", {
