@@ -80,6 +80,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData := types.ValidatorPageData{}
 
 	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	futureProposalEpoch := uint64(0)
+	futureSyncDutyEpoch := uint64(0)
 
 	stats := services.GetLatestStats()
 	churnRate := stats.ValidatorChurnLimit
@@ -412,7 +414,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
 		validatorPageData.IncomeToday = earnings.IncomeToday
 		validatorPageData.ValidatorProposalData = earnings.ProposalData
-		validatorPageData.FutureDutiesEpoch = protomath.MaxU64(validatorPageData.FutureDutiesEpoch, earnings.ProposalData.LastScheduledSlot/data.ChainConfig.SlotsPerEpoch)
+
+		if latestEpoch < earnings.ProposalData.LastScheduledSlot/data.ChainConfig.SlotsPerEpoch {
+			futureProposalEpoch = earnings.ProposalData.LastScheduledSlot / data.ChainConfig.SlotsPerEpoch
+		}
 
 		if utils.Config.Frontend.Validator.ShowProposerRewards {
 			validatorPageData.IncomeProposerFormatted = &earnings.ProposerTotalFormatted
@@ -667,7 +672,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(allSyncPeriods) > 0 && allSyncPeriods[0].LastEpoch > latestEpoch {
-			validatorPageData.FutureDutiesEpoch = protomath.MaxU64(validatorPageData.FutureDutiesEpoch, allSyncPeriods[0].LastEpoch)
+			futureSyncDutyEpoch = allSyncPeriods[0].LastEpoch
 		}
 
 		// remove scheduled committees
@@ -790,6 +795,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	validatorPageData.FutureDutiesEpoch = protomath.MaxU64(futureProposalEpoch, futureSyncDutyEpoch)
 	validatorPageData.IncomeToday.Total = validatorPageData.IncomeToday.Cl + validatorPageData.IncomeToday.El
 
 	data.Data = validatorPageData
@@ -1489,6 +1496,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	currency := GetCurrency(r)
 	pageLength := 10
+	maxPages := 10
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
@@ -1514,8 +1522,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//length := 10
-
 	var activationAndExitEpoch = struct {
 		ActivationEpoch uint64 `db:"activationepoch"`
 		ExitEpoch       uint64 `db:"exitepoch"`
@@ -1538,16 +1544,12 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		totalCount += services.LatestFinalizedEpoch() - activationAndExitEpoch.ActivationEpoch + 1
 	}
 
-	if totalCount > 100 {
-		totalCount = 100
-	}
-
-	if start > 90 {
-		start = 90
+	if start > uint64((maxPages-1)*pageLength) {
+		start = uint64((maxPages - 1) * pageLength)
 	}
 
 	currentEpoch := services.LatestEpoch() - 1
-	var extraEpochs uint64 = 0
+	var postExitEpochs uint64 = 0
 	// for an exited validator we show the history until his exit or (in rare cases) until his last sync / propose duties are finished
 	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && currentEpoch > (activationAndExitEpoch.ExitEpoch-1) {
 		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
@@ -1572,41 +1574,43 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		lastActionEpoch := (lastActionDay + 1) * utils.EpochsPerDay()
-		// if the validator had some duties after the exit epoch we calculate how many extra epochs we have to check after the exit epoch
+		// if the validator had some duties after the exit epoch we calculate how many epochs we have to check after the exit epoch
 		if lastActionEpoch > currentEpoch {
-			extraEpochs = protomath.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
+			postExitEpochs = protomath.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
 		}
 	}
 
 	tableData := make([][]interface{}, 0)
 
-	if extraEpochs > 0 {
+	if postExitEpochs > 0 {
 		startEpoch := currentEpoch + 1
-		endEpoch := startEpoch + extraEpochs
+		endEpoch := startEpoch + postExitEpochs
 		withdrawalMap, incomeDetails, err := getWithdrawalAndIncome(index, startEpoch, endEpoch)
 		if err != nil {
 			return
 		}
 
 		// if there are additional epochs with duties we have to go through all of them as there can be gaps (after the exit before the duty)
-		for i := endEpoch; i >= startEpoch && len(tableData) < pageLength; i-- {
+		for i := endEpoch; i >= startEpoch; i-- {
 			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
 				continue
 			}
+			totalCount++
 			// for paging we skip the first X epochs with duties
 			if start > 0 {
 				start--
 				continue
+			} else if len(tableData) >= pageLength {
+				continue
 			}
 			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
 		}
-
 	}
 
-	extraItemLength := len(tableData)
+	postExitItemLength := len(tableData)
 	// if we have already found enough items we can skip the 'normal' step.
-	if extraItemLength < pageLength {
-		startEpoch := currentEpoch - start - uint64(pageLength-1-extraItemLength) // we only get the exact number of epochs to get to the page length
+	if postExitItemLength < pageLength {
+		startEpoch := currentEpoch - start - uint64(pageLength-1-postExitItemLength) // we only get the exact number of epochs to get to the page length
 		endEpoch := currentEpoch - start
 		if startEpoch > endEpoch { // handle underflows of startEpoch
 			startEpoch = 0
@@ -1638,6 +1642,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			template.HTML("Validator no longer active"),
 		})
 	}
+
+	totalCount = protomath.MaxU64(totalCount, uint64(pageLength*maxPages))
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
