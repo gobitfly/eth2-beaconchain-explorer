@@ -38,7 +38,13 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	lowerBound := utils.TimeToDay(start)
 	upperBound := utils.TimeToDay(end)
 
-	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound+1, upperBound)
+	// As the genesis timestamp is in the middle of the day and we get timestamps from the ui from the start of the day we add one to get the correct day,
+	// except for the beaconchain day where we get a timestamp lower then the genesis day. The TimeToDay function still would transform it to 0 (and not -1) so we don't need to add one.
+	if start > utils.Config.Chain.GenesisTimestamp {
+		lowerBound++
+	}
+
+	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound, upperBound)
 	if err != nil {
 		logger.Errorf("error getting income history for validator hist: %v", err)
 	}
