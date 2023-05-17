@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"eth2-exporter/db"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -219,13 +220,39 @@ func GetAuthorizationClaims(r *http.Request) *CustomClaims {
 func AuthorizedAPIMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		// First, attempt to get the JWT token from the Authorization header.
 		accessToken := r.Header.Get("Authorization")
+
+		// If the JWT token is not present, attempt to get the API key from the apikey header.
 		if len(accessToken) <= 0 {
-			j := json.NewEncoder(w)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			SendOAuthErrorResponse(j, r.URL.String(), InvalidRequest, "missing authorization header")
-			return
+			apiKey := r.Header.Get("apikey")
+			if len(apiKey) <= 0 {
+				j := json.NewEncoder(w)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				SendOAuthErrorResponse(j, r.URL.String(), InvalidRequest, "missing authorization header or apikey")
+				return
+			}
+
+			// Get the user ID associated with the API key.
+			userWithPremium, err := db.GetUserIdByApiKey(apiKey)
+			if err != nil {
+				j := json.NewEncoder(w)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				SendOAuthErrorResponse(j, r.URL.String(), InvalidClient, "invalid api key")
+				return
+			}
+
+			// Generate a new JWT token for the user.
+			accessToken, _, err = CreateAccessToken(userWithPremium.ID, 0, 0, "", "")
+			if err != nil {
+				j := json.NewEncoder(w)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				SendOAuthErrorResponse(j, r.URL.String(), ServerError, "error creating JWT token")
+				return
+			}
 		}
 
 		claims, err := ValidateAccessTokenGetClaims(accessToken)
