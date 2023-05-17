@@ -433,15 +433,7 @@ func poolsUpdater(wg *sync.WaitGroup) {
 func getPoolsPageData() (*types.PoolsResp, error) {
 	var poolData types.PoolsResp
 	err := db.ReaderDb.Select(&poolData.PoolInfos, `
-	select 
-	pool as name,
-	validators as count,
-	apr * 100 as avg_performance_1d,
-	(select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 7) * 100 as avg_performance_7d,
-	(select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 31) * 100 as avg_performance_31d
-	from historical_pool_performance hpp
-	where day = (select max(day) from historical_pool_performance)
-	order by validators desc;
+	select pool as name, validators as count, apr * 100 as avg_performance_1d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 7) * 100 as avg_performance_7d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 31) * 100 as avg_performance_31d from historical_pool_performance hpp where day = (select max(day) from historical_pool_performance) order by validators desc;
 	`)
 
 	if err != nil {
