@@ -1648,11 +1648,6 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 		indicesParsed = append(indicesParsed, parsed)
 	}
 
-	if len(indicesParsed) == 0 {
-		// No validators with index in the dashboard
-		return
-	}
-
 	publicKeys := make([]string, 0)
 	db.WriterDb.Select(&publicKeys, `
 	SELECT pubkeyhex as pubkey
