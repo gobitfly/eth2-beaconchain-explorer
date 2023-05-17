@@ -115,9 +115,9 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check latest eth1 indexed block
-	numberBlocksTable, err := db.BigtableClient.GetLastBlockInBlocksTable()
-	if err != nil {
-		logger.Errorf("could not retrieve latest block number from the blocks table: %v", err)
+	numberBlocksTable := services.LatestLastBlockInBlocksTableData()
+	if numberBlocksTable < 0 {
+		// logger error already reported in caller
 		http.Error(w, "Internal server error: could not retrieve latest block number from the blocks table", http.StatusServiceUnavailable)
 		return
 	}
