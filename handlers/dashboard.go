@@ -156,6 +156,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 
 	q := r.URL.Query()
+	// Using parseValidatorsFromQueryString to check for validatorLimit
 	_, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && err != ErrTooManyValidators {
 		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
