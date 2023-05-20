@@ -139,6 +139,7 @@ func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int
 		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
 		gcp_bigtable.LatestNFilter(searchDepth),
 		gcp_bigtable.TimestampRangeFilter(time.Now().Add(time.Duration(searchDepth*-1)*time.Minute), time.Now()),
+		gcp_bigtable.StripValueFilter(),
 	)
 
 	machineNames := make(map[string]bool)
