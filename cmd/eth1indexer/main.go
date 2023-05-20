@@ -129,7 +129,7 @@ func main() {
 		logrus.Fatalf("node chain id mismatch, wanted %v got %v", chainId, nodeChainId.String())
 	}
 
-	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId)
+	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
