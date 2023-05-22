@@ -38,7 +38,6 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/mssola/user_agent v0.5.2
 	github.com/mvdan/xurls v1.1.0
-	github.com/pganalyze/pg_query_go/v4 v4.2.0
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.10.0
