@@ -17,7 +17,8 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	var graffitiwallData []*types.GraffitiwallData
 
-	err = db.ReaderDb.Select(&graffitiwallData, "select x, y, color, slot, validator from graffitiwall")
+	// only fetch latest entry for each pixel
+	err = db.ReaderDb.Select(&graffitiwallData, "SELECT DISTINCT ON (x, y) x, y, color, slot, validator from graffitiwall ORDER BY x, y, slot DESC")
 
 	if err != nil {
 		logger.Errorf("error retrieving block tree data: %v", err)

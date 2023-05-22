@@ -122,8 +122,14 @@ func accessTokenGetClaims(tokenStringFull string, validate bool) (*CustomClaims,
 	})
 
 	if err != nil && validate {
-		if !strings.Contains(err.Error(), "token is expired") {
-			logger.Warnf("Error parsing jwt token: %v %v", err, token)
+		if !strings.Contains(err.Error(), "token is expired") && token != nil {
+			logger.WithFields(
+				logrus.Fields{
+					"error":       err,
+					"token":       token,
+					"tokenString": tokenString,
+				},
+			).Warn("Error parsing jwt token")
 		}
 
 		return nil, err

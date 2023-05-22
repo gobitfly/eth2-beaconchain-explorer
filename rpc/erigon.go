@@ -205,7 +205,6 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 			logger.Infof("retrieved %v calls via geth", len(gethTraceData))
 
 			for _, trace := range gethTraceData {
-
 				if trace.Error == "" {
 					c.Transactions[trace.TransactionPosition].Status = 1
 				} else {
@@ -249,6 +248,10 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 
 			if trace.TransactionHash == "" {
 				continue
+			}
+
+			if trace.TransactionPosition >= len(c.Transactions) {
+				return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 			}
 
 			if trace.Error == "" {
@@ -332,7 +335,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, nil, fmt.Errorf("error retrieving traces for block %v: %v", block.Number(), err)
+		return nil, nil, fmt.Errorf("error retrieving traces for block %v: %w", block.Number(), err)
 	}
 
 	return c, timings, nil

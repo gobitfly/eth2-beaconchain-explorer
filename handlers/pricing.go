@@ -113,7 +113,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 func PricingPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		logger.Errorf("error parsing form: %v", err)
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, "pricing_flash", "Error: invalid form submitted")
 		logger.Errorf("error parsing pricing request form for %v route: %v", r.URL.String(), err)
 		http.Redirect(w, r, "/pricing", http.StatusSeeOther)
@@ -131,7 +131,7 @@ func PricingPost(w http.ResponseWriter, r *http.Request) {
 		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
 		if err != nil || !valid {
 			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
-			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			logger.Warnf("error validating recaptcha %v route: %v", r.URL.String(), err)
 			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 			return
 		}
@@ -154,7 +154,7 @@ func PricingPost(w http.ResponseWriter, r *http.Request) {
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
-	err = mail.SendTextMail("support@beaconcha.in", "New API usage inquiry", msg, []types.EmailAttachment{})
+	err = mail.SendTextMail("inquiries@beaconcha.in", "New API usage inquiry", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "pricing_flash", "Error: unable to submit api request")

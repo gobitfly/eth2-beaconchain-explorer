@@ -8,6 +8,13 @@
       ordering: false,
       searching: false,
       stateSave: true,
+      stateSaveCallback: function (settings, data) {
+        data.start = 0
+        localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+      },
+      stateLoadCallback: function (settings) {
+        return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+      },
       paging: true,
       pagingType: "input",
       ajax: "/validators/slashings/data",

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"math/big"
 	"strings"
@@ -47,8 +46,8 @@ const (
 	TaxReportEventName                               EventName = "user_tax_report"
 	RocketpoolCommissionThresholdEventName           EventName = "rocketpool_commision_threshold"
 	RocketpoolNewClaimRoundStartedEventName          EventName = "rocketpool_new_claimround"
-	RocketpoolColleteralMinReached                   EventName = "rocketpool_colleteral_min"
-	RocketpoolColleteralMaxReached                   EventName = "rocketpool_colleteral_max"
+	RocketpoolCollateralMinReached                   EventName = "rocketpool_colleteral_min"
+	RocketpoolCollateralMaxReached                   EventName = "rocketpool_colleteral_max"
 	SyncCommitteeSoon                                EventName = "validator_synccommittee_soon"
 )
 
@@ -90,8 +89,8 @@ var EventLabel map[EventName]string = map[EventName]string{
 	TaxReportEventName:                               "You have an available tax report",
 	RocketpoolCommissionThresholdEventName:           "Your configured rocket pool commission threshold is reached",
 	RocketpoolNewClaimRoundStartedEventName:          "Your rocket pool claim round is available",
-	RocketpoolColleteralMinReached:                   "You reached the rocketpool min collateral",
-	RocketpoolColleteralMaxReached:                   "You reached the rocketpool max collateral",
+	RocketpoolCollateralMinReached:                   "You reached the rocketpool min collateral",
+	RocketpoolCollateralMaxReached:                   "You reached the rocketpool max collateral",
 	SyncCommitteeSoon:                                "Your validator(s) will soon be part of the sync committee",
 }
 
@@ -130,8 +129,8 @@ var EventNames = []EventName{
 	TaxReportEventName,
 	RocketpoolCommissionThresholdEventName,
 	RocketpoolNewClaimRoundStartedEventName,
-	RocketpoolColleteralMinReached,
-	RocketpoolColleteralMaxReached,
+	RocketpoolCollateralMinReached,
+	RocketpoolCollateralMaxReached,
 	SyncCommitteeSoon,
 }
 
@@ -525,18 +524,15 @@ type Eth1AddressSearchItem struct {
 }
 
 type RawMempoolResponse struct {
-	Pending map[string]map[int]RawMempoolTransaction `json:"pending"`
+	Pending map[string]map[int]*RawMempoolTransaction `json:"pending"`
+	Queued  map[string]map[int]*RawMempoolTransaction `json:"queued"`
+	BaseFee map[string]map[int]*RawMempoolTransaction `json:"baseFee"`
+
+	TxsByHash map[common.Hash]*RawMempoolTransaction
 }
 
 func (mempool RawMempoolResponse) FindTxByHash(txHashString string) *RawMempoolTransaction {
-	for _, pendingData := range mempool.Pending {
-		for _, tx := range pendingData {
-			if fmt.Sprintf("%s", tx.Hash) == txHashString {
-				return &tx
-			}
-		}
-	}
-	return nil
+	return mempool.TxsByHash[common.HexToHash(txHashString)]
 }
 
 type RawMempoolTransaction struct {
@@ -546,6 +542,7 @@ type RawMempoolTransaction struct {
 	Value            *hexutil.Big    `json:"value"`
 	Gas              *hexutil.Big    `json:"gas"`
 	GasFeeCap        *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	GasTipCap        *hexutil.Big    `json:"maxPriorityFeePerGas,omitempty"`
 	GasPrice         *hexutil.Big    `json:"gasPrice"`
 	Nonce            *hexutil.Big    `json:"nonce"`
 	Input            *string         `json:"input"`
@@ -556,4 +553,32 @@ type MempoolTxPageData struct {
 	RawMempoolTransaction
 	TargetIsContract   bool
 	IsContractCreation bool
+}
+
+type SyncCommitteesStats struct {
+	ParticipatedSlots uint64 `db:"participated_sync" json:"participatedSlots"`
+	MissedSlots       uint64 `db:"missed_sync" json:"missedSlots"`
+	OrphanedSlots     uint64 `db:"orphaned_sync" json:"-"`
+	ScheduledSlots    uint64 `json:"scheduledSlots"`
+}
+
+type SignatureType string
+
+const (
+	MethodSignature SignatureType = "method"
+	EventSignature  SignatureType = "event"
+)
+
+type SignatureImportStatus struct {
+	LatestTimestamp *string `json:"latestTimestamp"`
+	NextPage        *string `json:"nextPage"`
+	HasFinished     bool    `json:"hasFinished"`
+}
+
+type Signature struct {
+	Id        int64  `json:"id"`
+	CreatedAt string `json:"created_at"`
+	Text      string `json:"text_signature"`
+	Hex       string `json:"hex_signature"`
+	Bytes     string `json:"bytes_signature"`
 }

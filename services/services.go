@@ -81,6 +81,9 @@ func Init() {
 	ready.Add(1)
 	go startMonitoringService(ready)
 
+	ready.Add(1)
+	go lastBlockInBlocksTableUpdater(ready)
+
 	ready.Wait()
 }
 
@@ -97,6 +100,32 @@ func InitNotifications(pubkeyCachePath string) {
 	}
 
 	go notificationCollector()
+}
+
+func lastBlockInBlocksTableUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+
+	for {
+		lastBlock, err := db.BigtableClient.GetLastBlockInBlocksTable()
+		if err != nil {
+			utils.LogError(err, "could not retrieve latest block number from the blocks table", 0)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		cacheKey := fmt.Sprintf("%d:frontend:lastBlockInBlocksTable", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.SetUint64(cacheKey, uint64(lastBlock), time.Hour*24)
+		if err != nil {
+			utils.LogError(err, "caching lastBlockInBlocksTable", 0)
+		}
+		if firstRun {
+			logger.Info("initialized lastBlockInBlocksTable updater")
+			wg.Done()
+			firstRun = false
+		}
+		ReportStatus("lastBlockInBlocksTableUpdater", "Running", nil)
+		time.Sleep(time.Minute)
+	}
 }
 
 func getRelaysPageData() (*types.RelaysResp, error) {
@@ -449,9 +478,9 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	}
 
 	for _, pool := range poolData.PoolInfos {
-		pool.EthstoreCompoarison1d = pool.AvgPerformance1d*100/ethstoreData.AvgPerformance1d - 100
-		pool.EthstoreCompoarison7d = pool.AvgPerformance7d*100/ethstoreData.AvgPerformance7d - 100
-		pool.EthstoreCompoarison31d = pool.AvgPerformance31d*100/ethstoreData.AvgPerformance31d - 100
+		pool.EthstoreComparison1d = pool.AvgPerformance1d*100/ethstoreData.AvgPerformance1d - 100
+		pool.EthstoreComparison7d = pool.AvgPerformance7d*100/ethstoreData.AvgPerformance7d - 100
+		pool.EthstoreComparison31d = pool.AvgPerformance31d*100/ethstoreData.AvgPerformance31d - 100
 	}
 	poolData.PoolInfos = append([]*types.PoolInfo{ethstoreData}, poolData.PoolInfos...)
 
@@ -626,7 +655,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
 	data.NetworkName = utils.Config.Chain.Config.ConfigName
-	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
+	data.DepositContract = utils.Config.Chain.Config.DepositContractAddress
 
 	var epoch uint64
 	err := db.ReaderDb.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
@@ -1022,6 +1051,10 @@ func LatestEthStoreStatistics() *types.EthStoreStatistics {
 	return &types.EthStoreStatistics{}
 }
 
+func EthStoreDisclaimer() string {
+	return "ETH.STORE® is not made available for use as a benchmark, whether in relation to a financial instrument, financial contract or to measure the performance of an investment fund, or otherwise in a way that would require it to be administered by a benchmark administrator pursuant to the EU Benchmarks Regulation. Currently Bitfly does not grant any right to access or use ETH.STORE® for such purpose."
+}
+
 // LatestIndexPageData returns the latest index page data
 func LatestIndexPageData() *types.IndexPageData {
 	wanted := &types.IndexPageData{}
@@ -1096,6 +1129,18 @@ func LatestGasNowData() *types.GasNowPageData {
 	}
 
 	return nil
+}
+
+func LatestLastBlockInBlocksTableData() int {
+	cacheKey := fmt.Sprintf("%d:frontend:lastBlockInBlocksTable", utils.Config.Chain.Config.DepositChainID)
+
+	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
+		return int(wanted)
+	} else {
+		utils.LogError(err, "retrieving lastBlockInBlocksTable data from cache", 0)
+	}
+
+	return -1
 }
 
 func LatestRelaysPageData() *types.RelaysResp {
@@ -1402,10 +1447,40 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			errorCount = 0
 		}
 
+		mempoolTx.TxsByHash = make(map[common.Hash]*types.RawMempoolTransaction)
+
+		for _, txs := range mempoolTx.Pending {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+		for _, txs := range mempoolTx.Queued {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+		for _, txs := range mempoolTx.BaseFee {
+			for _, tx := range txs {
+				mempoolTx.TxsByHash[tx.Hash] = tx
+
+				if tx.GasPrice == nil {
+					tx.GasPrice = tx.GasFeeCap
+				}
+			}
+		}
+
 		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, mempoolTx, time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching relaysData: %v", err)
+			logger.Errorf("error caching mempool data: %v", err)
 		}
 		if firstRun {
 			logger.Info("initialized mempool updater")

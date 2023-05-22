@@ -156,9 +156,10 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 
 	q := r.URL.Query()
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
+	// Using parseValidatorsFromQueryString to check for validatorLimit
+	_, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && err != ErrTooManyValidators {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -168,13 +169,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
-
-	dashboardData.NextWithdrawalRow, err = getNextWithdrawalRow(queryValidators)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
 
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
@@ -260,7 +254,12 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		return nil, nil
 	}
 
-	distance, err := db.GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
+	_, lastWithdrawnEpoch, err := db.GetValidatorWithdrawalsCount(nextValidator.Index)
+	if err != nil {
+		return nil, err
+	}
+
+	distance, err := GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -294,14 +293,18 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.Config.MaxEffectiveBalance
 	}
 
+	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.Config.MaxEffectiveBalance {
+		withdrawalAmount = 0
+	}
+
 	nextData := make([][]interface{}, 0, 1)
 	nextData = append(nextData, []interface{}{
 		template.HTML(fmt.Sprintf("%v", utils.FormatValidator(nextValidator.Index))),
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
-		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
+		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "ETH", 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "Ether", 6))),
 	})
 
 	return nextData, nil
@@ -318,7 +321,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -331,7 +334,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	var incomeHistoryChartData []*types.ChartDataPoint
 	var executionChartData []*types.ChartDataPoint
 	g.Go(func() error {
-		incomeHistoryChartData, _, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 		return err
 	})
 
@@ -364,7 +367,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 
 func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
 	var limit uint64 = 300
-	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit)
+	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -380,21 +383,31 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 
 	var chartData = make([]*types.ChartDataPoint, len(blocks))
 	epochsPerDay := utils.EpochsPerDay()
+	lastFinalizedEpoch := services.LatestFinalizedEpoch()
+	color := "#90ed7d"
 
 	for i := len(blocks) - 1; i >= 0; i-- {
+		blockEpoch := utils.TimeToEpoch(blocks[i].Time.AsTime())
 		consData := consMap[blocks[i].Number]
 		day := int64(consData.Epoch / epochsPerDay)
-		color := "#90ed7d"
+		ts := float64(utils.DayToTime(day).Unix() * 1000)
+		if blockEpoch > int64(lastFinalizedEpoch) {
+			// we need to fill also the first items in the list, otherwise the charts break
+			chartData[len(blocks)-1-i] = &types.ChartDataPoint{
+				X:     ts,
+				Y:     0,
+				Color: color,
+			}
+			continue
+		}
 		totalReward, _ := utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).Float64()
 		relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]
 		if ok {
 			totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
 		}
 
-		//balanceTs := blocks[i].GetTime().AsTime().Unix()
-
 		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-			X:     float64(utils.DayToTime(day).Unix() * 1000), //float64(balanceTs * 1000),
+			X:     ts,
 			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
 			Color: color,
 		}
@@ -412,11 +425,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-	if err != nil {
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -425,7 +434,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incomeHistoryChartData, _, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
+	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidators, currency)
 	if err != nil {
 		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -447,6 +456,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -491,6 +501,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	validators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -542,16 +553,31 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, 0, len(withdrawals))
+	var tableData [][]interface{}
+
+	// check if there is a NextWithdrawal and append
+	NextWithdrawalRow, err := getNextWithdrawalRow(validators)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error calculating next withdrawal row")
+		tableData = make([][]interface{}, 0, len(withdrawals))
+	} else {
+		if NextWithdrawalRow == nil {
+			tableData = make([][]interface{}, 0, len(withdrawals))
+		} else {
+			// make the array +1 larger to append the NextWithdrawal row
+			tableData = make([][]interface{}, 0, len(withdrawals)+1)
+			tableData = append(NextWithdrawalRow, tableData...)
+		}
+	}
 
 	for _, w := range withdrawals {
 		tableData = append(tableData, []interface{}{
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 		})
 	}
 
@@ -579,6 +605,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -673,7 +700,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		if v.LastAttestationSlot != nil && *v.LastAttestationSlot != 0 {
 			tableData[i] = append(tableData[i], []interface{}{
 				*v.LastAttestationSlot,
-				utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
+				utils.FormatTimestamp(utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix()),
+				//utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
 			})
 		} else {
 			tableData[i] = append(tableData[i], nil)
@@ -717,6 +745,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -746,7 +775,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
-		logger.Errorf("error retrieving active validators %v", err)
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -792,6 +821,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	validatorLimit := getUserPremium(r).MaxValidators
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
+		utils.LogError(err, fmt.Errorf("error parsing validators from query string"), 0)
 		http.Error(w, "Invalid query", 400)
 		return
 	}

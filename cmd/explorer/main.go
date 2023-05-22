@@ -152,7 +152,7 @@ func main() {
 		}
 
 		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), erigonChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 		}
 	}()
 
@@ -296,7 +296,7 @@ func main() {
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/leaderboard", handlers.ApiValidatorLeaderboard).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidatorGet).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/validator/{indexOrPubkey}", handlers.ApiValidatorPost).Methods("POST", "OPTIONS")
+		apiV1Router.HandleFunc("/validator", handlers.ApiValidatorPost).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/withdrawals", handlers.ApiValidatorWithdrawals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/blsChange", handlers.ApiValidatorBlsChange).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET", "OPTIONS")
@@ -397,6 +397,11 @@ func main() {
 			logrus.Infof("initializing ethclients")
 			ethclients.Init()
 			logrus.Infof("ethclients initialized")
+		}
+
+		if cfg.Frontend.SessionSecret == "" {
+			logrus.Fatal("session secret is empty, please provide a secure random string.")
+			return
 		}
 
 		utils.InitSessionStore(cfg.Frontend.SessionSecret)
@@ -532,7 +537,6 @@ func main() {
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
-			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
 
 			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
@@ -726,10 +730,6 @@ func main() {
 	if utils.Config.Frontend.ShowDonors.Enabled {
 		services.InitGitCoinFeed()
 	}
-
-	// if utils.Config.Frontend.PoolsUpdater.Enabled {
-	// services.InitPools() // making sure the website is available before updating
-	// }
 
 	utils.WaitForCtrlC()
 

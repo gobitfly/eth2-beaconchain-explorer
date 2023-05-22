@@ -415,7 +415,7 @@ $(document).ready(function () {
       clearSearch.empty().append(copyIcon)
     }, 500)
   })
-
+  $.fn.DataTable.ext.pager.numbers_length = 5
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
     processing: true,
     serverSide: false,
@@ -428,6 +428,10 @@ $(document).ready(function () {
     language: {
       search: "",
       searchPlaceholder: "Search...",
+      paginate: {
+        previous: '<i class="fas fa-chevron-left"></i>',
+        next: '<i class="fas fa-chevron-right"></i>',
+      },
     },
     preDrawCallback: function () {
       // this does not always work.. not sure how to solve the staying tooltip
@@ -525,7 +529,7 @@ $(document).ready(function () {
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data ? data[0] : null
           if (data === null) return "No Attestation found"
-          return `<span>${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}</span>`
+          return `${data[1]}`
         },
       },
       {
@@ -955,14 +959,11 @@ $(document).ready(function () {
           console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
           if (!result) return
 
-          // addChange("#earnings-day", result.lastDay)
-          // addChange("#earnings-week", result.lastWeek)
-          // addChange("#earnings-month", result.lastMonth)
-
           document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || "0.000"
           document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || "0.000"
           document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || "0.000"
           document.querySelector("#earnings-total").innerHTML = result.totalFormatted || "0.000"
+          $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
           document.querySelector("#balance-total").innerHTML = result.totalBalance || "0.000"
           $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
           $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))

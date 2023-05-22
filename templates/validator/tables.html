@@ -25,6 +25,13 @@
                 processing: true,
                 serverSide: true,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 ordering: true,
                 order: [[0, 'desc']],
                 lengthChange: false,
@@ -109,6 +116,13 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     ordering: false,
                     order: [[0, 'desc']],
                     lengthChange: false,
@@ -171,6 +185,13 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     ordering: true,
                     order: [[0, 'desc']],
                     lengthChange: false,
@@ -201,7 +222,7 @@
                     columnDefs: [
                     ],
                     drawCallback: function(settings) {
-                        // formatTimestamps()
+                         formatTimestamps()
                     },
                 })
             }
@@ -242,7 +263,6 @@
             });
 
             function createSyncTable() {
-                console.log('create sync-table')
                 $('#sync-table').DataTable({
                     processing: true,
                     serverSide: true,
@@ -250,6 +270,13 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     searching: false,
                     ajax: '/validator/' + index + '/sync',
                     pagingType: 'input',
@@ -317,6 +344,13 @@
                 ordering: false,
                 lengthChange: false,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 searching: false,
                 ajax: '/validator/' + index + '/slashings',
                 pagingType: 'input',
@@ -592,6 +626,13 @@
                 ordering: false,
                 searching: false,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 ajax: '/validator/' + index + '/history',
                 pagingType: 'input',
                 pageLength: 10,
@@ -633,73 +674,131 @@
 
 {{ define "validatorIncomeTable" }}
   {{ with .Data }}
-    <span class="h4">Income</span>
+    <span class="h4"> General </span>
     <table class="table" style="margin-top: 0 !important" width="100%">
-      <tbody>
+      <tbody style="font-size: 0.875rem;">
         <tr>
-          <th scope="row">
-            Today <span data-toggle="tooltip" title="Income during current day, updated every epoch"><i class="far fa-question-circle"></i></span>
-          </th>
-          <td>{{ formatIncome .IncomeToday $.Rates.Currency }}</td>
-        </tr>
-        <!--
-        <tr>
-          <th scope="row">
-            Yesterday <span data-toggle="tooltip" title="Income during the last day, updated daily"><i class="far fa-question-circle"></i></span>
-          </th>
-          <td>{{ formatIncome .Income1d $.Rates.Currency }}</td>
-        </tr>
-        -->
-        <tr>
-          <th scope="row">
-            Last Week <span data-toggle="tooltip" title="Income during the last 7 days, updated daily"><i class="far fa-question-circle"></i></span>
-          </th>
-          <td>{{ formatIncome .Income7d $.Rates.Currency }}</td>
-        </tr>
-        <tr>
-          <th scope="row">
-            Last Month <span data-toggle="tooltip" title="Income during the last 31 days, updated daily"><i class="far fa-question-circle"></i></span>
-          </th>
-          <td>{{ formatIncome .Income31d $.Rates.Currency }}</td>
-        </tr>
-        <tr>
-          <th scope="row">
-            APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span>
-          </th>
-          <td>
-            <span data-toggle="tooltip" title="{{ formatPercentageWithPrecision .Apr 5 }}%" class="{{ if gtf .Apr 0 }}text-success{{ end }} {{ if gtf  0 .Apr }}text-danger{{ end }}"><b>{{ .Apr | formatPercentage }}%</b></span>
+          <th scope="row">Total Rewards</th>
+          <td class="pl-0">
+            {{ .IncomeTotalFormatted }}
           </td>
         </tr>
-        <tr>
-          <th scope="row">Eligible since</th>
-          <td>
-            {{ if eq .ActivationEligibilityEpoch 9223372036854775807 }}
-              -
-            {{ else }}
-              <a href="/epoch/{{ .ActivationEligibilityEpoch }}">{{ if eq .ActivationEligibilityEpoch 0 }}genesis{{ else }}<span aria-ethereum-date="{{ .ActivationEligibilityTs.Unix }}"></span>{{ end }}</a>
-            {{ end }}
+        {{ if .IncomeProposerFormatted }}
+          <tr>
+            <th scope="row">Proposer Rewards</th>
+            <td class="pl-0">
+              {{ .IncomeProposerFormatted }}
+            </td>
+          </tr>
+        {{ end }}
+        <tr class="">
+          <th scope="row">Income Today</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatIncome .IncomeToday.Cl $.Rates.Currency }} <br> 
+                EL: {{ formatIncome .IncomeToday.El $.Rates.Currency }}">
+              {{ formatIncome .IncomeToday.Total $.Rates.Currency }}
+            </span>
           </td>
         </tr>
+        <!-- shown in desktop -->
+        <tr class="d-none d-sm-table-row">
+          <th scope="row">Income 1d | 7d | 31d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatIncome .Income1d.Cl $.Rates.Currency }} | {{ formatIncome .Income7d.Cl $.Rates.Currency }} | {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br> 
+                EL: {{ formatIncome .Income1d.El $.Rates.Currency }} | {{ formatIncome .Income7d.El $.Rates.Currency }} | {{ formatIncome .Income31d.El $.Rates.Currency }}">
+              {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} |
+              {{ formatIncomeNoCurrency .Income31d.Total $.Rates.Currency }}
+            </span>
+          </td>
+        </tr>
+        <tr class="d-none d-sm-table-row">
+          <th scope="row">APR 7d | 31d | 365d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
+                El: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Apr365d.El 2 }}%">
+              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+              |
+              <span class="{{ if gtf .Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr31d.Total 2 }}%</b></span>
+              |
+              <span class="{{ if gtf .Apr365d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr365d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr365d.Total 2 }}%</b></span>
+            </span>
+          </td>
+        </tr>
+        <!-- shown in mobile -->
+        <tr class="d-sm-none">
+          <th scope="row">Income 7d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                  CL: 1d: {{ formatIncomeNoCurrency .Income1d.Cl $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Cl $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br /> 
+                  EL: 1d: {{ formatIncomeNoCurrency .Income1d.El $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.El $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.El $.Rates.Currency }} <br /> 
+                  All: 1d: {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Total $.Rates.Currency }}">
+              {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }}
+              <i class="far fa-question-circle"></i>
+            </span>
+          </td>
+        </tr>
+        <tr class="d-sm-none">
+          <th scope="row">APR 7d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: 7d: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
+                El: 7d: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.El 2 }}% <br>
+                All: 7d: {{ formatPercentageWithPrecision .Apr7d.Total 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Total 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%">
+              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+              <i class="far fa-question-circle"></i>
+            </span>
+          </td>
+        </tr>
+        <!-- end -->
         <tr>
-          {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch }}
-            <th scope="row">Active since</th>
-          {{ else }}
-            <th scope="row">Activation</th>
-          {{ end }}
-          <td>
-            {{ if eq .ActivationEpoch 9223372036854775807 }}
-              -
-            {{ else }}
-              <a href="/epoch/{{ .ActivationEpoch }}"> {{ if eq .ActivationEpoch 0 }}genesis{{ else }}<span aria-ethereum-date="{{ .ActivationTs.Unix }}"></span>{{ end }} </a>
-            {{ end }}
+          <th scope="row">Luck</th>
+          <td class="pl-0">
+            {{ $hasProposalLuck := nef .ProposalLuck 0 }}
+            {{ $hasSyncLuck := nef .SyncLuck 0 }}
+            <!-- prettier-ignore-attribute -->
+            <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if $hasProposalLuck }}(exp. <span aria-ethereum-date='{{ .ProposalEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ end }} (on avg. every <span aria-ethereum-duration='{{ .AvgSlotInterval.Milliseconds }}'></span>)<br>Sync Com. {{ if $hasSyncLuck }}(exp. <span aria-ethereum-date='{{ .SyncEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .SyncLuck 2 }}%{{ end }} (on avg. every <span aria-ethereum-duration='{{ .AvgSyncInterval.Milliseconds }}'></span>)</span>">
+              {{ if $hasProposalLuck }}
+                {{ formatPercentageWithPrecision .ProposalLuck 1 }}% <i class="tab-icon mr-md-1 fas fa-cubes d-none d-sm-inline-block"></i>
+              {{ else }}
+                -
+              {{ end }}
+              |
+              {{ if $hasSyncLuck }}
+                {{ formatPercentageWithPrecision .SyncLuck 1 }}% <i class="tab-icon mr-md-1 fas fa-sync d-none d-sm-inline-block"></i>
+              {{ else }}
+                -
+              {{ end }}
+            </span>
           </td>
         </tr>
         {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
           <tr>
-            <th scope="row">Exited since</th>
-            <td>
+            {{ if ge .Epoch .ExitEpoch }}
+              <th scope="row">Exited since</th>
+            {{ else }}
+              <th scope="row">Exiting on</th>
+            {{ end }}
+            <td class="pl-0">
               <a href="/epoch/{{ .ExitEpoch }}">
-                <span aria-ethereum-date="{{ .ExitTs.Unix }}"></span>
+                <span title="Epoch: {{ .ExitEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .ExitTs.Unix }}"></span>
               </a>
             </td>
           </tr>
@@ -707,7 +806,7 @@
         {{ if not (eq .WithdrawableEpoch 9223372036854775807) }}
           <tr>
             <th scope="row">Withdrawable</th>
-            <td>
+            <td class="pl-0">
               {{ if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch }}
                 <a href="/epoch/{{ .WithdrawableEpoch }}">
                   <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
@@ -718,16 +817,6 @@
             </td>
           </tr>
         {{ end }}
-        <!--
-         <tr>
-            <th scope="row">Avg. optimal inclusion distance</th>
-        <tr>
-        <tr>
-            <th scope="row">Attestations (executed/missed)</th>
-        <tr>
-        <tr>
-            <th scope="row">Proposals (executed/missed)</th>
-        <tr> -->
       </tbody>
     </table>
   {{ end }}

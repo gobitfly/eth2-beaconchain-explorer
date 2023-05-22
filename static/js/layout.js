@@ -1,3 +1,21 @@
+//We want to prevent the intial page scroll to tab anchors
+function stopInitialScrollEvent(event) {
+  event.preventDefault()
+  event.stopImmediatePropagation()
+  event.stopPropagation()
+  window.scrollTo(0, 0)
+}
+window.addEventListener("scroll", stopInitialScrollEvent)
+window.addEventListener("load", function (event) {
+  window.removeEventListener("scroll", stopInitialScrollEvent)
+})
+
+function applyTTFix() {
+  $("button, a").on("mousedown", (evt) => {
+    evt.preventDefault() // prevent setting the browser focus on all mouse buttons, which prevents tooltips from disapearing
+  })
+}
+
 // FAB toggle
 function toggleFAB() {
   var fabContainer = document.querySelector(".fab-message")
@@ -108,8 +126,34 @@ function hex2a(hexx) {
   return str
 }
 
+var observeDOM = (function () {
+  var MutationObserver = window.MutationObserver || window.WebKitMutationObserver
+
+  return function (obj, callback) {
+    if (!obj || obj.nodeType !== 1) return
+
+    if (MutationObserver) {
+      // define a new observer
+      var mutationObserver = new MutationObserver(callback)
+
+      // have the observer observe for changes in children
+      mutationObserver.observe(obj, { childList: true, subtree: true })
+      return mutationObserver
+    }
+
+    // browser support fallback
+    else if (window.addEventListener) {
+      obj.addEventListener("DOMNodeInserted", callback, false)
+      obj.addEventListener("DOMNodeRemoved", callback, false)
+    }
+  }
+})()
+
+observeDOM(document.documentElement, applyTTFix)
+
 // typeahead
 $(document).ready(function () {
+  // format timestamps within tooltip titles
   formatTimestamps() // make sure this happens before tooltips
   if ($('[data-toggle="tooltip"]').tooltip) {
     $('[data-toggle="tooltip"]').tooltip()
@@ -366,7 +410,7 @@ $(document).ready(function () {
     } else if (sug.address !== undefined) {
       window.location = "/address/" + sug.address
     } else if (sug.eth1_address !== undefined) {
-      window.location = "/validators/initiated-deposits?q=" + sug.eth1_address
+      window.location = "/validators/deposits?q=" + sug.eth1_address
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
@@ -378,26 +422,18 @@ $(document).ready(function () {
   })
 })
 
-$("[aria-ethereum-date]").each(function (item) {
-  var dt = $(this).attr("aria-ethereum-date")
-  var format = $(this).attr("aria-ethereum-date-format")
+$(document).on("inserted.bs.tooltip", function (event) {
+  $("[aria-ethereum-date]").each(function () {
+    formatAriaEthereumDate(this)
+  })
+})
 
-  if (!format) {
-    format = "ff"
-  }
+$("[aria-ethereum-date]").each(function () {
+  formatAriaEthereumDate(this)
+})
 
-  if (format === "FROMNOW") {
-    $(this).text(getRelativeTime(luxon.DateTime.fromMillis(dt * 1000)))
-    $(this).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
-    $(this).attr("data-toggle", "tooltip")
-  } else if (format === "LOCAL") {
-    var local = luxon.DateTime.fromMillis(dt * 1000)
-    $(this).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
-    $(this).attr("title", luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
-    $(this).attr("data-toggle", "tooltip")
-  } else {
-    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
-  }
+$("[aria-ethereum-duration]").each(function () {
+  formatAriaEthereumDuration(this)
 })
 
 $(document).ready(function () {
@@ -445,6 +481,28 @@ if (url.match("#")) {
   $('.nav-pills a[href="#' + url.split("#")[1] + '"]').tab("show")
 }
 
+function formatAriaEthereumDate(elem) {
+  var dt = $(elem).attr("aria-ethereum-date")
+  var format = $(elem).attr("aria-ethereum-date-format")
+
+  if (!format) {
+    format = "ff"
+  }
+
+  var local = luxon.DateTime.fromMillis(dt * 1000)
+  if (format === "FROMNOW") {
+    $(elem).text(getRelativeTime(local))
+    $(elem).attr("data-original-title", formatTimestampsTooltip(local))
+    $(elem).attr("data-toggle", "tooltip")
+  } else if (format === "LOCAL") {
+    $(elem).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
+    $(elem).attr("data-original-title", formatTimestampsTooltip(local))
+    $(elem).attr("data-toggle", "tooltip")
+  } else {
+    $(elem).text(local.toFormat(format))
+  }
+}
+
 function formatTimestamps(selStr) {
   var sel = $(document)
   if (selStr !== undefined) {
@@ -452,10 +510,10 @@ function formatTimestamps(selStr) {
   }
   sel.find(".timestamp").each(function () {
     var ts = $(this).data("timestamp")
-    var tsLuxon = luxon.DateTime.fromMillis(ts * 1000)
-    $(this).attr("data-original-title", tsLuxon.toFormat("ff"))
+    var local = luxon.DateTime.fromMillis(ts * 1000)
 
-    $(this).text(getRelativeTime(tsLuxon))
+    $(this).text(getRelativeTime(local))
+    $(this).attr("data-original-title", formatTimestampsTooltip(local))
   })
 
   if (sel.find('[data-toggle="tooltip"]').tooltip) {
@@ -463,12 +521,19 @@ function formatTimestamps(selStr) {
   }
 }
 
+function formatTimestampsTooltip(local) {
+  var toolTipFormat = "yyyy-MM-dd HH:mm:ss"
+  var tooltip = local.toFormat(toolTipFormat)
+
+  return tooltip
+}
+
 function getLuxonDateFromTimestamp(ts) {
   if (!ts) {
     return
   }
 
-  // Parse Date depanding on the format we get it
+  // Parse Date depending on the format we get it
   if (`${ts}`.includes("T")) {
     if (ts === "0001-01-01T00:00:00Z") {
       return
@@ -491,44 +556,55 @@ function getRelativeTime(tsLuxon) {
   var prefix = ""
   var suffix = ""
   if (tsLuxon.diffNow().milliseconds > 0) {
-    // inverse the difference of the timestamp (3 seconds into the future becomes 3 seconds into the past)
-    var now = luxon.DateTime.utc()
-    tsLuxon = luxon.DateTime.fromSeconds(now.ts / 10e2 - tsLuxon.diffNow().milliseconds / 10e2)
     prefix = "in "
   } else {
+    // inverse the difference of the timestamp (3 seconds into the past becomes 3 seconds into the future)
+    var now = luxon.DateTime.utc()
+    tsLuxon = luxon.DateTime.fromSeconds(now.ts / 10e2 - tsLuxon.diffNow().milliseconds / 10e2)
     suffix = " ago"
   }
   var duration = tsLuxon.diffNow(["days", "hours", "minutes", "seconds"])
+  const formattedDuration = formatLuxonDuration(duration)
+  return `${prefix}${formattedDuration}${suffix}`
+}
+
+function formatAriaEthereumDuration(elem) {
+  const attr = $(elem).attr("aria-ethereum-duration")
+  const duration = luxon.Duration.fromMillis(attr).shiftTo("days", "hours", "minutes", "seconds")
+  $(elem).text(formatLuxonDuration(duration))
+}
+
+function formatLuxonDuration(duration) {
   var daysPart = Math.round(duration.days)
   var hoursPart = Math.round(duration.hours)
   var minutesPart = Math.round(duration.minutes)
   var secondsPart = Math.round(duration.seconds)
   if (daysPart === 0 && hoursPart === 0 && minutesPart === 0 && secondsPart === 0) {
-    return `${prefix}0 secs${suffix}`
+    return `0 secs`
   }
-  var sDays = daysPart === -1 ? "" : "s"
-  var sHours = hoursPart === -1 ? "" : "s"
-  var sMinutes = minutesPart === -1 ? "" : "s"
-  var sSeconds = secondsPart === -1 ? "" : "s"
+  var sDays = daysPart === 1 ? "" : "s"
+  var sHours = hoursPart === 1 ? "" : "s"
+  var sMinutes = minutesPart === 1 ? "" : "s"
+  var sSeconds = secondsPart === 1 ? "" : "s"
   var parts = []
   if (daysPart !== 0) {
-    parts.push(`${daysPart * -1} day${sDays}`)
+    parts.push(`${daysPart} day${sDays}`)
   }
   if (hoursPart !== 0) {
-    parts.push(`${hoursPart * -1} hr${sHours}`)
+    parts.push(`${hoursPart} hr${sHours}`)
   }
   if (minutesPart !== 0) {
-    parts.push(`${minutesPart * -1} min${sMinutes}`)
+    parts.push(`${minutesPart} min${sMinutes}`)
   }
   if (secondsPart !== 0 && parts.length == 0) {
-    parts.push(`${secondsPart * -1} sec${sSeconds}`)
+    parts.push(`${secondsPart} sec${sSeconds}`)
   }
   if (parts.length === 1) {
-    return `${prefix}${parts[0]}${suffix}`
+    return `${parts[0]}`
   } else if (parts.length > 1) {
-    return `${prefix}${parts[0]} ${parts[1]}${suffix}`
+    return `${parts[0]} ${parts[1]}`
   } else {
-    return `${prefix}${duration.days * -1}days  ${duration.hours * -1}hrs ${duration.minutes * -1}mins ${duration.seconds * -1}secs${suffix}`
+    return `${duration.days}days  ${duration.hours}hrs ${duration.minutes}mins ${duration.seconds}secs`
   }
 }
 
@@ -546,3 +622,14 @@ function getIncomeChartValueString(value, currency, ethPrice) {
 
   return `${(value / ethPrice).toFixed(5)} ETH (${value.toFixed(2)} ${currency})`
 }
+
+$("[data-tooltip-date=true]").each(function (item) {
+  let titleObject = $($.parseHTML($(this).attr("title")))
+  titleObject.find("[aria-ethereum-date]").each(function () {
+    formatAriaEthereumDate(this)
+  })
+  titleObject.find("[aria-ethereum-duration]").each(function () {
+    formatAriaEthereumDuration(this)
+  })
+  $(this).attr("title", titleObject.prop("outerHTML"))
+})

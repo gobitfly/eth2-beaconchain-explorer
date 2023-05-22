@@ -23,7 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
-	"github.com/protolambda/zrnt/eth2/util/math"
+	protomath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/csrf"
@@ -48,9 +48,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		"validator/countdown.html",
 		"components/flashMessage.html",
 		"components/rocket.html")
-	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
 	var validatorTemplate = templates.GetTemplate(validatorTemplateFiles...)
-	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
 
 	currency := GetCurrency(r)
 
@@ -76,12 +74,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var index uint64
 	var err error
 
-	epoch := services.LatestEpoch()
-	latestFinalized := services.LatestFinalizedEpoch()
+	latestEpoch := services.LatestEpoch()
+	lastFinalizedEpoch := services.LatestFinalizedEpoch()
 
 	validatorPageData := types.ValidatorPageData{}
 
-	validatorPageData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	futureProposalEpoch := uint64(0)
+	futureSyncDutyEpoch := uint64(0)
 
 	stats := services.GetLatestStats()
 	churnRate := stats.ValidatorChurnLimit
@@ -114,22 +114,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
+		// Request came with a hash
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
-			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			validatorNotFound(data, w, r, vars, "")
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
 			// the validator might only have a public key but no index yet
 			var name string
-			err = db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
+			err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
 				logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				validatorNotFound(data, w, r, vars, "")
 				return
 				// err == sql.ErrNoRows -> unnamed
 			} else {
@@ -140,7 +139,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
 			if err != nil && err != sql.ErrNoRows {
 				logger.Errorf("error getting validator-pool from db for pubKey %v: %v", pubKey, err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				validatorNotFound(data, w, r, vars, "")
 				return
 				// err == sql.ErrNoRows -> (no pool set)
 			} else {
@@ -157,12 +156,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 			validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(deposits)
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
-				SetPageDataTitle(data, fmt.Sprintf("Validator %x", pubKey))
-				data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
-
-				if handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-					return // an error has occurred and was processed
-				}
+				validatorNotFound(data, w, r, vars, "")
 				return
 			}
 
@@ -255,7 +249,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		if err != nil {
-			http.Error(w, "Validator not found", 404)
+			validatorNotFound(data, w, r, vars, "")
 			return
 		}
 	}
@@ -291,23 +285,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
-		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
+		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex < 2147483647 AND validatorindex >= 0) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
-		data := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v", index), "", validatorNotFoundTemplateFiles)
-		if handleTemplateError(w, r, "validator.go", "Validator", "no rows", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-			return // an error has occurred and was processed
-		}
+		validatorNotFound(data, w, r, vars, "")
 		return
 	} else if err != nil {
 		logger.Errorf("error getting validator for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		validatorNotFound(data, w, r, vars, "")
 		return
 	}
 
-	var lastStatsDay uint64
-	err = db.ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
 	if err != nil {
 		logger.Errorf("error getting lastStatsDay for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -330,7 +320,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(validatorPageData.RankCount)
 	}
 
-	validatorPageData.Epoch = epoch
+	validatorPageData.Epoch = latestEpoch
 	validatorPageData.Index = index
 
 	if data.User.Authenticated {
@@ -363,9 +353,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 		validatorPageData.AttestationsCount = 0
 	}
-	if validatorPageData.ExitEpoch != 9223372036854775807 {
+
+	if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
+
+	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
+	avgSyncIntervalAsDuration := time.Duration(
+		utils.Config.Chain.Config.SecondsPerSlot*
+			utils.SlotsPerSyncCommittee()*
+			avgSyncInterval) * time.Second
+	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 
 	g := errgroup.Group{}
 	g.Go(func() error {
@@ -374,7 +372,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		validatorPageData.IncomeHistoryChartData, validatorPageData.IncomeToday, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
+		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency)
 
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
@@ -405,16 +403,31 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("error retrieving validator earnings: %v", err)
 		}
-		validatorPageData.Income1d = earnings.LastDay
-		validatorPageData.Income7d = earnings.LastWeek
-		validatorPageData.Income31d = earnings.LastMonth
-		validatorPageData.Apr = earnings.APR
-		vbalance, ok := balances[validatorPageData.ValidatorIndex]
-		if !ok {
-			return fmt.Errorf("error retrieving validator balances: %v", err)
+		// each income and apr variable is a struct of 3 fields: cl, el and total
+		validatorPageData.Income1d = earnings.Income1d
+		validatorPageData.Income7d = earnings.Income7d
+		validatorPageData.Income31d = earnings.Income31d
+		validatorPageData.Apr7d = earnings.Apr7d
+		validatorPageData.Apr31d = earnings.Apr31d
+		validatorPageData.Apr365d = earnings.Apr365d
+		validatorPageData.IncomeTotal = earnings.IncomeTotal
+		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
+		validatorPageData.IncomeToday = earnings.IncomeToday
+		validatorPageData.ValidatorProposalData = earnings.ProposalData
+
+		if latestEpoch < earnings.ProposalData.LastScheduledSlot/data.ChainConfig.SlotsPerEpoch {
+			futureProposalEpoch = earnings.ProposalData.LastScheduledSlot / data.ChainConfig.SlotsPerEpoch
 		}
-		validatorPageData.CurrentBalance = vbalance.Balance
-		validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
+
+		if utils.Config.Frontend.Validator.ShowProposerRewards {
+			validatorPageData.IncomeProposerFormatted = &earnings.ProposerTotalFormatted
+		}
+
+		vbalance, ok := balances[validatorPageData.ValidatorIndex]
+		if ok {
+			validatorPageData.CurrentBalance = vbalance.Balance
+			validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
+		}
 
 		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
 			// validators can have 0x01 credentials even before the cappella fork
@@ -425,7 +438,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
 
 			// get validator withdrawals
-			withdrawalsCount, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+			withdrawalsCount, lastWithdrawalsEpoch, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
 			if err != nil {
 				return fmt.Errorf("error getting validator withdrawals count from db: %v", err)
 			}
@@ -446,7 +459,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			isFullWithdrawal := validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch
 			isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance
 			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (isFullWithdrawal || isPartialWithdrawal) {
-				distance, err := db.GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
+				distance, err := GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
 				if err != nil {
 					return fmt.Errorf("error getting withdrawable validator count from cursor: %v", err)
 				}
@@ -454,13 +467,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				timeToWithdrawal := utils.GetTimeToNextWithdrawal(distance)
 
 				// it normally takes two epochs to finalize
-				if timeToWithdrawal.After(utils.EpochToTime(epoch + (epoch - latestFinalized))) {
+				if timeToWithdrawal.After(utils.EpochToTime(latestEpoch + (latestEpoch - lastFinalizedEpoch))) {
 					address, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
 					if err != nil {
 						// warning only as "N/A" will be displayed
 						logger.Warn("invalid withdrawal credentials")
 					}
 
+					// create the table data
 					tableData := make([][]interface{}, 0, 1)
 					var withdrawalCredentialsTemplate template.HTML
 					if address != nil {
@@ -476,12 +490,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
 					}
 
+					if latestEpoch == lastWithdrawalsEpoch {
+						withdrawalAmont = 0
+					}
 					tableData = append(tableData, []interface{}{
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
-						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimeFromNow(timeToWithdrawal))),
+						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmont), big.NewInt(1e9)), "ETH", 6))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmont), big.NewInt(1e9)), "Ether", 6))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -553,43 +570,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
-		proposals := []struct {
-			Slot   uint64
-			Status uint64
-		}{}
-
-		err = db.ReaderDb.Select(&proposals, "SELECT slot, status FROM blocks WHERE proposer = $1 ORDER BY slot", index)
-		if err != nil {
-			return fmt.Errorf("error retrieving block-proposals: %v", err)
-		}
-
-		validatorPageData.Proposals = make([][]uint64, len(proposals))
-		for i, b := range proposals {
-			validatorPageData.Proposals[i] = []uint64{
-				uint64(utils.SlotToTime(b.Slot).Unix()),
-				b.Status,
-			}
-			if b.Status == 0 {
-				validatorPageData.ScheduledBlocksCount++
-			} else if b.Status == 1 {
-				validatorPageData.ProposedBlocksCount++
-			} else if b.Status == 2 {
-				validatorPageData.MissedBlocksCount++
-			} else if b.Status == 3 {
-				validatorPageData.OrphanedBlocksCount++
-			}
-		}
-
-		validatorPageData.BlocksCount = uint64(len(proposals))
-		if validatorPageData.BlocksCount > 0 {
-			validatorPageData.UnmissedBlocksPercentage = float64(validatorPageData.BlocksCount-validatorPageData.MissedBlocksCount) / float64(len(proposals))
-		} else {
-			validatorPageData.UnmissedBlocksPercentage = 1.0
-		}
-		return nil
-	})
-
-	g.Go(func() error {
 		if validatorPageData.AttestationsCount > 0 {
 			// get attestationStats from validator_stats
 			attestationStats := struct {
@@ -604,22 +584,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// add attestationStats that are not yet in validator_stats
-			finalizedEpoch := services.LatestFinalizedEpoch()
-			lookback := int64(finalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
+			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 			if lookback > 0 {
 				// logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
-				attestationsNotInStats, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, finalizedEpoch-uint64(lookback), finalizedEpoch)
+				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				}
+				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
 
-				for _, v := range attestationsNotInStats {
-					for _, a := range v {
-						if a.Status == 0 {
-							attestationStats.MissedAttestations++
-						}
-					}
-				}
 			}
 
 			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
@@ -678,16 +651,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		validatorPageData.SlotsPerSyncCommittee = utils.SlotsPerSyncCommittee()
+
 		// sync participation
 		// get all sync periods this validator has been part of
-		var syncPeriods []struct {
+		var actualSyncPeriods []struct {
 			Period     uint64 `db:"period"`
 			FirstEpoch uint64 `db:"firstepoch"`
 			LastEpoch  uint64 `db:"lastepoch"`
 		}
-		tempSyncPeriods := syncPeriods
+		allSyncPeriods := actualSyncPeriods
 
-		err = db.ReaderDb.Select(&tempSyncPeriods, `
+		err = db.ReaderDb.Select(&allSyncPeriods, `
 		SELECT period as period, (period*$1) as firstepoch, ((period+1)*$1)-1 as lastepoch
 		FROM sync_committees 
 		WHERE validatorindex = $2
@@ -696,64 +671,75 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("error getting sync participation count data of sync-assignments: %v", err)
 		}
 
+		if len(allSyncPeriods) > 0 && allSyncPeriods[0].LastEpoch > latestEpoch {
+			futureSyncDutyEpoch = allSyncPeriods[0].LastEpoch
+		}
+
 		// remove scheduled committees
-		latestEpoch := services.LatestEpoch()
-		for i, syncPeriod := range tempSyncPeriods {
+		for i, syncPeriod := range allSyncPeriods {
 			if syncPeriod.FirstEpoch <= latestEpoch {
-				syncPeriods = tempSyncPeriods[i:]
+				actualSyncPeriods = allSyncPeriods[i:]
 				break
 			}
 		}
 
-		expectedSyncCount := uint64(len(syncPeriods)) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-
-		if expectedSyncCount > 0 {
+		if len(actualSyncPeriods) > 0 {
 			// get sync stats from validator_stats
-			syncStats := struct {
-				ParticipatedSync uint64 `db:"participated_sync"`
-				MissedSync       uint64 `db:"missed_sync"`
-				OrphanedSync     uint64 `db:"orphaned_sync"`
-				ScheduledSync    uint64
-			}{}
+			syncStats := types.SyncCommitteesStats{}
 			if lastStatsDay > 0 {
-				err = db.ReaderDb.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
+				err = db.ReaderDb.Get(&syncStats, `
+					SELECT
+						COALESCE(SUM(participated_sync), 0) as participated_sync,
+						COALESCE(SUM(missed_sync), 0) as missed_sync,
+						COALESCE(SUM(orphaned_sync), 0) as orphaned_sync
+					FROM validator_stats
+					WHERE validatorindex = $1`, index)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator syncStats: %v", err)
 				}
 			}
 
-			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
 			// if sync duties of last period haven't fully been exported yet, fetch remaining duties from bigtable
-			if syncPeriods[0].LastEpoch > lastExportedEpoch {
+			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
+			lastSyncPeriod := actualSyncPeriods[0]
+			if lastSyncPeriod.LastEpoch > lastExportedEpoch {
 				lookback := int64(latestEpoch - lastExportedEpoch)
 				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 				}
-				for _, r := range res[index] {
-					slotTime := utils.SlotToTime(r.Slot)
-					if r.Status == 0 && time.Since(slotTime) > time.Minute {
-						r.Status = 2
-					}
-					switch r.Status {
-					case 0:
-						syncStats.ScheduledSync++
-					case 1:
-						syncStats.ParticipatedSync++
-					case 2:
-						syncStats.MissedSync++
-					case 3:
-						syncStats.OrphanedSync++
-					}
+				syncStatsBt := utils.AddSyncStats([]uint64{index}, res, nil)
+				// if last sync period is the current one, add remaining scheduled slots
+				if lastSyncPeriod.LastEpoch >= latestEpoch {
+					syncStatsBt.ScheduledSlots += utils.GetRemainingScheduledSync(1, syncStatsBt, lastExportedEpoch, lastSyncPeriod.FirstEpoch)
 				}
+
+				syncStats.MissedSlots += syncStatsBt.MissedSlots
+				syncStats.ParticipatedSlots += syncStatsBt.ParticipatedSlots
+				syncStats.ScheduledSlots += syncStatsBt.ScheduledSlots
 			}
-			validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync
-			validatorPageData.MissedSyncCount = syncStats.MissedSync
-			validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync
-			validatorPageData.ScheduledSyncCount = syncStats.ScheduledSync
+			validatorPageData.SlotsDoneInCurrentSyncCommittee = validatorPageData.SlotsPerSyncCommittee - syncStats.ScheduledSlots
+
+			validatorPageData.ParticipatedSyncCountSlots = syncStats.ParticipatedSlots
+			validatorPageData.MissedSyncCountSlots = syncStats.MissedSlots
+			validatorPageData.OrphanedSyncCountSlots = syncStats.OrphanedSlots
+			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSlots
 			// actual sync duty count and percentage
-			validatorPageData.SyncCount = validatorPageData.ParticipatedSyncCount + validatorPageData.MissedSyncCount + validatorPageData.OrphanedSyncCount + syncStats.ScheduledSync
-			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
+			validatorPageData.SyncCount = uint64(len(actualSyncPeriods))
+			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
+		}
+		// sync luck
+		if len(allSyncPeriods) > 0 {
+			maxPeriod := allSyncPeriods[0].Period
+			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, latestEpoch)
+			if err != nil {
+				return fmt.Errorf("error retrieving expected sync committee slots: %v", err)
+			}
+			if expectedSyncCount != 0 {
+				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots) / float64(expectedSyncCount)
+			}
+			nextEstimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(maxPeriod + avgSyncInterval))
+			validatorPageData.SyncEstimate = &nextEstimate
 		}
 		return nil
 	})
@@ -810,19 +796,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// logger.WithFields(logrus.Fields{
-	// 	"index":         index,
-	// 	"BasicInfo":     timings.BasicInfo,
-	// 	"Earnings":      timings.Earnings,
-	// 	"Deposits":      timings.Deposits,
-	// 	"Proposals":     timings.Proposals,
-	// 	"Charts":        timings.Charts,
-	// 	"Effectiveness": timings.Effectiveness,
-	// 	"Statistics":    timings.Statistics,
-	// 	"SyncStats":     timings.SyncStats,
-	// 	"Rocketpool":    timings.Rocketpool,
-	// 	"total":         timings.BasicInfo + timings.Earnings + timings.Deposits + timings.Proposals + timings.Charts + timings.Effectiveness + timings.Statistics + timings.SyncStats + timings.Rocketpool,
-	// }).Infof("got validator page data")
+	validatorPageData.FutureDutiesEpoch = protomath.MaxU64(futureProposalEpoch, futureSyncDutyEpoch)
+	validatorPageData.IncomeToday.Total = validatorPageData.IncomeToday.Cl + validatorPageData.IncomeToday.El
 
 	data.Data = validatorPageData
 
@@ -1112,8 +1087,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		totalCount = 0
 	}
 	lastAttestationEpoch := epoch
-	if ae.ExitEpoch != 9223372036854775807 {
-		lastAttestationEpoch = ae.ExitEpoch
+	if ae.ExitEpoch != 9223372036854775807 && ae.ExitEpoch <= epoch {
+		lastAttestationEpoch = ae.ExitEpoch - 1
 		totalCount = ae.ExitEpoch - ae.ActivationEpoch
 	}
 
@@ -1206,7 +1181,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, err := db.GetValidatorWithdrawalsCount(index)
+	withdrawalCount, _, err := db.GetValidatorWithdrawalsCount(index)
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1226,9 +1201,9 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "ETH", 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 		})
 	}
 
@@ -1520,6 +1495,8 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	currency := GetCurrency(r)
+	pageLength := 10
+	maxPages := 10
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
@@ -1545,8 +1522,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//length := 10
-
 	var activationAndExitEpoch = struct {
 		ActivationEpoch uint64 `db:"activationepoch"`
 		ExitEpoch       uint64 `db:"exitepoch"`
@@ -1563,35 +1538,130 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
-	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && activationAndExitEpoch.ExitEpoch <= services.LatestFinalizedEpoch() {
 		totalCount += activationAndExitEpoch.ExitEpoch - activationAndExitEpoch.ActivationEpoch
 	} else {
 		totalCount += services.LatestFinalizedEpoch() - activationAndExitEpoch.ActivationEpoch + 1
 	}
 
-	if totalCount > 100 {
-		totalCount = 100
-	}
-
-	if start > 90 {
-		start = 90
+	if start > uint64((maxPages-1)*pageLength) {
+		start = uint64((maxPages - 1) * pageLength)
 	}
 
 	currentEpoch := services.LatestEpoch() - 1
-	// for an exited validator we show the history until his exit
-	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+	var postExitEpochs uint64 = 0
+	// for an exited validator we show the history until his exit or (in rare cases) until his last sync / propose duties are finished
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && currentEpoch > (activationAndExitEpoch.ExitEpoch-1) {
 		currentEpoch = activationAndExitEpoch.ExitEpoch - 1
+
+		var lastActionDay uint64
+		// let's get the last day where validator had duties which can be after the exit epoch of the validator
+		err = db.ReaderDb.Get(&lastActionDay, `
+			SELECT COALESCE(MAX(day), 0) 
+			FROM validator_stats 
+			WHERE 
+				validatorindex = $1 AND 
+				( missed_sync > 0 
+					OR orphaned_sync > 0 
+					OR participated_sync > 0 
+					OR proposed_blocks > 0 
+					OR missed_blocks > 0 
+					OR orphaned_blocks > 0 
+			);`, index)
+		if err != nil {
+			logger.Errorf("error retrieving lastActionDay for validator-history: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		lastActionEpoch := (lastActionDay + 1) * utils.EpochsPerDay()
+		// if the validator had some duties after the exit epoch we calculate how many epochs we have to check after the exit epoch
+		if lastActionEpoch > currentEpoch {
+			postExitEpochs = protomath.MinU64(lastActionEpoch, services.LatestEpoch()-1) - currentEpoch
+		}
 	}
 
-	var validatorHistory []*types.ValidatorHistory
+	tableData := make([][]interface{}, 0)
 
+	if postExitEpochs > 0 {
+		startEpoch := currentEpoch + 1
+		endEpoch := startEpoch + postExitEpochs
+		withdrawalMap, incomeDetails, err := getWithdrawalAndIncome(index, startEpoch, endEpoch)
+		if err != nil {
+			return
+		}
+
+		// if there are additional epochs with duties we have to go through all of them as there can be gaps (after the exit before the duty)
+		for i := endEpoch; i >= startEpoch; i-- {
+			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
+				continue
+			}
+			totalCount++
+			// for paging we skip the first X epochs with duties
+			if start > 0 {
+				start--
+				continue
+			} else if len(tableData) >= pageLength {
+				continue
+			}
+			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+		}
+	}
+
+	postExitItemLength := len(tableData)
+	// if we have already found enough items we can skip the 'normal' step.
+	if postExitItemLength < pageLength {
+		startEpoch := currentEpoch - start - uint64(pageLength-1-postExitItemLength) // we only get the exact number of epochs to get to the page length
+		endEpoch := currentEpoch - start
+		if startEpoch > endEpoch { // handle underflows of startEpoch
+			startEpoch = 0
+		}
+
+		withdrawalMap, incomeDetails, err := getWithdrawalAndIncome(index, startEpoch, endEpoch)
+		if err != nil {
+			return
+		}
+
+		for i := endEpoch; i >= startEpoch && len(tableData) < pageLength; i-- {
+			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
+				if i <= endEpoch {
+					tableData = append(tableData, []interface{}{
+						utils.FormatEpoch(i),
+						"pending...",
+						template.HTML(""),
+						template.HTML(""),
+					})
+				}
+				continue
+			}
+			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+		}
+	}
+
+	if len(tableData) == 0 {
+		tableData = append(tableData, []interface{}{
+			template.HTML("Validator no longer active"),
+		})
+	}
+
+	totalCount = protomath.MinU64(totalCount, uint64(pageLength*maxPages))
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorWithdrawal, map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
 	g := new(errgroup.Group)
-
-	startEpoch := currentEpoch - start - 9
-	endEpoch := currentEpoch - start
-	if startEpoch > endEpoch { // handle underflows of startEpoch
-		startEpoch = 0
-	}
 
 	var withdrawals []*types.WithdrawalsByEpoch
 	g.Go(func() error {
@@ -1615,13 +1685,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	err = g.Wait()
-
-	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
+	err := g.Wait()
 	withdrawalMap := make(map[uint64]*types.ValidatorWithdrawal)
 	for _, withdrawals := range withdrawals {
 		withdrawalMap[withdrawals.Epoch] = &types.ValidatorWithdrawal{
@@ -1631,66 +1695,36 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			Slot:   withdrawals.Epoch * utils.Config.Chain.Config.SlotsPerEpoch,
 		}
 	}
+	return withdrawalMap, incomeDetails, err
+}
 
-	tableData := make([][]interface{}, 0, len(validatorHistory))
-
-	for i := endEpoch; i >= startEpoch; i-- {
-		if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
-			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(i),
-				"pending...",
-				template.HTML(""),
-				template.HTML(""),
-			})
-			continue
-		}
-		events := template.HTML("")
-		if incomeDetails[index][i].AttestationSourcePenalty > 0 && incomeDetails[index][i].AttestationTargetPenalty > 0 {
-			events += utils.FormatAttestationStatusShort(2)
-		} else {
-			events += utils.FormatAttestationStatusShort(1)
-		}
-
-		if incomeDetails[index][i].ProposerAttestationInclusionReward > 0 {
-			block := utils.FormatBlockStatusShort(1)
-			events += block
-		} else if incomeDetails[index][i].ProposalsMissed > 0 {
-			block := utils.FormatBlockStatusShort(2)
-			events += block
-		}
-
-		if withdrawalMap[i] != nil {
-			withdrawal := utils.FormatWithdrawalShort(uint64(withdrawalMap[i].Slot), withdrawalMap[i].Amount)
-			events += withdrawal
-		}
-
-		rewards := incomeDetails[index][i].TotalClRewards()
-		tableData = append(tableData, []interface{}{
-			utils.FormatEpoch(i),
-			utils.FormatBalanceChangeFormated(&rewards, currency, incomeDetails[index][i]),
-			template.HTML(""),
-			template.HTML(events),
-		})
+func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
+	events := template.HTML("")
+	if income.AttestationSourcePenalty > 0 && income.AttestationTargetPenalty > 0 {
+		events += utils.FormatAttestationStatusShort(2)
+	} else {
+		events += utils.FormatAttestationStatusShort(1)
 	}
 
-	if len(tableData) == 0 {
-		tableData = append(tableData, []interface{}{
-			template.HTML("Validator no longer active"),
-		})
+	if income.ProposerAttestationInclusionReward > 0 {
+		block := utils.FormatBlockStatusShort(1)
+		events += block
+	} else if income.ProposalsMissed > 0 {
+		block := utils.FormatBlockStatusShort(2)
+		events += block
 	}
 
-	data := &types.DataTableResponse{
-		Draw:            draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
-		Data:            tableData,
+	if withdrawal != nil {
+		withdrawal := utils.FormatWithdrawalShort(uint64(withdrawal.Slot), withdrawal.Amount)
+		events += withdrawal
 	}
 
-	err = json.NewEncoder(w).Encode(data)
-	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	rewards := income.TotalClRewards()
+	return []interface{}{
+		utils.FormatEpoch(epoch),
+		utils.FormatBalanceChangeFormated(&rewards, currency, income),
+		template.HTML(""),
+		template.HTML(events),
 	}
 }
 
@@ -1712,13 +1746,15 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
 			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+
+			validatorNotFound(data, w, r, vars, "/stats")
+
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
 			logger.Errorf("error parsing validator pubkey: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
 	} else {
@@ -1727,7 +1763,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		// Request is not a valid index number
 		if err != nil {
 			logger.Errorf("error parsing validator index: %v", err)
-			http.Error(w, "Validator not found", http.StatusNotFound)
+			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
 	}
@@ -1769,7 +1805,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving validator stats history: %v", err)
-		http.Error(w, "Validator not found", http.StatusNotFound)
+		validatorNotFound(data, w, r, vars, "/stats")
 		return
 	}
 
@@ -1959,13 +1995,13 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		if uint64(len(syncDuties))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
 			// extract correct slots
 			tableData = make([][]interface{}, length)
-			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < math.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
+			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
 				epoch := utils.EpochOfSlot(syncDuties[slotIndex].Slot)
 
 				slotTime := utils.SlotToTime(syncDuties[slotIndex].Slot)
 
-				if syncDuties[slotIndex].Status == 0 && time.Since(slotTime) > time.Minute {
-					syncDuties[slotIndex].Status = 2
+				if syncDuties[slotIndex].Status == 0 && time.Since(slotTime) <= time.Minute {
+					syncDuties[slotIndex].Status = 2 // scheduled
 				}
 				tableData[dataIndex] = []interface{}{
 					fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
@@ -1989,5 +2025,19 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+}
+
+// validatorNotFound will print the appropriate error message for when the requested validator cannot be found
+func validatorNotFound(data *types.PageData, w http.ResponseWriter, r *http.Request, vars map[string]string, page string) {
+	validatorNotFoundTemplateFiles := append(layoutTemplateFiles, "validator/validatornotfound.html")
+	var validatorNotFoundTemplate = templates.GetTemplate(validatorNotFoundTemplateFiles...)
+
+	SetPageDataTitle(data, "Validator not found")
+	d := InitPageData(w, r, "validators", fmt.Sprintf("/validator/%v%v", vars["index"], page), "", validatorNotFoundTemplateFiles)
+
+	err := handleTemplateError(w, r, "validator.go", "Validator", "GetValidatorDeposits", validatorNotFoundTemplate.ExecuteTemplate(w, "layout", d))
+	if err != nil {
+		return // an error has occurred and was processed
 	}
 }

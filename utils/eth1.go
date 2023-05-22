@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -263,24 +262,25 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmountFormated(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+func FormatAmountFormatted(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
 }
 func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
-	return formatAmount(amount, unit, digits, 0, false, false, false)
+	return formatAmount(amount, unit, digits, 0, true, false, false)
 }
 func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
 	return FormatAmount((*big.Int)(amount), unit, digits)
 }
+func FormatBytesAmount(amount []byte, unit string, digits int) template.HTML {
+	return FormatAmount(new(big.Int).SetBytes(amount), unit, digits)
+}
 func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
-	var displayUnit string
+	displayUnit := " " + unit
 	var unitDigits int
-	if unit == "ETH" {
-		displayUnit = " Ether"
+	if unit == "ETH" || unit == "Ether" {
 		unitDigits = 18
 	} else if unit == "GWei" {
-		displayUnit = " GWei"
 		unitDigits = 9
 	} else {
 		displayUnit = " ?"
@@ -306,18 +306,44 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 		}
 	}
 
-	// split in pre and post part
-	preComma := "0"
+	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
+	tooltip := ""
+	if fullAmountTooltip {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
+	}
+
+	// done, convert to HTML & return
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
+}
+
+func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
+	// Initialize trimmedAmount and postComma variables to "0"
+	trimmedAmount = "0"
 	postComma := "0"
+	proceed := ""
+
 	if amount != nil {
 		s := amount.String()
+		if amount.Sign() > 0 && addPositiveSign {
+			proceed = "+"
+		} else if amount.Sign() < 0 {
+			proceed = "-"
+			s = strings.Replace(s, "-", "", 1)
+		}
 		l := len(s)
-		if l > int(unitDigits) { // there is a pre comma part
+
+		// Check if there is a part of the amount before the decimal point
+		if l > int(unitDigits) {
+			// Calculate length of preComma part
 			l -= unitDigits
-			preComma = s[:l]
+			// Set preComma to part of the string before the decimal point
+			trimmedAmount = s[:l]
+			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s[l:], "0")
-			// reduce digits if precomma part exceeds limit
+
+			// Check if the preComma part exceeds the maximum number of digits before the decimal point
 			if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
+				// Reduce the number of digits after the decimal point by the excess number of digits in the preComma part
 				l -= maxPreCommaDigitsBeforeTrim
 				if digits < l {
 					digits = 0
@@ -325,40 +351,38 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 					digits -= l
 				}
 			}
-		} else if l == unitDigits { // there is only post comma part and no leading zeros has to be added
+			// Check if there is only a part of the amount after the decimal point, and no leading zeros need to be added
+		} else if l == unitDigits {
+			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s, "0")
-		} else if l != 0 { // there is only post comma part and leading zeros as to be added
+			// Check if there is only a part of the amount after the decimal point, and leading zeros need to be added
+		} else if l != 0 {
+			// Use fmt package to add leading zeros to the string
 			d := fmt.Sprintf("%%0%dd", unitDigits-l)
+			// Set postComma to resulting string, after removing trailing zeros
 			postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
 		}
-	}
 
-	// tooltip
-	var tooltip string
-	if fullAmountTooltip {
-		tooltip = ` data-toggle="tooltip" data-placement="top" title="` + preComma
+		fullAmount = trimmedAmount
 		if len(postComma) > 0 {
-			tooltip += `.` + postComma
+			fullAmount += "." + postComma
 		}
-		tooltip += `"`
-	}
 
-	// limit floating part
-	if len(postComma) > digits {
-		postComma = postComma[:digits]
-	}
+		// limit floating part
+		if len(postComma) > digits {
+			postComma = postComma[:digits]
+		}
 
-	// set floating point
-	if len(postComma) > 0 {
-		preComma += "." + postComma
+		// set floating point
+		if len(postComma) > 0 {
+			trimmedAmount += "." + postComma
+		}
 	}
-
-	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, preComma, displayUnit))
+	return proceed + trimmedAmount, proceed + fullAmount
 }
 
 func FormatMethod(method string) template.HTML {
-	return template.HTML(fmt.Sprintf(`<span class="badge badge-light">%s</span>`, method))
+	return template.HTML(fmt.Sprintf(`<span class="badge badge-light text-truncate mw-100" data-toggle="tooltip" title="%s">%s</span>`, method, method))
 }
 
 func FormatBlockUsage(gasUsage uint64, gasLimit uint64) template.HTML {
@@ -381,14 +405,6 @@ func FormatDifficulty(number *big.Int) string {
 	f.Quo(f, big.NewFloat(1e12))
 	r, _ := f.Float64()
 	return fmt.Sprintf("%.1f T", r)
-}
-
-func FormatTime(t time.Time) template.HTML {
-	return template.HTML(fmt.Sprintf("<span aria-ethereum-date=\"%v\">%v</span>", t.Unix(), t))
-}
-
-func FormatTimeFromNow(t time.Time) template.HTML {
-	return template.HTML(HumanizeTime(t))
 }
 
 func FormatHashrate(h float64) template.HTML {
