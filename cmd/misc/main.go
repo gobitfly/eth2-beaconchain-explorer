@@ -52,7 +52,7 @@ func main() {
 
 	chainIdString := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
 
-	_, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Project, chainIdString)
+	_, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Project, chainIdString, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "error initializing bigtable", 0)
 	}
@@ -188,7 +188,7 @@ func UpdateAPIKey(user uint64) error {
 // Debugging function to compare Rewards from the Statistic Table with the onces from the Big Table
 func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
