@@ -828,15 +828,29 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
+func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]uint8, error) {
 	valLen := len(validators)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
 	defer cancel()
 
+	slots := []uint64{}
+
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < endEpoch*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+		slots = append(slots, slot)
+	}
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
+	}
+
 	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 
-	res := make(map[uint64]map[uint64]bool)
+	res := make(map[uint64]map[uint64]uint8)
 
 	columnFilters := []gcp_bigtable.Filter{}
 	if valLen < 1000 {
@@ -866,7 +880,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 		)
 	}
 
-	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
@@ -891,12 +905,16 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 				return false
 			}
 
-			if status == 0 {
+			if status == 0 || orphanedSlotsMap[attesterSlot] {
 				if res[validator] == nil {
-					res[validator] = make(map[uint64]bool, 0)
+					res[validator] = make(map[uint64]uint8, 0)
 				}
-				res[validator][attesterSlot] = true
-			} else if res[validator] != nil && res[validator][attesterSlot] {
+				if orphanedSlotsMap[attesterSlot] {
+					res[validator][attesterSlot] = 3
+				} else {
+					res[validator][attesterSlot] = 2
+				}
+			} else if res[validator] != nil && res[validator][attesterSlot] > 0 {
 				delete(res[validator], attesterSlot)
 			}
 		}
@@ -1000,14 +1018,14 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
 	if firstEpoch > lastEpoch {
 		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
 	}
 
 	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	data, err := bigtable.GetValidatorMissedAttestationHistory(validators, firstEpoch, lastEpoch)
+	data, err := bigtable.GetValidatorFailedAttestationHistory(validators, firstEpoch, lastEpoch)
 
 	if err != nil {
 		return nil, err
@@ -1018,9 +1036,19 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 	for validator, attestations := range data {
 		missed := len(attestations)
 		if missed > 0 {
+			missed := uint64(0)
+			orphaned := uint64(0)
+			for _, state := range attestations {
+				if state == 3 {
+					orphaned++
+				} else {
+					missed++
+				}
+			}
 			res[validator] = &types.ValidatorMissedAttestationsStatistic{
-				Index:              validator,
-				MissedAttestations: uint64(missed),
+				Index:                validator,
+				MissedAttestations:   missed,
+				OrphanedAttestations: orphaned,
 			}
 		}
 	}
@@ -1035,6 +1063,27 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 		return nil, err
 	}
 
+	slotsMap := make(map[uint64]bool)
+	for _, duties := range data {
+		for _, duty := range duties {
+			slotsMap[duty.Slot] = true
+		}
+	}
+	slots := []uint64{}
+	for slot := range slotsMap {
+		slots = append(slots, slot)
+	}
+
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
+	}
+
 	res := make(map[uint64]*types.ValidatorSyncDutiesStatistic)
 
 	for validator, duties := range data {
@@ -1045,7 +1094,9 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 		}
 
 		for _, duty := range duties {
-			if duty.Status == 0 {
+			if orphanedSlotsMap[duty.Slot] {
+				res[validator].OrphanedSync++
+			} else if duty.Status == 0 {
 				res[validator].MissedSync++
 			} else {
 				res[validator].ParticipatedSync++

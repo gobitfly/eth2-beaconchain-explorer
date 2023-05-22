@@ -18,14 +18,16 @@ type ValidatorBalanceStatistic struct {
 }
 
 type ValidatorMissedAttestationsStatistic struct {
-	Index              uint64
-	MissedAttestations uint64
+	Index                uint64
+	MissedAttestations   uint64
+	OrphanedAttestations uint64
 }
 
 type ValidatorSyncDutiesStatistic struct {
 	Index            uint64
 	ParticipatedSync uint64
 	MissedSync       uint64
+	OrphanedSync     uint64
 }
 
 type ValidatorWithdrawal struct {
