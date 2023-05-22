@@ -182,7 +182,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(indices) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -989,12 +989,17 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	return maps.Values(resultPerProposer), nil
 }
 
-func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
 
 	order := "DESC"
 	if isSortAsc {
 		order = "ASC"
+	}
+
+	status := ""
+	if onlyFinalized {
+		status = `and status = '1'`
 	}
 
 	query := fmt.Sprintf(`SELECT 
@@ -1004,9 +1009,9 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64,
 			epoch  
 		FROM blocks 
 		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+		AND exec_block_number IS NOT NULL AND exec_block_number > 0 %s
 		ORDER BY exec_block_number %s
-		OFFSET $2 LIMIT $3`, order)
+		OFFSET $2 LIMIT $3`, status, order)
 
 	err := db.ReaderDb.Select(&blockListSub,
 		query,
