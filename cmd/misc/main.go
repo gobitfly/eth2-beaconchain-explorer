@@ -228,6 +228,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
 
 // Update Orphaned statistics for Sync / Attestations
 func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB) {
+
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
