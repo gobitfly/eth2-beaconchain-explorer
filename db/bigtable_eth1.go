@@ -2700,7 +2700,7 @@ func (bigtable *Bigtable) GetEnsNameForAddress(address string) (*string, error) 
 	}
 	name := fmt.Sprintf("%s.eth", registration.Name)
 	if foundNameChange.BlockNumber > 0 {
-		name = fmt.Sprintf("%s", foundNameChange.NewName)
+		name = string(foundNameChange.NewName)
 	}
 
 	return &name, nil
