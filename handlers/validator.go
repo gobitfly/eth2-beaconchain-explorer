@@ -608,7 +608,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
 			validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations
 			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
-			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 		}
 		return nil
 	})
@@ -736,7 +736,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSlots
 			// actual sync duty count and percentage
 			validatorPageData.SyncCount = uint64(len(actualSyncPeriods))
-			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
+			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots+validatorPageData.OrphanedSyncCountSlots)
 		}
 		// sync luck
 		if len(allSyncPeriods) > 0 {
