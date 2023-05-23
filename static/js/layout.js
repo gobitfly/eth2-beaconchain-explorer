@@ -507,14 +507,13 @@ function formatAriaEthereumDate(elem) {
 function truncateTooltip() {
   let nodes = $("[truncate-tooltip]")
   nodes.each((_, node) => {
-    console.log(node)
     let title = ""
     if (node.scrollWidth > node.offsetWidth) {
       title = node.attributes["truncate-tooltip"].value
     }
-    if (node.attributes["title"]?.value != title) {
-      node.setAttribute("title", title)
-      if (title > 0) {
+    if (node.attributes["data-original-title"]?.value != title) {
+      node.setAttribute("data-original-title", title)
+      if (title !== "") {
         $(node).tooltip()
       }
     }
