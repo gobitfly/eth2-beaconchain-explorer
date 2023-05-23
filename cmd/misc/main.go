@@ -191,8 +191,7 @@ func UpdateAPIKey(user uint64) error {
 
 // Debugging function to compare Rewards from the Statistic Table with the onces from the Big Table
 func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
-	chainId := fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainId)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
 
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
@@ -229,8 +228,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
 
 // Update Orphaned statistics for Sync / Attestations
 func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB) {
-
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
