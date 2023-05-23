@@ -385,6 +385,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
+	if cfg.Frontend.SiteBrand == "" {
+		cfg.Frontend.SiteBrand = "beaconcha.in"
+	}
+
 	if cfg.Chain.ConfigPath == "" {
 		// var prysmParamsConfig *prysmParams.BeaconChainConfig
 		switch cfg.Chain.Name {
