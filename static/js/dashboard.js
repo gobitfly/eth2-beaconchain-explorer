@@ -751,13 +751,13 @@ $(document).ready(function () {
     var el = document.getElementById("dashboard-info")
     var depositedText = ""
     if (state.validatorsCount.deposited > 0) {
-      depositedText = `${state.validatorsCount.deposited} deposited, `
+      depositedText = `, ${state.validatorsCount.deposited} deposited`
     }
     var slashedText = ""
     if (state.validatorsCount.slashed > 0) {
       slashedText = `, ${state.validatorsCount.slashed} slashed`
     }
-    el.innerText = `${state.validatorsCount.active_online + state.validatorsCount.active_offline} active (${state.validatorsCount.active_online} online, ${state.validatorsCount.active_offline} offline), ${depositedText}${state.validatorsCount.pending} pending, ${state.validatorsCount.exited + state.validatorsCount.slashed} exited validators (${state.validatorsCount.exited} voluntary${slashedText})`
+    el.innerText = `${state.validatorsCount.active_online + state.validatorsCount.active_offline} active (${state.validatorsCount.active_online} online, ${state.validatorsCount.active_offline} offline)${depositedText}, ${state.validatorsCount.pending} pending, ${state.validatorsCount.exited + state.validatorsCount.slashed} exited validators (${state.validatorsCount.exited} voluntary${slashedText})`
 
     if (state.validators.length > 0) {
       showSelectedValidator()
