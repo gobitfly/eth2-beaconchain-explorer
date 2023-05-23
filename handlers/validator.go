@@ -183,19 +183,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			sumValid := uint64(0)
 			// check if a valid deposit exists
 			for _, d := range deposits.Eth1Deposits {
-				if d.ValidSignature {
-					sumValid += d.Amount
-				} else {
+				if !d.ValidSignature {
 					validatorPageData.Status = "deposited_invalid"
 				}
-			}
-
-			// enough deposited for the validator to be activated
-			if sumValid >= 32e9 {
-				validatorPageData.Status = "deposited_valid"
 			}
 
 			filter := db.WatchlistFilter{
