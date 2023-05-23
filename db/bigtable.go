@@ -114,6 +114,17 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 		return fmt.Errorf("rate limit, last metric insert was less than 1 min ago")
 	}
 
+	// for limiting machines per user, add the machine field to a redis set
+	// bucket period is 15mins
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), ts.Time().Minute()%15)
+	pipe := bigtable.redisCache.Pipeline()
+	pipe.SAdd(ctx, machineLimitKey, machine)
+	pipe.ExpireNX(ctx, machineLimitKey, time.Minute*15)
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return err
+	}
+
 	dataMut := gcp_bigtable.NewMutation()
 	dataMut.Set(MACHINE_METRICS_COLUMN_FAMILY, "v1", ts, data)
 
@@ -175,12 +186,16 @@ func (bigtable Bigtable) GetMachineMetricsMachineNames(userID uint64) ([]string,
 }
 
 func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, error) {
-	names, err := bigtable.getMachineMetricNamesMap(userID, 15)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), time.Now().Minute()%15)
+
+	card, err := bigtable.redisCache.SCard(ctx, machineLimitKey).Result()
 	if err != nil {
 		return 0, err
 	}
-
-	return uint64(len(names)), nil
+	return uint64(card), nil
 }
 
 func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int) ([]*types.MachineMetricNode, error) {
