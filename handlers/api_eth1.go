@@ -903,7 +903,7 @@ func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map
 
 func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionPerformanceResponse, error) {
 	latestEpoch := services.LatestEpoch()
-	last30dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
+	last31dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
 	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
 	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
 
@@ -1009,11 +1009,11 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 			producerReward = mevBribe
 		}
 
-		if block.Time.AsTime().After(firstEpochTime) {
+		if block.Time.AsTime().Equal(firstEpochTime) || block.Time.AsTime().After(firstEpochTime) {
 			result.PerformanceTotal = result.PerformanceTotal.Add(result.PerformanceTotal, producerReward)
 			result.Performance365d = result.Performance365d.Add(result.Performance365d, producerReward)
 		}
-		if block.Time.AsTime().After(last30dTimestamp) {
+		if block.Time.AsTime().After(last31dTimestamp) {
 			result.Performance31d = result.Performance31d.Add(result.Performance31d, producerReward)
 		}
 		if block.Time.AsTime().After(last7dTimestamp) {
