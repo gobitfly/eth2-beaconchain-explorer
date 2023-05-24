@@ -1094,13 +1094,13 @@ $(document).ready(function () {
         success: function (result) {
           var t1 = Date.now()
           var t2 = Date.now()
-          var chart = $('#proposed-chart').highcharts()
+          var chart = $("#proposed-chart").highcharts()
           if (result && result.length) {
             createProposedChart(result)
           } else {
             if (chart !== undefined) {
-              chart.showNoData('No proposals have been made from the selected validator(s)');
-              chart.series[0].setData([]);  // Clear the series data
+              chart.showNoData("No proposals have been made from the selected validator(s)")
+              chart.series[0].setData([]) // Clear the series data
             }
           }
           var t3 = Date.now()
