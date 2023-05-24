@@ -176,17 +176,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.InclusionDelay = 0
 			}
 
-			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+			for _, deposit := range deposits.Eth1Deposits {
 				if deposit.ValidSignature {
 					validatorPageData.Eth1DepositAddress = deposit.FromAddress
 					break
 				}
 			}
 
-			// check if a valid deposit exists
-			for _, d := range deposits.Eth1Deposits {
-				if !d.ValidSignature {
+			// check if an invalid deposit exists
+			for _, deposit := range deposits.Eth1Deposits {
+				if !deposit.ValidSignature {
 					validatorPageData.Status = "deposited_invalid"
+					break
 				}
 			}
 
