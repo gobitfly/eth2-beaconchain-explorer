@@ -694,7 +694,7 @@ func SaveBlock(block *types.Block) error {
 	return nil
 }
 
-// SaveEpoch will stave the epoch data into the database
+// SaveEpoch will save the epoch data into the database
 func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
 	hasher := sha1.New()
