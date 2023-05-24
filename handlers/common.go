@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -42,7 +43,7 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 	return validatorOnlineThresholdSlot
 }
 
-// GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
+// GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators, including proposal and statisic information - infused with data from the current b. day
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	if len(validators) == 0 {
 		return nil, nil, errors.New("no validators provided")
@@ -184,6 +185,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			b.Status,
 		}
 		if b.Status == 0 {
+			validatorProposalData.LastScheduledSlot = utilMath.MaxU64(validatorProposalData.LastScheduledSlot, b.Slot)
 			validatorProposalData.ScheduledBlocksCount++
 		} else if b.Status == 1 {
 			validatorProposalData.ProposedBlocksCount++
@@ -200,7 +202,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	validatorProposalData.BlocksCount = uint64(len(proposals))
 	if validatorProposalData.BlocksCount > 0 {
-		validatorProposalData.UnmissedBlocksPercentage = float64(validatorProposalData.BlocksCount-validatorProposalData.MissedBlocksCount) / float64(len(proposals))
+		validatorProposalData.UnmissedBlocksPercentage = float64(validatorProposalData.BlocksCount-validatorProposalData.MissedBlocksCount-validatorProposalData.OrphanedBlocksCount) / float64(len(proposals))
 	} else {
 		validatorProposalData.UnmissedBlocksPercentage = 1.0
 	}

@@ -1,5 +1,5 @@
 {{ define "validatorLifeCycleDiagram" }}
-  {{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid") }}
+  {{ $deposited := or (eq .Status "deposited") (eq .Status "deposited_invalid") }}
 
 
   <div class="validator__lifecycle-container">
@@ -208,7 +208,12 @@
       <div class="col">
         <div class="px-2 mx-auto" style="max-width: 50rem;">
           <div class="p-2 text-justify">
-            This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> and is no longer validating. There is no need to keep the validator running anymore.
+            {{ if .FutureDutiesEpoch }}
+              This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> but has still future duties. <i class="fas fa-exclamation-circle"></i> Please keep the validator running until epoch <a href="/epoch/{{ .FutureDutiesEpoch }}">{{ .FutureDutiesEpoch }}</a>!
+            {{ else }}
+              This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> and is no longer validating. There is no need to keep the validator running anymore.
+            {{ end }}
+
             {{ if .CappellaHasHappened }}
               Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
               >.

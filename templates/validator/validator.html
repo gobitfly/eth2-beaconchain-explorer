@@ -8,7 +8,7 @@
   </script>
   <script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}}, {{.ActivationEpoch}})</script>
-  {{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }}
+  {{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") }}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script src="/js/highcharts/highstock.min.js"></script>
@@ -74,8 +74,8 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <!-- possible states: deposited, deposited_valid deposited_invalid pending slashing_offline slashing_online active_offline active_online slashed exited -->
-    {{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid") }}
+    <!-- possible states: deposited deposited_invalid pending slashing_offline slashing_online active_offline active_online slashed exited -->
+    {{ $deposited := or (eq .Status "deposited") (eq .Status "deposited_invalid") }}
     {{ $pending := eq .Status "pending" }}
     {{ $validating := or (or (or (eq .Status "active_online") (eq .Status "active_offline")) (or (eq .Status "slashing_online") (eq .Status "slashing_offline"))) (or (eq .Status "exiting_online") (eq .Status "exiting_offline")) }}
     {{ $exited := or (eq .Status "exited") (eq .Status "slashed") }}

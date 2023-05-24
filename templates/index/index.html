@@ -80,6 +80,7 @@
                         ],
                         legend: {enabled: true},
                         tooltip: {
+                            valueDecimals: 0,
                             formatter: function (tooltip) {
                                 var orig = tooltip.defaultFormatter.call(this, tooltip)
                                 var epoch = timeToEpoch(this.x)
@@ -108,14 +109,6 @@
                                             opposite: true
                                         }
                                     ],
-                                    tooltip: {
-                                        formatter: function (tooltip) {
-                                            var orig = tooltip.defaultFormatter.call(this, tooltip)
-                                            var epoch = timeToEpoch(this.x)
-                                            orig[0] = `${orig[0]}<span style="font-size:10px">Ep ${epoch}</span>`
-                                            return orig
-                                        }
-                                    },
                                 },
                             },
                         ],
