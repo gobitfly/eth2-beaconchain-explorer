@@ -31,7 +31,7 @@ func main() {
 	endBlocks := flag.Int64("blocks.end", 0, "Block to finish indexing")
 
 	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
-	offsetData := flag.Int64("data.offset", 1000, "Data offset")
+	batchSize := flag.Int64("data.batchSize", 1000, "Batch size")
 
 	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
 	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
@@ -48,7 +48,7 @@ func main() {
 	transformerList := strings.Split(*transformerFlag, ",")
 
 	if len(transformerList) == 0 {
-		utils.LogError(nil, "no transformer functions provided")
+		utils.LogError(nil, "no transformer functions provided", 0)
 		return
 	}
 
@@ -178,7 +178,7 @@ func main() {
 	if *endBlocks > 0 {
 		to = utils.Int64Min(to, *endBlocks)
 	}
-	blockCount := utils.Int64Max(1, *offsetData)
+	blockCount := utils.Int64Max(1, *batchSize)
 
 	for from := *startBlocks; from <= to; from = from + blockCount {
 		toBlock := utils.Int64Min(to, from+blockCount-1)
