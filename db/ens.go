@@ -35,14 +35,14 @@ import (
 // Family: f
 // Column: nil
 // Cell:   nil
-// Example scan: "5:ENS:I:H:nameHash:txHash"
+// Example scan: "5:ENS:I:H:4ae569dd0aa2f6e9207e41423c956d0d27cbc376a499ee8d90fe1d84489ae9d1:e627ae94bd16eb1ed8774cd4003fc25625159f13f8a2612cc1c7f8d2ab11b1d7"
 //
 // - by address
 // Row:    <chainID>:ENS:I:A<address><txHash>
 // Family: f
 // Column: nil
 // Cell:   nil
-// Example scan: "5:ENS:I:A:address:txHash"
+// Example scan: "5:ENS:I:A:05579fadcf7cc6544f7aa018a2726c85251600c5:e627ae94bd16eb1ed8774cd4003fc25625159f13f8a2612cc1c7f8d2ab11b1d7"
 //
 // ==================================================
 //
@@ -53,21 +53,21 @@ import (
 // Family: f
 // Column: nil
 // Cell:   nil
-// Example scan: "5:ENS:V:N:name"
+// Example scan: "5:ENS:V:N:somename"
 //
 // - by name hash
-// Row:    <chainID>:ENS:V:N<nameHash>
+// Row:    <chainID>:ENS:V:H<nameHash>
 // Family: f
 // Column: nil
 // Cell:   nil
-// Example scan: "5:ENS:V:N:nameHash"
+// Example scan: "5:ENS:V:H:6f5d9cc23e60abe836401b4fd386ec9280a1f671d47d9bf3ec75dab76380d845"
 //
 // - by address
 // Row:    <chainID>:ENS:V:A<address>
 // Family: f
 // Column: nil
 // Cell:   nil
-// Example scan: "5:ENS:I:A:address"
+// Example scan: "5:ENS:V:A:27234cb8734d5b1fac0521c6f5dc5aebc6e839b6"
 //
 // ==================================================
 
@@ -404,7 +404,8 @@ func validateEnsAddress(client *ethclient.Client, address common.Address) error 
 }
 
 func validateEnsName(client *ethclient.Client, name string) error {
-	if name[:4] != ".eth" {
+	// For now only .eth is supported other ens domains use different techniques and require and individual implementation
+	if !strings.HasSuffix(name, ".eth") {
 		name = fmt.Sprintf("%s.eth", name)
 	}
 	nameHash, err := go_ens.NameHash(name)

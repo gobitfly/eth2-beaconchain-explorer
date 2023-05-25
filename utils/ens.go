@@ -1,9 +1,11 @@
 package utils
 
 import (
-	"strings"
+	"regexp"
 )
 
+var ENS_ETH_REGEXP = regexp.MustCompile(`^.{3,}\.eth$`)
+
 func IsValidEnsDomain(text string) bool {
-	return strings.HasSuffix(text, ".eth") && len(text) > 4
+	return ENS_ETH_REGEXP.MatchString(text)
 }

@@ -41,21 +41,18 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.Config.DepositChainID, search)
 
-		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err != nil || len(address) == 0 {
-			address, err := db.GetAddressForEnsName(search)
-
-			if err == nil {
-				data.Address = address.Hex()
-
-				err := cache.TieredCache.SetString(cacheKey, data.Address, time.Minute)
-				if err != nil {
-					logger.Errorf("error caching ens address: %v", err)
-				}
-			} else {
-				returnError = err
-			}
-		} else {
+		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err == nil && len(address) > 0 {
 			data.Address = address
+			return data, nil
+		}
+		address, err := db.GetAddressForEnsName(search)
+		if err != nil {
+			return data, err // We want to return the data if it was a valid domain even if there was an error getting the address from bigtable. A valid domain might be enough for the caller.
+		}
+		data.Address = address.Hex()
+		err = cache.TieredCache.SetString(cacheKey, data.Address, time.Minute)
+		if err != nil {
+			logger.Errorf("error caching ens address: %v", err)
 		}
 
 	} else if utils.IsValidEth1Address(search) {
@@ -63,24 +60,21 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 		cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.Config.DepositChainID, search)
 
-		if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err != nil || len(domain) == 0 {
-			name, err := db.GetEnsNameForAddress(common.HexToAddress(search))
-
-			if err == nil {
-				data.Domain = *name
-
-				err := cache.TieredCache.SetString(cacheKey, data.Domain, time.Minute)
-				if err != nil {
-					logger.Errorf("error caching ens address: %v", err)
-				}
-			} else {
-				returnError = err
-			}
-		} else {
+		if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err == nil && len(domain) > 0 {
 			data.Domain = domain
+			return data, nil
+		}
+		name, err := db.GetEnsNameForAddress(common.HexToAddress(search))
+		if err != nil {
+			return data, err // We want to return the data if it was a valid address even if there was an error getting the domain from bigtable. A valid address might be enough for the caller.
+		}
+		data.Domain = *name
+		err = cache.TieredCache.SetString(cacheKey, data.Domain, time.Minute)
+		if err != nil {
+			logger.Errorf("error caching ens address: %v", err)
 		}
 	} else {
 		returnError = errors.New("not an ens domain or address")
 	}
-	return data, returnError //We always want to return the data if it was a valid address/domain even if there was an error getting data from the node. A valid address might be enough for the caller.
+	return data, returnError //We always want to return the data if it was a valid address/domain even if there was an error getting data. A valid address might be enough for the caller.
 }
