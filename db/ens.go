@@ -273,7 +273,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 		}
 	}
-	for key, _ := range keys {
+	for key := range keys {
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
 

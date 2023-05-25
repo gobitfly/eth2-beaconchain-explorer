@@ -1707,7 +1707,7 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) gcp
 
 func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]string, error) {
 	if family == "" || prefix == "" {
-		return []string{}, fmt.Errorf("Please provide family [%v] and prefix [%v]", family, prefix)
+		return []string{}, fmt.Errorf("please provide family [%v] and prefix [%v]", family, prefix)
 	}
 
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
@@ -1742,7 +1742,7 @@ func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]s
 		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
 		return deleteKeys, err
 	}
-	return deleteKeys, fmt.Errorf("No keys found")
+	return deleteKeys, fmt.Errorf("no keys found")
 }
 
 func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
