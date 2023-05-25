@@ -1,5 +1,5 @@
 {{ define "validatorLifeCycleDiagram" }}
-  {{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid") }}
+  {{ $deposited := or (eq .Status "deposited") (eq .Status "deposited_invalid") }}
 
 
   <div class="validator__lifecycle-container">

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
+	"github.com/go-redis/redis/v8"
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/proto"
@@ -47,10 +48,12 @@ type Bigtable struct {
 	tableMetadata        *gcp_bigtable.Table
 	tableMachineMetrics  *gcp_bigtable.Table
 
+	redisCache *redis.Client
+
 	chainId string
 }
 
-func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
+func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
@@ -59,6 +62,15 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 
 	if err != nil {
+		return nil, err
+	}
+
+	rdc := redis.NewClient(&redis.Options{
+		Addr:        redisAddress,
+		ReadTimeout: time.Second * 20,
+	})
+
+	if err := rdc.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
 
@@ -71,6 +83,7 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 		tableBeaconchain:     btClient.Open("beaconchain"),
 		tableMachineMetrics:  btClient.Open("machine_metrics"),
 		chainId:              chainId,
+		redisCache:           rdc,
 	}
 
 	BigtableClient = bt
@@ -92,12 +105,24 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	rowKeyData := fmt.Sprintf("u:%s:p:%s:m:%v", reversePaddedUserID(userID), process, machine)
 
 	ts := gcp_bigtable.Now()
-	lastInsert, err := bigtable.getLastMachineMetricInsertTs(ctx, rowKeyData)
+	rateLimitKey := fmt.Sprintf("%s:%d", rowKeyData, ts.Time().Minute())
+	keySet, err := bigtable.redisCache.SetNX(ctx, rateLimitKey, "1", time.Minute).Result()
 	if err != nil {
 		return err
 	}
-	if lastInsert.Time().Add(59 * time.Second).After(ts.Time()) {
+	if !keySet {
 		return fmt.Errorf("rate limit, last metric insert was less than 1 min ago")
+	}
+
+	// for limiting machines per user, add the machine field to a redis set
+	// bucket period is 15mins
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), ts.Time().Minute()%15)
+	pipe := bigtable.redisCache.Pipeline()
+	pipe.SAdd(ctx, machineLimitKey, machine)
+	pipe.ExpireNX(ctx, machineLimitKey, time.Minute*15)
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return err
 	}
 
 	dataMut := gcp_bigtable.NewMutation()
@@ -115,23 +140,6 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	return nil
 }
 
-func (bigtable *Bigtable) getLastMachineMetricInsertTs(ctx context.Context, rowKey string) (gcp_bigtable.Timestamp, error) {
-	filter := gcp_bigtable.ChainFilters(
-		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
-		gcp_bigtable.LatestNFilter(1),
-	)
-
-	row, err := bigtable.tableMachineMetrics.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return 0, err
-	}
-	colData, found := row[MACHINE_METRICS_COLUMN_FAMILY]
-	if found && len(colData) > 0 {
-		return colData[0].Timestamp, nil
-	}
-	return 0, nil
-}
-
 func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int) (map[string]bool, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -142,6 +150,7 @@ func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int
 		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
 		gcp_bigtable.LatestNFilter(searchDepth),
 		gcp_bigtable.TimestampRangeFilter(time.Now().Add(time.Duration(searchDepth*-1)*time.Minute), time.Now()),
+		gcp_bigtable.StripValueFilter(),
 	)
 
 	machineNames := make(map[string]bool)
@@ -177,12 +186,16 @@ func (bigtable Bigtable) GetMachineMetricsMachineNames(userID uint64) ([]string,
 }
 
 func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, error) {
-	names, err := bigtable.getMachineMetricNamesMap(userID, 15)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), time.Now().Minute()%15)
+
+	card, err := bigtable.redisCache.SCard(ctx, machineLimitKey).Result()
 	if err != nil {
 		return 0, err
 	}
-
-	return uint64(len(names)), nil
+	return uint64(card), nil
 }
 
 func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int) ([]*types.MachineMetricNode, error) {

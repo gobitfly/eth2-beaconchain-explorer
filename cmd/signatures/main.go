@@ -65,7 +65,7 @@ func main() {
 		}()
 	}
 
-	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, "1")
+	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, "1", utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Errorf("error initializing bigtable: %v", err)
 		return
