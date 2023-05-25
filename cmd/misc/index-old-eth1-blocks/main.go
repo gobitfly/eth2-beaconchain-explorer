@@ -106,7 +106,7 @@ func main() {
 		utils.LogFatal(nil, fmt.Errorf("node chain id mismatch, wanted %v got %v", chainId, nodeChainId.String()), 0)
 	}
 
-	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId)
+	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		utils.LogFatal(nil, fmt.Errorf("error connecting to bigtable: %v", err), 0)
 	}
