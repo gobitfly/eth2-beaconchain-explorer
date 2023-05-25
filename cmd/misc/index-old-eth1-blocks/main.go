@@ -119,6 +119,7 @@ func main() {
 	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 
 	logrus.Infof("transformers: %v", transformerList)
+	importENSChanges := false
 	/**
 	* Add additional transformers you want to sync to this switch case
 	**/
@@ -142,6 +143,7 @@ func main() {
 			transforms = append(transforms, bt.TransformUncle)
 		case "TransformEnsNameRegistered":
 			transforms = append(transforms, bt.TransformEnsNameRegistered)
+			importENSChanges = true
 		default:
 			logrus.Fatalf("Invalid transformer flag %v", t)
 			return
@@ -189,6 +191,15 @@ func main() {
 		cache.Clear()
 
 	}
+
+	if importENSChanges {
+		err = bt.ImportEnsUpdates(client.GetNativeClient())
+		if err != nil {
+			logrus.Errorf("error importing ens from events: %v", err)
+			return
+		}
+	}
+
 	logrus.Infof("index run completed")
 }
 

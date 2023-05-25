@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 )
 
@@ -41,7 +42,7 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.Config.DepositChainID, search)
 
 		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err != nil || len(address) == 0 {
-			address, err := db.BigtableClient.GetAddressForEnsName(search)
+			address, err := db.GetAddressForEnsName(search)
 
 			if err == nil {
 				data.Address = address.Hex()
@@ -63,7 +64,7 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 		cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.Config.DepositChainID, search)
 
 		if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err != nil || len(domain) == 0 {
-			name, err := db.BigtableClient.GetEnsNameForAddress(search)
+			name, err := db.GetEnsNameForAddress(common.HexToAddress(search))
 
 			if err == nil {
 				data.Domain = *name

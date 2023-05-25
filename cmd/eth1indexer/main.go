@@ -67,6 +67,8 @@ func main() {
 
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 
+	enableEnsUpdater := flag.Bool("ens.enabled", false, "Enable ens update process")
+
 	flag.Parse()
 
 	if *versionFlag {
@@ -313,6 +315,14 @@ func main() {
 
 		if *enableBalanceUpdater {
 			ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
+		}
+
+		if *enableEnsUpdater {
+			err := bt.ImportEnsUpdates(client.GetNativeClient())
+			if err != nil {
+				logrus.WithError(err).Errorf("error updating ens")
+				continue
+			}
 		}
 
 		logrus.Infof("index run completed")
