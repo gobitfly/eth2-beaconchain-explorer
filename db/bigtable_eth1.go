@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"strconv"
@@ -674,6 +675,87 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 		}
 	}
 
+}
+
+func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
+	g := new(errgroup.Group)
+	g.SetLimit(int(concurrency))
+
+	startTs := time.Now()
+	lastTickTs := time.Now()
+
+	processedBlocks := int64(0)
+
+	logrus.Infof("fetching blocks from %d to %d", start, end)
+	for i := start; i <= end; i++ {
+		i := i
+		g.Go(func() error {
+
+			block, err := bigtable.GetBlockFromBlocksTable(uint64(i))
+			if err != nil {
+				return fmt.Errorf("error getting block: %v from bigtable blocks table err: %w", block, err)
+			}
+
+			bulkMutsData := types.BulkMutations{}
+			bulkMutsMetadataUpdate := types.BulkMutations{}
+			for _, transform := range transforms {
+				mutsData, mutsMetadataUpdate, err := transform(block, cache)
+				if err != nil {
+					logrus.WithError(err).Error("error transforming block")
+				}
+				bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+				bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+				if mutsMetadataUpdate != nil {
+					bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+					bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+				}
+			}
+
+			if len(bulkMutsData.Keys) > 0 {
+				metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+				err = bigtable.SaveBlockKeys(block.Number, block.Hash, metaKeys)
+				if err != nil {
+					return fmt.Errorf("error saving block keys to bigtable metadata updates table: %w", err)
+				}
+
+				err = bigtable.WriteBulk(&bulkMutsData, bigtable.GetDataTable())
+				if err != nil {
+					return fmt.Errorf("error writing to bigtable data table: %w", err)
+				}
+			}
+
+			if len(bulkMutsMetadataUpdate.Keys) > 0 {
+				err = bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.GetMetadataUpdatesTable())
+				if err != nil {
+					return fmt.Errorf("error writing to bigtable metadata updates table: %w", err)
+				}
+			}
+
+			current := atomic.AddInt64(&processedBlocks, 1)
+			if current%500 == 0 {
+				r := end - start
+				if r == 0 {
+					r = 1
+				}
+				perc := float64(i-start) * 100 / float64(r)
+				logrus.Infof("currently processing block: %v; processed %v blocks in %v (%.1f blocks / sec); sync is %.1f%% complete", block.GetNumber(), current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds(), perc)
+				lastTickTs = time.Now()
+				atomic.StoreInt64(&processedBlocks, 0)
+			}
+			return nil
+		})
+
+	}
+
+	if err := g.Wait(); err == nil {
+		logrus.Info("data table indexing completed")
+	} else {
+		utils.LogError(err, "wait group error", 0)
+		return err
+	}
+
+	return nil
 }
 
 // TransformBlock extracts blocks from bigtable more specifically from the table blocks.

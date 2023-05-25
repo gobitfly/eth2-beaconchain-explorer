@@ -12,13 +12,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync/atomic"
-	"time"
 
 	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 
 	_ "net/http/pprof"
 )
@@ -44,16 +41,15 @@ func main() {
 
 	flag.Parse()
 
-	logrus.Infof("transformerFlag: %v %s", *transformerFlag, *transformerFlag)
-	transformerList := strings.Split(*transformerFlag, ",")
-
-	if len(transformerList) == 0 {
-		utils.LogError(nil, "no transformer functions provided", 0)
+	if *versionFlag {
+		fmt.Println(version.Version)
 		return
 	}
 
-	if *versionFlag {
-		fmt.Println(version.Version)
+	logrus.Infof("transformerFlag: %v %s", *transformerFlag, *transformerFlag)
+	transformerList := strings.Split(*transformerFlag, ",")
+	if len(transformerList) == 0 {
+		utils.LogError(nil, "no transformer functions provided", 0)
 		return
 	}
 
@@ -153,7 +149,8 @@ func main() {
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
 	if *block != 0 {
-		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData, cache)
+		logrus.Infof("Starting to index a single block: %d", *block)
+		err = bt.IndexEventsWithTransformers(*block, *block, transforms, *concurrencyData, cache)
 		if err != nil {
 			utils.LogFatal(err, "error indexing from bigtable", 0)
 		}
@@ -180,11 +177,12 @@ func main() {
 	}
 	blockCount := utils.Int64Max(1, *batchSize)
 
+	logrus.Infof("Starting to index all blocks ranging from %d to %d", *startBlocks, to)
 	for from := *startBlocks; from <= to; from = from + blockCount {
 		toBlock := utils.Int64Min(to, from+blockCount-1)
 
 		logrus.Infof("indexing missing ens blocks %v to %v in data table ...", from, toBlock)
-		err = IndexFromBigtable(bt, int64(from), int64(toBlock), transforms, *concurrencyData, cache)
+		err = bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, *concurrencyData, cache)
 		if err != nil {
 			utils.LogError(err, "error indexing from bigtable", 0)
 		}
@@ -201,85 +199,4 @@ func main() {
 	}
 
 	logrus.Infof("index run completed")
-}
-
-func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
-	g := new(errgroup.Group)
-	g.SetLimit(int(concurrency))
-
-	startTs := time.Now()
-	lastTickTs := time.Now()
-
-	processedBlocks := int64(0)
-
-	logrus.Infof("fetching blocks from %d to %d", start, end)
-	for i := start; i <= end; i++ {
-		i := i
-		g.Go(func() error {
-
-			block, err := bt.GetBlockFromBlocksTable(uint64(i))
-			if err != nil {
-				return fmt.Errorf("error getting block: %v from bigtable blocks table err: %w", i, err)
-			}
-
-			bulkMutsData := types.BulkMutations{}
-			bulkMutsMetadataUpdate := types.BulkMutations{}
-			for _, transform := range transforms {
-				mutsData, mutsMetadataUpdate, err := transform(block, cache)
-				if err != nil {
-					utils.LogError(err, "error transforming block", 0)
-				}
-				bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
-				bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
-
-				if mutsMetadataUpdate != nil {
-					bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
-					bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
-				}
-			}
-
-			if len(bulkMutsData.Keys) > 0 {
-				metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
-				err = bt.SaveBlockKeys(block.Number, block.Hash, metaKeys)
-				if err != nil {
-					return fmt.Errorf("error saving block keys to bigtable metadata updates table: %w", err)
-				}
-
-				err = bt.WriteBulk(&bulkMutsData, bt.GetDataTable())
-				if err != nil {
-					return fmt.Errorf("error writing to bigtable data table: %w", err)
-				}
-			}
-
-			if len(bulkMutsMetadataUpdate.Keys) > 0 {
-				err = bt.WriteBulk(&bulkMutsMetadataUpdate, bt.GetMetadataUpdatesTable())
-				if err != nil {
-					return fmt.Errorf("error writing to bigtable metadata updates table: %w", err)
-				}
-			}
-
-			current := atomic.AddInt64(&processedBlocks, 1)
-			if current%500 == 0 {
-				r := end - start
-				if r == 0 {
-					r = 1
-				}
-				perc := float64(i-start) * 100 / float64(r)
-				logrus.Infof("currently processing block: %v; processed %v blocks in %v (%.1f blocks / sec); sync is %.1f%% complete", block.GetNumber(), current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds(), perc)
-				lastTickTs = time.Now()
-				atomic.StoreInt64(&processedBlocks, 0)
-			}
-			return nil
-		})
-
-	}
-
-	if err := g.Wait(); err == nil {
-		logrus.Info("data table indexing completed")
-	} else {
-		utils.LogError(err, "wait group error", 0)
-		return err
-	}
-
-	return nil
 }
