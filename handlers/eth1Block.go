@@ -30,12 +30,11 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		"slot/exits.html",
 		"slot/overview.html",
 		"slot/execTransactions.html",
-		"slot/withdrawals.html",
-		"components/timeRow.html")
+		"slot/withdrawals.html")
 	var blockTemplate = templates.GetTemplate(
 		blockTemplateFiles...,
 	)
-	preMergeTemplateFiles := append(layoutTemplateFiles, "execution/block.html", "slot/execTransactions.html", "components/timeRow.html")
+	preMergeTemplateFiles := append(layoutTemplateFiles, "execution/block.html", "slot/execTransactions.html")
 	notFountTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
 	var blockNotFoundTemplate = templates.GetTemplate(notFountTemplateFiles...)
 	var preMergeBlockTemplate = templates.GetTemplate(preMergeTemplateFiles...)

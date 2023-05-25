@@ -40,9 +40,8 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/proposerSlashing.html",
 		"slot/exits.html",
 		"slot/overview.html",
-		"slot/execTransactions.html",
-		"components/timeRow.html")
-	slotFutureTemplateFiles := append(layoutTemplateFiles, "slot/slotFuture.html", "components/timeRow.html")
+		"slot/execTransactions.html")
+	slotFutureTemplateFiles := append(layoutTemplateFiles, "slot/slotFuture.html")
 	blockNotFoundTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
 	var slotTemplate = templates.GetTemplate(slotTemplateFiles...)
 	var slotFutureTemplate = templates.GetTemplate(slotFutureTemplateFiles...)
@@ -719,7 +718,7 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 	for i, v := range transactions.Txs {
 		methodFormatted := `<span class="badge badge-light">Transfer</span>`
 		if len(v.Method) > 0 && v.Method != "Transfer" {
-			methodFormatted = fmt.Sprintf(`<span class="badge badge-light text-truncate mw-100" data-toggle="tooltip" title="%v"{>%v</span>`, v.Method, v.Method)
+			methodFormatted = fmt.Sprintf(`<span class="badge badge-light text-truncate mw-100" truncate-tooltip="%v">%v</span>`, v.Method, v.Method)
 		}
 		data[i] = &transactionsData{
 			HashFormatted: v.HashFormatted,
