@@ -48,7 +48,7 @@ func main() {
 	transformerList := strings.Split(*transformerFlag, ",")
 
 	if len(transformerList) == 0 {
-		logrus.Fatal("no transformer functions provided")
+		utils.LogError(nil, "no transformer functions provided")
 		return
 	}
 
@@ -60,7 +60,7 @@ func main() {
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 	if err != nil {
-		logrus.Fatalf("error reading config file: %v", err)
+		utils.LogError(err, "error reading config file", 0)
 	}
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
@@ -107,12 +107,12 @@ func main() {
 	}
 
 	if nodeChainId.String() != chainId {
-		logrus.Fatalf("node chain id mismatch, wanted %v got %v", chainId, nodeChainId.String())
+		utils.LogFatal(nil, fmt.Errorf("node chain id mismatch, wanted %v got %v", chainId, nodeChainId.String()), 0)
 	}
 
 	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId)
 	if err != nil {
-		logrus.Fatalf("error connecting to bigtable: %v", err)
+		utils.LogFatal(nil, fmt.Errorf("error connecting to bigtable: %v", err), 0)
 	}
 	defer bt.Close()
 
@@ -145,7 +145,7 @@ func main() {
 			transforms = append(transforms, bt.TransformEnsNameRegistered)
 			importENSChanges = true
 		default:
-			logrus.Fatalf("Invalid transformer flag %v", t)
+			utils.LogError(nil, "Invalid transformer flag %v", 0)
 			return
 		}
 	}
@@ -155,7 +155,7 @@ func main() {
 	if *block != 0 {
 		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData, cache)
 		if err != nil {
-			logrus.WithError(err).Fatalf("error indexing from bigtable")
+			utils.LogFatal(err, "error indexing from bigtable", 0)
 		}
 		cache.Clear()
 
@@ -164,13 +164,13 @@ func main() {
 	}
 
 	if *startBlocks == 0 {
-		logrus.WithError(err).Fatalf("no start block defined")
+		utils.LogFatal(err, "no start block defined", 0)
 		return
 	}
 
 	lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 	if err != nil {
-		logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
+		utils.LogError(err, "error retrieving last blocks from blocks table", 0)
 		return
 	}
 
@@ -186,7 +186,7 @@ func main() {
 		logrus.Infof("indexing missing ens blocks %v to %v in data table ...", from, toBlock)
 		err = IndexFromBigtable(bt, int64(from), int64(toBlock), transforms, *concurrencyData, cache)
 		if err != nil {
-			logrus.WithError(err).Errorf("error indexing from bigtable")
+			utils.LogError(err, "error indexing from bigtable", 0)
 		}
 		cache.Clear()
 
@@ -195,7 +195,7 @@ func main() {
 	if importENSChanges {
 		err = bt.ImportEnsUpdates(client.GetNativeClient())
 		if err != nil {
-			logrus.Errorf("error importing ens from events: %v", err)
+			utils.LogError(err, "error importing ens from events", 0)
 			return
 		}
 	}
@@ -227,7 +227,7 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 			for _, transform := range transforms {
 				mutsData, mutsMetadataUpdate, err := transform(block, cache)
 				if err != nil {
-					logrus.WithError(err).Error("error transforming block")
+					utils.LogError(err, "error transforming block", 0)
 				}
 				bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
 				bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
