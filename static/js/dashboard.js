@@ -1099,8 +1099,10 @@ $(document).ready(function () {
             createProposedChart(result)
           } else {
             if (chart !== undefined) {
-              chart.showNoData("No proposals have been made from the selected validator(s)")
               chart.series[0].setData([]) // Clear the series data
+              chart.series[1].setData([]) // Clear the series data missed
+              chart.series[2].setData([]) // Clear the series data orphans
+              chart.showNoData("No proposals have been made from the selected validator(s)")
             }
           }
           var t3 = Date.now()
