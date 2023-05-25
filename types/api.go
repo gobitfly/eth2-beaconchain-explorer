@@ -140,10 +140,12 @@ type DiscordReq struct {
 }
 
 type ExecutionPerformanceResponse struct {
-	Performance1d  *big.Int `json:"performance1d"`
-	Performance7d  *big.Int `json:"performance7d"`
-	Performance31d *big.Int `json:"performance31d"`
-	ValidatorIndex uint64   `json:"validatorindex"`
+	Performance1d    *big.Int `json:"performance1d"`
+	Performance7d    *big.Int `json:"performance7d"`
+	Performance31d   *big.Int `json:"performance31d"`
+	Performance365d  *big.Int `json:"performance365d"`
+	PerformanceTotal *big.Int `json:"performanceTotal"`
+	ValidatorIndex   uint64   `json:"validatorindex"`
 }
 
 type ExecutionBlockApiResponse struct {

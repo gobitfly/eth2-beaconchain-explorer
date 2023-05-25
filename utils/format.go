@@ -814,7 +814,7 @@ func FormatTsWithoutTooltip(ts int64) template.HTML {
 // possible states
 // pending, active_online, active_offline, exiting_online, exciting_offline, slashing_online, slashing_offline, exited, slashed
 func FormatValidatorStatus(status string) template.HTML {
-	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
+	if status == "deposited" || status == "deposited_invalid" {
 		return "<span><b>Deposited</b></span>"
 	} else if status == "pending" {
 		return "<span><b>Pending</b></span>"
