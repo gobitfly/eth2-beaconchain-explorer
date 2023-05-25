@@ -88,7 +88,10 @@
                   <div class="col-md-10">{{ formatAmount .LowestGasPrice "GWei" 0 }}</div>
                 </div>
               {{ end }}
-              {{ template "timeRow" . }}
+              <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Time:</div>
+                {{ template "timeRow" . }}
+              </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Difficulty:</div>
                 <div class="col-md-10">{{ formatDifficulty .Difficulty }}</div>

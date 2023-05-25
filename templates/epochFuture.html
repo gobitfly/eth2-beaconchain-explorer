@@ -138,7 +138,10 @@
             <div class="col-md-3">Epoch:</div>
             <div class="col-md-9">{{ formatAddCommas .Epoch }}</div>
           </div>
-          {{ template "timeRow" . }}
+          <div class="row border-bottom p-3 mx-0">
+            <div class="col-md-3">Time:</div>
+            {{ template "timeRow" . }}
+          </div>
         </div>
       </div>
 

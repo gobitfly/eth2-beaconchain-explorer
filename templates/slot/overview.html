@@ -91,7 +91,10 @@
           {{ end }}
         </div>
       </div>
-      {{ template "timeRow" . }}
+      <div class="row border-bottom p-3 mx-0">
+        <div class="col-md-2">Time:</div>
+        {{ template "timeRow" . }}
+      </div>
       {{ if ne .Slot 0 }}
         <div class="row border-bottom p-3 mx-0">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A chosen validator by the beacon chain to propose the next block">Proposer:</span></div>

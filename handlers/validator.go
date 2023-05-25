@@ -47,7 +47,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		"validator/charts.html",
 		"validator/countdown.html",
 		"components/flashMessage.html",
-		"components/rocket.html")
+		"components/rocket.html",
+		"components/timeRow.html")
 	var validatorTemplate = templates.GetTemplate(validatorTemplateFiles...)
 
 	currency := GetCurrency(r)
