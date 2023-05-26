@@ -969,7 +969,10 @@ func poolsDistributionChartData() (*types.GenericChartData, error) {
 		Drilldown string `json:"drilldown"`
 	}
 
-	poolData := LatestPoolsPageData().PoolInfos[1:]
+	poolData := LatestPoolsPageData().PoolInfos
+	if len(poolData) > 1 {
+		poolData = poolData[1:]
+	}
 
 	seriesData := make([]seriesDataItem, 0, len(poolData))
 
