@@ -706,7 +706,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
 			lastSyncPeriod := actualSyncPeriods[0]
 			if lastSyncPeriod.LastEpoch > lastExportedEpoch {
-				lookback := int64(latestEpoch - lastExportedEpoch)
+				lookback := int64(latestEpoch - lastExportedEpoch - 1)
 				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, latestEpoch-uint64(lookback), latestEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
@@ -1098,7 +1098,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	tableData := [][]interface{}{}
 
 	if totalCount > 0 {
-		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(int64(lastAttestationEpoch)-start)-uint64(length), uint64(int64(lastAttestationEpoch)-start))
+		endEpoch := uint64(int64(lastAttestationEpoch) - start)
+		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, endEpoch-uint64(length)+1, endEpoch)
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1985,10 +1986,10 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// retrieve sync duties from bigtable
 		var startEpoch, endEpoch uint64
 		if ascOrdering {
-			startEpoch = firstShownEpoch - 1
+			startEpoch = firstShownEpoch
 			endEpoch = firstShownEpoch + limit - 1
 		} else {
-			startEpoch = firstShownEpoch - limit
+			startEpoch = firstShownEpoch - (limit - 1)
 			endEpoch = firstShownEpoch
 		}
 		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)
@@ -2000,10 +2001,10 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		if nextPeriodLimit != 0 {
 			if ascOrdering {
-				startEpoch = lastShownEpoch - nextPeriodLimit
+				startEpoch = lastShownEpoch - (nextPeriodLimit - 1)
 				endEpoch = lastShownEpoch
 			} else {
-				startEpoch = lastShownEpoch - 1
+				startEpoch = lastShownEpoch
 				endEpoch = lastShownEpoch + nextPeriodLimit - 1
 			}
 			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)

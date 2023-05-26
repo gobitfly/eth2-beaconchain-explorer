@@ -507,7 +507,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	start = time.Now()
 
 	logger.Infof("exporting sync statistics")
-	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, firstEpoch, lastEpoch) //+1 is needed because the function uses limit instead of end epoch
+	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}

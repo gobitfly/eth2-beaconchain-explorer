@@ -1122,7 +1122,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 
 // returns the validator attestation effectiveness in %
 func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch uint64) ([]*types.ValidatorEffectiveness, error) {
-	data, err := bigtable.GetValidatorAttestationHistory(validators, epoch-100, epoch)
+	data, err := bigtable.GetValidatorAttestationHistory(validators, epoch-99, epoch)
 
 	if err != nil {
 		return nil, err
@@ -1702,25 +1702,21 @@ func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) gcp_
 
 	ranges := gcp_bigtable.RowRangeList{}
 	if startEpoch == 0 { // special case when the 0 epoch is included
-		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(0), "\x00")
+		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(0), "A")
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(0))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 
 		// epochs are sorted descending, so start with the larges epoch and end with the smallest
-		// add \x00 to make the range inclusive
+		// add 'A', a character lexicographically after digits, to make the range inclusive
 		if startEpoch < endEpoch {
-			rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
+			rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "A")
 			rangeStart = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 		}
-	} else if startEpoch == endEpoch { // special case, only retrieve data for one epoch
-		rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
-		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
-		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	} else {
 		// epochs are sorted descending, so start with the larges epoch and end with the smallest
-		// add \x00 to make the range inclusive
-		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch), "\x00")
+		// add 'A', a character lexicographically after digits, to make the range inclusive
+		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch), "A")
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	}
