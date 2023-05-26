@@ -331,28 +331,28 @@ function switchFrom(el1, el2, el3, el4) {
 
 var firstSwitch = true
 
-if($("#proposals-table_wrapper").length === 0) {
-  $(".proposal-switch").css( "position", "static" )
+if ($("#proposals-table_wrapper").length === 0) {
+  $(".proposal-switch").css("position", "static")
 }
 
 function waitForTable(selector) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
+    if (document.querySelector(selector)) {
+      return resolve(document.querySelector(selector))
+    }
+
+    const observer = new MutationObserver((mutations) => {
       if (document.querySelector(selector)) {
-          return resolve(document.querySelector(selector));
+        resolve(document.querySelector(selector))
+        observer.disconnect()
       }
+    })
 
-      const observer = new MutationObserver(mutations => {
-          if (document.querySelector(selector)) {
-              resolve(document.querySelector(selector));
-              observer.disconnect();
-          }
-      });
-
-      observer.observe(document, {
-          childList: true,
-          subtree: true
-      });
-  });
+    observer.observe(document, {
+      childList: true,
+      subtree: true,
+    })
+  })
 }
 
 $(document).ready(function () {
@@ -361,9 +361,9 @@ $(document).ready(function () {
     window.location.href = "/rewards"
   })
 
-  waitForTable('#proposals-table_wrapper').then(() => {
-    $(".proposal-switch").css( "position", "absolute" )
-  });
+  waitForTable("#proposals-table_wrapper").then(() => {
+    $(".proposal-switch").css("position", "absolute")
+  })
 
   $(".proposal-switch").on("click", () => {
     if ($(".switch-chart").hasClass("proposal-switch-selected")) {
