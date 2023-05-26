@@ -49,7 +49,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	if err != nil {
 		return err
 	}
-	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(ma))
+	maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(ma))
 	for _, stat := range ma {
 		maArr = append(maArr, stat)
 	}

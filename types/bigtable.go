@@ -17,7 +17,7 @@ type ValidatorBalanceStatistic struct {
 	EndBalance            uint64
 }
 
-type ValidatorMissedAttestationsStatistic struct {
+type ValidatorFailedAttestationsStatistic struct {
 	Index                uint64
 	MissedAttestations   uint64
 	OrphanedAttestations uint64

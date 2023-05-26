@@ -255,7 +255,7 @@ func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB)
 			logrus.Errorf("error getting failed attestations %v", err)
 			return
 		}
-		maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(ma))
+		maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(ma))
 		for _, stat := range ma {
 			maArr = append(maArr, stat)
 		}

@@ -1016,12 +1016,12 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorFailedAttestationsStatistic, error) {
 	if firstEpoch > lastEpoch {
 		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
 	}
 
-	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
+	res := make(map[uint64]*types.ValidatorFailedAttestationsStatistic)
 
 	data, err := bigtable.GetValidatorFailedAttestationHistory(validators, firstEpoch, lastEpoch)
 
@@ -1032,22 +1032,22 @@ func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint6
 	logger.Infof("retrieved missed attestation history for epochs %v - %v", firstEpoch, lastEpoch)
 
 	for validator, attestations := range data {
-		missed := len(attestations)
-		if missed > 0 {
-			missed := uint64(0)
-			orphaned := uint64(0)
-			for _, state := range attestations {
-				if state == 3 {
-					orphaned++
-				} else {
-					missed++
-				}
+		if len(attestations) == 0 {
+			continue
+		}
+		missed := uint64(0)
+		orphaned := uint64(0)
+		for _, state := range attestations {
+			if state == 3 {
+				orphaned++
+			} else {
+				missed++
 			}
-			res[validator] = &types.ValidatorMissedAttestationsStatistic{
-				Index:                validator,
-				MissedAttestations:   missed,
-				OrphanedAttestations: orphaned,
-			}
+		}
+		res[validator] = &types.ValidatorFailedAttestationsStatistic{
+			Index:                validator,
+			MissedAttestations:   missed,
+			OrphanedAttestations: orphaned,
 		}
 	}
 
