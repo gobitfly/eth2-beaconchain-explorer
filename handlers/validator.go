@@ -1929,6 +1929,13 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				return a < b
 			}
 		}
+		diffValue := func(a uint64, b uint64) uint64 {
+			if a >= b {
+				return a - b
+			} else {
+				return b - a
+			}
+		}
 
 		// amount of epochs moved away from start epoch
 		epochOffset := (start / utils.Config.Chain.Config.SlotsPerEpoch)
@@ -1949,25 +1956,32 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// last epoch containing the duties shown on this page
 		lastShownEpoch := moveAway(firstShownEpoch, epochsDiff)
 		// amount of epochs fetched by bigtable
-		limit := moveBack(firstShownEpoch-lastShownEpoch, 1)
+		limit := diffValue(firstShownEpoch, lastShownEpoch) + 1
 
-		var nextPeriodLimit int64 = 0
+		var nextPeriodLimit uint64 = 0
 		if IsFurtherAway(lastShownEpoch, syncPeriods[shownEpochIndex].EndEpoch) {
 			if IsFurtherAway(lastShownEpoch, syncPeriods[len(syncPeriods)-1].EndEpoch) {
 				// handle showing the last page, which may hold less than 'length' amount of rows
 				length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
 			} else {
 				// handle crossing sync periods on the same page (i.e. including the earliest and latest slot of two sync periods from this validator)
-				overshoot := lastShownEpoch - syncPeriods[shownEpochIndex].EndEpoch
-				lastShownEpoch = syncPeriods[shownEpochIndex+1].StartEpoch + moveBack(overshoot, 1)
-				limit += overshoot
-				nextPeriodLimit = int64(overshoot)
+				overshoot := diffValue(lastShownEpoch, syncPeriods[shownEpochIndex].EndEpoch)
+				lastShownEpoch = syncPeriods[shownEpochIndex+1].StartEpoch + overshoot - 1
+				limit -= overshoot
+				nextPeriodLimit = overshoot
 			}
 		}
 
 		// retrieve sync duties from bigtable
-		// note that the limit may be negative for either call, which results in the function fetching epochs for the absolute limit value in ascending ordering
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch-limit, firstShownEpoch, ascOrdering)
+		var startEpoch, endEpoch uint64
+		if ascOrdering {
+			startEpoch = firstShownEpoch - 1
+			endEpoch = firstShownEpoch + limit - 1
+		} else {
+			startEpoch = firstShownEpoch - limit
+			endEpoch = firstShownEpoch
+		}
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync duty data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1975,7 +1989,14 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if nextPeriodLimit != 0 {
-			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, lastShownEpoch-uint64(nextPeriodLimit), lastShownEpoch, ascOrdering)
+			if ascOrdering {
+				startEpoch = lastShownEpoch - nextPeriodLimit
+				endEpoch = lastShownEpoch
+			} else {
+				startEpoch = lastShownEpoch - 1
+				endEpoch = lastShownEpoch + nextPeriodLimit - 1
+			}
+			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)
 			if err != nil {
 				logger.Errorf("error retrieving second validator sync duty data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
