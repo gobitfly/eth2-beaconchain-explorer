@@ -200,7 +200,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	validatorProposalData.BlocksCount = uint64(len(proposals))
 	if validatorProposalData.BlocksCount > 0 {
-		validatorProposalData.UnmissedBlocksPercentage = float64(validatorProposalData.BlocksCount-validatorProposalData.MissedBlocksCount-validatorProposalData.OrphanedBlocksCount) / float64(len(proposals))
+		validatorProposalData.UnmissedBlocksPercentage = float64(validatorProposalData.BlocksCount-validatorProposalData.MissedBlocksCount-validatorProposalData.OrphanedBlocksCount) / float64(validatorProposalData.BlocksCount)
 	} else {
 		validatorProposalData.UnmissedBlocksPercentage = 1.0
 	}

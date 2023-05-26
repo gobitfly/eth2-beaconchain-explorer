@@ -580,18 +580,28 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 			if lookback > 0 {
 				// logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
-				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
+				attestations, err := db.BigtableClient.GetValidatorFailedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				}
-				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
+				missed := uint64(0)
+				orphaned := uint64(0)
+				for _, state := range attestations[index] {
+					if state == 3 {
+						orphaned++
+					} else {
+						missed++
+					}
+				}
+				attestationStats.MissedAttestations += missed
+				attestationStats.OrphanedAttestations += orphaned
 
 			}
 
 			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
 			validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations
 			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
-			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 		}
 		return nil
 	})
@@ -719,7 +729,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSlots
 			// actual sync duty count and percentage
 			validatorPageData.SyncCount = uint64(len(actualSyncPeriods))
-			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
+			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots+validatorPageData.OrphanedSyncCountSlots)
 		}
 		// sync luck
 		if len(allSyncPeriods) > 0 {
