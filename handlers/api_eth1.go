@@ -1049,7 +1049,7 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64,
 			epoch  
 		FROM blocks 
 		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 %s
+		AND exec_block_number IS NOT NULL AND exec_block_number > 0 AND status != '3' %s
 		ORDER BY exec_block_number %s
 		OFFSET $2 LIMIT $3`, status, order)
 
@@ -1082,7 +1082,7 @@ func findExecBlockNumbersByFeeRecipient(addresses [][]byte, offset, limit uint64
 			epoch  
 		FROM blocks 
 		WHERE exec_fee_recipient = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+		AND exec_block_number IS NOT NULL AND exec_block_number > 0  AND status != '3'
 		ORDER BY exec_block_number %s
 		OFFSET $2 LIMIT $3`, order)
 
