@@ -945,8 +945,8 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	}
 
 	type LongPerformanceResponse struct {
-		Performance365d  int64  `db:"el_performance_365d" json:"performance365d"`
-		PerformanceTotal int64  `db:"el_performance_total" json:"performanceTotal"`
+		Performance365d  string `db:"el_performance_365d" json:"performance365d"`
+		PerformanceTotal string `db:"el_performance_total" json:"performanceTotal"`
 		ValidatorIndex   uint64 `db:"validatorindex" json:"validatorindex"`
 	}
 
@@ -955,19 +955,21 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	err = db.ReaderDb.Select(&performanceList, `
 		SELECT 
 		validatorindex,
-		CAST(COALESCE(mev_performance_365d, 0) AS bigint) AS el_performance_365d,
-		CAST(COALESCE(mev_performance_total, 0) AS bigint) AS el_performance_total
+		CAST(COALESCE(mev_performance_365d, 0) AS text) AS el_performance_365d,
+		CAST(COALESCE(mev_performance_total, 0) AS text) AS el_performance_total
 		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		return nil, fmt.Errorf("error can cl performance from db: %w", err)
 	}
 	for _, val := range performanceList {
+		performance365d, _ := new(big.Int).SetString(val.Performance365d, 10)
+		performanceTotal, _ := new(big.Int).SetString(val.PerformanceTotal, 10)
 		resultPerProposer[val.ValidatorIndex] = types.ExecutionPerformanceResponse{
 			Performance1d:    big.NewInt(0),
 			Performance7d:    big.NewInt(0),
 			Performance31d:   big.NewInt(0),
-			Performance365d:  big.NewInt(val.Performance365d),
-			PerformanceTotal: big.NewInt(val.PerformanceTotal),
+			Performance365d:  performance365d,
+			PerformanceTotal: performanceTotal,
 			ValidatorIndex:   val.ValidatorIndex,
 		}
 	}
