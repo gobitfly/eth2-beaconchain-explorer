@@ -962,8 +962,8 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		return nil, fmt.Errorf("error can cl performance from db: %w", err)
 	}
 	for _, val := range performanceList {
-		performance365d, _ := big.NewInt(0).SetString(val.Performance365d, 10)
-		performanceTotal, _ := big.NewInt(0).SetString(val.PerformanceTotal, 10)
+		performance365d, _ := new(big.Int).SetString(val.Performance365d, 10)
+		performanceTotal, _ := new(big.Int).SetString(val.PerformanceTotal, 10)
 		resultPerProposer[val.ValidatorIndex] = types.ExecutionPerformanceResponse{
 			Performance1d:    big.NewInt(0),
 			Performance7d:    big.NewInt(0),
