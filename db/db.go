@@ -3141,3 +3141,17 @@ func GetValidatorPropsosals(validators []uint64, proposals *[]types.ValidatorPro
 		ORDER BY slot ASC
 		`, validatorsPQArray)
 }
+
+func GetOrphanedSlots(slots []uint64) ([]uint64, error) {
+	slotsPQArray := pq.Array(slots)
+	orphaned := []uint64{}
+
+	err := ReaderDb.Select(&orphaned, `
+		SELECT
+			slot
+		FROM blocks
+		WHERE slot = ANY($1) AND status = '3'
+		`, slotsPQArray)
+
+	return orphaned, err
+}
