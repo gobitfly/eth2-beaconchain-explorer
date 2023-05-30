@@ -600,6 +600,636 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	return nil
 }
 
+func WriteValidatorStatisticsForDayCompleted(day uint64) error {
+	exportStart := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
+	}()
+
+	epochsPerDay := utils.EpochsPerDay()
+	firstEpoch := day * epochsPerDay
+	lastEpoch := firstEpoch + epochsPerDay - 1
+
+	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
+
+	finalizedCount, err := CountFinalizedEpochs(firstEpoch, lastEpoch)
+	if err != nil {
+		return err
+	}
+
+	if finalizedCount < epochsPerDay {
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
+	}
+
+	start := time.Now()
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	start = time.Now()
+
+	logger.Infof("exporting deposits and deposits_amount statistics")
+	depositsQry := `
+		insert into validator_stats (validatorindex, day, deposits, deposits_amount) 
+		(
+			select validators.validatorindex, $3, count(*), sum(amount)
+			from blocks_deposits
+			inner join validators on blocks_deposits.publickey = validators.pubkey
+			inner join blocks on blocks_deposits.block_root = blocks.blockroot
+			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
+			group by validators.validatorindex
+		) 
+		on conflict (validatorindex, day) do
+			update set deposits = excluded.deposits, 
+			deposits_amount = excluded.deposits_amount;`
+	if day == 0 {
+		// genesis-deposits will be added to block 0 by the exporter which is technically not 100% correct
+		// since deposits will be added to the validator-balance only after the block which includes the deposits.
+		// to ease the calculation of validator-income (considering deposits) we set the day of genesis-deposits to -1.
+		depositsQry = `
+			insert into validator_stats (validatorindex, day, deposits, deposits_amount)
+			(
+				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
+				from blocks_deposits
+				inner join validators on blocks_deposits.publickey = validators.pubkey
+				inner join blocks on blocks_deposits.block_root = blocks.blockroot
+				where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
+				group by validators.validatorindex, day
+			) 
+			on conflict (validatorindex, day) do
+				update set deposits = excluded.deposits, 
+				deposits_amount = excluded.deposits_amount;`
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
+	logger.Infof("exporting withdrawals and withdrawals_amount statistics")
+	withdrawalsQuery := `
+		insert into validator_stats (validatorindex, day, withdrawals, withdrawals_amount) 
+		(
+			select validatorindex, $3, count(*), sum(amount)
+			from blocks_withdrawals
+			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
+			where block_slot >= $1 and block_slot < $2 and blocks.status = '1'
+			group by validatorindex
+		) 
+		on conflict (validatorindex, day) do
+			update set withdrawals = excluded.withdrawals, 
+			withdrawals_amount = excluded.withdrawals_amount;`
+	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
+	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
+	if err != nil {
+		return err
+	}
+
+	balanceStatsArr := make([]*types.ValidatorBalanceStatistic, 0, len(balanceStatistics))
+	for _, stat := range balanceStatistics {
+		balanceStatsArr = append(balanceStatsArr, stat)
+	}
+
+	batchSize := 6500 // max parameters: 65535
+	for b := 0; b < len(balanceStatsArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(balanceStatsArr) < end {
+			end = len(balanceStatsArr)
+		}
+
+		numArgs := 10
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, stat := range balanceStatsArr[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10))
+			valueArgs = append(valueArgs, stat.Index)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, stat.MinBalance)
+			valueArgs = append(valueArgs, stat.MaxBalance)
+			valueArgs = append(valueArgs, stat.MinEffectiveBalance)
+			valueArgs = append(valueArgs, stat.MaxEffectiveBalance)
+			valueArgs = append(valueArgs, stat.StartBalance)
+			valueArgs = append(valueArgs, stat.StartEffectiveBalance)
+			valueArgs = append(valueArgs, stat.EndBalance)
+			valueArgs = append(valueArgs, stat.EndEffectiveBalance)
+		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance) VALUES
+		%s
+		on conflict (validatorindex, day) do update set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving validator balance batch %v completed", b)
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
+	logger.Infof("exporting el_rewards_wei statistics")
+	incomeStats, err := BigtableClient.GetAggregatedValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
+	if err != nil {
+		return err
+	}
+
+	maxValidatorIndex := uint64(0)
+
+	for validator := range incomeStats {
+		if validator > maxValidatorIndex {
+			maxValidatorIndex = validator
+		}
+	}
+
+	numArgs := 3
+	batchSize = 65500 / numArgs // max parameters: 65535
+	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+		start := b
+		end := b + batchSize
+		if int(maxValidatorIndex) < end {
+			end = int(maxValidatorIndex)
+		}
+
+		logrus.Info(start, end)
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i := start; i <= end; i++ {
+			clProposerRewards := uint64(0)
+
+			if incomeStats[uint64(i)] != nil {
+				clProposerRewards = incomeStats[uint64(i)].ProposerAttestationInclusionReward + incomeStats[uint64(i)].ProposerSlashingInclusionReward + incomeStats[uint64(i)].ProposerSyncInclusionReward
+			}
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3))
+			valueArgs = append(valueArgs, i)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, clProposerRewards)
+		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, cl_proposer_rewards_gwei) VALUES
+		%s
+		on conflict (validatorindex, day) do update set cl_proposer_rewards_gwei = excluded.cl_proposer_rewards_gwei;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		logrus.Infof("saving validator proposer rewards gwei batch %v completed", b)
+		stmt = `
+		INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
+        (
+            SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(last.end_balance, 0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+            FROM validator_stats cur
+            INNER JOIN validator_stats last 
+                ON cur.validatorindex = last.validatorindex AND last.day = GREATEST(cur.day - 1, 0)
+            WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+        )
+        ON CONFLICT (validatorindex, day) DO
+            UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+		if day == 0 {
+			stmt = `
+			INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
+            (
+                SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(cur.start_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+                FROM validator_stats cur
+                WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+            )
+            ON CONFLICT (validatorindex, day) DO
+                UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+		}
+		_, err = tx.Exec(stmt, day, start, end)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("saving validator cl rewards gwei batch %v completed", b)
+	}
+
+	logger.Infof("export completed, took %v", time.Since(start))
+	start = time.Now()
+
+	logger.Infof("exporting mev & el rewards")
+
+	type Container struct {
+		Slot            uint64 `db:"slot"`
+		ExecBlockNumber uint64 `db:"exec_block_number"`
+		Proposer        uint64 `db:"proposer"`
+		TxFeeReward     *big.Int
+		MevReward       *big.Int
+	}
+
+	blocks := make([]*Container, 0)
+	blocksMap := make(map[uint64]*Container)
+
+	err = tx.Select(&blocks, "SELECT slot, exec_block_number, proposer FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND exec_block_number > 0 AND status = '1'", firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error retrieving blocks data: %v", err)
+	}
+
+	numbers := make([]uint64, 0, len(blocks))
+
+	for _, b := range blocks {
+		numbers = append(numbers, b.ExecBlockNumber)
+		blocksMap[b.ExecBlockNumber] = b
+	}
+
+	blocksData, err := BigtableClient.GetBlocksIndexedMultiple(numbers, uint64(len(numbers)))
+	if err != nil {
+		return fmt.Errorf("error in GetBlocksIndexedMultiple: %v", err)
+	}
+
+	relaysData, err := GetRelayDataForIndexedBlocks(blocksData)
+	if err != nil {
+		return fmt.Errorf("error in GetRelayDataForIndexedBlocks: %v", err)
+	}
+
+	proposerRewards := make(map[uint64]*Container)
+	for _, b := range blocksData {
+		proposer := blocksMap[b.Number].Proposer
+
+		if proposerRewards[proposer] == nil {
+			proposerRewards[proposer] = &Container{
+				MevReward:   big.NewInt(0),
+				TxFeeReward: big.NewInt(0),
+			}
+		}
+
+		txFeeReward := new(big.Int).SetBytes(b.TxReward)
+		proposerRewards[proposer].TxFeeReward = new(big.Int).Add(txFeeReward, proposerRewards[proposer].TxFeeReward)
+
+		mevReward, ok := relaysData[common.BytesToHash(b.Hash)]
+
+		if ok {
+			proposerRewards[proposer].MevReward = new(big.Int).Add(mevReward.MevBribe.BigInt(), proposerRewards[proposer].MevReward)
+		} else {
+			proposerRewards[proposer].MevReward = new(big.Int).Add(txFeeReward, proposerRewards[proposer].MevReward)
+		}
+	}
+	logrus.Infof("retrieved mev / el rewards data for %v proposer", len(proposerRewards))
+
+	if len(proposerRewards) > 0 {
+		numArgs = 4
+		valueStrings := make([]string, 0, len(proposerRewards))
+		valueArgs := make([]interface{}, 0, len(proposerRewards)*numArgs)
+		i := 0
+		for proposer, rewards := range proposerRewards {
+
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+			valueArgs = append(valueArgs, proposer)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, rewards.TxFeeReward.String())
+			valueArgs = append(valueArgs, rewards.MevReward.String())
+
+			i++
+		}
+		stmt := fmt.Sprintf(`
+				insert into validator_stats (validatorindex, day, el_rewards_wei, mev_rewards_wei) VALUES
+				%s
+				on conflict (validatorindex, day) do update set el_rewards_wei = excluded.el_rewards_wei, mev_rewards_wei = excluded.mev_rewards_wei;`,
+			strings.Join(valueStrings, ","))
+		_, err = tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Infof("exporting total income stats")
+	_, err = tx.Exec(`
+	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, cl_proposer_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
+		SELECT 
+			vs1.validatorindex, 
+			vs1.day, 
+			COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
+			COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0) AS cl_proposer_rewards_gwei_total_new, 
+			COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
+			COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
+		FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1
+	) ON CONFLICT (validatorindex, day) DO UPDATE SET 
+		cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
+		cl_proposer_rewards_gwei_total = excluded.cl_proposer_rewards_gwei_total,
+		el_rewards_wei_total = excluded.el_rewards_wei_total,
+		mev_rewards_wei_total = excluded.mev_rewards_wei_total;
+	`, day)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("populate validator_performance table")
+	_, err = tx.Exec(`insert into validator_performance (
+		validatorindex,
+		balance,
+		performance1d,
+		performance7d,
+		performance31d,
+		performance365d,
+
+		rank7d,
+
+		cl_performance_1d,
+		cl_performance_7d,
+		cl_performance_31d,
+		cl_performance_365d,
+		cl_performance_total,
+		cl_proposer_performance_total,
+
+		el_performance_1d,
+		el_performance_7d,
+		el_performance_31d,
+		el_performance_365d,
+		el_performance_total,
+
+		mev_performance_1d,
+		mev_performance_7d,
+		mev_performance_31d,
+		mev_performance_365d,
+		mev_performance_total
+		) (
+			select 
+			vs_now.validatorindex, 
+				COALESCE(vs_now.end_balance, 0) as balance, 
+				0 as performance1d, 
+				0 as performance7d, 
+				0 as performance31d, 
+				0 as performance365d, 
+				0 as rank7d,
+
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
+				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
+				coalesce(vs_now.cl_rewards_gwei_total, 0) as cl_performance_total, 
+				coalesce(vs_now.cl_proposer_rewards_gwei_total, 0) as cl_proposer_performance_total, 
+				
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_31d.el_rewards_wei_total, 0) as el_performance_31d, 
+				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_365d.el_rewards_wei_total, 0) as el_performance_365d,
+				coalesce(vs_now.el_rewards_wei_total, 0) as el_performance_total, 
+				
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_1d.mev_rewards_wei_total, 0) as mev_performance_1d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_7d.mev_rewards_wei_total, 0) as mev_performance_7d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
+				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
+				coalesce(vs_now.mev_rewards_wei_total, 0) as mev_performance_total
+			from validator_stats vs_now
+			left join validator_stats vs_1d on vs_1d.validatorindex = vs_now.validatorindex and vs_1d.day = $2
+			left join validator_stats vs_7d on vs_7d.validatorindex = vs_now.validatorindex and vs_7d.day = $3
+			left join validator_stats vs_31d on vs_31d.validatorindex = vs_now.validatorindex and vs_31d.day = $4
+			left join validator_stats vs_365d on vs_365d.validatorindex = vs_now.validatorindex and vs_365d.day = $5
+			where vs_now.day = $1
+		) 
+		on conflict (validatorindex) do update set 
+			balance = excluded.balance, 
+			performance1d=excluded.performance1d,
+			performance7d=excluded.performance7d,
+			performance31d=excluded.performance31d,
+			performance365d=excluded.performance365d,
+
+			rank7d=excluded.rank7d,
+
+			cl_performance_1d=excluded.cl_performance_1d,
+			cl_performance_7d=excluded.cl_performance_7d,
+			cl_performance_31d=excluded.cl_performance_31d,
+			cl_performance_365d=excluded.cl_performance_365d,
+			cl_performance_total=excluded.cl_performance_total,
+			cl_proposer_performance_total=excluded.cl_proposer_performance_total,
+
+			el_performance_1d=excluded.el_performance_1d,
+			el_performance_7d=excluded.el_performance_7d,
+			el_performance_31d=excluded.el_performance_31d,
+			el_performance_365d=excluded.el_performance_365d,
+			el_performance_total=excluded.el_performance_total,
+
+			mev_performance_1d=excluded.mev_performance_1d,
+			mev_performance_7d=excluded.mev_performance_7d,
+			mev_performance_31d=excluded.mev_performance_31d,
+			mev_performance_365d=excluded.mev_performance_365d,
+			mev_performance_total=excluded.mev_performance_total
+			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		insert into validator_performance (                                                                                                 
+			validatorindex,          
+			balance,             
+			performance1d,
+			performance7d,
+			performance31d,  
+			performance365d,                                                                                             
+			rank7d
+		) (
+			select validatorindex, 0, 0, 0, 0, 0, row_number() over(order by validator_performance.cl_performance_7d desc) as rank7d from validator_performance
+		) 
+			on conflict (validatorindex) do update set 
+				rank7d=excluded.rank7d
+		;
+		`)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("export completed, took %v", time.Since(start))
+	start = time.Now()
+
+	logger.Infof("exporting sync statistics")
+	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, firstEpoch, lastEpoch) //+1 is needed because the function uses limit instead of end epoch
+	if err != nil {
+		return err
+	}
+	syncStatsArr := make([]*types.ValidatorSyncDutiesStatistic, 0, len(syncStats))
+	for _, stat := range syncStats {
+		syncStatsArr = append(syncStatsArr, stat)
+	}
+
+	batchSize = 13000 // max parameters: 65535
+	for b := 0; b < len(syncStatsArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(syncStatsArr) < end {
+			end = len(syncStatsArr)
+		}
+
+		numArgs := 5
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, stat := range syncStatsArr[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5))
+			valueArgs = append(valueArgs, stat.Index)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, stat.ParticipatedSync)
+			valueArgs = append(valueArgs, stat.MissedSync)
+			valueArgs = append(valueArgs, stat.OrphanedSync)
+		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, participated_sync, missed_sync, orphaned_sync)  VALUES
+		%s
+		on conflict (validatorindex, day) do update set participated_sync = excluded.participated_sync, missed_sync = excluded.missed_sync, orphaned_sync = excluded.orphaned_sync;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving sync statistics batch %v completed", b)
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
+	logger.Infof("exporting proposed_blocks, missed_blocks and orphaned_blocks statistics")
+	_, err = tx.Exec(`
+		insert into validator_stats (validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks) 
+		(
+			select proposer, $3, sum(case when status = '1' then 1 else 0 end), sum(case when status = '2' then 1 else 0 end), sum(case when status = '3' then 1 else 0 end)
+			from blocks
+			where epoch >= $1 and epoch <= $2
+			group by proposer
+		) 
+		on conflict (validatorindex, day) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
+		firstEpoch, lastEpoch, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
+	logger.Infof("exporting attester_slashings and proposer_slashings statistics")
+	_, err = tx.Exec(`
+		insert into validator_stats (validatorindex, day, attester_slashings, proposer_slashings) 
+		(
+			select proposer, $3, sum(attesterslashingscount), sum(proposerslashingscount)
+			from blocks
+			where epoch >= $1 and epoch <= $2 and status = '1'
+			group by proposer
+		) 
+		on conflict (validatorindex, day) do update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`,
+		firstEpoch, lastEpoch, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
+	logger.Infof("marking day export as completed in the status table")
+	_, err = tx.Exec("insert into validator_stats_status (day, status, income_exported) values ($1, true, true) ON CONFLICT (day) DO UPDATE SET status=EXCLUDED.status, income_exported=EXCLUDED.income_exported;", day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("statistics export of day %v completed, took %v", day, time.Since(exportStart))
+	return nil
+}
+
+func WriteValidatorAttestationsStatisticsForDay(day uint64) error {
+	exportStart := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_att_stats").Observe(time.Since(exportStart).Seconds())
+	}()
+
+	epochsPerDay := utils.EpochsPerDay()
+	firstEpoch := day * epochsPerDay
+	lastEpoch := firstEpoch + epochsPerDay - 1
+
+	logger.Infof("exporting attestation statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
+
+	finalizedCount, err := CountFinalizedEpochs(firstEpoch, lastEpoch)
+	if err != nil {
+		return err
+	}
+
+	if finalizedCount < epochsPerDay {
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
+	}
+
+	start := time.Now()
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	logger.Infof("exporting failed attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
+	ma, err := BigtableClient.GetValidatorFailedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
+	if err != nil {
+		return err
+	}
+	maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(ma))
+	for _, stat := range ma {
+		maArr = append(maArr, stat)
+	}
+
+	batchSize := 16000 // max parameters: 65535
+	for b := 0; b < len(maArr); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(maArr) < end {
+			end = len(maArr)
+		}
+
+		numArgs := 4
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*numArgs)
+		for i, stat := range maArr[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
+			valueArgs = append(valueArgs, stat.Index)
+			valueArgs = append(valueArgs, day)
+			valueArgs = append(valueArgs, stat.MissedAttestations)
+			valueArgs = append(valueArgs, stat.OrphanedAttestations)
+		}
+		stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
+		%s
+		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
+			strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("saving failed attestations batch %v completed", b)
+	}
+
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	start = time.Now()
+	logger.Infof("marking 'failed attestation' export for day [%v] as completed in the status table", day)
+	_, err = tx.Exec("insert into validator_stats_status (day, status, failed_attestations_exported) values ($1, true, true) ON CONFLICT (day) DO UPDATE SET status=EXCLUDED.status, failed_attestations_exported=EXCLUDED.failed_attestations_exported;", day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("'failed attestation' statistics export of day %v completed, took %v", day, time.Since(exportStart))
+	return nil
+}
+
 func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
 	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0)
 	if err != nil {

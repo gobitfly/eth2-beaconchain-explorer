@@ -12,9 +12,11 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/sync/errgroup"
 
 	"flag"
 
@@ -249,16 +251,22 @@ func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB)
 			return
 		}
 
+		start := time.Now()
 		logrus.Infof("exporting failed attestations statistics lastEpoch: %v firstEpoch: %v", startEpoch, endEpoch)
 		ma, err := bt.GetValidatorFailedAttestationsCount([]uint64{}, startEpoch, endEpoch)
 		if err != nil {
 			logrus.Errorf("error getting failed attestations %v", err)
 			return
 		}
+
+		logrus.Infof("fetching attestations done in %v, now we export them to the db", time.Since(start))
+		start = time.Now()
 		maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(ma))
 		for _, stat := range ma {
 			maArr = append(maArr, stat)
 		}
+
+		g := errgroup.Group{}
 
 		batchSize := 16000 // max parameters: 65535
 		for b := 0; b < len(maArr); b += batchSize {
@@ -268,28 +276,20 @@ func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB)
 				end = len(maArr)
 			}
 
-			numArgs := 4
-			valueStrings := make([]string, 0, batchSize)
-			valueArgs := make([]interface{}, 0, batchSize*numArgs)
-			for i, stat := range maArr[start:end] {
-				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
-				valueArgs = append(valueArgs, stat.Index)
-				valueArgs = append(valueArgs, day)
-				valueArgs = append(valueArgs, stat.MissedAttestations)
-				valueArgs = append(valueArgs, stat.OrphanedAttestations)
-			}
-			stmt := fmt.Sprintf(`
-			insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
-			%s
-			on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
-				strings.Join(valueStrings, ","))
-			_, err := tx.Exec(stmt, valueArgs...)
-			if err != nil {
-				logrus.Errorf("Error inserting failed attestations %v", err)
-				return
-			}
+			g.Go(func() error {
+				return saveFailedAttestationBatch(maArr[start:end], day, tx)
+			})
+		}
 
-			logrus.Infof("saving failed attestations batch %v completed", b)
+		err = g.Wait()
+		if err != nil {
+			logrus.Error(err)
+			return
+		}
+
+		if err == nil {
+			logrus.Infof("GetValidatorFailedAttestationsCount completed, took %v", time.Since(start))
+			return
 		}
 
 		logrus.Infof("Update Orphaned for day [%v] epoch %v -> %v", day, startEpoch, endEpoch)
@@ -344,5 +344,35 @@ func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB)
 		}
 		logrus.Infof("Update Orphaned for day [%v] completed", day)
 	}
+}
 
+var failedAttestationBatchNumArgs int = 3
+
+func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatistic, day uint64, tx *sqlx.Tx) error {
+	batchSize := len(batch)
+	valueStrings := make([]string, 0, failedAttestationBatchNumArgs)
+	valueArgs := make([]interface{}, 0, batchSize*failedAttestationBatchNumArgs)
+	logrus.Infof("start saving failed attestations for %v -> %v completed", batch[0].Index, batch[batchSize-1].Index)
+
+	for i, stat := range batch {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*failedAttestationBatchNumArgs+1, i*failedAttestationBatchNumArgs+2, i*failedAttestationBatchNumArgs+3, i*failedAttestationBatchNumArgs+4))
+		valueArgs = append(valueArgs, stat.Index)
+		valueArgs = append(valueArgs, day)
+		valueArgs = append(valueArgs, stat.MissedAttestations)
+		valueArgs = append(valueArgs, stat.OrphanedAttestations)
+	}
+	stmt := fmt.Sprintf(`
+		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
+		%s
+		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
+		strings.Join(valueStrings, ","))
+	_, err := tx.Exec(stmt, valueArgs...)
+	if err != nil {
+		logrus.Errorf("Error inserting failed attestations %v", err)
+		return err
+	}
+
+	logrus.Infof("saving failed attestations for %v -> %v completed", batch[0].Index, batch[batchSize-1].Index)
+
+	return nil
 }

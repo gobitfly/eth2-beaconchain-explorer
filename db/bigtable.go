@@ -922,12 +922,16 @@ func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint
 				if res[validator] == nil {
 					res[validator] = make(map[uint64]uint8, 0)
 				}
+				if res[validator][attesterSlot] > 0 {
+					logger.Infof("oh we already came here for %v on slot %v", validator, attesterSlot)
+				}
 				if orphanedSlotsMap[attesterSlot] {
 					res[validator][attesterSlot] = 3
 				} else {
 					res[validator][attesterSlot] = 2
 				}
 			} else if res[validator] != nil && res[validator][attesterSlot] > 0 {
+				logger.Infof("clean up for %v on slot %v", validator, attesterSlot)
 				delete(res[validator], attesterSlot)
 			}
 		}
