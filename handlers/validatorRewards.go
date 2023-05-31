@@ -220,8 +220,8 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	validatorArr := q.Get("validators")
 	validatorLimit := getUserPremium(r).MaxValidators
-	_, _, err = parseValidatorsFromQueryString(validatorArr, validatorLimit)
-	if err != nil {
+	_, queryValidatorPubkeys, err := parseValidatorsFromQueryString(validatorArr, validatorLimit)
+	if err != nil || len(queryValidatorPubkeys) > 0 {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
 		return
