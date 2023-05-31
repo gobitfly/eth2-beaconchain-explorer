@@ -44,12 +44,12 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 	defer tx.Rollback()
-	logger.Infof("exporting missed_attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
-	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
+	logger.Infof("exporting failed attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
+	ma, err := BigtableClient.GetValidatorFailedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
-	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(ma))
+	maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(ma))
 	for _, stat := range ma {
 		maArr = append(maArr, stat)
 	}
@@ -70,7 +70,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			valueArgs = append(valueArgs, stat.Index)
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, stat.MissedAttestations)
-			valueArgs = append(valueArgs, 0)
+			valueArgs = append(valueArgs, stat.OrphanedAttestations)
 		}
 		stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
@@ -82,7 +82,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			return err
 		}
 
-		logger.Infof("saving missed attestations batch %v completed", b)
+		logger.Infof("saving failed attestations batch %v completed", b)
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))
@@ -533,7 +533,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, stat.ParticipatedSync)
 			valueArgs = append(valueArgs, stat.MissedSync)
-			valueArgs = append(valueArgs, 0)
+			valueArgs = append(valueArgs, stat.OrphanedSync)
 		}
 		stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, participated_sync, missed_sync, orphaned_sync)  VALUES

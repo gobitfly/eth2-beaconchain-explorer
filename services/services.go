@@ -137,28 +137,44 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 
 	relaysData.LastUpdated = start
 
+	networkParticipationQuery, err := db.ReaderDb.Preparex(`
+		SELECT 
+			(SELECT
+				COUNT(DISTINCT block_slot) AS block_count
+			FROM relays_blocks
+			WHERE 
+				block_slot > $1 AND 
+				block_root NOT IN (SELECT bt.blockroot FROM blocks_tags bt WHERE bt.tag_id='invalid-relay-reward') 
+			) / (MAX(blocks.slot) - $1)::float AS network_participation
+		FROM blocks`)
+	if err != nil {
+		logger.Errorf("failed to prepare networkParticipationQuery: %v", err)
+		return nil, err
+	}
+	defer networkParticipationQuery.Close()
+
 	overallStatsQuery, err := db.ReaderDb.Preparex(`
-		with stats as (
-			select 
-				tag_id as relay_id,
-				count(*) as block_count,
-				sum(value) as total_value,
-				ROUND(avg(value)) as avg_value,
-				count(distinct builder_pubkey) as unique_builders,
-				max(value) as max_value,
-				(select rb2.block_slot from relays_blocks rb2 where rb2.value = max(rb.value) and rb2.tag_id = rb.tag_id limit 1) as max_value_slot
-			from relays_blocks rb
-			where 
-				rb.block_slot > $1 and 
-				rb.block_root not in (select bt.blockroot from blocks_tags bt where bt.tag_id='invalid-relay-reward') 
-			group by tag_id 
+		WITH stats AS (
+			SELECT 
+				tag_id AS relay_id,
+				COUNT(*) AS block_count,
+				SUM(value) AS total_value,
+				ROUND(avg(value)) AS avg_value,
+				COUNT(DISTINCT builder_pubkey) AS unique_builders,
+				MAX(value) AS max_value,
+				(SELECT rb2.block_slot FROM relays_blocks rb2 WHERE rb2.value = MAX(rb.value) AND rb2.tag_id = rb.tag_id LIMIT 1) AS max_value_slot
+			FROM relays_blocks rb
+			WHERE 
+				rb.block_slot > $1 AND 
+				rb.block_root NOT IN (SELECT bt.blockroot FROM blocks_tags bt WHERE bt.tag_id='invalid-relay-reward') 
+			GROUP BY tag_id 
 		)
-		select 
-			tags.metadata ->> 'name' as "name",
-			relays.public_link as link,
-			relays.is_censoring as censors,
-			relays.is_ethical as ethical,
-			stats.block_count / (select max(blocks.slot) - $1 from blocks)::float as network_usage,
+		SELECT 
+			tags.metadata ->> 'name' AS "name",
+			relays.public_link AS link,
+			relays.is_censoring AS censors,
+			relays.is_ethical AS ethical,
+			stats.block_count / (SELECT MAX(blocks.slot) - $1 FROM blocks)::float AS network_usage,
 			stats.relay_id,
 			stats.block_count,
 			stats.total_value,
@@ -166,18 +182,18 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			stats.unique_builders,
 			stats.max_value,
 			stats.max_value_slot
-		from relays
-		left join stats on stats.relay_id = relays.tag_id
-		left join tags on tags.id = relays.tag_id 
-		where stats.relay_id = tag_id 
-		order by stats.block_count DESC`)
+		FROM relays
+		LEFT JOIN stats ON stats.relay_id = relays.tag_id
+		LEFT JOIN tags ON tags.id = relays.tag_id 
+		WHERE stats.relay_id = tag_id 
+		ORDER BY stats.block_count DESC`)
 	if err != nil {
 		logger.Errorf("failed to prepare overallStatsQuery: %v", err)
 		return nil, err
 	}
 	defer overallStatsQuery.Close()
 
-	dayInSlots := 24 * 60 * 60 / utils.Config.Chain.Config.SecondsPerSlot
+	dayInSlots := uint64(utils.Day/time.Second) / utils.Config.Chain.Config.SecondsPerSlot
 
 	tmp := [3]types.RelayInfoContainer{{Days: 7}, {Days: 31}, {Days: 180}}
 	latest := LatestSlot()
@@ -187,14 +203,17 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 		if latest > tmp[i].Days*dayInSlots {
 			forSlot = latest - (tmp[i].Days * dayInSlots)
 		}
+
+		// calculate total adoption
+		err = networkParticipationQuery.Get(&tmp[i].NetworkParticipation, forSlot)
+		if err != nil {
+			return nil, err
+		}
 		err = overallStatsQuery.Select(&tmp[i].RelaysInfo, forSlot)
 		if err != nil {
 			return nil, err
 		}
-		// calculate total adoption
-		for j := 0; j < len(tmp[i].RelaysInfo); j++ {
-			tmp[i].NetworkParticipation += tmp[i].RelaysInfo[j].NetworkUsage
-		}
+
 	}
 	relaysData.RelaysInfoContainers = tmp
 

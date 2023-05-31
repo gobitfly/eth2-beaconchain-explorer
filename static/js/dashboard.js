@@ -1272,4 +1272,5 @@ function createProposedChart(data) {
       enabled: false,
     },
   })
+  $(".proposal-switch").show()
 }

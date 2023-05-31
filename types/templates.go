@@ -1892,7 +1892,7 @@ type RelayInfoContainer struct {
 	Days                 uint64
 	IsFirst              bool
 	RelaysInfo           []*RelayInfo
-	NetworkParticipation float64
+	NetworkParticipation float64 `db:"network_participation"`
 }
 
 type RelayInfo struct {
