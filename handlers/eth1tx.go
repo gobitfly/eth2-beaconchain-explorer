@@ -91,11 +91,11 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			txData.HistoricEtherPrice = ""
 			currentDay := latestEpoch / utils.EpochsPerDay()
 
-			if txDay < currentDay {
+			if txDay < currentDay && utils.Config.Chain.Name != "gnosis" {
 				// Do not show the historic price if it is the current day
 				price, err := db.GetHistoricPrice(GetCurrency(r), txDay)
 				if err != nil {
-					logrus.Errorf("error retrieving historic prices %v", err)
+					logrus.Warnf("error retrieving historic prices %v", err)
 				} else {
 					historicEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(price))
 					hPrice, _ := historicEthPrice.Float64()

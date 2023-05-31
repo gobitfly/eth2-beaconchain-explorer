@@ -481,6 +481,17 @@ func GetCurrency(r *http.Request) string {
 	return utils.Config.Frontend.ClCurrencySymbol
 }
 
+func GetTickerCurrency(r *http.Request) string {
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return "USD"
+	}
+	if cookie.Value == utils.Config.Frontend.MainCurrencySymbol {
+		return "USD"
+	}
+	return cookie.Value
+}
+
 func GetCurrencySymbol(r *http.Request) string {
 
 	cookie, err := r.Cookie("currency")
@@ -511,13 +522,25 @@ func GetCurrencySymbol(r *http.Request) string {
 func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
-		return uint64(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
+		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 	}
 
-	if cookie.Value == utils.Config.Frontend.ClCurrencySymbol {
-		return uint64(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
+	if cookie.Value == utils.Config.Frontend.MainCurrencySymbol {
+		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 	}
-	return uint64(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, cookie.Value))
+	return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
+}
+
+func GetCurrentElPrice(r *http.Request) uint64 {
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD"))
+	}
+
+	if cookie.Value == utils.Config.Frontend.ElCurrencySymbol {
+		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD"))
+	}
+	return uint64(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, cookie.Value))
 }
 
 func GetCurrentPriceFormatted(r *http.Request) template.HTML {

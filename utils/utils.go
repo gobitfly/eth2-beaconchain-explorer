@@ -106,6 +106,9 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatIncome":                            FormatIncome,
 		"formatIncomeEx":                          FormatIncomeEx,
 		"formatIncomeSql":                         FormatIncomeSql,
+		"formatInCurrency":                        FormatInCurrency,
+		"formatElInCurrency":                      FormatElInCurrency,
+		"formatClInCurrency":                      FormatClInCurrency,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
 		"formatValidatorWithName":                 FormatValidatorWithName,
@@ -475,9 +478,11 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.Frontend.ClCurrencySymbol == "" {
 		switch cfg.Chain.Name {
 		case "gnosis":
-			cfg.Frontend.ClCurrencySymbol = "GNO"
-			cfg.Frontend.ClCurrencyDivisor = 32e9
+			cfg.Frontend.MainCurrencySymbol = "GNO"
+			cfg.Frontend.ClCurrencySymbol = "mGNO"
+			cfg.Frontend.ClCurrencyDivisor = 1e9
 		default:
+			cfg.Frontend.MainCurrencySymbol = "ETH"
 			cfg.Frontend.ClCurrencySymbol = "ETH"
 			cfg.Frontend.ClCurrencyDivisor = 1e9
 		}
@@ -487,8 +492,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 		switch cfg.Chain.Name {
 		case "gnosis":
 			cfg.Frontend.ElCurrencySymbol = "xDAI"
+			cfg.Frontend.ElCurrencyDivisor = 1e18
 		default:
 			cfg.Frontend.ElCurrencySymbol = "ETH"
+			cfg.Frontend.ElCurrencyDivisor = 1e18
 		}
 	}
 

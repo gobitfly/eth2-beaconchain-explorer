@@ -102,10 +102,12 @@ type PageRates struct {
 	CurrentSymbol          string
 	ExchangeRate           float64
 
-	ElPrice      float64
-	ClPrice      float64
-	ElRoundPrice uint64
-	ClRoundPrice uint64
+	TickerCurrency string
+	CurrencyPrice  float64
+	ElPrice        float64
+	ClPrice        float64
+	ElRoundPrice   uint64
+	ClRoundPrice   uint64
 }
 
 // Meta is a struct to hold metadata about the page

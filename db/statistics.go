@@ -607,13 +607,15 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string)
 	}
 	var clRewardsSeries = make([]*types.ChartDataPoint, len(incomeHistory))
 
+	p := price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
+
 	for i := 0; i < len(incomeHistory); i++ {
 		color := "#7cb5ec"
 		if incomeHistory[i].ClRewards < 0 {
 			color = "#f7a35c"
 		}
 		balanceTs := utils.DayToTime(incomeHistory[i].Day)
-		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency) * (float64(incomeHistory[i].ClRewards) / float64(utils.Config.Frontend.ClCurrencyDivisor)), Color: color}
+		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: p * (float64(incomeHistory[i].ClRewards)) / float64(utils.Config.Frontend.ClCurrencyDivisor), Color: color}
 	}
 	return clRewardsSeries, err
 }

@@ -13,11 +13,13 @@ import (
 	"math"
 	"math/big"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -142,106 +144,156 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
+func CurrencyToCl(valIf interface{}, currency string) uint64 {
+	val := IfToDec(valIf)
+	priceDec := decimal.NewFromFloat(price.GetPrice(Config.Frontend.ClCurrencySymbol, currency))
+	return uint64(val.Mul(priceDec).IntPart())
+}
+
+func ClToCurrency(valIf interface{}, currency string) float64 {
+	val := IfToDec(valIf)
+	res, _ := val.DivRound(decimal.NewFromInt(Config.Frontend.ClCurrencyDivisor), 18).Float64()
+	if currency == Config.Frontend.ClCurrencySymbol {
+		return res
+	}
+	return res * price.GetPrice(Config.Frontend.ClCurrencySymbol, currency)
+}
+
+func ElToCurrency(valIf interface{}, currency string) float64 {
+	val := IfToDec(valIf)
+	res, _ := val.DivRound(decimal.NewFromInt(Config.Frontend.ElCurrencyDivisor), 18).Float64()
+	if currency == Config.Frontend.ElCurrencySymbol {
+		return res
+	}
+	return res * price.GetPrice(Config.Frontend.ElCurrencySymbol, currency)
+}
+
+func ClToCurrencyGwei(valIf interface{}, currency string) float64 {
+	val := IfToDec(valIf)
+	res, _ := val.Float64()
+	if currency == Config.Frontend.ClCurrencySymbol {
+		return res
+	}
+	return res * price.GetPrice(Config.Frontend.ClCurrencySymbol, currency)
+}
+
+func FormatElInCurrency(valIf interface{}, targetCurrency string, digitsAfterComma int) template.HTML {
+	val := IfToDec(valIf)
+	return FormatInCurrency(val.DivRound(decimal.NewFromInt(Config.Frontend.ElCurrencyDivisor), 18), Config.Frontend.ElCurrencySymbol, targetCurrency, digitsAfterComma)
+}
+
+func FormatClInCurrency(valIf interface{}, targetCurrency string, digitsAfterComma int) template.HTML {
+	val := IfToDec(valIf)
+	return FormatInCurrency(val.DivRound(decimal.NewFromInt(Config.Frontend.ClCurrencyDivisor), 18), Config.Frontend.ClCurrencySymbol, targetCurrency, digitsAfterComma)
+}
+
+func FormatInCurrency(valIf interface{}, valCurrency, targetCurrency string, digitsAfterComma int) template.HTML {
+	val := IfToDec(valIf)
+	targetSymbol := price.GetCurrencySymbol(targetCurrency)
+	if valCurrency == targetCurrency {
+		return template.HTML(fmt.Sprintf("%s %s", val.String(), targetSymbol))
+	}
+	valPriced := val.Mul(decimal.NewFromFloat(price.GetPrice(valCurrency, targetCurrency)))
+	return template.HTML(fmt.Sprintf("%s %s", valPriced.StringFixed(int32(digitsAfterComma)), targetSymbol))
+}
+
+func IfToDec(valIf interface{}) decimal.Decimal {
+	var val decimal.Decimal
+	switch valIf.(type) {
+	case int, int64, float64, uint64, *big.Int, *big.Float:
+		val, _ = decimal.NewFromString(fmt.Sprintf("%v", valIf))
+	case []uint8:
+		val = decimal.NewFromBigInt(new(big.Int).SetBytes(valIf.([]byte)), 0)
+	case decimal.Decimal:
+		val = valIf.(decimal.Decimal)
+	default:
+		logger.WithFields(logrus.Fields{"type": reflect.TypeOf(valIf)}).Errorf("invalid value passed to IfToDec")
+	}
+	return val
+}
+
 func FormatBalanceChangeFormated(balance *int64, currencyName string, details *itypes.ValidatorEpochIncome) template.HTML {
+	currencySymbol := "GWei"
+	currencyFunc := ClToCurrencyGwei
+	if currencyName != Config.Frontend.MainCurrencySymbol {
+		currencySymbol = currencyName
+		currencyFunc = ClToCurrency
+	}
+	minDigits := 2
+	maxDigits := 6
 
 	income := ""
 	if details != nil {
-
-		income += fmt.Sprintf("Att. Source: %s GWei<br/>", FormatAddCommasFormated(float64(int64(details.AttestationSourceReward)-int64(details.AttestationSourcePenalty)), 0))
-		income += fmt.Sprintf("Att. Target: %s GWei<br/>", FormatAddCommasFormated(float64(int64(details.AttestationTargetReward)-int64(details.AttestationTargetPenalty)), 0))
-		income += fmt.Sprintf("Att. Head Vote: %s GWei<br/>", FormatAddCommasFormated(float64(details.AttestationHeadReward), 0))
+		income += fmt.Sprintf("Att. Source: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.AttestationSourceReward-details.AttestationSourcePenalty, currencyName), minDigits, maxDigits), currencySymbol)
+		income += fmt.Sprintf("Att. Target: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.AttestationTargetReward-details.AttestationTargetPenalty, currencyName), minDigits, maxDigits), currencySymbol)
+		income += fmt.Sprintf("Att. Head Vote: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.AttestationHeadReward, currencyName), minDigits, maxDigits), currencySymbol)
 
 		if details.FinalityDelayPenalty > 0 {
-			income += fmt.Sprintf("Finality Delay Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.FinalityDelayPenalty)*-1, 0))
+			income += fmt.Sprintf("Finality Delay Penalty: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.FinalityDelayPenalty, currencyName)*-1, minDigits, maxDigits), currencySymbol)
 		}
 
 		if details.ProposerSlashingInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerSlashingInclusionReward), 0))
+			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.ProposerSlashingInclusionReward, currencyName), minDigits, maxDigits), currencySymbol)
 		}
 
 		if details.ProposerAttestationInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Att. Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerAttestationInclusionReward), 0))
+			income += fmt.Sprintf("Proposer Att. Inc. Reward: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.ProposerAttestationInclusionReward, currencyName), minDigits, maxDigits), currencySymbol)
 		}
 
 		if details.ProposerSyncInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Sync Inc. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.ProposerSyncInclusionReward), 0))
+			income += fmt.Sprintf("Proposer Sync Inc. Reward: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.ProposerSyncInclusionReward, currencyName), minDigits, maxDigits), currencySymbol)
 		}
 
 		if details.SyncCommitteeReward > 0 {
-			income += fmt.Sprintf("Sync Comm. Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.SyncCommitteeReward), 0))
+			income += fmt.Sprintf("Sync Comm. Reward: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.SyncCommitteeReward, currencyName), minDigits, maxDigits), currencySymbol)
 		}
 
 		if details.SyncCommitteePenalty > 0 {
-			income += fmt.Sprintf("Sync Comm. Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.SyncCommitteePenalty)*-1, 0))
+			income += fmt.Sprintf("Sync Comm. Penalty: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.SyncCommitteePenalty, currencyName)*-1, minDigits, maxDigits), currencySymbol)
 		}
 
 		if details.SlashingReward > 0 {
-			income += fmt.Sprintf("Slashing Reward: %s GWei<br/>", FormatAddCommasFormated(float64(details.SlashingReward), 0))
+			income += fmt.Sprintf("Slashing Reward: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.SlashingReward, currencyName), minDigits, maxDigits), currencySymbol)
 		}
 
 		if details.SlashingPenalty > 0 {
-			income += fmt.Sprintf("Slashing Penalty: %s GWei<br/>", FormatAddCommasFormated(float64(details.SlashingPenalty)*-1, 0))
+			income += fmt.Sprintf("Slashing Penalty: %s %s<br/>", FormatFloatWithDigits(currencyFunc(details.SlashingPenalty, currencyName)*-1, minDigits, maxDigits), currencySymbol)
 		}
 
-		income += fmt.Sprintf("Total: %s GWei", FormatAddCommasFormated(float64(details.TotalClRewards()), 0))
+		income += fmt.Sprintf("Total: %s %s", FormatFloatWithDigits(currencyFunc(details.TotalClRewards(), currencyName), minDigits, maxDigits), currencySymbol)
 	}
 
-	if currencyName == Config.Frontend.ClCurrencySymbol {
-		if balance == nil || *balance == 0 {
-			return template.HTML("<span class=\"float-right\">0 GWei</span>")
-		}
-		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
-		}
-		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s GWei</span>", income, FormatAddCommasFormated(float64(*balance), 0)))
-	} else {
-		if balance == nil {
-			return template.HTML("<span class=\"float-right\">0 " + currencyName + "</span>")
-		}
-		if *balance == 0 {
-			return template.HTML("pending")
-		}
-
-		balanceF := float64(*balance) / float64(Config.Frontend.ClCurrencyDivisor)
-		exchangeRate := price.GetPrice(Config.Frontend.ClCurrencySymbol, currencyName)
-		value := balanceF * float64(exchangeRate)
-
-		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%f\">%s %s</span>", value, FormatAddCommasFormated(value, 2), currencyName))
-		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%f\">+%s %s</span>", value, FormatAddCommasFormated(value, 2), currencyName))
+	if balance == nil || *balance == 0 {
+		return template.HTML(fmt.Sprintf("<span class=\"float-right\">0 %s</span>", currencySymbol))
 	}
+	if *balance < 0 {
+		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s %s</span>", income, FormatFloatWithDigits(currencyFunc(*balance, currencyName), minDigits, maxDigits), currencySymbol))
+	}
+	return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s %s</span>", income, FormatFloatWithDigits(currencyFunc(*balance, currencyName), minDigits, maxDigits), currencySymbol))
 }
 
 // FormatBalanceChange will return a string for a balance change
 func FormatBalanceChange(balance *int64, currency string) template.HTML {
-	balanceF := float64(*balance) / float64(1e9)
 	if currency == Config.Frontend.ClCurrencySymbol {
 		if balance == nil || *balance == 0 {
 			return template.HTML("<span> 0 " + currency + "</span>")
 		}
-
-		if balanceF < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
-		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(float64(*balance), 0)))
-	} else {
-		if balance == nil {
-			return template.HTML("<span> 0 " + currency + "</span>")
-		}
-		exchangeRate := price.GetPrice(Config.Frontend.ClCurrencySymbol, currency)
-		balanceFormated := FormatFloat(balanceF*float64(exchangeRate), 2)
-
-		if *balance > 0 {
-			return template.HTML("<span class=\"text-success\">" + balanceFormated + " " + currency + "</span>")
-		}
 		if *balance < 0 {
-			return template.HTML("<span class=\"text-danger\">" + balanceFormated + " " + currency + "</span>")
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(ClToCurrencyGwei(*balance, currency), 0)))
 		}
-
-		return template.HTML("pending")
-
+		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(ClToCurrencyGwei(*balance, currency), 0)))
 	}
+	if balance == nil {
+		return template.HTML("<span> 0 " + currency + "</span>")
+	}
+	balanceFormated := FormatFloat(ClToCurrency(*balance, currency), 2)
+	if *balance > 0 {
+		return template.HTML("<span class=\"text-success\">" + balanceFormated + " " + currency + "</span>")
+	}
+	if *balance < 0 {
+		return template.HTML("<span class=\"text-danger\">" + balanceFormated + " " + currency + "</span>")
+	}
+	return template.HTML("pending")
 }
 
 // FormatBalance will return a string for a balance
@@ -250,6 +302,32 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
 	return template.HTML(balance)
+}
+
+func FormatFloatWithDigits(num float64, min, max int) template.HTML {
+	return template.HTML(FormatFloatWithDigitsString(num, min, max))
+}
+
+func FormatFloatWithDigitsString(num float64, min, max int) string {
+	if max > 18 {
+		max = 18
+	}
+	if min > max {
+		min = max
+	}
+	a := fmt.Sprintf(fmt.Sprintf("%%.%df", max), num)
+	b := strings.Split(a, ".")
+	if len(b) < 2 {
+		return b[0]
+	}
+	idx := strings.IndexAny(b[1], "123456789")
+	if idx == -1 {
+		return b[0]
+	}
+	if idx+min > len(b[1]) {
+		return b[0] + "." + b[1]
+	}
+	return b[0] + "." + b[1][:idx+min]
 }
 
 func FormatAddCommasFormated(num float64, precision uint) template.HTML {

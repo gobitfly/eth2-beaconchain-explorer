@@ -74,6 +74,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			JpyRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "JPY")),
 			JpyTruncPrice:          "",
 			Currency:               GetCurrency(r),
+			TickerCurrency:         GetTickerCurrency(r),
 			CurrentPriceFormatted:  GetCurrentPriceFormatted(r),
 			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
 			CurrentSymbol:          GetCurrencySymbol(r),
@@ -118,8 +119,8 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	}
 	data.Rates.ElPrice = price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, data.Rates.Currency)
 	data.Rates.ClPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
-	data.Rates.EthPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
-	data.Rates.ExchangeRate = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
+	data.Rates.EthPrice = price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, data.Rates.Currency)
+	data.Rates.ExchangeRate = price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, data.Rates.Currency)
 	data.Rates.EthRoundPrice = price.GetEthRoundPrice(data.Rates.EthPrice)
 	data.Rates.EthTruncPrice = utils.KFormatterEthPrice(data.Rates.EthRoundPrice)
 	data.Rates.UsdTruncPrice = utils.KFormatterEthPrice(data.Rates.UsdRoundPrice)

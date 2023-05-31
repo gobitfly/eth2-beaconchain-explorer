@@ -229,8 +229,8 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="Gas Used %%" style="font-size: .63rem; color: grey;">%.2f%%</span>&nbsp;<span data-toggle="tooltip" data-placement="top" title="%% of Gas Target" style="font-size: .63rem; color: grey;">(%+.2f%%)</span>`, utils.FormatAddCommas(b.GetGasUsed()), float64(int64(float64(b.GetGasUsed())/float64(b.GetGasLimit())*10000.0))/100.0, float64(int64(((float64(b.GetGasUsed())-gasHalf)/gasHalf)*10000.0))/100.0), // Gas Used
 			utils.FormatAddCommas(b.GetGasLimit()),                               // Gas Limit
 			utils.FormatAmountFormatted(baseFee, "GWei", 5, 4, true, true, true), // Base Fee
-			utils.FormatAmountFormatted(new(big.Int).Add(utils.Eth1BlockReward(blockNumber, b.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward()))), utils.Config.Frontend.ElCurrencySymbol, 5, 4, true, true, true),                                                                         // Reward
-			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="%% of Transactions Fees" style="font-size: .63rem; color: grey;">%.2f%%</span>`, utils.FormatAmountFormatted(burned, utils.Config.Frontend.ElCurrencySymbol, 5, 4, true, true, false), float64(int64(burnedPercentage*10000.0))/100.0), // Burned Fees
+			utils.FormatAmountFormatted(new(big.Int).Add(utils.Eth1BlockReward(blockNumber, b.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward()))), utils.Config.Frontend.ElCurrencySymbol, 5, 4, true, true, true),                                         // Reward
+			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="%% of Transactions Fees" style="font-size: .63rem; color: grey;">%.2f%%</span>`, utils.FormatAmountFormatted(burned, "GWei", 5, 4, true, true, false), float64(int64(burnedPercentage*10000.0))/100.0), // Burned Fees
 		}
 	}
 

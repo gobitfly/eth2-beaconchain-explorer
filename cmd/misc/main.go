@@ -135,23 +135,31 @@ func main() {
 }
 
 func DebugBalances(startDay, endDay, validator uint64) {
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
-	for day := startDay; day <= endDay; day++ {
-		startEpoch := day * utils.EpochsPerDay()
-		endEpoch := startEpoch + utils.EpochsPerDay() - 1
-		hist, err := bt.GetValidatorBalanceHistory([]uint64{validator}, startEpoch, endEpoch)
-		if err != nil {
-			logrus.Fatal(err)
+	logrus.Infof("--- bal history")
+	balHist, err := bt.GetValidatorBalanceHistory([]uint64{validator}, opts.StartEpoch, opts.EndEpoch)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	for _, v := range balHist {
+		for _, b := range v {
+			fmt.Printf("%+v\n", b)
 		}
-		for _, v := range hist {
-			for _, b := range v {
-				fmt.Printf("%+v\n", b)
-			}
+	}
+
+	logrus.Infof("--- rew history")
+	rewHist, err := bt.GetValidatorIncomeDetailsHistory([]uint64{validator}, opts.StartEpoch, opts.EndEpoch)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	for _, v := range rewHist {
+		for _, b := range v {
+			fmt.Printf("%+v\n", b)
 		}
 	}
 }

@@ -164,7 +164,7 @@
                     <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
                       <img class="currency-flag-option" src="/img/{{ . }}.svg" />
                       <span class="currency-name">{{ getCurrencyLabel . }}</span>
-                      {{ . }}
+                      <span class="currency-symbol">{{ . }}</span>
                     </a>
                   {{ end }}
                 </div>
