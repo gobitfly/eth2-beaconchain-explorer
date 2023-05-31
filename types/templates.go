@@ -301,12 +301,12 @@ type ValidatorsPageData struct {
 	ExitedCount          uint64
 	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
-	Validators           []*ValidatorsPageDataValidators
+	Validators           []*ValidatorsData
 	CappellaHasHappened  bool
 }
 
-// ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
-type ValidatorsPageDataValidators struct {
+// ValidatorsData is a struct to hold data about validators
+type ValidatorsData struct {
 	TotalCount                 uint64 `db:"total_count"`
 	Epoch                      uint64 `db:"epoch"`
 	PublicKey                  []byte `db:"pubkey"`

@@ -740,12 +740,7 @@ $(document).ready(function () {
   }
 
   function firstValidatorWithIndex() {
-    for (var i = 0; i < state.validators.length; i++) {
-      if (!isValidatorPubkey(state.validators[i])) {
-        return state.validators[i]
-      }
-    }
-    return null
+    return state.validators.find((v) => !isValidatorPubkey(v))
   }
 
   function renderSelectedValidators() {
@@ -779,7 +774,7 @@ $(document).ready(function () {
     $("#validators-tab").removeClass("disabled")
     $("#validator-art").attr("class", "d-none")
 
-    if (firstValidatorWithIndex() !== null) {
+    if (firstValidatorWithIndex() !== undefined) {
       $("#dash-validator-history-info").removeClass("d-none")
       $("#dash-validator-history-index-div").removeClass("d-none")
       $("#dash-validator-history-index-div").addClass("d-flex")
@@ -833,7 +828,7 @@ $(document).ready(function () {
       addValidatorUpdateUI()
 
       firstValidatorWithHistory = firstValidatorWithIndex()
-      if (firstValidatorWithHistory === null) {
+      if (firstValidatorWithHistory === undefined) {
         hideValidatorHist()
       } else if (selectedBTNindex !== firstValidatorWithHistory) {
         // don't query if not necessary)
@@ -1071,7 +1066,7 @@ $(document).ready(function () {
         },
       })
 
-      if (firstValidatorWithIndex() !== null) {
+      if (firstValidatorWithIndex() !== undefined) {
         document.querySelector("#rewards-button").style.visibility = "visible"
         document.querySelector("#bookmark-button").style.visibility = "visible"
 
@@ -1112,7 +1107,7 @@ $(document).ready(function () {
 
     $("#copy-button").attr("data-clipboard-text", window.location.href)
 
-    if (state.validators && firstValidatorWithIndex() !== null) {
+    if (state.validators && firstValidatorWithIndex() !== undefined) {
       renderCharts()
     } else {
       hideCharts()
@@ -1166,41 +1161,20 @@ $(document).ready(function () {
       url: "/dashboard/data/allbalances" + qryStr,
       success: function (result) {
         var t1 = Date.now()
-        // let prevDayIncome = 0
-        // let prevDay = null
-        // let prevIncome = 0
-        // for (var i = 0; i < result.length; i++) {
-        //   var res = result[i]
-
-        //   let day = new Date(res[0])
-        //   if (prevDay===null) prevDay=day
-        //   // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
-        //   prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
-        //   prevIncome = res[2]
-        //   // console.log(day!==prevDay, day, prevDay, res[0])
-        //   if (day.getDay()!==prevDay.getDay()){
-        //     income.push([day.getTime(), prevDayIncome])
-        //     prevDayIncome = 0
-        //     prevDay=day
-        //   }
-        // }
-
-        var t2 = Date.now()
         createIncomeChart(result.consensusChartData, result.executionChartData)
-        var t3 = Date.now()
-        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
+        var t2 = Date.now()
+        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
       },
     })
     $.ajax({
       url: "/dashboard/data/proposals" + qryStr,
       success: function (result) {
         var t1 = Date.now()
-        var t2 = Date.now()
         if (result && result.length) {
           createProposedChart(result)
         }
-        var t3 = Date.now()
-        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
+        var t2 = Date.now()
+        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
       },
     })
   }

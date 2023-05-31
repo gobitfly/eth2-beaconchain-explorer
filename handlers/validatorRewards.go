@@ -108,11 +108,9 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	validatorLimit := getUserPremium(r).MaxValidators
-	validatorIndexArr, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", 400)
+
+	validatorIndexArr, _, redirect, err := handleValidatorsQuery(w, r, true)
+	if err != nil || redirect {
 		return
 	}
 
@@ -149,11 +147,9 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	validatorLimit := getUserPremium(r).MaxValidators
-	validatorIndexArr, _, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", 400)
+
+	validatorIndexArr, _, redirect, err := handleValidatorsQuery(w, r, true)
+	if err != nil || redirect {
 		return
 	}
 
