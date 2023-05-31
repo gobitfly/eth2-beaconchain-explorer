@@ -694,7 +694,7 @@ func SaveBlock(block *types.Block) error {
 	return nil
 }
 
-// SaveEpoch will stave the epoch data into the database
+// SaveEpoch will save the epoch data into the database
 func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
 	hasher := sha1.New()
@@ -3140,4 +3140,18 @@ func GetValidatorPropsosals(validators []uint64, proposals *[]types.ValidatorPro
 		WHERE proposer = ANY($1)
 		ORDER BY slot ASC
 		`, validatorsPQArray)
+}
+
+func GetOrphanedSlots(slots []uint64) ([]uint64, error) {
+	slotsPQArray := pq.Array(slots)
+	orphaned := []uint64{}
+
+	err := ReaderDb.Select(&orphaned, `
+		SELECT
+			slot
+		FROM blocks
+		WHERE slot = ANY($1) AND status = '3'
+		`, slotsPQArray)
+
+	return orphaned, err
 }

@@ -176,26 +176,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.InclusionDelay = 0
 			}
 
-			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+			for _, deposit := range deposits.Eth1Deposits {
 				if deposit.ValidSignature {
 					validatorPageData.Eth1DepositAddress = deposit.FromAddress
 					break
 				}
 			}
 
-			sumValid := uint64(0)
-			// check if a valid deposit exists
-			for _, d := range deposits.Eth1Deposits {
-				if d.ValidSignature {
-					sumValid += d.Amount
-				} else {
+			// check if an invalid deposit exists
+			for _, deposit := range deposits.Eth1Deposits {
+				if !deposit.ValidSignature {
 					validatorPageData.Status = "deposited_invalid"
+					break
 				}
-			}
-
-			// enough deposited for the validator to be activated
-			if sumValid >= 32e9 {
-				validatorPageData.Status = "deposited_valid"
 			}
 
 			filter := db.WatchlistFilter{
@@ -587,18 +580,28 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 			if lookback > 0 {
 				// logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
-				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
+				attestations, err := db.BigtableClient.GetValidatorFailedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				}
-				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
+				missed := uint64(0)
+				orphaned := uint64(0)
+				for _, state := range attestations[index] {
+					if state == 3 {
+						orphaned++
+					} else {
+						missed++
+					}
+				}
+				attestationStats.MissedAttestations += missed
+				attestationStats.OrphanedAttestations += orphaned
 
 			}
 
 			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
 			validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations
 			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
-			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 		}
 		return nil
 	})
@@ -726,7 +729,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.ScheduledSyncCountSlots = syncStats.ScheduledSlots
 			// actual sync duty count and percentage
 			validatorPageData.SyncCount = uint64(len(actualSyncPeriods))
-			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots)
+			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots+validatorPageData.OrphanedSyncCountSlots)
 		}
 		// sync luck
 		if len(allSyncPeriods) > 0 {
@@ -1936,6 +1939,13 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				return a < b
 			}
 		}
+		diffValue := func(a uint64, b uint64) uint64 {
+			if a >= b {
+				return a - b
+			} else {
+				return b - a
+			}
+		}
 
 		// amount of epochs moved away from start epoch
 		epochOffset := (start / utils.Config.Chain.Config.SlotsPerEpoch)
@@ -1956,25 +1966,32 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// last epoch containing the duties shown on this page
 		lastShownEpoch := moveAway(firstShownEpoch, epochsDiff)
 		// amount of epochs fetched by bigtable
-		limit := moveBack(firstShownEpoch-lastShownEpoch, 1)
+		limit := diffValue(firstShownEpoch, lastShownEpoch) + 1
 
-		var nextPeriodLimit int64 = 0
+		var nextPeriodLimit uint64 = 0
 		if IsFurtherAway(lastShownEpoch, syncPeriods[shownEpochIndex].EndEpoch) {
 			if IsFurtherAway(lastShownEpoch, syncPeriods[len(syncPeriods)-1].EndEpoch) {
 				// handle showing the last page, which may hold less than 'length' amount of rows
 				length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
 			} else {
 				// handle crossing sync periods on the same page (i.e. including the earliest and latest slot of two sync periods from this validator)
-				overshoot := lastShownEpoch - syncPeriods[shownEpochIndex].EndEpoch
-				lastShownEpoch = syncPeriods[shownEpochIndex+1].StartEpoch + moveBack(overshoot, 1)
-				limit += overshoot
-				nextPeriodLimit = int64(overshoot)
+				overshoot := diffValue(lastShownEpoch, syncPeriods[shownEpochIndex].EndEpoch)
+				lastShownEpoch = syncPeriods[shownEpochIndex+1].StartEpoch + overshoot - 1
+				limit -= overshoot
+				nextPeriodLimit = overshoot
 			}
 		}
 
 		// retrieve sync duties from bigtable
-		// note that the limit may be negative for either call, which results in the function fetching epochs for the absolute limit value in ascending ordering
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, firstShownEpoch-limit, firstShownEpoch, ascOrdering)
+		var startEpoch, endEpoch uint64
+		if ascOrdering {
+			startEpoch = firstShownEpoch - 1
+			endEpoch = firstShownEpoch + limit - 1
+		} else {
+			startEpoch = firstShownEpoch - limit
+			endEpoch = firstShownEpoch
+		}
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync duty data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1982,7 +1999,14 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if nextPeriodLimit != 0 {
-			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, lastShownEpoch-uint64(nextPeriodLimit), lastShownEpoch, ascOrdering)
+			if ascOrdering {
+				startEpoch = lastShownEpoch - nextPeriodLimit
+				endEpoch = lastShownEpoch
+			} else {
+				startEpoch = lastShownEpoch - 1
+				endEpoch = lastShownEpoch + nextPeriodLimit - 1
+			}
+			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)
 			if err != nil {
 				logger.Errorf("error retrieving second validator sync duty data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)

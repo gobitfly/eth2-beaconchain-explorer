@@ -1,5 +1,5 @@
 function setValidatorStatus(state, activationEpoch) {
-  // deposited, deposited_valid, deposited_invalid, pending, active_online, active_offline, exiting_online, exiting_offline, slashing_online, slashing_offline, exited, slashed
+  // deposited, deposited_invalid, pending, active_online, active_offline, exiting_online, exiting_offline, slashing_online, slashing_offline, exited, slashed
   // we cans set elements to active, failed and done
   var status = state
 
@@ -57,12 +57,6 @@ function setValidatorStatus(state, activationEpoch) {
 
   if (status === "deposited") {
     depositedNode.classList.add("active")
-  }
-
-  if (status === "deposited_valid") {
-    depositedNode.classList.add("done")
-    depositToPending.classList.add("active")
-    pendingNode.classList.add("active")
   }
 
   if (status === "deposited_invalid") {
