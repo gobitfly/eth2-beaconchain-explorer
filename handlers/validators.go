@@ -235,7 +235,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var validators []*types.ValidatorsPageDataValidators
+	var validators []*types.ValidatorsData
 	qry := ""
 	// if dataQuery.Search == "" && dataQuery.StateFilter == "" {
 	qry = fmt.Sprintf(`

@@ -3602,13 +3602,13 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
-	if err != nil {
+	queryValidatorIndices, queryValidatorPubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
+	if err != nil || len(queryValidatorPubkeys) > 0 {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	if len(queryValidators) < 1 {
+	if len(queryValidatorIndices) < 1 {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -3622,11 +3622,11 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
 	}
 
-	if len(queryValidators) == 0 {
+	if len(queryValidatorIndices) == 0 {
 		sendErrorResponse(w, r.URL.String(), "no or invalid validator indicies provided")
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryValidators, latestEpoch-queryOffsetEpoch, latestEpoch)
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryValidatorIndices, latestEpoch-queryOffsetEpoch, latestEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)

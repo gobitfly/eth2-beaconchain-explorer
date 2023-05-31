@@ -233,7 +233,22 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
+	case "validators_by_pubkey":
+		result = &types.SearchAheadPubkeyResult{}
+		if thresholdHexLikeRE.MatchString(search) {
+			// Find the validators that have made a deposit but have no index yet and therefore are not in the validators table
+			err = db.ReaderDb.Select(result, `
+				SELECT DISTINCT
+					ENCODE(eth1_deposits.publickey, 'hex') AS pubkey
+					FROM eth1_deposits
+					LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, search)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		}
 	case "indexed_validators_by_eth1_addresses":
 		if len(search) <= 1 || len(search) > 40 {
 			break
