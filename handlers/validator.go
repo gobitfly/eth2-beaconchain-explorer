@@ -1991,11 +1991,20 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			startEpoch = firstShownEpoch - limit
 			endEpoch = firstShownEpoch
 		}
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered([]uint64{}, startEpoch, endEpoch, ascOrdering)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync duty data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+		syncDutiesValidator := syncDuties[validatorIndex]
+		syncDutiesAllValidators := make([]uint64, limit*utils.Config.Chain.Config.SlotsPerEpoch)
+		for _, duties := range syncDuties {
+			for idx := range duties {
+				if duties[idx].Status == 1 {
+					syncDutiesAllValidators[idx]++
+				}
+			}
 		}
 
 		if nextPeriodLimit != 0 {
@@ -2006,13 +2015,50 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				startEpoch = lastShownEpoch - 1
 				endEpoch = lastShownEpoch + nextPeriodLimit - 1
 			}
-			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered(validatorIndex, startEpoch, endEpoch, ascOrdering)
+			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered([]uint64{}, startEpoch, endEpoch, ascOrdering)
 			if err != nil {
 				logger.Errorf("error retrieving second validator sync duty data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			syncDuties = append(syncDuties, nextPeriodSyncDuties...)
+
+			nextPeriodSyncDutiesValidator := nextPeriodSyncDuties[validatorIndex]
+			nextPeriodSyncDutiesAllValidators := make([]uint64, nextPeriodLimit*utils.Config.Chain.Config.SlotsPerEpoch)
+			for _, duties := range nextPeriodSyncDuties {
+				for idx := range duties {
+					if duties[idx].Status == 1 {
+						nextPeriodSyncDutiesAllValidators[idx]++
+					}
+				}
+			}
+			syncDutiesValidator = append(syncDutiesValidator, nextPeriodSyncDutiesValidator...)
+			syncDutiesAllValidators = append(syncDutiesAllValidators, nextPeriodSyncDutiesAllValidators...)
+		}
+
+		var missedSyncSlots []uint64
+		for _, synDuty := range syncDutiesValidator {
+			slotTime := utils.SlotToTime(synDuty.Slot)
+
+			if synDuty.Status == 0 && time.Since(slotTime) <= time.Minute {
+				synDuty.Status = 2 // scheduled
+			}
+
+			if synDuty.Status == 0 {
+				missedSyncSlots = append(missedSyncSlots, synDuty.Slot)
+			}
+		}
+
+		// Search for the missed slots (status = 2)
+		missedSlots := []uint64{}
+		err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, missedSyncSlots)
+		if err != nil {
+			logger.WithError(err).Errorf("error getting missed slots data")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		missedSlotsMap := make(map[uint64]bool, len(missedSlots))
+		for _, slot := range missedSlots {
+			missedSlotsMap[slot] = true
 		}
 
 		// sanity check for right amount of slots in response
@@ -2020,18 +2066,19 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			// extract correct slots
 			tableData = make([][]interface{}, length)
 			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
-				epoch := utils.EpochOfSlot(syncDuties[slotIndex].Slot)
-
-				slotTime := utils.SlotToTime(syncDuties[slotIndex].Slot)
-
-				if syncDuties[slotIndex].Status == 0 && time.Since(slotTime) <= time.Minute {
-					syncDuties[slotIndex].Status = 2 // scheduled
+				slot := syncDutiesValidator[slotIndex].Slot
+				epoch := utils.EpochOfSlot(slot)
+				status := syncDutiesValidator[slotIndex].Status
+				if _, ok := missedSlotsMap[slot]; ok {
+					status = 3
 				}
+
 				tableData[dataIndex] = []interface{}{
 					fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
 					utils.FormatEpoch(epoch),
-					utils.FormatBlockSlot(syncDuties[slotIndex].Slot),
-					utils.FormatSyncParticipationStatus(syncDuties[slotIndex].Status),
+					utils.FormatBlockSlot(slot),
+					utils.FormatSyncParticipationStatus(status, slot),
+					utils.FormatSyncParticipations(syncDutiesAllValidators[slotIndex]),
 				}
 			}
 		}
