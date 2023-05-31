@@ -2048,10 +2048,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Search for the missed slots
-		// status = 2 => Missed, status = 3 => Missed(Orphaned)
+		// Search for the missed slots (status = 2)
 		missedSlots := []uint64{}
-		err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND (status = '2' OR status = '3')`, missedSyncSlots)
+		err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, missedSyncSlots)
 		if err != nil {
 			logger.WithError(err).Errorf("error getting missed slots data")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

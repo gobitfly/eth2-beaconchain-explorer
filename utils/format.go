@@ -49,7 +49,7 @@ func FormatSyncParticipationStatus(status, blockSlot uint64) template.HTML {
 
 // FormatSyncParticipationStatus will return a user-friendly format for an sync-participation-status number
 func FormatSyncParticipations(participants uint64) template.HTML {
-	return template.HTML(fmt.Sprintf(`<span>%v/512</span>`, participants))
+	return template.HTML(fmt.Sprintf(`<span>%v/%v</span>`, participants, Config.Chain.Config.SyncCommitteeSize))
 }
 
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
