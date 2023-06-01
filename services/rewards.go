@@ -300,14 +300,17 @@ func getValidatorDetails(validators []uint64) [][]string {
 		 WHERE validatorindex = ANY($1)
 		 ORDER BY validatorindex ASC`, validatorFilter)
 	if err != nil {
-		utils.LogError(err, "error getting validators data", 0, map[string]interface{}{"validators": fmt.Sprintf("%v", validators)})
+		utils.LogError(err, "error getting validators data", 0, map[string]interface{}{"validators": validators})
 		return [][]string{}
 	}
 
 	latestEpoch := LatestEpoch()
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestEpoch, latestEpoch)
 	if err != nil {
-		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{"validators": fmt.Sprintf("%v", validators)})
+		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{
+			"validators":  validators,
+			"latestEpoch": latestEpoch,
+		})
 		return [][]string{}
 	}
 
