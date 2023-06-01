@@ -1657,6 +1657,7 @@ type Eth1TokenPageData struct {
 	Holders          template.HTML `json:"holders"`
 	Transfers        template.HTML `json:"transfers"`
 	Price            template.HTML `json:"price"`
+	Supply           template.HTML `json:"supply"`
 	MarketCap        template.HTML `json:"marketCap"`
 	DilutedMarketCap template.HTML `json:"dilutedMarketCap"`
 	Decimals         template.HTML `json:"decimals"`

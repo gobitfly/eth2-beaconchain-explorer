@@ -67,25 +67,17 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("token meta %+v\n", metadata)
-
 	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(token)
 	if err != nil {
 		logger.WithError(err).Errorf("error generating qr code for address %v", token)
 	}
 
-	marketCap := float64(0)
 	ethExchangeRate := float64(0)
 	if len(metadata.Price) > 0 && len(metadata.TotalSupply) > 0 {
-		mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Decimals), 0))
-		num := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0)
-
 		tokenPrice := decimal.New(0, 0)
 		if len(metadata.Price) > 0 {
 			tokenPrice = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Price), 0)
 		}
-
-		marketCap, _ = tokenPrice.Mul(num.Div(mul)).Float64()
 
 		ethUsdRate := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD"))
 		if !ethUsdRate.IsZero() {
@@ -94,21 +86,21 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token), templateFiles)
+	supply := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0).Div(decimal.NewFromInt(10).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Decimals), 0)))
+	priceUsd := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD")*ethExchangeRate).DivRound(decimal.NewFromInt(utils.Config.Frontend.ElCurrencyDivisor), 18)
+	marketCapUsd := priceUsd.Mul(supply)
 
 	data.Data = types.Eth1TokenPageData{
-		Token:            fmt.Sprintf("%x", token),
-		Address:          fmt.Sprintf("%x", address),
-		TransfersTable:   txns,
-		Metadata:         metadata,
-		Balance:          balance,
-		QRCode:           pngStr,
-		QRCodeInverse:    pngStrInverse,
-		MarketCap:        template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
-		SocialProfiles:   template.HTML(``),
-		Holders:          template.HTML(`<span>500</span>`),
-		Transfers:        template.HTML(`<span>10,000</span>`),
-		DilutedMarketCap: template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
-		Price:            template.HTML(fmt.Sprintf("<span>$%s</span><span>@ %.6f</span>", string(metadata.Price), ethExchangeRate)),
+		Token:          fmt.Sprintf("%x", token),
+		Address:        fmt.Sprintf("%x", address),
+		TransfersTable: txns,
+		Metadata:       metadata,
+		Balance:        balance,
+		QRCode:         pngStr,
+		QRCodeInverse:  pngStrInverse,
+		MarketCap:      template.HTML("$" + utils.FormatThousandsEnglish(marketCapUsd.StringFixed(2))),
+		Supply:         template.HTML(utils.FormatThousandsEnglish(supply.StringFixed(6))),
+		Price:          template.HTML("$" + utils.FormatThousandsEnglish(priceUsd.StringFixed(6))),
 	}
 
 	if handleTemplateError(w, r, "eth1Token.go", "Eth1Token", "Done", eth1TokenTemplate.ExecuteTemplate(w, "layout", data)) != nil {
