@@ -2769,8 +2769,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%s:ERC20:%#x", bigtable.chainId, address)
-	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ERC20Metadata)); err == nil {
-		logger.WithFields(logrus.Fields{"cacheKey": cacheKey}).Infof("retrieved metadata for token from cache")
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*1, new(types.ERC20Metadata)); err == nil {
 		return cached.(*types.ERC20Metadata), nil
 	}
 
@@ -2785,9 +2784,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	row = nil
 
 	if row == nil { // Retrieve token metadata from Ethplorer and store it for later usage
-		logger.Infof("retrieving metadata for token %x from rpc", address)
 		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
-
 		if err != nil {
 			logger.Errorf("error retrieving metadata for token %x: %v", address, err)
 			metadata = &types.ERC20Metadata{
@@ -2839,7 +2836,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		}
 	}
 
-	err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24*365)
+	err = cache.TieredCache.Set(cacheKey, ret, time.Hour*1)
 	if err != nil {
 		return nil, err
 	}
