@@ -300,7 +300,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 		 where validatorindex=ANY($1)
 		 order by validatorindex asc`, validatorFilter)
 	if err != nil {
-		logger.Errorf("error getting validators Data: %v", err)
+		utils.LogError(err, "error getting validators data", 0, map[string]interface{}{"validators": fmt.Sprintf("%v", validators)})
 		return [][]string{}
 	}
 
