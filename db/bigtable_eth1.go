@@ -2769,10 +2769,10 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%s:ERC20:%#x", bigtable.chainId, address)
-	// if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ERC20Metadata)); err == nil {
-	// 	logger.WithFields(logrus.Fields{"cacheKey": cacheKey}).Infof("retrieved metadata for token from cache")
-	// 	return cached.(*types.ERC20Metadata), nil
-	// }
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ERC20Metadata)); err == nil {
+		logger.WithFields(logrus.Fields{"cacheKey": cacheKey}).Infof("retrieved metadata for token from cache")
+		return cached.(*types.ERC20Metadata), nil
+	}
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	filter := gcp_bigtable.FamilyFilter(ERC20_METADATA_FAMILY)
