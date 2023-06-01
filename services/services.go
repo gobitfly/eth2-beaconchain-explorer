@@ -669,7 +669,7 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
-	currency := utils.Config.Frontend.ClCurrencySymbol
+	currency := utils.Config.Frontend.MainCurrencySymbol
 
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
@@ -880,7 +880,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				Finalized:                        false,
 				FinalizedFormatted:               utils.FormatYesNo(false),
 				EligibleEther:                    0,
-				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, utils.Config.Frontend.ClCurrencySymbol),
+				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, currency),
 				GlobalParticipationRate:          0,
 				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRate(0, 1, ""),
 				VotedEther:                       0,

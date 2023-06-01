@@ -3,6 +3,7 @@ package main
 import (
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -73,6 +74,9 @@ func main() {
 	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
 		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
 	}
+
+	logrus.Infof("initializing prices")
+	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrencySymbol, utils.Config.Frontend.ElCurrencySymbol)
 
 	logrus.Infof("initializing frontend services")
 	services.Init() // Init frontend services
