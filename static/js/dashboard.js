@@ -1185,10 +1185,10 @@ $(document).ready(function () {
       url: "/dashboard/data/proposals" + qryStr,
       success: function (result) {
         var t1 = Date.now()
-        var chart = $("#proposed-chart").highcharts()
         if (result && result.length) {
           createProposedChart(result)
         } else {
+          var chart = $("#proposed-chart").highcharts()
           if (chart !== undefined) {
             hideProposedChart()
           }
