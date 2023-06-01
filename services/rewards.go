@@ -295,18 +295,22 @@ func getValidatorDetails(validators []uint64) [][]string {
 	validatorFilter := pq.Array(validators)
 	var data []types.ValidatorPageData
 	err := db.WriterDb.Select(&data,
-		`select validatorindex, balanceactivation, lastattestationslot
-		 from validators 
-		 where validatorindex=ANY($1)
-		 order by validatorindex asc`, validatorFilter)
+		`SELECT validatorindex, balanceactivation, lastattestationslot
+		 FROM validators 
+		 WHERE validatorindex = ANY($1)
+		 ORDER BY validatorindex ASC`, validatorFilter)
 	if err != nil {
-		logger.Errorf("error getting validators Data: %v", err)
+		utils.LogError(err, "error getting validators data", 0, map[string]interface{}{"validators": validators})
 		return [][]string{}
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, LatestEpoch(), LatestEpoch())
+	latestEpoch := LatestEpoch()
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestEpoch, latestEpoch)
 	if err != nil {
-		logger.Errorf("error getting validator balance data for getValidatorDetails function: %v", err)
+		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{
+			"validators":  validators,
+			"latestEpoch": latestEpoch,
+		})
 		return [][]string{}
 	}
 
@@ -324,7 +328,6 @@ func getValidatorDetails(validators []uint64) [][]string {
 
 	result := [][]string{}
 	for _, item := range data {
-		// row := []string{}
 		la_date := "N/a"
 		if item.LastAttestationSlot != nil {
 			la_time := utils.SlotToTime(*item.LastAttestationSlot)
