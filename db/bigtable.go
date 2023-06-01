@@ -940,15 +940,17 @@ func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) ([]*types.ValidatorSyncParticipation, error) {
-	res, err := bigtable.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
+func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validators []uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) (map[uint64][]*types.ValidatorSyncParticipation, error) {
+	res, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
 	if err != nil {
 		return nil, err
 	}
 	if reverseOrdering {
-		utils.ReverseSlice(res[validatorIndex])
+		for _, duties := range res {
+			utils.ReverseSlice(duties)
+		}
 	}
-	return res[validatorIndex], nil
+	return res, nil
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
