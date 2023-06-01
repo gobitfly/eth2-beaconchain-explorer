@@ -1176,7 +1176,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	resultContainer := ResultContainer{}
 	resultContainer.res = make(map[uint64]*types.ValidatorBalanceStatistic)
 	g := errgroup.Group{}
-	batchSize := uint64(45) // we can speed up the loading by splitting it up, but making the batchSize even smaller has no effect but increases the memory consumption
+	batchSize := uint64(45) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
 		toEpoch := fromEpoch + batchSize - 1
@@ -1627,7 +1627,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 	}
 
 	g := errgroup.Group{}
-	batchSize := uint64(45) // we can speed up the loading by splitting it up, but making the batchSize even smaller has no effect but increases the memory consumption
+	batchSize := uint64(45) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
 		toEpoch := fromEpoch + batchSize - 1
@@ -1640,14 +1640,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
 
 			err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-				keySplit := strings.Split(r.Key(), ":")
 
-				epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
-				if err != nil {
-					logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
-					return false
-				}
-				epoch = max_epoch - epoch
 				resultContainer.mu.Lock()
 
 				for _, ri := range r[INCOME_DETAILS_COLUMN_FAMILY] {

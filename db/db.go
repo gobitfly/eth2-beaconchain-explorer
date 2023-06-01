@@ -491,7 +491,7 @@ func CountFinalizedEpochs(startEpoch uint64, endEpoch uint64) (uint64, error) {
 	return count, nil
 }
 
-func ValidateDayFinalized(day uint64) error {
+func CheckIfDayIsFinalized(day uint64) error {
 	epochsPerDay := utils.EpochsPerDay()
 	firstEpoch := day * epochsPerDay
 	lastEpoch := firstEpoch + epochsPerDay - 1
@@ -702,8 +702,7 @@ func SaveBlock(block *types.Block) error {
 		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
@@ -896,12 +895,11 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		return fmt.Errorf("error executing save epoch statement: %w", err)
 	}
 
-	err = saveGraffitiwall(data.Blocks, tx)
-	if err != nil {
+	if err = saveGraffitiwall(data.Blocks, tx); err != nil {
 		return fmt.Errorf("error saving graffitiwall: %w", err)
 	}
-	err = tx.Commit()
-	if err != nil {
+
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 

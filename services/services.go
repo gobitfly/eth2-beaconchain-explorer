@@ -996,10 +996,6 @@ func LatestNodeFinalizedEpoch() uint64 {
 	return 0
 }
 
-func LastFinalizedDay() uint64 {
-	return LatestFinalizedEpoch() / utils.EpochsPerDay()
-}
-
 // LatestFinalizedEpoch will return the most recent epoch that has been finalized.
 func LatestFinalizedEpoch() uint64 {
 	cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.Config.DepositChainID)

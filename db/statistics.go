@@ -31,7 +31,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -175,7 +175,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -357,32 +357,16 @@ func WriteValidatorTotalPerformance(day uint64) error {
 	if err != nil {
 		return err
 	}
-	logger.Infof("export completed, took %v", time.Since(start))
 
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-	tx, err = WriterDb.Beginx()
-	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
-		return err
-	}
-	defer tx.Rollback()
-	logger.Infof("marking el rewards exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, total_performance_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET total_performance_exported=EXCLUDED.total_performance_exported;
-			`, day)
-	if err != nil {
-		return err
-	}
 	if err = tx.Commit(); err != nil {
 		return err
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "total_performance_exported"); err != nil {
+		return err
+	}
 
 	logger.Infof("total performance statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
@@ -394,7 +378,7 @@ func WriteValidatorBlockStats(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_block_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -444,27 +428,11 @@ func WriteValidatorBlockStats(day uint64) error {
 	if err = tx.Commit(); err != nil {
 		return err
 	}
-	tx, err = WriterDb.Beginx()
-	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
-		return err
-	}
-	defer tx.Rollback()
-	logger.Infof("marking block stats exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, block_stats_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET block_stats_exported=EXCLUDED.block_stats_exported;
-			`, day)
-	if err != nil {
-		return err
-	}
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-
 	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "block_stats_exported"); err != nil {
+		return err
+	}
 
 	logger.Infof("block statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
@@ -476,7 +444,7 @@ func WriteValidatorElIcome(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_el_income_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -579,27 +547,11 @@ func WriteValidatorElIcome(day uint64) error {
 	if err = tx.Commit(); err != nil {
 		return err
 	}
-	tx, err = WriterDb.Beginx()
-	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
-		return err
-	}
-	defer tx.Rollback()
-	logger.Infof("marking el rewards exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, el_rewards_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET el_rewards_exported=EXCLUDED.el_rewards_exported;
-			`, day)
-	if err != nil {
-		return err
-	}
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-
 	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "el_rewards_exported"); err != nil {
+		return err
+	}
 
 	logger.Infof("el rewards statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
@@ -611,7 +563,7 @@ func WriteValidatorClIcome(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_cl_income_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -741,27 +693,11 @@ func WriteValidatorClIcome(day uint64) error {
 			return err
 		}
 	}
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
-		return err
-	}
-	defer tx.Rollback()
-	logger.Infof("marking cl rewards exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, cl_rewards_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET cl_rewards_exported=EXCLUDED.cl_rewards_exported;
-			`, day)
-	if err != nil {
-		return err
-	}
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-
 	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "cl_rewards_exported"); err != nil {
+		return err
+	}
 
 	logger.Infof("cl rewards statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
@@ -773,7 +709,7 @@ func WriteValidatorBalances(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_balances_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -854,30 +790,11 @@ func WriteValidatorBalances(day uint64) error {
 			return err
 		}
 	}
-
 	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
 
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
+	if err = markColumnExported(day, "balance_exported"); err != nil {
 		return err
 	}
-	defer tx.Rollback()
-	logger.Infof("marking balance exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, balance_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET balance_exported=EXCLUDED.balance_exported;
-			`, day)
-	if err != nil {
-		return err
-	}
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-	logrus.Infof("Commiting tx's complete in %v", time.Since(start))
 
 	logger.Infof("balance statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
@@ -889,7 +806,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_deposit_withdrawal_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -970,26 +887,14 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 	if err = tx.Commit(); err != nil {
 		return err
 	}
-	tx, err = WriterDb.Beginx()
-	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
-		return err
-	}
-	defer tx.Rollback()
-	logger.Infof("marking sync withdrawals+deposits exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, withdrawals_deposits_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET withdrawals_deposits_exported=EXCLUDED.withdrawals_deposits_exported;
-			`, day)
-	if err != nil {
-		return err
-	}
-	if err = tx.Commit(); err != nil {
-		return err
-	}
+
 	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "withdrawals_deposits_exported"); err != nil {
+		return err
+	}
+
+	logger.Infof("deposits and withdrawals statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
 
@@ -999,7 +904,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_sync_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -1063,29 +968,14 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 	if err = tx.Commit(); err != nil {
 		return err
 	}
-	tx, err = WriterDb.Beginx()
-	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
-		return err
-	}
-	defer tx.Rollback()
-	logger.Infof("marking sync duties exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, sync_duties_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET sync_duties_exported=EXCLUDED.sync_duties_exported;
-			`, day)
-	if err != nil {
+
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "sync_duties_exported"); err != nil {
 		return err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	logrus.Infof("saving stats sync duties done in %v", time.Since(start))
-
+	logger.Infof("sync duties and statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
 
@@ -1095,7 +985,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_failed_att_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
-	if err := ValidateDayFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -1186,27 +1076,10 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		}
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
 
-	tx, err := WriterDb.Beginx()
-	if err != nil {
+	if err = markColumnExported(day, "failed_attestations_exported"); err != nil {
 		return err
 	}
-	defer tx.Rollback()
-	logger.Infof("marking 'failed attestation' exported for day [%v] as completed in the status table", day)
-	_, err = tx.Exec(`	
-		INSERT INTO validator_stats_status (day, status, failed_attestations_exported) 
-		VALUES ($1, false, true) 
-		ON CONFLICT (day) 
-			DO UPDATE SET failed_attestations_exported=EXCLUDED.failed_attestations_exported;
-			`, day)
-	if err != nil {
-		return err
-	}
-	if err = tx.Commit(); err != nil {
-		return err
-	}
-	logrus.Infof("Commiting tx's complete in %v", time.Since(start))
 
 	logger.Infof("'failed attestation' statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
@@ -1237,6 +1110,34 @@ func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatis
 		return err
 	}
 
+	return nil
+}
+
+func markColumnExported(day uint64, column string) error {
+
+	start := time.Now()
+	logger.Infof("marking [%v] exported for day [%v] as completed in the status table", column, day)
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		logrus.Errorf("error WriterDb.Beginx %v", err)
+		return err
+	}
+	defer tx.Rollback()
+	logger.Infof("marking el rewards exported for day [%v] as completed in the status table", day)
+	_, err = tx.Exec(fmt.Sprintf(`	
+		INSERT INTO validator_stats_status (day, status, %[1]v) 
+		VALUES ($1, false, true) 
+		ON CONFLICT (day) 
+			DO UPDATE SET %[1]v=EXCLUDED.%[1]v;
+			`, column), day)
+	if err != nil {
+		return err
+	}
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	logrus.Infof("Commiting tx's complete in %v", time.Since(start))
 	return nil
 }
 
