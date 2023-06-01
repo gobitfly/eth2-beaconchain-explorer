@@ -2700,20 +2700,11 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	sort.Slice(ret.Balances, func(i, j int) bool {
 		priceI := decimal.New(0, 0)
 		priceJ := decimal.New(0, 0)
-		var err error
-
-		if string(ret.Balances[i].Metadata.Price) != "" {
-			priceI, err = decimal.NewFromString(string(ret.Balances[i].Metadata.Price))
-			if err != nil {
-				logger.WithError(err).Errorf("error parsing string price value, price: %s", ret.Balances[i].Metadata.Price)
-			}
+		if len(ret.Balances[i].Metadata.Price) > 0 {
+			priceI = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Price), 0)
 		}
-
-		if string(ret.Balances[j].Metadata.Price) != "" {
-			priceJ, err = decimal.NewFromString(string(ret.Balances[j].Metadata.Price))
-			if err != nil {
-				logger.WithError(err).Errorf("error parsing string price value, price: %s", ret.Balances[j].Metadata.Price)
-			}
+		if len(ret.Balances[j].Metadata.Price) > 0 {
+			priceJ = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Price), 0)
 		}
 
 		mulI := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Decimals), 0))
@@ -2777,22 +2768,24 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	cacheKey := fmt.Sprintf("%s:ERC20:%s", bigtable.chainId, string(address))
-	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ERC20Metadata)); err == nil {
-		return cached.(*types.ERC20Metadata), nil
-	}
+	cacheKey := fmt.Sprintf("%s:ERC20:%#x", bigtable.chainId, address)
+	// if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ERC20Metadata)); err == nil {
+	// 	logger.WithFields(logrus.Fields{"cacheKey": cacheKey}).Infof("retrieved metadata for token from cache")
+	// 	return cached.(*types.ERC20Metadata), nil
+	// }
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	filter := gcp_bigtable.FamilyFilter(ERC20_METADATA_FAMILY)
 
 	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
-
 	if err != nil {
 		return nil, err
 	}
 
+	row = nil
+
 	if row == nil { // Retrieve token metadata from Ethplorer and store it for later usage
-		logger.Infof("retrieving metadata for token %x via rpc", address)
+		logger.Infof("retrieving metadata for token %x from rpc", address)
 		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
 
 		if err != nil {
@@ -2802,7 +2795,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 				Symbol:      "UNKNOWN",
 				TotalSupply: []byte{0x0}}
 
-			err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
+			err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*1)
 			if err != nil {
 				return nil, err
 			}
@@ -2814,7 +2807,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 			return nil, err
 		}
 
-		err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
+		err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*1)
 		if err != nil {
 			return nil, err
 		}

@@ -122,15 +122,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	data.Rates.EthPrice = price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, data.Rates.Currency)
 	data.Rates.ExchangeRate = price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, data.Rates.Currency)
 	data.Rates.EthRoundPrice = price.GetEthRoundPrice(data.Rates.EthPrice)
-	data.Rates.EthTruncPrice = utils.KFormatterEthPrice(data.Rates.EthRoundPrice)
-	data.Rates.UsdTruncPrice = utils.KFormatterEthPrice(data.Rates.UsdRoundPrice)
-	data.Rates.EurTruncPrice = utils.KFormatterEthPrice(data.Rates.EurRoundPrice)
-	data.Rates.GbpTruncPrice = utils.KFormatterEthPrice(data.Rates.GbpRoundPrice)
-	data.Rates.CnyTruncPrice = utils.KFormatterEthPrice(data.Rates.CnyRoundPrice)
-	data.Rates.RubTruncPrice = utils.KFormatterEthPrice(data.Rates.RubRoundPrice)
-	data.Rates.CadTruncPrice = utils.KFormatterEthPrice(data.Rates.CadRoundPrice)
-	data.Rates.AudTruncPrice = utils.KFormatterEthPrice(data.Rates.AudRoundPrice)
-	data.Rates.JpyTruncPrice = utils.KFormatterEthPrice(data.Rates.JpyRoundPrice)
 
 	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
 	if len(acceptedLangs) > 0 {

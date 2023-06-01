@@ -87,7 +87,7 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 
 	feedAddrs := map[string]string{}
 	switch chainId {
-	case 1, 5, 11155111:
+	case 1:
 		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/
 		feedAddrs["ETH/USD"] = "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419"
 		feedAddrs["EUR/USD"] = "0xb49f677943bc038e9857d61e7d053caa2c1734c1"
@@ -98,6 +98,18 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 		feedAddrs["AUD/USD"] = "0x77f9710e7d0a19669a13c055f62cd80d313df022"
 
 		availableCurrencies = []string{"ETH", "USD", "EUR", "GBP", "CNY", "CAD", "AUD", "JPY"}
+	case 5:
+		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/
+		feedAddrs["ETH/USD"] = "0x694AA1769357215DE4FAC081bf1f309aDC325306"
+		feedAddrs["EUR/USD"] = "0x1a81afB8146aeFfCFc5E50e8479e826E7D55b910"
+
+		availableCurrencies = []string{"ETH", "USD", "EUR"}
+	case 11155111:
+		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/
+		feedAddrs["ETH/USD"] = "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e"
+		feedAddrs["EUR/USD"] = "0x44390589104C9164407A0E0562a9DBe6C24A0E05"
+
+		availableCurrencies = []string{"ETH", "USD", "EUR"}
 	case 100:
 		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/?network=gnosis-chain
 		feedAddrs["GNO/USD"] = "0x22441d81416430A54336aB28765abd31a792Ad37"

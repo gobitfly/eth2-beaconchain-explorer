@@ -1247,15 +1247,11 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 	p := message.NewPrinter(language.English)
 
-	priceS := string(balance.Metadata.Price)
 	price := decimal.New(0, 0)
-	if priceS != "" {
-		var err error
-		price, err = decimal.NewFromString(priceS)
-		if err != nil {
-			logger.WithError(err).Errorf("error getting price from string - FormatTokenBalance price: %v", priceS)
-		}
+	if len(balance.Metadata.Price) > 0 {
+		price = decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Price), 0).DivRound(decimal.NewFromInt(Config.Frontend.ElCurrencyDivisor), 18)
 	}
+
 	// numPrice := num.Div(mul).Mul(price)
 
 	logo := ""

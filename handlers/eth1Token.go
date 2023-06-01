@@ -67,13 +67,11 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("token meta %+v\n", metadata)
+
 	pngStr, pngStrInverse, err := utils.GenerateQRCodeForAddress(token)
 	if err != nil {
 		logger.WithError(err).Errorf("error generating qr code for address %v", token)
-	}
-
-	if len(metadata.Price) == 0 {
-		metadata.Price = []byte("32.523423")
 	}
 
 	marketCap := float64(0)
@@ -82,20 +80,14 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Decimals), 0))
 		num := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0)
 
-		priceS := string(metadata.Price)
 		tokenPrice := decimal.New(0, 0)
-		if priceS != "" {
-			var err error
-			tokenPrice, err = decimal.NewFromString(priceS)
-			if err != nil {
-				logger.WithError(err).Errorf("error getting price from string - FormatTokenBalance price: %v", priceS)
-			}
+		if len(metadata.Price) > 0 {
+			tokenPrice = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Price), 0)
 		}
 
 		marketCap, _ = tokenPrice.Mul(num.Div(mul)).Float64()
 
-		ethUsdRate := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
-		logger.Infof("usd rate %s", ethUsdRate)
+		ethUsdRate := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD"))
 		if !ethUsdRate.IsZero() {
 			ethExchangeRate, _ = tokenPrice.Div(ethUsdRate).Float64()
 		}

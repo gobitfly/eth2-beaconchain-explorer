@@ -31,6 +31,7 @@ var opts = struct {
 	EndDay        uint64
 	Validator     uint64
 	Validators    string
+	Address       string
 }{}
 
 func main() {
@@ -44,6 +45,7 @@ func main() {
 	flag.Uint64Var(&opts.Validator, "validator", 0, "validator to check for")
 	flag.StringVar(&opts.Validators, "validators", "", "comma separated list of validators (pubkey of index)")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
+	flag.StringVar(&opts.Address, "address", "0xf00", "address")
 	flag.Parse()
 
 	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
@@ -133,9 +135,27 @@ func main() {
 		DebugBalances(opts.StartDay, opts.EndDay, opts.Validator)
 	case "update-orphaned-statistics":
 		UpdateOrphanedStatistics(opts.StartDay, opts.EndDay, db.WriterDb)
+	case "get-token-metadata":
+		err = GetTokenMetadata()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
+}
+
+func GetTokenMetadata() error {
+	gethClient, err := rpc.NewErigonClient(utils.Config.Eth1GethEndpoint)
+	if err != nil {
+		return err
+	}
+	d, err := gethClient.GetERC20TokenMetadata(utils.MustParseHex(opts.Address))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%+v\n", d)
+	return nil
 }
 
 func DebugBalances(startDay, endDay, validator uint64) {
