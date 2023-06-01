@@ -306,7 +306,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, LatestEpoch(), LatestEpoch())
 	if err != nil {
-		logger.Errorf("error getting validator balance data for getValidatorDetails function: %v", err)
+		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{"validators": fmt.Sprintf("%v", validators)})
 		return [][]string{}
 	}
 
