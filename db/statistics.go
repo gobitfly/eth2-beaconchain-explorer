@@ -26,7 +26,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	firstEpoch := day * epochsPerDay
 	lastEpoch := firstEpoch + epochsPerDay - 1
 
-	// for getting the withrawals / deposits for the current day we have to go 1 epoch in the past as they effect the balance one epoch after they have happend
+	// for getting the withrawals / deposits for the current day we have to go 1 epoch in the past as they affect the balance one epoch after they have happend
 	firstWithrawDepositEpoch := uint64(0)
 	if firstEpoch > 0 {
 		firstWithrawDepositEpoch = firstEpoch - 1
