@@ -1148,7 +1148,7 @@ $(document).ready(function () {
     hideProposedChart()
   }
 
-  function hideIncomeChart(){
+  function hideIncomeChart() {
     if (incomeChart) {
       incomeChart.destroy()
       incomeChart = null
@@ -1156,7 +1156,7 @@ $(document).ready(function () {
     document.getElementById("balance-chart").innerHTML = incomeChartDefault
   }
 
-  function hideProposedChart(){
+  function hideProposedChart() {
     if (proposedChart) {
       proposedChart.destroy()
       proposedChart = null
