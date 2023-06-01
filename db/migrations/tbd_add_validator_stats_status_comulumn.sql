@@ -6,11 +6,21 @@ ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS sync_duties_exported
 ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS withdrawals_deposits_exported BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS balance_exported BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS cl_rewards_exported BOOLEAN NOT NULL DEFAULT FALSE;
-CREATE INDEX IF NOT EXISTS idx_validator_stats_status_failed_attestations ON validator_stats_status (day, failed_attestations_exported);
-CREATE INDEX IF NOT EXISTS idx_validator_stats_status_sync_duties ON validator_stats_status (day, sync_duties_exported);
-CREATE INDEX IF NOT EXISTS idx_validator_stats_status_withdrawals_deposits ON validator_stats_status (day, withdrawals_deposits_exported);
-CREATE INDEX IF NOT EXISTS idx_validator_stats_status_balance ON validator_stats_status (day, balance_exported);
-CREATE INDEX IF NOT EXISTS idx_validator_stats_cl_rewards_exported ON validator_stats_status (day, cl_rewards_exported);
+ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS el_rewards_exported BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS total_performance_exported BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS block_stats_exported BOOLEAN NOT NULL DEFAULT FALSE;
+
+UPDATE validator_stats_status
+SET 
+    failed_attestations_exported = true, 
+    sync_duties_exported = true, 
+    withdrawals_deposits_exported = true, 
+    balance_exported = true, 
+    cl_rewards_exported = true, 
+    el_rewards_exported = true, 
+    total_performance_exported = true, 
+    block_stats_exported = true
+WHERE status=true AND income_exported = true;
 -- +goose StatementEnd
 
 -- +goose Down
@@ -21,9 +31,7 @@ ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS sync_duties_exported;
 ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS withdrawals_deposits_exported;
 ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS balance_exported;
 ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS cl_rewards_exported;
-DROP INDEX IF EXISTS idx_validator_stats_status_failed_attestations;
-DROP INDEX IF EXISTS idx_validator_stats_status_sync_duties;
-DROP INDEX IF EXISTS idx_validator_stats_status_withdrawals_deposits;
-DROP INDEX IF EXISTS idx_validator_stats_status_balance;
-DROP INDEX IF EXISTS idx_validator_stats_cl_rewards_exported;
+ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS el_rewards_exported;
+ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS total_performance_exported;
+ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS block_stats_exported;
 -- +goose StatementEnd

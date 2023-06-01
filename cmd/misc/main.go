@@ -13,7 +13,6 @@ import (
 	"strconv"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/jmoiron/sqlx"
 
 	"flag"
 
@@ -126,8 +125,6 @@ func main() {
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator)
-	case "update-orphaned-statistics":
-		UpdateOrphanedStatistics(opts.StartDay, opts.EndDay, db.WriterDb)
 
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
@@ -223,26 +220,4 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
 		}
 	}
 
-}
-
-// Update Orphaned statistics for Sync / Attestations
-func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB) {
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
-	if err != nil {
-		logrus.Fatalf("error connecting to bigtable: %v", err)
-	}
-	defer bt.Close()
-
-	for day := dayStart; day <= dayEnd; day++ {
-
-		if err = db.WriteValidatorFailedAttestationsStatisticsForDay(day); err != nil {
-			logrus.Errorf("error WriteValidatorFailedAttestationsStatisticsForDay %v", err)
-			return
-		}
-		if err = db.WriteValidatorSyncDutiesForDay(day); err != nil {
-			logrus.Errorf("error WriteValidatorSyncDutiesForDay %v", err)
-			return
-		}
-		logrus.Infof("Update Orphaned for day [%v] completed", day)
-	}
 }
