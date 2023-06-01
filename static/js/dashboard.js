@@ -1144,12 +1144,19 @@ $(document).ready(function () {
   })
 
   function hideCharts() {
+    hideIncomeChart()
+    hideProposedChart()
+  }
+
+  function hideIncomeChart(){
     if (incomeChart) {
       incomeChart.destroy()
       incomeChart = null
     }
     document.getElementById("balance-chart").innerHTML = incomeChartDefault
+  }
 
+  function hideProposedChart(){
     if (proposedChart) {
       proposedChart.destroy()
       proposedChart = null
@@ -1178,8 +1185,13 @@ $(document).ready(function () {
       url: "/dashboard/data/proposals" + qryStr,
       success: function (result) {
         var t1 = Date.now()
+        var chart = $("#proposed-chart").highcharts()
         if (result && result.length) {
           createProposedChart(result)
+        } else {
+          if (chart !== undefined) {
+            hideProposedChart()
+          }
         }
         var t2 = Date.now()
         console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
