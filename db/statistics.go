@@ -1016,8 +1016,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		})
 	}
 
-	err := g.Wait()
-	if err != nil {
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -1065,19 +1064,19 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		})
 	}
 
-	if err = g.Wait(); err != nil {
+	if err := g.Wait(); err != nil {
 		logrus.Error(err)
 		return err
 	}
 
 	for _, tx := range txList {
-		if err = tx.Commit(); err != nil {
+		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
-	if err = markColumnExported(day, "failed_attestations_exported"); err != nil {
+	if err := markColumnExported(day, "failed_attestations_exported"); err != nil {
 		return err
 	}
 
