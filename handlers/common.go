@@ -478,7 +478,7 @@ func GetCurrency(r *http.Request) string {
 		return cookie.Value
 	}
 
-	return utils.Config.Frontend.ClCurrencySymbol
+	return utils.Config.Frontend.MainCurrencySymbol
 }
 
 func GetTickerCurrency(r *http.Request) string {
@@ -493,30 +493,11 @@ func GetTickerCurrency(r *http.Request) string {
 }
 
 func GetCurrencySymbol(r *http.Request) string {
-
 	cookie, err := r.Cookie("currency")
 	if err != nil {
 		return "$"
 	}
-
-	switch cookie.Value {
-	case "AUD":
-		return "A$"
-	case "CAD":
-		return "C$"
-	case "CNY":
-		return "¥"
-	case "EUR":
-		return "€"
-	case "GBP":
-		return "£"
-	case "JPY":
-		return "¥"
-	case "RUB":
-		return "₽"
-	default:
-		return "$"
-	}
+	return price.GetCurrencySymbol(cookie.Value)
 }
 
 func GetCurrentPrice(r *http.Request) uint64 {
