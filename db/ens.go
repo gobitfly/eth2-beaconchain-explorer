@@ -324,7 +324,8 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		batch := keys[i:to]
 		logger.Infof("Batching ENS entries %v:%v of %v", i, to, total)
 		g := new(errgroup.Group)
-		for _, key := range batch {
+		for _, k := range batch {
+			key := k
 			var name string
 			var address *common.Address
 			split := strings.Split(key, ":")

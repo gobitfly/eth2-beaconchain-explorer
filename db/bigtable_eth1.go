@@ -20,7 +20,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"strconv"
@@ -681,11 +680,6 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
-	startTs := time.Now()
-	lastTickTs := time.Now()
-
-	processedBlocks := int64(0)
-
 	logrus.Infof("indexing blocks from %d to %d", start, end)
 	batchSize := int64(1000)
 	for i := start; i <= end; i += batchSize {
@@ -755,17 +749,6 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 						}
 					}
 
-					current := atomic.AddInt64(&processedBlocks, 1)
-					if current%500 == 0 {
-						r := end - start
-						if r == 0 {
-							r = 1
-						}
-						perc := float64(i-start) * 100 / float64(r)
-						logrus.Infof("currently processing block: %v; processed %v blocks in %v (%.1f blocks / sec); sync is %.1f%% complete", block.GetNumber(), current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds(), perc)
-						lastTickTs = time.Now()
-						atomic.StoreInt64(&processedBlocks, 0)
-					}
 					return nil
 				})
 			}
