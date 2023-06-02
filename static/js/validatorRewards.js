@@ -397,7 +397,12 @@ $(document).ready(function () {
   }
 
   if (JSON.parse(localStorage.getItem("load_dashboard_validators"))) {
-    $("#validator-index-view").val(JSON.parse(localStorage.getItem("dashboard_validators")))
+    const dashBoardValidators = JSON.parse(localStorage.getItem("dashboard_validators"))
+    const dashBoardValidatorIndices = dashBoardValidators.filter((entry) => {
+      return !(entry.startsWith("0x") && entry.length === 98)
+    })
+
+    $("#validator-index-view").val(dashBoardValidatorIndices)
     localStorage.setItem("load_dashboard_validators", false)
   }
 

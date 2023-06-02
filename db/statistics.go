@@ -26,6 +26,13 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	firstEpoch := day * epochsPerDay
 	lastEpoch := firstEpoch + epochsPerDay - 1
 
+	// for getting the withrawals / deposits for the current day we have to go 1 epoch in the past as they affect the balance one epoch after they have happend
+	firstWithrawDepositEpoch := uint64(0)
+	if firstEpoch > 0 {
+		firstWithrawDepositEpoch = firstEpoch - 1
+	}
+	lastWithdrawDepositEpoch := lastEpoch - 1
+
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
 	finalizedCount, err := CountFinalizedEpochs(firstEpoch, lastEpoch)
@@ -38,18 +45,17 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 
 	start := time.Now()
-
 	tx, err := WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	logger.Infof("exporting missed_attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
-	ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
+	logger.Infof("exporting failed attestations statistics lastEpoch: %v firstEpoch: %v", lastEpoch, firstEpoch)
+	ma, err := BigtableClient.GetValidatorFailedAttestationsCount([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
-	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(ma))
+	maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(ma))
 	for _, stat := range ma {
 		maArr = append(maArr, stat)
 	}
@@ -70,19 +76,19 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			valueArgs = append(valueArgs, stat.Index)
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, stat.MissedAttestations)
-			valueArgs = append(valueArgs, 0)
+			valueArgs = append(valueArgs, stat.OrphanedAttestations)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
-		%s
-		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
+			insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
+			%s
+			on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
 		}
 
-		logger.Infof("saving missed attestations batch %v completed", b)
+		logger.Infof("saving failed attestations batch %v completed", b)
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))
@@ -125,7 +131,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
+	_, err = tx.Exec(depositsQry, firstWithrawDepositEpoch, lastWithdrawDepositEpoch, day)
 	if err != nil {
 		return err
 	}
@@ -145,7 +151,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		on conflict (validatorindex, day) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	_, err = tx.Exec(withdrawalsQuery, firstWithrawDepositEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastWithdrawDepositEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
 	if err != nil {
 		return err
 	}
@@ -533,7 +539,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			valueArgs = append(valueArgs, day)
 			valueArgs = append(valueArgs, stat.ParticipatedSync)
 			valueArgs = append(valueArgs, stat.MissedSync)
-			valueArgs = append(valueArgs, 0)
+			valueArgs = append(valueArgs, stat.OrphanedSync)
 		}
 		stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, participated_sync, missed_sync, orphaned_sync)  VALUES
