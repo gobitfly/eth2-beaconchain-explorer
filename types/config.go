@@ -83,6 +83,7 @@ type Config struct {
 		SiteBrand    string `yaml:"siteBrand" envconfig:"FRONTEND_SITE_BRAND"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
 		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
+		SiteTitle    string `yaml:"siteTitle" envconfig:"FRONTEND_SITE_TITLE"`
 		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
 		Server       struct {
 			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`

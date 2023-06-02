@@ -954,6 +954,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.ActiveValidatorsChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.ValidatorsCount)}
 	}
 
+	data.Title = template.HTML(utils.Config.Frontend.SiteTitle)
 	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
 	return data, nil
@@ -1107,6 +1108,7 @@ func LatestIndexPageData() *types.IndexPageData {
 		Epochs:                    []*types.IndexPageDataEpochs{},
 		StakedEtherChartData:      [][]float64{},
 		ActiveValidatorsChartData: [][]float64{},
+		Title:                     "",
 		Subtitle:                  "",
 		Genesis:                   false,
 		GenesisPeriod:             false,

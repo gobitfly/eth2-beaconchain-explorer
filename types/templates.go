@@ -209,6 +209,7 @@ type IndexPageData struct {
 	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
+	Title                     template.HTML          `json:"title"`
 	Subtitle                  template.HTML          `json:"subtitle"`
 	Genesis                   bool                   `json:"genesis"`
 	GenesisPeriod             bool                   `json:"genesis_period"`

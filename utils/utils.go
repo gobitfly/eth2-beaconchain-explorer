@@ -499,6 +499,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 		}
 	}
 
+	if cfg.Frontend.SiteTitle == "" {
+		cfg.Frontend.SiteTitle = "Open Source Ethereum Explorer"
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
 		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,
