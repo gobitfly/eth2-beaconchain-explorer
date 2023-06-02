@@ -14,6 +14,7 @@ import (
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/coocood/freecache"
 	"github.com/ethereum/go-ethereum/common"
@@ -31,14 +32,14 @@ import (
 // It indexes transactions
 //
 // - by hashed ens name
-// Row:    <chainID>:ENS:I:H<nameHash><txHash>
+// Row:    <chainID>:ENS:I:H:<nameHash>:<txHash>
 // Family: f
 // Column: nil
 // Cell:   nil
 // Example scan: "5:ENS:I:H:4ae569dd0aa2f6e9207e41423c956d0d27cbc376a499ee8d90fe1d84489ae9d1:e627ae94bd16eb1ed8774cd4003fc25625159f13f8a2612cc1c7f8d2ab11b1d7"
 //
 // - by address
-// Row:    <chainID>:ENS:I:A<address><txHash>
+// Row:    <chainID>:ENS:I:A:<address>:<txHash>
 // Family: f
 // Column: nil
 // Cell:   nil
@@ -49,21 +50,21 @@ import (
 // Track for later verification via the node ("set dirty")
 //
 // - by name
-// Row:    <chainID>:ENS:V:N<name>
+// Row:    <chainID>:ENS:V:N:<name>
 // Family: f
 // Column: nil
 // Cell:   nil
 // Example scan: "5:ENS:V:N:somename"
 //
 // - by name hash
-// Row:    <chainID>:ENS:V:H<nameHash>
+// Row:    <chainID>:ENS:V:H:<nameHash>
 // Family: f
 // Column: nil
 // Cell:   nil
 // Example scan: "5:ENS:V:H:6f5d9cc23e60abe836401b4fd386ec9280a1f671d47d9bf3ec75dab76380d845"
 //
 // - by address
-// Row:    <chainID>:ENS:V:A<address>
+// Row:    <chainID>:ENS:V:A:<address>
 // Family: f
 // Column: nil
 // Cell:   nil
@@ -290,7 +291,7 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
 	defer done()
 
-	rowRange := gcp_bigtable.NewRange(key+"\x00", prefixSuccessor(key, 5))
+	rowRange := gcp_bigtable.PrefixRange(key)
 	keys := []string{}
 
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
@@ -302,10 +303,28 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		return err
 	}
 
-	if len(keys) > 0 {
-		logger.Infof("Validating %v ENS entries", len(keys))
+	if len(keys) == 0 {
+		logger.Info("No ENS entries to validate")
+		return nil
+	}
 
-		for _, key := range keys {
+	logger.Infof("Validating %v ENS entries", len(keys))
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, 1),
+		Muts: make([]*gcp_bigtable.Mutation, 0, 1),
+	}
+
+	batchSize := 100
+	total := len(keys)
+	for i := 0; i < total; i += batchSize {
+		to := i + batchSize
+		if to > total {
+			to = total
+		}
+		batch := keys[i:to]
+		logger.Infof("Batching ENS entries %v:%v of %v", i, to, total)
+		g := new(errgroup.Group)
+		for _, key := range batch {
 			var name string
 			var address *common.Address
 			split := strings.Split(key, ":")
@@ -322,7 +341,7 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 						name
 					FROM ens_names
 					WHERE name_hash = $1
-					`, nameHash)
+					`, nameHash[:])
 					if err != nil && err != sql.ErrNoRows {
 						return err
 					}
@@ -339,45 +358,40 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				name = value
 			}
 
-			if name != "" {
-				err := validateEnsName(client, name)
-				if err != nil {
-					return err
+			g.Go(func() error {
+				if name != "" {
+					err := validateEnsName(client, name)
+					if err != nil {
+						return err
+					}
+				} else if address != nil {
+					err := validateEnsAddress(client, *address)
+					if err != nil {
+						return err
+					}
 				}
-			} else if address != nil {
-				err := validateEnsAddress(client, *address)
-				if err != nil {
-					return err
-				}
-			}
 
-			// After processing the key we remove it from bigtable
-			mutsDelete := &types.BulkMutations{
-				Keys: make([]string, 0, 1),
-				Muts: make([]*gcp_bigtable.Mutation, 0, 1),
-			}
-			mutDelete := gcp_bigtable.NewMutation()
-			mutDelete.DeleteRow()
-			mutsDelete.Keys = append(mutsDelete.Keys, key)
-			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-			err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
-
-			if err != nil {
-				return err
-			}
+				mutsDelete.Keys = append(mutsDelete.Keys, key)
+				mutDelete := gcp_bigtable.NewMutation()
+				mutDelete.DeleteRow()
+				mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+				return nil
+			})
 		}
-	} else {
-		logger.Info("No ENS entries to validate")
+		if err := g.Wait(); err != nil {
+			return err
+		}
 	}
-
-	return nil
+	logger.Info("ens key indexing completed")
+	// After processing the keys we remove them from bigtable
+	return bigtable.WriteBulk(mutsDelete, bigtable.tableData)
 }
 
 func validateEnsAddress(client *ethclient.Client, address common.Address) error {
 
 	name, err := go_ens.ReverseResolve(client, address)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error resolving address: %v", name), 0)
+		utils.LogError(err, fmt.Errorf("error resolving address: %v", address), 0)
 		return removeEnsAddress(client, address)
 	}
 	nameHash, err := go_ens.NameHash(name)
@@ -399,6 +413,15 @@ func validateEnsAddress(client *ethclient.Client, address common.Address) error 
 		utils.LogError(err, fmt.Errorf("error writing ens data for address [%x]", address), 0)
 		return err
 	}
+	err = ReaderDb.Get(&name, `
+					SELECT
+						name
+					FROM ens_names
+					WHERE name_hash = $1
+					`, nameHash[:])
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
 	logger.Infof("Address [%x] resolved -> %v", address, name)
 	return nil
 }
@@ -413,6 +436,7 @@ func validateEnsName(client *ethclient.Client, name string) error {
 		utils.LogError(err, fmt.Errorf("could not hash name: %v", name), 0)
 		return nil
 	}
+
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error resolving name: %v", name), 0)
@@ -460,7 +484,7 @@ func removeEnsAddress(client *ethclient.Client, address common.Address) error {
 		utils.LogError(err, fmt.Errorf("error deleting ens name [%x]", address), 0)
 		return err
 	}
-	logger.Infof("Ens name remove from db: %x", address)
+	logger.Infof("Ens address remove from db: %x", address)
 	return nil
 }
 

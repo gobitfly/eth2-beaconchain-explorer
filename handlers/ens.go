@@ -15,6 +15,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// ApiEnsLookup godoc
+// @Summary Get the address for an ens name and vice versa
+// @Tags Ens
+// @Description Returns and object with the ens name and address - if found.
+// @Produce  json
+// @Param domain path string true "domain can either be an ens name or an etherum address"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/ens/lookup/{domain} [get]
 func ResolveEnsDomain(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)

@@ -45,8 +45,10 @@ func main() {
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
 	flag.StringVar(&opts.Family, "family", "", "big table family")
 	flag.StringVar(&opts.Key, "key", "", "big table key")
-	flag.BoolVar(&opts.DryRun, "dry-run", false, "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards")
+	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	flag.Parse()
+
+	opts.DryRun = *dryRun != "false"
 
 	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
 	cfg := &types.Config{}
@@ -226,6 +228,13 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 
 func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
 
+	if !dryRun {
+		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
+		if confirmation != "yes" {
+			logrus.Infof("Abort!")
+			return
+		}
+	}
 	deletedKeys, err := bt.ClearByPrefix(family, key, dryRun)
 
 	if err != nil {

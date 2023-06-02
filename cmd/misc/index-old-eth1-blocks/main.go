@@ -24,8 +24,8 @@ func main() {
 	erigonEndpoint := flag.String("erigon", "", "Erigon archive node enpoint")
 	block := flag.Int64("block", 0, "Index a specific block")
 
-	startBlocks := flag.Int64("blocks.start", 0, "Block to start indexing")
-	endBlocks := flag.Int64("blocks.end", 0, "Block to finish indexing")
+	startBlock := flag.Int64("blocks.start", 0, "Block to start indexing")
+	endBlock := flag.Int64("blocks.end", 0, "Block to finish indexing")
 
 	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	batchSize := flag.Int64("data.batchSize", 1000, "Batch size")
@@ -155,12 +155,18 @@ func main() {
 			utils.LogFatal(err, "error indexing from bigtable", 0)
 		}
 		cache.Clear()
+		if importENSChanges {
+			if err = bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
+				utils.LogError(err, "error importing ens from events", 0)
+				return
+			}
+		}
 
 		logrus.Infof("indexing of block %v completed", *block)
 		return
 	}
 
-	if *startBlocks == 0 {
+	if *startBlock == 0 {
 		utils.LogFatal(err, "no start block defined", 0)
 		return
 	}
@@ -172,16 +178,16 @@ func main() {
 	}
 
 	to := int64(lastBlockFromBlocksTable)
-	if *endBlocks > 0 {
-		to = utils.Int64Min(to, *endBlocks)
+	if *endBlock > 0 {
+		to = utils.Int64Min(to, *endBlock)
 	}
 	blockCount := utils.Int64Max(1, *batchSize)
 
-	logrus.Infof("Starting to index all blocks ranging from %d to %d", *startBlocks, to)
-	for from := *startBlocks; from <= to; from = from + blockCount {
+	logrus.Infof("Starting to index all blocks ranging from %d to %d", *startBlock, to)
+	for from := *startBlock; from <= to; from = from + blockCount {
 		toBlock := utils.Int64Min(to, from+blockCount-1)
 
-		logrus.Infof("indexing missing ens blocks %v to %v in data table ...", from, toBlock)
+		logrus.Infof("indexing blocks %v to %v in data table ...", from, toBlock)
 		err = bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, *concurrencyData, cache)
 		if err != nil {
 			utils.LogError(err, "error indexing from bigtable", 0)
@@ -191,8 +197,7 @@ func main() {
 	}
 
 	if importENSChanges {
-		err = bt.ImportEnsUpdates(client.GetNativeClient())
-		if err != nil {
+		if err = bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
 			utils.LogError(err, "error importing ens from events", 0)
 			return
 		}
