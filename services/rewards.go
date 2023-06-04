@@ -27,8 +27,10 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	var err error
 
 	var pricesDb []types.Price
+	// we get prices with a 1 day buffer to so we have no problems in different time zones
+	var oneDay = 24 * 60 * 60
 	err = db.WriterDb.Select(&pricesDb,
-		`select ts, eur, usd, gbp, cad, jpy, cny, rub, aud from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
+		`select ts, eur, usd, gbp, cad, jpy, cny, rub, aud from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start-uint64(oneDay), end+uint64(oneDay))
 	if err != nil {
 		logger.Errorf("error getting prices: %v", err)
 	}
@@ -36,7 +38,13 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	lowerBound := utils.TimeToDay(start)
 	upperBound := utils.TimeToDay(end)
 
-	income, _, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound+1, upperBound)
+	// As the genesis timestamp is in the middle of the day and we get timestamps from the ui from the start of the day we add one to get the correct day,
+	// except for the beaconchain day where we get a timestamp lower then the genesis day. The TimeToDay function still would transform it to 0 (and not -1) so we don't need to add one.
+	if start > utils.Config.Chain.GenesisTimestamp {
+		lowerBound++
+	}
+
+	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound, upperBound)
 	if err != nil {
 		logger.Errorf("error getting income history for validator hist: %v", err)
 	}
@@ -287,18 +295,22 @@ func getValidatorDetails(validators []uint64) [][]string {
 	validatorFilter := pq.Array(validators)
 	var data []types.ValidatorPageData
 	err := db.WriterDb.Select(&data,
-		`select validatorindex, balanceactivation, lastattestationslot
-		 from validators 
-		 where validatorindex=ANY($1)
-		 order by validatorindex asc`, validatorFilter)
+		`SELECT validatorindex, balanceactivation, lastattestationslot
+		 FROM validators 
+		 WHERE validatorindex = ANY($1)
+		 ORDER BY validatorindex ASC`, validatorFilter)
 	if err != nil {
-		logger.Errorf("error getting validators Data: %v", err)
+		utils.LogError(err, "error getting validators data", 0, map[string]interface{}{"validators": validators})
 		return [][]string{}
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, LatestEpoch(), LatestEpoch())
+	latestEpoch := LatestEpoch()
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestEpoch, latestEpoch)
 	if err != nil {
-		logger.Errorf("error getting validator balance data for getValidatorDetails function: %v", err)
+		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{
+			"validators":  validators,
+			"latestEpoch": latestEpoch,
+		})
 		return [][]string{}
 	}
 
@@ -316,7 +328,6 @@ func getValidatorDetails(validators []uint64) [][]string {
 
 	result := [][]string{}
 	for _, item := range data {
-		// row := []string{}
 		la_date := "N/a"
 		if item.LastAttestationSlot != nil {
 			la_time := utils.SlotToTime(*item.LastAttestationSlot)

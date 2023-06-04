@@ -4,7 +4,7 @@
       <div class="d-md-flex align-self-center">
         <h1 class="style-table-title mb-0 mr-2 text-nowrap">
           <!-- using nonconventional characters for whitespaces because of linter -->
-          Validator{{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }} {{ .Index }}{{ end }}
+          Validator{{ if or (gt .Index 0) (and (ne .Status "deposited") (ne .Status "deposited_invalid")) }}{{ .Index }}{{ end }}
         </h1>
         {{ if .Tags }}<div>{{ formatValidatorTags .Tags }}</div>{{ end }}
         {{ if eq .Name "" }}

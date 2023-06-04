@@ -204,7 +204,7 @@
           </div>
         </div>
       </div>
-      <div>Last updated: {{ formatTime .Data.LastUpdated }}</div>
+      <div>Last updated: <span aria-ethereum-date="{{ .Data.LastUpdated.Unix }}">{{ .Data.LastUpdated }}</span></div>
     </div>
   </section>
   <div id="tempcont" class=""></div>

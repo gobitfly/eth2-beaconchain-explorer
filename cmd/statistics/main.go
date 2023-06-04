@@ -90,7 +90,7 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
-	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
@@ -132,6 +132,7 @@ func main() {
 				err = db.WriteValidatorStatisticsForDay(uint64(d))
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", d, err)
+					break
 				}
 			}
 		}
@@ -147,6 +148,7 @@ func main() {
 				err = db.WriteChartSeriesForDay(int64(d))
 				if err != nil {
 					logrus.Errorf("error exporting chart series from day %v: %v", d, err)
+					break
 				}
 			}
 		}
@@ -211,8 +213,7 @@ func statisticsLoop() {
 		}
 
 		if opt.statisticsValidatorToggle {
-			var lastExportedDayValidator uint64
-			err := db.WriterDb.Get(&lastExportedDayValidator, "select COALESCE(max(day), 0) from validator_stats_status where status")
+			lastExportedDayValidator, err := db.GetLastExportedStatisticDay()
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}
@@ -226,6 +227,7 @@ func statisticsLoop() {
 					err := db.WriteValidatorStatisticsForDay(day)
 					if err != nil {
 						logrus.Errorf("error exporting stats for day %v: %v", day, err)
+						break
 					}
 				}
 			}
@@ -248,6 +250,7 @@ func statisticsLoop() {
 						err = db.WriteChartSeriesForDay(int64(day))
 						if err != nil {
 							logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+							break
 						}
 					}
 				}

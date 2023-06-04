@@ -159,7 +159,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) //
+		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
 		if err != nil {
 			logrus.Fatalf("error connecting to bigtable: %v", err)
 		}
@@ -509,7 +509,6 @@ func main() {
 			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
 			router.HandleFunc("/dashboard/data/allbalances", handlers.DashboardDataBalanceCombined).Methods("GET")
-			router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposalshistory", handlers.DashboardDataProposalsHistory).Methods("GET")
 			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")
@@ -536,7 +535,6 @@ func main() {
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
-			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
 
 			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")

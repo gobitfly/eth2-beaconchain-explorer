@@ -8,9 +8,9 @@
   <script src="/js/highcharts/highcharts-global-options.js"></script>
   <script src="/js/highcharts/drilldown.min.js"></script>
 
-    <script>
+  <script>
         var chartFns = {}
-        {{range $i, $e := .}}
+        {{range $i, $e := .ChartsPageDataCharts}}
         chartFns['chart-holder-{{.Order}}'] = function (series) {
             {{if .Data.IsNormalChart}}
             Highcharts.chart('chart-{{.Order}}', {
@@ -141,7 +141,10 @@
                     useHTML: true,
                     text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
                 },
-                subtitle: {text: {{.Data.Subtitle}} },
+                subtitle: {
+                    useHTML: true,
+                    text: {{.Data.Subtitle}}
+                },
                 plotOptions: {
                     column: {
                         stacking: {{.Data.StackingMode}},
@@ -281,7 +284,7 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ with .Data }}
+  {{ with .Data.ChartsPageDataCharts }}
     <div class="container mt-2">
       <div style="display:none">
         <svg id="ab83d798-7d25-4111-a4e2-42875f6e6704" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1002 823.11858">
@@ -435,6 +438,16 @@
                 {{ end }}
               {{ end }}
             {{ end }}
+          </div>
+        </div>
+      {{ end }}
+      {{ with $.Data.Disclaimer }}
+        <div style="padding-top: 5vh; font-size: 12px; font-style: italic;">
+          <div style="display:flex;">
+            <div style="padding-right: 5px;">
+              <sup>1</sup>
+            </div>
+            <div>{{ . }}</div>
           </div>
         </div>
       {{ end }}

@@ -161,8 +161,8 @@
     <div class="explain-container my-3">
       <div style="text-align: center;">
         <div>
-          <h1>ETH.STORE</h1>
-          <h3 class="subline">The Transparent Ethereum Staking Reward Reference Rate</h3>
+          <h1>ETH.STORE®</h1>
+          <h3 class="subline">The Transparent Ethereum Staking Reward Reference Rate<sup>1</sup></h3>
         </div>
       </div>
       <section class="my-5">
@@ -187,7 +187,7 @@
                 </h1>
               </div>
               <div class="h5 text-muted feature-text-container">
-                <span class="feature-text"> ETH.STORE </span>
+                <span class="feature-text"> ETH.STORE® </span>
                 <span class="feature-text" style="opacity: 0.75; font-size: 0.82em;">based on last reward day</span>
               </div>
             </div>
@@ -221,7 +221,7 @@
                 </svg>
               </div>
               <div class="h5 text-muted feature-text-container" style="padding-top: 10px;">
-                <span class="feature-text"> ETH.STORE is transparent, fair and easily auditable </span>
+                <span class="feature-text"> ETH.STORE® is transparent, fair and easily auditable </span>
               </div>
             </div>
           </div>
@@ -229,14 +229,14 @@
       </section>
 
       <section class="my-5">
-        <h1 class="title-head">ETH.STORE Explained</h1>
+        <h1 class="title-head">ETH.STORE® Explained</h1>
 
-        <button type="button" class="collapsible">What is ETH.STORE?</button>
+        <button type="button" class="collapsible">What is ETH.STORE®?</button>
         <div class="content">
-          <p>ETH.STORE (Ether <strong>St</strong>aking <strong>O</strong>ffered <strong>R</strong>at<strong>e</strong>) is a transparent Ethereum staking reward reference rate. It represents the average financial return validators on the Ethereum network have achieved in a 24-hour period as published on <a href="/ethstore">beaconcha.in</a>.</p>
+          <p>ETH.STORE® (Ether <strong>St</strong>aking <strong>O</strong>ffered <strong>R</strong>at<strong>e</strong>) is a transparent Ethereum staking reward reference rate. It represents the average financial return validators on the Ethereum network have achieved in a 24-hour period as published on <a href="/ethstore">beaconcha.in</a>.</p>
         </div>
 
-        <button type="button" class="collapsible">How are active validators counted by ETH.STORE?</button>
+        <button type="button" class="collapsible">How are active validators counted by ETH.STORE®?</button>
         <div class="content">
           <p>All validators that stayed in the active state during the entire reward day are counted. New validators joining or exiting mid day are excluded.</p>
         </div>
@@ -246,7 +246,7 @@
           <p>Each reward day starts at 12:00:23 UTC and lasts for 24 hours (or exactly 225 beaconchain epochs).</p>
         </div>
 
-        <button type="button" class="collapsible">How are total rewards calculated in ETH.STORE?</button>
+        <button type="button" class="collapsible">How are total rewards calculated in ETH.STORE®?</button>
         <div class="content">
           <p>Total staking rewards consists of consensus rewards and transaction fees:</p>
           <ol>
@@ -256,7 +256,7 @@
           <p>Total staking rewards equals the sum of consensus rewards and transaction fees.</p>
         </div>
 
-        <button type="button" class="collapsible">How can I reproduce the ETH.STORE calculation on my own?</button>
+        <button type="button" class="collapsible">How can I reproduce the ETH.STORE® calculation on my own?</button>
         <div class="content">
           <div class="table-responsive">
             <table class="table">
@@ -288,7 +288,7 @@
                   <td>Sum of all effective balances at epoch SE of all validators in VS</td>
                 </tr>
                 <tr>
-                  <td>ETH.STORE:</td>
+                  <td>ETH.STORE®:</td>
                   <td>(RS/EB)*365</td>
                 </tr>
               </tbody>
@@ -330,7 +330,7 @@
                   <td>{{ formatThousandsFancy .Data.YesterdayEffectiveBalance }} Ether</td>
                 </tr>
                 <tr>
-                  <td>ETH.STORE:</td>
+                  <td>ETH.STORE®:</td>
                   <td>{{ .Data.ProjectedAPR }} % = ({{ formatThousandsFancy .Data.YesterdayRewards }} / ({{ formatThousandsFancy .Data.YesterdayEffectiveBalance }})) * 365</td>
                 </tr>
               </tbody>
@@ -338,13 +338,19 @@
           </div>
         </div>
 
-        <button type="button" class="collapsible">Is the ETH.STORE code Open-Source?</button>
+        <button type="button" class="collapsible">Is the ETH.STORE® code Open-Source?</button>
         <div class="content">
-          <p>Yes, you can run the calculations yourself with our open source ETH.STORE tool and verify the integrity of the ETH.STORE listed here. Check out <a href="https://github.com/gobitfly/eth.store/" target="_blank">ETH.STORE on Github</a>.</p>
+          <p>Yes, you can run the calculations yourself with our open source ETH.STORE® tool and verify the integrity of the ETH.STORE® listed here. Check out <a href="https://github.com/gobitfly/eth.store/" target="_blank">ETH.STORE® on Github</a>.</p>
         </div>
       </section>
-
-      <div style="padding-bottom: 5vh;"></div>
+    </div>
+    <div style="padding-top: 5vh; font-size: 12px; font-style: italic;">
+      <div style="display:flex;">
+        <div style="padding-right: 5px;">
+          <sup>1</sup>
+        </div>
+        <div>{{ .Data.Disclaimer }}</div>
+      </div>
     </div>
   </div>
 {{ end }}
@@ -460,7 +466,7 @@
 		},
 		{
 			title: {
-				text: 'ETH.STORE (% p.a.)'
+				text: 'ETH.STORE® (% p.a.)'
 			},
 			opposite: false,
 			labels: {
@@ -508,7 +514,7 @@
 				yAxis: 2
 			},
 			{
-				name: 'ETH.STORE',
+				name: 'ETH.STORE®',
 				data: {{ .APRs}},
 				color: 'var(--statistics-orange)',
 				negativeColor: '#384a32',

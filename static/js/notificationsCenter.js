@@ -213,6 +213,13 @@ function loadMonitoringData(data) {
       zeroRecords: "No entries match",
     },
     stateSave: true,
+    stateSaveCallback: function (settings, data) {
+      data.start = 0
+      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+    },
+    stateLoadCallback: function (settings) {
+      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+    },
     processing: true,
     responsive: true,
     scroller: true,
@@ -378,6 +385,13 @@ function loadNetworkData(data) {
       zeroRecords: "No entries match",
     },
     stateSave: true,
+    stateSaveCallback: function (settings, data) {
+      data.start = 0
+      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+    },
+    stateLoadCallback: function (settings) {
+      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+    },
     processing: true,
     responsive: false,
     scroller: true,
@@ -477,6 +491,13 @@ function loadValidatorsData(data) {
       },
     },
     stateSave: true,
+    stateSaveCallback: function (settings, data) {
+      data.start = 0
+      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+    },
+    stateLoadCallback: function (settings) {
+      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+    },
     processing: true,
     // responsive: true,
     paging: true,
@@ -489,6 +510,7 @@ function loadValidatorsData(data) {
     fixedHeader: true,
     data: data,
     drawCallback: function (settings) {
+      formatTimestamps()
       $('[data-toggle="tooltip"]').tooltip()
 
       // click event to validators table edit button
@@ -651,7 +673,7 @@ function loadValidatorsData(data) {
                   .replace("validator", "")
                   .replaceAll("_", " ")
               : "N/A"
-          }</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${getRelativeTime(luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000)) || "N/A"}</span>`
+          }</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0 timestamp" data-toggle="tooltip" data-placement="top" data-timestamp="${row.Notification[0].Timestamp}"></span>`
         },
       },
       {

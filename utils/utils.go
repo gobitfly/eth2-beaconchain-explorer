@@ -121,8 +121,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
 		"formatTimestamp":                         FormatTimestamp,
 		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
-		"formatTimestampTs":                       FormatTimestampTs,
-		"formatTime":                              FormatTime,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"formatValidatorTags":                     FormatValidatorTags,
@@ -215,7 +213,6 @@ func GetTemplateFuncs() template.FuncMap {
 		},
 		// ETH1 related formatting
 		"formatEth1TxStatus":    FormatEth1TxStatus,
-		"formatTimestampUInt64": FormatTimestampUInt64,
 		"formatEth1AddressFull": FormatEth1AddressFull,
 		"byteToString": func(num []byte) string {
 			return string(num)
@@ -1044,7 +1041,7 @@ func FormatEthstoreComparison(pool string, val float64) template.HTML {
 		ou = "outperforms"
 	}
 
-	return template.HTML(fmt.Sprintf(`<sub title="%s %s the ETH.STORE indicator by %s%.2f%%" data-toggle="tooltip" class="%s">(%s%.2f%%)</sub>`, pool, ou, prefix, val, textClass, prefix, val))
+	return template.HTML(fmt.Sprintf(`<sub title="%s %s the ETH.STORE® indicator by %s%.2f%%" data-toggle="tooltip" class="%s">(%s%.2f%%)</sub>`, pool, ou, prefix, val, textClass, prefix, val))
 }
 
 func FormatPoolPerformance(val float64) template.HTML {
@@ -1222,4 +1219,55 @@ func GetSigningDomain() ([]byte, error) {
 	}
 
 	return domain, err
+}
+
+// SlotsPerSyncCommittee returns the count of slots per sync committee period
+func SlotsPerSyncCommittee() uint64 {
+	return Config.Chain.Config.EpochsPerSyncCommitteePeriod * Config.Chain.Config.SlotsPerEpoch
+}
+
+// GetRemainingScheduledSync returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
+//
+// Parameters:
+//   - `validatorCount` : the count of validators associated with the stats.
+//   - `stats` : the current sync committee stats of the validators
+//   - `lastExportedEpoch` : the last epoch that was exported into the validator_stats table
+//   - `firstEpochOfPeriod` : the first epoch of the current sync committee period
+func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesStats, lastExportedEpoch, firstEpochOfPeriod uint64) uint64 {
+	var exportedEpochs uint64
+	if lastExportedEpoch >= firstEpochOfPeriod {
+		exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
+	}
+	exportedSlots := exportedEpochs * Config.Chain.Config.SlotsPerEpoch * uint64(validatorCount)
+	slotsPerSyncCommittee := SlotsPerSyncCommittee() * uint64(validatorCount)
+	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
+}
+
+// AddSyncStats adds the sync stats of a set of validators from a given syncDutiesHistory to the given stats, if stats is nil a new stats object is created.
+// Parameters:
+//   - `validators` : the validators to add the stats for
+//   - `syncDutiesHistory` : the sync duties history of all queried validators
+//   - `stats` : the stats object to add the stats to, if nil a new stats object is created
+func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
+	if stats == nil {
+		stats = &types.SyncCommitteesStats{}
+	}
+	for _, validator := range validators {
+		v := syncDutiesHistory[validator]
+		for _, r := range v {
+			slotTime := SlotToTime(r.Slot)
+			if r.Status == 0 && time.Since(slotTime) <= time.Minute {
+				r.Status = 2
+			}
+			switch r.Status {
+			case 0:
+				stats.MissedSlots++
+			case 1:
+				stats.ParticipatedSlots++
+			case 2:
+				stats.ScheduledSlots++
+			}
+		}
+	}
+	return *stats
 }

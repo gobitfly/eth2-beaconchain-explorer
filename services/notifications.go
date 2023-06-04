@@ -3020,7 +3020,7 @@ func bigFloat(x float64) *big.Float {
 
 func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, epoch uint64) error {
 
-	slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
+	slotsPerSyncCommittee := utils.SlotsPerSyncCommittee()
 	currentPeriod := epoch * utils.Config.Chain.Config.SlotsPerEpoch / slotsPerSyncCommittee
 	nextPeriod := currentPeriod + 1
 

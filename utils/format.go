@@ -16,7 +16,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/shopspring/decimal"
@@ -35,16 +34,23 @@ func FormatMessageToHtml(message string) template.HTML {
 }
 
 // FormatSyncParticipationStatus will return a user-friendly format for an sync-participation-status number
-func FormatSyncParticipationStatus(status uint64) template.HTML {
+func FormatSyncParticipationStatus(status, blockSlot uint64) template.HTML {
 	if status == 0 {
 		return `<span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 1 {
 		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Participated</span>`
 	} else if status == 2 {
 		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
+	} else if status == 3 {
+		return template.HTML(fmt.Sprintf(`<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" data-html="true" data-placement="top" title='Slot %v was missed'>Missed</span>`, FormatAddCommas(blockSlot)))
 	} else {
 		return "Unknown"
 	}
+}
+
+// FormatSyncParticipationStatus will return a user-friendly format for an sync-participation-status number
+func FormatSyncParticipations(participants uint64) template.HTML {
+	return template.HTML(fmt.Sprintf(`<span>%v/%v</span>`, participants, Config.Chain.Config.SyncCommitteeSize))
 }
 
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
@@ -828,24 +834,19 @@ func FormatMachineName(machineName string) template.HTML {
 
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", ts))
 }
 
-// FormatTs will return a timestamp formated as html. This is supposed to be used together with client-side js
+// FormatTsWithoutTooltip will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTsWithoutTooltip(ts int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" data-timestamp=\"%d\"></span>", ts))
-}
-
-// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
-func FormatTimestampTs(ts time.Time) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-timestamp=\"%d\"></span>", ts, ts.Unix()))
 }
 
 // FormatValidatorStatus will return the validator-status formated as html
 // possible states
 // pending, active_online, active_offline, exiting_online, exciting_offline, slashing_online, slashing_offline, exited, slashed
 func FormatValidatorStatus(status string) template.HTML {
-	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
+	if status == "deposited" || status == "deposited_invalid" {
 		return "Deposited"
 	} else if status == "pending" {
 		return "Pending"
@@ -1244,11 +1245,6 @@ func FormatEth1TxStatus(status uint64) template.HTML {
 	} else {
 		return template.HTML("<h5 class=\"m-0\"><span class=\"badge badge-danger badge-pill align-middle text-white\"><i class=\"fas fa-times-circle\"></i> Failed</span></h5>")
 	}
-}
-
-// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
-func FormatTimestampUInt64(ts uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(int64(ts), 0), ts))
 }
 
 // FormatEth1AddressFull will return the eth1-address formated as html

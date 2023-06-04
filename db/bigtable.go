@@ -12,6 +12,7 @@ import (
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
+	"github.com/go-redis/redis/v8"
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/proto"
@@ -47,10 +48,12 @@ type Bigtable struct {
 	tableMetadata        *gcp_bigtable.Table
 	tableMachineMetrics  *gcp_bigtable.Table
 
+	redisCache *redis.Client
+
 	chainId string
 }
 
-func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
+func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
@@ -59,6 +62,15 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 
 	if err != nil {
+		return nil, err
+	}
+
+	rdc := redis.NewClient(&redis.Options{
+		Addr:        redisAddress,
+		ReadTimeout: time.Second * 20,
+	})
+
+	if err := rdc.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
 
@@ -71,6 +83,7 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 		tableBeaconchain:     btClient.Open("beaconchain"),
 		tableMachineMetrics:  btClient.Open("machine_metrics"),
 		chainId:              chainId,
+		redisCache:           rdc,
 	}
 
 	BigtableClient = bt
@@ -92,12 +105,24 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	rowKeyData := fmt.Sprintf("u:%s:p:%s:m:%v", reversePaddedUserID(userID), process, machine)
 
 	ts := gcp_bigtable.Now()
-	lastInsert, err := bigtable.getLastMachineMetricInsertTs(ctx, rowKeyData)
+	rateLimitKey := fmt.Sprintf("%s:%d", rowKeyData, ts.Time().Minute())
+	keySet, err := bigtable.redisCache.SetNX(ctx, rateLimitKey, "1", time.Minute).Result()
 	if err != nil {
 		return err
 	}
-	if lastInsert.Time().Add(59 * time.Second).After(ts.Time()) {
+	if !keySet {
 		return fmt.Errorf("rate limit, last metric insert was less than 1 min ago")
+	}
+
+	// for limiting machines per user, add the machine field to a redis set
+	// bucket period is 15mins
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), ts.Time().Minute()%15)
+	pipe := bigtable.redisCache.Pipeline()
+	pipe.SAdd(ctx, machineLimitKey, machine)
+	pipe.ExpireNX(ctx, machineLimitKey, time.Minute*15)
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return err
 	}
 
 	dataMut := gcp_bigtable.NewMutation()
@@ -115,23 +140,6 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	return nil
 }
 
-func (bigtable *Bigtable) getLastMachineMetricInsertTs(ctx context.Context, rowKey string) (gcp_bigtable.Timestamp, error) {
-	filter := gcp_bigtable.ChainFilters(
-		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
-		gcp_bigtable.LatestNFilter(1),
-	)
-
-	row, err := bigtable.tableMachineMetrics.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return 0, err
-	}
-	colData, found := row[MACHINE_METRICS_COLUMN_FAMILY]
-	if found && len(colData) > 0 {
-		return colData[0].Timestamp, nil
-	}
-	return 0, nil
-}
-
 func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int) (map[string]bool, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -142,6 +150,7 @@ func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int
 		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
 		gcp_bigtable.LatestNFilter(searchDepth),
 		gcp_bigtable.TimestampRangeFilter(time.Now().Add(time.Duration(searchDepth*-1)*time.Minute), time.Now()),
+		gcp_bigtable.StripValueFilter(),
 	)
 
 	machineNames := make(map[string]bool)
@@ -177,12 +186,16 @@ func (bigtable Bigtable) GetMachineMetricsMachineNames(userID uint64) ([]string,
 }
 
 func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, error) {
-	names, err := bigtable.getMachineMetricNamesMap(userID, 15)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), time.Now().Minute()%15)
+
+	card, err := bigtable.redisCache.SCard(ctx, machineLimitKey).Result()
 	if err != nil {
 		return 0, err
 	}
-
-	return uint64(len(names)), nil
+	return uint64(card), nil
 }
 
 func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int) ([]*types.MachineMetricNode, error) {
@@ -828,15 +841,29 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
+func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]uint8, error) {
 	valLen := len(validators)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
 	defer cancel()
 
+	slots := []uint64{}
+
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < endEpoch*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+		slots = append(slots, slot)
+	}
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
+	}
+
 	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 
-	res := make(map[uint64]map[uint64]bool)
+	res := make(map[uint64]map[uint64]uint8)
 
 	columnFilters := []gcp_bigtable.Filter{}
 	if valLen < 1000 {
@@ -866,7 +893,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 		)
 	}
 
-	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
@@ -891,12 +918,16 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 				return false
 			}
 
-			if status == 0 {
+			if status == 0 || orphanedSlotsMap[attesterSlot] {
 				if res[validator] == nil {
-					res[validator] = make(map[uint64]bool, 0)
+					res[validator] = make(map[uint64]uint8, 0)
 				}
-				res[validator][attesterSlot] = true
-			} else if res[validator] != nil && res[validator][attesterSlot] {
+				if orphanedSlotsMap[attesterSlot] {
+					res[validator][attesterSlot] = 3
+				} else {
+					res[validator][attesterSlot] = 2
+				}
+			} else if res[validator] != nil && res[validator][attesterSlot] > 0 {
 				delete(res[validator], attesterSlot)
 			}
 		}
@@ -909,18 +940,20 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) ([]*types.ValidatorSyncParticipation, error) {
-	res, err := bigtable.getValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
+func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validators []uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) (map[uint64][]*types.ValidatorSyncParticipation, error) {
+	res, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
 	if err != nil {
 		return nil, err
 	}
 	if reverseOrdering {
-		utils.ReverseSlice(res[validatorIndex])
+		for _, duties := range res {
+			utils.ReverseSlice(duties)
+		}
 	}
-	return res[validatorIndex], nil
+	return res, nil
 }
 
-func (bigtable *Bigtable) getValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
+func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
@@ -1000,14 +1033,14 @@ func (bigtable *Bigtable) getValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorFailedAttestationsStatistic, error) {
 	if firstEpoch > lastEpoch {
 		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
 	}
 
-	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
+	res := make(map[uint64]*types.ValidatorFailedAttestationsStatistic)
 
-	data, err := bigtable.GetValidatorMissedAttestationHistory(validators, firstEpoch, lastEpoch)
+	data, err := bigtable.GetValidatorFailedAttestationHistory(validators, firstEpoch, lastEpoch)
 
 	if err != nil {
 		return nil, err
@@ -1016,12 +1049,22 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 	logger.Infof("retrieved missed attestation history for epochs %v - %v", firstEpoch, lastEpoch)
 
 	for validator, attestations := range data {
-		missed := len(attestations)
-		if missed > 0 {
-			res[validator] = &types.ValidatorMissedAttestationsStatistic{
-				Index:              validator,
-				MissedAttestations: uint64(missed),
+		if len(attestations) == 0 {
+			continue
+		}
+		missed := uint64(0)
+		orphaned := uint64(0)
+		for _, state := range attestations {
+			if state == 3 {
+				orphaned++
+			} else {
+				missed++
 			}
+		}
+		res[validator] = &types.ValidatorFailedAttestationsStatistic{
+			Index:                validator,
+			MissedAttestations:   missed,
+			OrphanedAttestations: orphaned,
 		}
 	}
 
@@ -1029,10 +1072,31 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorSyncDutiesStatistic, error) {
-	data, err := bigtable.getValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
+	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
 
 	if err != nil {
 		return nil, err
+	}
+
+	slotsMap := make(map[uint64]bool)
+	for _, duties := range data {
+		for _, duty := range duties {
+			slotsMap[duty.Slot] = true
+		}
+	}
+	slots := []uint64{}
+	for slot := range slotsMap {
+		slots = append(slots, slot)
+	}
+
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
 	}
 
 	res := make(map[uint64]*types.ValidatorSyncDutiesStatistic)
@@ -1045,7 +1109,9 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 		}
 
 		for _, duty := range duties {
-			if duty.Status == 0 {
+			if orphanedSlotsMap[duty.Slot] {
+				res[validator].OrphanedSync++
+			} else if duty.Status == 0 {
 				res[validator].MissedSync++
 			} else {
 				res[validator].ParticipatedSync++
@@ -1054,37 +1120,6 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 	}
 
 	return res, nil
-}
-
-func (bigtable *Bigtable) GetValidatorSyncCommitteesStats(validators []uint64, startEpoch uint64, endEpoch uint64) (types.SyncCommitteesStats, error) {
-	res, err := bigtable.getValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
-	if err != nil {
-		return types.SyncCommitteesStats{}, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
-	}
-
-	retv := types.SyncCommitteesStats{}
-	for _, v := range res {
-		for _, r := range v {
-			slotTime := utils.SlotToTime(r.Slot)
-			if r.Status == 0 && time.Since(slotTime) <= time.Minute {
-				r.Status = 2
-			}
-			switch r.Status {
-			case 0:
-				retv.MissedSlots++
-			case 1:
-				retv.ParticipatedSlots++
-			case 2:
-				retv.ScheduledSlots++
-			}
-		}
-	}
-
-	// data coming from bigtable is limited to the current epoch, so we need to add the remaining sync duties for the current period manually
-	slotsPerSyncCommittee := utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod * utils.Config.Chain.Config.SlotsPerEpoch
-	retv.ScheduledSlots += slotsPerSyncCommittee - ((retv.MissedSlots + retv.ParticipatedSlots + retv.ScheduledSlots) % slotsPerSyncCommittee)
-
-	return retv, nil
 }
 
 // returns the validator attestation effectiveness in %
@@ -1726,9 +1761,7 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) gcp
 func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
 	dayIncome := make(map[uint64]int64)
 	dayProposerIncome := make(map[uint64]int64)
-	lastDay := int64(0)
-
-	err := ReaderDb.Get(&lastDay, "SELECT COALESCE(MAX(day), 0) FROM validator_stats_status")
+	lastDay, err := GetLastExportedStatisticDay()
 	if err != nil {
 		return dayIncome, dayProposerIncome, err
 	}
@@ -1755,25 +1788,20 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[ui
 	return dayIncome, dayProposerIncome, nil
 }
 
-func GetCurrentDayClIncomeTotal(validator_indices []uint64) (int64, int64, error) {
-	income, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
+func GetCurrentDayProposerIncomeTotal(validator_indices []uint64) (int64, error) {
+	_, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
 
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
-	total := int64(0)
 	proposerTotal := int64(0)
 
 	for _, i := range proposerIncome {
 		proposerTotal += i
 	}
 
-	for _, i := range income {
-		total += i
-	}
-
-	return total, proposerTotal, nil
+	return proposerTotal, nil
 }
 
 func reversePaddedUserID(userID uint64) string {

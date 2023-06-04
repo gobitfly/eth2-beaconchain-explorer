@@ -45,12 +45,12 @@
                     </div>
                     <div class="row flex-nowrap border-bottom p-3 mx-0">
                       <div class="col-md-4">Created time:</div>
-                      <div class="col-md-8">{{ .Job.CreatedTime | formatTime }}</div>
+                      <div class="col-md-8"><span aria-ethereum-date="{{ .Job.CreatedTime.Unix }}">{{ .Job.CreatedTime }}</span></div>
                     </div>
                     {{ if .Job.SubmittedToNodeTime.Valid }}
                       <div class="row flex-nowrap border-bottom p-3 mx-0">
                         <div class="col-md-4">Submitted to node time:</div>
-                        <div class="col-md-8">{{ .Job.SubmittedToNodeTime.Time | formatTime }}</div>
+                        <div class="col-md-8"><span aria-ethereum-date="{{ .Job.SubmittedToNodeTime.Time.Unix }}">{{ .Job.SubmittedToNodeTime.Time }}</span></div>
                       </div>
                     {{ end }}
                     <h4 class="h4 mt-2 pl-3 pt-3">Affected Validators:</h4>

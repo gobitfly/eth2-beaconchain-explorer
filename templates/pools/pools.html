@@ -70,17 +70,24 @@
               <tbody>
                 {{ range .Data.PoolInfos }}
                   <tr>
-                    <td>{{ if eq .Name "ETH.STORE" }}<a href="https://beaconcha.in/ethstore" target="_blank">{{ .Name }}</a>{{ else }}{{ .Name }}{{ end }}</td>
+                    <td>{{ if eq .Name "ETH.STORE" }}<a href="https://beaconcha.in/ethstore" target="_blank">{{ .Name }}®</a><sup>1</sup>{{ else }}{{ .Name }}{{ end }}</td>
                     <td>{{ if eq .Count -1 }}-{{ else }}{{ .Count }}{{ end }}</td>
-                    <td>{{ formatPoolPerformance .AvgPerformance1d }} {{ if not (eq .Name "ETH.STORE") }}{{ formatEthstoreComparison .Name .EthstoreCompoarison1d }}{{ end }}</td>
-                    <td>{{ formatPoolPerformance .AvgPerformance7d }} {{ if not (eq .Name "ETH.STORE") }}{{ formatEthstoreComparison .Name .EthstoreCompoarison7d }}{{ end }}</td>
-                    <td>{{ formatPoolPerformance .AvgPerformance31d }} {{ if not (eq .Name "ETH.STORE") }}{{ formatEthstoreComparison .Name .EthstoreCompoarison31d }}{{ end }}</td>
+                    <td>{{ formatPoolPerformance .AvgPerformance1d }} {{ if not (eq .Name "ETH.STORE") }}{{ formatEthstoreComparison .Name .EthstoreComparison1d }}{{ end }}</td>
+                    <td>{{ formatPoolPerformance .AvgPerformance7d }} {{ if not (eq .Name "ETH.STORE") }}{{ formatEthstoreComparison .Name .EthstoreComparison7d }}{{ end }}</td>
+                    <td>{{ formatPoolPerformance .AvgPerformance31d }} {{ if not (eq .Name "ETH.STORE") }}{{ formatEthstoreComparison .Name .EthstoreComparison31d }}{{ end }}</td>
                   </tr>
                 {{ end }}
               </tbody>
             </table>
           </div>
-          <span class="px-2" id="lastUpdate"></span>
+          <div style="padding-top: 5vh; font-size: 12px; font-style: italic;">
+            <div style="display:flex;">
+              <div style="padding-right: 5px;">
+                <sup>1</sup>
+              </div>
+              <div>{{ .Data.Disclaimer }}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

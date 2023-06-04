@@ -101,7 +101,9 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), slotFutureTemplateFiles)
 		data.Meta.Path = "/slot/" + slotOrHash
 		futurePageData := types.BlockPageData{
-			Slot:         slot,
+			ValidatorProposalInfo: types.ValidatorProposalInfo{
+				Slot: slot,
+			},
 			Epoch:        utils.EpochOfSlot(slot),
 			Ts:           utils.SlotToTime(slot),
 			NextSlot:     slot + 1,
@@ -511,7 +513,8 @@ func SlotDepositData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatPublicKey(deposit.PublicKey),
 			utils.FormatBalance(deposit.Amount, currency),
 			utils.FormatWithdawalCredentials(deposit.WithdrawalCredentials, true),
-			deposit.Signature,
+			fmt.Sprintf("0x%v", hex.EncodeToString(deposit.Signature)),
+			utils.FormatHash(deposit.Signature, true),
 		})
 	}
 
@@ -715,7 +718,7 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 	for i, v := range transactions.Txs {
 		methodFormatted := `<span class="badge badge-light">Transfer</span>`
 		if len(v.Method) > 0 && v.Method != "Transfer" {
-			methodFormatted = fmt.Sprintf(`<span class="badge badge-light text-truncate mw-100" data-toggle="tooltip" title="%v"{>%v</span>`, v.Method, v.Method)
+			methodFormatted = fmt.Sprintf(`<span class="badge badge-light text-truncate mw-100" truncate-tooltip="%v">%v</span>`, v.Method, v.Method)
 		}
 		data[i] = &transactionsData{
 			HashFormatted: v.HashFormatted,
