@@ -2,9 +2,9 @@
   <nav id="nav" class="main-navigation navbar navbar-expand-lg navbar-light">
     <div class="container">
       <div id="nav-bar-header" class="w-100">
-        <a class="navbar-brand d-flex align-content-center" href="/">
+        <a class="navbar-brand" href="/">
           {{ includeSvg "brand_svg" }}
-          <span class="brand-text ml-2">beaconcha.in</span>
+          <span class="style-navbar-2 brand-text ml-1">beaconcha.in</span>
         </a>
         <div class="d-flex align-items-center">
           <div class="currency-selection">{{ template "currencySelection" . }}</div>
@@ -21,7 +21,7 @@
             <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }} {{ .CustomClass }}">
               {{ if len .Groups }}
                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <span class="nav-text nav-header">{{ .Label }}</span>
+                  <span class="nav-text style-nav2-text">{{ .Label }}</span>
                 </a>
 
                 <div class="dropdown-menu {{ if $hasBigGroups }}dropdown-menu-right p-sm-2 p-md-4 px-lg-2 align-content-between flex-wrap flex-lg-nowrap{{ end }}" aria-labelledby="navbarDropdown{ .Label }}">
@@ -46,7 +46,7 @@
                 </div>
               {{ else }}
                 <a class="nav-link" href="{{ .Path }}">
-                  <span class="nav-text nav-header">{{ .Label }}</span>
+                  <span class="nav-text style-nav2-text">{{ .Label }}</span>
                 </a>
               {{ end }}
             </li>
