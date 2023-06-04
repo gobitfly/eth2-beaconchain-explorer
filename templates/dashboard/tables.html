@@ -53,6 +53,13 @@
             processing: true,
             serverSide: true,
             stateSave: true,
+            stateSaveCallback: function (settings, data) {
+              data.start = 0
+              localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+            },
+            stateLoadCallback: function (settings) {
+              return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+            },
             ordering: true,
             order: [[1, "desc"]],
             lengthChange: false,
@@ -61,16 +68,6 @@
               url: `/dashboard/data/withdrawal`,
               data: function (d) {
                 d.validators = getValidatorString()
-              },
-              dataSrc: function ( { data } ) {
-                // add the estimate row if it exists
-                {{ if .NextWithdrawalRow }}
-                  let row = {{.NextWithdrawalRow}}
-                  if (row && row.length) {
-                    data = row.concat(data)
-                  }
-                {{ end }}
-                return data
               },
             },
             pagingType: "input",
@@ -81,6 +78,9 @@
                 previous: '<i class="fas fa-chevron-left"></i>',
                 next: '<i class="fas fa-chevron-right"></i>',
               },
+            },
+            drawCallback: function (settings) {
+              formatTimestamps()
             },
           })
           initializedWithdrawalTable = true

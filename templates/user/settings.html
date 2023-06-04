@@ -20,7 +20,7 @@
         },
         {
             id: 'lighthouse-graffiti',
-            config: "--monitoring-endpoint https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}"
+            config: "--monitoring-endpoint 'https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}'"
         },
         {
             id: 'nimbus-graffiti',
@@ -28,11 +28,11 @@
         },
         {
             id: 'teku-graffiti',
-            config: "--metrics-publish-endpoint https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}"
+            config: "--metrics-publish-endpoint 'https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}'"
         },
         {
             id: 'lodestar-graffiti',
-            config: "--monitoring.endpoint 'https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}' --metrics"
+            config: "--monitoring.endpoint 'https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}'"
         }
     ]
 
@@ -531,6 +531,9 @@
 
                               <div style="clear: both;"></div>
                               <br />
+                              Docker is also available, for more information click <a href="https://github.com/gobitfly/eth2-client-metrics-exporter#example-with-docker"> here</a>!
+                              <br />
+                              <br />
 
                               <h4>2. Run Metrics Exporter</h4>
                               <div style="margin-left: 5px; margin-right: 5px;">
@@ -589,6 +592,9 @@
 
                               <div style="clear: both;"></div>
                               <br />
+                              Docker is also available, for more information click <a href="https://github.com/gobitfly/eth2-client-metrics-exporter#example-with-docker"> here</a>!
+                              <br />
+                              <br />
 
                               <h4>3. Run Metrics Exporter</h4>
                               <div style="margin-left: 5px; margin-right: 5px;">
@@ -636,7 +642,7 @@
                           </h2>
                           <div id="collapseLodestar" class="collapse" aria-labelledby="headingLodestar" data-parent="#accordionExample" style="margin: 15px;">
                             <div class="accordion-body">
-                              Copy & Paste the following flags to your Lodestar validator <strong>and</strong> beaconnode:<br /><br />
+                              Copy & Paste the following flag to your Lodestar validator <strong>and</strong> beaconnode:<br /><br />
 
                               <div style="margin-left: 5px; margin-right: 5px;">
                                 <div style="float: left;  width: 90%;">
@@ -750,8 +756,7 @@
                               Grant account access (required)
                             </span>
                             <br /><br />
-                            <span>Paired:</span><i> {{ formatTimestampTs $value.CreatedAt }}</i>
-
+                            <span>Paired:</span><i> {{ formatTimestamp $value.CreatedAt.Unix }}</i>
                             {{ if lt $key $lastPairedElement }}
                               <hr style="width: 98%; margin-top:28px;margin-bottom:28px;" />
                             {{ end }}

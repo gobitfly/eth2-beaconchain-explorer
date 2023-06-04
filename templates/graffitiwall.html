@@ -1,31 +1,56 @@
 {{ define "js" }}
-    <script type="text/javascript">
-        var c = document.getElementById("graffitiwall");
-        var ctx = c.getContext("2d");
-        ctx.fillStyle = "#FFFFFF"
+  <script type="text/javascript">
+    var pixels = {{.}}
+    function drawGraffiti() {
+      document.getElementById("nsfwWarning").classList.add("d-none")
+      var c = document.getElementById("graffitiwall")
+      var ctx = c.getContext("2d")
+      ctx.fillStyle = "#FFFFFF"
 
-        ctx.fillRect(0, 0, 999, 1099)
+      ctx.fillRect(0, 0, 999, 1099)
 
-        ctx.fillStyle = "#000000"
-        ctx.font = "15px Arial";
-        ctx.fillText("by beaconcha.in", 875, 1030);
+      ctx.fillStyle = "#000000"
+      ctx.font = "15px Arial"
+      ctx.fillText("by beaconcha.in", 875, 1030)
 
-        ctx.beginPath();
-        ctx.moveTo(0, 1000);
-        ctx.lineTo(999, 1000);
-        ctx.stroke();
+      ctx.beginPath()
+      ctx.moveTo(0, 1000)
+      ctx.lineTo(999, 1000)
+      ctx.stroke()
 
-        var pixels = {{.}}
-        if (pixels !== null) {
-            pixels.forEach(function (p) {
-                ctx.fillStyle = "#" + p.color
-                ctx.fillRect(p.x, p.y, 1, 1)
-            })
-        }
-    </script>
+      if (pixels !== null) {
+        pixels.forEach(function (p) {
+          ctx.fillStyle = "#" + p.color
+          ctx.fillRect(p.x, p.y, 1, 1)
+        })
+      }
+    }
+
+    if (document.cookie.indexOf("graffiti=accepted") != -1) {
+      drawGraffiti()
+    } else {
+      document.getElementById("nsfwWarning").classList.remove("d-none")
+    }
+
+    function acceptNSFW() {
+      document.cookie = "graffiti=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+      drawGraffiti()
+    }
+  </script>
 {{ end }}
 
 {{ define "css" }}
+  <style>
+    #graffitiwallContainer {
+      position: relative;
+    }
+    #nsfwWarning {
+      display: flex;
+      left: 0;
+      right: 0;
+      top: 0;
+    }
+  </style>
 {{ end }}
 
 {{ define "content" }}
@@ -60,7 +85,9 @@
                     The simple one: <code>graffitiwall:<b>x</b>:<b>y</b>:<b>#cccccc</b></code>
                     <ul>
                       <li>
-                        <code><b>x</b></code> and <code><b>y</b></code> are the coordinates of the pixel you want to draw. These coordinates need to be within 0 and 999.
+                        <code><b>x</b></code> and <code><b>y</b></code> are the coordinates of the pixel you want to draw. These coordinates need to be within 0 and 999.<br />
+                        The <code><b>x</b></code> and <code><b>y</b></code> coordinates start at 0.<br />
+                        <code><b>x</b></code> = 0 and <code><b>y</b></code> = 0 starts in the upper left corner.
                       </li>
                       <li>
                         <code><b>cccccc</b></code> is the hexadecimal representation of the color you want to draw.
@@ -95,8 +122,12 @@
     </div>
     <br />
     <div class="row">
-      <div class="col-md-12 text-center">
+      <div class="col-md-12 text-center" id="graffitiwallContainer">
         <canvas id="graffitiwall" width="1000" height="1050" style="image-rendering:pixelated;"></canvas>
+        <div id="nsfwWarning" class="mt-5 d-none flex-column align-items-center position-absolute hidden">
+          <h4>Warning: This canvas is unmoderated and may contain NSFW content. Do you want to continue?</h4>
+          <div class="btn btn-primary btn-sm d-flex mt-2 text-white" onclick="acceptNSFW()">Accept</div>
+        </div>
       </div>
     </div>
   </div>

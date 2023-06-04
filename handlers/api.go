@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/price"
@@ -60,7 +61,7 @@ import (
 // @tag.name SyncCommittee
 // @tag.name Execution
 // @tag.description layer information about addresses, blocks and transactions
-// @tag.name ETH.STORE
+// @tag.name ETH.STORE®
 // @tag.description is the transparent Ethereum staking reward reference rate.
 // @tag.docs.url https://staking.ethermine.org/statistics
 // @tag.docs.description More info
@@ -114,9 +115,9 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check latest eth1 indexed block
-	numberBlocksTable, err := db.BigtableClient.GetLastBlockInBlocksTable()
-	if err != nil {
-		logger.Errorf("could not retrieve latest block number from the blocks table: %v", err)
+	numberBlocksTable := services.LatestLastBlockInBlocksTableData()
+	if numberBlocksTable < 0 {
+		// logger error already reported in caller
 		http.Error(w, "Internal server error: could not retrieve latest block number from the blocks table", http.StatusServiceUnavailable)
 		return
 	}
@@ -197,13 +198,13 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEthStoreDay godoc
-// @Summary Get ETH.STORE reference rate for a specified beaconchain-day or the latest day
-// @Tags ETH.STORE
-// @Description ETH.STORE represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
+// @Summary Get ETH.STORE® reference rate for a specified beaconchain-day or the latest day
+// @Tags ETH.STORE®
+// @Description ETH.STORE® represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
 // @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
 // @Description See https://github.com/gobitfly/eth.store for further information.
 // @Produce json
-// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE for. Must be a number or the string 'latest'."
+// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE® for. Must be a number or the string 'latest'."
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/ethstore/{day} [get]
@@ -1087,7 +1088,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	}
 
 	// transform committees to slots
-	expectedSlots = uint64(expectedCommitties * float64(utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch))
+	expectedSlots = uint64(expectedCommitties * float64(utils.SlotsPerSyncCommittee()))
 
 	return expectedSlots, nil
 }
@@ -1113,45 +1114,69 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
-	var lastExportedDay uint64
-	err = db.WriterDb.Get(&lastExportedDay, "SELECT COALESCE(max(day), 0) FROM validator_stats_status WHERE status")
+	lastExportedDay, err := db.GetLastExportedStatisticDay()
 	if err != nil {
 		return types.SyncCommitteesStats{}, err
 	}
 	epochsPerDay := utils.EpochsPerDay()
 	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
 
+	// if epoch is not yet exported, we may need to collect the data from bigtable
 	if lastExportedEpoch < epoch {
-		// a sync committee takes abouth 27h so in the span of a day we migh have a maximum of two different sync committees (one being unfinished)
-		// to lower the bigtable workload, we only check for validators that are querried AND in the current or the last sync committee
-		periods := []int64{int64(utils.SyncPeriodOfEpoch(epoch))}
-		if periods[0] > 0 {
+		// get relevant period
+		periodOfEpoch := utils.SyncPeriodOfEpoch(epoch)
+		periods := []int64{int64(periodOfEpoch)}
+		// if the committee period before the relevant one is also not yet fully exported, add it to the query
+		if periods[0] > 0 && lastExportedEpoch < utils.FirstEpochOfSyncPeriod(periodOfEpoch)-1 {
 			periods = append(periods, periods[0]-1)
 		}
 
-		var validatorsInSyncCommittees struct {
+		// get all validators part of the relevant committees, grouped by period
+		var syncCommitteeValidators []struct {
+			Period     uint64        `db:"period"`
 			Validators pq.Int64Array `db:"validators"`
 		}
-		query, args, err := sqlx.In(`SELECT COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators FROM sync_committees WHERE period IN(?) AND validatorindex IN(?)`, periods, validators)
+		query, args, err := sqlx.In(`
+			SELECT period, COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators
+			FROM sync_committees
+			WHERE period IN (?) AND validatorindex IN (?)
+			GROUP BY period
+			ORDER BY period DESC
+		`, periods, validators)
 		if err != nil {
 			return types.SyncCommitteesStats{}, err
 		}
-		err = db.ReaderDb.Get(&validatorsInSyncCommittees, db.ReaderDb.Rebind(query), args...)
+		err = db.ReaderDb.Select(&syncCommitteeValidators, db.ReaderDb.Rebind(query), args...)
 		if err != nil {
 			return types.SyncCommitteesStats{}, err
 		}
 
-		if len(validatorsInSyncCommittees.Validators) > 0 {
-			// get and add up2date sync committee statistics from bigtable
+		// if there validators are present in relevant periods, query bigtable
+		if len(syncCommitteeValidators) > 0 {
+			// flatten validator list
 			vs := []uint64{}
-			for _, v := range validatorsInSyncCommittees.Validators {
-				vs = append(vs, uint64(v))
+			for _, scv := range syncCommitteeValidators {
+				for _, v := range scv.Validators {
+					vs = append(vs, uint64(v))
+				}
 			}
 
-			syncStats, err := db.BigtableClient.GetValidatorSyncCommitteesStats(vs, lastExportedEpoch, epoch)
+			// get sync stats from bigtable
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch, epoch)
 			if err != nil {
 				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
+			// add sync stats for validators in latest returned period
+			latestPeriodCount := len(syncCommitteeValidators[0].Validators)
+			syncStats := utils.AddSyncStats(vs[:latestPeriodCount], res, nil)
+			// if latest returned period is the active one, add remaining scheduled slots
+			firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(syncCommitteeValidators[0].Period)
+			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
+			if lastEpochOfPeriod >= services.LatestEpoch() {
+				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
+			}
+			// add sync stats for validators in previous returned period
+			utils.AddSyncStats(vs[latestPeriodCount:], res, &syncStats)
 			retv.MissedSlots += syncStats.MissedSlots
 			retv.ParticipatedSlots += syncStats.ParticipatedSlots
 			retv.ScheduledSlots += syncStats.ScheduledSlots
@@ -2456,13 +2481,16 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the most recent pixels that have been painted during the last 10000 slots.
 // @Description Optionally set the slot query parameter to look back further.
 // @Description Boundary coordinates are included.
+// @Description X = 0 and Y = 0 start at the upper left corner.
 // @Description Returns an error if an invalid area is provided by the coordinates.
 // @Produce  json
 // @Param startx query int false "Start X offset" default(0)
 // @Param starty query int false "Start Y offset" default(0)
 // @Param endx query int false "End X limit" default(999)
 // @Param endy query int false "End Y limit" default(999)
-// @Param slot query string false "Slot to query"
+// @Param startSlot query string false "Start slot to query (end slot - 10000 if empty)"
+// @Param slot query string false "End slot to query"
+// @Param summarize query bool false "Only return end state of each pixel" default(true)
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/graffitiwall [get]
@@ -2470,19 +2498,37 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
-	slotQuery := uint64(0)
+	startSlot := uint64(0)
+	endSlot := uint64(0)
 	if q.Get("slot") == "" {
-		slotQuery = services.LatestSlot()
+		endSlot = services.LatestSlot()
 	} else {
 		var err error
-		slotQuery, err = strconv.ParseUint(q.Get("slot"), 10, 64)
+		endSlot, err = strconv.ParseUint(q.Get("slot"), 10, 64)
 		if err != nil {
-			logger.WithError(err).Errorf("invalid slot provided: %v", err)
+			// logger.WithError(err).Errorf("invalid slot provided: %v", err)
 			sendErrorResponse(w, r.URL.String(), "invalid slot provided")
 			return
 		}
 	}
-	slotQuery = utilMath.MaxU64(slotQuery, 10000)
+	endSlot = utilMath.MaxU64(endSlot, 10000)
+
+	if q.Get("startSlot") == "" {
+		startSlot = endSlot - 10000
+	} else {
+		var err error
+		startSlot, err = strconv.ParseUint(q.Get("startSlot"), 10, 64)
+		if err != nil {
+			// logger.WithError(err).Errorf("invalid startSlot provided: %v", err)
+			sendErrorResponse(w, r.URL.String(), "invalid startSlot provided")
+			return
+		}
+		if startSlot > endSlot {
+			// logger.Errorf("start slot greater than end slot")
+			sendErrorResponse(w, r.URL.String(), "start slot greater than end slot")
+			return
+		}
+	}
 
 	defaultStartPxl := uint64(0)
 	defaultEndPxl := uint64(999)
@@ -2493,13 +2539,31 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 	endY := utilMath.MinU64(parseUintWithDefault(q.Get("endy"), defaultEndPxl), defaultEndPxl)
 
 	if startX > endX || startY > endY {
-		logger.Error("invalid area provided by the coordinates")
+		// logger.Error("invalid area provided by the coordinates")
 		sendErrorResponse(w, r.URL.String(), "invalid area provided by the coordinates")
 		return
 	}
 
+	summarize := true
+	summarizeParam := q.Get("summarize")
+	if summarizeParam != "" {
+		var err error
+		summarize, err = strconv.ParseBool(summarizeParam)
+		if err != nil {
+			// logger.WithError(err).Errorf("invalid value for summarize provided: %v", err)
+			sendErrorResponse(w, r.URL.String(), "invalid value for summarize provided")
+			return
+		}
+	}
+
+	summarize_query := ""
+	if summarize {
+		// only pick latest pixel update
+		summarize_query = "DISTINCT ON (x, y) "
+	}
+
 	rows, err := db.ReaderDb.Query(`
-	SELECT 
+	SELECT `+summarize_query+`
 		x,
 		y,
 		color,
@@ -2507,9 +2571,11 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 		validator
 	FROM graffitiwall
 	WHERE slot BETWEEN $1 AND $2 AND x BETWEEN $3 AND $4 AND y BETWEEN $5 AND $6
-	ORDER BY slot desc, x, y`, slotQuery-10000, slotQuery, startX, endX, startY, endY)
+	ORDER BY x, y, slot DESC`, startSlot, endSlot, startX, endX, startY, endY)
 	if err != nil {
-		logger.WithError(err).Error("could not retrieve db results")
+		if !errors.Is(err, sql.ErrNoRows) {
+			logger.WithError(err).Error("could not retrieve db results")
+		}
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -2975,7 +3041,8 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
 					validator_performance.rank7d, 
 					validator_performance.validatorindex,
-					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee  
+					TRUNC(rplm.node_fee::decimal, 10)::float  AS minipool_node_fee,
+					TRUNC(rplm.node_deposit_balance::decimal / 1e9, 10)::float  AS minipool_deposit  
 				FROM validators 
 				LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex 
 				LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey

@@ -236,13 +236,13 @@
         {
           targets: 3,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
+            return `${data}`
           },
         },
         {
           targets: 4,
           render: function (data, type, row, meta) {
-            return `<span style="font-size: .9rem; font-weight: 400;">${getRelativeTime(luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000))}</span>`
+            return `${data}`
           },
         },
         {

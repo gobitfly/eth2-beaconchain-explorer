@@ -79,8 +79,6 @@ func initRPConfig() *smartnodeCfg.SmartnodeConfig {
 	})
 	if utils.Config.Chain.Name == "mainnet" {
 		config.Network.Value = smartnodeNetwork.Network_Mainnet
-	} else if utils.Config.Chain.Name == "zhejiang" {
-		config.Network.Value = smartnodeNetwork.Network_Zhejiang
 	} else if utils.Config.Chain.Name == "prater" {
 		config.Network.Value = smartnodeNetwork.Network_Prater
 	} else {
@@ -357,13 +355,13 @@ func contains(s []RocketpoolRewardTreeDownloadable, e uint64) bool {
 func (rp *RocketpoolExporter) Update(count int64) error {
 	var wg errgroup.Group
 	wg.Go(func() error {
-		if count%8 == 0 {
+		if count == 0 || count%5 == 4 { // run download one iteration before we update nodes
 			return rp.DownloadMissingRewardTrees()
 		}
 		return nil
 	})
 	wg.Go(func() error { return rp.UpdateMinipools() })
-	wg.Go(func() error { return rp.UpdateNodes(count%12 == 0) })
+	wg.Go(func() error { return rp.UpdateNodes(count%5 == 0) })
 	wg.Go(func() error { return rp.UpdateDAOProposals() })
 	wg.Go(func() error { return rp.UpdateDAOMembers() })
 	wg.Go(func() error { return rp.UpdateNetworkStats() })

@@ -314,9 +314,8 @@
                   </svg>
                 </label>
                 <script>
-                  if (document.documentElement.getAttribute("data-theme") === "light") {
-                    document.getElementById("toggleSwitch").checked = true
-                  }
+                  var isLightTheme = document.documentElement.getAttribute("data-theme") === "light"
+                  document.getElementById("toggleSwitch").checked = isLightTheme
                 </script>
               </div>
             </div>

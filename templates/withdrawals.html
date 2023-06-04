@@ -34,6 +34,7 @@
         order: [[2, "desc"]],
         searching: true,
         ajax: "/validators/withdrawals/data",
+        pageLength: {{.Withdrawals.PageLength}},
         pagingType: "input",
         deferLoading: {{.Withdrawals.RecordsTotal}},
         preDrawCallback: function () {
@@ -86,6 +87,7 @@
         order: [[2, "desc"]],
         searching: true,
         ajax: "/validators/withdrawals/bls",
+        pageLength: {{.BlsChanges.PageLength}},
         pagingType: "input",
         deferLoading: {{.BlsChanges.RecordsTotal}},
         preDrawCallback: function () {

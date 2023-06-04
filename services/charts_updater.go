@@ -561,7 +561,7 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 		}
 		// create eth store series
 		ethStoreSeries := types.GenericChartDataSeries{
-			Name:  "ETH.STORE",
+			Name:  "ETH.STORE®",
 			Data:  poolSeriesData["ETH.STORE"],
 			Color: "#ed1c24",
 		}
@@ -571,13 +571,14 @@ func historicPoolPerformanceData() (*types.GenericChartData, error) {
 	//create chart struct, hypertext color is hardcoded into subtitle text
 	chartData := &types.GenericChartData{
 		Title:         "Historical Pool Performance",
-		Subtitle:      "Uses a neutral & verifiable formula <a style=\"color:rgb(56, 112, 168)\" href=\"https://github.com/gobitfly/eth.store\">ETH.STORE</a> to measure pool performance for consensus & execution rewards.",
+		Subtitle:      "Uses a neutral & verifiable formula <a href=\"https://github.com/gobitfly/eth.store\">ETH.STORE®</a><sup>1</sup> to measure pool performance for consensus & execution rewards.",
 		XAxisTitle:    "",
 		YAxisTitle:    "APR [%] (Logarithmic)",
 		StackingMode:  "false",
 		Type:          "line",
 		TooltipShared: false,
 		Series:        chartSeries,
+		Footer:        EthStoreDisclaimer(),
 	}
 
 	return chartData, nil
@@ -960,28 +961,22 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 }
 
 func poolsDistributionChartData() (*types.GenericChartData, error) {
-	var err error
 
 	type seriesDataItem struct {
 		Name      string `json:"name"`
 		Address   string `json:"address"`
-		Y         uint64 `json:"y"`
+		Y         int64  `json:"y"`
 		Drilldown string `json:"drilldown"`
 	}
 
-	rows := []struct {
-		Name  string
-		Count uint64
-	}{}
-
-	err = db.ReaderDb.Select(&rows, `
-	select coalesce(pool, 'Unknown') as name, count(*) as count from validators left outer join validator_pool on validators.pubkey = validator_pool.publickey where validators.status in ('active_online', 'active_offline') group by pool order by count(*) desc`)
-	if err != nil {
-		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+	poolData := LatestPoolsPageData().PoolInfos
+	if len(poolData) > 1 {
+		poolData = poolData[1:]
 	}
-	seriesData := make([]seriesDataItem, 0, len(rows))
 
-	for _, row := range rows {
+	seriesData := make([]seriesDataItem, 0, len(poolData))
+
+	for _, row := range poolData {
 		seriesData = append(seriesData, seriesDataItem{
 			Name: row.Name,
 			Y:    row.Count,

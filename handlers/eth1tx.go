@@ -80,9 +80,9 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			currentPrice := GetCurrentPrice(r)
 			currentEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(float64(currentPrice)))
 			cPrice, _ := currentEthPrice.Float64()
-			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s %.2f</span>`, symbol, cPrice))
+			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, cPrice))
 
-			txDay := utils.TimeToDay(txData.Timestamp)
+			txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
 			latestEpoch, err := db.GetLatestEpoch()
 			if err != nil {
 				logrus.Error(err)
@@ -99,7 +99,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 				} else {
 					historicEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(price))
 					hPrice, _ := historicEthPrice.Float64()
-					txData.HistoricEtherPrice = template.HTML(p.Sprintf(`<span><i class="far fa-clock"></i> %s %.2f</span>`, symbol, hPrice))
+					txData.HistoricEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, hPrice))
 				}
 			}
 

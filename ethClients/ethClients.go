@@ -2,6 +2,7 @@ package ethclients
 
 import (
 	"encoding/json"
+	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -47,7 +48,7 @@ type clientUpdateInfo struct {
 
 type EthClients struct {
 	ClientReleaseVersion string
-	ClientReleaseDate    string
+	ClientReleaseDate    template.HTML
 	NetworkShare         string
 	IsUserSubscribed     bool
 }
@@ -153,17 +154,7 @@ func getRepoTime(date string, dTime string) (time.Time, error) {
 	return time.Date(int(year), time.Month(int(month)), int(day), int(hour), int(min), 0, 0, time.UTC), nil
 }
 
-func ymdTodmy(date string) string {
-	dateDays := strings.Split(date, "-")
-	if len(dateDays) < 3 {
-		logger.Errorf("error wrong date string %s", date)
-		return ""
-	}
-	return fmt.Sprintf("%s-%s-%s", dateDays[2], dateDays[1], dateDays[0])
-}
-
-func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
-
+func prepareEthClientData(repo string, name string, curTime time.Time) (string, template.HTML) {
 	client := fetchClientData(repo)
 	if client == nil {
 		return "Github", "searching"
@@ -176,22 +167,7 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 			logger.Errorf("error parsing git repo. time: %v", err)
 			return client.Name, "GitHub" // client.Name is client version from github api
 		}
-		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
-		if timeDiff < 1.0 { // show banner if update was less than 2 days ago
-			update := clientUpdateInfo{Name: name, Date: rTime}
-			bannerClients = append(bannerClients, update)
-			return client.Name, "Recently"
-		}
-
-		if timeDiff <= 1.5 && timeDiff >= 1.0 {
-			return client.Name, "1 day ago"
-		}
-
-		if timeDiff > 30 {
-			return client.Name, fmt.Sprintf("On %s", ymdTodmy(date[0]))
-		}
-
-		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff) // can sub. -0.5 to round down the days but github is rounding up
+		return client.Name, utils.FormatTimestamp(rTime.Unix())
 	}
 	return "Github", "searching" // If API limit is exceeded
 }

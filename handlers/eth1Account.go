@@ -12,7 +12,6 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -135,7 +134,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		addressWithdrawals, err := db.GetAddressWithdrawals(addressBytes, 25, 0)
+		addressWithdrawals, nextPageToken, err := db.GetAddressWithdrawals(addressBytes, 25, "")
 		if err != nil {
 			return err
 		}
@@ -145,7 +144,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 			withdrawalsData = append(withdrawalsData, []interface{}{
 				template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-				template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+				template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 			})
@@ -156,7 +155,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 			RecordsTotal: uint64(len(withdrawalsData)),
 			// RecordsFiltered: uint64(len(withdrawals)),
 			Data:        withdrawalsData,
-			PagingToken: fmt.Sprintf("%v", 25),
+			PagingToken: nextPageToken,
 		}
 
 		return nil
@@ -361,16 +360,11 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	address := strings.Replace(vars["address"], "0x", "", -1)
 	address = strings.ToLower(address)
 
-	pageToken, err := strconv.ParseUint(q.Get("pageToken"), 10, 64)
+	withdrawals, nextPageToken, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, q.Get("pageToken"))
 	if err != nil {
-		logger.WithError(err).Errorf("error parsing page token")
+		logger.WithError(err).Errorf("error getting address withdrawals data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
-	}
-
-	withdrawals, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, uint64(pageToken))
-	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
 	}
 
 	tableData := make([][]interface{}, len(withdrawals))
@@ -378,20 +372,10 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
 		}
-	}
-
-	nextPageToken := pageToken + 25
-	if len(withdrawals) < 25 {
-		nextPageToken = 0
-	}
-
-	next := ""
-	if nextPageToken != 0 {
-		next = fmt.Sprintf("%d", nextPageToken)
 	}
 
 	data := &types.DataTableResponse{
@@ -399,7 +383,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 		// RecordsTotal:    ,
 		// RecordsFiltered: ,
 		Data:        tableData,
-		PagingToken: next,
+		PagingToken: nextPageToken,
 	}
 
 	err = json.NewEncoder(w).Encode(data)

@@ -24,6 +24,13 @@
                 processing: true,
                 serverSide: true,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 ordering: true,
                 order: [[0, 'desc']],
                 lengthChange: false,
@@ -118,6 +125,13 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     ordering: false,
                     order: [[0, 'desc']],
                     lengthChange: false,
@@ -180,6 +194,13 @@
                     processing: true,
                     serverSide: true,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     ordering: true,
                     order: [[0, 'desc']],
                     lengthChange: false,
@@ -210,7 +231,7 @@
                     columnDefs: [
                     ],
                     drawCallback: function(settings) {
-                        // formatTimestamps()
+                         formatTimestamps()
                     },
                 })
             }
@@ -258,6 +279,13 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
                     searching: false,
                     ajax: '/validator/' + index + '/sync',
                     pagingType: 'input',
@@ -325,6 +353,13 @@
                 ordering: false,
                 lengthChange: false,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 searching: false,
                 ajax: '/validator/' + index + '/slashings',
                 pagingType: 'input',
@@ -596,6 +631,13 @@
                 ordering: false,
                 searching: false,
                 stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
                 ajax: '/validator/' + index + '/history',
                 pagingType: 'input',
                 pageLength: 10,
@@ -627,7 +669,7 @@
     <table class="table" style="margin-top: 0 !important" width="100%">
       <tbody style="font-size: 0.875rem;">
         <tr>
-          <th scope="style-table-header"  style="border-top: 0" scope="row">Total Rewards</th>
+          <th scope="style-table-header" style="border-top: 0" scope="row">Total Rewards</th>
           <td class="style-table-data pl-0" style="border-top: 0">
             {{ .IncomeTotalFormatted }}
           </td>
@@ -734,6 +776,22 @@
             </span>
           </td>
         </tr>
+        {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
+          <tr>
+            <th class="style-table-header" scope="row">
+              {{ if ge .Epoch .ExitEpoch }}
+                Exited since
+              {{ else }}
+                Exiting on
+              {{ end }}
+            </th>
+            <td class="style-table-data pl-0">
+              <a href="/epoch/{{ .ExitEpoch }}">
+                <span title="Epoch: {{ .ExitEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .ExitTs.Unix }}"></span>
+              </a>
+            </td>
+          </tr>
+        {{ end }}
         {{ if not (eq .WithdrawableEpoch 9223372036854775807) }}
           <tr>
             <th class="style-table-header" scope="row">Withdrawable</th>

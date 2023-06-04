@@ -380,7 +380,7 @@ func createMenuItems(active string, isMain bool, user *types.User) []types.MainM
 							IsHighlighted: true,
 						},
 						{
-							Label:      "ETH.STORE",
+							Label:      "ETH.STORE®",
 							Path:       "/ethstore",
 							CustomIcon: "ethermine_stake_logo_svg",
 						},

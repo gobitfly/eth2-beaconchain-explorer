@@ -129,7 +129,7 @@ func main() {
 		logrus.Fatalf("node chain id mismatch, wanted %v got %v", chainId, nodeChainId.String())
 	}
 
-	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId)
+	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
@@ -242,6 +242,7 @@ func main() {
 		return
 	}
 
+	lastSuccessulBlockIndexingTs := time.Now()
 	for ; ; time.Sleep(time.Second * 14) {
 		err := HandleChainReorgs(bt, client, *reorgDepth)
 		if err != nil {
@@ -280,8 +281,19 @@ func main() {
 
 			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
 			if err != nil {
-				logrus.WithError(err).Errorf("error indexing from node, start: %v end: %v concurrency: %v", int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
+				errMsg := "error indexing from node"
+				errFields := map[string]interface{}{
+					"start":       int64(lastBlockFromBlocksTable) - *offsetBlocks,
+					"end":         int64(lastBlockFromNode),
+					"concurrency": *concurrencyBlocks}
+				if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
+					utils.LogFatal(err, errMsg, 0, errFields)
+				} else {
+					utils.LogError(err, errMsg, 0, errFields)
+				}
 				continue
+			} else {
+				lastSuccessulBlockIndexingTs = time.Now()
 			}
 		}
 

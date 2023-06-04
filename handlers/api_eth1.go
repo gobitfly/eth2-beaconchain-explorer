@@ -182,7 +182,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(indices) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -903,7 +903,7 @@ func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map
 
 func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionPerformanceResponse, error) {
 	latestEpoch := services.LatestEpoch()
-	last30dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
+	last31dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
 	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
 	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
 
@@ -911,6 +911,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	if latestEpoch < 7200 {
 		monthRange = 0
 	}
+	validatorsPQArray := pq.Array(queryIndices)
 
 	var execBlocks []types.ExecBlockProposer
 	err := db.ReaderDb.Select(&execBlocks,
@@ -922,7 +923,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		AND exec_block_number IS NOT NULL 
 		AND exec_block_number > 0 
 		AND epoch > $2`,
-		pq.Array(queryIndices),
+		validatorsPQArray,
 		monthRange, // 32d range
 	)
 	if err != nil {
@@ -940,19 +941,56 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 
 	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
-		// logger.WithError(err).Errorf("can not get relays data")
 		return nil, fmt.Errorf("error can not get relays data: %w", err)
 	}
+
+	type LongPerformanceResponse struct {
+		Performance365d  string `db:"el_performance_365d" json:"performance365d"`
+		PerformanceTotal string `db:"el_performance_total" json:"performanceTotal"`
+		ValidatorIndex   uint64 `db:"validatorindex" json:"validatorindex"`
+	}
+
+	performanceList := []LongPerformanceResponse{}
+
+	err = db.ReaderDb.Select(&performanceList, `
+		SELECT 
+		validatorindex,
+		CAST(COALESCE(mev_performance_365d, 0) AS text) AS el_performance_365d,
+		CAST(COALESCE(mev_performance_total, 0) AS text) AS el_performance_total
+		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
+	if err != nil {
+		return nil, fmt.Errorf("error can cl performance from db: %w", err)
+	}
+	for _, val := range performanceList {
+		performance365d, _ := new(big.Int).SetString(val.Performance365d, 10)
+		performanceTotal, _ := new(big.Int).SetString(val.PerformanceTotal, 10)
+		resultPerProposer[val.ValidatorIndex] = types.ExecutionPerformanceResponse{
+			Performance1d:    big.NewInt(0),
+			Performance7d:    big.NewInt(0),
+			Performance31d:   big.NewInt(0),
+			Performance365d:  performance365d,
+			PerformanceTotal: performanceTotal,
+			ValidatorIndex:   val.ValidatorIndex,
+		}
+	}
+
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		return nil, fmt.Errorf("error getting last statistic day: %w", err)
+	}
+	firstEpochTime := utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
 
 	for _, block := range blocks {
 		proposer := blockToProposerMap[block.Number].Proposer
 		result, ok := resultPerProposer[proposer]
 		if !ok {
 			result = types.ExecutionPerformanceResponse{
-				Performance1d:  big.NewInt(0),
-				Performance7d:  big.NewInt(0),
-				Performance31d: big.NewInt(0),
-				ValidatorIndex: proposer,
+				Performance1d:    big.NewInt(0),
+				Performance7d:    big.NewInt(0),
+				Performance31d:   big.NewInt(0),
+				Performance365d:  big.NewInt(0),
+				PerformanceTotal: big.NewInt(0),
+				ValidatorIndex:   proposer,
 			}
 		}
 
@@ -973,7 +1011,11 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 			producerReward = mevBribe
 		}
 
-		if block.Time.AsTime().After(last30dTimestamp) {
+		if block.Time.AsTime().Equal(firstEpochTime) || block.Time.AsTime().After(firstEpochTime) {
+			result.PerformanceTotal = result.PerformanceTotal.Add(result.PerformanceTotal, producerReward)
+			result.Performance365d = result.Performance365d.Add(result.Performance365d, producerReward)
+		}
+		if block.Time.AsTime().After(last31dTimestamp) {
 			result.Performance31d = result.Performance31d.Add(result.Performance31d, producerReward)
 		}
 		if block.Time.AsTime().After(last7dTimestamp) {
@@ -989,12 +1031,17 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	return maps.Values(resultPerProposer), nil
 }
 
-func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
 
 	order := "DESC"
 	if isSortAsc {
 		order = "ASC"
+	}
+
+	status := ""
+	if onlyFinalized {
+		status = `and status = '1'`
 	}
 
 	query := fmt.Sprintf(`SELECT 
@@ -1004,9 +1051,9 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64,
 			epoch  
 		FROM blocks 
 		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+		AND exec_block_number IS NOT NULL AND exec_block_number > 0 %s
 		ORDER BY exec_block_number %s
-		OFFSET $2 LIMIT $3`, order)
+		OFFSET $2 LIMIT $3`, status, order)
 
 	err := db.ReaderDb.Select(&blockListSub,
 		query,
