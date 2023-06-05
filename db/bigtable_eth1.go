@@ -3445,7 +3445,7 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 		if invokesContract {
 			method = fmt.Sprintf("0x%x", id)
 			cacheKey := fmt.Sprintf("M:H2L:%s", method)
-			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey+"x", time.Hour, &method); err != nil {
+			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
 				sig, err := bigtable.GetSignature(method, types.MethodSignature)
 				if err == nil {
 					if sig != nil {
