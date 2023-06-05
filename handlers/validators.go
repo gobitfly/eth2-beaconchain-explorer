@@ -239,20 +239,21 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	qry := ""
 	// if dataQuery.Search == "" && dataQuery.StateFilter == "" {
 	qry = fmt.Sprintf(`
-			SELECT
-				validators.validatorindex,
-				validators.pubkey,
-				validators.withdrawableepoch,
-				validators.slashed,
-				validators.activationepoch,
-				validators.exitepoch,
-				validators.lastattestationslot,
-				COALESCE(validator_names.name, '') AS name,
-				validators.status AS state
-			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			ORDER BY %s %s
-			LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
+		SELECT  
+		validators.validatorindex,  
+		validators.pubkey,  
+		validators.withdrawableepoch,  
+		validators.slashed,  
+		validators.activationepoch,  
+		validators.exitepoch,  
+		validators.lastattestationslot,  
+		COALESCE(validator_names.name, '') AS name,  
+		validators.status AS state  
+		FROM validators  
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey  
+		%s
+		ORDER BY %s %s  
+		LIMIT $1 OFFSET $2`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
 
 	err = db.ReaderDb.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 	if err != nil {
@@ -342,11 +343,23 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+	countFiltered := uint64(0)
+	if dataQuery.StateFilter != "" {
+		qry = fmt.Sprintf(`SELECT COUNT(*) FROM validators %s`, dataQuery.StateFilter)
+		err = db.ReaderDb.Get(&countFiltered, qry)
+		if err != nil {
+			logger.Errorf("error retrieving validators total count: %v", err)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			return
+		}
+	} else {
+		countFiltered = countTotal
+	}
 
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
 		RecordsTotal:    countTotal,
-		RecordsFiltered: countTotal,
+		RecordsFiltered: countFiltered,
 		Data:            tableData,
 	}
 
