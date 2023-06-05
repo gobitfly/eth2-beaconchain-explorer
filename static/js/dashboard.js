@@ -419,6 +419,8 @@ $(document).ready(function () {
     },
     pageLength: 10,
     pagingType: "full_numbers",
+    scrollY: "503px",
+    scrollCollapse: true,
     info: false,
     language: {
       search: "",
