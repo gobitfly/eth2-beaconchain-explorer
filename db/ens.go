@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
@@ -285,6 +286,12 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	return bulkData, bulkMetadataUpdates, nil
 }
 
+type EnsCheckedDictionary struct {
+	mux     sync.Mutex
+	address map[common.Address]bool
+	name    map[string]bool
+}
+
 func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 	key := fmt.Sprintf("%s:ENS:V", bigtable.chainId)
 
@@ -309,6 +316,10 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 	}
 
 	logger.Infof("Validating %v ENS entries", len(keys))
+	alreadyChecked := EnsCheckedDictionary{
+		address: make(map[common.Address]bool),
+		name:    make(map[string]bool),
+	}
 	mutsDelete := &types.BulkMutations{
 		Keys: make([]string, 0, 1),
 		Muts: make([]*gcp_bigtable.Mutation, 0, 1),
@@ -339,8 +350,8 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				} else {
 					err := ReaderDb.Get(&name, `
 					SELECT
-						name
-					FROM ens_names
+						ens_name
+					FROM ens
 					WHERE name_hash = $1
 					`, nameHash[:])
 					if err != nil && err != sql.ErrNoRows {
@@ -359,23 +370,23 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				name = value
 			}
 
+			mutsDelete.Keys = append(mutsDelete.Keys, key)
+			mutDelete := gcp_bigtable.NewMutation()
+			mutDelete.DeleteRow()
+			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+
 			g.Go(func() error {
 				if name != "" {
-					err := validateEnsName(client, name)
+					err := validateEnsName(client, name, &alreadyChecked, nil)
 					if err != nil {
 						return err
 					}
 				} else if address != nil {
-					err := validateEnsAddress(client, *address)
+					err := validateEnsAddress(client, *address, &alreadyChecked)
 					if err != nil {
 						return err
 					}
 				}
-
-				mutsDelete.Keys = append(mutsDelete.Keys, key)
-				mutDelete := gcp_bigtable.NewMutation()
-				mutDelete.DeleteRow()
-				mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 				return nil
 			})
 		}
@@ -388,50 +399,52 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 	return bigtable.WriteBulk(mutsDelete, bigtable.tableData)
 }
 
-func validateEnsAddress(client *ethclient.Client, address common.Address) error {
+func validateEnsAddress(client *ethclient.Client, address common.Address, alreadyChecked *EnsCheckedDictionary) error {
+
+	alreadyChecked.mux.Lock()
+	if alreadyChecked.address[address] {
+		alreadyChecked.mux.Unlock()
+		return nil
+	}
+	alreadyChecked.address[address] = true
+	alreadyChecked.mux.Unlock()
 
 	name, err := go_ens.ReverseResolve(client, address)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error resolving address: %v", address), 0)
-		return removeEnsAddress(client, address)
+		utils.LogError(err, fmt.Errorf("address could not be reverse resolved: %v", address), 0)
+		return removeEnsAddress(client, address, alreadyChecked)
 	}
-	nameHash, err := go_ens.NameHash(name)
-	if err != nil {
-		utils.LogError(err, fmt.Errorf("could not hash name [%v] for address: %x", name, address), 0)
-		return nil
-	}
-	_, err = WriterDb.Exec(`
-	INSERT INTO ens_addresses (
-		address, 
-		name_hash)
-	VALUES ($1, $2) 
-	ON CONFLICT 
-		(address) 
-	DO UPDATE SET 
-		name_hash = excluded.name_hash
-	`, address.Bytes(), nameHash[:])
-	if err != nil {
-		utils.LogError(err, fmt.Errorf("error writing ens data for address [%x]", address), 0)
-		return err
-	}
-	err = ReaderDb.Get(&name, `
-					SELECT
-						name
-					FROM ens_names
-					WHERE name_hash = $1
-					`, nameHash[:])
+
+	currentName, err := GetEnsNameForAddress(address)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
-	logger.Infof("Address [%x] resolved -> %v", address, name)
-	return nil
+	isPrimary := false
+	if currentName != nil {
+		if *currentName == name {
+			return nil
+		}
+		logger.Infof("Address [%x] has a new main name from %x to: %v", address, *currentName, name)
+		validateEnsName(client, *currentName, alreadyChecked, &isPrimary)
+	}
+	isPrimary = true
+	logger.Infof("Address [%x] has a primary name: %v", address, name)
+	return validateEnsName(client, name, alreadyChecked, &isPrimary)
 }
 
-func validateEnsName(client *ethclient.Client, name string) error {
+func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsCheckedDictionary, isPrimaryName *bool) error {
 	// For now only .eth is supported other ens domains use different techniques and require and individual implementation
 	if !strings.HasSuffix(name, ".eth") {
 		name = fmt.Sprintf("%s.eth", name)
 	}
+	alreadyChecked.mux.Lock()
+	if alreadyChecked.name[name] {
+		alreadyChecked.mux.Unlock()
+		return nil
+	}
+	alreadyChecked.name[name] = true
+	alreadyChecked.mux.Unlock()
+
 	nameHash, err := go_ens.NameHash(name)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("could not hash name: %v", name), 0)
@@ -441,60 +454,69 @@ func validateEnsName(client *ethclient.Client, name string) error {
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error resolving name: %v", name), 0)
-		return removeEnsName(client, name)
+		return removeEnsName(client, name, alreadyChecked)
 	}
 	ensName, err := go_ens.NewName(client, name)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error getting create ens name: %v", name), 0)
-		return removeEnsName(client, name)
+		return removeEnsName(client, name, alreadyChecked)
 	}
 	expires, err := ensName.Expires()
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error get ens expire date: %v", name), 0)
-		return removeEnsName(client, name)
+		return removeEnsName(client, name, alreadyChecked)
+	}
+	isPrimary := false
+	if isPrimaryName == nil {
+		reverseName, err := go_ens.ReverseResolve(client, addr)
+		if err == nil && reverseName == name {
+			isPrimary = true
+		}
+	} else if *isPrimaryName {
+		isPrimary = true
 	}
 	_, err = WriterDb.Exec(`
-	INSERT INTO ens_names (
+	INSERT INTO ens (
 		name_hash, 
-		name, 
-		address, 
+		ens_name, 
+		address,
+		is_primary_name, 
 		valid_to)
-	VALUES ($1, $2, $3, $4) 
+	VALUES ($1, $2, $3, $4, $5) 
 	ON CONFLICT 
 		(name_hash) 
 	DO UPDATE SET 
-		name = excluded.name,
+		ens_name = excluded.ens_name,
 		address = excluded.address,
+		is_primary_name = excluded.is_primary_name,
 		valid_to = excluded.valid_to
-	`, nameHash[:], name, addr.Bytes(), expires)
+	`, nameHash[:], name, addr.Bytes(), isPrimary, expires)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error writing ens data for name [%v]", name), 0)
 		return err
 	}
-	logger.Infof("Name [%v] resolved -> %x, expires: %v", name, addr, expires)
+	logger.Infof("Name [%v] resolved -> %x, expires: %v, is primary: %v", name, addr, expires, isPrimary)
 	return nil
 }
 
-func removeEnsAddress(client *ethclient.Client, address common.Address) error {
-	_, err := WriterDb.Exec(`
-	DELETE FROM ens_addresses 
-	WHERE 
-		address = $1;
-	`, address.Bytes())
-	if err != nil {
-		utils.LogError(err, fmt.Errorf("error deleting ens name [%x]", address), 0)
+func removeEnsAddress(client *ethclient.Client, address common.Address, alreadyChecked *EnsCheckedDictionary) error {
+	name, err := GetEnsNameForAddress(address)
+	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
-	logger.Infof("Ens address remove from db: %x", address)
-	return nil
+	if name == nil {
+		return nil
+	}
+	isPrimary := false
+	return validateEnsName(client, *name, alreadyChecked, &isPrimary)
 }
 
-func removeEnsName(client *ethclient.Client, name string) error {
+func removeEnsName(client *ethclient.Client, name string, alreadyChecked *EnsCheckedDictionary) error {
 	_, err := WriterDb.Exec(`
-	DELETE FROM ens_names 
+	DELETE FROM ens 
 	WHERE 
-		name = $1;
-	`, name)
+		ens_name = $1
+	;`, name)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error deleting ens name [%v]", name), 0)
 		return err
@@ -507,9 +529,9 @@ func GetAddressForEnsName(name string) (address *common.Address, err error) {
 	addressBytes := []byte{}
 	err = ReaderDb.Get(&addressBytes, `
 	SELECT address 
-	FROM ens_names
+	FROM ens
 	WHERE
-		name = $1;
+		ens_name = $1
 	`, name)
 	if err == nil && addressBytes != nil {
 		add := common.BytesToAddress(addressBytes)
@@ -520,12 +542,11 @@ func GetAddressForEnsName(name string) (address *common.Address, err error) {
 
 func GetEnsNameForAddress(address common.Address) (name *string, err error) {
 	err = ReaderDb.Get(&name, `
-	SELECT n.name 
-	FROM ens_addresses a
-	INNER JOIN ens_names n
-		on a.name_hash = n.name_hash
+	SELECT ens_name 
+	FROM ens
 	WHERE
-		a.address = $1;
-	`, address.Bytes())
+		address = $1 AND
+		is_primary_name
+	;`, address.Bytes())
 	return name, err
 }

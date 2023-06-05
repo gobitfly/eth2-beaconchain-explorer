@@ -2,32 +2,24 @@
 -- +goose StatementBegin
 SELECT 'up SQL query - add ens lookup tables';
 CREATE TABLE IF NOT EXISTS
-    ens_names (
+    ens (
         name_hash bytea NOT NULL,
-        name TEXT NOT NULL,
+        ens_name TEXT NOT NULL,
         address bytea,
+        is_primary_name BOOLEAN NOT NULL DEFAULT FALSE,
         valid_to TIMESTAMP WITHOUT TIME ZONE,
         PRIMARY KEY (name_hash)
     );
-CREATE INDEX IF NOT EXISTS idx_ens_names_name ON ens_names (name);
-CREATE INDEX IF NOT EXISTS idx_ens_names_valid_name ON ens_names (name, valid_to);
-CREATE INDEX IF NOT EXISTS idx_ens_names_address ON ens_names (address);
-CREATE TABLE IF NOT EXISTS
-    ens_addresses (
-        address bytea NOT NULL,
-        name_hash bytea,
-        PRIMARY KEY (address)
-    );
-CREATE INDEX IF NOT EXISTS idx_ens_addresses_name_hash ON ens_addresses (name_hash);
+CREATE INDEX IF NOT EXISTS idx_ens_name ON ens (ens_name);
+CREATE INDEX IF NOT EXISTS idx_ens_valid_name ON ens (ens_name, valid_to);
+CREATE INDEX IF NOT EXISTS idx_ens_valid_address_primary ON ens (address, valid_to, is_primary_name);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 SELECT 'down SQL query - remove ens lookup tables';
-DROP INDEX IF EXISTS idx_ens_addresses_name_hash
-DROP TABLE IF EXISTS ens_addresses CASCADE;
-DROP INDEX IF EXISTS idx_ens_names_name
-DROP INDEX IF EXISTS idx_ens_names_valid_name
-DROP INDEX IF EXISTS idx_ens_names_address
-DROP TABLE IF EXISTS ens_names CASCADE;
+DROP INDEX IF EXISTS idx_ens_name;
+DROP INDEX IF EXISTS idx_ens_valid_name;
+DROP INDEX IF EXISTS idx_ens_valid_address_primary;
+DROP TABLE IF EXISTS ens CASCADE;
 -- +goose StatementEnd
