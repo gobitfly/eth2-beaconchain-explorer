@@ -1271,3 +1271,29 @@ func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.Val
 	}
 	return *stats
 }
+
+func RemoveAllBrackets(input string) string {
+	openCount := 0
+	result := ""
+	for {
+		if len(input) == 0 {
+			break
+		}
+		openIndex := strings.Index(input, "(")
+		closeIndex := strings.Index(input, ")")
+		if openIndex == -1 && closeIndex == -1 {
+			result += input
+			break
+		} else if openIndex != -1 && openIndex < closeIndex {
+			openCount++
+			if openCount == 1 {
+				result += input[:openIndex]
+			}
+			input = input[openIndex+1:]
+		} else {
+			openCount--
+			input = input[closeIndex+1:]
+		}
+	}
+	return result
+}
