@@ -1284,7 +1284,7 @@ func RemoveAllBrackets(input string) string {
 		if openIndex == -1 && closeIndex == -1 {
 			result += input
 			break
-		} else if openIndex != -1 && openIndex < closeIndex {
+		} else if openIndex != -1 && (openIndex < closeIndex || closeIndex == -1) {
 			openCount++
 			if openCount == 1 {
 				result += input[:openIndex]
