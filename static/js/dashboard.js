@@ -38,6 +38,7 @@ var incomeChartDefault = document.getElementById("balance-chart").innerHTML
 var proposedChart = null
 var proposedChartDefault = document.getElementById("proposed-chart").innerHTML
 var summaryDefaultValue = "0.000"
+var countdownIntervals = new Map()
 var VALLIMIT = 280
 
 function hideValidatorHist() {
@@ -317,6 +318,88 @@ function switchFrom(el1, el2, el3, el4) {
 
 var firstSwitch = true
 
+function initValidatorCountdown(validatorIndex, queueId, ts) {
+  var now = Math.round(new Date().getTime() / 1000)
+  var secondsLeft = ts - now
+  var seconds = secondsLeft % 60
+  var min = ((secondsLeft - seconds) / 60) % 60
+  var hour = Math.round((secondsLeft - seconds - min * 60) / 3600) % 24
+  var days = Math.round((secondsLeft - seconds - min * 60 - hour * 60 * 60) / 86400)
+  setValidatorCountdown(validatorIndex, queueId, days, hour, min, seconds)
+
+  if (!countdownIntervals.has(validatorIndex)) {
+    countdownIntervals.set(
+      validatorIndex,
+      setInterval(function () {
+        if (hour <= 0 && min <= 0 && seconds <= 0 && days <= 0) {
+          clearInterval(countdownIntervals.get(validatorIndex))
+          return
+        }
+
+        if (seconds === 0 && min === 0 && hour === 0 && days > 0) {
+          hour = 24
+          days -= 1
+        }
+
+        if (seconds === 0 && min === 0 && hour > 0) {
+          min = 60
+          hour -= 1
+        }
+
+        if (seconds === 0 && min > 0) {
+          seconds = 60
+          min -= 1
+        }
+
+        seconds -= 1
+
+        setValidatorCountdown(validatorIndex, queueId, days, hour, min, seconds)
+      }, 1000)
+    )
+  }
+}
+
+function setValidatorCountdown(validatorIndex, queueId, days, hour, min, second) {
+  if (second < 0) {
+    days = 0
+    hour = 0
+    min = 0
+    second = 0
+  }
+
+  if (second < 10) {
+    second = "0" + second
+  }
+  if (min < 10) {
+    min = "0" + min
+  }
+  if (hour < 10) {
+    hour = "0" + hour
+  }
+  if (days < 10) {
+    days = "0" + days
+  }
+
+  var $element = $("#queue-" + validatorIndex)
+
+  var tooltip = `
+    <div>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined">#${queueId}</span> in Queue.</div>
+    <strong>${days} days ${hour} hr ${min} min ${second} sec</strong>`
+
+  $element.attr("data-original-title", tooltip)
+
+  if ($element.data("hover")) {
+    $element.tooltip("show")
+  }
+}
+
+function removeValidatorCountdown(validatorIndex) {
+  if (countdownIntervals.has(validatorIndex)) {
+    clearInterval(countdownIntervals.get(validatorIndex))
+    countdownIntervals.delete(validatorIndex)
+  }
+}
+
 $(document).ready(function () {
   $("#rewards-button").on("click", () => {
     localStorage.setItem("load_dashboard_validators", true)
@@ -392,6 +475,14 @@ $(document).ready(function () {
       })
   })
 
+  $(document).on("mouseenter", ".hoverCheck[data-track=hover]", function () {
+    $(this).data("hover", true)
+  })
+
+  $(document).on("mouseleave", ".hoverCheck[data-track=hover]", function () {
+    $(this).data("hover", false)
+  })
+
   var clearSearch = $("#clear-search")
   //'<i class="fa fa-copy"></i>'
   var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
@@ -420,7 +511,6 @@ $(document).ready(function () {
     pageLength: 10,
     pagingType: "full_numbers",
     scrollY: "503px",
-    scrollCollapse: true,
     info: false,
     language: {
       search: "",
@@ -487,8 +577,13 @@ $(document).ready(function () {
         data: "3",
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data ? data[0] : -1
-          var d = data.split("_")
+          var d = data[1].split("_")
           var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
+
+          if (d[0] === "pending" && d[1] !== "deposited") {
+            initValidatorCountdown(data[0], data[2], data[3])
+            return `<span class="hoverCheck" data-track='hover' id="queue-${data[0]}" data-html="true" data-toggle="tooltip" data-placement="top">${s} (#<span>${data[2]}</span>)</span>`
+          }
           if (d[1] === "offline") return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
           if (d[1] === "online") return `<span style="display:none">${d[1]}</span><span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
           return `<span>${s}</span>`
@@ -973,6 +1068,7 @@ $(document).ready(function () {
           window.location = "/dashboard"
           return
         } else {
+          removeValidatorCountdown(parseInt(index))
           renderSelectedValidators()
           updateState()
         }
