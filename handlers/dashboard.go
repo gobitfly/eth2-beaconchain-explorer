@@ -809,20 +809,25 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			indexInfo = "Pending"
 		}
 		var queueAhead uint64
-		var estimatedDequeueTs time.Time
+		var estimatedActivationTs time.Time
 		if v.State == "pending" {
-			queueAhead, err = db.GetQueueAheadOfValidator(v.ValidatorIndex)
-			if err != nil {
-				logger.WithError(err).Errorf("failed to retrieve queue ahead of validator %v for dashboard", v.ValidatorIndex)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
+			if v.ActivationEpoch > 100_000_000 {
+				queueAhead, err = db.GetQueueAheadOfValidator(v.ValidatorIndex)
+				if err != nil {
+					logger.WithError(err).Errorf("failed to retrieve queue ahead of validator %v for dashboard", v.ValidatorIndex)
+					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+					return
+				}
+				epochsToWait := queueAhead / *churnRate
+				// calculate dequeue epoch
+				estimatedActivationEpoch := latestEpoch + epochsToWait + 1
+				// add activation offset
+				estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
+				estimatedActivationTs = utils.EpochToTime(estimatedActivationEpoch)
+			} else {
+				queueAhead = 0
+				estimatedActivationTs = utils.EpochToTime(v.ActivationEpoch)
 			}
-			epochsToWait := queueAhead / *churnRate
-			// calculate dequeue epoch
-			estimatedActivationEpoch := latestEpoch + epochsToWait + 1
-			// add activation offset
-			estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
-			estimatedDequeueTs = utils.EpochToTime(estimatedActivationEpoch)
 		}
 
 		tableData[i] = []interface{}{
@@ -836,7 +841,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				v.ValidatorIndex,
 				v.State,
 				queueAhead + 1,
-				estimatedDequeueTs.Unix()},
+				estimatedActivationTs.Unix()},
 		}
 
 		if v.ActivationEpoch != math.MaxInt64 {
