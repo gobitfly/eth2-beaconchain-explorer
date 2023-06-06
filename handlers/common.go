@@ -502,12 +502,15 @@ func GetCurrencySymbol(r *http.Request) string {
 func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
+		fmt.Printf("DEBUG: GetCurrentPrice: error: %v, using maincurr-usd\n", err)
 		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 	}
 
 	if cookie.Value == utils.Config.Frontend.MainCurrencySymbol {
+		fmt.Printf("DEBUG: GetCurrentPrice: value is maincurr, using maincurrency-usd %v\n", price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 	}
+	fmt.Printf("DEBUG: GetCurrentPrice: %v %v, %v\n", utils.Config.Frontend.MainCurrencySymbol, cookie.Value, price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
 	return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
 }
 

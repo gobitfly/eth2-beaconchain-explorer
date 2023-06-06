@@ -153,6 +153,9 @@ type LatestState struct {
 	JpyTruncPrice         template.HTML `json:"jpyTruncPrice"`
 	Currency              string        `json:"currency"`
 
+	TickerCurrency string  `json:"selectedCurrency"`
+	TickerPrice    float64 `json:"tickerPrice"`
+
 	ClPrice      float64 `json:"clPrice"`
 	ClRoundPrice float64 `json:"clRoundPrice"`
 	ClTruncPrice float64 `json:"clTruncPrice"`
