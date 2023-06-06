@@ -1708,7 +1708,7 @@ type Eth1TxData struct {
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
 	CurrentEtherPrice           template.HTML
-	HistoricEtherPrice          template.HTML
+	HistoricalEtherPrice        template.HTML
 }
 
 type Eth1EventData struct {
