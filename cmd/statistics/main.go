@@ -34,7 +34,7 @@ func main() {
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
 	statisticsValidatorToggle := flag.Bool("validators.enabled", false, "Toggle exporting validator statistics")
-	statisticsResetColumns := flag.String("validators.reset", "", "validator_stats_status coulumns to reset. Komma separated. Use 'all' for complete resync.")
+	statisticsResetColumns := flag.String("validators.reset", "", "validator_stats_status columns to reset. Comma separated. Use 'all' for complete resync.")
 	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
 
 	flag.Parse()

@@ -1103,6 +1103,12 @@ func EpochsPerDay() uint64 {
 	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
 }
 
+func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
+	firstEpoch := day * EpochsPerDay()
+	lastEpoch := firstEpoch + EpochsPerDay() - 1
+	return firstEpoch, lastEpoch
+}
+
 // ForkVersionAtEpoch returns the forkversion active a specific epoch
 func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 	if epoch >= Config.Chain.Config.CappellaForkEpoch {

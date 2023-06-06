@@ -10,6 +10,7 @@ ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS el_rewards_exported 
 ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS total_performance_exported BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE validator_stats_status ADD COLUMN IF NOT EXISTS block_stats_exported BOOLEAN NOT NULL DEFAULT FALSE;
 
+SELECT 'setting new validator_stats_status columns to true for already exported days'; 
 UPDATE validator_stats_status
 SET 
     failed_attestations_exported = true, 
@@ -20,7 +21,10 @@ SET
     el_rewards_exported = true, 
     total_performance_exported = true, 
     block_stats_exported = true
-WHERE status=true AND income_exported = true;
+WHERE status=true;
+
+SELECT 'dropping unused income_exported column'; 
+ALTER TABLE validator_stats_status DROP COLUMN IF EXISTS income_exported;
 -- +goose StatementEnd
 
 -- +goose Down

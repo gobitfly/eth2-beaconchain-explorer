@@ -491,22 +491,6 @@ func CountFinalizedEpochs(startEpoch uint64, endEpoch uint64) (uint64, error) {
 	return count, nil
 }
 
-func CheckIfDayIsFinalized(day uint64) error {
-	epochsPerDay := utils.EpochsPerDay()
-	firstEpoch := day * epochsPerDay
-	lastEpoch := firstEpoch + epochsPerDay - 1
-
-	finalizedCount, err := CountFinalizedEpochs(firstEpoch, lastEpoch)
-	if err != nil {
-		return err
-	}
-
-	if finalizedCount < epochsPerDay {
-		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
-	}
-	return nil
-}
-
 // GetLastPendingAndProposedBlocks will return all proposed and pending blocks (ignores missed slots) from the database
 func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock

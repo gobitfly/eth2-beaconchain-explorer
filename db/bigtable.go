@@ -1176,7 +1176,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	resultContainer := ResultContainer{}
 	resultContainer.res = make(map[uint64]*types.ValidatorBalanceStatistic)
 	g := errgroup.Group{}
-	batchSize := uint64(45) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
+	batchSize := (endEpoch - startEpoch) / 5 // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
 		toEpoch := fromEpoch + batchSize - 1
@@ -1627,7 +1627,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 	}
 
 	g := errgroup.Group{}
-	batchSize := uint64(45) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
+	batchSize := (endEpoch - startEpoch) / 5 // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
 		toEpoch := fromEpoch + batchSize - 1
