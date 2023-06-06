@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -3450,8 +3449,7 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 				sig, err := bigtable.GetSignature(method, types.MethodSignature)
 				if err == nil {
 					if sig != nil {
-						reg := regexp.MustCompile(`\((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)`)
-						method = reg.ReplaceAllString(*sig, "")
+						method = utils.RemoveRoundBracketsIncludingContent(*sig)
 					}
 					cache.TieredCache.Set(cacheKey, method, time.Hour)
 				}
