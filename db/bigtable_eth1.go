@@ -3449,7 +3449,7 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 				sig, err := bigtable.GetSignature(method, types.MethodSignature)
 				if err == nil {
 					if sig != nil {
-						method = utils.RemoveAllBrackets(*sig)
+						method = utils.RemoveRoundBracketsIncludingContent(*sig)
 					}
 					cache.TieredCache.Set(cacheKey, method, time.Hour)
 				}

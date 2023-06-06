@@ -1272,7 +1272,8 @@ func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.Val
 	return *stats
 }
 
-func RemoveAllBrackets(input string) string {
+// To remove all round brackets (including its content) from a string
+func RemoveRoundBracketsIncludingContent(input string) string {
 	openCount := 0
 	result := ""
 	for {
@@ -1282,7 +1283,9 @@ func RemoveAllBrackets(input string) string {
 		openIndex := strings.Index(input, "(")
 		closeIndex := strings.Index(input, ")")
 		if openIndex == -1 && closeIndex == -1 {
-			result += input
+			if openCount == 0 {
+				result += input
+			}
 			break
 		} else if openIndex != -1 && (openIndex < closeIndex || closeIndex == -1) {
 			openCount++
@@ -1291,7 +1294,11 @@ func RemoveAllBrackets(input string) string {
 			}
 			input = input[openIndex+1:]
 		} else {
-			openCount--
+			if openCount > 0 {
+				openCount--
+			} else if openIndex == -1 && len(result) == 0 {
+				result += input[:closeIndex]
+			}
 			input = input[closeIndex+1:]
 		}
 	}
