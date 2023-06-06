@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"math/big"
 	"net/http"
 	"net/url"
 	"sort"
@@ -36,8 +37,6 @@ import (
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
-
-	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
 // @title beaconcha.in Ethereum API Documentation
@@ -1721,22 +1720,37 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type responseType struct {
-		Income         *itypes.ValidatorEpochIncome `json:"income"`
-		Epoch          uint64                       `json:"epoch"`
-		ValidatorIndex uint64                       `json:"validatorindex"`
-		Week           uint64                       `json:"week"`
-		WeekStart      time.Time                    `json:"week_start"`
-		WeekEnd        time.Time                    `json:"week_end"`
-	}
-	responseData := make([]*responseType, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorIncomeHistoryResponse, 0, len(history)*101)
 
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, epochs := range history {
 		for epoch, income := range epochs {
 			epochAtStartOfTheWeek := (epoch / epochsPerWeek) * epochsPerWeek
-			responseData = append(responseData, &responseType{
-				Income:         income,
+
+			txFeeRewardWei := ""
+			if len(income.TxFeeRewardWei) > 0 {
+				txFeeRewardWei = new(big.Int).SetBytes(income.TxFeeRewardWei).String()
+			}
+
+			responseIncome := &types.ApiValidatorIncomeHistory{
+				AttestationSourceReward:            income.AttestationSourceReward,
+				AttestationSourcePenalty:           income.AttestationSourcePenalty,
+				AttestationTargetReward:            income.AttestationTargetReward,
+				AttestationTargetPenalty:           income.AttestationTargetPenalty,
+				AttestationHeadReward:              income.AttestationHeadReward,
+				FinalityDelayPenalty:               income.FinalityDelayPenalty,
+				ProposerSlashingInclusionReward:    income.ProposerSlashingInclusionReward,
+				ProposerAttestationInclusionReward: income.ProposerAttestationInclusionReward,
+				ProposerSyncInclusionReward:        income.ProposerSyncInclusionReward,
+				SyncCommitteeReward:                income.SyncCommitteeReward,
+				SyncCommitteePenalty:               income.SyncCommitteePenalty,
+				SlashingReward:                     income.SlashingReward,
+				SlashingPenalty:                    income.SlashingPenalty,
+				TxFeeRewardWei:                     txFeeRewardWei,
+				ProposalsMissed:                    income.ProposalsMissed}
+
+			responseData = append(responseData, &types.ApiValidatorIncomeHistoryResponse{
+				Income:         responseIncome,
 				Epoch:          epoch,
 				ValidatorIndex: validatorIndex,
 				Week:           epoch / epochsPerWeek,
