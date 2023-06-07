@@ -543,24 +543,26 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	g.Go(func() error {
-		if validatorPageData.ActivationEpoch > 100_000_000 {
-			queueAhead, err := db.GetQueueAheadOfValidator(validatorPageData.Index)
-			if err != nil {
-				return fmt.Errorf("failed to retrieve queue ahead of validator %v: %v", validatorPageData.ValidatorIndex, err)
+	if false { // disable GetQueueAheadOfValidator for now, until the performance-issue is fixed
+		g.Go(func() error {
+			if validatorPageData.ActivationEpoch > 100_000_000 {
+				queueAhead, err := db.GetQueueAheadOfValidator(validatorPageData.Index)
+				if err != nil {
+					return fmt.Errorf("failed to retrieve queue ahead of validator %v: %v", validatorPageData.ValidatorIndex, err)
+				}
+				validatorPageData.QueuePosition = queueAhead + 1
+				epochsToWait := queueAhead / *churnRate
+				// calculate dequeue epoch
+				estimatedActivationEpoch := validatorPageData.Epoch + epochsToWait + 1
+				// add activation offset
+				estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
+				validatorPageData.EstimatedActivationEpoch = estimatedActivationEpoch
+				estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
+				validatorPageData.EstimatedActivationTs = estimatedDequeueTs
 			}
-			validatorPageData.QueuePosition = queueAhead + 1
-			epochsToWait := queueAhead / *churnRate
-			// calculate dequeue epoch
-			estimatedActivationEpoch := validatorPageData.Epoch + epochsToWait + 1
-			// add activation offset
-			estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
-			validatorPageData.EstimatedActivationEpoch = estimatedActivationEpoch
-			estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
-			validatorPageData.EstimatedActivationTs = estimatedDequeueTs
-		}
-		return nil
-	})
+			return nil
+		})
+	}
 
 	g.Go(func() error {
 		if validatorPageData.AttestationsCount > 0 {
