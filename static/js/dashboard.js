@@ -321,60 +321,43 @@ var firstSwitch = true
 function initValidatorCountdown(validatorIndex, queueId, ts) {
   var now = Math.round(new Date().getTime() / 1000)
   var secondsLeft = ts - now
-  var seconds = secondsLeft % 60
-  var min = ((secondsLeft - seconds) / 60) % 60
-  var hour = Math.round((secondsLeft - seconds - min * 60) / 3600) % 24
-  var days = Math.round((secondsLeft - seconds - min * 60 - hour * 60 * 60) / 86400)
-  setValidatorCountdown(validatorIndex, queueId, days, hour, min, seconds)
+  setValidatorCountdown(validatorIndex, queueId, secondsLeft)
 
   if (!countdownIntervals.has(validatorIndex)) {
     countdownIntervals.set(
       validatorIndex,
       setInterval(function () {
-        if (hour <= 0 && min <= 0 && seconds <= 0 && days <= 0) {
+        if (secondsLeft <= 0) {
           clearInterval(countdownIntervals.get(validatorIndex))
           return
         }
 
-        if (seconds === 0 && min === 0 && hour === 0 && days > 0) {
-          hour = 24
-          days -= 1
-        }
-
-        if (seconds === 0 && min === 0 && hour > 0) {
-          min = 60
-          hour -= 1
-        }
-
-        if (seconds === 0 && min > 0) {
-          seconds = 60
-          min -= 1
-        }
-
-        seconds -= 1
-
-        setValidatorCountdown(validatorIndex, queueId, days, hour, min, seconds)
+        secondsLeft -= 1
+        setValidatorCountdown(validatorIndex, queueId, secondsLeft)
       }, 1000)
     )
   }
 }
 
-function setValidatorCountdown(validatorIndex, queueId, days, hour, min, second) {
-  if (second < 0) {
-    days = 0
-    hour = 0
-    min = 0
-    second = 0
+function setValidatorCountdown(validatorIndex, queueId, secondsLeft) {
+  let [seconds, minutes, hours, days] = [0, 0, 0, 0]
+  if (secondsLeft > 0) {
+    const duration = luxon.Duration.fromMillis(secondsLeft * 1000).shiftTo("days", "hours", "minutes", "seconds")
+
+    seconds = duration.seconds
+    minutes = duration.minutes
+    hours = duration.hours
+    days = duration.days
   }
 
-  if (second < 10) {
-    second = "0" + second
+  if (seconds < 10) {
+    seconds = "0" + seconds
   }
-  if (min < 10) {
-    min = "0" + min
+  if (minutes < 10) {
+    minutes = "0" + minutes
   }
-  if (hour < 10) {
-    hour = "0" + hour
+  if (hours < 10) {
+    hours = "0" + hours
   }
   if (days < 10) {
     days = "0" + days
@@ -384,7 +367,7 @@ function setValidatorCountdown(validatorIndex, queueId, days, hour, min, second)
 
   var tooltip = `
     <div>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined">#${queueId}</span> in Queue.</div>
-    <strong>${days} days ${hour} hr ${min} min ${second} sec</strong>`
+    <strong>${days} days ${hours} hr ${minutes} min ${seconds} sec</strong>`
 
   $element.attr("data-original-title", tooltip)
 
