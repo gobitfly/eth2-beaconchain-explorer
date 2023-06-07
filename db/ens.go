@@ -335,6 +335,8 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		batch := keys[i:to]
 		logger.Infof("Batching ENS entries %v:%v of %v", i, to, total)
 		g := new(errgroup.Group)
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
 		for _, k := range batch {
 			key := k
 			var name string
@@ -371,8 +373,6 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 			}
 
 			mutsDelete.Keys = append(mutsDelete.Keys, key)
-			mutDelete := gcp_bigtable.NewMutation()
-			mutDelete.DeleteRow()
 			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 
 			g.Go(func() error {
@@ -425,7 +425,10 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 			return nil
 		}
 		logger.Infof("Address [%x] has a new main name from %x to: %v", address, *currentName, name)
-		validateEnsName(client, *currentName, alreadyChecked, &isPrimary)
+		err := validateEnsName(client, *currentName, alreadyChecked, &isPrimary)
+		if err != nil {
+			return err
+		}
 	}
 	isPrimary = true
 	logger.Infof("Address [%x] has a primary name: %v", address, name)
@@ -454,17 +457,17 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error resolving name: %v", name), 0)
-		return removeEnsName(client, name, alreadyChecked)
+		return removeEnsName(client, name)
 	}
 	ensName, err := go_ens.NewName(client, name)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error getting create ens name: %v", name), 0)
-		return removeEnsName(client, name, alreadyChecked)
+		return removeEnsName(client, name)
 	}
 	expires, err := ensName.Expires()
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error get ens expire date: %v", name), 0)
-		return removeEnsName(client, name, alreadyChecked)
+		return removeEnsName(client, name)
 	}
 	isPrimary := false
 	if isPrimaryName == nil {
@@ -511,7 +514,7 @@ func removeEnsAddress(client *ethclient.Client, address common.Address, alreadyC
 	return validateEnsName(client, *name, alreadyChecked, &isPrimary)
 }
 
-func removeEnsName(client *ethclient.Client, name string, alreadyChecked *EnsCheckedDictionary) error {
+func removeEnsName(client *ethclient.Client, name string) error {
 	_, err := WriterDb.Exec(`
 	DELETE FROM ens 
 	WHERE 

@@ -684,7 +684,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	batchSize := int64(1000)
 	for i := start; i <= end; i += batchSize {
 		firstBlock := int64(i)
-		lastBlock := firstBlock + batchSize - 1
+		lastBlock := firstBlock + batchSize
 		if lastBlock > end {
 			lastBlock = end
 		}
@@ -693,7 +693,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 			blocksChan := make(chan *types.Eth1Block, batchSize)
 			go func(stream chan *types.Eth1Block) {
 				logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
-				for b := int64(lastBlock) - 1; b > int64(firstBlock); b -= batchSize {
+				for b := int64(lastBlock); b >= int64(firstBlock); b -= batchSize {
 					high := b
 					low := b - batchSize
 					if int64(firstBlock) > low {
@@ -708,10 +708,10 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 				}
 				close(stream)
 			}(blocksChan)
-			g := new(errgroup.Group)
+			subG := new(errgroup.Group)
 			for b := range blocksChan {
 				block := b
-				g.Go(func() error {
+				subG.Go(func() error {
 
 					bulkMutsData := types.BulkMutations{}
 					bulkMutsMetadataUpdate := types.BulkMutations{}
@@ -752,7 +752,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 					return nil
 				})
 			}
-			return g.Wait()
+			return subG.Wait()
 		})
 
 	}
