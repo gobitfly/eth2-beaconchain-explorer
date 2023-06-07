@@ -635,13 +635,13 @@ func WriteValidatorClIcome(day uint64) error {
 		on conflict (validatorindex, day) do update set cl_proposer_rewards_gwei = excluded.cl_proposer_rewards_gwei;`,
 			strings.Join(valueStrings, ","))
 		tx, err := WriterDb.Beginx()
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
 		txList = append(txList, tx)
 
 		g.Go(func() error {
-			if err != nil {
-				return err
-			}
-			defer tx.Rollback()
 			_, err = tx.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err

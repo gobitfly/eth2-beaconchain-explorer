@@ -15,6 +15,7 @@ import (
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"github.com/go-redis/redis/v8"
 	itypes "github.com/gobitfly/eth-rewards/types"
+	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/proto"
@@ -1176,7 +1177,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	resultContainer := ResultContainer{}
 	resultContainer.res = make(map[uint64]*types.ValidatorBalanceStatistic)
 	g := errgroup.Group{}
-	batchSize := (endEpoch - startEpoch) / 5 // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
+	batchSize := utilMath.MaxU64(5, (endEpoch-startEpoch)/5) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
 		toEpoch := fromEpoch + batchSize - 1
@@ -1627,7 +1628,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 	}
 
 	g := errgroup.Group{}
-	batchSize := (endEpoch - startEpoch) / 5 // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
+	batchSize := utilMath.MaxU64(5, (endEpoch-startEpoch)/5) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
 		toEpoch := fromEpoch + batchSize - 1
