@@ -361,7 +361,7 @@ func FormatTransactionType(txnType uint8) string {
 
 // FormatCurrentBalance will return the current balance formated as string with 9 digits after the comma (1 gwei = 1e9 eth)
 func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
-	return template.HTML(exchangeAndTrim(currency, int64(balanceInt), false))
+	return template.HTML(fmt.Sprintf(`%s %v`, exchangeAndTrim(currency, int64(balanceInt), false), currency))
 }
 
 // FormatDepositAmount will return the deposit amount formated as string
