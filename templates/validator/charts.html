@@ -216,10 +216,7 @@
                             opposite: false,
                             labels: {
                                 formatter: function() {
-                                    if (currency !== "ETH") {
-                                          return this.value.toFixed(2)
-                                    }
-                                    return this.value.toFixed(5)
+                                    return currency === "ETH" ? trimToken(this.value) : trimCurrency(this.value)
                                 },
                             }
                         }],

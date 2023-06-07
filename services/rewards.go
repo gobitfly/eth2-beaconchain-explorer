@@ -44,7 +44,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		lowerBound++
 	}
 
-	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound, upperBound)
+	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound, upperBound, LatestFinalizedEpoch())
 	if err != nil {
 		logger.Errorf("error getting income history for validator hist: %v", err)
 	}
