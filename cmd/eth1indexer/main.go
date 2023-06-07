@@ -655,8 +655,8 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 }
 
 func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concurrency int64) error {
-
-	g := new(errgroup.Group)
+	ctx := context.Background()
+	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(int(concurrency))
 
 	startTs := time.Now()
@@ -668,6 +668,12 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 
 		i := i
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil // halt once processing of a block failed
+			default:
+			}
+
 			blockStartTs := time.Now()
 			bc, timings, err := client.GetBlock(i)
 			if err != nil {
@@ -703,7 +709,8 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 }
 
 func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
-	g := new(errgroup.Group)
+	ctx := context.Background()
+	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(int(concurrency))
 
 	startTs := time.Now()
@@ -715,6 +722,11 @@ func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk 
 	for i := start; i <= end; i++ {
 		i := i
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil // halt once processing of a block failed
+			default:
+			}
 
 			block, err := bt.GetBlockFromBlocksTable(uint64(i))
 			if err != nil {
