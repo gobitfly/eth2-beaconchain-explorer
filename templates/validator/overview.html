@@ -111,16 +111,12 @@
         <div class="p-2 mx-auto" style="max-width: 50rem;">
           <!-- #TODO BIDS-2191 -->
           This validator has been processed by the beacon chain and is currently waiting to be activated.
-          Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
         </div>
         {{ if gt .QueuePosition 0 }}
           <div class="d-flex justify-content-center">
             <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">#{{ .QueuePosition }}</span> in Queue.</p>
           </div>
         {{ end }}
-        <div class="my-4" style="min-width:300px;">
-          {{ template "validatorCountdown" . }}
-        </div>
       </div>
     </div>
   </div>
