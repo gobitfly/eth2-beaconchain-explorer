@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
@@ -204,138 +203,147 @@ func WriteValidatorTotalPerformance(day uint64) error {
 	}
 	logger.Infof("validating completed, took %v", time.Since(start))
 
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
 	start = time.Now()
 
 	logger.Infof("exporting total income stats")
-	_, err = tx.Exec(`
-	INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, cl_proposer_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
-		SELECT 
-			vs1.validatorindex, 
-			vs1.day, 
-			COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
-			COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0) AS cl_proposer_rewards_gwei_total_new, 
-			COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
-			COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
-		FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1
-	) ON CONFLICT (validatorindex, day) DO UPDATE SET 
-		cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
-		cl_proposer_rewards_gwei_total = excluded.cl_proposer_rewards_gwei_total,
-		el_rewards_wei_total = excluded.el_rewards_wei_total,
-		mev_rewards_wei_total = excluded.mev_rewards_wei_total;
-	`, day)
+	maxValidatorIndex, err := GetTotalValidatorsCount()
 	if err != nil {
 		return err
 	}
-	logger.Infof("export completed, took %v", time.Since(start))
+	g := errgroup.Group{}
+	batchSize := 1000
+	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+		start := b
+		end := b + batchSize
+		if int(maxValidatorIndex) < end {
+			end = int(maxValidatorIndex)
+		}
+		g.Go(func() error {
+			_, err = WriterDb.Exec(`
+				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, cl_proposer_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
+					SELECT 
+						vs1.validatorindex, 
+						vs1.day, 
+						COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
+						COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0) AS cl_proposer_rewards_gwei_total_new, 
+						COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
+						COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
+					FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex < $3
+				) ON CONFLICT (validatorindex, day) DO UPDATE SET 
+					cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
+					cl_proposer_rewards_gwei_total = excluded.cl_proposer_rewards_gwei_total,
+					el_rewards_wei_total = excluded.el_rewards_wei_total,
+					mev_rewards_wei_total = excluded.mev_rewards_wei_total;
+				`, day, start, end)
+			if err != nil {
+				return err
+			}
 
-	start = time.Now()
+			_, err = WriterDb.Exec(`insert into validator_performance (
+				validatorindex,
+				balance,
+				performance1d,
+				performance7d,
+				performance31d,
+				performance365d,
 
-	logger.Infof("populate validator_performance table")
-	_, err = tx.Exec(`insert into validator_performance (
-		validatorindex,
-		balance,
-		performance1d,
-		performance7d,
-		performance31d,
-		performance365d,
+				rank7d,
 
-		rank7d,
+				cl_performance_1d,
+				cl_performance_7d,
+				cl_performance_31d,
+				cl_performance_365d,
+				cl_performance_total,
+				cl_proposer_performance_total,
 
-		cl_performance_1d,
-		cl_performance_7d,
-		cl_performance_31d,
-		cl_performance_365d,
-		cl_performance_total,
-		cl_proposer_performance_total,
+				el_performance_1d,
+				el_performance_7d,
+				el_performance_31d,
+				el_performance_365d,
+				el_performance_total,
 
-		el_performance_1d,
-		el_performance_7d,
-		el_performance_31d,
-		el_performance_365d,
-		el_performance_total,
+				mev_performance_1d,
+				mev_performance_7d,
+				mev_performance_31d,
+				mev_performance_365d,
+				mev_performance_total
+				) (
+					select 
+					vs_now.validatorindex, 
+						COALESCE(vs_now.end_balance, 0) as balance, 
+						0 as performance1d, 
+						0 as performance7d, 
+						0 as performance31d, 
+						0 as performance365d, 
+						0 as rank7d,
 
-		mev_performance_1d,
-		mev_performance_7d,
-		mev_performance_31d,
-		mev_performance_365d,
-		mev_performance_total
-		) (
-			select 
-			vs_now.validatorindex, 
-				COALESCE(vs_now.end_balance, 0) as balance, 
-				0 as performance1d, 
-				0 as performance7d, 
-				0 as performance31d, 
-				0 as performance365d, 
-				0 as rank7d,
+						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
+						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
+						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
+						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
+						coalesce(vs_now.cl_rewards_gwei_total, 0) as cl_performance_total, 
+						coalesce(vs_now.cl_proposer_rewards_gwei_total, 0) as cl_proposer_performance_total, 
+						
+						coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
+						coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
+						coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_31d.el_rewards_wei_total, 0) as el_performance_31d, 
+						coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_365d.el_rewards_wei_total, 0) as el_performance_365d,
+						coalesce(vs_now.el_rewards_wei_total, 0) as el_performance_total, 
+						
+						coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_1d.mev_rewards_wei_total, 0) as mev_performance_1d, 
+						coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_7d.mev_rewards_wei_total, 0) as mev_performance_7d, 
+						coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
+						coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
+						coalesce(vs_now.mev_rewards_wei_total, 0) as mev_performance_total
+					from validator_stats vs_now
+					left join validator_stats vs_1d on vs_1d.validatorindex = vs_now.validatorindex and vs_1d.day = $2
+					left join validator_stats vs_7d on vs_7d.validatorindex = vs_now.validatorindex and vs_7d.day = $3
+					left join validator_stats vs_31d on vs_31d.validatorindex = vs_now.validatorindex and vs_31d.day = $4
+					left join validator_stats vs_365d on vs_365d.validatorindex = vs_now.validatorindex and vs_365d.day = $5
+					where vs_now.day = $1 AND vs_now.validatorindex >= $6 AND vs_now.validatorindex < $7
+				) 
+				on conflict (validatorindex) do update set 
+					balance = excluded.balance, 
+					performance1d=excluded.performance1d,
+					performance7d=excluded.performance7d,
+					performance31d=excluded.performance31d,
+					performance365d=excluded.performance365d,
 
-				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
-				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_7d.cl_rewards_gwei_total, 0) as cl_performance_7d, 
-				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
-				coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
-				coalesce(vs_now.cl_rewards_gwei_total, 0) as cl_performance_total, 
-				coalesce(vs_now.cl_proposer_rewards_gwei_total, 0) as cl_proposer_performance_total, 
-				
-				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
-				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
-				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_31d.el_rewards_wei_total, 0) as el_performance_31d, 
-				coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_365d.el_rewards_wei_total, 0) as el_performance_365d,
-				coalesce(vs_now.el_rewards_wei_total, 0) as el_performance_total, 
-				
-				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_1d.mev_rewards_wei_total, 0) as mev_performance_1d, 
-				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_7d.mev_rewards_wei_total, 0) as mev_performance_7d, 
-				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_31d.mev_rewards_wei_total, 0) as mev_performance_31d, 
-				coalesce(vs_now.mev_rewards_wei_total, 0) - coalesce(vs_365d.mev_rewards_wei_total, 0) as mev_performance_365d,
-				coalesce(vs_now.mev_rewards_wei_total, 0) as mev_performance_total
-			from validator_stats vs_now
-			left join validator_stats vs_1d on vs_1d.validatorindex = vs_now.validatorindex and vs_1d.day = $2
-			left join validator_stats vs_7d on vs_7d.validatorindex = vs_now.validatorindex and vs_7d.day = $3
-			left join validator_stats vs_31d on vs_31d.validatorindex = vs_now.validatorindex and vs_31d.day = $4
-			left join validator_stats vs_365d on vs_365d.validatorindex = vs_now.validatorindex and vs_365d.day = $5
-			where vs_now.day = $1
-		) 
-		on conflict (validatorindex) do update set 
-			balance = excluded.balance, 
-			performance1d=excluded.performance1d,
-			performance7d=excluded.performance7d,
-			performance31d=excluded.performance31d,
-			performance365d=excluded.performance365d,
+					rank7d=excluded.rank7d,
 
-			rank7d=excluded.rank7d,
+					cl_performance_1d=excluded.cl_performance_1d,
+					cl_performance_7d=excluded.cl_performance_7d,
+					cl_performance_31d=excluded.cl_performance_31d,
+					cl_performance_365d=excluded.cl_performance_365d,
+					cl_performance_total=excluded.cl_performance_total,
+					cl_proposer_performance_total=excluded.cl_proposer_performance_total,
 
-			cl_performance_1d=excluded.cl_performance_1d,
-			cl_performance_7d=excluded.cl_performance_7d,
-			cl_performance_31d=excluded.cl_performance_31d,
-			cl_performance_365d=excluded.cl_performance_365d,
-			cl_performance_total=excluded.cl_performance_total,
-			cl_proposer_performance_total=excluded.cl_proposer_performance_total,
+					el_performance_1d=excluded.el_performance_1d,
+					el_performance_7d=excluded.el_performance_7d,
+					el_performance_31d=excluded.el_performance_31d,
+					el_performance_365d=excluded.el_performance_365d,
+					el_performance_total=excluded.el_performance_total,
 
-			el_performance_1d=excluded.el_performance_1d,
-			el_performance_7d=excluded.el_performance_7d,
-			el_performance_31d=excluded.el_performance_31d,
-			el_performance_365d=excluded.el_performance_365d,
-			el_performance_total=excluded.el_performance_total,
+					mev_performance_1d=excluded.mev_performance_1d,
+					mev_performance_7d=excluded.mev_performance_7d,
+					mev_performance_31d=excluded.mev_performance_31d,
+					mev_performance_365d=excluded.mev_performance_365d,
+					mev_performance_total=excluded.mev_performance_total
+			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365, start, end)
 
-			mev_performance_1d=excluded.mev_performance_1d,
-			mev_performance_7d=excluded.mev_performance_7d,
-			mev_performance_31d=excluded.mev_performance_31d,
-			mev_performance_365d=excluded.mev_performance_365d,
-			mev_performance_total=excluded.mev_performance_total
-			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365)
-	if err != nil {
+			logger.Infof("populate validator_performance table done for batch %v", start)
+			return err
+		})
+	}
+	if err = g.Wait(); err != nil {
+		logrus.Error(err)
 		return err
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
 	logger.Infof("populate validator_performance rank7d")
 
-	_, err = tx.Exec(`
+	_, err = WriterDb.Exec(`
 		insert into validator_performance (                                                                                                 
 			validatorindex,          
 			balance,             
@@ -352,10 +360,6 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		;
 		`)
 	if err != nil {
-		return err
-	}
-
-	if err = tx.Commit(); err != nil {
 		return err
 	}
 
@@ -603,12 +607,12 @@ func WriteValidatorClIcome(day uint64) error {
 			maxValidatorIndex = validator
 		}
 	}
+	maxValidatorIndex++
 
 	g := errgroup.Group{}
-	txList := []*sqlx.Tx{}
 
 	numArgs := 3
-	batchSize := 65500 / numArgs // max parameters: 65535
+	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -619,7 +623,7 @@ func WriteValidatorClIcome(day uint64) error {
 		logrus.Info(start, end)
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i := start; i <= end; i++ {
+		for i := start; i < end; i++ {
 			clProposerRewards := uint64(0)
 
 			if incomeStats[uint64(i)] != nil {
@@ -635,20 +639,13 @@ func WriteValidatorClIcome(day uint64) error {
 		%s
 		on conflict (validatorindex, day) do update set cl_proposer_rewards_gwei = excluded.cl_proposer_rewards_gwei;`,
 			strings.Join(valueStrings, ","))
-		tx, err := WriterDb.Beginx()
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback()
-		txList = append(txList, tx)
 
 		g.Go(func() error {
-			_, err = tx.Exec(stmt, valueArgs...)
+			_, err := WriterDb.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err
 			}
-
-			logrus.Infof("saving validator proposer rewards gwei batch %v completed", b)
+			logrus.Infof("saving validator proposer rewards gwei batch %v completed", start)
 			stmt = `
 				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
 				(
@@ -656,7 +653,7 @@ func WriteValidatorClIcome(day uint64) error {
 					FROM validator_stats cur
 					INNER JOIN validator_stats last 
 						ON cur.validatorindex = last.validatorindex AND last.day = GREATEST(cur.day - 1, 0)
-					WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+					WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex < $3
 				)
 				ON CONFLICT (validatorindex, day) DO
 					UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
@@ -666,16 +663,18 @@ func WriteValidatorClIcome(day uint64) error {
 					(
 						SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(cur.start_balance,0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
 						FROM validator_stats cur
-						WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+						WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex < $3
 					)
 					ON CONFLICT (validatorindex, day) DO
 						UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
 			}
-			_, err = tx.Exec(stmt, day, start, end)
-			return err
-
+			_, err = WriterDb.Exec(stmt, day, start, end)
+			if err != nil {
+				return err
+			}
+			logrus.Infof("saving validator cl rewards gwei batch %v completed", start)
+			return nil
 		})
-		logrus.Infof("saving validator cl rewards gwei batch %v completed", b)
 	}
 
 	if err = g.Wait(); err != nil {
@@ -683,11 +682,6 @@ func WriteValidatorClIcome(day uint64) error {
 		return err
 	}
 
-	for _, tx := range txList {
-		if err = tx.Commit(); err != nil {
-			return err
-		}
-	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	if err = markColumnExported(day, "cl_rewards_exported"); err != nil {
@@ -726,9 +720,8 @@ func WriteValidatorBalances(day uint64) error {
 	start = time.Now()
 
 	g := errgroup.Group{}
-	txList := []*sqlx.Tx{}
 
-	batchSize := 6500 // max parameters: 65535
+	batchSize := 100 // max parameters: 65535 / 10, but we are faster with smaller batch sizes
 	for b := 0; b < len(balanceStatsArr); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -740,14 +733,8 @@ func WriteValidatorBalances(day uint64) error {
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 
-		tx, err := WriterDb.Beginx()
-		if err != nil {
-			logrus.Errorf("error WriterDb.Beginx %v", err)
-			return err
-		}
-		txList = append(txList, tx)
-		defer tx.Rollback()
 		g.Go(func() error {
+			defer logger.Infof("saving validator balance batch %v completed", b)
 			for i, stat := range balanceStatsArr[start:end] {
 				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10))
 				valueArgs = append(valueArgs, stat.Index)
@@ -766,12 +753,10 @@ func WriteValidatorBalances(day uint64) error {
 				%s
 				on conflict (validatorindex, day) do update set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`,
 				strings.Join(valueStrings, ","))
-			_, err := tx.Exec(stmt, valueArgs...)
+			_, err := WriterDb.Exec(stmt, valueArgs...)
 
 			return err
 		})
-
-		logger.Infof("saving validator balance batch %v completed", b)
 	}
 
 	if err = g.Wait(); err != nil {
@@ -779,11 +764,6 @@ func WriteValidatorBalances(day uint64) error {
 		return err
 	}
 
-	for _, tx := range txList {
-		if err = tx.Commit(); err != nil {
-			return err
-		}
-	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
 	if err = markColumnExported(day, "balance_exported"); err != nil {
@@ -1039,37 +1019,24 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	}
 
 	g = errgroup.Group{}
-	txList := []*sqlx.Tx{}
 
-	batchSize := 16000 // max parameters: 65535
+	batchSize := 100 // max: 65535 / 4, but we are faster with smaller batches
 	for b := 0; b < len(maArr); b += batchSize {
+
 		start := b
 		end := b + batchSize
 		if len(maArr) < end {
 			end = len(maArr)
 		}
 
-		tx, err := WriterDb.Beginx()
-		if err != nil {
-			logrus.Errorf("error WriterDb.Beginx %v", err)
-			return err
-		}
-		txList = append(txList, tx)
-		defer tx.Rollback()
 		g.Go(func() error {
-			return saveFailedAttestationBatch(maArr[start:end], day, tx)
+			return saveFailedAttestationBatch(maArr[start:end], day)
 		})
 	}
 
 	if err := g.Wait(); err != nil {
 		logrus.Error(err)
 		return err
-	}
-
-	for _, tx := range txList {
-		if err := tx.Commit(); err != nil {
-			return err
-		}
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
@@ -1081,7 +1048,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	return nil
 }
 
-func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatistic, day uint64, tx *sqlx.Tx) error {
+func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatistic, day uint64) error {
 	var failedAttestationBatchNumArgs int = 4
 	batchSize := len(batch)
 	valueStrings := make([]string, 0, failedAttestationBatchNumArgs)
@@ -1099,7 +1066,7 @@ func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatis
 		%s
 		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
 		strings.Join(valueStrings, ","))
-	_, err := tx.Exec(stmt, valueArgs...)
+	_, err := WriterDb.Exec(stmt, valueArgs...)
 	if err != nil {
 		logrus.Errorf("Error inserting 'failed attestations' %v", err)
 		return err
