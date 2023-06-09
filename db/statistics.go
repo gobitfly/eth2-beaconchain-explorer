@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -990,6 +991,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 
 	// first key is the batch start index and the second is the validator id
 	failed := map[uint64]map[uint64]*types.ValidatorFailedAttestationsStatistic{}
+	mux := sync.Mutex{}
 	g := errgroup.Group{}
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
 	for i := uint64(0); i < epochsPerDay; i += epochBatchSize {
@@ -1004,7 +1006,9 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 				logrus.Errorf("error getting 'failed attestations' %v", err)
 				return err
 			}
+			mux.Lock()
 			failed[fromEpoch] = ma
+			mux.Unlock()
 			return nil
 		})
 	}
