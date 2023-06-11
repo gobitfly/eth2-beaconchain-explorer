@@ -255,6 +255,10 @@ func startServicesMonitoringService() {
 		//"poolInfoUpdater":  time.Minute * 30,
 	}
 
+	if utils.Config.ServiceMonitoringConfiguration != nil {
+		servicesToCheck = utils.Config.ServiceMonitoringConfiguration
+	}
+
 	for {
 		if !firstRun {
 			time.Sleep(time.Minute)

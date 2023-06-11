@@ -183,6 +183,7 @@ type Config struct {
 		ElEndpoint string `yaml:"elEndpoint" envconfig:"NODE_JOBS_PROCESSOR_EL_ENDPOINT"`
 		ClEndpoint string `yaml:"clEndpoint" envconfig:"NODE_JOBS_PROCESSOR_CL_ENDPOINT"`
 	} `yaml:"nodeJobsProcessor"`
+	ServiceMonitoringConfiguration map[string]time.Duration `yaml:"serviceMonitoringConfiguration" envconfig:"SERVICE_MONITORING_CONFIGURATION"`
 }
 
 type DatabaseConfig struct {
