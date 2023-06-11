@@ -156,7 +156,7 @@ func (bigtable *Bigtable) SaveBlocks(block *types.Eth1Block) error {
 
 func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Block, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	paddedNumber := reversedPaddedBlockNumber(number)
