@@ -256,11 +256,12 @@ func startServicesMonitoringService() {
 	}
 
 	if utils.Config.ServiceMonitoringConfigurations != nil {
-
-		servicesToCheck = make(map[string]time.Duration)
-
 		for _, service := range utils.Config.ServiceMonitoringConfigurations {
-			servicesToCheck[service.Name] = service.Duration
+			if service.Duration == 0 {
+				delete(servicesToCheck, service.Name)
+			} else {
+				servicesToCheck[service.Name] = service.Duration
+			}
 		}
 	}
 
