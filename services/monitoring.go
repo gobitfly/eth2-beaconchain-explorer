@@ -249,7 +249,7 @@ func startServicesMonitoringService() {
 		"statsUpdater":                  time.Minute * 30,
 		"poolsUpdater":                  time.Minute * 30,
 		"epochExporter":                 time.Minute * 15,
-		"statistics":                    time.Minute * 15,
+		"statistics":                    time.Minute * 90,
 		"lastBlockInBlocksTableUpdater": time.Minute * 10,
 		//"notification-sender", //exclude for now as the sender is only running on mainnet
 		//"poolInfoUpdater":  time.Minute * 30,
