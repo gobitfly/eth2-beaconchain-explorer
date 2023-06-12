@@ -280,6 +280,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			on tags.id = relays_blocks.tag_id 
 		left join validators
 			on validators.pubkey = relays_blocks.proposer_pubkey  
+		where validators.validatorindex is not null
 		group by 
 			blockroot, 
 			relays_blocks.block_slot,
