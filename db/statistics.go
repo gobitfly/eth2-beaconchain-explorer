@@ -734,7 +734,7 @@ func WriteValidatorBalances(day uint64) error {
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 
 		g.Go(func() error {
-			defer logger.Infof("saving validator balance batch %v completed", b)
+			defer logger.Infof("saving validator balance batch %v completed", start)
 			for i, stat := range balanceStatsArr[start:end] {
 				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10))
 				valueArgs = append(valueArgs, stat.Index)
