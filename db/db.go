@@ -989,8 +989,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		}
 	}
 
-	validators := data.Validators
-
 	validatorsByIndex := make(map[uint64]*types.Validator, len(data.Validators))
 	for _, v := range data.Validators {
 		validatorsByIndex[v.Index] = v
