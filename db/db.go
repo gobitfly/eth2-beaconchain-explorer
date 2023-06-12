@@ -1052,6 +1052,12 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	maxSqlNumber := uint64(9223372036854775807)
 
 	var queries strings.Builder
+
+	type ValidatorLastAttestationSlot struct {
+		Validator           uint64
+		LastAttestationSlot int64
+	}
+	validatorLastAttestationSlotUpdate := make([]ValidatorLastAttestationSlot, 0, len(data.Validators))
 	updates := 0
 	for _, v := range data.Validators {
 
@@ -1160,12 +1166,16 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				v.Status = "active_online"
 			}
 
-			// if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
-			// 	// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
+			if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
+				// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
 
-			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
-			// 	updates++
-			// }
+				// queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
+				// updates++
+				validatorLastAttestationSlotUpdate = append(validatorLastAttestationSlotUpdate, ValidatorLastAttestationSlot{
+					Validator:           v.Index,
+					LastAttestationSlot: v.LastAttestationSlot.Int64,
+				})
+			}
 
 			if c.Status != v.Status {
 				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
@@ -1227,7 +1237,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	}
 
 	batchSize := 30000 // max parameters: 65535
-	for b := 0; b < len(validators); b += batchSize {
+	for b := 0; b < len(validatorLastAttestationSlotUpdate); b += batchSize {
 		start := b
 		end := b + batchSize
 		if len(validators) < end {
@@ -1237,10 +1247,10 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		numArgs := 2
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i, v := range validators[start:end] {
+		for i, v := range validatorLastAttestationSlotUpdate[start:end] {
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d::int, $%d::int)", i*numArgs+1, i*numArgs+2))
-			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.LastAttestationSlot.Int64)
+			valueArgs = append(valueArgs, v.Validator)
+			valueArgs = append(valueArgs, v.LastAttestationSlot)
 		}
 
 		stmt := fmt.Sprintf(`
