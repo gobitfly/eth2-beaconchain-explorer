@@ -1240,8 +1240,8 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	for b := 0; b < len(validatorLastAttestationSlotUpdate); b += batchSize {
 		start := b
 		end := b + batchSize
-		if len(validators) < end {
-			end = len(validators)
+		if len(validatorLastAttestationSlotUpdate) < end {
+			end = len(validatorLastAttestationSlotUpdate)
 		}
 
 		numArgs := 2
