@@ -36,7 +36,16 @@ function updateBanner() {
       // always visible
       var epochHandle = document.getElementById("banner-epoch-data")
 
-      if (data.currentEpoch) epochHandle.innerHTML = addCommas(data.currentEpoch)
+      if (data.currentEpoch) {
+        epochHandle.innerHTML = addCommas(data.currentEpoch)
+        epochHandle.setAttribute('href', '/epoch/' + data.currentEpoch)
+      }
+
+      var slotHandle = document.getElementById("banner-slot-data")
+      if (data.currentSlot) {
+        slotHandle.innerHTML = addCommas(data.currentSlot)
+        slotHandle.setAttribute('href', '/slot/' + data.currentSlot)
+      }
 
       var ethPriceHandle = document.getElementById("banner-eth-price-data")
 
