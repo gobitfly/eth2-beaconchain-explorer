@@ -38,13 +38,13 @@ function updateBanner() {
 
       if (data.currentEpoch) {
         epochHandle.innerHTML = addCommas(data.currentEpoch)
-        epochHandle.setAttribute('href', '/epoch/' + data.currentEpoch)
+        epochHandle.setAttribute("href", "/epoch/" + data.currentEpoch)
       }
 
       var slotHandle = document.getElementById("banner-slot-data")
       if (data.currentSlot) {
         slotHandle.innerHTML = addCommas(data.currentSlot)
-        slotHandle.setAttribute('href', '/slot/' + data.currentSlot)
+        slotHandle.setAttribute("href", "/slot/" + data.currentSlot)
       }
 
       var ethPriceHandle = document.getElementById("banner-eth-price-data")
