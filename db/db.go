@@ -1818,7 +1818,12 @@ func updateQueueDeposits() error {
 	// then we add any new ones that are queued
 	_, err = WriterDb.Exec(`
 		INSERT INTO validator_queue_deposits
-		SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
+		SELECT validatorindex, activationeligibilityepoch 
+		FROM validators 
+		WHERE activationepoch=9223372036854775807 and status='pending' 
+		ON CONFLICT (validatorindex) DO UPDATE SET
+			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch
+		`)
 	if err != nil {
 		logger.Errorf("error adding queued publickeys to validator_queue_deposits: %v", err)
 		return err
@@ -1866,23 +1871,16 @@ func updateQueueDeposits() error {
 func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	var res uint64
 	err := ReaderDb.Get(&res, `
-	with SelectedValidator as (
-		select block_slot, block_index, validators.activationeligibilityepoch from validator_queue_deposits vqd
-		inner join validators on validators.validatorindex = $1
-		where vqd.validatorindex = validators.validatorindex 
+	WITH SelectedValidator AS (
+		SELECT block_slot, block_index, activationeligibilityepoch FROM validator_queue_deposits
+		WHERE validatorindex = %1
 	)
-	select count(*)
-	from (
-		select validatorindex, block_slot, block_index 
-		from validator_queue_deposits
-	) as vqd 
-	inner join validators on
-		validators.validatorindex = vqd.validatorindex and
-		validators.activationeligibilityepoch <= (select activationeligibilityepoch from SelectedValidator)
-	where 
-		validators.activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) or 
-		vqd.block_slot < (select block_slot from SelectedValidator) or
-		vqd.block_slot = (select block_slot from SelectedValidator) and vqd.block_index < (select block_index from SelectedValidator)`, validatorIndex)
+	SELECT count(*)
+	FROM validator_queue_deposits
+	WHERE 
+		activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) OR 
+		block_slot < (select block_slot from SelectedValidator) OR
+		block_slot = (select block_slot from SelectedValidator) AND block_index < (select block_index from SelectedValidator)`, validatorIndex)
 	return res, err
 }
 
