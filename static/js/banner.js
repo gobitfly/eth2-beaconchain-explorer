@@ -93,11 +93,6 @@ function updateBanner() {
           }
       }
 
-      // always visible
-      var slotHandle = document.getElementById("banner-slot-data")
-
-      if (data.currentSlot) slotHandle.innerHTML = addCommas(data.currentSlot)
-
       var finDelayDataHandle = document.getElementById("banner-fin-data")
       finDelayHtml = `
       <div id="banner-fin" class="info-item d-flex mr-3">
