@@ -604,7 +604,7 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		session.Values()[key] = settings
+		session.SetValue(key, settings)
 
 		err := session.Save(r, w)
 		if err != nil {
@@ -636,8 +636,9 @@ func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey 
 		}
 		return state
 	}
-	stateRaw, exists := session.Values()["table:state:"+utils.GetNetwork()+":"+tableKey]
-	if !exists {
+
+	stateRaw := session.GetValue("table:state:" + utils.GetNetwork() + ":" + tableKey)
+	if stateRaw == nil {
 		return &state
 	}
 	state, ok := stateRaw.(types.DataTableSaveState)
