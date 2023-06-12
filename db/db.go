@@ -1234,7 +1234,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		logger.Infof("update completed, took %v", time.Since(updateStart))
 	}
 
-	batchSize := 65000 // max parameters: 65535
+	batchSize := 30000 // max parameters: 65535
 	for b := 0; b < len(validatorLastAttestationSlotUpdate); b += batchSize {
 		start := b
 		end := b + batchSize
