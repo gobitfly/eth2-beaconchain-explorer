@@ -1165,7 +1165,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			}
 
 			if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid && c.LastAttestationSlot.Int64 < v.LastAttestationSlot.Int64 {
-				logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
+				// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
 
 				// queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
 				// updates++
