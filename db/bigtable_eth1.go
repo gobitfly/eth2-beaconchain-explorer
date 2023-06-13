@@ -683,7 +683,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	batchSize := int64(1000)
 	for i := start; i <= end; i += batchSize {
 		firstBlock := int64(i)
-		lastBlock := firstBlock + batchSize
+		lastBlock := firstBlock + batchSize - 1
 		if lastBlock > end {
 			lastBlock = end
 		}
