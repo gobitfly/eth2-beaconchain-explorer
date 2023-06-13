@@ -237,13 +237,9 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 		}
 		c = max_block_number - c
 
-		if c%10000 == 0 {
-			logger.Infof("scanning, currently at block %v", c)
-		}
-
 		lastBlock = c
-		return c == 0
-	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
 		return 0, err
@@ -306,13 +302,9 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 		}
 		c = max_block_number - c
 
-		if c%10000 == 0 {
-			logger.Infof("scanning, currently at block %v", c)
-		}
-
 		lastBlock = c
-		return c == 0
-	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
 		return 0, err
