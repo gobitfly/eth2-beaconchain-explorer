@@ -2881,7 +2881,6 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 			logger.Infof("error in my query %v", err)
 			return nil, err
 		}
-		logger.Infof("len blsChange; %v", len(blsChange))
 	} else {
 		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
 			SELECT 
