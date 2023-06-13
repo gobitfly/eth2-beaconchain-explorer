@@ -680,10 +680,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	g.SetLimit(int(concurrency))
 
 	logrus.Infof("indexing blocks from %d to %d", start, end)
-	mux := sync.Mutex{}
-	checked := make(map[uint64]bool)
 	batchSize := int64(1000)
-	count := 0
 	for i := start; i <= end; i += batchSize {
 		firstBlock := int64(i)
 		lastBlock := firstBlock + batchSize - 1
@@ -721,13 +718,6 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 			subG := new(errgroup.Group)
 			for b := range blocksChan {
 				block := b
-				count++
-				mux.Lock()
-				if checked[b.GetNumber()] {
-					logrus.Infof("block already found: %v", b.GetNumber())
-				}
-				checked[b.GetNumber()] = true
-				mux.Unlock()
 				subG.Go(func() error {
 
 					bulkMutsData := types.BulkMutations{}
@@ -779,12 +769,6 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	} else {
 		utils.LogError(err, "wait group error", 0)
 		return err
-	}
-	logrus.Infof("count: %v", count)
-	for b := start; b <= end; b++ {
-		if !checked[uint64(b)] {
-			logger.Infof("block %v not checked", b)
-		}
 	}
 
 	return nil
