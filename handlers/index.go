@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"net/http"
 )
 
@@ -42,6 +43,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	pageData.Countdown = utils.Config.Frontend.Countdown
 
 	pageData.SlotVizData = getSlotVizData(data.CurrentEpoch)
+
+	calculateChurn(pageData)
 
 	data.Data = pageData
 
@@ -90,4 +93,22 @@ func getSlotVizData(currentEpoch uint64) *types.SlotVizPageData {
 
 	}
 	return nil
+}
+
+func calculateChurn(page *types.IndexPageData) {
+	limit := services.GetLatestStats().ValidatorChurnLimit
+	pending_validators := services.GetLatestStats().PendingValidatorCount
+	// calculate daily new validators
+	limit_per_day := *limit * uint64(225)
+	// calculate how long it will take for a new deposit to be processed
+	time := float64(*pending_validators) / float64((limit_per_day))
+	const hoursPerDay = 24
+	wholeDays, fractionalDays := math.Modf(time)
+
+	hours := int(fractionalDays * hoursPerDay)
+
+	time_as_days := fmt.Sprintf("%d days and %d hours", int(wholeDays), hours)
+	page.NewDepositProcessAfter = time_as_days
+	page.ValidatorsPerEpoch = *limit
+	page.ValidatorsPerDay = limit_per_day
 }
