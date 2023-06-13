@@ -693,7 +693,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 			if firstBlock == 0 {
 				b, err := BigtableClient.GetBlockFromBlocksTable(0)
 				if err != nil {
-					return fmt.Errorf("Could not retreive block 0", err)
+					return fmt.Errorf("could not retreive block 0:  %v", err)
 				}
 				blocksChan <- b
 			}

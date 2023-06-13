@@ -737,7 +737,7 @@ func WriteChartSeriesForDay(day int64) error {
 		if firstBlock == 0 {
 			b, err := BigtableClient.GetBlockFromBlocksTable(0)
 			if err != nil {
-				logger.Errorf("Could not retreive block 0", err)
+				logger.Errorf("could not retreive block 0:  %v", err)
 				return
 			}
 			blocksChan <- b
