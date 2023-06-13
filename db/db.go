@@ -1873,7 +1873,7 @@ func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	err := ReaderDb.Get(&res, `
 	WITH SelectedValidator AS (
 		SELECT block_slot, block_index, activationeligibilityepoch FROM validator_queue_deposits
-		WHERE validatorindex = %1
+		WHERE validatorindex = $1
 	)
 	SELECT count(*)
 	FROM validator_queue_deposits
