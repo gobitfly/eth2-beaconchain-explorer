@@ -734,14 +734,6 @@ func WriteChartSeriesForDay(day int64) error {
 	batchSize := int64(360)
 	go func(stream chan *types.Eth1Block) {
 		logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
-		if firstBlock == 0 {
-			b, err := BigtableClient.GetBlockFromBlocksTable(0)
-			if err != nil {
-				logger.Errorf("could not retreive block 0:  %v", err)
-				return
-			}
-			blocksChan <- b
-		}
 		for b := int64(lastBlock) - 1; b > int64(firstBlock); b -= batchSize {
 			high := b
 			low := b - batchSize + 1

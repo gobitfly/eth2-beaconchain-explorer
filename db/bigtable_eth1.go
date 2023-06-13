@@ -421,41 +421,30 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 }
 
 /**
-* GetFullBlockDescending gets blocks starting at block start
-* low = min block number
+* GetFullBlockDescending gets blocks ranging from high to low (both borders are inclusive)
 * high = max block number
+* low = min block number
 **/
 func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block, high, low uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
 
 	if high < 1 || high < low {
-		return fmt.Errorf("invalid block range provided (start: %v, limit: %v)", high, low)
+		return fmt.Errorf("invalid block range provided (high: %v, low: %v)", high, low)
 	}
 
+	// row key for block 0 is padded incorrectly, so we need to handle it separately
+	returnBlock0 := false
 	if low == 0 {
-		b, err := BigtableClient.GetBlockFromBlocksTable(0)
-		if err != nil {
-			return fmt.Errorf("could not retreive block 0:  %v", err)
-		}
-		stream <- b
-		if high == 0 {
-			return nil
-		}
-	} else {
-		low-- //as upper limit of row range is not included we need to remove 1
+		returnBlock0 = true
+		low = 1
 	}
 
 	highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
-	lowKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(low))
+	lowKey := fmt.Sprintf("%s:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(low)) // add \x00 to make the range inclusive
+
 	// the low key will have a higher reverse padded number
-	rowRange := gcp_bigtable.NewRange(highKey, lowKey) //gcp_bigtable.PrefixRange("1:1000000000")
-
-	if low == 0 { // handle retrieval of block 1, it seems it does not work we provide max block number
-		rowRange = gcp_bigtable.InfiniteRange(highKey)
-	}
-
-	// logger.Infof("querying from (excl) %v to (incl) %v", low, high)
+	rowRange := gcp_bigtable.NewRange(highKey, lowKey)
 
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
 
@@ -470,13 +459,20 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 		return true
 	}
 
-	// startTime := time.Now()
 	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter)
 	if err != nil {
 		return err
 	}
 
-	// logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
+	if returnBlock0 {
+		// special handling for block 0
+		b, err := BigtableClient.GetBlockFromBlocksTable(0)
+		if err != nil {
+			return fmt.Errorf("could not retreive block 0:  %v", err)
+		}
+		stream <- b
+	}
+
 	return nil
 }
 
