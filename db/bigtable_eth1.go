@@ -420,7 +420,11 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 	return blocks, nil
 }
 
-// GetFullBlockDescending gets blocks starting at block start
+/**
+* GetFullBlockDescending gets blocks starting at block start
+* low = min block number
+* high = max block number
+**/
 func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block, high, low uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
@@ -429,13 +433,25 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 		return fmt.Errorf("invalid block range provided (start: %v, limit: %v)", high, low)
 	}
 
+	if low == 0 {
+		b, err := BigtableClient.GetBlockFromBlocksTable(0)
+		if err != nil {
+			return fmt.Errorf("could not retreive block 0:  %v", err)
+		}
+		stream <- b
+		if high == 0 {
+			return nil
+		}
+	} else {
+		low-- //as upper limit of row range is not included we need to remove 1
+	}
+
 	highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
 	lowKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(low))
-
 	// the low key will have a higher reverse padded number
 	rowRange := gcp_bigtable.NewRange(highKey, lowKey) //gcp_bigtable.PrefixRange("1:1000000000")
 
-	if low == 0 { // handle retrieval of the first blocks
+	if low == 0 { // handle retrieval of block 1, it seems it does not work we provide max block number
 		rowRange = gcp_bigtable.InfiniteRange(highKey)
 	}
 
@@ -690,23 +706,13 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 
 		g.Go(func() error {
 			blocksChan := make(chan *types.Eth1Block, batchSize)
-			if firstBlock == 0 {
-				b, err := BigtableClient.GetBlockFromBlocksTable(0)
-				if err != nil {
-					return fmt.Errorf("could not retreive block 0:  %v", err)
-				}
-				blocksChan <- b
-			}
 
 			go func(stream chan *types.Eth1Block) {
 				logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
 				high := lastBlock
-				low := lastBlock - batchSize
+				low := lastBlock - batchSize + 1
 				if int64(firstBlock) > low {
-					low = int64(firstBlock - 1)
-				}
-				if low < 0 {
-					low = 0
+					low = firstBlock
 				}
 
 				err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
