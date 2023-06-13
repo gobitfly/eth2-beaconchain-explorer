@@ -1176,7 +1176,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	}
 	resultContainer := ResultContainer{}
 	resultContainer.res = make(map[uint64]*types.ValidatorBalanceStatistic)
-	g := errgroup.Group{}
+	g, gCtx := errgroup.WithContext(ctx)
 	batchSize := utilMath.MaxU64(5, (endEpoch-startEpoch)/5) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
@@ -1186,9 +1186,18 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 		}
 
 		g.Go(func() error {
-
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
 			err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+				select {
+				case <-gCtx.Done():
+					return false
+				default:
+				}
 				keySplit := strings.Split(r.Key(), ":")
 
 				epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
@@ -1627,7 +1636,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 		)
 	}
 
-	g := errgroup.Group{}
+	g, gCtx := errgroup.WithContext(ctx)
 	batchSize := utilMath.MaxU64(5, (endEpoch-startEpoch)/5) // we can speed up the loading by splitting it up. Making the batchSize even smaller has no effect but increases the memory consumption.
 	for e := startEpoch; e < endEpoch; e += batchSize {
 		fromEpoch := e
@@ -1637,10 +1646,19 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 		}
 
 		g.Go(func() error {
-
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
 
 			err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+				select {
+				case <-gCtx.Done():
+					return false
+				default:
+				}
 
 				resultContainer.mu.Lock()
 

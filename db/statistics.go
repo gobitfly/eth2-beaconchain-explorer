@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"eth2-exporter/metrics"
 	"eth2-exporter/price"
@@ -166,6 +167,8 @@ func WriteValidatorStatsExported(day uint64) error {
 }
 
 func WriteValidatorTotalPerformance(day uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
@@ -210,7 +213,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 	if err != nil {
 		return err
 	}
-	g := errgroup.Group{}
+	g, gCtx := errgroup.WithContext(ctx)
 	batchSize := 1000
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
@@ -219,6 +222,11 @@ func WriteValidatorTotalPerformance(day uint64) error {
 			end = int(maxValidatorIndex)
 		}
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
 			_, err = WriterDb.Exec(`
 				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, cl_proposer_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
 					SELECT 
@@ -557,6 +565,8 @@ func WriteValidatorElIcome(day uint64) error {
 }
 
 func WriteValidatorClIcome(day uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_cl_income_stats").Observe(time.Since(exportStart).Seconds())
@@ -609,7 +619,7 @@ func WriteValidatorClIcome(day uint64) error {
 	}
 	maxValidatorIndex++
 
-	g := errgroup.Group{}
+	g, gCtx := errgroup.WithContext(ctx)
 
 	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
@@ -641,6 +651,11 @@ func WriteValidatorClIcome(day uint64) error {
 			strings.Join(valueStrings, ","))
 
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
 			_, err := WriterDb.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err
@@ -693,6 +708,9 @@ func WriteValidatorClIcome(day uint64) error {
 }
 
 func WriteValidatorBalances(day uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_balances_stats").Observe(time.Since(exportStart).Seconds())
@@ -719,7 +737,7 @@ func WriteValidatorBalances(day uint64) error {
 	logger.Infof("fetching balance completed, took %v, now we save it", time.Since(start))
 	start = time.Now()
 
-	g := errgroup.Group{}
+	g, gCtx := errgroup.WithContext(ctx)
 
 	batchSize := 100 // max parameters: 65535 / 10, but we are faster with smaller batch sizes
 	for b := 0; b < len(balanceStatsArr); b += batchSize {
@@ -734,6 +752,11 @@ func WriteValidatorBalances(day uint64) error {
 		valueArgs := make([]interface{}, 0, batchSize*numArgs)
 
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
 			defer logger.Infof("saving validator balance batch %v completed", start)
 			for i, stat := range balanceStatsArr[start:end] {
 				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6, i*numArgs+7, i*numArgs+8, i*numArgs+9, i*numArgs+10))
@@ -953,6 +976,8 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 }
 
 func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_failed_att_stats").Observe(time.Since(exportStart).Seconds())
@@ -972,7 +997,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	// first key is the batch start index and the second is the validator id
 	failed := map[uint64]map[uint64]*types.ValidatorFailedAttestationsStatistic{}
 	mux := sync.Mutex{}
-	g := errgroup.Group{}
+	g, gCtx := errgroup.WithContext(ctx)
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
 	for i := uint64(0); i < epochsPerDay; i += epochBatchSize {
 		fromEpoch := i
@@ -981,6 +1006,11 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 			toEpoch = epochsPerDay - 1
 		}
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
 			ma, err := BigtableClient.GetValidatorFailedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
 			if err != nil {
 				logrus.Errorf("error getting 'failed attestations' %v", err)
@@ -1018,7 +1048,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		maArr = append(maArr, stat)
 	}
 
-	g = errgroup.Group{}
+	g, gCtx = errgroup.WithContext(ctx)
 
 	batchSize := 100 // max: 65535 / 4, but we are faster with smaller batches
 	for b := 0; b < len(maArr); b += batchSize {
@@ -1030,6 +1060,11 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		}
 
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
 			return saveFailedAttestationBatch(maArr[start:end], day)
 		})
 	}
