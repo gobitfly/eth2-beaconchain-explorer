@@ -226,7 +226,7 @@
                 <div class="col-md-9">
                   {{ formatBytesAmount .Gas.TxFee config.Frontend.ElCurrencySymbol 8 }}
                   <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value" {{ if .HistoricEtherPrice }}onclick="togglePriceContent('{{ .CurrentEtherPrice }}','{{ .HistoricEtherPrice }}')" style="cursor: pointer;"{{ end }}>
-                    {{ formatElInCurrency .Gas.TxFee $.Rates.TickerCurrency 8 }}
+                    {{ formatElCurrency .Gas.TxFee $.Rates.TickerCurrency 8 }}
                   </span>
                 </div>
               </div>
