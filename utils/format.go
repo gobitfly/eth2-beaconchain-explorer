@@ -361,16 +361,7 @@ func FormatTransactionType(txnType uint8) string {
 
 // FormatCurrentBalance will return the current balance formated as string with 9 digits after the comma (1 gwei = 1e9 eth)
 func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
-	if currency == "ETH" {
-		exchangeRate := ExchangeRateForCurrency(currency)
-		balance := float64(balanceInt) / float64(1e9)
-		return template.HTML(fmt.Sprintf("%.5f %v", balance*exchangeRate, currency))
-	} else {
-		exchangeRate := ExchangeRateForCurrency(currency)
-		balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
-
-		return template.HTML(fmt.Sprintf(`%s %v`, balance, currency))
-	}
+	return template.HTML(fmt.Sprintf(`%s %v`, exchangeAndTrim(currency, int64(balanceInt), false), currency))
 }
 
 // FormatDepositAmount will return the deposit amount formated as string
@@ -681,7 +672,7 @@ func FormatParticipation(v float64) template.HTML {
 }
 
 func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTML {
-	var incomeTrimmed string = exchangeAndTrim(currency, income.Total)
+	var incomeTrimmed string = exchangeAndTrim(currency, income.Total, true)
 	className := "text-success"
 	if income.Total < 0 {
 		className = "text-danger"
@@ -711,7 +702,7 @@ func FormatIncomeNoCurrency(balanceInt int64, currency string) template.HTML {
 }
 
 func formatIncome(balanceInt int64, currency string, includeCurrency bool) template.HTML {
-	var income string = exchangeAndTrim(currency, balanceInt)
+	var income string = exchangeAndTrim(currency, balanceInt, true)
 
 	if includeCurrency {
 		currency = " " + currency
@@ -729,13 +720,13 @@ func formatIncome(balanceInt int64, currency string, includeCurrency bool) templ
 }
 
 func FormatExchangedAmount(balanceInt int64, currency string) template.HTML {
-	income := exchangeAndTrim(currency, balanceInt)
+	income := exchangeAndTrim(currency, balanceInt, true)
 	return template.HTML(fmt.Sprintf(`<span>%s %s</span>`, income, currency))
 }
 
-func exchangeAndTrim(currency string, amount int64) string {
+func exchangeAndTrim(currency string, amount int64, addPositiveSign bool) string {
 	decimals := 5
-	preCommaDecimals := 1
+	preCommaDecimals := 2
 
 	if currency != "ETH" {
 		decimals = 2
@@ -745,7 +736,7 @@ func exchangeAndTrim(currency string, amount int64) string {
 	exchangeRate := ExchangeRateForCurrency(currency)
 	exchangedAmount := float64(amount) * exchangeRate
 	// lost precision here but we don't need it for frontend
-	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals, true)
+	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals, addPositiveSign)
 	return income
 }
 

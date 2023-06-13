@@ -14,7 +14,6 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -90,79 +89,68 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 
-	lastEpoch, err := db.GetLatestEpoch()
-
-	if err != nil {
-		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusServiceUnavailable)
-		return
+	modules := []string{
+		"monitoring_app",
+		"monitoring_el_data",
+		"monitoring_services",
+		"monitoring_cl_data",
+		"monitoring_api",
+		"monitoring_redis",
 	}
 
-	if utils.Config.Chain.GenesisTimestamp == 18446744073709551615 {
-		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
-		return
-	}
-
-	genesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
-	if genesisTime.After(time.Now()) {
-		fmt.Fprintf(w, "OK. Genesis in %v (%v)", time.Until(genesisTime), genesisTime)
-		return
-	}
-
-	epochTime := utils.EpochToTime(lastEpoch)
-	if epochTime.Before(time.Now().Add(time.Minute * -13)) {
-		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", http.StatusServiceUnavailable)
-		return
-	}
-
-	// check latest eth1 indexed block
-	numberBlocksTable := services.LatestLastBlockInBlocksTableData()
-	if numberBlocksTable < 0 {
-		// logger error already reported in caller
-		http.Error(w, "Internal server error: could not retrieve latest block number from the blocks table", http.StatusServiceUnavailable)
-		return
-	}
-	blockBlocksTable, err := db.BigtableClient.GetBlockFromBlocksTable(uint64(numberBlocksTable))
-	if err != nil {
-		logger.Errorf("could not retrieve latest block from the blocks table: %v", err)
-		http.Error(w, "Internal server error: could not retrieve latest block from the blocks table", http.StatusServiceUnavailable)
-		return
-	}
-	if blockBlocksTable.Time.AsTime().Before(time.Now().Add(time.Minute * -13)) {
-		http.Error(w, "Internal server error: last block in blocks table is more than 13 minutes old (check eth1 indexer)", http.StatusServiceUnavailable)
-		return
-	}
-
-	// check if eth1 indices are up to date
-	numberDataTable, err := db.BigtableClient.GetLastBlockInDataTable()
-	if err != nil {
-		logger.Errorf("could not retrieve latest block number from the data table: %v", err)
-		http.Error(w, "Internal server error: could not retrieve latest block number from the data table", http.StatusServiceUnavailable)
-		return
-	}
-
-	if numberDataTable < numberBlocksTable-32 {
-		http.Error(w, "Internal server error: data table is lagging behind the blocks table (check eth1 indexer)", http.StatusServiceUnavailable)
-		return
-	}
-
-	// check if tx were sent during the last hour
-	res := []*struct {
-		Channel           string
-		NotificationCount int64
+	res := []struct {
+		Name   string
+		Status string
 	}{}
-	err = db.FrontendReaderDB.Select(&res, "select channel, count(*) as notificationcount from notification_queue where sent > now() - interval '1 hour' group by channel order by channel;")
+	err := db.WriterDb.Select(&res, "SELECT name, status FROM service_status WHERE name = ANY($1) AND last_update > NOW() - INTERVAL '5 MINUTES' ORDER BY last_update DESC", pq.Array(modules))
+
 	if err != nil {
-		logger.Errorf("could not retrieve notification stats from db: %v", err)
-		http.Error(w, "Internal server error: could not retrieve notification stats from db", http.StatusServiceUnavailable)
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "No monitoring data available", http.StatusServiceUnavailable)
+			return
+		} else {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	modulesMap := make(map[string]string)
+	for _, module := range modules {
+		modulesMap[module] = ""
+	}
+
+	hasError := false
+	response := strings.Builder{}
+	for _, status := range res {
+
+		if modulesMap[status.Name] == "" {
+			modulesMap[status.Name] = status.Status
+
+			if status.Status != "OK" {
+				hasError = true
+			}
+
+			response.WriteString(fmt.Sprintf("module %s: %s\n", status.Name, status.Status))
+		}
+	}
+
+	for _, module := range modules {
+		if modulesMap[module] == "" {
+			hasError = true
+			response.WriteString(fmt.Sprintf("module %s: %s\n", module, "No monitoring data available"))
+		}
+	}
+
+	if !hasError {
+		_, err = fmt.Fprint(w, response.String())
+
+		if err != nil {
+			logger.Debugf("error writing status: %v", err)
+		}
+	} else {
+		http.Error(w, response.String(), http.StatusInternalServerError)
 		return
 	}
-
-	ret := fmt.Sprintf("OK. Last epoch is from %v ago, last cl block is from %v ago, data table is lagging %v blocks\n\nVersion: %v\n\nNotifications sent during the last hour:\n", time.Since(epochTime), time.Since(blockBlocksTable.Time.AsTime()), numberBlocksTable-numberDataTable, version.Version)
-
-	for _, entry := range res {
-		ret += fmt.Sprintf("%s: %d\n", entry.Channel, entry.NotificationCount)
-	}
-	fmt.Fprint(w, ret)
 }
 
 // ApiHealthzLoadbalancer godoc

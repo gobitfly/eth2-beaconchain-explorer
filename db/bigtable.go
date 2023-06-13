@@ -119,7 +119,7 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), ts.Time().Minute()%15)
 	pipe := bigtable.redisCache.Pipeline()
 	pipe.SAdd(ctx, machineLimitKey, machine)
-	pipe.ExpireNX(ctx, machineLimitKey, time.Minute*15)
+	pipe.Expire(ctx, machineLimitKey, time.Minute*15)
 	_, err = pipe.Exec(ctx)
 	if err != nil {
 		return err
