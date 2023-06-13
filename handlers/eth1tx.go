@@ -3,17 +3,25 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"eth2-exporter/db"
 	"eth2-exporter/eth1data"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
+	"math/big"
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 // Tx will show the tx using a go template
@@ -56,11 +64,45 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 				data.Data = mempoolPageData
 			} else {
-				logger.Errorf("error getting eth1 transaction data: %v", err)
+				if !errors.Is(err, ethereum.NotFound) {
+					logger.Errorf("error getting eth1 transaction data: %v", err)
+				}
 				data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 				txTemplate = txNotFoundTemplate
 			}
 		} else {
+			p := message.NewPrinter(language.English)
+
+			symbol := GetCurrencySymbol(r)
+			ef := new(big.Float).SetInt(new(big.Int).SetBytes(txData.Value))
+			etherValue := new(big.Float).Quo(ef, big.NewFloat(1e18))
+
+			currentPrice := GetCurrentPrice(r)
+			currentEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(float64(currentPrice)))
+			cPrice, _ := currentEthPrice.Float64()
+			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, cPrice))
+
+			txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
+			latestEpoch, err := db.GetLatestEpoch()
+			if err != nil {
+				logrus.Error(err)
+			}
+
+			txData.HistoricalEtherPrice = ""
+			currentDay := latestEpoch / utils.EpochsPerDay()
+
+			if txDay < currentDay {
+				// Do not show the historical price if it is the current day
+				price, err := db.GetHistoricalPrice(utils.Config.Chain.Config.DepositChainID, GetCurrency(r), txDay)
+				if err != nil {
+					logrus.Errorf("error retrieving historical prices %v", err)
+				} else {
+					historicalEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(price))
+					hPrice, _ := historicalEthPrice.Float64()
+					txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, hPrice))
+				}
+			}
+
 			data = InitPageData(w, r, "blockchain", path, title, txTemplateFiles)
 			data.Data = txData
 		}

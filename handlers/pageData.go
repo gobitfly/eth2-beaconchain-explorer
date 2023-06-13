@@ -78,7 +78,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			CurrentSymbol:          GetCurrencySymbol(r),
 		},
 		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
-		DepositContract:     utils.Config.Indexer.Eth1DepositContractAddress,
+		DepositContract:     utils.Config.Chain.Config.DepositContractAddress,
 		ClientsUpdated:      ethclients.ClientsUpdated(),
 		ChainConfig:         utils.Config.Chain.Config,
 		Lang:                "en-US",
@@ -336,7 +336,7 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							IsHighlighted: true,
 						},
 						{
-							Label:      "ETH.STORE",
+							Label:      "ETH.STORE®",
 							Path:       "/ethstore",
 							CustomIcon: "ethermine_stake_logo_svg",
 						},
@@ -400,12 +400,12 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 					Label: "Tools",
 					Links: []types.NavigationLink{
 						{
-							Label: "Beaconchain App",
+							Label: "beaconcha.in App",
 							Path:  "/mobile",
 							Icon:  "fa-mobile-alt",
 						},
 						{
-							Label: "Beaconchain Premium",
+							Label: "beaconcha.in Premium",
 							Path:  "/premium",
 							Icon:  "fa-gem",
 						},
@@ -416,7 +416,7 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 						},
 						{
 							Label: "API Docs",
-							Path:  "https://beaconcha.in/api/v1/docs/index.html",
+							Path:  "/api/v1/docs/index.html",
 							Icon:  "fa-book-reader",
 						},
 						{
@@ -473,6 +473,11 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Label: "Slot Finder",
 							Path:  "/slots/finder",
 							Icon:  "fa-cube",
+						},
+						{
+							Label: "Report a scam",
+							Path:  "https://www.chainabuse.com/report?source=bitfly",
+							Icon:  "fa-flag",
 						},
 					},
 				},

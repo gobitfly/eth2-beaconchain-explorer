@@ -56,12 +56,12 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error getting user session")
 	}
 
-	state := GetDataTableState(user, session, "withdrawals")
-	if state.Length == 0 {
-		state.Length = 10
+	withdrawalsState := GetDataTableState(user, session, "withdrawals")
+	if withdrawalsState.Length == 0 {
+		withdrawalsState.Length = 10
 	}
 
-	withdrawals, err := WithdrawalsTableData(1, state.Search.Search, state.Length, state.Start, "", "", currency)
+	withdrawals, err := WithdrawalsTableData(1, withdrawalsState.Search.Search, withdrawalsState.Length, withdrawalsState.Start, "", "", currency)
 	if err != nil {
 		logger.Errorf("error getting withdrawals table data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -69,7 +69,12 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 	pageData.Withdrawals = withdrawals
 
-	blsChange, err := BLSTableData(1, state.Search.Search, state.Length, state.Start, "", "")
+	blsChangeState := GetDataTableState(user, session, "blsChange")
+	if blsChangeState.Length == 0 {
+		blsChangeState.Length = 10
+	}
+
+	blsChange, err := BLSTableData(1, blsChangeState.Search.Search, blsChangeState.Length, blsChangeState.Start, "", "")
 	if err != nil {
 		logger.Errorf("error getting bls table data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -163,6 +168,11 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		return nil, fmt.Errorf("error getting withdrawals: %w", err)
 	}
 
+	formatCurrency := currency
+	if currency == "ETH" {
+		formatCurrency = "Ether"
+	}
+
 	tableData := make([][]interface{}, len(withdrawals))
 	for i, w := range withdrawals {
 		tableData[i] = []interface{}{
@@ -170,9 +180,9 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimeFromNow(utils.SlotToTime(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), currency, 6))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6))),
 		}
 	}
 

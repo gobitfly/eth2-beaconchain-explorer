@@ -135,6 +135,13 @@
             {{if len .DepositContract}}
                   var tbl = $('#deposits').DataTable({
                   stateSave: true,
+                  stateSaveCallback: function (settings, data) {
+                    data.start = 0
+                    localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                  },
+                  stateLoadCallback: function (settings) {
+                    return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                  },
                   processing: true,
                   serverSide: true,
                   ordering: true,

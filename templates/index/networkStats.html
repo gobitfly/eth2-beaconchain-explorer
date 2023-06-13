@@ -22,7 +22,11 @@
         </h5>
       </div>
       <div class="text-right p-2">
-        <div class="text-secondary mb-0">Pending Validators</div>
+        {{ if eq .EnteringValidators 0 }}
+          <div class="text-secondary mb-0"><span data-toggle="tooltip" data-placement="top" title="Currently there are no pending Validators (churn limit is {{ .ValidatorsPerEpoch }} per epoch or {{ .ValidatorsPerDay }} per day with {{ .ActiveValidators }} validators)">Pending Validators</span></div>
+        {{ else }}
+          <div class="text-secondary mb-0"><span data-toggle="tooltip" data-placement="top" title="It should take at least {{ .NewDepositProcessAfter }} for a new deposit to be processed and an associated validator to be activated (churn limit is {{ .ValidatorsPerEpoch }} per epoch or {{ .ValidatorsPerDay }} per day with {{ .ActiveValidators }} validators)">Pending Validators</span></div>
+        {{ end }}
         <h5 class="font-weight-normal mb-0">
           <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set" v-html="addCommas(page.entering_validators)"></span>
           / <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to exit the active validator set" v-html="addCommas(page.exiting_validators)"></span>

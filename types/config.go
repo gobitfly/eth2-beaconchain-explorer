@@ -38,6 +38,7 @@ type Config struct {
 	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
 	EtherscanAPIKey     string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
+	EtherscanAPIBaseURL string `yaml:"etherscanApiBaseUrl" envconfig:"ETHERSCAN_API_BASEURL"`
 	RedisCacheEndpoint  string `yaml:"redisCacheEndpoint" envconfig:"REDIS_CACHE_ENDPOINT"`
 	TieredCacheProvider string `yaml:"tieredCacheProvider" envconfig:"CACHE_PROVIDER"`
 	ReportServiceStatus bool   `yaml:"reportServiceStatus" envconfig:"REPORT_SERVICE_STATUS"`
@@ -54,8 +55,6 @@ type Config struct {
 			Type     string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`
 			PageSize int32  `yaml:"pageSize" envconfig:"INDEXER_NODE_PAGE_SIZE"`
 		} `yaml:"node"`
-		// Deprecated Please use Phase0 config DEPOSIT_CONTRACT_ADDRESS
-		Eth1DepositContractAddress    string `yaml:"eth1DepositContractAddress" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_ADDRESS"`
 		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
 		OneTimeExport                 struct {
 			Enabled    bool     `yaml:"enabled" envconfig:"INDEXER_ONETIMEEXPORT_ENABLED"`
@@ -134,13 +133,12 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
-		GATag                  string `yaml:"gatag" envconfig:"GATAG"`
-		VerifyAppSubs          bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
-		AppSubsAppleSecret     string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
-		AppSubsGoogleJSONPath  string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
-		CleanupOldMachineStats bool   `yaml:"cleanupOldMachineStats" envconfig:"FRONTEND_CLEANUP_OLD_MACHINE_STATS"`
-		DisableStatsInserts    bool   `yaml:"disableStatsInserts" envconfig:"FRONTEND_DISABLE_STATS_INSERTS"`
-		ShowDonors             struct {
+		GATag                 string `yaml:"gatag" envconfig:"GATAG"`
+		VerifyAppSubs         bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
+		AppSubsAppleSecret    string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
+		AppSubsGoogleJSONPath string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
+		DisableStatsInserts   bool   `yaml:"disableStatsInserts" envconfig:"FRONTEND_DISABLE_STATS_INSERTS"`
+		ShowDonors            struct {
 			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
 			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
 		} `yaml:"showDonors"`
@@ -150,6 +148,9 @@ type Config struct {
 			Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
 			Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
 		} `yaml:"countdown"`
+		Validator struct {
+			ShowProposerRewards bool `yaml:"showProposerRewards" envconfig:"FRONTEND_SHOW_PROPOSER_REWARDS"`
+		} `yaml:"validator"`
 		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
 		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
 		HttpIdleTimeout  time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
@@ -185,6 +186,7 @@ type Config struct {
 		ElEndpoint string `yaml:"elEndpoint" envconfig:"NODE_JOBS_PROCESSOR_EL_ENDPOINT"`
 		ClEndpoint string `yaml:"clEndpoint" envconfig:"NODE_JOBS_PROCESSOR_CL_ENDPOINT"`
 	} `yaml:"nodeJobsProcessor"`
+	ServiceMonitoringConfigurations []ServiceMonitoringConfiguration `yaml:"serviceMonitoringConfigurations" envconfig:"SERVICE_MONITORING_CONFIGURATIONS"`
 }
 
 type DatabaseConfig struct {
@@ -193,4 +195,9 @@ type DatabaseConfig struct {
 	Name     string
 	Host     string
 	Port     string
+}
+
+type ServiceMonitoringConfiguration struct {
+	Name     string        `yaml:"name" envconfig:"NAME"`
+	Duration time.Duration `yaml:"duration" envconfig:"DURATION"`
 }

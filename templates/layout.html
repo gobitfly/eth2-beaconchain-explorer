@@ -117,7 +117,7 @@
                 <div data-toggle="tooltip" title="" data-original-title="Gas Price" class="d-none d-lg-block">
                   <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
                     <div class="info-item-body">
-                      <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatBalanceWei .GasNow.Data.Fast "GWei" 0 }}</a>
+                      <a id="banner-gpo-data" href="/gasnow"><i class="fas fa-gas-pump mr-1"></i>{{ formatAmountFormatted .GasNow.Data.Fast "GWei" 0 0 false false false }}</a>
                     </div>
                   </div>
                 </div>
@@ -277,34 +277,32 @@
             <div class="col-md-4 mb-2">
               <h5>Legal Notices</h5>
               <div class="d-flex flex-column">
-                <a class="my-1" href="/imprint">Imprint</a>
+                <a class="my-1" href="/imprint"><i class="fas fa-building mr-2"></i>Imprint</a>
               </div>
               <div class="d-flex flex-column">
-                <a class="my-1" href="/legal/tos.pdf">Terms</a>
+                <a class="my-1" href="/legal/tos.pdf"><i class="fas fa-file-contract mr-2"></i>Terms</a>
               </div>
               <div class="d-flex flex-column">
-                <a class="my-1" href="/legal/privacy.pdf">Privacy</a>
+                <a class="my-1" href="/legal/privacy.pdf"><i class="fas fa-user-secret mr-2"></i>Privacy</a>
               </div>
             </div>
             <div class="col-md-4 mb-2">
               <h5>Resources</h5>
               <div class="d-flex flex-column">
                 <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
-                <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i>Beaconcha.in Premium</a>
+                <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i>beaconcha.in Premium</a>
                 <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
                 <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i>API Pricing</a>
-                <!-- <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub</a> -->
+                <a class="my-1" href="https://status.beaconcha.in"><i class="fas fa-check-circle mr-2"></i>Site Status</a>
               </div>
             </div>
             <div class="col-md-4 mb-2">
               <h5>Links</h5>
               <div class="d-flex flex-column">
                 <a class="my-1" href="https://discord.io/beaconchain"><i class="fab fa-discord mr-2"></i>Discord</a>
-                <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>Beaconcha.in</a>
-                <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub</a>
+                <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>beaconcha.in</a>
+                <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub Explorer</a>
                 <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>GitHub Mobile App</a>
-                <!-- <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a> -->
-                <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a> -->
               </div>
             </div>
           </div>
@@ -325,9 +323,8 @@
                   </svg>
                 </label>
                 <script>
-                  if (document.documentElement.getAttribute("data-theme") === "light") {
-                    document.getElementById("toggleSwitch").checked = true
-                  }
+                  var isLightTheme = document.documentElement.getAttribute("data-theme") === "light"
+                  document.getElementById("toggleSwitch").checked = isLightTheme
                 </script>
               </div>
             </div>

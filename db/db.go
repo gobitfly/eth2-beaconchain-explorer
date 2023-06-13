@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"database/sql"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -23,6 +22,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/patrickmn/go-cache"
+	"github.com/pressly/goose/v3"
 	prysm_deposit "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
 	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
@@ -30,11 +30,10 @@ import (
 	"eth2-exporter/rpc"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	pg_query "github.com/pganalyze/pg_query_go/v4"
 )
 
-//go:embed tables.sql
-var dbSchemaSQL string
+//go:embed migrations/*.sql
+var EmbedMigrations embed.FS
 
 var DBPGX *pgxpool.Conn
 
@@ -98,30 +97,28 @@ func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
 	WriterDb, ReaderDb = mustInitDB(writer, reader)
 }
 
-func ApplyEmbeddedDbSchema() error {
+func ApplyEmbeddedDbSchema(version int64) error {
+	goose.SetBaseFS(EmbedMigrations)
 
-	tree, err := pg_query.Parse(dbSchemaSQL)
-	if err != nil {
+	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
 
-	allowedStatements := map[string]bool{
-		"Node_IndexStmt":           true, // allow the creation of new indices
-		"Node_CreateExtensionStmt": true, // allow the creation of new extensions
-		"Node_CreateStmt":          true, // allow the creation of new tables
-		"Node_DoStmt":              true, // allow do procedures
-	}
-	for _, stmt := range tree.Stmts {
-		stmtType := reflect.TypeOf(stmt.Stmt.Node).Elem().Name()
-
-		if !allowedStatements[stmtType] {
-			return fmt.Errorf("statement of type %v is not allowed: %v", stmtType, stmt.Stmt.String())
+	if version == -2 {
+		if err := goose.Up(WriterDb.DB, "migrations"); err != nil {
+			return err
+		}
+	} else if version == -1 {
+		if err := goose.UpByOne(WriterDb.DB, "migrations"); err != nil {
+			return err
+		}
+	} else {
+		if err := goose.UpTo(WriterDb.DB, "migrations", version); err != nil {
+			return err
 		}
 	}
 
-	_, err = WriterDb.Exec(dbSchemaSQL)
-
-	return err
+	return nil
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {
@@ -485,6 +482,18 @@ func GetAllEpochs() ([]uint64, error) {
 	return epochs, nil
 }
 
+// Count finalized epochs in range (including start and end epoch)
+func CountFinalizedEpochs(startEpoch uint64, endEpoch uint64) (uint64, error) {
+	var count uint64
+	err := WriterDb.Get(&count, "SELECT COUNT(*) FROM epochs WHERE epoch >= $1 AND epoch <= $2 AND finalized", startEpoch, endEpoch)
+
+	if err != nil {
+		return 0, fmt.Errorf("error counting finalized epochs [%v -> %v] from DB: %w", startEpoch, endEpoch, err)
+	}
+
+	return count, nil
+}
+
 // GetLastPendingAndProposedBlocks will return all proposed and pending blocks (ignores missed slots) from the database
 func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
@@ -688,7 +697,7 @@ func SaveBlock(block *types.Block) error {
 	return nil
 }
 
-// SaveEpoch will stave the epoch data into the database
+// SaveEpoch will save the epoch data into the database
 func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
 	hasher := sha1.New()
@@ -911,18 +920,18 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 
 	stmtGraffitiwall, err := tx.Prepare(`
 		INSERT INTO graffitiwall (
-			x,
-			y,
-			color,
-			slot,
-			validator
-		)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (x, y) DO UPDATE SET
-										 color         = EXCLUDED.color,
-										 slot          = EXCLUDED.slot,
-										 validator     = EXCLUDED.validator
-		WHERE excluded.slot > graffitiwall.slot;
+            x,
+            y,
+            color,
+            slot,
+            validator
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (slot) DO UPDATE SET
+            x = EXCLUDED.x,
+            y = EXCLUDED.y,
+            color = EXCLUDED.color,
+            validator = EXCLUDED.validator;
 		`)
 	if err != nil {
 		return err
@@ -982,8 +991,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			return err
 		}
 	}
-
-	validators := data.Validators
 
 	validatorsByIndex := make(map[uint64]*types.Validator, len(data.Validators))
 	for _, v := range data.Validators {
@@ -1046,6 +1053,12 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	maxSqlNumber := uint64(9223372036854775807)
 
 	var queries strings.Builder
+
+	type ValidatorLastAttestationSlot struct {
+		Validator           uint64
+		LastAttestationSlot int64
+	}
+	validatorLastAttestationSlotUpdate := make([]ValidatorLastAttestationSlot, 0, len(data.Validators))
 	updates := 0
 	for _, v := range data.Validators {
 
@@ -1154,15 +1167,19 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				v.Status = "active_online"
 			}
 
-			// if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
-			// 	// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
+			if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid && c.LastAttestationSlot.Int64 < v.LastAttestationSlot.Int64 {
+				// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
 
-			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
-			// 	updates++
-			// }
+				// queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
+				// updates++
+				validatorLastAttestationSlotUpdate = append(validatorLastAttestationSlotUpdate, ValidatorLastAttestationSlot{
+					Validator:           v.Index,
+					LastAttestationSlot: v.LastAttestationSlot.Int64,
+				})
+			}
 
 			if c.Status != v.Status {
-				logger.Infof("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
 				queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
 				updates++
 			}
@@ -1220,42 +1237,29 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		logger.Infof("update completed, took %v", time.Since(updateStart))
 	}
 
-	batchSize := 30000 // max parameters: 65535
-	for b := 0; b < len(validators); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(validators) < end {
-			end = len(validators)
-		}
+	logger.Infof("updating the last attestation slot for %v validators", len(validatorLastAttestationSlotUpdate))
+	s := time.Now()
+	validatorIndexArray := make([]int64, 0, len(validatorLastAttestationSlotUpdate))
+	lastAttestationSlotArray := make([]int64, 0, len(validatorLastAttestationSlotUpdate))
 
-		numArgs := 2
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d::int, $%d::int)", i*numArgs+1, i*numArgs+2))
-			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.LastAttestationSlot.Int64)
-		}
-
-		stmt := fmt.Sprintf(`
-			UPDATE validators AS v SET
-			lastattestationslot = GREATEST(v.lastattestationslot, v2.lastattestationslot)
-			FROM (VALUES
-				%[1]s
-			) AS v2(validatorindex, lastattestationslot)
-			WHERE v2.validatorindex = v.validatorindex;
-	`, strings.Join(valueStrings, ","))
-
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			utils.LogError(err, "error executing transaction", 0)
-			return err
-		}
-
-		logger.Infof("saving validator batch %v completed", b)
+	for _, u := range validatorLastAttestationSlotUpdate {
+		validatorIndexArray = append(validatorIndexArray, int64(u.Validator))
+		lastAttestationSlotArray = append(lastAttestationSlotArray, u.LastAttestationSlot)
 	}
 
-	s := time.Now()
+	_, err = tx.Exec(`UPDATE validators AS v SET
+	lastattestationslot = GREATEST(v.lastattestationslot, v2.lastattestationslot)
+	FROM (SELECT * FROM UNNEST($1::INT[], $2::INT[])) AS v2(validatorindex, lastattestationslot)
+	WHERE v2.validatorindex = v.validatorindex;
+	`, validatorIndexArray, lastAttestationSlotArray)
+	if err != nil {
+		utils.LogError(err, "error executing transaction", 0)
+		return err
+	}
+
+	logger.Infof("last attestation slot update completed, took %v", time.Since(s))
+
+	s = time.Now()
 	newValidators := []struct {
 		Validatorindex  uint64
 		ActivationEpoch uint64
@@ -1817,7 +1821,12 @@ func updateQueueDeposits() error {
 	// then we add any new ones that are queued
 	_, err = WriterDb.Exec(`
 		INSERT INTO validator_queue_deposits
-		SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
+		SELECT validatorindex, activationeligibilityepoch 
+		FROM validators 
+		WHERE activationepoch=9223372036854775807 and status='pending' 
+		ON CONFLICT (validatorindex) DO UPDATE SET
+			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch
+		`)
 	if err != nil {
 		logger.Errorf("error adding queued publickeys to validator_queue_deposits: %v", err)
 		return err
@@ -1865,23 +1874,16 @@ func updateQueueDeposits() error {
 func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	var res uint64
 	err := ReaderDb.Get(&res, `
-	with SelectedValidator as (
-		select block_slot, block_index, validators.activationeligibilityepoch from validator_queue_deposits vqd
-		inner join validators on validators.validatorindex = $1
-		where vqd.validatorindex = validators.validatorindex 
+	WITH SelectedValidator AS (
+		SELECT block_slot, block_index, activationeligibilityepoch FROM validator_queue_deposits
+		WHERE validatorindex = $1
 	)
-	select count(*)
-	from (
-		select validatorindex, block_slot, block_index 
-		from validator_queue_deposits
-	) as vqd 
-	inner join validators on
-		validators.validatorindex = vqd.validatorindex and
-		validators.activationeligibilityepoch <= (select activationeligibilityepoch from SelectedValidator)
-	where 
-		validators.activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) or 
-		vqd.block_slot < (select block_slot from SelectedValidator) or
-		vqd.block_slot = (select block_slot from SelectedValidator) and vqd.block_index < (select block_index from SelectedValidator)`, validatorIndex)
+	SELECT count(*)
+	FROM validator_queue_deposits
+	WHERE 
+		activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) OR 
+		block_slot < (select block_slot from SelectedValidator) OR
+		block_slot = (select block_slot from SelectedValidator) AND block_index < (select block_index from SelectedValidator)`, validatorIndex)
 	return res, err
 }
 
@@ -2321,13 +2323,33 @@ func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
 }
 
 // GetAddressWithdrawals returns the withdrawals for an address
-func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*types.Withdrawals, error) {
+func GetAddressWithdrawals(address []byte, limit uint64, pageToken string) ([]*types.Withdrawals, string, error) {
+	const endOfWithdrawalsData = "End of withdrawals data"
+
 	var withdrawals []*types.Withdrawals
 	if limit == 0 {
 		limit = 100
 	}
 
-	err := ReaderDb.Select(&withdrawals, `
+	var withdrawalindex uint64
+	var err error
+	if pageToken == "" {
+		// Start from the beginning
+		withdrawalindex, err = GetTotalWithdrawals()
+		if err != nil {
+			return nil, "", fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
+		}
+	} else if pageToken == endOfWithdrawalsData {
+		// Last page already shown, end the infinite scroll
+		return nil, "", nil
+	} else {
+		withdrawalindex, err = strconv.ParseUint(pageToken, 10, 64)
+		if err != nil {
+			return nil, "", fmt.Errorf("error parsing page token: %w", err)
+		}
+	}
+
+	err = ReaderDb.Select(&withdrawals, `
 	SELECT 
 		w.block_slot as slot, 
 		w.withdrawalindex as index, 
@@ -2336,15 +2358,23 @@ func GetAddressWithdrawals(address []byte, limit uint64, offset uint64) ([]*type
 		w.amount 
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE w.address = $1 ORDER BY w.withdrawalindex DESC LIMIT $2 OFFSET $3`, address, limit, offset)
+	WHERE w.address = $1 AND w.withdrawalindex <= $2
+	ORDER BY w.withdrawalindex DESC LIMIT $3`, address, withdrawalindex, limit+1)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return withdrawals, nil
+			return withdrawals, "", nil
 		}
-		return nil, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+		return nil, "", fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
 	}
 
-	return withdrawals, nil
+	// Get the next page token and remove that withdrawal from the results
+	nextPageToken := endOfWithdrawalsData
+	if len(withdrawals) == int(limit+1) {
+		nextPageToken = fmt.Sprintf("%d", withdrawals[limit].Index)
+		withdrawals = withdrawals[:limit]
+	}
+
+	return withdrawals, nextPageToken, nil
 }
 
 func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error) {
@@ -2518,22 +2548,57 @@ func GetDashboardWithdrawals(validators []uint64, limit uint64, offset uint64, o
 	return withdrawals, nil
 }
 
-func GetValidatorWithdrawalsCount(validator uint64) (uint64, error) {
-	var count uint64
+func GetValidatorWithdrawalsCount(validator uint64) (count, lastWithdrawalEpoch uint64, err error) {
 
-	err := ReaderDb.Get(&count, `
-	SELECT count(*) 
+	type dbResponse struct {
+		Count              uint64 `db:"withdrawals_count"`
+		LastWithdrawalSlot uint64 `db:"last_withdawal_slot"`
+	}
+
+	r := &dbResponse{}
+	err = ReaderDb.Get(r, `
+	SELECT count(*) as withdrawals_count, COALESCE(max(block_slot), 0) as last_withdawal_slot
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE w.validatorindex = $1`, validator)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0, nil
+			return 0, 0, nil
 		}
-		return 0, fmt.Errorf("error getting validator blocks_withdrawals count for validator: %d: %w", validator, err)
+		return 0, 0, fmt.Errorf("error getting validator blocks_withdrawals count for validator: %d: %w", validator, err)
 	}
 
-	return count, nil
+	return r.Count, r.LastWithdrawalSlot / utils.Config.Chain.Config.SlotsPerEpoch, nil
+}
+
+func GetLastWithdrawalEpoch(validators []uint64) (map[uint64]uint64, error) {
+
+	type dbResponse struct {
+		ValidatorIndex     uint64 `db:"validatorindex"`
+		LastWithdrawalSlot uint64 `db:"last_withdawal_slot"`
+	}
+
+	res := make(map[uint64]uint64)
+
+	r := make([]*dbResponse, 0)
+	err := ReaderDb.Get(r, `
+	SELECT w.validatorindex, COALESCE(max(block_slot), 0) as last_withdawal_slot
+	FROM blocks_withdrawals w
+	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+	WHERE w.validatorindex = ANY($1)
+	GROUP BY w.validatorindex`, validators)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return res, nil
+		}
+		return nil, fmt.Errorf("error getting validator blocks_withdrawals count for validators: %d: %w", validators, err)
+	}
+
+	for _, row := range r {
+		res[row.ValidatorIndex] = row.LastWithdrawalSlot / utils.Config.Chain.Config.SlotsPerEpoch
+	}
+
+	return res, nil
 }
 
 func GetMostRecentWithdrawalValidator() (uint64, error) {
@@ -2945,8 +3010,17 @@ func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {
 		count(*) 
 	FROM 
 		validators 
+	INNER JOIN (
+		SELECT validatorindex, 
+                end_effective_balance, 
+                end_balance,
+                DAY
+        FROM
+                validator_stats
+        WHERE DAY = (SELECT COALESCE(MAX(day), 0) FROM validator_stats_status)) as stats 
+	ON stats.validatorindex = validators.validatorindex
 	WHERE 
-		withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((effectivebalance = $1 AND balance > $1) OR (withdrawableepoch <= $2 AND balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
+		validators.withdrawalcredentials LIKE '\x01' || '%'::bytea AND ((stats.end_effective_balance = $1 AND stats.end_balance > $1) OR (validators.withdrawableepoch <= $2 AND stats.end_balance > 0));`, utils.Config.Chain.Config.MaxEffectiveBalance, epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
@@ -2977,37 +3051,113 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 	return count, nil
 }
 
-func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor uint64) (uint64, error) {
-	// the validators' balance will not be checked here as this is only a rough estimation
-	// checking the balance for hundreds of thousands of validators is too expensive
+func GetLastExportedStatisticDay() (uint64, error) {
+	var lastStatsDay uint64
+	err := ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
 
-	var idCondition string
-	if validatorindex > cursor {
-		// find all withdrawable validators between the cursor and the validator
-		idCondition = "(validatorindex > $1 AND validatorindex < $2)"
-	} else if validatorindex < cursor {
-		// find all withdrawable validators behind the cursor AND in front of the validator (i.e. logical OR)
-		idCondition = "(validatorindex > $1 OR validatorindex < $2)"
-	} else {
-		// cursor at validator
-		return 0, nil
-	}
-
-	query := fmt.Sprintf(`
-	SELECT 
-		COUNT(*)
-	FROM 
-		validators 
-	WHERE 
-		%s AND
-		activationepoch <= $3 AND exitepoch > $3 AND
-		withdrawalcredentials LIKE '\x01' || '%%'::bytea`, idCondition)
-
-	count := uint64(0)
-	err := ReaderDb.Get(&count, query, cursor, validatorindex, epoch)
 	if err != nil {
-		return 0, fmt.Errorf("error getting withdrawable validator count from cursor: %w", err)
+		return 0, fmt.Errorf("error getting lastStatsDay %v", err)
 	}
+	return lastStatsDay, nil
+}
 
-	return count, nil
+func GetValidatorIncomePerforamance(validators []uint64, incomePerformance *types.ValidatorIncomePerformance) error {
+	validatorsPQArray := pq.Array(validators)
+	// el rewards are converted from wei to gwei
+	return ReaderDb.Get(incomePerformance, `
+		SELECT 
+		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
+		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d,
+		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
+		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
+		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
+		COALESCE(SUM(cl_proposer_performance_total), 0) AS cl_proposer_performance_total,
+		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
+		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
+		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
+		CAST(COALESCE(SUM(mev_performance_365d), 0) / 1e9 AS bigint) AS el_performance_365d,
+		CAST(COALESCE(SUM(mev_performance_total), 0) / 1e9 AS bigint) AS el_performance_total
+		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
+}
+
+func GetTotalValidatorDeposits(validators []uint64, totalDeposits *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(totalDeposits, `
+		SELECT 
+			COALESCE(SUM(amount), 0) 
+		FROM blocks_deposits d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
+		WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))
+	`, validatorsPQArray)
+}
+
+func GetTotalValidatorWithdrawals(validators []uint64, totalWithdrawals *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(totalWithdrawals, `
+		SELECT 
+			COALESCE(sum(w.amount), 0)
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+		WHERE validatorindex = ANY($1)
+	`, validatorsPQArray)
+}
+
+func GetValidatorDepositsForEpochs(validators []uint64, fromEpoch uint64, toEpoch uint64, deposits *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(deposits, `
+		SELECT 
+			COALESCE(SUM(amount), 0) 
+		FROM blocks_deposits d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3
+		WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))
+	`, validatorsPQArray, fromEpoch, toEpoch)
+}
+
+func GetValidatorWithdrawalsForEpochs(validators []uint64, fromEpoch uint64, toEpoch uint64, withdrawals *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(withdrawals, `
+		SELECT 
+			COALESCE(SUM(amount), 0) 
+		FROM blocks_withdrawals d
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3        
+		WHERE validatorindex = ANY($1)
+	`, validatorsPQArray, fromEpoch, toEpoch)
+}
+
+func GetValidatorBalanceForDay(validators []uint64, day uint64, balance *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(balance, `
+		SELECT 
+			COALESCE(SUM(end_balance), 0) 
+		FROM validator_stats     
+		WHERE day=$2 AND validatorindex = ANY($1)
+	`, validatorsPQArray, day)
+}
+
+func GetValidatorPropsosals(validators []uint64, proposals *[]types.ValidatorProposalInfo) error {
+	validatorsPQArray := pq.Array(validators)
+
+	return ReaderDb.Select(proposals, `
+		SELECT
+			slot,
+			status,
+			COALESCE(exec_block_number, 0) as exec_block_number
+		FROM blocks
+		WHERE proposer = ANY($1)
+		ORDER BY slot ASC
+		`, validatorsPQArray)
+}
+
+func GetOrphanedSlots(slots []uint64) ([]uint64, error) {
+	slotsPQArray := pq.Array(slots)
+	orphaned := []uint64{}
+
+	err := ReaderDb.Select(&orphaned, `
+		SELECT
+			slot
+		FROM blocks
+		WHERE slot = ANY($1) AND status = '3'
+		`, slotsPQArray)
+
+	return orphaned, err
 }

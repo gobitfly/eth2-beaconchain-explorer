@@ -152,7 +152,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits", templateFiles)
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{
-		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
+		DepositContract: utils.Config.Chain.Config.DepositContractAddress,
 	}
 
 	if handleTemplateError(w, r, "eth1Deposits.go", "Eth1DepositsLeaderboard", "", eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {

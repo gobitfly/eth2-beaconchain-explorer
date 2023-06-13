@@ -260,7 +260,7 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	nowEpoch := utils.TimeToEpoch(now)
 
 	var onConflictDo string = "NOTHING"
-	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolColleteralMaxReached || eventName == types.RocketpoolColleteralMinReached || eventName == types.ValidatorIsOfflineEventName {
+	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolCollateralMaxReached || eventName == types.RocketpoolCollateralMinReached || eventName == types.ValidatorIsOfflineEventName {
 		onConflictDo = "UPDATE SET event_threshold = $6"
 	}
 
@@ -520,30 +520,31 @@ func getMachineStatsGap(resultCount uint64) int {
 	return 1
 }
 
-func GetHistoricPrices(currency string) (map[uint64]float64, error) {
-	data := []struct {
-		Ts       time.Time
-		Currency float64
-	}{}
+func GetHistoricalPrice(chainId uint64, currency string, day uint64) (float64, error) {
+	if chainId != 1 {
+		// Don't show a historical price for testnets
+		return 0.0, nil
+	}
+	if currency == "ETH" {
+		currency = "USD"
+	}
+	currency = strings.ToLower(currency)
 
-	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "gbp" {
-		return nil, fmt.Errorf("currency %v not supported", currency)
+	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "jpy" && currency != "gbp" && currency != "aud" {
+		return 0.0, fmt.Errorf("currency %v not supported", currency)
 	}
 
-	err := ReaderDb.Select(&data, fmt.Sprintf("SELECT ts, %s AS currency FROM price", currency))
-	if err != nil {
-		return nil, err
-	}
-
-	dataMap := make(map[uint64]float64)
+	// Convert day to ts
 	genesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+	dayStartGenesisTime := time.Date(genesisTime.Year(), genesisTime.Month(), genesisTime.Day(), 0, 0, 0, 0, time.UTC)
+	ts := dayStartGenesisTime.Add(utils.Day * time.Duration(day))
 
-	for _, d := range data {
-		day := uint64(d.Ts.Sub(genesisTime).Hours()) / 24
-		dataMap[day] = d.Currency
+	var value float64
+	err := ReaderDb.Get(&value, fmt.Sprintf("SELECT %s FROM price WHERE ts = $1", currency), ts)
+	if err != nil {
+		return 0.0, err
 	}
-
-	return dataMap, nil
+	return value, nil
 }
 
 func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {

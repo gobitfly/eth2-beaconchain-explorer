@@ -80,6 +80,7 @@
                         ],
                         legend: {enabled: true},
                         tooltip: {
+                            valueDecimals: 0,
                             formatter: function (tooltip) {
                                 var orig = tooltip.defaultFormatter.call(this, tooltip)
                                 var epoch = timeToEpoch(this.x)
@@ -108,14 +109,6 @@
                                             opposite: true
                                         }
                                     ],
-                                    tooltip: {
-                                        formatter: function (tooltip) {
-                                            var orig = tooltip.defaultFormatter.call(this, tooltip)
-                                            var epoch = timeToEpoch(this.x)
-                                            orig[0] = `${orig[0]}<span style="font-size:10px">Ep ${epoch}</span>`
-                                            return orig
-                                        }
-                                    },
                                 },
                             },
                         ],
@@ -132,22 +125,6 @@
                         return 0
                     }
                 },
-
-                validatorsMissing: function () {
-                    var eligible = 0
-                    var voted = 0
-                    if (this.page && this.page.epochs && this.page.epochs.length && this.page.epochs[0].globalparticipationrate !== 0) {
-                        eligible = this.page.epochs[0].eligibleether
-                        voted = this.page.epochs[0].votedether
-                    } else if (this.page && this.page.epochs && this.page.epochs.length > 1) {
-                        eligible = this.page.epochs[1].eligibleether
-                        voted = this.page.epochs[1].votedether
-                    } else {
-                        return 0
-                    }
-                    var missingEther = (eligible * 0.66) - voted
-                    return Math.round(missingEther / 32e9)
-                },
                 scheduledCount: function () {
                     return this.page.scheduled_count
                 },
@@ -158,6 +135,9 @@
             filters: {
                 fromNow(date) {
                     return getRelativeTime(luxon.DateTime.fromISO(date));
+                },
+                timestampTooltip(date){
+                    return formatTimestampsTooltip(luxon.DateTime.fromISO(date))
                 }
             },
             created: function () {
@@ -372,9 +352,6 @@
   <div class="container mt-2">
     <div id="app" v-cloak>
       {{ with .Data }}
-        {{ if and (and (not .ShowSyncingMessage) .Genesis) (not .GenesisPeriod) }}
-          {{ template "participationWarning" . }}
-        {{ end }}
         {{ template "hero" . }}
       {{ end }}
       <div id="r-banner" info="{{ .Meta.Templates }}"></div>

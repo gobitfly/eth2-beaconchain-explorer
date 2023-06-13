@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - staging
+      - feature/newfrontend
   pull_request:
     branches:
       - '*'

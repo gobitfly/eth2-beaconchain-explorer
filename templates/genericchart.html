@@ -15,7 +15,10 @@
             },
             rangeSelector: {enabled: false},
             title: {text: {{.Title}} },
-            subtitle: {text: {{.Subtitle}} },
+            subtitle: {
+                useHTML: true,
+                text: {{.Subtitle}}
+            },
             plotOptions: {
                 column: {stacking: {{.StackingMode}} },
                 {{ if .PlotOptionsPie }}pie: {{.PlotOptionsPie}},{{ end }}
@@ -60,13 +63,32 @@
         })
         {{else}}
         Highcharts.stockChart('chart', {
+            responsive: {
+            rules: [{
+                condition: {
+                    maxWidth: 400,
+                },
+                chartOptions: {
+                    rangeSelector: {
+                        /*
+                        we use that rule, so when the screen becomes too small, the buttons can still be visible
+                        on the screen and do not clip.
+                        */
+                        x: -20,
+                    },
+                },
+            }],
+            },
             chart: {
                 type: {{.Type}},
                 height: 600,
             },
             rangeSelector: {enabled: true},
             title: {text: {{.Title}} },
-            subtitle: {text: {{.Subtitle}} },
+            subtitle: {
+                useHTML: true,
+                text: {{.Subtitle}}
+            },
             plotOptions: {
                 column: {
                     stacking: {{.StackingMode}},
@@ -143,12 +165,22 @@
           </nav>
         </div>
       </div>
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="card">
         <div class="card-body">
           <div id="chart" height="600"></div>
         </div>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+      {{ with .Footer }}
+        <div style="padding-top: 5vh; font-size: 12px; font-style: italic;">
+          <div style="display:flex;">
+            <div style="padding-right: 5px;">
+              <sup>1</sup>
+            </div>
+            <div>{{ . }}</div>
+          </div>
+        </div>
+      {{ end }}
     </div>
   {{ end }}
 {{ end }}

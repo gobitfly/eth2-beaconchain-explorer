@@ -382,7 +382,7 @@
       fetchStats() {
         return new Promise((resolve, reject) => {
           var count = 0
-          fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
+          fetch("https://{{ .EtherscanApiBaseUrl }}/api?module=stats&action=ethsupply&apikey=")
             .then((res) => res.json())
             .then((data) => {
               console.log("success", data)

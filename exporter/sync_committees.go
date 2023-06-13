@@ -43,7 +43,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 			t0 := time.Now()
 			err = exportSyncCommitteeAtPeriod(rpcClient, p)
 			if err != nil {
-				return fmt.Errorf("error exporting snyc-committee at period %v: %w", p, err)
+				return fmt.Errorf("error exporting sync-committee at period %v: %w", p, err)
 			}
 			logrus.WithFields(logrus.Fields{
 				"period":   p,

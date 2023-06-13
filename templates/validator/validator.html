@@ -8,7 +8,7 @@
   </script>
   <script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}}, {{.ActivationEpoch}})</script>
-  {{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }}
+  {{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") }}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script src="/js/highcharts/highstock.min.js"></script>
@@ -74,8 +74,8 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <!-- possible states: deposited, deposited_valid deposited_invalid pending slashing_offline slashing_online active_offline active_online slashed exited -->
-    {{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid") }}
+    <!-- possible states: deposited deposited_invalid pending slashing_offline slashing_online active_offline active_online slashed exited -->
+    {{ $deposited := or (eq .Status "deposited") (eq .Status "deposited_invalid") }}
     {{ $pending := eq .Status "pending" }}
     {{ $validating := or (or (or (eq .Status "active_online") (eq .Status "active_offline")) (or (eq .Status "slashing_online") (eq .Status "slashing_offline"))) (or (eq .Status "exiting_online") (eq .Status "exiting_offline")) }}
     {{ $exited := or (eq .Status "exited") (eq .Status "slashed") }}
@@ -84,9 +84,8 @@
     <div class="container mt-2 validator-content">
       {{ template "flashMessage" . }}
       {{ template "validatorHeading" . }}
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="row align-items-stretch">
-        <div class="col-lg-8 px-lg-2 my-2">
+        <div class="col-lg-7 col-xl-8 px-lg-2 my-2">
           <div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body">
             <div class="row">
               <div class="col">{{ template "validatorLifeCycleDiagram" . }}</div>
@@ -107,7 +106,7 @@
             </div>
           </div>
         </div>
-        <div class="col-lg-4 px-lg-2 my-2">
+        <div class="col-lg-5 col-xl-4 px-lg-2 my-2">
           <div class="card card-body py-2 px-0 h-100 d-flex align-items-center">
             {{ if $deposited }}
               {{ template "validatorNetworkStatsTable" . }}
@@ -125,7 +124,7 @@
         </div>
       </div>
       <div class="row align-items-stretch">
-        <div class="col-lg-8 px-lg-2 my-2">
+        <div class="col-lg-7 col-xl-8 px-lg-2 my-2">
           <div class="card h-100 px-0 py-0 card-body">
             <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
               <li class="nav-item">
@@ -319,7 +318,7 @@
             </div>
           </div>
         </div>
-        <div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
+        <div class="col-lg-5 col-xl-4 px-lg-2 d-flex align-items-center my-2">
           <div class="card h-100 px-0 pt-0 card-body">
             <div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
               <span class="h4 text-center mb-0">Validator History</span>
@@ -395,6 +394,8 @@
         {{ template "AddValidatorWatchlistModal" .AddValidatorWatchlistModal }}
       {{ end }}
 
+
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

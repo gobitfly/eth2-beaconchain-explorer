@@ -79,8 +79,6 @@ func initRPConfig() *smartnodeCfg.SmartnodeConfig {
 	})
 	if utils.Config.Chain.Name == "mainnet" {
 		config.Network.Value = smartnodeNetwork.Network_Mainnet
-	} else if utils.Config.Chain.Name == "zhejiang" {
-		config.Network.Value = smartnodeNetwork.Network_Zhejiang
 	} else if utils.Config.Chain.Name == "prater" {
 		config.Network.Value = smartnodeNetwork.Network_Prater
 	} else {
@@ -357,13 +355,13 @@ func contains(s []RocketpoolRewardTreeDownloadable, e uint64) bool {
 func (rp *RocketpoolExporter) Update(count int64) error {
 	var wg errgroup.Group
 	wg.Go(func() error {
-		if count%8 == 0 {
+		if count == 0 || count%5 == 4 { // run download one iteration before we update nodes
 			return rp.DownloadMissingRewardTrees()
 		}
 		return nil
 	})
 	wg.Go(func() error { return rp.UpdateMinipools() })
-	wg.Go(func() error { return rp.UpdateNodes(count%12 == 0) })
+	wg.Go(func() error { return rp.UpdateNodes(count%5 == 0) })
 	wg.Go(func() error { return rp.UpdateDAOProposals() })
 	wg.Go(func() error { return rp.UpdateDAOMembers() })
 	wg.Go(func() error { return rp.UpdateNetworkStats() })
@@ -396,7 +394,7 @@ func (rp *RocketpoolExporter) Save(count int64) error {
 	if err != nil {
 		return err
 	}
-	if count%60 == 0 { // every hour (smart contracts aren't updated that often)
+	if count%5 == 0 { // smart contracts aren't updated that often, so lets save it less often
 		err = rp.SaveNetworkStats()
 		if err != nil {
 			return err
@@ -882,6 +880,7 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 				unclaimed_smoothing_pool = excluded.unclaimed_smoothing_pool,
 				unclaimed_rpl_rewards = excluded.unclaimed_rpl_rewards,
 				effective_rpl_stake = excluded.effective_rpl_stake,
+				timezone_location = excluded.timezone_location,
 				deposit_credit = excluded.deposit_credit
 		`, strings.Join(valueStrings, ","))
 
@@ -1251,15 +1250,10 @@ func NewRocketpoolMinipool(rp *rocketpool.RocketPool, addr []byte, atlasDeployed
 		return nil, err
 	}
 
-	depositType, err := mp.GetDepositType(nil)
-	if err != nil {
-		return nil, err
-	}
 	rpm := &RocketpoolMinipool{
 		Address:     addr,
 		Pubkey:      pubk.Bytes(),
 		NodeAddress: nodeAddr.Bytes(),
-		DepositType: depositType.String(),
 	}
 	err = rpm.Update(rp, atlasDeployed)
 	if err != nil {
@@ -1285,6 +1279,7 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed boo
 	var statusDetail minipool.StatusDetails = minipool.StatusDetails{
 		IsVacant: false,
 	}
+	var depositType rpTypes.MinipoolDeposit
 
 	// Node fee can change on conversion starting with Atlas
 	wg.Go(func() error {
@@ -1341,6 +1336,12 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed boo
 		return err
 	})
 
+	wg.Go(func() error {
+		var err error
+		depositType, err = mp.GetDepositType(nil)
+		return err
+	})
+
 	if err := wg.Wait(); err != nil {
 		return err
 	}
@@ -1354,6 +1355,7 @@ func (r *RocketpoolMinipool) Update(rp *rocketpool.RocketPool, atlasDeployed boo
 	r.NodeRefundBalance = nodeRefundBalance
 	r.UserDepositBalance = userDepositBalance
 	r.IsVacant = statusDetail.IsVacant
+	r.DepositType = depositType.String()
 	return nil
 }
 

@@ -156,13 +156,14 @@ func eth1DepositsExporter() {
 func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1Deposit, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-
+	topic := common.BytesToHash(eth1DepositEventSignature[:])
 	qry := ethereum.FilterQuery{
 		Addresses: []common.Address{
 			eth1DepositContractAddress,
 		},
 		FromBlock: new(big.Int).SetUint64(fromBlock),
 		ToBlock:   new(big.Int).SetUint64(toBlock),
+		Topics:    [][]common.Hash{{topic}},
 	}
 
 	depositLogs, err := eth1Client.FilterLogs(ctx, qry)

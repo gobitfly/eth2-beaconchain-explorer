@@ -142,11 +142,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			err = db.ReaderDb.Select(result, `
-				SELECT ENCODE(txhash::bytea, 'hex') AS txhash
-				FROM blocks_transactions
-				WHERE txhash = $1
-				ORDER BY block_slot LIMIT 10`, txHash)
+			var tx *types.Eth1TransactionIndexed
+			tx, err = db.BigtableClient.GetIndexedEth1Transaction(txHash)
+			if err == nil && tx != nil {
+				result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
+			}
 		}
 	case "epochs":
 		result = &types.SearchAheadEpochsResult{}
@@ -253,7 +253,22 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
+	case "validators_by_pubkey":
+		result = &types.SearchAheadPubkeyResult{}
+		if thresholdHexLikeRE.MatchString(search) {
+			// Find the validators that have made a deposit but have no index yet and therefore are not in the validators table
+			err = db.ReaderDb.Select(result, `
+				SELECT DISTINCT
+					ENCODE(eth1_deposits.publickey, 'hex') AS pubkey
+					FROM eth1_deposits
+					LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey
+					WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, search)
+			if err != nil {
+				logger.Errorf("error reading result data: %v", err)
+				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+				return
+			}
+		}
 	case "indexed_validators_by_eth1_addresses":
 		result, err = FindValidatorIndicesByEth1Address(search)
 		if err != nil {
@@ -361,7 +376,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		logger.WithError(err).Error("error doing query for searchAhead")
+		logger.WithError(err).WithField("searchType", searchType).Error("error doing query for searchAhead")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

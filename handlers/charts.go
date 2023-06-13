@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -41,11 +42,18 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 		cpd = append(cpd, chartData)
 	}
 
+	disclaimer := ""
 	for _, chart := range cpd {
 		chart.Data.Series = nil
+
+		// If at least one chart shows info about ETH.STORE, then show the disclaimer
+		if disclaimer == "" && strings.Contains(chart.Data.Subtitle, "ETH.STORE®") {
+			disclaimer = services.EthStoreDisclaimer()
+		}
 	}
 
-	data.Data = cpd
+	data.Data = &types.ChartsPageData{ChartsPageDataCharts: cpd, Disclaimer: disclaimer}
+
 	if handleTemplateError(w, r, "charts.go", "Charts", "Done", chartsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}

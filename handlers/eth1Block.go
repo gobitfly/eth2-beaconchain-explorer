@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
@@ -82,7 +83,9 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		// retrieve consensus data
 		blockPageData, err := GetSlotPageData(blockSlot)
 		if err != nil {
-			logger.Errorf("error retrieving slot page data: %v", err)
+			if err != sql.ErrNoRows {
+				logger.Errorf("error retrieving slot page data: %v", err)
+			}
 
 			data.Data = "block"
 			if handleTemplateError(w, r, "eth1Block.go", "Eth1Block", "GetSlotPageData", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -157,10 +160,16 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 			names[string(tx.To)] = "Contract Creation"
 		}
 
-		method := make([]byte, 0)
-		if len(tx.GetData()) > 3 && (len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != "") {
-			method = tx.GetData()[:4]
+		method := "Transfer"
+		{
+			d := tx.GetData()
+			if len(d) > 3 {
+				m := d[:4]
+				invokesContract := len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != ""
+				method = db.BigtableClient.GetMethodLabel(m, invokesContract)
+			}
 		}
+
 		txs = append(txs, types.Eth1BlockPageTransaction{
 			Hash:          fmt.Sprintf("%#x", tx.Hash),
 			HashFormatted: utils.FormatAddressWithLimits(tx.Hash, "", false, "tx", 15, 18, true),
@@ -171,7 +180,7 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 			Value:         new(big.Int).SetBytes(tx.Value),
 			Fee:           txFee,
 			GasPrice:      effectiveGasPrice,
-			Method:        fmt.Sprintf("%#x", method),
+			Method:        method,
 		})
 	}
 

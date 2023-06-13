@@ -33,14 +33,14 @@
         const ins = $(`#${id}`).find("ins")
         ins.removeAttr("data-revive-loaded")
         ins.removeAttr("data-revive-seq")
-        reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+        window.reviveAsync?.["5b200397ccf8a9353bf44ef99b45268c"].refresh()
       }
     }
 
     function makeSureReviveIsInitiated(id) {
       const ins = $(`#${id}`).find("ins")
       if (ins && ins.attr("data-revive-id") && !ins.attr("data-revive-seq") && !ins.attr("data-revive-loaded")) {
-        reviveAsync["5b200397ccf8a9353bf44ef99b45268c"].refresh()
+        window.reviveAsync?.["5b200397ccf8a9353bf44ef99b45268c"].refresh()
       }
     }
 
@@ -78,7 +78,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", function () {
-      configurations?.forEach(initiateConfig, true)
+      configurations?.forEach((config) => initiateConfig(config, true))
     })
   </script>
 {{ end }}

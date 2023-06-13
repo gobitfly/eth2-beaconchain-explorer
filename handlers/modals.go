@@ -17,7 +17,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		logger.WithError(err).Errorf("error parsing form")
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your validator to the watchlist, please try again in a bit.")
 		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 		return
@@ -50,7 +50,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 	for _, val := range validators {
 		pubkey, _, err := GetValidatorIndexFrom(val)
 		if err != nil {
-			logger.WithError(err).Errorf("error parsing form")
+			utils.LogError(err, "error parsing form", 0)
 			utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your validator to the watchlist, please try again in a bit.")
 			http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 			return
@@ -101,7 +101,7 @@ func UserModalAddNetworkEvent(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		logger.WithError(err).Errorf("error parsing form")
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating your network subscriptions, please try again in a bit.")
 		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 		return
@@ -119,7 +119,7 @@ func UserModalAddNetworkEvent(w http.ResponseWriter, r *http.Request) {
 		} else {
 			err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), ev.Event, string(ev.Event))
 			if err != nil {
-				logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
+				logger.WithError(err).Errorf("error deleting subscription for user: %v", user.UserID)
 				utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating a network subscription, please try again in a bit.")
 				http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 				return
@@ -138,7 +138,7 @@ func UserModalRemoveSelectedValidator(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		logger.WithError(err).Errorf("error parsing form")
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong removing your validators from the watchlist, please try again in a bit.")
 		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 		return
@@ -169,7 +169,7 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		logger.WithError(err).Errorf("error parsing form")
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong adding your validator to the watchlist, please try again in a bit.")
 		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 		return
@@ -190,7 +190,7 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 	for _, validator := range validators {
 		pubkey, _, err := GetValidatorIndexFrom(validator)
 		if err != nil {
-			logger.WithError(err).Errorf("error parsing form")
+			utils.LogError(err, "error parsing form", 0)
 			utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
 			http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 			return

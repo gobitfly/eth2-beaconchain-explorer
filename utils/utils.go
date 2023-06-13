@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	securerand "crypto/rand"
 	"crypto/sha256"
@@ -104,6 +105,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
+		"formatIncomeNoCurrency":                  FormatIncomeNoCurrency,
 		"formatIncomeSql":                         FormatIncomeSql,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
@@ -120,8 +122,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
 		"formatTimestamp":                         FormatTimestamp,
 		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
-		"formatTimestampTs":                       FormatTimestampTs,
-		"formatTime":                              FormatTime,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"formatValidatorTags":                     FormatValidatorTags,
@@ -130,9 +130,11 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
+		"formatExchangedAmount":                   FormatExchangedAmount,
 		"formatBigAmount":                         FormatBigAmount,
+		"formatBytesAmount":                       FormatBytesAmount,
 		"formatYesNo":                             FormatYesNo,
-		"formatAmountFormatted":                   FormatAmountFormated,
+		"formatAmountFormatted":                   FormatAmountFormatted,
 		"formatAddressAsLink":                     FormatAddressAsLink,
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
@@ -148,9 +150,11 @@ func GetTemplateFuncs() template.FuncMap {
 		"add":                                     func(i, j int) int { return i + j },
 		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"addUI64":                                 func(i, j uint64) uint64 { return i + j },
+		"addFloat64":                              func(i, j float64) float64 { return i + j },
 		"mul":                                     func(i, j float64) float64 { return i * j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"divInt":                                  func(i, j int) float64 { return float64(i) / float64(j) },
+		"nef":                                     func(i, j float64) bool { return i != j },
 		"gtf":                                     func(i, j float64) bool { return i > j },
 		"ltf":                                     func(i, j float64) bool { return i < j },
 		"round": func(i float64, n int) float64 {
@@ -209,10 +213,7 @@ func GetTemplateFuncs() template.FuncMap {
 			return num
 		},
 		// ETH1 related formatting
-		"formatBalanceWei":      FormatBalanceWei,
-		"formatBytesAmount":     FormatBytesAmount,
 		"formatEth1TxStatus":    FormatEth1TxStatus,
-		"formatTimestampUInt64": FormatTimestampUInt64,
 		"formatEth1AddressFull": FormatEth1AddressFull,
 		"byteToString": func(num []byte) string {
 			return string(num)
@@ -874,14 +875,41 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 // 	}
 // }
 
+func GetEtherscanAPIBaseUrl(provideDefault bool) string {
+	const mainnetBaseUrl = "api.etherscan.io"
+	const goerliBaseUrl = "api-goerli.etherscan.io"
+	const sepoliaBaseUrl = "api-sepolia.etherscan.io"
+
+	// check config first
+	if len(Config.EtherscanAPIBaseURL) > 0 {
+		return Config.EtherscanAPIBaseURL
+	}
+
+	// check chain id
+	switch Config.Chain.Config.DepositChainID {
+	case 1: // mainnet
+		return mainnetBaseUrl
+	case 5: // goerli
+		return goerliBaseUrl
+	case 11155111: // sepolia
+		return sepoliaBaseUrl
+	}
+
+	// use default
+	if provideDefault {
+		return mainnetBaseUrl
+	}
+	return ""
+}
+
 func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
-	baseUrl := "api.etherscan.io"
-	if Config.Chain.Config.DepositChainID == 5 {
-		baseUrl = "api-goerli.etherscan.io"
+	baseUrl := GetEtherscanAPIBaseUrl(false)
+	if len(baseUrl) < 1 {
+		return nil, nil
 	}
 
 	httpClient := http.Client{Timeout: time.Second * 5}
-	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, ""))
+	resp, err := httpClient.Get(fmt.Sprintf("https://%s/api?module=contract&action=getsourcecode&address=0x%x&apikey=%s", baseUrl, address, Config.EtherscanAPIKey))
 	if err != nil {
 		return nil, err
 	}
@@ -1014,7 +1042,7 @@ func FormatEthstoreComparison(pool string, val float64) template.HTML {
 		ou = "outperforms"
 	}
 
-	return template.HTML(fmt.Sprintf(`<sub title="%s %s the ETH.STORE indicator by %s%.2f%%" data-toggle="tooltip" class="%s">(%s%.2f%%)</sub>`, pool, ou, prefix, val, textClass, prefix, val))
+	return template.HTML(fmt.Sprintf(`<sub title="%s %s the ETH.STORE® indicator by %s%.2f%%" data-toggle="tooltip" class="%s">(%s%.2f%%)</sub>`, pool, ou, prefix, val, textClass, prefix, val))
 }
 
 func FormatPoolPerformance(val float64) template.HTML {
@@ -1108,36 +1136,67 @@ func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 
 // LogFatal logs a fatal error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
 // callerSkip equal to 0 gives you info directly where LogFatal is called.
-func LogFatal(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+func LogFatal(err error, errorMsg interface{}, callerSkip int, additionalInfos ...map[string]interface{}) {
 	logErrorInfo(err, callerSkip, additionalInfos...).Fatal(errorMsg)
 }
 
 // LogError logs an error with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
 // callerSkip equal to 0 gives you info directly where LogError is called.
-func LogError(err error, errorMsg interface{}, callerSkip int, additionalInfos ...string) {
+func LogError(err error, errorMsg interface{}, callerSkip int, additionalInfos ...map[string]interface{}) {
 	logErrorInfo(err, callerSkip, additionalInfos...).Error(errorMsg)
 }
 
-func logErrorInfo(err error, callerSkip int, additionalInfos ...string) *logrus.Entry {
+func logErrorInfo(err error, callerSkip int, additionalInfos ...map[string]interface{}) *logrus.Entry {
 	logFields := logrus.NewEntry(logrus.New())
 
 	pc, fullFilePath, line, ok := runtime.Caller(callerSkip + 2)
 	if ok {
 		logFields = logFields.WithFields(logrus.Fields{
-			"cs_file":     filepath.Base(fullFilePath),
-			"cs_function": runtime.FuncForPC(pc).Name(),
-			"cs_line":     line,
+			"_file":     filepath.Base(fullFilePath),
+			"_function": runtime.FuncForPC(pc).Name(),
+			"_line":     line,
 		})
 	} else {
 		logFields = logFields.WithField("runtime", "Callstack cannot be read")
 	}
 
-	if err != nil {
-		logFields = logFields.WithField("error type", fmt.Sprintf("%T", err)).WithError(err)
+	errColl := []string{}
+	for {
+		errColl = append(errColl, fmt.Sprint(err))
+		nextErr := errors.Unwrap(err)
+		if nextErr != nil {
+			err = nextErr
+		} else {
+			break
+		}
 	}
 
-	for idx, info := range additionalInfos {
-		logFields = logFields.WithField(fmt.Sprintf("info_%v", idx), info)
+	errMarkSign := "~"
+	for idx := 0; idx < (len(errColl) - 1); idx++ {
+		errInfoText := fmt.Sprintf("%serrInfo_%v%s", errMarkSign, idx, errMarkSign)
+		nextErrInfoText := fmt.Sprintf("%serrInfo_%v%s", errMarkSign, idx+1, errMarkSign)
+		if idx == (len(errColl) - 2) {
+			nextErrInfoText = fmt.Sprintf("%serror%s", errMarkSign, errMarkSign)
+		}
+
+		// Replace the last occurrence of the next error in the current error
+		lastIdx := strings.LastIndex(errColl[idx], errColl[idx+1])
+		if lastIdx != -1 {
+			errColl[idx] = errColl[idx][:lastIdx] + nextErrInfoText + errColl[idx][lastIdx+len(errColl[idx+1]):]
+		}
+
+		errInfoText = strings.ReplaceAll(errInfoText, errMarkSign, "")
+		logFields = logFields.WithField(errInfoText, errColl[idx])
+	}
+
+	if err != nil {
+		logFields = logFields.WithField("errType", fmt.Sprintf("%T", err)).WithError(err)
+	}
+
+	for _, infoMap := range additionalInfos {
+		for name, info := range infoMap {
+			logFields = logFields.WithField(name, info)
+		}
 	}
 
 	return logFields
@@ -1163,6 +1222,90 @@ func GetSigningDomain() ([]byte, error) {
 	return domain, err
 }
 
+// SlotsPerSyncCommittee returns the count of slots per sync committee period
+func SlotsPerSyncCommittee() uint64 {
+	return Config.Chain.Config.EpochsPerSyncCommitteePeriod * Config.Chain.Config.SlotsPerEpoch
+}
+
+// GetRemainingScheduledSync returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
+//
+// Parameters:
+//   - `validatorCount` : the count of validators associated with the stats.
+//   - `stats` : the current sync committee stats of the validators
+//   - `lastExportedEpoch` : the last epoch that was exported into the validator_stats table
+//   - `firstEpochOfPeriod` : the first epoch of the current sync committee period
+func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesStats, lastExportedEpoch, firstEpochOfPeriod uint64) uint64 {
+	var exportedEpochs uint64
+	if lastExportedEpoch >= firstEpochOfPeriod {
+		exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
+	}
+	exportedSlots := exportedEpochs * Config.Chain.Config.SlotsPerEpoch * uint64(validatorCount)
+	slotsPerSyncCommittee := SlotsPerSyncCommittee() * uint64(validatorCount)
+	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
+}
+
+// AddSyncStats adds the sync stats of a set of validators from a given syncDutiesHistory to the given stats, if stats is nil a new stats object is created.
+// Parameters:
+//   - `validators` : the validators to add the stats for
+//   - `syncDutiesHistory` : the sync duties history of all queried validators
+//   - `stats` : the stats object to add the stats to, if nil a new stats object is created
+func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
+	if stats == nil {
+		stats = &types.SyncCommitteesStats{}
+	}
+	for _, validator := range validators {
+		v := syncDutiesHistory[validator]
+		for _, r := range v {
+			slotTime := SlotToTime(r.Slot)
+			if r.Status == 0 && time.Since(slotTime) <= time.Minute {
+				r.Status = 2
+			}
+			switch r.Status {
+			case 0:
+				stats.MissedSlots++
+			case 1:
+				stats.ParticipatedSlots++
+			case 2:
+				stats.ScheduledSlots++
+			}
+		}
+	}
+	return *stats
+}
+
+// To remove all round brackets (including its content) from a string
+func RemoveRoundBracketsIncludingContent(input string) string {
+	openCount := 0
+	result := ""
+	for {
+		if len(input) == 0 {
+			break
+		}
+		openIndex := strings.Index(input, "(")
+		closeIndex := strings.Index(input, ")")
+		if openIndex == -1 && closeIndex == -1 {
+			if openCount == 0 {
+				result += input
+			}
+			break
+		} else if openIndex != -1 && (openIndex < closeIndex || closeIndex == -1) {
+			openCount++
+			if openCount == 1 {
+				result += input[:openIndex]
+			}
+			input = input[openIndex+1:]
+		} else {
+			if openCount > 0 {
+				openCount--
+			} else if openIndex == -1 && len(result) == 0 {
+				result += input[:closeIndex]
+			}
+			input = input[closeIndex+1:]
+		}
+	}
+	return result
+}
+
 func Int64Min(x, y int64) int64 {
 	if x < y {
 		return x
@@ -1175,4 +1318,18 @@ func Int64Max(x, y int64) int64 {
 		return x
 	}
 	return y
+}
+
+// Prompt asks for a string value using the label. For comand line interactions.
+func CmdPrompt(label string) string {
+	var s string
+	r := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Fprint(os.Stderr, label+" ")
+		s, _ = r.ReadString('\n')
+		if s != "" {
+			break
+		}
+	}
+	return strings.TrimSpace(s)
 }

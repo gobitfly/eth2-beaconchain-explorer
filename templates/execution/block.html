@@ -63,16 +63,16 @@
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Reward:</div>
                 <div class="col-md-10">
-                  {{ formatAmount .Reward "ETH" 5 }}
+                  {{ formatAmount .Reward "Ether" 5 }}
                   {{ if gt (bigIntCmp .MevReward 0) 0 }}
                     +
-                    {{ formatAmount .MevReward "ETH" 5 }}
+                    {{ formatAmount .MevReward "Ether" 5 }}
                   {{ end }}
                 </div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Tx Fees:</div>
-                <div class="col-md-10">{{ formatAmount .TxFees "ETH" 5 }}</div>
+                <div class="col-md-10">{{ formatAmount .TxFees "Ether" 5 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Gas Usage:</div>
@@ -94,9 +94,9 @@
                 <div class="col-md-3 text-right">
                   <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
                   <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" /> Timestamp </label>
-                    <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" /> UTC </label>
-                    <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" checked /> Local </label>
+                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" autocomplete="off" /> Timestamp </label>
+                    <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" autocomplete="off" /> UTC </label>
+                    <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" autocomplete="off" checked /> Local </label>
                   </div>
                 </div>
               </div>
@@ -110,7 +110,7 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Burned fees:</div>
-                <div class="col-md-10">{{ formatAmount .BurnedFees "ETH" 5 }}</div>
+                <div class="col-md-10">{{ formatAmount .BurnedFees "Ether" 5 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Extra:</div>
@@ -152,7 +152,7 @@
                       <td>{{ .Number }}</td>
                       <td>{{ subUI64 $.Data.Number .Number }}</td>
                       <td>{{ .MinerFormatted }}</td>
-                      <td>{{ formatAmount .Reward "ETH" 5 }}</td>
+                      <td>{{ formatAmount .Reward "Ether" 5 }}</td>
                       <td>{{ .Extra }}</td>
                     </tr>
                   {{ end }}

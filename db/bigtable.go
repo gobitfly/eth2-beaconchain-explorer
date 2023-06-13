@@ -12,6 +12,7 @@ import (
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
+	"github.com/go-redis/redis/v8"
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/proto"
@@ -47,10 +48,12 @@ type Bigtable struct {
 	tableMetadata        *gcp_bigtable.Table
 	tableMachineMetrics  *gcp_bigtable.Table
 
+	redisCache *redis.Client
+
 	chainId string
 }
 
-func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
+func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
@@ -59,6 +62,15 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 
 	if err != nil {
+		return nil, err
+	}
+
+	rdc := redis.NewClient(&redis.Options{
+		Addr:        redisAddress,
+		ReadTimeout: time.Second * 20,
+	})
+
+	if err := rdc.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
 
@@ -71,6 +83,7 @@ func InitBigtable(project, instance, chainId string) (*Bigtable, error) {
 		tableBeaconchain:     btClient.Open("beaconchain"),
 		tableMachineMetrics:  btClient.Open("machine_metrics"),
 		chainId:              chainId,
+		redisCache:           rdc,
 	}
 
 	BigtableClient = bt
@@ -92,12 +105,24 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	rowKeyData := fmt.Sprintf("u:%s:p:%s:m:%v", reversePaddedUserID(userID), process, machine)
 
 	ts := gcp_bigtable.Now()
-	lastInsert, err := bigtable.getLastMachineMetricInsertTs(ctx, rowKeyData)
+	rateLimitKey := fmt.Sprintf("%s:%d", rowKeyData, ts.Time().Minute())
+	keySet, err := bigtable.redisCache.SetNX(ctx, rateLimitKey, "1", time.Minute).Result()
 	if err != nil {
 		return err
 	}
-	if lastInsert.Time().Add(59 * time.Second).After(ts.Time()) {
+	if !keySet {
 		return fmt.Errorf("rate limit, last metric insert was less than 1 min ago")
+	}
+
+	// for limiting machines per user, add the machine field to a redis set
+	// bucket period is 15mins
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), ts.Time().Minute()%15)
+	pipe := bigtable.redisCache.Pipeline()
+	pipe.SAdd(ctx, machineLimitKey, machine)
+	pipe.Expire(ctx, machineLimitKey, time.Minute*15)
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return err
 	}
 
 	dataMut := gcp_bigtable.NewMutation()
@@ -115,23 +140,6 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	return nil
 }
 
-func (bigtable *Bigtable) getLastMachineMetricInsertTs(ctx context.Context, rowKey string) (gcp_bigtable.Timestamp, error) {
-	filter := gcp_bigtable.ChainFilters(
-		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
-		gcp_bigtable.LatestNFilter(1),
-	)
-
-	row, err := bigtable.tableMachineMetrics.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return 0, err
-	}
-	colData, found := row[MACHINE_METRICS_COLUMN_FAMILY]
-	if found && len(colData) > 0 {
-		return colData[0].Timestamp, nil
-	}
-	return 0, nil
-}
-
 func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int) (map[string]bool, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -142,6 +150,7 @@ func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int
 		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
 		gcp_bigtable.LatestNFilter(searchDepth),
 		gcp_bigtable.TimestampRangeFilter(time.Now().Add(time.Duration(searchDepth*-1)*time.Minute), time.Now()),
+		gcp_bigtable.StripValueFilter(),
 	)
 
 	machineNames := make(map[string]bool)
@@ -177,12 +186,16 @@ func (bigtable Bigtable) GetMachineMetricsMachineNames(userID uint64) ([]string,
 }
 
 func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, error) {
-	names, err := bigtable.getMachineMetricNamesMap(userID, 15)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), time.Now().Minute()%15)
+
+	card, err := bigtable.redisCache.SCard(ctx, machineLimitKey).Result()
 	if err != nil {
 		return 0, err
 	}
-
-	return uint64(len(names)), nil
+	return uint64(card), nil
 }
 
 func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int) ([]*types.MachineMetricNode, error) {
@@ -659,11 +672,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	ranges, err := bigtable.getEpochRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
-
+	ranges := bigtable.getEpochRanges(startEpoch, endEpoch)
 	res := make(map[uint64][]*types.ValidatorBalance, valLen)
 
 	columnFilters := []gcp_bigtable.Filter{}
@@ -734,7 +743,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 		return true
 	}
 
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, handleRow, gcp_bigtable.RowFilter(filter))
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, handleRow, gcp_bigtable.RowFilter(filter))
 	if err != nil {
 		return nil, err
 	}
@@ -748,11 +757,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
-	ranges, err := bigtable.getSlotRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
-
+	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
 
 	columnFilters := []gcp_bigtable.Filter{}
@@ -782,16 +787,16 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			gcp_bigtable.LatestNFilter(1),
 		)
 	}
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-		for _, ri := range r[ATTESTATIONS_FAMILY] {
-			keySplit := strings.Split(r.Key(), ":")
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+		keySplit := strings.Split(r.Key(), ":")
 
-			attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
-				return false
-			}
-			attesterSlot = max_block_number - attesterSlot
+		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+			return false
+		}
+		attesterSlot = max_block_number - attesterSlot
+		for _, ri := range r[ATTESTATIONS_FAMILY] {
 			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
 			status := uint64(1)
@@ -810,7 +815,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				res[validator] = make([]*types.ValidatorAttestation, 0)
 			}
 
-			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
+			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
 				res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
 				res[validator][len(res[validator])-1].Status = status
 				res[validator][len(res[validator])-1].Delay = int64(inclusionSlot - attesterSlot)
@@ -836,25 +841,123 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validatorIndex uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) ([]*types.ValidatorSyncParticipation, error) {
-	res, err := bigtable.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startEpoch, endEpoch)
+func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]uint8, error) {
+	valLen := len(validators)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
+	defer cancel()
+
+	slots := []uint64{}
+
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < endEpoch*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+		slots = append(slots, slot)
+	}
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
+	}
+
+	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
+
+	res := make(map[uint64]map[uint64]uint8)
+
+	columnFilters := []gcp_bigtable.Filter{}
+	if valLen < 1000 {
+		columnFilters = make([]gcp_bigtable.Filter, 0, len(validators))
+		for _, validator := range validators {
+			columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+		}
+	}
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
+	)
+
+	if len(columnFilters) == 1 { // special case to retrieve data for one validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
+		)
+	}
+	if len(columnFilters) == 0 { // special case to retrieve data for all validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
+	}
+
+	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+		keySplit := strings.Split(r.Key(), ":")
+
+		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+			return false
+		}
+		attesterSlot = max_block_number - attesterSlot
+
+		for _, ri := range r[ATTESTATIONS_FAMILY] {
+			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
+
+			status := uint64(1)
+			if inclusionSlot == max_block_number {
+				inclusionSlot = 0
+				status = 0
+			}
+
+			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, ATTESTATIONS_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+
+			if status == 0 || orphanedSlotsMap[attesterSlot] {
+				if res[validator] == nil {
+					res[validator] = make(map[uint64]uint8, 0)
+				}
+				if orphanedSlotsMap[attesterSlot] {
+					res[validator][attesterSlot] = 3
+				} else {
+					res[validator][attesterSlot] = 2
+				}
+			} else if res[validator] != nil && res[validator][attesterSlot] > 0 {
+				delete(res[validator], attesterSlot)
+			}
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (bigtable *Bigtable) GetValidatorSyncDutiesHistoryOrdered(validators []uint64, startEpoch uint64, endEpoch uint64, reverseOrdering bool) (map[uint64][]*types.ValidatorSyncParticipation, error) {
+	res, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
 	if err != nil {
 		return nil, err
 	}
 	if reverseOrdering {
-		utils.ReverseSlice(res[validatorIndex])
+		for _, duties := range res {
+			utils.ReverseSlice(duties)
+		}
 	}
-	return res[validatorIndex], nil
+	return res, nil
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorSyncParticipation, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
-	ranges, err := bigtable.getSlotRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
+	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 	res := make(map[uint64][]*types.ValidatorSyncParticipation, len(validators))
 
 	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
@@ -882,7 +985,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 		)
 	}
 
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 
 		for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
 			keySplit := strings.Split(r.Key(), ":")
@@ -895,10 +998,10 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 			slot = max_block_number - slot
 			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
 
-			status := uint64(1)
+			status := uint64(1) // 1: participated
 			if inclusionSlot == max_block_number {
 				inclusionSlot = 0
-				status = 0
+				status = 0 // 0: missed
 			}
 
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, SYNC_COMMITTEES_FAMILY+":"), 10, 64)
@@ -911,7 +1014,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 				res[validator] = make([]*types.ValidatorSyncParticipation, 0)
 			}
 
-			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].Slot == slot {
+			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].Slot == slot {
 				res[validator][len(res[validator])-1].Status = status
 			} else {
 				res[validator] = append(res[validator], &types.ValidatorSyncParticipation{
@@ -930,33 +1033,38 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
+func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorFailedAttestationsStatistic, error) {
 	if firstEpoch > lastEpoch {
 		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
 	}
 
-	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
+	res := make(map[uint64]*types.ValidatorFailedAttestationsStatistic)
 
-	for e := firstEpoch; e <= lastEpoch; e++ {
-		data, err := bigtable.GetValidatorAttestationHistory(validators, e, e)
+	data, err := bigtable.GetValidatorFailedAttestationHistory(validators, firstEpoch, lastEpoch)
 
-		if err != nil {
-			return nil, err
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Infof("retrieved missed attestation history for epochs %v - %v", firstEpoch, lastEpoch)
+
+	for validator, attestations := range data {
+		if len(attestations) == 0 {
+			continue
 		}
-
-		logger.Infof("retrieved attestation history for epoch %v", e)
-
-		for validator, attestations := range data {
-			for _, attestation := range attestations {
-				if attestation.Status == 0 {
-					if res[validator] == nil {
-						res[validator] = &types.ValidatorMissedAttestationsStatistic{
-							Index: validator,
-						}
-					}
-					res[validator].MissedAttestations++
-				}
+		missed := uint64(0)
+		orphaned := uint64(0)
+		for _, state := range attestations {
+			if state == 3 {
+				orphaned++
+			} else {
+				missed++
 			}
+		}
+		res[validator] = &types.ValidatorFailedAttestationsStatistic{
+			Index:                validator,
+			MissedAttestations:   missed,
+			OrphanedAttestations: orphaned,
 		}
 	}
 
@@ -970,6 +1078,27 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 		return nil, err
 	}
 
+	slotsMap := make(map[uint64]bool)
+	for _, duties := range data {
+		for _, duty := range duties {
+			slotsMap[duty.Slot] = true
+		}
+	}
+	slots := []uint64{}
+	for slot := range slotsMap {
+		slots = append(slots, slot)
+	}
+
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
+	}
+
 	res := make(map[uint64]*types.ValidatorSyncDutiesStatistic)
 
 	for validator, duties := range data {
@@ -980,7 +1109,9 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 		}
 
 		for _, duty := range duties {
-			if duty.Status == 0 {
+			if orphanedSlotsMap[duty.Slot] {
+				res[validator].OrphanedSync++
+			} else if duty.Status == 0 {
 				res[validator].MissedSync++
 			} else {
 				res[validator].ParticipatedSync++
@@ -1036,12 +1167,10 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
-	ranges, err := bigtable.getEpochRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
+	ranges := bigtable.getEpochRanges(startEpoch, endEpoch)
 	res := make(map[uint64]*types.ValidatorBalanceStatistic)
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
@@ -1119,11 +1248,7 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	ranges, err := bigtable.getSlotRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
-
+	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 	res := make(map[uint64][]*types.ValidatorProposal, len(validators))
 
 	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
@@ -1151,7 +1276,7 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 		)
 	}
 
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		for _, ri := range r[PROPOSALS_FAMILY] {
 			keySplit := strings.Split(r.Key(), ":")
 
@@ -1179,7 +1304,7 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 				res[validator] = make([]*types.ValidatorProposal, 0)
 			}
 
-			if len(res[validator]) > 1 && res[validator][len(res[validator])-1].Slot == proposalSlot {
+			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].Slot == proposalSlot {
 				res[validator][len(res[validator])-1].Slot = proposalSlot
 				res[validator][len(res[validator])-1].Status = status
 			} else {
@@ -1268,18 +1393,14 @@ func (bigtable *Bigtable) GetEpochIncomeHistoryDescending(startEpoch uint64, end
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	ranges, err := bigtable.getEpochRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
-
+	ranges := bigtable.getEpochRanges(startEpoch, endEpoch)
 	family := gcp_bigtable.FamilyFilter(STATS_COLUMN_FAMILY)
 	columnFilter := gcp_bigtable.ColumnFilter(SUM_COLUMN)
 	filter := gcp_bigtable.RowFilter(gcp_bigtable.ChainFilters(family, columnFilter))
 
 	res := itypes.ValidatorEpochIncome{}
 
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		if len(r[STATS_COLUMN_FAMILY]) == 0 {
 			return false
 		}
@@ -1363,12 +1484,7 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
 	defer cancel()
 
-	ranges, err := bigtable.getEpochRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
-
-	// logger.Infof("range: %v to %v", rangeStart, rangeEnd)
+	ranges := bigtable.getEpochRanges(startEpoch, endEpoch)
 	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
 
 	valLen := len(validators)
@@ -1385,19 +1501,24 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
 	)
 
 	if len(columnFilters) == 1 { // special case to retrieve data for one validator
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY)
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
 	}
 
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
@@ -1446,10 +1567,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
-	ranges, err := bigtable.getEpochRanges(startEpoch, endEpoch)
-	if err != nil {
-		return nil, err
-	}
+	ranges := bigtable.getEpochRanges(startEpoch, endEpoch)
 
 	// logger.Infof("range: %v to %v", rangeStart, rangeEnd)
 	incomeStats := make(map[uint64]*itypes.ValidatorEpochIncome, len(validators))
@@ -1468,19 +1586,24 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
 	)
 
 	if len(columnFilters) == 1 { // special case to retrieve data for one validators
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
 			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY)
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
 	}
 
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
@@ -1573,7 +1696,7 @@ func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 	return nil
 }
 
-func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) (gcp_bigtable.RowRangeList, error) {
+func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
 
 	if endEpoch < startEpoch { // handle overflows
 		startEpoch = 0
@@ -1587,9 +1710,11 @@ func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) (gcp
 
 		// epochs are sorted descending, so start with the larges epoch and end with the smallest
 		// add \x00 to make the range inclusive
-		rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
-		rangeStart = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
-		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		if startEpoch < endEpoch {
+			rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
+			rangeStart = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
+			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		}
 	} else if startEpoch == endEpoch { // special case, only retrieve data for one epoch
 		rangeEnd := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch-1))
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(startEpoch))
@@ -1601,10 +1726,10 @@ func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) (gcp
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	}
-	return ranges, nil
+	return ranges
 }
 
-func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) (gcp_bigtable.RowRangeList, error) {
+func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
 
 	if endEpoch < startEpoch { // handle overflows
 		startEpoch = 0
@@ -1618,9 +1743,11 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) (gc
 
 		// epochs are sorted descending, so start with the largest epoch and end with the smallest
 		// add \x00 to make the range inclusive
-		rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
-		rangeStart = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
-		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		if startEpoch < endEpoch {
+			rangeEnd = fmt.Sprintf("%s:e:b:%s%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "\x00")
+			rangeStart = fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
+			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		}
 	} else {
 		// epochs are sorted descending, so start with the largest epoch and end with the smallest
 		// add \x00 to make the range inclusive
@@ -1628,7 +1755,95 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) (gc
 		rangeStart := fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	}
-	return ranges, nil
+	return ranges
+}
+
+func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]string, error) {
+	if family == "" || prefix == "" {
+		return []string{}, fmt.Errorf("please provide family [%v] and prefix [%v]", family, prefix)
+	}
+
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	rowRange := gcp_bigtable.PrefixRange(prefix)
+	deleteKeys := []string{}
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		row_ := row[family][0]
+		deleteKeys = append(deleteKeys, row_.Row)
+		return true
+	})
+	if err != nil {
+		return deleteKeys, err
+	}
+
+	if len(deleteKeys) == 0 {
+		return deleteKeys, fmt.Errorf("no keys found")
+	}
+
+	if dryRun {
+		return deleteKeys, nil
+	}
+
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(deleteKeys)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
+	}
+	for _, key := range deleteKeys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	}
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+	return deleteKeys, err
+}
+
+func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
+	dayIncome := make(map[uint64]int64)
+	dayProposerIncome := make(map[uint64]int64)
+	lastDay, err := GetLastExportedStatisticDay()
+	if err != nil {
+		return dayIncome, dayProposerIncome, err
+	}
+
+	currentDay := uint64(lastDay + 1)
+	startEpoch := currentDay * utils.EpochsPerDay()
+	endEpoch := startEpoch + utils.EpochsPerDay() - 1
+	income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
+	if err != nil {
+		return dayIncome, dayProposerIncome, err
+	}
+
+	// agregate all epoch income data to total day income for each validator
+	for validatorIndex, validatorIncome := range income {
+		if len(validatorIncome) == 0 {
+			continue
+		}
+		for _, validatorEpochIncome := range validatorIncome {
+			dayIncome[validatorIndex] += validatorEpochIncome.TotalClRewards()
+			dayProposerIncome[validatorIndex] += int64(validatorEpochIncome.ProposerAttestationInclusionReward) + int64(validatorEpochIncome.ProposerSlashingInclusionReward) + int64(validatorEpochIncome.ProposerSyncInclusionReward)
+		}
+	}
+
+	return dayIncome, dayProposerIncome, nil
+}
+
+func GetCurrentDayProposerIncomeTotal(validator_indices []uint64) (int64, error) {
+	_, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
+
+	if err != nil {
+		return 0, err
+	}
+
+	proposerTotal := int64(0)
+
+	for _, i := range proposerIncome {
+		proposerTotal += i
+	}
+
+	return proposerTotal, nil
 }
 
 func reversePaddedUserID(userID uint64) string {

@@ -39,7 +39,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		logger.Errorf("error parsing form: %v", err)
+		utils.LogError(err, "error parsing form", 0)
 		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
 		return
@@ -56,7 +56,7 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
 		if err != nil || !valid {
 			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
-			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			logger.Warnf("error validating recaptcha %v route: %v", r.URL.String(), err)
 			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 			return
 		}
