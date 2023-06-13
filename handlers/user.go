@@ -692,7 +692,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 		if val.DepositAddress != nil && len(*val.DepositAddress) > 0 {
 			depositAddress = fmt.Sprintf("0x%x", *val.DepositAddress)
-			if ensMap[depositAddress].searched == true {
+			if ensMap[depositAddress].searched {
 				depositEnsName = ensMap[depositAddress].value
 			} else {
 				ensData, err := GetEnsDomain(depositAddress)

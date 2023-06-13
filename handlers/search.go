@@ -399,7 +399,7 @@ func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByE
 		search = search[:len(search)-1]
 	}
 	if len(search) <= 1 || len(search) > 40 {
-		return nil, fmt.Errorf("Not a valid Eth1 address: %v", search)
+		return nil, fmt.Errorf("not a valid Eth1 address: %v", search)
 	}
 	// find validators per eth1-address (limit result by N addresses and M validators per address)
 
