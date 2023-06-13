@@ -425,7 +425,7 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
 
-	if high < 1 || low < 1 || high < low {
+	if high < 1 || high < low {
 		return fmt.Errorf("invalid block range provided (start: %v, limit: %v)", high, low)
 	}
 
@@ -435,9 +435,9 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 	// the low key will have a higher reverse padded number
 	rowRange := gcp_bigtable.NewRange(highKey, lowKey) //gcp_bigtable.PrefixRange("1:1000000000")
 
-	// if limit >= start { // handle retrieval of the first blocks
-	// 	rowRange = gcp_bigtable.InfiniteRange(startKey)
-	// }
+	if low == 0 { // handle retrieval of the first blocks
+		rowRange = gcp_bigtable.InfiniteRange(highKey)
+	}
 
 	// logger.Infof("querying from (excl) %v to (incl) %v", low, high)
 
@@ -680,7 +680,10 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	g.SetLimit(int(concurrency))
 
 	logrus.Infof("indexing blocks from %d to %d", start, end)
+	mux := sync.Mutex{}
+	checked := make(map[uint64]bool)
 	batchSize := int64(1000)
+	count := 0
 	for i := start; i <= end; i += batchSize {
 		firstBlock := int64(i)
 		lastBlock := firstBlock + batchSize - 1
@@ -690,26 +693,41 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 
 		g.Go(func() error {
 			blocksChan := make(chan *types.Eth1Block, batchSize)
+			if firstBlock == 0 {
+				b, err := BigtableClient.GetBlockFromBlocksTable(0)
+				if err != nil {
+					return fmt.Errorf("Could not retreive block 0", err)
+				}
+				blocksChan <- b
+			}
+
 			go func(stream chan *types.Eth1Block) {
 				logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
-				for b := int64(lastBlock); b >= int64(firstBlock); b -= batchSize {
-					high := b
-					low := b - batchSize
-					if int64(firstBlock) > low {
-						low = int64(firstBlock - 1)
-					}
+				high := lastBlock
+				low := lastBlock - batchSize
+				if int64(firstBlock) > low {
+					low = int64(firstBlock - 1)
+				}
+				if low < 0 {
+					low = 0
+				}
 
-					err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
-					if err != nil {
-						logger.Errorf("error getting blocks descending high: %v low: %v err: %v", high, low, err)
-					}
-
+				err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
+				if err != nil {
+					logger.Errorf("error getting blocks descending high: %v low: %v err: %v", high, low, err)
 				}
 				close(stream)
 			}(blocksChan)
 			subG := new(errgroup.Group)
 			for b := range blocksChan {
 				block := b
+				count++
+				mux.Lock()
+				if checked[b.GetNumber()] {
+					logrus.Infof("block already found: %v", b.GetNumber())
+				}
+				checked[b.GetNumber()] = true
+				mux.Unlock()
 				subG.Go(func() error {
 
 					bulkMutsData := types.BulkMutations{}
@@ -761,6 +779,12 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	} else {
 		utils.LogError(err, "wait group error", 0)
 		return err
+	}
+	logrus.Infof("count: %v", count)
+	for b := start; b <= end; b++ {
+		if !checked[uint64(b)] {
+			logger.Infof("block %v not checked", b)
+		}
 	}
 
 	return nil

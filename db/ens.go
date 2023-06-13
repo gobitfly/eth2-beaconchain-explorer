@@ -534,7 +534,8 @@ func GetAddressForEnsName(name string) (address *common.Address, err error) {
 	SELECT address 
 	FROM ens
 	WHERE
-		ens_name = $1
+		ens_name = $1 AND
+		valid_to >= now()
 	`, name)
 	if err == nil && addressBytes != nil {
 		add := common.BytesToAddress(addressBytes)
@@ -549,7 +550,8 @@ func GetEnsNameForAddress(address common.Address) (name *string, err error) {
 	FROM ens
 	WHERE
 		address = $1 AND
-		is_primary_name
+		is_primary_name AND
+		valid_to >= now()
 	;`, address.Bytes())
 	return name, err
 }

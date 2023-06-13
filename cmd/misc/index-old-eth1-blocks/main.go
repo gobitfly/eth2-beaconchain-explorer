@@ -166,8 +166,8 @@ func main() {
 		return
 	}
 
-	if *startBlock == 0 {
-		utils.LogFatal(err, "no start block defined", 0)
+	if *startBlock == 0 && *endBlock == 0 {
+		utils.LogFatal(err, "no start+end block defined", 0)
 		return
 	}
 
