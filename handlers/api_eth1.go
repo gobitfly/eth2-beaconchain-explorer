@@ -113,7 +113,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20."
 // @Param offset query int false "Offset" default(0)
-// @Param limit query int false "Limit, amount of entries you wish to receive" default(10)
+// @Param limit query int false "Limit the amount of entries you wish to receive (Maximum: 100)" default(10) maximum(100)
 // @Param sort query string false "Sort via the block number either by 'asc' or 'desc'" default(desc)
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse

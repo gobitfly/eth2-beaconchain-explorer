@@ -357,19 +357,26 @@
 {{ end }}
 {{ define "content" }}
   <div class="container mt-2">
-    <div class="d-md-flex py-2 my-md-1 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0 header-address text-truncate">
-        <div class="my-md-3 font-weight-bold">
-          <span>
-            <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
-            <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-            <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
-          </span>
+    <div class="py-2 my-md-1">
+      <div class="mb-1 mb-md-0 mt-md-3 d-flex justify-content-between">
+        <h1 class="font-weight-bold header-address">
+          <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
+          <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
+          <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
+        </h1>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-primary text-white dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">More</button>
+          <div class="dropdown-menu dropdown-menu-right">
+            <a class="dropdown-item" href="https://www.chainabuse.com/report?source=bitfly">
+              <i class="fas fa-flag"></i>
+              Report as scam
+            </a>
+          </div>
         </div>
-        <span class="text-monospace mb-md-3 d-inline-block">
-          {{ .Data.Address | formatAddressLong }}
-        </span>
-      </h1>
+      </div>
+      <h2 class="text-monospace mb-md-3 header-address text-truncate">
+        {{ .Data.Address | formatAddressLong }}
+      </h2>
       <div>
         {{ if .Data.Metadata.Name }}<span class="badge badge-secondary text-light my-2">{{ .Data.Metadata.Name }}</span>{{ end }}
       </div>
