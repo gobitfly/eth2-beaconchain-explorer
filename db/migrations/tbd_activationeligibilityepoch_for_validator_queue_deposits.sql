@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'add column activationeligibilityepoch to validator_queue_deposits';
-ALTER TABLE validator_queue_deposits ADD COLUMN IF NOT EXISTS activationeligibilityepoch BIGINT NOT NULL;
+ALTER TABLE validator_queue_deposits ADD COLUMN IF NOT EXISTS activationeligibilityepoch BIGINT;
 
 SELECT 'populate activationeligibilityepoch data on validator_queue_deposits from validators table';
 UPDATE validator_queue_deposits 
