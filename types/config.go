@@ -190,6 +190,7 @@ type Config struct {
 		ElEndpoint string `yaml:"elEndpoint" envconfig:"NODE_JOBS_PROCESSOR_EL_ENDPOINT"`
 		ClEndpoint string `yaml:"clEndpoint" envconfig:"NODE_JOBS_PROCESSOR_CL_ENDPOINT"`
 	} `yaml:"nodeJobsProcessor"`
+	ServiceMonitoringConfigurations []ServiceMonitoringConfiguration `yaml:"serviceMonitoringConfigurations" envconfig:"SERVICE_MONITORING_CONFIGURATIONS"`
 }
 
 type DatabaseConfig struct {
@@ -198,4 +199,9 @@ type DatabaseConfig struct {
 	Name     string
 	Host     string
 	Port     string
+}
+
+type ServiceMonitoringConfiguration struct {
+	Name     string        `yaml:"name" envconfig:"NAME"`
+	Duration time.Duration `yaml:"duration" envconfig:"DURATION"`
 }

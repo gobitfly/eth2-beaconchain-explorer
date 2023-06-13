@@ -239,6 +239,7 @@
           <th>Epoch</th>
           <th>Slot</th>
           <th>Status</th>
+          <th>Participation</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -308,6 +309,11 @@
                         {
                             targets: 3,
                             data: '3',
+                            "orderable": false
+                        },
+                        {
+                            targets: 4,
+                            data: '4',
                             "orderable": false
                         },
                     ],
@@ -698,8 +704,8 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatIncomeEx .IncomeToday.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} <br> 
-                EL: {{ formatIncomeEx .IncomeToday.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }}">
+                CL: {{ formatClCurrency .IncomeToday.Cl $.Rates.Currency 5 true }} <br> 
+                EL: {{ formatElCurrency .IncomeToday.El $.Rates.Currency 5 true }}">
               {{ formatIncome .IncomeToday.Total $.Rates.Currency true }}
             </span>
           </td>
@@ -712,8 +718,8 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatIncomeEx .Income1d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income7d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income31d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} <br> 
-                EL: {{ formatIncomeEx .Income1d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income7d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }} | {{ formatIncomeEx .Income31d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }}">
+                CL: {{ formatClCurrency .Income1d.Cl $.Rates.Currency 5 true }} | {{ formatClCurrency .Income7d.Cl $.Rates.Currency 5 true }} | {{ formatClCurrency .Income31d.Cl $.Rates.Currency 5 true }} <br> 
+                EL: {{ formatElCurrency .Income1d.El $.Rates.Currency 5 true }} | {{ formatElCurrency .Income7d.El $.Rates.Currency 5 true }} | {{ formatElCurrency .Income31d.El $.Rates.Currency 5 true }}">
               {{ formatIncome .Income1d.Total $.Rates.Currency false }} | {{ formatIncome .Income7d.Total $.Rates.Currency false }} |
               {{ formatIncome .Income31d.Total $.Rates.Currency false }}
             </span>
@@ -744,9 +750,9 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                  CL: 1d: {{ formatIncomeEx .Income1d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 7d: {{ formatIncomeEx .Income7d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 31d: {{ formatIncomeEx .Income31d.Cl config.Frontend.ClCurrencySymbol $.Rates.Currency true }} <br /> 
-                  EL: 1d: {{ formatIncomeEx .Income1d.El config.Frontend.ElCurrencySymbol $.Rates.Currency false }} | 7d: {{ formatIncomeEx .Income7d.El config.Frontend.ElCurrencySymbol $.Rates.Currency false }} | 31d: {{ formatIncomeEx .Income31d.El config.Frontend.ElCurrencySymbol $.Rates.Currency true }} <br /> 
-                  All: 1d: {{ formatIncomeEx .Income1d.Total config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 7d: {{ formatIncomeEx .Income7d.Total config.Frontend.ClCurrencySymbol $.Rates.Currency false }} | 31d: {{ formatIncomeEx .Income31d.Total config.Frontend.ClCurrencySymbol $.Rates.Currency true }}">
+                  CL: 1d: {{ formatClCurrency .Income1d.Cl $.Rates.Currency 5 false }} | 7d: {{ formatClCurrency .Income7d.Cl $.Rates.Currency 5 false }} | 31d: {{ formatClCurrency .Income31d.Cl $.Rates.Currency 5 true }} <br /> 
+                  EL: 1d: {{ formatElCurrency .Income1d.El $.Rates.Currency 5 false }} | 7d: {{ formatElCurrency .Income7d.El $.Rates.Currency 5 false }} | 31d: {{ formatElCurrency .Income31d.El $.Rates.Currency 5 true }} <br /> 
+                  All: 1d: {{ formatClCurrency .Income1d.Total $.Rates.Currency 5 false }} | 7d: {{ formatClCurrency .Income7d.Total $.Rates.Currency 5 false }} | 31d: {{ formatClCurrency .Income31d.Total $.Rates.Currency 5 true }}">
               {{ formatIncome .Income7d.Total $.Rates.Currency true }}
               <i class="far fa-question-circle"></i>
             </span>

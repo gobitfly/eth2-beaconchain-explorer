@@ -153,7 +153,7 @@
       <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
         <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
         <div class="d-flex flex-column">
-          <span style="font-weight: bold; font-size:18px;">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</span>
+          <span style="font-weight: bold; font-size:18px;">{{ formatClCurrency .CurrentBalance $.Rates.Currency 5 true }}</span>
           <span style="font-size: 0.8rem; color: gray"
             >{{ formatEffectiveBalance .EffectiveBalance config.Frontend.MainCurrencySymbol }}
             <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
@@ -183,7 +183,7 @@
       <div class="m-3 position-relative">
         <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
         <div style="width: 8.32rem" class="d-flex flex-column">
-          <span style="font-weight: bold; font-size:18px;">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</span>
+          <span style="font-weight: bold; font-size:18px;">{{ formatClCurrency .CurrentBalance $.Rates.Currency 5 true}}</span>
           <span
             >{{ formatEffectiveBalance .EffectiveBalance "ETH" }}
             <span style="font-size:0.8rem; color:gray" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"

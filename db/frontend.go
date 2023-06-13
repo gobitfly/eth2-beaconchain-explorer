@@ -520,7 +520,11 @@ func getMachineStatsGap(resultCount uint64) int {
 	return 1
 }
 
-func GetHistoricPrice(currency string, day uint64) (float64, error) {
+func GetHistoricalPrice(chainId uint64, currency string, day uint64) (float64, error) {
+	if chainId != 1 && chainId != 100 {
+		// Don't show a historical price for testnets
+		return 0.0, nil
+	}
 	if currency == utils.Config.Frontend.ClCurrencySymbol {
 		currency = "USD"
 	}

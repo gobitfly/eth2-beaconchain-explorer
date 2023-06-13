@@ -321,12 +321,12 @@ type ValidatorsPageData struct {
 	ExitedCount          uint64
 	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
-	Validators           []*ValidatorsPageDataValidators
+	Validators           []*ValidatorsData
 	CappellaHasHappened  bool
 }
 
-// ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
-type ValidatorsPageDataValidators struct {
+// ValidatorsData is a struct to hold data about validators
+type ValidatorsData struct {
 	TotalCount                 uint64 `db:"total_count"`
 	Epoch                      uint64 `db:"epoch"`
 	PublicKey                  []byte `db:"pubkey"`
@@ -928,6 +928,11 @@ type SearchAheadEth1Result []struct {
 // SearchAheadValidatorsResult is a struct to hold the search ahead validators results
 type SearchAheadValidatorsResult []struct {
 	Index  string `db:"index" json:"index,omitempty"`
+	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
+}
+
+// SearchAheadPubkeyResult is a struct to hold the search ahead public key results
+type SearchAheadPubkeyResult []struct {
 	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
 }
 
@@ -1724,7 +1729,7 @@ type Eth1TxData struct {
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
 	CurrentEtherPrice           template.HTML
-	HistoricEtherPrice          template.HTML
+	HistoricalEtherPrice        template.HTML
 }
 
 type Eth1EventData struct {

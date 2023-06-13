@@ -14,6 +14,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 func WriteValidatorStatisticsForDay(day uint64) error {
@@ -25,6 +26,13 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	epochsPerDay := utils.EpochsPerDay()
 	firstEpoch := day * epochsPerDay
 	lastEpoch := firstEpoch + epochsPerDay - 1
+
+	// for getting the withrawals / deposits for the current day we have to go 1 epoch in the past as they affect the balance one epoch after they have happend
+	firstWithrawDepositEpoch := uint64(0)
+	if firstEpoch > 0 {
+		firstWithrawDepositEpoch = firstEpoch - 1
+	}
+	lastWithdrawDepositEpoch := lastEpoch - 1
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
@@ -38,7 +46,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	}
 
 	start := time.Now()
-
 	tx, err := WriterDb.Beginx()
 	if err != nil {
 		return err
@@ -73,9 +80,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			valueArgs = append(valueArgs, stat.OrphanedAttestations)
 		}
 		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
-		%s
-		on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
+			insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
+			%s
+			on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
@@ -125,7 +132,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 	}
 
-	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
+	_, err = tx.Exec(depositsQry, firstWithrawDepositEpoch, lastWithdrawDepositEpoch, day)
 	if err != nil {
 		return err
 	}
@@ -145,7 +152,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		on conflict (validatorindex, day) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	_, err = tx.Exec(withdrawalsQuery, firstWithrawDepositEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastWithdrawDepositEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
 	if err != nil {
 		return err
 	}
@@ -600,8 +607,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0)
+func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
+	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0, lastFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +627,7 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string)
 	return clRewardsSeries, err
 }
 
-func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]types.ValidatorIncomeHistory, error) {
+func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64, lastFinalizedEpoch uint64) ([]types.ValidatorIncomeHistory, error) {
 	if upperBoundDay == 0 {
 		upperBoundDay = 65536
 	}
@@ -642,7 +649,6 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	}
 
 	// retrieve rewards for epochs not yet in stats
-	currentDayIncome := int64(0)
 	if upperBoundDay == 65536 {
 		lastDay := uint64(0)
 		if len(result) > 0 {
@@ -655,23 +661,51 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		}
 
 		currentDay := lastDay + 1
-		startEpoch := currentDay * utils.EpochsPerDay()
-		endEpoch := startEpoch + utils.EpochsPerDay() - 1
-		income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
+		firstEpoch := currentDay * utils.EpochsPerDay()
 
+		totalBalance := uint64(0)
+
+		g := errgroup.Group{}
+		g.Go(func() error {
+			latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validator_indices, lastFinalizedEpoch, lastFinalizedEpoch)
+			if err != nil {
+				logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
+				return err
+			}
+
+			for _, balance := range latestBalances {
+				if len(balance) == 0 {
+					continue
+				}
+
+				totalBalance += balance[0].Balance
+			}
+			return nil
+		})
+
+		var lastBalance uint64
+		g.Go(func() error {
+			return GetValidatorBalanceForDay(validator_indices, lastDay, &lastBalance)
+		})
+
+		var lastDeposits uint64
+		g.Go(func() error {
+			return GetValidatorDepositsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastDeposits)
+		})
+
+		var lastWithdrawals uint64
+		g.Go(func() error {
+			return GetValidatorWithdrawalsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
+		})
+
+		err = g.Wait()
 		if err != nil {
 			return nil, err
 		}
 
-		for _, ids := range income {
-			for _, id := range ids {
-				currentDayIncome += id.TotalClRewards()
-			}
-		}
-
 		result = append(result, types.ValidatorIncomeHistory{
 			Day:       int64(currentDay),
-			ClRewards: currentDayIncome,
+			ClRewards: int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals),
 		})
 	}
 

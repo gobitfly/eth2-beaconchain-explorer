@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -157,7 +156,7 @@ func (bigtable *Bigtable) SaveBlocks(block *types.Eth1Block) error {
 
 func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Block, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	paddedNumber := reversedPaddedBlockNumber(number)
@@ -3440,8 +3439,7 @@ func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string
 				sig, err := bigtable.GetSignature(method, types.MethodSignature)
 				if err == nil {
 					if sig != nil {
-						reg := regexp.MustCompile(`\((?:[^)(]+|\((?:[^)(]+|\([^)(]*\))*\))*\)`)
-						method = reg.ReplaceAllString(*sig, "")
+						method = utils.RemoveRoundBracketsIncludingContent(*sig)
 					}
 					cache.TieredCache.Set(cacheKey, method, time.Hour)
 				}

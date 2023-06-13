@@ -81,6 +81,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatNotificationChannel":               FormatNotificationChannel,
 		"formatBalanceSql":                        FormatBalanceSql,
 		"formatCurrentBalance":                    FormatCurrentBalance,
+		"formatCurrency":                          FormatCurrency,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
 		"formatBlockStatus":                       FormatBlockStatus,
 		"formatBlockSlot":                         FormatBlockSlot,
@@ -132,7 +133,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
-		"formatExchangedAmount":                   FormatExchangedAmount,
 		"formatBigAmount":                         FormatBigAmount,
 		"formatBytesAmount":                       FormatBytesAmount,
 		"formatYesNo":                             FormatYesNo,
@@ -1304,4 +1304,37 @@ func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.Val
 		}
 	}
 	return *stats
+}
+
+// To remove all round brackets (including its content) from a string
+func RemoveRoundBracketsIncludingContent(input string) string {
+	openCount := 0
+	result := ""
+	for {
+		if len(input) == 0 {
+			break
+		}
+		openIndex := strings.Index(input, "(")
+		closeIndex := strings.Index(input, ")")
+		if openIndex == -1 && closeIndex == -1 {
+			if openCount == 0 {
+				result += input
+			}
+			break
+		} else if openIndex != -1 && (openIndex < closeIndex || closeIndex == -1) {
+			openCount++
+			if openCount == 1 {
+				result += input[:openIndex]
+			}
+			input = input[openIndex+1:]
+		} else {
+			if openCount > 0 {
+				openCount--
+			} else if openIndex == -1 && len(result) == 0 {
+				result += input[:closeIndex]
+			}
+			input = input[closeIndex+1:]
+		}
+	}
+	return result
 }

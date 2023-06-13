@@ -60,10 +60,11 @@
       }
       var usp = new URLSearchParams(window.location.search)
       var q = usp.get("q")
+      var t = $("#slots").DataTable(tblOpts)
       if (q) {
-        tblOpts.search = { search: q }
+        t.search(q);
+        t.draw();
       }
-      $("#slots").DataTable(tblOpts)
       $("#slots_filter > label > input").on("input", function (ev) {
         if (ev && ev.target && ev.target.value) {
           var emptygraffiticheckbox = document.getElementById("showonlyemptygraffiti")

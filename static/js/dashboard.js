@@ -33,7 +33,25 @@ function appendBlocks(blocks) {
 }
 
 var selectedBTNindex = null
+var incomeChart = null
+var incomeChartDefault = document.getElementById("balance-chart").innerHTML
+var proposedChart = null
+var proposedChartDefault = document.getElementById("proposed-chart").innerHTML
+var summaryDefaultValue = "0.000"
 var VALLIMIT = 280
+
+function hideValidatorHist() {
+  if ($.fn.dataTable.isDataTable("#dash-validator-history-table")) {
+    $("#dash-validator-history-table").DataTable().destroy()
+  }
+
+  $("#dash-validator-history-table").addClass("d-none")
+  $("#dash-validator-history-art").removeClass("d-none")
+  $("#dash-validator-history-art").addClass("d-flex")
+  $("#dash-validator-history-index").text("")
+  selectedBTNindex = null
+}
+
 function showValidatorHist(index) {
   if ($.fn.dataTable.isDataTable("#dash-validator-history-table")) {
     $("#dash-validator-history-table").DataTable().destroy()
@@ -82,7 +100,8 @@ function showValidatorHist(index) {
   $("#validator-history-table_paginate").attr("style", "padding-right: 0 !important")
   $("#validator-history-table_info").attr("style", "padding-top: 0;")
   $("#dash-validator-history-table").removeClass("d-none")
-  $("#dash-validator-history-art").attr("class", "d-none")
+  $("#dash-validator-history-art").removeClass("d-flex")
+  $("#dash-validator-history-art").addClass("d-none")
   $("#dash-validator-history-index").text(index)
   selectedBTNindex = index
   showSelectedValidator()
@@ -179,39 +198,6 @@ window.addEventListener("load", function () {
     }
   })
 })
-
-function addValidatorUpdateUI() {
-  $("#validators-tab").removeClass("disabled")
-  $("#validator-art").attr("class", "d-none")
-  $("#dash-validator-history-info").removeClass("d-none")
-  $("#dash-validator-history-index-div").removeClass("d-none")
-  $("#dash-validator-history-index-div").addClass("d-flex")
-  // $('#selected-validators-input-button-val').removeClass('d-none')
-  let anim = "goinboxanim"
-  if (boxAnimationDirection === "out") anim = "gooutboxanim"
-
-  $("#selected-validators-input-button-box").addClass("zoomanim")
-  $("#selected-validators-input-button-val").addClass(anim)
-  setTimeout(() => {
-    // $('#selected-validators-input-button-val').addClass('d-none')
-    $("#selected-validators-input-button-box").removeClass("zoomanim")
-    $("#selected-validators-input-button-val").removeClass(anim)
-  }, 1100)
-
-  fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
-    method: "GET",
-  }).then((res) => {
-    res.json().then((data) => {
-      let sum = 0.0
-      for (let eff of data) {
-        sum += eff
-      }
-      sum = sum / data.length
-      setValidatorEffectiveness("validator-eff-total", sum)
-    })
-  })
-  showProposedHistoryTable()
-}
 
 function showSelectedValidator() {
   setTimeout(function () {
@@ -358,6 +344,9 @@ $(document).ready(function () {
     // var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
     var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
     var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
+    var validatorIndices = state.validators.filter((v) => {
+      return !isValidatorPubkey(v)
+    })
     fetch("/dashboard/save", {
       method: "POST",
       // credentials: 'include',
@@ -365,7 +354,7 @@ $(document).ready(function () {
         "Content-Type": "application/json",
         // 'X-CSRF-Token': $("#bookmark-button").attr("csrf"),
       },
-      body: JSON.stringify(state.validators),
+      body: JSON.stringify(validatorIndices),
     })
       .then(function (res) {
         console.log("response", res)
@@ -419,11 +408,19 @@ $(document).ready(function () {
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
     processing: true,
     serverSide: false,
-    ordering: true,
-    lengthChange: false,
     searching: true,
+    stateSave: true,
+    stateSaveCallback: function (settings, data) {
+      data.start = 0
+      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+    },
+    stateLoadCallback: function (settings) {
+      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+    },
+    pageLength: 10,
     pagingType: "full_numbers",
-    lengthMenu: [10, 25, 50],
+    scrollY: "503px",
+    scrollCollapse: true,
     info: false,
     language: {
       search: "",
@@ -433,6 +430,7 @@ $(document).ready(function () {
         next: '<i class="fas fa-chevron-right"></i>',
       },
     },
+    dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
     preDrawCallback: function () {
       // this does not always work.. not sure how to solve the staying tooltip
       try {
@@ -442,6 +440,7 @@ $(document).ready(function () {
       }
     },
     drawCallback: function (settings) {
+      formatTimestamps()
       $("#validators").find('[data-toggle="tooltip"]').tooltip()
     },
     order: [[1, "asc"]],
@@ -468,10 +467,11 @@ $(document).ready(function () {
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
-                      ${data}
-                  </span>
-                 `
+          if (isNaN(parseInt(data))) {
+            return `<span class="m-0 p-2">${data}</span>`
+          } else {
+            return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">${data}</span>`
+          }
         },
       },
       {
@@ -554,6 +554,17 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  var bhPubkey = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.index
+    },
+    remote: {
+      url: "/search/validators_by_pubkey/%QUERY",
+      wildcard: "%QUERY",
+    },
+  })
   var bhEth1Addresses = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -604,6 +615,18 @@ $(document).ready(function () {
         header: "<h3>Validators</h3>",
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate high-contrast">${data.index}: ${data.pubkey}</div>`
+        },
+      },
+    },
+    {
+      limit: 5,
+      name: "pubkeys",
+      source: bhPubkey,
+      display: "pubkey",
+      templates: {
+        header: "<h3>Validators by Public Key</h3>",
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate high-contrast">${data.pubkey}</div>`
         },
       },
     },
@@ -662,11 +685,12 @@ $(document).ready(function () {
   $(".typeahead-dashboard").on("typeahead:select", function (ev, sug) {
     if (sug.validator_indices) {
       addValidators(sug.validator_indices)
-    } else {
+    } else if (sug.index != null) {
       addValidator(sug.index)
+    } else {
+      addValidator("0x" + sug.pubkey)
     }
     boxAnimationDirection = "in"
-    // addValidatorUpdateUI()
     $(".typeahead-dashboard").typeahead("val", "")
   })
 
@@ -724,6 +748,14 @@ $(document).ready(function () {
   renderSelectedValidators()
   updateState()
 
+  function isValidatorPubkey(identifier) {
+    return identifier.startsWith("0x") && identifier.length === 98
+  }
+
+  function firstValidatorWithIndex() {
+    return state.validators.find((v) => !isValidatorPubkey(v))
+  }
+
   function renderSelectedValidators() {
     if (state.validators.length > VALLIMIT) return
     var elHolder = document.getElementById("selected-validators")
@@ -741,10 +773,59 @@ $(document).ready(function () {
       var elItem = document.createElement("li")
       elItem.classList = "item"
       elItem.dataset.validatorIndex = v
-      elItem.innerHTML = '<i class="fas fa-times-circle remove-validator"></i> <span>' + v + "</span>"
+      var validatorDisplay = v
+      if (isValidatorPubkey(v)) {
+        validatorDisplay = v.slice(0, 6) + "..." + v.slice(-4)
+      }
+      elItem.innerHTML = '<i class="fas fa-times-circle remove-validator"></i> <span>' + validatorDisplay + "</span>"
       elsItems.push(elItem)
     }
     elHolder.prepend(...elsItems)
+  }
+
+  function addValidatorUpdateUI() {
+    $("#validators-tab").removeClass("disabled")
+    $("#validator-art").attr("class", "d-none")
+
+    if (firstValidatorWithIndex() !== undefined) {
+      $("#dash-validator-history-info").removeClass("d-none")
+      $("#dash-validator-history-index-div").removeClass("d-none")
+      $("#dash-validator-history-index-div").addClass("d-flex")
+
+      fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
+        method: "GET",
+      }).then((res) => {
+        res.json().then((data) => {
+          let sum = 0.0
+          for (let eff of data) {
+            sum += eff
+          }
+          sum = sum / data.length
+          setValidatorEffectiveness("validator-eff-total", sum)
+        })
+      })
+
+      showProposedHistoryTable()
+    } else {
+      $("#dash-validator-history-info").addClass("d-none")
+      $("#dash-validator-history-index-div").removeClass("d-flex")
+      $("#dash-validator-history-index-div").addClass("d-none")
+
+      $("#validator-eff-total").html(summaryDefaultValue)
+      renderProposedHistoryTable([])
+    }
+
+    // $('#selected-validators-input-button-val').removeClass('d-none')
+    let anim = "goinboxanim"
+    if (boxAnimationDirection === "out") anim = "gooutboxanim"
+
+    $("#selected-validators-input-button-box").addClass("zoomanim")
+    $("#selected-validators-input-button-val").addClass(anim)
+    setTimeout(() => {
+      // $('#selected-validators-input-button-val').addClass('d-none')
+      $("#selected-validators-input-button-box").removeClass("zoomanim")
+      $("#selected-validators-input-button-val").removeClass(anim)
+    }, 1100)
   }
 
   function renderDashboardInfo() {
@@ -762,9 +843,13 @@ $(document).ready(function () {
     if (state.validators.length > 0) {
       showSelectedValidator()
       addValidatorUpdateUI()
-      if (selectedBTNindex != state.validators[0]) {
-        // don't query if not necessary
-        showValidatorHist(state.validators[0])
+
+      firstValidatorWithHistory = firstValidatorWithIndex()
+      if (firstValidatorWithHistory === undefined) {
+        hideValidatorHist()
+      } else if (selectedBTNindex !== firstValidatorWithHistory) {
+        // don't query if not necessary)
+        showValidatorHist(firstValidatorWithHistory)
       }
       // showValidatorsInSearch(3)
     } else {
@@ -899,6 +984,7 @@ $(document).ready(function () {
   function sortValidators(a, b) {
     var ai = parseInt(a)
     var bi = parseInt(b)
+
     return ai - bi
   }
 
@@ -946,34 +1032,9 @@ $(document).ready(function () {
     }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
-      // if(state.validators.length >= 9) {
-      //   appendBlocks(xBlocks)
-      // } else {
-      //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
-      // }
-      document.querySelector("#rewards-button").style.visibility = "visible"
-      document.querySelector("#bookmark-button").style.visibility = "visible"
       document.querySelector("#copy-button").style.visibility = "visible"
       document.querySelector("#clear-search").style.visibility = "visible"
 
-      $.ajax({
-        url: "/dashboard/data/earnings" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
-          if (!result) return
-
-          document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || "0.000"
-          document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || "0.000"
-          document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || "0.000"
-          document.querySelector("#earnings-total").innerHTML = result.totalFormatted || "0.000"
-          $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
-          document.querySelector("#balance-total").innerHTML = result.totalBalance || "0.000"
-          $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
-          $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
-          // addChange("#earnings-total-change", result.total)
-        },
-      })
       $.ajax({
         url: "/dashboard/data/validators" + qryStr,
         success: function (result) {
@@ -1022,17 +1083,53 @@ $(document).ready(function () {
           renderDashboardInfo()
         },
       })
+
+      if (firstValidatorWithIndex() !== undefined) {
+        document.querySelector("#rewards-button").style.visibility = "visible"
+        document.querySelector("#bookmark-button").style.visibility = "visible"
+
+        $.ajax({
+          url: "/dashboard/data/earnings" + qryStr,
+          success: function (result) {
+            var t1 = Date.now()
+            console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
+            if (!result) return
+
+            document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || summaryDefaultValue
+            document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || summaryDefaultValue
+            document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || summaryDefaultValue
+            document.querySelector("#earnings-total").innerHTML = result.totalFormatted || summaryDefaultValue
+            $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
+            document.querySelector("#balance-total").innerHTML = result.totalBalance || summaryDefaultValue
+            $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
+            $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
+            // addChange("#earnings-total-change", result.total)
+          },
+        })
+      } else {
+        document.querySelector("#rewards-button").style.visibility = "hidden"
+        document.querySelector("#bookmark-button").style.visibility = "hidden"
+
+        document.querySelector("#earnings-day").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-week").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-month").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-total").innerHTML = summaryDefaultValue
+        document.querySelector("#balance-total").innerHTML = summaryDefaultValue
+      }
     } else {
       document.querySelector("#copy-button").style.visibility = "hidden"
       document.querySelector("#rewards-button").style.visibility = "hidden"
       document.querySelector("#bookmark-button").style.visibility = "hidden"
       document.querySelector("#clear-search").style.visibility = "hidden"
-      // window.location = "/dashboard"
     }
 
     $("#copy-button").attr("data-clipboard-text", window.location.href)
 
-    renderCharts()
+    if (state.validators && firstValidatorWithIndex() !== undefined) {
+      renderCharts()
+    } else {
+      hideCharts()
+    }
   }
 
   window.onpopstate = function (event) {
@@ -1056,6 +1153,27 @@ $(document).ready(function () {
     updateState()
   })
 
+  function hideCharts() {
+    hideIncomeChart()
+    hideProposedChart()
+  }
+
+  function hideIncomeChart() {
+    if (incomeChart) {
+      incomeChart.destroy()
+      incomeChart = null
+    }
+    document.getElementById("balance-chart").innerHTML = incomeChartDefault
+  }
+
+  function hideProposedChart() {
+    if (proposedChart) {
+      proposedChart.destroy()
+      proposedChart = null
+    }
+    document.getElementById("proposed-chart").innerHTML = proposedChartDefault
+  }
+
   function renderCharts() {
     var t0 = Date.now()
     // if (state.validators.length === 0) {
@@ -1063,57 +1181,39 @@ $(document).ready(function () {
     //   return
     // }
     // document.getElementById('chart-holder').style.display = 'flex'
-    if (state.validators && state.validators.length) {
-      var qryStr = "?validators=" + state.validators.join(",")
-      $.ajax({
-        url: "/dashboard/data/allbalances" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          // let prevDayIncome = 0
-          // let prevDay = null
-          // let prevIncome = 0
-          // for (var i = 0; i < result.length; i++) {
-          //   var res = result[i]
-
-          //   let day = new Date(res[0])
-          //   if (prevDay===null) prevDay=day
-          //   // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
-          //   prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
-          //   prevIncome = res[2]
-          //   // console.log(day!==prevDay, day, prevDay, res[0])
-          //   if (day.getDay()!==prevDay.getDay()){
-          //     income.push([day.getTime(), prevDayIncome])
-          //     prevDayIncome = 0
-          //     prevDay=day
-          //   }
-          // }
-
-          var t2 = Date.now()
-          createBalanceChart(result.consensusChartData, result.executionChartData)
-          var t3 = Date.now()
-          console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
-        },
-      })
-      $.ajax({
-        url: "/dashboard/data/proposals" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          var t2 = Date.now()
-          if (result && result.length) {
-            createProposedChart(result)
+    var qryStr = "?validators=" + state.validators.join(",")
+    $.ajax({
+      url: "/dashboard/data/allbalances" + qryStr,
+      success: function (result) {
+        var t1 = Date.now()
+        createIncomeChart(result.consensusChartData, result.executionChartData)
+        var t2 = Date.now()
+        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
+      },
+    })
+    $.ajax({
+      url: "/dashboard/data/proposals" + qryStr,
+      success: function (result) {
+        var t1 = Date.now()
+        if (result && result.length) {
+          createProposedChart(result)
+        } else {
+          var chart = $("#proposed-chart").highcharts()
+          if (chart !== undefined) {
+            hideProposedChart()
           }
-          var t3 = Date.now()
-          console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
-        },
-      })
-    }
+        }
+        var t2 = Date.now()
+        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
+      },
+    })
   }
 })
 
-function createBalanceChart(income, executionIncomeHistory) {
+function createIncomeChart(income, executionIncomeHistory) {
   executionIncomeHistory = executionIncomeHistory || []
   // console.log("u", utilization)
-  Highcharts.stockChart("balance-chart", {
+  incomeChart = Highcharts.stockChart("balance-chart", {
     exporting: {
       scale: 1,
     },
@@ -1218,7 +1318,7 @@ function createProposedChart(data) {
     else if (d[1] == 2) missed.push([d[0] * 1000, 1])
     else if (d[1] == 3) orphaned.push([d[0] * 1000, 1])
   })
-  Highcharts.stockChart("proposed-chart", {
+  proposedChart = Highcharts.stockChart("proposed-chart", {
     chart: {
       type: "column",
     },

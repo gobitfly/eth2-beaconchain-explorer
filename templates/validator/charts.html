@@ -212,10 +212,14 @@
                                 }
                             }
                         },
-                        yAxis: [
-                            {
-                                title: {
-                                    text: `Income [${currency}]`
+                        yAxis: [{
+                            title: {
+                                text: `Income [${currency}]`
+                            },
+                            opposite: false,
+                            labels: {
+                                formatter: function() {
+                                    return currency === "ETH" ? trimToken(this.value) : trimCurrency(this.value)
                                 },
                                 opposite: false,
                                 labels: {
