@@ -544,7 +544,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
-		if validatorPageData.ActivationEpoch > 100_000_000 {
+		// we only need to get the queue information if we don't have an activation epoch but we have an eligibility epoch
+		if validatorPageData.ActivationEpoch > 100_000_000 && validatorPageData.ActivationEligibilityEpoch < 100_000_000 {
 			queueAhead, err := db.GetQueueAheadOfValidator(validatorPageData.Index)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve queue ahead of validator %v: %v", validatorPageData.ValidatorIndex, err)
