@@ -408,11 +408,19 @@ $(document).ready(function () {
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
     processing: true,
     serverSide: false,
-    ordering: true,
-    lengthChange: false,
     searching: true,
+    stateSave: true,
+    stateSaveCallback: function (settings, data) {
+      data.start = 0
+      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+    },
+    stateLoadCallback: function (settings) {
+      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+    },
+    pageLength: 10,
     pagingType: "full_numbers",
-    lengthMenu: [10, 25, 50],
+    scrollY: "503px",
+    scrollCollapse: true,
     info: false,
     language: {
       search: "",
@@ -422,6 +430,7 @@ $(document).ready(function () {
         next: '<i class="fas fa-chevron-right"></i>',
       },
     },
+    dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
     preDrawCallback: function () {
       // this does not always work.. not sure how to solve the staying tooltip
       try {
@@ -431,6 +440,7 @@ $(document).ready(function () {
       }
     },
     drawCallback: function (settings) {
+      formatTimestamps()
       $("#validators").find('[data-toggle="tooltip"]').tooltip()
     },
     order: [[1, "asc"]],
@@ -1144,12 +1154,19 @@ $(document).ready(function () {
   })
 
   function hideCharts() {
+    hideIncomeChart()
+    hideProposedChart()
+  }
+
+  function hideIncomeChart() {
     if (incomeChart) {
       incomeChart.destroy()
       incomeChart = null
     }
     document.getElementById("balance-chart").innerHTML = incomeChartDefault
+  }
 
+  function hideProposedChart() {
     if (proposedChart) {
       proposedChart.destroy()
       proposedChart = null
@@ -1180,6 +1197,11 @@ $(document).ready(function () {
         var t1 = Date.now()
         if (result && result.length) {
           createProposedChart(result)
+        } else {
+          var chart = $("#proposed-chart").highcharts()
+          if (chart !== undefined) {
+            hideProposedChart()
+          }
         }
         var t2 = Date.now()
         console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)

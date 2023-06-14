@@ -696,3 +696,8 @@ type ApiValidatorProposalsResponse struct {
 	SyncaggregateSignature     string  `db:"syncaggregate_signature" json:"syncaggregate_signature"`
 	Voluntaryexitscount        uint64  `db:"voluntaryexitscount" json:"voluntaryexitscount"`
 }
+
+type EnsDomainResponse struct {
+	Address string `json:"address"`
+	Domain  string `json:"domain"`
+}

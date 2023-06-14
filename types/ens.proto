@@ -1,0 +1,48 @@
+syntax = "proto3";
+package types;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "./types";
+
+message EnsNameRegistered {
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    bytes register_contract = 3;
+    bytes resolver_contract = 4;
+    google.protobuf.Timestamp time = 5;
+    bytes label = 6;
+    bytes owner = 7;
+    bytes resolver = 8;
+    bytes node = 9;
+    bytes name = 10;
+    google.protobuf.Timestamp expires = 11;
+}
+
+message EnsNameRenewed {
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    google.protobuf.Timestamp time = 3;
+    bytes label = 4;
+    bytes name = 5;
+    google.protobuf.Timestamp expires = 6;
+}
+
+message EnsAddressChanged {
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    bytes resolve_contract = 3;
+    google.protobuf.Timestamp time = 4;
+    bytes node = 5;
+    uint64 coin_type = 6;
+    bytes new_address = 7;
+}
+
+message EnsNameChanged {
+    bytes parent_hash = 1;
+    uint64 block_number = 2;
+    bytes resolve_contract = 3;
+    google.protobuf.Timestamp time = 4;
+    bytes node = 5;
+    bytes new_name = 6;
+}

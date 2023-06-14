@@ -28,11 +28,14 @@ var opts = struct {
 	StartDay      uint64
 	EndDay        uint64
 	Validator     uint64
+	Family        string
+	Key           string
+	DryRun        bool
 }{}
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -40,7 +43,12 @@ func main() {
 	flag.Uint64Var(&opts.EndDay, "day-end", 0, "end day to debug")
 	flag.Uint64Var(&opts.Validator, "validator", 0, "validator to check for")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
+	flag.StringVar(&opts.Family, "family", "", "big table family")
+	flag.StringVar(&opts.Key, "key", "", "big table key")
+	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	flag.Parse()
+
+	opts.DryRun = *dryRun != "false"
 
 	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
 	cfg := &types.Config{}
@@ -52,7 +60,7 @@ func main() {
 
 	chainIdString := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
 
-	_, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Project, chainIdString, utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "error initializing bigtable", 0)
 	}
@@ -124,7 +132,9 @@ func main() {
 			logrus.Printf("finished export for epoch %v", epoch)
 		}
 	case "debug-rewards":
-		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator)
+		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
+	case "clear-bigtable":
+		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
 
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
@@ -186,13 +196,7 @@ func UpdateAPIKey(user uint64) error {
 }
 
 // Debugging function to compare Rewards from the Statistic Table with the onces from the Big Table
-func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
-
-	if err != nil {
-		logrus.Fatalf("error connecting to bigtable: %v", err)
-	}
-	defer bt.Close()
+func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
 
 	for day := dayStart; day <= dayEnd; day++ {
 		startEpoch := day * utils.EpochsPerDay()
@@ -220,4 +224,24 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
 		}
 	}
 
+}
+
+func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
+
+	if !dryRun {
+		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
+		if confirmation != "yes" {
+			logrus.Infof("Abort!")
+			return
+		}
+	}
+	deletedKeys, err := bt.ClearByPrefix(family, key, dryRun)
+
+	if err != nil {
+		logrus.Fatalf("error deleting from bigtable: %v", err)
+	} else if dryRun {
+		logrus.Infof("the following keys would be deleted: %v", deletedKeys)
+	} else {
+		logrus.Infof("%v keys have been deleted", len(deletedKeys))
+	}
 }

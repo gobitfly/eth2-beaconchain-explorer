@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	securerand "crypto/rand"
 	"crypto/sha256"
@@ -1276,4 +1277,65 @@ func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.Val
 		}
 	}
 	return *stats
+}
+
+// To remove all round brackets (including its content) from a string
+func RemoveRoundBracketsIncludingContent(input string) string {
+	openCount := 0
+	result := ""
+	for {
+		if len(input) == 0 {
+			break
+		}
+		openIndex := strings.Index(input, "(")
+		closeIndex := strings.Index(input, ")")
+		if openIndex == -1 && closeIndex == -1 {
+			if openCount == 0 {
+				result += input
+			}
+			break
+		} else if openIndex != -1 && (openIndex < closeIndex || closeIndex == -1) {
+			openCount++
+			if openCount == 1 {
+				result += input[:openIndex]
+			}
+			input = input[openIndex+1:]
+		} else {
+			if openCount > 0 {
+				openCount--
+			} else if openIndex == -1 && len(result) == 0 {
+				result += input[:closeIndex]
+			}
+			input = input[closeIndex+1:]
+		}
+	}
+	return result
+}
+
+func Int64Min(x, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Int64Max(x, y int64) int64 {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+// Prompt asks for a string value using the label. For comand line interactions.
+func CmdPrompt(label string) string {
+	var s string
+	r := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Fprint(os.Stderr, label+" ")
+		s, _ = r.ReadString('\n')
+		if s != "" {
+			break
+		}
+	}
+	return strings.TrimSpace(s)
 }

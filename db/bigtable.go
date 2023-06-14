@@ -122,7 +122,7 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), ts.Time().Minute()%15)
 	pipe := bigtable.redisCache.Pipeline()
 	pipe.SAdd(ctx, machineLimitKey, machine)
-	pipe.ExpireNX(ctx, machineLimitKey, time.Minute*15)
+	pipe.Expire(ctx, machineLimitKey, time.Minute*15)
 	_, err = pipe.Exec(ctx)
 	if err != nil {
 		return err
@@ -1807,6 +1807,48 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) gcp
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	}
 	return ranges
+}
+
+func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]string, error) {
+	if family == "" || prefix == "" {
+		return []string{}, fmt.Errorf("please provide family [%v] and prefix [%v]", family, prefix)
+	}
+
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	rowRange := gcp_bigtable.PrefixRange(prefix)
+	deleteKeys := []string{}
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		row_ := row[family][0]
+		deleteKeys = append(deleteKeys, row_.Row)
+		return true
+	})
+	if err != nil {
+		return deleteKeys, err
+	}
+
+	if len(deleteKeys) == 0 {
+		return deleteKeys, fmt.Errorf("no keys found")
+	}
+
+	if dryRun {
+		return deleteKeys, nil
+	}
+
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(deleteKeys)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
+	}
+	for _, key := range deleteKeys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	}
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+	return deleteKeys, err
 }
 
 func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {

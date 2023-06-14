@@ -474,6 +474,11 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Path:  "/slots/finder",
 							Icon:  "fa-cube",
 						},
+						{
+							Label: "Report a scam",
+							Path:  "https://www.chainabuse.com/report?source=bitfly",
+							Icon:  "fa-flag",
+						},
 					},
 				},
 			},

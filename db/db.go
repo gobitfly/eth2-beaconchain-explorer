@@ -987,8 +987,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		}
 	}
 
-	validators := data.Validators
-
 	validatorsByIndex := make(map[uint64]*types.Validator, len(data.Validators))
 	for _, v := range data.Validators {
 		validatorsByIndex[v.Index] = v
@@ -1050,6 +1048,12 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	maxSqlNumber := uint64(9223372036854775807)
 
 	var queries strings.Builder
+
+	type ValidatorLastAttestationSlot struct {
+		Validator           uint64
+		LastAttestationSlot int64
+	}
+	validatorLastAttestationSlotUpdate := make([]ValidatorLastAttestationSlot, 0, len(data.Validators))
 	updates := 0
 	for _, v := range data.Validators {
 
@@ -1158,12 +1162,16 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				v.Status = "active_online"
 			}
 
-			// if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid {
-			// 	// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
+			if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid && c.LastAttestationSlot.Int64 < v.LastAttestationSlot.Int64 {
+				// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
 
-			// 	queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
-			// 	updates++
-			// }
+				// queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
+				// updates++
+				validatorLastAttestationSlotUpdate = append(validatorLastAttestationSlotUpdate, ValidatorLastAttestationSlot{
+					Validator:           v.Index,
+					LastAttestationSlot: v.LastAttestationSlot.Int64,
+				})
+			}
 
 			if c.Status != v.Status {
 				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
@@ -1224,42 +1232,29 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		logger.Infof("update completed, took %v", time.Since(updateStart))
 	}
 
-	batchSize := 30000 // max parameters: 65535
-	for b := 0; b < len(validators); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(validators) < end {
-			end = len(validators)
-		}
+	logger.Infof("updating the last attestation slot for %v validators", len(validatorLastAttestationSlotUpdate))
+	s := time.Now()
+	validatorIndexArray := make([]int64, 0, len(validatorLastAttestationSlotUpdate))
+	lastAttestationSlotArray := make([]int64, 0, len(validatorLastAttestationSlotUpdate))
 
-		numArgs := 2
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d::int, $%d::int)", i*numArgs+1, i*numArgs+2))
-			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.LastAttestationSlot.Int64)
-		}
-
-		stmt := fmt.Sprintf(`
-			UPDATE validators AS v SET
-			lastattestationslot = GREATEST(v.lastattestationslot, v2.lastattestationslot)
-			FROM (VALUES
-				%[1]s
-			) AS v2(validatorindex, lastattestationslot)
-			WHERE v2.validatorindex = v.validatorindex;
-	`, strings.Join(valueStrings, ","))
-
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			utils.LogError(err, "error executing transaction", 0)
-			return err
-		}
-
-		logger.Infof("saving validator batch %v completed", b)
+	for _, u := range validatorLastAttestationSlotUpdate {
+		validatorIndexArray = append(validatorIndexArray, int64(u.Validator))
+		lastAttestationSlotArray = append(lastAttestationSlotArray, u.LastAttestationSlot)
 	}
 
-	s := time.Now()
+	_, err = tx.Exec(`UPDATE validators AS v SET
+	lastattestationslot = GREATEST(v.lastattestationslot, v2.lastattestationslot)
+	FROM (SELECT * FROM UNNEST($1::INT[], $2::INT[])) AS v2(validatorindex, lastattestationslot)
+	WHERE v2.validatorindex = v.validatorindex;
+	`, validatorIndexArray, lastAttestationSlotArray)
+	if err != nil {
+		utils.LogError(err, "error executing transaction", 0)
+		return err
+	}
+
+	logger.Infof("last attestation slot update completed, took %v", time.Since(s))
+
+	s = time.Now()
 	newValidators := []struct {
 		Validatorindex  uint64
 		ActivationEpoch uint64
@@ -1821,7 +1816,12 @@ func updateQueueDeposits() error {
 	// then we add any new ones that are queued
 	_, err = WriterDb.Exec(`
 		INSERT INTO validator_queue_deposits
-		SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
+		SELECT validatorindex, activationeligibilityepoch 
+		FROM validators 
+		WHERE activationepoch=9223372036854775807 and status='pending' 
+		ON CONFLICT (validatorindex) DO UPDATE SET
+			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch
+		`)
 	if err != nil {
 		logger.Errorf("error adding queued publickeys to validator_queue_deposits: %v", err)
 		return err
@@ -1869,23 +1869,16 @@ func updateQueueDeposits() error {
 func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	var res uint64
 	err := ReaderDb.Get(&res, `
-	with SelectedValidator as (
-		select block_slot, block_index, validators.activationeligibilityepoch from validator_queue_deposits vqd
-		inner join validators on validators.validatorindex = $1
-		where vqd.validatorindex = validators.validatorindex 
+	WITH SelectedValidator AS (
+		SELECT block_slot, block_index, activationeligibilityepoch FROM validator_queue_deposits
+		WHERE validatorindex = $1
 	)
-	select count(*)
-	from (
-		select validatorindex, block_slot, block_index 
-		from validator_queue_deposits
-	) as vqd 
-	inner join validators on
-		validators.validatorindex = vqd.validatorindex and
-		validators.activationeligibilityepoch <= (select activationeligibilityepoch from SelectedValidator)
-	where 
-		validators.activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) or 
-		vqd.block_slot < (select block_slot from SelectedValidator) or
-		vqd.block_slot = (select block_slot from SelectedValidator) and vqd.block_index < (select block_index from SelectedValidator)`, validatorIndex)
+	SELECT count(*)
+	FROM validator_queue_deposits
+	WHERE 
+		activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) OR 
+		block_slot < (select block_slot from SelectedValidator) OR
+		block_slot = (select block_slot from SelectedValidator) AND block_index < (select block_index from SelectedValidator)`, validatorIndex)
 	return res, err
 }
 

@@ -203,6 +203,9 @@ type IndexPageData struct {
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
 	SlotVizData               *SlotVizPageData `json:"slotVizData"`
+	ValidatorsPerEpoch        uint64
+	ValidatorsPerDay          uint64
+	NewDepositProcessAfter    string
 }
 
 type SlotVizPageData struct {
@@ -1708,7 +1711,7 @@ type Eth1TxData struct {
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
 	CurrentEtherPrice           template.HTML
-	HistoricEtherPrice          template.HTML
+	HistoricalEtherPrice        template.HTML
 }
 
 type Eth1EventData struct {
