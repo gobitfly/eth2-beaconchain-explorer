@@ -1193,11 +1193,6 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 			}
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
 			err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-				select {
-				case <-gCtx.Done():
-					return false
-				default:
-				}
 				keySplit := strings.Split(r.Key(), ":")
 
 				epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
@@ -1654,11 +1649,6 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
 
 			err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-				select {
-				case <-gCtx.Done():
-					return false
-				default:
-				}
 
 				resultContainer.mu.Lock()
 
