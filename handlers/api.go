@@ -1746,7 +1746,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
 
-	latestEpoch, limit, err := getBalanceHistoryQueryParameters(r.URL.Query())
+	latestEpoch, limit, err := getIncomeDetailsHistoryQueryParameters(r.URL.Query())
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
@@ -1769,7 +1769,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseData := make([]*types.ApiValidatorIncomeHistoryResponse, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorIncomeHistoryResponse, 0, uint64(len(history))*limit)
 
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, epochs := range history {
@@ -1830,7 +1830,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func getIncomeDetailsHistoryQueryParameters(q url.Values) (uint64, uint64, error) {
-	onChainLatestEpoch := services.LatestEpoch()
+	onChainLatestEpoch := services.LatestFinalizedEpoch()
 	defaultLimit := uint64(100)
 
 	latestEpoch := onChainLatestEpoch
