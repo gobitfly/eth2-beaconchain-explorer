@@ -1758,6 +1758,48 @@ func (bigtable *Bigtable) getEpochRanges(startEpoch uint64, endEpoch uint64) gcp
 	return ranges
 }
 
+func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]string, error) {
+	if family == "" || prefix == "" {
+		return []string{}, fmt.Errorf("please provide family [%v] and prefix [%v]", family, prefix)
+	}
+
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	rowRange := gcp_bigtable.PrefixRange(prefix)
+	deleteKeys := []string{}
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		row_ := row[family][0]
+		deleteKeys = append(deleteKeys, row_.Row)
+		return true
+	})
+	if err != nil {
+		return deleteKeys, err
+	}
+
+	if len(deleteKeys) == 0 {
+		return deleteKeys, fmt.Errorf("no keys found")
+	}
+
+	if dryRun {
+		return deleteKeys, nil
+	}
+
+	mutsDelete := &types.BulkMutations{
+		Keys: make([]string, 0, len(deleteKeys)),
+		Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
+	}
+	for _, key := range deleteKeys {
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+		mutsDelete.Keys = append(mutsDelete.Keys, key)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+	}
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+	return deleteKeys, err
+}
+
 func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
 	dayIncome := make(map[uint64]int64)
 	dayProposerIncome := make(map[uint64]int64)

@@ -766,9 +766,9 @@ func WriteChartSeriesForDay(day int64) error {
 		logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
 		for b := int64(lastBlock) - 1; b > int64(firstBlock); b -= batchSize {
 			high := b
-			low := b - batchSize
+			low := b - batchSize + 1
 			if int64(firstBlock) > low {
-				low = int64(firstBlock - 1)
+				low = int64(firstBlock)
 			}
 
 			err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))

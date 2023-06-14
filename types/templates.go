@@ -223,6 +223,9 @@ type IndexPageData struct {
 	SlotVizData               *SlotVizPageData `json:"slotVizData"`
 	ClCurrencySymbol          string
 	ElCurrencySymbol          string
+	ValidatorsPerEpoch        uint64
+	ValidatorsPerDay          uint64
+	NewDepositProcessAfter    string
 }
 
 type SlotVizPageData struct {

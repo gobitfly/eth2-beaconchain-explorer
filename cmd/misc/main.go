@@ -11,10 +11,8 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"strings"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/jmoiron/sqlx"
 
 	"flag"
 
@@ -32,11 +30,14 @@ var opts = struct {
 	Validator     uint64
 	Validators    string
 	Address       string
+	Family        string
+	Key           string
+	DryRun        bool
 }{}
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -46,7 +47,12 @@ func main() {
 	flag.StringVar(&opts.Validators, "validators", "", "comma separated list of validators (pubkey of index)")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
 	flag.StringVar(&opts.Address, "address", "0xf00", "address")
+	flag.StringVar(&opts.Family, "family", "", "big table family")
+	flag.StringVar(&opts.Key, "key", "", "big table key")
+	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	flag.Parse()
+
+	opts.DryRun = *dryRun != "false"
 
 	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
 	cfg := &types.Config{}
@@ -58,7 +64,7 @@ func main() {
 
 	chainIdString := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
 
-	_, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Project, chainIdString, utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "error initializing bigtable", 0)
 	}
@@ -130,16 +136,18 @@ func main() {
 			logrus.Printf("finished export for epoch %v", epoch)
 		}
 	case "debug-rewards":
-		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator)
+		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
 	case "debug-balances":
 		DebugBalances(opts.StartDay, opts.EndDay, opts.Validator)
-	case "update-orphaned-statistics":
-		UpdateOrphanedStatistics(opts.StartDay, opts.EndDay, db.WriterDb)
 	case "get-token-metadata":
 		err = GetTokenMetadata()
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
+	case "clear-bigtable":
+		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
+
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
@@ -243,13 +251,7 @@ func UpdateAPIKey(user uint64) error {
 }
 
 // Debugging function to compare Rewards from the Statistic Table with the onces from the Big Table
-func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
-
-	if err != nil {
-		logrus.Fatalf("error connecting to bigtable: %v", err)
-	}
-	defer bt.Close()
+func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
 
 	for day := dayStart; day <= dayEnd; day++ {
 		startEpoch := day * utils.EpochsPerDay()
@@ -279,123 +281,22 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64) {
 
 }
 
-// Update Orphaned statistics for Sync / Attestations
-func UpdateOrphanedStatistics(dayStart uint64, dayEnd uint64, WriterDb *sqlx.DB) {
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
+
+	if !dryRun {
+		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
+		if confirmation != "yes" {
+			logrus.Infof("Abort!")
+			return
+		}
+	}
+	deletedKeys, err := bt.ClearByPrefix(family, key, dryRun)
+
 	if err != nil {
-		logrus.Fatalf("error connecting to bigtable: %v", err)
+		logrus.Fatalf("error deleting from bigtable: %v", err)
+	} else if dryRun {
+		logrus.Infof("the following keys would be deleted: %v", deletedKeys)
+	} else {
+		logrus.Infof("%v keys have been deleted", len(deletedKeys))
 	}
-	defer bt.Close()
-
-	for day := dayStart; day <= dayEnd; day++ {
-		tx, err := WriterDb.Beginx()
-		if err != nil {
-			logrus.Errorf("error WriterDb.Beginx %v", err)
-			return
-		}
-		defer tx.Rollback()
-		startEpoch := day * utils.EpochsPerDay()
-		endEpoch := startEpoch + utils.EpochsPerDay() - 1
-
-		if err != nil {
-			logrus.Errorf("error getting validator Count %v", err)
-			return
-		}
-
-		logrus.Infof("exporting failed attestations statistics lastEpoch: %v firstEpoch: %v", startEpoch, endEpoch)
-		ma, err := bt.GetValidatorFailedAttestationsCount([]uint64{}, startEpoch, endEpoch)
-		if err != nil {
-			logrus.Errorf("error getting failed attestations %v", err)
-			return
-		}
-		maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(ma))
-		for _, stat := range ma {
-			maArr = append(maArr, stat)
-		}
-
-		batchSize := 16000 // max parameters: 65535
-		for b := 0; b < len(maArr); b += batchSize {
-			start := b
-			end := b + batchSize
-			if len(maArr) < end {
-				end = len(maArr)
-			}
-
-			numArgs := 4
-			valueStrings := make([]string, 0, batchSize)
-			valueArgs := make([]interface{}, 0, batchSize*numArgs)
-			for i, stat := range maArr[start:end] {
-				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4))
-				valueArgs = append(valueArgs, stat.Index)
-				valueArgs = append(valueArgs, day)
-				valueArgs = append(valueArgs, stat.MissedAttestations)
-				valueArgs = append(valueArgs, stat.OrphanedAttestations)
-			}
-			stmt := fmt.Sprintf(`
-			insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
-			%s
-			on conflict (validatorindex, day) do update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`,
-				strings.Join(valueStrings, ","))
-			_, err := tx.Exec(stmt, valueArgs...)
-			if err != nil {
-				logrus.Errorf("Error inserting failed attestations %v", err)
-				return
-			}
-
-			logrus.Infof("saving failed attestations batch %v completed", b)
-		}
-
-		logrus.Infof("Update Orphaned for day [%v] epoch %v -> %v", day, startEpoch, endEpoch)
-		syncStats, err := bt.GetValidatorSyncDutiesStatistics([]uint64{}, startEpoch, endEpoch)
-		if err != nil {
-			logrus.Errorf("error getting GetValidatorSyncDutiesStatistics %v", err)
-			return
-		}
-
-		syncStatsArr := make([]*types.ValidatorSyncDutiesStatistic, 0, len(syncStats))
-		for _, stat := range syncStats {
-			syncStatsArr = append(syncStatsArr, stat)
-		}
-
-		batchSize = 13000 // max parameters: 65535
-		for b := 0; b < len(syncStatsArr); b += batchSize {
-			start := b
-			end := b + batchSize
-			if len(syncStatsArr) < end {
-				end = len(syncStatsArr)
-			}
-
-			numArgs := 5
-			valueStrings := make([]string, 0, batchSize)
-			valueArgs := make([]interface{}, 0, batchSize*numArgs)
-			for i, stat := range syncStatsArr[start:end] {
-				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5))
-				valueArgs = append(valueArgs, stat.Index)
-				valueArgs = append(valueArgs, day)
-				valueArgs = append(valueArgs, stat.ParticipatedSync)
-				valueArgs = append(valueArgs, stat.MissedSync)
-				valueArgs = append(valueArgs, stat.OrphanedSync)
-			}
-			stmt := fmt.Sprintf(`
-				insert into validator_stats (validatorindex, day, participated_sync, missed_sync, orphaned_sync)  VALUES
-				%s
-				on conflict (validatorindex, day) do update set participated_sync = excluded.participated_sync, missed_sync = excluded.missed_sync, orphaned_sync = excluded.orphaned_sync;`,
-				strings.Join(valueStrings, ","))
-			_, err := tx.Exec(stmt, valueArgs...)
-			if err != nil {
-				logrus.Errorf("error inserting into validator_stats %v", err)
-				return
-			}
-
-			logrus.Infof("saving sync statistics batch %v completed", b)
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			logrus.Errorf("error commiting tx for validator_stats %v", err)
-			return
-		}
-		logrus.Infof("Update Orphaned for day [%v] completed", day)
-	}
-
 }

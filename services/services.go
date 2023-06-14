@@ -1117,6 +1117,9 @@ func LatestIndexPageData() *types.IndexPageData {
 		DepositDistribution:       &types.ChartsPageDataChart{},
 		Countdown:                 nil,
 		SlotVizData:               nil,
+		ValidatorsPerEpoch:        0,
+		ValidatorsPerDay:          0,
+		NewDepositProcessAfter:    "",
 	}
 }
 

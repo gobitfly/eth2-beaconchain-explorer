@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -236,13 +237,9 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 		}
 		c = max_block_number - c
 
-		if c%10000 == 0 {
-			logger.Infof("scanning, currently at block %v", c)
-		}
-
 		lastBlock = c
-		return c == 0
-	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
 		return 0, err
@@ -305,13 +302,9 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 		}
 		c = max_block_number - c
 
-		if c%10000 == 0 {
-			logger.Infof("scanning, currently at block %v", c)
-		}
-
 		lastBlock = c
-		return c == 0
-	}, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
 
 	if err != nil {
 		return 0, err
@@ -419,26 +412,31 @@ func (bigtable *Bigtable) GetFullBlockDescending(start, limit uint64) ([]*types.
 	return blocks, nil
 }
 
-// GetFullBlockDescending gets blocks starting at block start
+/**
+* GetFullBlockDescending gets blocks ranging from high to low (both borders are inclusive)
+* high = max block number
+* low = min block number
+**/
 func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block, high, low uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
 
-	if high < 1 || low < 1 || high < low {
-		return fmt.Errorf("invalid block range provided (start: %v, limit: %v)", high, low)
+	if high < 1 || high < low {
+		return fmt.Errorf("invalid block range provided (high: %v, low: %v)", high, low)
+	}
+
+	// row key for block 0 is padded incorrectly, so we need to handle it separately
+	returnBlock0 := false
+	if low == 0 {
+		returnBlock0 = true
+		low = 1
 	}
 
 	highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
-	lowKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(low))
+	lowKey := fmt.Sprintf("%s:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(low)) // add \x00 to make the range inclusive
 
 	// the low key will have a higher reverse padded number
-	rowRange := gcp_bigtable.NewRange(highKey, lowKey) //gcp_bigtable.PrefixRange("1:1000000000")
-
-	// if limit >= start { // handle retrieval of the first blocks
-	// 	rowRange = gcp_bigtable.InfiniteRange(startKey)
-	// }
-
-	// logger.Infof("querying from (excl) %v to (incl) %v", low, high)
+	rowRange := gcp_bigtable.NewRange(highKey, lowKey)
 
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
 
@@ -453,13 +451,20 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 		return true
 	}
 
-	// startTime := time.Now()
 	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter)
 	if err != nil {
 		return err
 	}
 
-	// logger.Infof("finished getting blocks from table blocks: %v", time.Since(startTime))
+	if returnBlock0 {
+		// special handling for block 0
+		b, err := BigtableClient.GetBlockFromBlocksTable(0)
+		if err != nil {
+			return fmt.Errorf("could not retreive block 0:  %v", err)
+		}
+		stream <- b
+	}
+
 	return nil
 }
 
@@ -672,6 +677,95 @@ func (bigtable *Bigtable) DeleteRowsWithPrefix(prefix string) {
 		}
 	}
 
+}
+
+func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
+	g := new(errgroup.Group)
+	g.SetLimit(int(concurrency))
+
+	logrus.Infof("indexing blocks from %d to %d", start, end)
+	batchSize := int64(1000)
+	for i := start; i <= end; i += batchSize {
+		firstBlock := int64(i)
+		lastBlock := firstBlock + batchSize - 1
+		if lastBlock > end {
+			lastBlock = end
+		}
+
+		g.Go(func() error {
+			blocksChan := make(chan *types.Eth1Block, batchSize)
+
+			go func(stream chan *types.Eth1Block) {
+				logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
+				high := lastBlock
+				low := lastBlock - batchSize + 1
+				if int64(firstBlock) > low {
+					low = firstBlock
+				}
+
+				err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
+				if err != nil {
+					logger.Errorf("error getting blocks descending high: %v low: %v err: %v", high, low, err)
+				}
+				close(stream)
+			}(blocksChan)
+			subG := new(errgroup.Group)
+			for b := range blocksChan {
+				block := b
+				subG.Go(func() error {
+
+					bulkMutsData := types.BulkMutations{}
+					bulkMutsMetadataUpdate := types.BulkMutations{}
+					for _, transform := range transforms {
+						mutsData, mutsMetadataUpdate, err := transform(block, cache)
+						if err != nil {
+							logrus.WithError(err).Error("error transforming block")
+						}
+						bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+						bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+						if mutsMetadataUpdate != nil {
+							bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+							bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+						}
+					}
+
+					if len(bulkMutsData.Keys) > 0 {
+						metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+						err := bigtable.SaveBlockKeys(block.Number, block.Hash, metaKeys)
+						if err != nil {
+							return fmt.Errorf("error saving block keys to bigtable metadata updates table: %w", err)
+						}
+
+						err = bigtable.WriteBulk(&bulkMutsData, bigtable.GetDataTable())
+						if err != nil {
+							return fmt.Errorf("error writing to bigtable data table: %w", err)
+						}
+					}
+
+					if len(bulkMutsMetadataUpdate.Keys) > 0 {
+						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.GetMetadataUpdatesTable())
+						if err != nil {
+							return fmt.Errorf("error writing to bigtable metadata updates table: %w", err)
+						}
+					}
+
+					return nil
+				})
+			}
+			return subG.Wait()
+		})
+
+	}
+
+	if err := g.Wait(); err == nil {
+		logrus.Info("data table indexing completed")
+	} else {
+		utils.LogError(err, "wait group error", 0)
+		return err
+	}
+
+	return nil
 }
 
 // TransformBlock extracts blocks from bigtable more specifically from the table blocks.
