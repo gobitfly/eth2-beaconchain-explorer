@@ -1702,21 +1702,21 @@ func (bigtable *Bigtable) getSlotRanges(startEpoch uint64, endEpoch uint64) gcp_
 
 	ranges := gcp_bigtable.RowRangeList{}
 	if startEpoch == 0 { // special case when the 0 epoch is included
-		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(0), "A")
+		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(0), ":")
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(0))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 
 		// epochs are sorted descending, so start with the larges epoch and end with the smallest
-		// add 'A', a character lexicographically after digits, to make the range inclusive
+		// add ':', a character lexicographically after digits, to make the range inclusive
 		if startEpoch < endEpoch {
-			rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), "A")
+			rangeEnd = fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch+1), ":")
 			rangeStart = fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 		}
 	} else {
 		// epochs are sorted descending, so start with the larges epoch and end with the smallest
-		// add 'A', a character lexicographically after digits, to make the range inclusive
-		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch), "A")
+		// add ':', a character lexicographically after digits, to make the range inclusive
+		rangeEnd := fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(startEpoch), ":")
 		rangeStart := fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(endEpoch))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	}
