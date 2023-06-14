@@ -760,8 +760,13 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	latestEpoch := services.LatestEpoch()
+
+	stats := services.GetLatestStats()
+	churnRate := stats.ValidatorChurnLimit
+
 	if len(validatorIndexArr) > 0 {
-		balances, err := db.BigtableClient.GetValidatorBalanceHistory(validatorIndexArr, services.LatestEpoch(), services.LatestEpoch())
+		balances, err := db.BigtableClient.GetValidatorBalanceHistory(validatorIndexArr, latestEpoch, latestEpoch)
 		if err != nil {
 			logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
 			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -790,7 +795,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			ActivationEpoch:   math.MaxInt64,
 			ExitEpoch:         math.MaxInt64,
 			WithdrawableEpoch: math.MaxInt64,
-			State:             "pending",
+			State:             "pending_deposited",
 		}
 	}
 
@@ -803,6 +808,28 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			// If the validator does not have an index yet show custom text that is like the state
 			indexInfo = "Pending"
 		}
+		var queueAhead uint64
+		var estimatedActivationTs time.Time
+		if v.State == "pending" {
+			if v.ActivationEpoch > 100_000_000 {
+				queueAhead, err = db.GetQueueAheadOfValidator(v.ValidatorIndex)
+				if err != nil {
+					logger.WithError(err).Errorf("failed to retrieve queue ahead of validator %v for dashboard", v.ValidatorIndex)
+					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+					return
+				}
+				epochsToWait := queueAhead / *churnRate
+				// calculate dequeue epoch
+				estimatedActivationEpoch := latestEpoch + epochsToWait + 1
+				// add activation offset
+				estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
+				estimatedActivationTs = utils.EpochToTime(estimatedActivationEpoch)
+			} else {
+				queueAhead = 0
+				estimatedActivationTs = utils.EpochToTime(v.ActivationEpoch)
+			}
+		}
+
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			indexInfo,
@@ -810,7 +837,11 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
 				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
 			},
-			v.State,
+			[]interface{}{
+				v.ValidatorIndex,
+				v.State,
+				queueAhead + 1,
+				estimatedActivationTs.Unix()},
 		}
 
 		if v.ActivationEpoch != math.MaxInt64 {
@@ -863,7 +894,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		Data        [][]interface{} `json:"data"`
 	}
 	data := &dataType{
-		LatestEpoch: services.LatestEpoch(),
+		LatestEpoch: latestEpoch,
 		Data:        tableData,
 	}
 

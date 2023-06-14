@@ -38,6 +38,7 @@ var incomeChartDefault = document.getElementById("balance-chart").innerHTML
 var proposedChart = null
 var proposedChartDefault = document.getElementById("proposed-chart").innerHTML
 var summaryDefaultValue = "0.000"
+var countdownIntervals = new Map()
 var VALLIMIT = 280
 
 function hideValidatorHist() {
@@ -317,6 +318,71 @@ function switchFrom(el1, el2, el3, el4) {
 
 var firstSwitch = true
 
+function initValidatorCountdown(validatorIndex, queueId, ts) {
+  var now = Math.round(new Date().getTime() / 1000)
+  var secondsLeft = ts - now
+  setValidatorCountdown(validatorIndex, queueId, secondsLeft)
+
+  if (!countdownIntervals.has(validatorIndex)) {
+    countdownIntervals.set(
+      validatorIndex,
+      setInterval(function () {
+        if (secondsLeft <= 0) {
+          clearInterval(countdownIntervals.get(validatorIndex))
+          return
+        }
+
+        secondsLeft -= 1
+        setValidatorCountdown(validatorIndex, queueId, secondsLeft)
+      }, 1000)
+    )
+  }
+}
+
+function setValidatorCountdown(validatorIndex, queueId, secondsLeft) {
+  let [seconds, minutes, hours, days] = [0, 0, 0, 0]
+  if (secondsLeft > 0) {
+    const duration = luxon.Duration.fromMillis(secondsLeft * 1000).shiftTo("days", "hours", "minutes", "seconds")
+
+    seconds = duration.seconds
+    minutes = duration.minutes
+    hours = duration.hours
+    days = duration.days
+  }
+
+  if (seconds < 10) {
+    seconds = "0" + seconds
+  }
+  if (minutes < 10) {
+    minutes = "0" + minutes
+  }
+  if (hours < 10) {
+    hours = "0" + hours
+  }
+  if (days < 10) {
+    days = "0" + days
+  }
+
+  var $element = $("#queue-" + validatorIndex)
+
+  var tooltip = `
+    <div>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined">#${queueId}</span> in Queue.</div>
+    <strong>${days} days ${hours} hr ${minutes} min ${seconds} sec</strong>`
+
+  $element.attr("data-original-title", tooltip)
+
+  if ($element.data("hover")) {
+    $element.tooltip("show")
+  }
+}
+
+function removeValidatorCountdown(validatorIndex) {
+  if (countdownIntervals.has(validatorIndex)) {
+    clearInterval(countdownIntervals.get(validatorIndex))
+    countdownIntervals.delete(validatorIndex)
+  }
+}
+
 $(document).ready(function () {
   $("#rewards-button").on("click", () => {
     localStorage.setItem("load_dashboard_validators", true)
@@ -392,6 +458,14 @@ $(document).ready(function () {
       })
   })
 
+  $(document).on("mouseenter", ".hoverCheck[data-track=hover]", function () {
+    $(this).data("hover", true)
+  })
+
+  $(document).on("mouseleave", ".hoverCheck[data-track=hover]", function () {
+    $(this).data("hover", false)
+  })
+
   var clearSearch = $("#clear-search")
   //'<i class="fa fa-copy"></i>'
   var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
@@ -420,7 +494,6 @@ $(document).ready(function () {
     pageLength: 10,
     pagingType: "full_numbers",
     scrollY: "503px",
-    scrollCollapse: true,
     info: false,
     language: {
       search: "",
@@ -487,8 +560,13 @@ $(document).ready(function () {
         data: "3",
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data ? data[0] : -1
-          var d = data.split("_")
+          var d = data[1].split("_")
           var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
+
+          if (d[0] === "pending" && d[1] !== "deposited") {
+            initValidatorCountdown(data[0], data[2], data[3])
+            return `<span class="hoverCheck" data-track='hover' id="queue-${data[0]}" data-html="true" data-toggle="tooltip" data-placement="top">${s} (#<span>${data[2]}</span>)</span>`
+          }
           if (d[1] === "offline") return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
           if (d[1] === "online") return `<span style="display:none">${d[1]}</span><span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
           return `<span>${s}</span>`
@@ -973,6 +1051,7 @@ $(document).ready(function () {
           window.location = "/dashboard"
           return
         } else {
+          removeValidatorCountdown(parseInt(index))
           renderSelectedValidators()
           updateState()
         }
