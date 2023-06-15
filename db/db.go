@@ -1818,8 +1818,9 @@ func updateQueueDeposits() error {
 
 	// then we add any new ones that are queued
 	_, err = WriterDb.Exec(`
-	INSERT INTO validator_queue_deposits
-	SELECT validatorindex FROM validators WHERE activationepoch=9223372036854775807 and status='pending' ON CONFLICT DO NOTHING`)
+		INSERT INTO validator_queue_deposits
+		SELECT validatorindex FROM validators WHERE activationepoch=$1 and status='pending' ON CONFLICT DO NOTHING
+	`, maxSqlNumber)
 	if err != nil {
 		logger.Errorf("error adding queued publickeys to validator_queue_deposits: %v", err)
 		return err
@@ -1895,7 +1896,7 @@ func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 		WHERE 
 			validatorindex = $1
 		`, validatorIndex, maxSqlNumber)
-	if err != nil && err == sql.ErrNoRows {
+	if err == sql.ErrNoRows {
 		// If we did not find our validator in the queue it is most likly that he has not yet been added so we put him as last
 		err = ReaderDb.Get(&res, `
 			SELECT count(*)
