@@ -819,7 +819,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Errorf("error reading body | err: %v", err)
+		utils.LogError(err, "reading body", 0)
 		sendErrorResponse(w, r.URL.String(), "could not read body")
 		return
 	}
@@ -857,62 +857,114 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 		if len(queryIndices) > 0 {
 			g.Go(func() error {
+				start := time.Now()
 				validatorsData, err = validators(queryIndices)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("validators(%v) took longer than 10 sec", queryIndices)
+				}
 				return err
 			})
 
 			g.Go(func() error {
+				start := time.Now()
 				validatorEffectivenessData, err = validatorEffectiveness(epoch-1, queryIndices)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("validatorEffectiveness(%v, %v) took longer than 10 sec", epoch-1, queryIndices)
+				}
 				return err
 			})
 
 			g.Go(func() error {
+				start := time.Now()
 				rocketpoolData, err = getRocketpoolValidators(queryIndices)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("getRocketpoolValidators(%v) took longer than 10 sec", queryIndices)
+				}
 				return err
 			})
 
 			g.Go(func() error {
+				start := time.Now()
 				executionPerformance, err = getValidatorExecutionPerformance(queryIndices)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("getValidatorExecutionPerformance(%v) took longer than 10 sec", queryIndices)
+				}
 				return err
 			})
 
 			g.Go(func() error {
+				start := time.Now()
 				period := utils.SyncPeriodOfEpoch(epoch)
 				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("SyncPeriodOfEpoch(%v) took longer than 10 sec", epoch)
+					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+				}
 				return err
 			})
 
 			g.Go(func() error {
+				start := time.Now()
 				period := utils.SyncPeriodOfEpoch(epoch) + 1
 				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("SyncPeriodOfEpoch(%v) + 1 took longer than 10 sec", epoch)
+					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+				}
 				return err
 			})
 
 			g.Go(func() error {
+				start := time.Now()
 				syncCommitteeStats, err = getSyncCommitteeStatistics(queryIndices, epoch)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("getSyncCommitteeStatistics(%v, %v) took longer than 10 sec", queryIndices, epoch)
+				}
 				return err
 			})
 		}
 	}
 
 	g.Go(func() error {
+		start := time.Now()
 		currentEpochData, err = getEpoch(int64(epoch) - 1)
+		elapsed := time.Since(start)
+		if elapsed > 10*time.Second {
+			logger.Warnf("getEpoch(%v) took longer than 10 sec", int64(epoch)-1)
+		}
 		return err
 	})
 
 	g.Go(func() error {
+		start := time.Now()
 		olderEpochData, err = getEpoch(int64(epoch) - 10)
+		elapsed := time.Since(start)
+		if elapsed > 10*time.Second {
+			logger.Warnf("getEpoch(%v) took longer than 10 sec", int64(epoch)-10)
+		}
 		return err
 	})
 
 	g.Go(func() error {
+		start := time.Now()
 		rocketpoolStats, err = getRocketpoolStats()
+		elapsed := time.Since(start)
+		if elapsed > 10*time.Second {
+			logger.Warnf("getRocketpoolStats() took longer than 10 sec")
+		}
 		return err
 	})
 
 	err = g.Wait()
 	if err != nil {
-		logger.Errorf("dashboard %v", err)
+		utils.LogError(err, "dashboard", 0)
 		sendErrorResponse(w, r.URL.String(), err.Error())
 		return
 	}
