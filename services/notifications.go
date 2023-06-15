@@ -1145,7 +1145,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 						}
 						errResp.Status = resp.Status
 					}
-					logger.Errorf("error pushing discord webhook: %v", errResp.Body)
+					utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
 
 					_, err = useDB.Exec(`UPDATE users_webhooks SET request = $2, response = $3 WHERE id = $1;`, webhook.ID, reqs[i].Content.DiscordRequest, errResp)
 					if err != nil {
