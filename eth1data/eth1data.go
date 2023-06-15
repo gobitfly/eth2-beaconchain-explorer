@@ -217,6 +217,10 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 							if strings.HasPrefix(b, "byte") {
 								a.Value = a.Raw
 							}
+							// if we could not parse it as string we take the value
+							if strings.HasPrefix(a.Value, "%!s(") {
+								a.Value = fmt.Sprintf("%v", val)
+							}
 							eth1Event.DecodedData[lName] = a
 						}
 
