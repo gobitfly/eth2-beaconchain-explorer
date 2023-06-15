@@ -230,8 +230,10 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 	res, err := bigtable.redisCache.Get(ctx, redisKey).Result()
 
 	if err != nil {
+		// key is not yet set, get data from bigtable
+		// key will be set via the eth1indexer
 		if errors.Is(err, redis.Nil) {
-			return 0, nil
+			return bigtable.getLastBlockInBlocksTableFromBigtable()
 		}
 		return 0, err
 	}
@@ -297,8 +299,10 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 	res, err := bigtable.redisCache.Get(ctx, redisKey).Result()
 
 	if err != nil {
+		// key is not yet set, get data from bigtable
+		// key will be set via the eth1indexer
 		if errors.Is(err, redis.Nil) {
-			return 0, nil
+			return bigtable.getLastBlockInDataTableFromBigtable()
 		}
 		return 0, err
 	}
@@ -307,6 +311,60 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	return lastBlock, nil
+}
+
+func (bigtable *Bigtable) getLastBlockInDataTableFromBigtable() (int, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	prefix := bigtable.chainId + ":B:"
+	lastBlock := 0
+	err := bigtable.tableData.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+			return false
+		}
+		c = max_block_number - c
+
+		lastBlock = c
+		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if err != nil {
+		return 0, err
+	}
+
+	return lastBlock, nil
+}
+
+func (bigtable *Bigtable) getLastBlockInBlocksTableFromBigtable() (int, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	prefix := bigtable.chainId + ":"
+	lastBlock := 0
+	err := bigtable.tableBlocks.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+			return false
+		}
+		c = max_block_number - c
+
+		lastBlock = c
+		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if err != nil {
+		return 0, err
+	}
+
 	return lastBlock, nil
 }
 
