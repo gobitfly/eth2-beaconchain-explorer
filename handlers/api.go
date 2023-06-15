@@ -925,7 +925,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				syncCommitteeStats, err = getSyncCommitteeStatistics(queryIndices, epoch)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
-					logger.Warnf("getSyncCommitteeStatistics(%v) took longer than 10 sec", queryIndices, epoch)
+					logger.Warnf("getSyncCommitteeStatistics(%v, %v) took longer than 10 sec", queryIndices, epoch)
 				}
 				return err
 			})
