@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"math/big"
 	"net/http"
 	"net/url"
 	"sort"
@@ -35,8 +36,6 @@ import (
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
-
-	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
 // @title beaconcha.in Ethereum API Documentation
@@ -1150,7 +1149,7 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			}
 
 			// get sync stats from bigtable
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch, epoch)
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch+1, epoch)
 			if err != nil {
 				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
@@ -1709,22 +1708,37 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type responseType struct {
-		Income         *itypes.ValidatorEpochIncome `json:"income"`
-		Epoch          uint64                       `json:"epoch"`
-		ValidatorIndex uint64                       `json:"validatorindex"`
-		Week           uint64                       `json:"week"`
-		WeekStart      time.Time                    `json:"week_start"`
-		WeekEnd        time.Time                    `json:"week_end"`
-	}
-	responseData := make([]*responseType, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorIncomeHistoryResponse, 0, len(history)*101)
 
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, epochs := range history {
 		for epoch, income := range epochs {
 			epochAtStartOfTheWeek := (epoch / epochsPerWeek) * epochsPerWeek
-			responseData = append(responseData, &responseType{
-				Income:         income,
+
+			txFeeRewardWei := ""
+			if len(income.TxFeeRewardWei) > 0 {
+				txFeeRewardWei = new(big.Int).SetBytes(income.TxFeeRewardWei).String()
+			}
+
+			responseIncome := &types.ApiValidatorIncomeHistory{
+				AttestationSourceReward:            income.AttestationSourceReward,
+				AttestationSourcePenalty:           income.AttestationSourcePenalty,
+				AttestationTargetReward:            income.AttestationTargetReward,
+				AttestationTargetPenalty:           income.AttestationTargetPenalty,
+				AttestationHeadReward:              income.AttestationHeadReward,
+				FinalityDelayPenalty:               income.FinalityDelayPenalty,
+				ProposerSlashingInclusionReward:    income.ProposerSlashingInclusionReward,
+				ProposerAttestationInclusionReward: income.ProposerAttestationInclusionReward,
+				ProposerSyncInclusionReward:        income.ProposerSyncInclusionReward,
+				SyncCommitteeReward:                income.SyncCommitteeReward,
+				SyncCommitteePenalty:               income.SyncCommitteePenalty,
+				SlashingReward:                     income.SlashingReward,
+				SlashingPenalty:                    income.SlashingPenalty,
+				TxFeeRewardWei:                     txFeeRewardWei,
+				ProposalsMissed:                    income.ProposalsMissed}
+
+			responseData = append(responseData, &types.ApiValidatorIncomeHistoryResponse{
+				Income:         responseIncome,
 				Epoch:          epoch,
 				ValidatorIndex: validatorIndex,
 				Week:           epoch / epochsPerWeek,
@@ -2307,7 +2321,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorAttestations godoc
-// @Summary Get all attestations during the last 10 epochs for up to 100 validators
+// @Summary Get all attestations during the last 100 epochs for up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
@@ -2328,13 +2342,13 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, services.LatestEpoch()-101, services.LatestEpoch())
+	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, services.LatestEpoch()-99, services.LatestEpoch())
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 
-	responseData := make([]*types.ApiValidatorAttestationsResponse, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorAttestationsResponse, 0, len(history)*100)
 
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, balances := range history {
