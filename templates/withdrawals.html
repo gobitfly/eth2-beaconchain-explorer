@@ -151,7 +151,8 @@
         tblBLS.search(q)
         tblBLS.draw()
       }
-      $("#withdrawals_filter > label > input").on("input", function (ev) {
+
+      $(document).on("input", "#withdrawals_filter > label > input", function (ev) {
         if (ev && ev.target && ev.target.value) {
           var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
           q = ev.target.value
@@ -166,7 +167,7 @@
         }
       })
 
-      $("#blsChange_filter > label > input").on("input", function (ev) {
+      $(document).on("input", "#blsChange_filter > label > input", function (ev) {
         if (ev && ev.target && ev.target.value) {
           var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
           q = ev.target.value
