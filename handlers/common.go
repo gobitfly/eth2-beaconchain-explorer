@@ -554,10 +554,10 @@ func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint
 	return
 }
 
-func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	user, session, err := getUserSession(r)
+	user, _, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -566,6 +566,58 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 
 	response := &types.ApiResponse{}
 	response.Status = "ERROR"
+	response.Data = ""
+
+	defer json.NewEncoder(w).Encode(response)
+
+	tableKey := ""
+	err = json.NewDecoder(r.Body).Decode(&tableKey)
+	if err != nil {
+		logger.Errorf("error loading data table state could not parse body: %v", err)
+		response.Status = "error getting table state"
+		return
+	}
+
+	if len(tableKey) == 0 {
+		logger.Errorf("no key provided")
+		response.Status = "error loading table state"
+		return
+	}
+
+	if user.Authenticated {
+		state, err := db.GetDataTablesState(user.UserID, tableKey)
+		if err != nil && err != sql.ErrNoRows {
+			logger.Errorf("error loading data table state from db: %v", err)
+			return
+		}
+
+		// the time for the state load a data table must not be older than 2 hours so set it to the current time
+		state.Time = uint64(time.Now().Unix() * 1000)
+
+		// testEntry := types.DataTableSaveStateColumns{Visible: true, Search: types.DataTableSaveStateSearch{Search: "", Regex: false, Smart: true, CaseInsensitive: true}}
+		// for i := 0; i < 12; i++ {
+		// 	state.Columns = append(state.Columns, testEntry)
+		// }
+
+		response.Data = state
+	}
+
+	response.Status = "OK"
+}
+
+func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	user, _, err := getUserSession(r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	response := &types.ApiResponse{}
+	response.Status = "ERROR"
+	response.Data = ""
 
 	defer json.NewEncoder(w).Encode(response)
 
@@ -580,73 +632,24 @@ func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	// never store the page number
 	settings.Start = 0
 
-	key := settings.Key
-	if len(key) == 0 {
+	if len(settings.Key) == 0 {
 		logger.Errorf("no key provided")
 		response.Status = "error saving table state"
 		return
 	}
 
-	if !user.Authenticated {
-		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
-		key = dataTableStatePrefix + key
-		count := 0
-		for k := range session.Values() {
-			k, ok := k.(string)
-			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
-				count += 1
-			}
-		}
-		if count > 50 {
-			_, ok := session.Values()[key]
-			if !ok {
-				logger.Errorf("error maximum number of datatable states stored in session")
-				return
-			}
-		}
-		session.SetValue(key, settings)
-
-		err := session.Save(r, w)
-		if err != nil {
-			logger.WithError(err).Errorf("error updating session with key: %v and value: %v", key, settings)
-		}
-
-	} else {
+	if user.Authenticated {
 		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
 		if err != nil {
 			logger.Errorf("error saving data table state could save values to db: %v", err)
 			response.Status = "error saving table state"
 			return
 		}
+	} else {
+		response.Data = settings
 	}
 
 	response.Status = "OK"
-	response.Data = ""
-}
-
-func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey string) *types.DataTableSaveState {
-	state := types.DataTableSaveState{
-		Start: 0,
-	}
-	if user.Authenticated {
-		state, err := db.GetDataTablesState(user.UserID, tableKey)
-		if err != nil && err != sql.ErrNoRows {
-			logger.Errorf("error getting data table state from db: %v", err)
-			return state
-		}
-		return state
-	}
-
-	stateRaw := session.GetValue("table:state:" + utils.GetNetwork() + ":" + tableKey)
-	if stateRaw == nil {
-		return &state
-	}
-	state, ok := stateRaw.(types.DataTableSaveState)
-	if !ok {
-		logger.Errorf("error getting state from session: %+v", stateRaw)
-		return &state
-	}
-	return &state
 }
 
 // used to handle errors constructed by Template.ExecuteTemplate correctly

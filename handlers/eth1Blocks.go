@@ -25,27 +25,6 @@ func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks", templateFiles)
 
-	user, session, err := getUserSession(r)
-	if err != nil {
-		logger.WithError(err).Error("error getting user session")
-	}
-
-	state := GetDataTableState(user, session, "blocks")
-
-	length := uint64(10)
-	if state.Length != 0 {
-		length = state.Length
-	}
-
-	tableData, err := getEth1BlocksTableData(1, 0, length, 0)
-	if err != nil {
-		logger.Errorf("error rendering blocks table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-
-	data.Data = tableData
-
 	if handleTemplateError(w, r, "eth1Blocks.go", "Eth1Blocks", "", eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}

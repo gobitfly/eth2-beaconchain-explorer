@@ -530,7 +530,8 @@ func main() {
 			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")
 			router.HandleFunc("/tools/broadcast/status/{jobID}", handlers.BroadcastStatus).Methods("GET")
 
-			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
+			router.HandleFunc("/tables/getstate", handlers.GetDataTableStateChanges).Methods("POST")
+			router.HandleFunc("/tables/setstate", handlers.SetDataTableStateChanges).Methods("POST")
 
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 

@@ -41,9 +41,7 @@
             return $.extend({}, d, { recordsTotal: highestID })
           },
         },
-        deferLoading: {{.RecordsTotal}},
-        pageLength: {{.PageLength}},
-        displayStart: {{.DisplayStart}},
+        pageLength: 10,
         pagingType: "input",
         language: {
           searchPlaceholder: "Block Number / Graffiti",
@@ -66,10 +64,9 @@
         stateSaveCallback: function (settings, data) {
           data.search.search = ""
           data.order = []
-          data.columns = []
           data.start = 0
           data.key = `${settings.sTableId}`
-          fetch("/tables/state", {
+          fetch("/tables/setstate", {
             method: "POST",
             body: JSON.stringify(data),
           })
@@ -78,9 +75,31 @@
               if (status !== "OK") {
                 console.error("error updating table state, err:", data, "status: ", status)
               }
+              if (data !== "") {
+                localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+              } else {
+                localStorage.removeItem("DataTables_" + settings.sInstance)
+              }
             })
             .catch((err) => {
               console.error("error updating table state, err: ", err)
+            })
+        },
+        stateLoadCallback: function (settings, callback) {
+          fetch("/tables/getstate", {
+            method: "POST",
+            body: JSON.stringify(`${settings.sTableId}`),
+          })
+            .then((res) => res.json())
+            .then(({ status, data }) => {
+              if (status !== "OK") {
+                console.error("error loading table state, err:", data, "status: ", status)
+              }
+              var response = data !== "" ? data : JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              callback(response)
+            })
+            .catch((err) => {
+              console.error("error loading table state, err: ", err)
             })
         },
         preDrawCallback: function () {
@@ -107,55 +126,45 @@
   </style>
 {{ end }}
 {{ define "content" }}
-  {{ with .Data }}
-    <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0">
-            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Blocks<span style="color:grey; font-size: 70%; padding-left: 10px;" id="live-highest-block"></span></span>
-          </h1>
-          <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
-            <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Blocks</li>
-            </ol>
-          </nav>
-        </div>
+  <div class="container mt-2">
+    <div class="my-3">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 mb-1 mb-md-0">
+          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Blocks<span style="color:grey; font-size: 70%; padding-left: 10px;" id="live-highest-block"></span></span>
+        </h1>
+        <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
+          <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Blocks</li>
+          </ol>
+        </nav>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
-      <div class="card">
-        <div class="card-body px-0 py-3">
-          <div class="table-responsive px-0 py-1">
-            <table class="table" id="blocks">
-              <thead>
-                <tr>
-                  <th>Epoch</th>
-                  <th>Slot</th>
-                  <th>Block</th>
-                  <th>Status</th>
-                  <th><span data-toggle="tooltip" data-placement="top" title="Miner / Fee Recipient">Recipient</span></th>
-                  <th>Proposer</th>
-                  <th><span data-toggle="tooltip" data-placement="top" title="Transactions">Txn</span></th>
-                  <th>Gas Used</th>
-                  <th>Gas Limit</th>
-                  <th>Base Fee</th>
-                  <th>Reward</th>
-                  <th>Burned Fees</th>
-                </tr>
-              </thead>
-              <tbody>
-                {{ range $i, $row := .Data }}
-                  <tr>
-                    {{ range $j, $col := $row }}
-                      <td>{{ $col }}</td>
-                    {{ end }}
-                  </tr>
-                {{ end }}
-              </tbody>
-            </table>
-          </div>
+    </div>
+    <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+    <div class="card">
+      <div class="card-body px-0 py-3">
+        <div class="table-responsive px-0 py-1">
+          <table class="table" id="blocks">
+            <thead>
+              <tr>
+                <th>Epoch</th>
+                <th>Slot</th>
+                <th>Block</th>
+                <th>Status</th>
+                <th><span data-toggle="tooltip" data-placement="top" title="Miner / Fee Recipient">Recipient</span></th>
+                <th>Proposer</th>
+                <th><span data-toggle="tooltip" data-placement="top" title="Transactions">Txn</span></th>
+                <th>Gas Used</th>
+                <th>Gas Limit</th>
+                <th>Base Fee</th>
+                <th>Reward</th>
+                <th>Burned Fees</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
     </div>
-  {{ end }}
+  </div>
 {{ end }}
