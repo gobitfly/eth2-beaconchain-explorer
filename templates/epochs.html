@@ -12,9 +12,7 @@
         pagingType: "input",
         stateSave: true,
         stateSaveCallback: function (settings, data) {
-          data.search.search = ""
           data.order = []
-          data.start = 0
           data.key = `${settings.sTableId}`
           fetch("/tables/setstate", {
             method: "POST",
@@ -52,7 +50,6 @@
               console.error("error loading table state, err: ", err)
             })
         },
-        stateDuration: true,
         pageLength: 50,
         language: {
           searchPlaceholder: "Search by Epoch Number",

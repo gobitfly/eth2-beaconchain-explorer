@@ -559,7 +559,7 @@ func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 
 	user, _, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
+		utils.LogError(err, "error retrieving session", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -573,33 +573,32 @@ func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	tableKey := ""
 	err = json.NewDecoder(r.Body).Decode(&tableKey)
 	if err != nil {
-		logger.Errorf("error loading data table state could not parse body: %v", err)
+		utils.LogError(err, "error loading data table state could not parse body", 0)
 		response.Status = "error getting table state"
 		return
 	}
 
 	if len(tableKey) == 0 {
-		logger.Errorf("no key provided")
+		utils.LogError(err, "error no key for data table state provided", 0)
 		response.Status = "error loading table state"
 		return
 	}
 
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
-		if err != nil && err != sql.ErrNoRows {
-			logger.Errorf("error loading data table state from db: %v", err)
-			return
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				errFields := map[string]interface{}{
+					"tableKey": tableKey}
+				utils.LogError(err, "error loading data table state from db", 0, errFields)
+				return
+			}
+		} else {
+			// the time for the state load a data table must not be older than 2 hours so set it to the current time
+			state.Time = uint64(time.Now().Unix() * 1000)
+
+			response.Data = state
 		}
-
-		// the time for the state load a data table must not be older than 2 hours so set it to the current time
-		state.Time = uint64(time.Now().Unix() * 1000)
-
-		// testEntry := types.DataTableSaveStateColumns{Visible: true, Search: types.DataTableSaveStateSearch{Search: "", Regex: false, Smart: true, CaseInsensitive: true}}
-		// for i := 0; i < 12; i++ {
-		// 	state.Columns = append(state.Columns, testEntry)
-		// }
-
-		response.Data = state
 	}
 
 	response.Status = "OK"
@@ -610,7 +609,7 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 
 	user, _, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
+		utils.LogError(err, "error retrieving session", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -624,7 +623,7 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	settings := types.DataTableSaveState{}
 	err = json.NewDecoder(r.Body).Decode(&settings)
 	if err != nil {
-		logger.Errorf("error saving data table state could not parse body: %v", err)
+		utils.LogError(err, "error saving data table state could not parse body", 0)
 		response.Status = "error saving table state"
 		return
 	}
@@ -633,7 +632,7 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	settings.Start = 0
 
 	if len(settings.Key) == 0 {
-		logger.Errorf("no key provided")
+		utils.LogError(err, "error no key for data table state provided", 0)
 		response.Status = "error saving table state"
 		return
 	}
@@ -641,7 +640,9 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	if user.Authenticated {
 		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
 		if err != nil {
-			logger.Errorf("error saving data table state could save values to db: %v", err)
+			errFields := map[string]interface{}{
+				"tableKey": settings.Key}
+			utils.LogError(err, "error saving data table state could save values to db", 0, errFields)
 			response.Status = "error saving table state"
 			return
 		}

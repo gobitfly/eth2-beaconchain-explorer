@@ -13,9 +13,7 @@
         ordering: false,
         stateSave: true,
         stateSaveCallback: function (settings, data) {
-          data.search.search = ""
           data.order = []
-          data.start = 0
           data.key = `${settings.sTableId}`
           fetch("/tables/setstate", {
             method: "POST",
@@ -87,9 +85,7 @@
         ordering: false,
         stateSave: true,
         stateSaveCallback: function (settings, data) {
-          data.search.search = ""
           data.order = []
-          data.start = 0
           data.key = `${settings.sTableId}`
           fetch("/tables/setstate", {
             method: "POST",
