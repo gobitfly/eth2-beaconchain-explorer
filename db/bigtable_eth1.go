@@ -233,7 +233,14 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 		// key is not yet set, get data from bigtable
 		// key will be set via the eth1indexer
 		if errors.Is(err, redis.Nil) {
-			return bigtable.getLastBlockInBlocksTableFromBigtable()
+			lastBlock, err := bigtable.getLastBlockInBlocksTableFromBigtable()
+
+			if err != nil {
+				return 0, err
+			}
+
+			return lastBlock, bigtable.SetLastBlockInBlocksTable(int64(lastBlock))
+
 		}
 		return 0, err
 	}
@@ -302,7 +309,13 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 		// key is not yet set, get data from bigtable
 		// key will be set via the eth1indexer
 		if errors.Is(err, redis.Nil) {
-			return bigtable.getLastBlockInDataTableFromBigtable()
+			lastBlock, err := bigtable.getLastBlockInDataTableFromBigtable()
+
+			if err != nil {
+				return 0, err
+			}
+
+			return lastBlock, bigtable.SetLastBlockInDataTable(int64(lastBlock))
 		}
 		return 0, err
 	}
