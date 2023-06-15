@@ -2554,7 +2554,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 	err = db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2)));
+			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));
 			`,
 		name, firstDayOfMonth)
 
