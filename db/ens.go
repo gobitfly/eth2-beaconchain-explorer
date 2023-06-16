@@ -165,12 +165,18 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameRegistered, err := filterer.ParseNameRegistered(nameLog)
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse register event at index [%v] on block [%v]", foundNameIndex, blk.Number), 0)
+				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse register event at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number), 0)
 				continue
 			}
+
+			if err = verifyName(nameRegistered.Name); err != nil {
+				logger.Warnf("indexing of register event failed because of invalid name at tx [%v] index [%v] on block [%v]: %v", i, foundNameIndex, blk.Number, err)
+				continue
+			}
+
 			resolver, err := filterer.ParseNewResolver(resolverLog)
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse resolver event at index [%v] on block [%v]", foundNameIndex, blk.Number), 0)
+				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse resolver event at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number), 0)
 				continue
 			}
 
@@ -201,13 +207,18 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameRenewed, err := filterer.ParseNameRenewed(nameRenewedLog)
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("indexing of renew event failed parse event at index [%v] on block [%v]", foundNameRenewedIndex, blk.Number), 0)
+				utils.LogError(err, fmt.Sprintf("indexing of renew event failed parse event at tx [%v] index [%v] on block [%v]", i, foundNameRenewedIndex, blk.Number), 0)
+				continue
+			}
+
+			if err = verifyName(nameRenewed.Name); err != nil {
+				logger.Warnf("indexing of renew event failed because of invalid name at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number, err)
 				continue
 			}
 
 			nameHash, err := go_ens.NameHash(nameRenewed.Name)
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("error hashing ens name [%v] at index [%v] on block [%v]", nameRenewed.Name, foundNameRenewedIndex, blk.Number), 0)
+				utils.LogError(err, fmt.Sprintf("error hashing ens name [%v] at tx [%v] index [%v] on block [%v]", nameRenewed.Name, i, foundNameRenewedIndex, blk.Number), 0)
 				continue
 			}
 			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, nameHash, tx.GetHash())] = true
@@ -284,6 +295,15 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	}
 
 	return bulkData, bulkMetadataUpdates, nil
+}
+
+// Ens names are only supported to a length of 40
+// Source: https://github.com/wealdtech/go-ens/blob/5b323a4ef0472f06c515723b060b166843b9db08/resolver.go#L190
+func verifyName(name string) error {
+	if (strings.HasPrefix(name, "0x") && len(name) > 42) || (!strings.HasPrefix(name, "0x") && len(name) > 40) {
+		return fmt.Errorf("address too long")
+	}
+	return nil
 }
 
 type EnsCheckedDictionary struct {
@@ -411,7 +431,7 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 
 	name, err := go_ens.ReverseResolve(client, address)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("address could not be reverse resolved: %v", address), 0)
+		logger.Warnf("could not reverse resolve address [%v]: %v", address, err)
 		return removeEnsAddress(client, address, alreadyChecked)
 	}
 
@@ -456,7 +476,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error resolving name: %v", name), 0)
+		logger.Warnf("could not resolve name [%v]: %v", name, err)
 		return removeEnsName(client, name)
 	}
 	ensName, err := go_ens.NewName(client, name)
@@ -466,7 +486,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	}
 	expires, err := ensName.Expires()
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error get ens expire date: %v", name), 0)
+		logger.Warnf("could not get ens expire date [%v]: %v", name, err)
 		return removeEnsName(client, name)
 	}
 	isPrimary := false

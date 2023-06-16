@@ -57,7 +57,7 @@ func main() {
 	flag.Uint64Var(&opts.EndBlock, "blocks.end", 0, "Block to finish indexing")
 	flag.Uint64Var(&opts.DataConcurrency, "data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
-	flag.StringVar(&opts.Transformers, "transformers", "", "Komma separated list of transformers used by the eth1 indexer")
+	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	flag.Parse()
 
@@ -148,7 +148,7 @@ func main() {
 	case "clear-bigtable":
 		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
-		IndexOldEth1Blocks(opts.StartBlock, opts.EndEpoch, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
+		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
@@ -260,6 +260,19 @@ func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
 }
 
 func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable) {
+	if endBlock > 0 && endBlock < startBlock {
+		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
+		return
+	}
+	if concurrency == 0 {
+		utils.LogError(nil, "concurrency must be greater then 0", 0)
+		return
+	}
+	if bt == nil {
+		utils.LogError(nil, "no bigtable provided", 0)
+		return
+	}
+
 	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		logrus.Fatalf("error initializing erigon client: %v", err)
