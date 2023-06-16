@@ -1481,10 +1481,24 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 		startEpoch = 0
 	}
 
+	ranges := bigtable.getEpochRanges(startEpoch, endEpoch)
+
+	return bigtable.getValidatorIncomeDetails(validators, ranges)
+}
+
+func (bigtable *Bigtable) GetValidatorIncomeDetailsIndexedMultiple(validators []uint64, epochs []uint64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
+	rowList := gcp_bigtable.RowList{}
+	for _, epoch := range epochs {
+		rowList = append(rowList, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)))
+	}
+
+	return bigtable.getValidatorIncomeDetails(validators, rowList)
+}
+
+func (bigtable *Bigtable) getValidatorIncomeDetails(validators []uint64, rowSet gcp_bigtable.RowSet) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
 	defer cancel()
 
-	ranges := bigtable.getEpochRanges(startEpoch, endEpoch)
 	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
 
 	valLen := len(validators)
@@ -1518,7 +1532,7 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 		)
 	}
 
-	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err := bigtable.tableBeaconchain.ReadRows(ctx, rowSet, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		epoch, err := strconv.ParseUint(keySplit[3], 10, 64)

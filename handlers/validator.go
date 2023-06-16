@@ -979,7 +979,6 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	var proposedSlots []struct {
 		Epoch           uint64
 		Slot            uint64
-		BlockRoot       []byte
 		Status          uint64
 		Graffiti        []byte
 		ExecBlockNumber uint64 `db:"exec_block_number"`
@@ -989,7 +988,6 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			blocks.epoch, 
 			blocks.slot,
-			blocks.blockroot,
 			blocks.status, 
 			blocks.graffiti,
 			COALESCE(blocks.exec_block_number, 0) AS exec_block_number
@@ -1000,6 +998,23 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving proposed blocks data: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	epochCount := make(map[uint64]uint64)
+	for _, slot := range proposedSlots {
+		epochCount[slot.Slot/utils.Config.Chain.Config.SlotsPerEpoch]++
+	}
+
+	epochs := make([]uint64, 0, len(epochCount))
+	for key := range epochCount {
+		epochs = append(epochs, key)
+	}
+
+	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsIndexedMultiple([]uint64{index}, epochs)
+	if err != nil {
+		logger.Errorf("error retrieving validator income data from bigtable: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -1022,6 +1037,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
 		slotToExecBlock = make(map[uint64]*types.Eth1BlockIndexed)
 		for _, execBlock := range execBlocks {
 			slotToExecBlock[utils.TimeToSlot(uint64(execBlock.Time.Seconds))] = execBlock
@@ -1037,9 +1053,19 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(proposedSlots))
 	for i, b := range proposedSlots {
+		consReward := template.HTML("-")
+
+		if incomeDatum, hasIncome := incomeData[index][b.Epoch]; hasIncome {
+			proposerClReward := incomeDatum.ProposerAttestationInclusionReward + incomeDatum.ProposerSyncInclusionReward + incomeDatum.ProposerSlashingInclusionReward
+			consReward = utils.NewFormat(
+				new(big.Int).Div(new(big.Int).Mul(new(big.Int).SetUint64(proposerClReward), big.NewInt(1e9)), new(big.Int).SetUint64(epochCount[b.Epoch])), "ETH", 5, 1)
+		} else if b.Epoch >= services.LatestFinalizedEpoch() {
+			consReward = template.HTML("pending...")
+		}
 
 		execBlockNum := template.HTML("-")
 		execReward := template.HTML("-")
+
 		execRewardRecipient := template.HTML("-")
 		if execBlock, hasExecBlock := slotToExecBlock[b.Slot]; hasExecBlock {
 			execBlockNum = utils.FormatEth1Block(execBlock.Number)
@@ -1051,6 +1077,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 				execRewardRecipient = utils.FormatAddressWithLimits(execBlock.Coinbase, "", false, "address", 15, 20, false)
 			}
 		}
+
 		tableData[i] = []interface{}{
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatBlockSlot(b.Slot),
@@ -1058,7 +1085,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 			utils.FormatBlockStatus(b.Status),
 			execReward,
-			utils.FormatBlockRoot(b.BlockRoot),
+			consReward,
 			execRewardRecipient,
 			utils.FormatGraffiti(b.Graffiti),
 		}
