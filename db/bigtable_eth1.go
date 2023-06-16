@@ -230,8 +230,7 @@ func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
 	res, err := bigtable.redisCache.Get(ctx, redisKey).Result()
 
 	if err != nil {
-		// key is not yet set, get data from bigtable
-		// key will be set via the eth1indexer
+		// key is not yet set, get data from bigtable and store the key in redis
 		if errors.Is(err, redis.Nil) {
 			lastBlock, err := bigtable.getLastBlockInBlocksTableFromBigtable()
 
@@ -306,8 +305,7 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 	res, err := bigtable.redisCache.Get(ctx, redisKey).Result()
 
 	if err != nil {
-		// key is not yet set, get data from bigtable
-		// key will be set via the eth1indexer
+		// key is not yet set, get data from bigtable and store the key in redis
 		if errors.Is(err, redis.Nil) {
 			lastBlock, err := bigtable.getLastBlockInDataTableFromBigtable()
 
