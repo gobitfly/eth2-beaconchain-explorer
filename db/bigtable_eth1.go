@@ -746,7 +746,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 					if len(bulkMutsMetadataUpdate.Keys) > 0 {
 						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.GetMetadataUpdatesTable())
 						if err != nil {
-							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", err)
+							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", block.Number, err)
 						}
 					}
 
