@@ -165,12 +165,12 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameRegistered, err := filterer.ParseNameRegistered(nameLog)
 			if err != nil {
-				utils.LogError(err, "indexing of register event failed parse register event", 0)
+				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse register event at index [%v] on block [%v]", foundNameIndex, blk.Number), 0)
 				continue
 			}
 			resolver, err := filterer.ParseNewResolver(resolverLog)
 			if err != nil {
-				utils.LogError(err, "indexing of register event failed parse resolver event", 0)
+				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse resolver event at index [%v] on block [%v]", foundNameIndex, blk.Number), 0)
 				continue
 			}
 
@@ -201,13 +201,13 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			nameRenewed, err := filterer.ParseNameRenewed(nameRenewedLog)
 			if err != nil {
-				utils.LogError(err, "indexing of renew event failed parse event", 0)
+				utils.LogError(err, fmt.Sprintf("indexing of renew event failed parse event at index [%v] on block [%v]", foundNameRenewedIndex, blk.Number), 0)
 				continue
 			}
 
 			nameHash, err := go_ens.NameHash(nameRenewed.Name)
 			if err != nil {
-				utils.LogError(err, "error hashing ens name", 0)
+				utils.LogError(err, fmt.Sprintf("error hashing ens name [%v] at index [%v] on block [%v]", nameRenewed.Name, foundNameRenewedIndex, blk.Number), 0)
 				continue
 			}
 			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, nameHash, tx.GetHash())] = true
@@ -235,7 +235,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			newOwner, err := filterer.ParseNewOwner(newOwnerLog)
 			if err != nil {
-				utils.LogError(err, fmt.Errorf("indexing of new owner event failed parse event at index %v", foundNewOwnerIndex), 0)
+				utils.LogError(err, fmt.Errorf("indexing of new owner event failed parse event at index %v on block [%v]", foundNewOwnerIndex, blk.Number), 0)
 				continue
 			}
 
@@ -266,7 +266,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 			addressChanged, err := filterer.ParseAddressChanged(addressChangedLog)
 			if err != nil {
-				utils.LogError(err, "indexing of address change event failed parse event at index ", 0)
+				utils.LogError(err, fmt.Sprintf("indexing of address change event failed parse event at index [%v] on block [%v]", addressChangeIndex, blk.Number), 0)
 				continue
 			}
 
