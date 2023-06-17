@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -84,6 +85,9 @@ func Init() {
 	ready.Add(1)
 	go lastBlockInBlocksTableUpdater(ready)
 
+	ready.Add(1)
+	go depositsLeaderboardUpdater(ready)
+
 	ready.Wait()
 }
 
@@ -100,6 +104,70 @@ func InitNotifications(pubkeyCachePath string) {
 	}
 
 	go notificationCollector()
+}
+
+func depositsLeaderboardUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+
+	for {
+		err := aggregateDeposits()
+		if err != nil {
+			logger.WithError(err).Errorf("error saving eth1-deposits-leaderboard")
+			time.Sleep(time.Minute)
+			continue
+		}
+		if firstRun {
+			logger.Info("initialized depositsLeaderboardUpdater updater")
+			wg.Done()
+			firstRun = false
+		}
+		ReportStatus("depositsLeaderboardUpdater", "Running", nil)
+		time.Sleep(time.Minute * 60 * 6)
+	}
+}
+
+func aggregateDeposits() error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("exporter_aggregate_eth1_deposits").Observe(time.Since(start).Seconds())
+	}()
+	_, err := db.WriterDb.Exec(`
+		INSERT INTO eth1_deposits_aggregated (from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count)
+		SELECT
+			eth1.from_address,
+			SUM(eth1.amount) as amount,
+			SUM(eth1.validcount) AS validcount,
+			SUM(eth1.invalidcount) AS invalidcount,
+			COUNT(CASE WHEN v.status = 'slashed' THEN 1 END) AS slashedcount,
+			COUNT(v.pubkey) AS totalcount,
+			COUNT(CASE WHEN v.status = 'active_online' OR v.status = 'active_offline' THEN 1 END) as activecount,
+			COUNT(CASE WHEN v.status = 'deposited' THEN 1 END) AS pendingcount,
+			COUNT(CASE WHEN v.status = 'exited' THEN 1 END) AS voluntary_exit_count
+		FROM (
+			SELECT 
+				from_address,
+				publickey,
+				SUM(amount) AS amount,
+				COUNT(CASE WHEN valid_signature = 't' THEN 1 END) AS validcount,
+				COUNT(CASE WHEN valid_signature = 'f' THEN 1 END) AS invalidcount
+			FROM eth1_deposits
+			GROUP BY from_address, publickey
+		) eth1
+		LEFT JOIN (SELECT pubkey, status FROM validators) v ON v.pubkey = eth1.publickey
+		GROUP BY eth1.from_address
+		ON CONFLICT (from_address) DO UPDATE SET
+			amount               = excluded.amount,
+			validcount           = excluded.validcount,
+			invalidcount         = excluded.invalidcount,
+			slashedcount         = excluded.slashedcount,
+			totalcount           = excluded.totalcount,
+			activecount          = excluded.activecount,
+			pendingcount         = excluded.pendingcount,
+			voluntary_exit_count = excluded.voluntary_exit_count`)
+	if err != nil && err != sql.ErrNoRows {
+		return nil
+	}
+	return err
 }
 
 func lastBlockInBlocksTableUpdater(wg *sync.WaitGroup) {
