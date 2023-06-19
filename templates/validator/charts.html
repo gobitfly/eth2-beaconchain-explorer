@@ -190,12 +190,6 @@
                                     enabled: false
                                 },
                                 pointInterval: 24 * 3600 * 1000,
-                                dataGrouping: {
-                                    forced: true,
-                                    units: [
-                                        ['day', [1]]
-                                    ]
-                                }
                             }
                         },
                         xAxis: {
@@ -242,7 +236,8 @@
                                 const startEpoch = timeToEpoch(tooltip.chart.hoverPoint.x)
                                 const timeForOneDay = 24 * 60* 60 * 1000
                                 const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
-                                text += `${new Date(tooltip.chart.hoverPoints[0].x).toLocaleDateString()} (Epochs ${startEpoch} - ${endEpoch})<br/>`;
+                                const endTs = epochToTime(endEpoch)
+                                text += `${new Date(tooltip.chart.hoverPoints[0].x).toLocaleDateString()} - ${new Date(endTs).toLocaleDateString()} <br> Epochs ${startEpoch} - ${endEpoch}<br/>`;
 
                                 // income
                                 for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
