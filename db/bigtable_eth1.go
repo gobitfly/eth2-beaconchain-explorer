@@ -719,7 +719,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 					for _, transform := range transforms {
 						mutsData, mutsMetadataUpdate, err := transform(block, cache)
 						if err != nil {
-							logrus.WithError(err).Error("error transforming block")
+							logrus.WithError(err).Errorf("error transforming block [%v]", block.Number)
 						}
 						bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
 						bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
@@ -734,19 +734,19 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 						metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
 						err := bigtable.SaveBlockKeys(block.Number, block.Hash, metaKeys)
 						if err != nil {
-							return fmt.Errorf("error saving block keys to bigtable metadata updates table: %w", err)
+							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", block.Number, err)
 						}
 
 						err = bigtable.WriteBulk(&bulkMutsData, bigtable.GetDataTable())
 						if err != nil {
-							return fmt.Errorf("error writing to bigtable data table: %w", err)
+							return fmt.Errorf("error writing block [%v] to bigtable data table: %w", block.Number, err)
 						}
 					}
 
 					if len(bulkMutsMetadataUpdate.Keys) > 0 {
 						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.GetMetadataUpdatesTable())
 						if err != nil {
-							return fmt.Errorf("error writing to bigtable metadata updates table: %w", err)
+							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", block.Number, err)
 						}
 					}
 
