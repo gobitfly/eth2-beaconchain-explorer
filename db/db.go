@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"embed"
-	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -48,6 +47,9 @@ var saveValidatorsMux = &sync.Mutex{}
 
 var farFutureEpoch = uint64(18446744073709551615)
 var maxSqlNumber = uint64(9223372036854775807)
+
+var addressLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{0,40}$`)
+var blsLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{0,96}$`)
 
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	// The golang sql driver does not properly implement PingContext
@@ -2267,41 +2269,46 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 		orderBy = "block_slot"
 	}
 
-	if query != "" {
-		bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
+	withdrawalsQuery := `
+		SELECT 
+			w.block_slot as slot,
+			w.withdrawalindex as index,
+			w.validatorindex,
+			w.address,
+			w.amount
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+		%s
+		ORDER BY %s %s
+		LIMIT $1
+		OFFSET $2`
 
-		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
-			SELECT 
-				w.block_slot as slot,
-				w.withdrawalindex as index,
-				w.validatorindex,
-				w.address,
-				w.amount
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
-			WHERE CAST(w.validatorindex as varchar) LIKE $3 || '%%'
-				OR address LIKE $4 || '%%'::bytea
-				OR CAST(block_slot as varchar) LIKE $3 || '%%'
-				OR CAST(block_slot / $5 as varchar) LIKE $3 || '%%'
-			ORDER BY %s %s
-			LIMIT $1
-			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
-		if err != nil {
-			return nil, err
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	if trimmedQuery != "" {
+		searchQuery := ""
+		if uiQuery, err := strconv.ParseUint(query, 10, 64); err == nil {
+			searchQuery = `
+				WHERE w.validatorindex = $3
+					OR block_slot = $3
+					OR (block_slot / $5) = $3
+					OR ENCODE(address, 'hex') LIKE ($4 || '%')`
+
+			err := ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
+				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+			if err != nil {
+				return nil, err
+			}
+		} else if addressLikeRE.MatchString(query) {
+			searchQuery = `WHERE ENCODE(address, 'hex') LIKE ($3 || '%')`
+
+			err := ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
+				length, start, trimmedQuery)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
-		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
-			SELECT 
-				w.block_slot as slot,
-				w.withdrawalindex as index,
-				w.validatorindex,
-				w.address,
-				w.amount
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
-			ORDER BY %s %s
-			LIMIT $1
-			OFFSET $2`, orderBy, orderDir), length, start)
+		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, "", orderBy, orderDir), length, start)
 		if err != nil {
 			return nil, err
 		}
@@ -2882,41 +2889,47 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 		orderBy = "block_slot"
 	}
 
-	if query != "" {
+	blsQuery := `
+		SELECT 
+			bls.block_slot as slot,
+			bls.validatorindex,
+			bls.signature,
+			bls.pubkey,
+			bls.address
+		FROM blocks_bls_change bls
+		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+		%s
+		ORDER BY bls.%s %s
+		LIMIT $1
+		OFFSET $2`
 
-		bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
-		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
-			SELECT 
-				bls.block_slot as slot,
-				bls.validatorindex,
-				bls.signature,
-				bls.pubkey,
-				bls.address
-			FROM blocks_bls_change bls
-			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
-			WHERE CAST(bls.validatorindex as varchar) LIKE $3 || '%%'
-				OR pubkey LIKE $4::bytea || '%%'::bytea
-				OR CAST(block_slot as varchar) LIKE $3 || '%%'
-				OR CAST((block_slot / $5) as varchar) LIKE $3 || '%%'
-			ORDER BY bls.%s %s
-			LIMIT $1
-			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
-		if err != nil {
-			return nil, err
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	if trimmedQuery != "" {
+		searchQuery := ""
+		if uiQuery, err := strconv.ParseUint(query, 10, 64); err == nil {
+			searchQuery = `
+				WHERE bls.validatorindex = $3			
+					OR block_slot = $3
+					OR (block_slot / $5) = $3
+					OR ENCODE(pubkey, 'hex') LIKE ($4 || '%')`
+
+			err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+			if err != nil {
+				return nil, err
+			}
+		} else if blsLikeRE.MatchString(query) {
+			searchQuery = `WHERE ENCODE(pubkey, 'hex') LIKE ($3 || '%')`
+
+			err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+				length, start, trimmedQuery)
+			if err != nil {
+				return nil, err
+			}
 		}
+
 	} else {
-		err := ReaderDb.Select(&blsChange, fmt.Sprintf(`
-			SELECT 
-				bls.block_slot as slot,
-				bls.validatorindex,
-				bls.signature,
-				bls.pubkey,
-				bls.address
-			FROM blocks_bls_change bls
-			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
-			ORDER BY %s %s
-			LIMIT $1
-			OFFSET $2`, orderBy, orderDir), length, start)
+		err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, "", orderBy, orderDir), length, start)
 		if err != nil {
 			return nil, err
 		}
