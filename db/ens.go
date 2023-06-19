@@ -212,7 +212,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 
 			if err = verifyName(nameRenewed.Name); err != nil {
-				logger.Warnf("indexing of renew event failed because of invalid name at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number, err)
+				logger.Warnf("indexing of renew event failed because of invalid name at tx [%v] index [%v] on block [%v]: %v", i, foundNameIndex, blk.Number, err)
 				continue
 			}
 
