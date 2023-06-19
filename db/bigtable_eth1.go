@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
+	"github.com/go-redis/redis/v8"
 
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
@@ -222,30 +223,40 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool
 }
 
 func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
+	redisKey := bigtable.chainId + ":lastBlockInBlocksTable"
 
-	prefix := bigtable.chainId + ":"
-	lastBlock := 0
-	err := bigtable.tableBlocks.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
-		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
-
-		if err != nil {
-			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
-			return false
-		}
-		c = max_block_number - c
-
-		lastBlock = c
-		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
-	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+	res, err := bigtable.redisCache.Get(ctx, redisKey).Result()
 
 	if err != nil {
+		// key is not yet set, get data from bigtable and store the key in redis
+		if errors.Is(err, redis.Nil) {
+			lastBlock, err := bigtable.getLastBlockInBlocksTableFromBigtable()
+
+			if err != nil {
+				return 0, err
+			}
+
+			return lastBlock, bigtable.SetLastBlockInBlocksTable(int64(lastBlock))
+
+		}
 		return 0, err
 	}
 
+	lastBlock, err := strconv.Atoi(res)
+	if err != nil {
+		return 0, err
+	}
 	return lastBlock, nil
+}
+
+func (bigtable *Bigtable) SetLastBlockInBlocksTable(lastBlock int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	redisKey := bigtable.chainId + ":lastBlockInBlocksTable"
+
+	return bigtable.redisCache.Set(ctx, redisKey, fmt.Sprintf("%d", lastBlock), 0).Err()
 }
 
 func (bigtable *Bigtable) CheckForGapsInDataTable(lookback int) error {
@@ -287,6 +298,34 @@ func (bigtable *Bigtable) CheckForGapsInDataTable(lookback int) error {
 }
 
 func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	redisKey := bigtable.chainId + ":lastBlockInDataTable"
+
+	res, err := bigtable.redisCache.Get(ctx, redisKey).Result()
+
+	if err != nil {
+		// key is not yet set, get data from bigtable and store the key in redis
+		if errors.Is(err, redis.Nil) {
+			lastBlock, err := bigtable.getLastBlockInDataTableFromBigtable()
+
+			if err != nil {
+				return 0, err
+			}
+
+			return lastBlock, bigtable.SetLastBlockInDataTable(int64(lastBlock))
+		}
+		return 0, err
+	}
+
+	lastBlock, err := strconv.Atoi(res)
+	if err != nil {
+		return 0, err
+	}
+	return lastBlock, nil
+}
+
+func (bigtable *Bigtable) getLastBlockInDataTableFromBigtable() (int, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -311,6 +350,41 @@ func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
 	}
 
 	return lastBlock, nil
+}
+
+func (bigtable *Bigtable) getLastBlockInBlocksTableFromBigtable() (int, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	prefix := bigtable.chainId + ":"
+	lastBlock := 0
+	err := bigtable.tableBlocks.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+		if err != nil {
+			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+			return false
+		}
+		c = max_block_number - c
+
+		lastBlock = c
+		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if err != nil {
+		return 0, err
+	}
+
+	return lastBlock, nil
+}
+
+func (bigtable *Bigtable) SetLastBlockInDataTable(lastBlock int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	redisKey := bigtable.chainId + ":lastBlockInDataTable"
+
+	return bigtable.redisCache.Set(ctx, redisKey, fmt.Sprintf("%d", lastBlock), 0).Err()
 }
 
 func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockIndexed, error) {
@@ -765,6 +839,24 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 		return err
 	}
 
+	err := g.Wait()
+
+	if err != nil {
+		return err
+	}
+
+	lastBlockInCache, err := bigtable.GetLastBlockInDataTable()
+	if err != nil {
+		return err
+	}
+
+	if end > int64(lastBlockInCache) {
+		err := bigtable.SetLastBlockInDataTable(end)
+
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
