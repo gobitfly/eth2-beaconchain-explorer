@@ -301,7 +301,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 // Source: https://github.com/wealdtech/go-ens/blob/5b323a4ef0472f06c515723b060b166843b9db08/resolver.go#L190
 func verifyName(name string) error {
 	if (strings.HasPrefix(name, "0x") && len(name) > 42) || (!strings.HasPrefix(name, "0x") && len(name) > 40) {
-		return fmt.Errorf("address too long")
+		return fmt.Errorf("name too long")
 	}
 	return nil
 }

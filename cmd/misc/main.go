@@ -265,7 +265,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		return
 	}
 	if concurrency == 0 {
-		utils.LogError(nil, "concurrency must be greater then 0", 0)
+		utils.LogError(nil, "concurrency must be greater than 0", 0)
 		return
 	}
 	if bt == nil {
