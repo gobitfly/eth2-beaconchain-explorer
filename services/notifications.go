@@ -2526,50 +2526,58 @@ func (n *taxReportNotification) GetInfoMarkdown() string {
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		return err
+	}
+
+	//Check that the last day of the month is already exported
 	tNow := time.Now()
 	firstDayOfMonth := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
-	if tNow.Year() == firstDayOfMonth.Year() && tNow.Month() == firstDayOfMonth.Month() && tNow.Day() == firstDayOfMonth.Day() { // Send the reports on the first day of the month
-		var dbResult []struct {
-			SubscriptionID  uint64         `db:"id"`
-			UserID          uint64         `db:"user_id"`
-			Epoch           uint64         `db:"created_epoch"`
-			EventFilter     string         `db:"event_filter"`
-			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
-		}
+	if utils.TimeToDay(uint64(firstDayOfMonth.Unix())) > lastStatsDay {
+		return nil
+	}
 
-		name := string(eventName)
-		if utils.Config.Chain.Config.ConfigName != "" {
-			name = utils.Config.Chain.Config.ConfigName + ":" + name
-		}
+	var dbResult []struct {
+		SubscriptionID  uint64         `db:"id"`
+		UserID          uint64         `db:"user_id"`
+		Epoch           uint64         `db:"created_epoch"`
+		EventFilter     string         `db:"event_filter"`
+		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
+	}
 
-		err := db.FrontendWriterDB.Select(&dbResult, `
+	name := string(eventName)
+	if utils.Config.Chain.Config.ConfigName != "" {
+		name = utils.Config.Chain.Config.ConfigName + ":" + name
+	}
+
+	err = db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
+			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));
 			`,
-			name)
+		name, firstDayOfMonth)
 
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
+	}
 
-		for _, r := range dbResult {
-			n := &taxReportNotification{
-				SubscriptionID:  r.SubscriptionID,
-				UserID:          r.UserID,
-				Epoch:           r.Epoch,
-				EventFilter:     r.EventFilter,
-				UnsubscribeHash: r.UnsubscribeHash,
-			}
-			if _, exists := notificationsByUserID[r.UserID]; !exists {
-				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
-			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+	for _, r := range dbResult {
+		n := &taxReportNotification{
+			SubscriptionID:  r.SubscriptionID,
+			UserID:          r.UserID,
+			Epoch:           r.Epoch,
+			EventFilter:     r.EventFilter,
+			UnsubscribeHash: r.UnsubscribeHash,
 		}
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
