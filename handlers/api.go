@@ -1728,10 +1728,13 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the income detail history (last 100 epochs) of up to 100 validators
+// @Summary Get the income detail history of up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  latest_epoch query int false "The latest epoch to consider in the query"
+// @Param  offset query int false "Number of items to skip"
+// @Param  limit query int false "Maximum number of items to return, up to 100"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorIncomeHistoryResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/incomedetailhistory [get]
@@ -1742,6 +1745,12 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
+
+	latestEpoch, limit, err := getIncomeDetailsHistoryQueryParameters(r.URL.Query())
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), err.Error())
+		return
+	}
 
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
@@ -1754,13 +1763,13 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(queryIndices, services.LatestEpoch()-101, services.LatestEpoch())
+	history, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(queryIndices, latestEpoch-(limit-1), latestEpoch)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 
-	responseData := make([]*types.ApiValidatorIncomeHistoryResponse, 0, len(history)*101)
+	responseData := make([]*types.ApiValidatorIncomeHistoryResponse, 0, uint64(len(history))*limit)
 
 	epochsPerWeek := utils.EpochsPerDay() * 7
 	for validatorIndex, epochs := range history {
@@ -1818,6 +1827,39 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
+}
+
+func getIncomeDetailsHistoryQueryParameters(q url.Values) (uint64, uint64, error) {
+	onChainLatestEpoch := services.LatestFinalizedEpoch()
+	defaultLimit := uint64(100)
+
+	latestEpoch := onChainLatestEpoch
+	if q.Has("latest_epoch") {
+		var err error
+		latestEpoch, err = strconv.ParseUint(q.Get("latest_epoch"), 10, 64)
+		if err != nil || latestEpoch > onChainLatestEpoch {
+			return 0, 0, fmt.Errorf("invalid latest epoch parameter")
+		}
+	}
+
+	if q.Has("offset") {
+		offset, err := strconv.ParseUint(q.Get("offset"), 10, 64)
+		if err != nil || offset > latestEpoch {
+			return 0, 0, fmt.Errorf("invalid offset parameter")
+		}
+		latestEpoch -= offset
+	}
+
+	limit := defaultLimit
+	if q.Has("limit") {
+		var err error
+		limit, err = strconv.ParseUint(q.Get("limit"), 10, 64)
+		if err != nil || limit > defaultLimit || limit < 1 {
+			return 0, 0, fmt.Errorf("invalid limit parameter")
+		}
+	}
+
+	return latestEpoch, limit, nil
 }
 
 // ApiValidatorWithdrawals godoc
