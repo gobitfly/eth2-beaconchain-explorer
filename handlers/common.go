@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/mux"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
@@ -557,6 +558,8 @@ func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint
 func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	vars := mux.Vars(r)
+
 	user, _, err := getUserSession(r)
 	if err != nil {
 		utils.LogError(err, "error retrieving session", 0)
@@ -570,19 +573,7 @@ func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 
 	defer json.NewEncoder(w).Encode(response)
 
-	tableKey := ""
-	err = json.NewDecoder(r.Body).Decode(&tableKey)
-	if err != nil {
-		utils.LogError(err, "error loading data table state could not parse body", 0)
-		response.Status = "error getting table state"
-		return
-	}
-
-	if len(tableKey) == 0 {
-		utils.LogError(err, "error no key for data table state provided", 0)
-		response.Status = "error loading table state"
-		return
-	}
+	tableKey := vars["tableId"]
 
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
@@ -594,7 +585,7 @@ func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			// the time for the state load a data table must not be older than 2 hours so set it to the current time
+			// the time for the state load of a data table must not be older than 2 hours so set it to the current time
 			state.Time = uint64(time.Now().Unix() * 1000)
 
 			response.Data = state
@@ -606,6 +597,8 @@ func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 
 func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
 
 	user, _, err := getUserSession(r)
 	if err != nil {
@@ -628,14 +621,10 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	settings.Key = vars["tableId"]
+
 	// never store the page number
 	settings.Start = 0
-
-	if len(settings.Key) == 0 {
-		utils.LogError(err, "error no key for data table state provided", 0)
-		response.Status = "error saving table state"
-		return
-	}
 
 	if user.Authenticated {
 		err = db.SaveDataTableState(user.UserID, settings.Key, settings)

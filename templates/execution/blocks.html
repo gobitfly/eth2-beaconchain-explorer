@@ -63,9 +63,8 @@
         stateSave: true,
         stateSaveCallback: function (settings, data) {
           data.order = []
-          data.key = `${settings.sTableId}`
-          fetch("/tables/setstate", {
-            method: "POST",
+          fetch(`/tables/${settings.sTableId}/state`, {
+            method: "PUT",
             body: JSON.stringify(data),
           })
             .then((res) => res.json())
@@ -84,9 +83,8 @@
             })
         },
         stateLoadCallback: function (settings, callback) {
-          fetch("/tables/getstate", {
-            method: "POST",
-            body: JSON.stringify(`${settings.sTableId}`),
+          fetch(`/tables/${settings.sTableId}/state`, {
+            method: "GET",
           })
             .then((res) => res.json())
             .then(({ status, data }) => {
