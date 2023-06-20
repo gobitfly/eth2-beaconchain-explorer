@@ -1526,25 +1526,21 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		}
 	}
 
-	var offlineValidatorsLimit int
-	if utils.Config.Notifications.OfflineDetectionLimit != nil {
-		offlineValidatorsLimit = *utils.Config.Notifications.OfflineDetectionLimit
-	} else {
-		offlineValidatorsLimit = 5000
+	offlineValidatorsLimit := 5000
+	if utils.Config.Notifications.OfflineDetectionLimit != 0 {
+		offlineValidatorsLimit = utils.Config.Notifications.OfflineDetectionLimit
 	}
 
-	var onlineValidatorsLimit int
-	if utils.Config.Notifications.OnlineDetectionLimit != nil {
-		onlineValidatorsLimit = *utils.Config.Notifications.OnlineDetectionLimit
-	} else {
-		onlineValidatorsLimit = 5000
+	onlineValidatorsLimit := 5000
+	if utils.Config.Notifications.OnlineDetectionLimit != 0 {
+		onlineValidatorsLimit = utils.Config.Notifications.OnlineDetectionLimit
 	}
 
-	if len(offlineValidators) > int(offlineValidatorsLimit) {
+	if len(offlineValidators) > offlineValidatorsLimit {
 		return fmt.Errorf("retrieved more than %v offline validators notifications: %v, exiting", offlineValidatorsLimit, len(offlineValidators))
 	}
 
-	if len(onlineValidators) > int(onlineValidatorsLimit) {
+	if len(onlineValidators) > onlineValidatorsLimit {
 		return fmt.Errorf("retrieved more than %v online validators notifications: %v, exiting", onlineValidatorsLimit, len(onlineValidators))
 	}
 
