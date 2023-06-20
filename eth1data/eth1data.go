@@ -208,7 +208,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 							a := types.Eth1DecodedEventData{
 								Type:  typeMap[lName],
 								Raw:   fmt.Sprintf("0x%x", val),
-								Value: fmt.Sprintf("%s", val),
+								Value: fmt.Sprintf("%v", val),
 							}
 							b := typeMap[lName]
 							if b == "address" {
@@ -216,10 +216,6 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 							}
 							if strings.HasPrefix(b, "byte") {
 								a.Value = a.Raw
-							}
-							// if we could not parse it as string we take the value
-							if strings.HasPrefix(a.Value, "%!s(") {
-								a.Value = fmt.Sprintf("%v", val)
 							}
 							eth1Event.DecodedData[lName] = a
 						}
