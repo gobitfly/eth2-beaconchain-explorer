@@ -1526,12 +1526,26 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		}
 	}
 
-	if len(offlineValidators) > 5000 {
-		return fmt.Errorf("retrieved more than 5000 offline validators notifications: %v, exiting", len(offlineValidators))
+	var offlineValidatorsLimit int
+	if utils.Config.Notifications.OfflineDetectionLimit != nil {
+		offlineValidatorsLimit = *utils.Config.Notifications.OfflineDetectionLimit
+	} else {
+		offlineValidatorsLimit = 5000
 	}
 
-	if len(onlineValidators) > 5000 {
-		return fmt.Errorf("retrieved more than 5000 online validators notifications: %v, exiting", len(onlineValidators))
+	var onlineValidatorsLimit int
+	if utils.Config.Notifications.OnlineDetectionLimit != nil {
+		onlineValidatorsLimit = *utils.Config.Notifications.OnlineDetectionLimit
+	} else {
+		onlineValidatorsLimit = 5000
+	}
+
+	if len(offlineValidators) > int(offlineValidatorsLimit) {
+		return fmt.Errorf("retrieved more than %v offline validators notifications: %v, exiting", offlineValidatorsLimit, len(offlineValidators))
+	}
+
+	if len(onlineValidators) > int(onlineValidatorsLimit) {
+		return fmt.Errorf("retrieved more than %v online validators notifications: %v, exiting", onlineValidatorsLimit, len(onlineValidators))
 	}
 
 	_, subMap, err = db.GetSubsForEventFilter(types.ValidatorIsOfflineEventName)
