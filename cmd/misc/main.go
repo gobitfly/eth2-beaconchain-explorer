@@ -231,7 +231,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 		err = g.Wait()
 
 		if err != nil {
-			utils.LogError(err, fmt.Sprintf("error updating aggregationbits"), 0)
+			utils.LogError(err, "error updating aggregationbits", 0)
 			return
 		}
 		logrus.Infof("Update of Epoch[%v] complete", epoch)
