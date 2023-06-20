@@ -43,6 +43,9 @@
                 console.error("error loading table state, err:", data, "status: ", status)
               }
               var response = data !== "" ? data : JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              if (q) {
+                response.search.search = q
+              }
               callback(response)
             })
             .catch((err) => {
@@ -113,6 +116,9 @@
                 console.error("error loading table state, err:", data, "status: ", status)
               }
               var response = data !== "" ? data : JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              if (q) {
+                response.search.search = q
+              }
               callback(response)
             })
             .catch((err) => {
