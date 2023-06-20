@@ -1625,19 +1625,25 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		for i := endEpoch; i >= startEpoch && len(tableData) < pageLength; i-- {
-			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
-				if i <= endEpoch {
+		for epoch := endEpoch; epoch >= startEpoch && len(tableData) < pageLength; epoch-- {
+			if incomeDetails[index] == nil || incomeDetails[index][epoch] == nil {
+				if epoch <= endEpoch {
+					rewardsStr := "pending..."
+					eventStr := template.HTML("")
+					if epoch < activationAndExitEpoch.ActivationEpoch {
+						rewardsStr = ""
+						eventStr = utils.FormatAttestationStatusShort(5)
+					}
 					tableData = append(tableData, []interface{}{
-						utils.FormatEpoch(i),
-						"pending...",
+						utils.FormatEpoch(epoch),
+						rewardsStr,
 						template.HTML(""),
-						template.HTML(""),
+						eventStr,
 					})
 				}
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
 		}
 	}
 
