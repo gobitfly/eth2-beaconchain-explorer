@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -16,6 +17,7 @@ import (
 	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
+	"golang.org/x/sync/errgroup"
 
 	"flag"
 
@@ -43,7 +45,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -149,8 +151,90 @@ func main() {
 		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
 		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
+	case "update-aggregation-bits":
+		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
+	}
+}
+
+func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, endEpoch uint64, concurency uint64) {
+	logrus.Infof("update-aggregation-bits epochs %v - %v", startEpoch, endEpoch)
+	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
+		logrus.Infof("Getting data from the node for epoch %v", epoch)
+		data, err := rpcClient.GetEpochData(epoch, false)
+		if err != nil {
+			logrus.Infof("Error getting epoch[%v] data from the client: %v", epoch, err)
+			return
+		}
+
+		ctx := context.Background()
+		g, gCtx := errgroup.WithContext(ctx)
+		g.SetLimit(int(concurency))
+
+		for _, bm := range data.Blocks {
+			for _, b := range bm {
+				block := b
+				logrus.Infof("Updating data for slot %v", block.Slot)
+
+				if len(block.Attestations) == 0 {
+					logrus.Infof("No Attestations for slot %v", block.Slot)
+					continue
+				}
+				for i, a := range block.Attestations {
+					att := a
+					index := i
+					g.Go(func() error {
+						select {
+						case <-gCtx.Done():
+							return nil // halt once processing of a slot failed
+						default:
+						}
+						var aggregationbits *[]byte
+
+						// block_slot and block_index are already unique, but to be sure we use the correct index we also check the signature
+						err := db.ReaderDb.Get(&aggregationbits, `
+						SELECT aggregationbits
+						FROM blocks_attestations WHERE 
+							block_slot=$1 AND
+							block_index=$2 AND
+							signature = $3`, block.Slot, index, att.Signature)
+						if err != nil {
+							return fmt.Errorf("error getting aggregationbits on Slot %v: %v", block.Slot, err)
+						}
+
+						if fmt.Sprintf("%x", *aggregationbits) != fmt.Sprintf("%x", string(att.AggregationBits)) {
+							_, err = db.WriterDb.Exec(`
+								UPDATE blocks_attestations
+								SET
+									aggregationbits=$1
+								WHERE
+									block_slot=$2 AND
+									block_index=$3 AND
+									signature = $4
+							`, att.AggregationBits, block.Slot, index, att.Signature)
+							if err != nil {
+								return fmt.Errorf("error updating aggregationbits on Slot %v: %v", block.Slot, err)
+							}
+							logrus.Infof("Update of Slot[%v] Index[%v] complete", block.Slot, index)
+						} else {
+							logrus.Infof("Slot[%v] Index[%v] was already up to date", block.Slot, index)
+						}
+
+						return nil
+					})
+
+				}
+			}
+		}
+
+		err = g.Wait()
+
+		if err != nil {
+			utils.LogError(err, fmt.Sprintf("error updating aggregationbits"), 0)
+			return
+		}
+		logrus.Infof("Update of Epoch[%v] complete", epoch)
 	}
 }
 
