@@ -1339,3 +1339,16 @@ func CmdPrompt(label string) string {
 	}
 	return strings.TrimSpace(s)
 }
+
+// UniqueStrings returns an array of strings containing each value of s only once
+func UniqueStrings(s []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, str := range s {
+		if _, ok := seen[str]; !ok {
+			seen[str] = true
+			result = append(result, str)
+		}
+	}
+	return result
+}

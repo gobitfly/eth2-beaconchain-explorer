@@ -3,12 +3,14 @@ package db
 import (
 	"context"
 	"database/sql"
+	"eth2-exporter/cache"
 	"eth2-exporter/metrics"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -1152,6 +1154,18 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	}
 	queryValidatorsArr := pq.Array(validator_indices)
 
+	queryValidatorsStr := make([]string, len(validator_indices))
+	for i, v := range validator_indices {
+		queryValidatorsStr[i] = fmt.Sprintf("%d", v)
+	}
+	queryValidatorsStr = utils.UniqueStrings(queryValidatorsStr)
+	sort.Strings(queryValidatorsStr)
+	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch) // updates every epoch
+	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, queryValidatorsStr)
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, []types.ValidatorIncomeHistory{}); err == nil {
+		return cached.([]types.ValidatorIncomeHistory), nil
+	}
+
 	var result []types.ValidatorIncomeHistory
 	err := ReaderDb.Select(&result, `
 		SELECT 
@@ -1227,6 +1241,13 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 			ClRewards: int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals),
 		})
 	}
+
+	go func() {
+		err = cache.TieredCache.Set(cacheKey, result, cacheDur)
+		if err != nil {
+			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetValidatorIncomeHistory with key %v", cacheKey), 0)
+		}
+	}()
 
 	return result, err
 }
