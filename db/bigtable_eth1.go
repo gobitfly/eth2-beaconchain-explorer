@@ -1118,7 +1118,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 			}
 			jReversed := reversePaddedIndex(j, 100000)
 
-			if idx.Path == "[]" || bytes.Equal(idx.Value, []byte{0x0}) { // skip top level call & empty calls
+			if idx.Path == "[]" || bytes.Equal(idx.Value, []byte{0x0}) || idx.GetType() == "delegatecall" { // skip top level, empty and delegation calls
 				continue
 			}
 
