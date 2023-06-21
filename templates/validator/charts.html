@@ -237,9 +237,8 @@
                                 const timeForOneDay = 24 * 60* 60 * 1000
                                 const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
                                 const startDate = luxon.DateTime.fromMillis(tooltip.chart.hoverPoints[0].x)
-                                const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch))
-                                const endTime = luxon.DateTime.fromMillis(epochToTime(endEpoch+1))
-                                text += `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy")} ${endTime.toFormat("HH:mm:ss")} <br> Epochs ${startEpoch} - ${endEpoch}<br/>`;
+                                const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch+1))
+                                text += `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`;
 
                                 // income
                                 for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
