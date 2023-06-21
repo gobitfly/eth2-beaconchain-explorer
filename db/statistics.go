@@ -1160,7 +1160,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	}
 	queryValidatorsStr = utils.UniqueStrings(queryValidatorsStr)
 	sort.Strings(queryValidatorsStr)
-	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch) // updates every epoch
+	cacheDur := time.Second*time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch) + 10 // updates every epoch, keep 10sec longer
 	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(queryValidatorsStr, ","))
 	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, []types.ValidatorIncomeHistory{}); err == nil {
 		return cached.([]types.ValidatorIncomeHistory), nil
