@@ -2878,7 +2878,6 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
-			logger.Infof("error in my query %v", err)
 			return nil, err
 		}
 	} else {

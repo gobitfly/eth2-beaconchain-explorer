@@ -192,11 +192,11 @@ $(document).ready(function () {
       return obj?.domain
     },
     remote: {
-      url: "/api/v1/ens/lookup/%QUERY",
+      url: "/search/ens/%QUERY",
       wildcard: "%QUERY",
       maxPendingRequests: requestNum,
       transform: function (data) {
-        return data?.data?.address && data?.data?.domain ? { data: { ...data?.data } } : null
+        return data?.address && data?.domain ? { data: { ...data } } : null
       },
     },
   })

@@ -1627,7 +1627,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all validators that belong to an eth1 address
 // @Tags Validator
 // @Produce  json
-// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
+// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent". Is can also be a valid ENS name.
 // @Param limit query string false "Limit the number of results (default: 2000)"
 // @Param offset query string false "Offset the results (default: 0)"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorEth1Response}
@@ -3495,7 +3495,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 // @Tags Validator
 // @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
 // @Produce json
-// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
+// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix". It can also be a valid ENS name.
 // @Param  limit query int false "Limit the number of results, maximum: 200" default(10)
 // @Param offset query int false "Offset the number of results" default(0)
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiWithdrawalCredentialsResponse}

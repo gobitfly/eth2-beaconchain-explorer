@@ -35,12 +35,12 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	search = strings.Replace(search, "0x", "", -1)
 	var ensData *types.EnsDomainResponse
 	if utils.IsValidEnsDomain(search) {
 		ensData, _ = GetEnsDomain(search)
 
 	}
+	search = strings.Replace(search, "0x", "", -1)
 	if ensData != nil && len(ensData.Address) > 0 {
 		http.Redirect(w, r, "/address/"+ensData.Domain, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Tx(search) {
@@ -370,6 +370,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		result = &res
+	case "ens":
+		data, err := GetEnsDomain(search)
+		if err == nil {
+			result = &data
+		}
+
 	default:
 		http.Error(w, "Not found", 404)
 		return
@@ -387,6 +393,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// search can ether be a valid ETH address or an ENS name mapping to one
 func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByEth1Result, error) {
 	result := &[]struct {
 		Eth1Address      string        `db:"from_address" json:"eth1_address"`

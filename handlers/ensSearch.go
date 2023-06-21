@@ -3,9 +3,7 @@ package handlers
 import (
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -26,14 +24,7 @@ func EnsSearch(w http.ResponseWriter, r *http.Request) {
 
 	var pageData types.EnsSearchPageData
 	if err != nil {
-		errStr := fmt.Sprintf("%s", err)
-		if strings.Contains(errStr, "not found") {
-			pageData.Error = "No matching ENS registration found"
-		} else if strings.Contains(errStr, "expired") {
-			pageData.Error = "ENS registration expired"
-		} else {
-			pageData.Error = errStr
-		}
+		pageData.Error = "No matching ENS registration found"
 	} else {
 		pageData.Result = result
 	}

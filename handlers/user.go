@@ -682,7 +682,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		value    string
 		searched bool
 	}
-	ensMap := make(map[string]SearchItem)
+	ensMap := make(map[string]string)
 
 	for _, val := range watchlist {
 		validatorCount += 1
@@ -692,21 +692,15 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 		if val.DepositAddress != nil && len(*val.DepositAddress) > 0 {
 			depositAddress = fmt.Sprintf("0x%x", *val.DepositAddress)
-			if ensMap[depositAddress].searched {
-				depositEnsName = ensMap[depositAddress].value
+			if value, ok := ensMap[depositAddress]; ok {
+				depositEnsName = value
 			} else {
 				ensData, err := GetEnsDomain(depositAddress)
 				if err == nil {
 					depositEnsName = ensData.Domain
-					ensMap[depositAddress] = SearchItem{
-						searched: true,
-						value:    depositEnsName,
-					}
+					ensMap[depositAddress] = ensData.Domain
 				} else {
-					ensMap[depositAddress] = SearchItem{
-						searched: true,
-						value:    "",
-					}
+					ensMap[depositAddress] = ""
 				}
 			}
 		}

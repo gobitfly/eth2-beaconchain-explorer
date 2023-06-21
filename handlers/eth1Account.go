@@ -27,9 +27,11 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	address := template.HTMLEscapeString(vars["address"])
-	ensData, _ := GetEnsDomain(address)
-	if len(ensData.Address) > 0 {
-		address = ensData.Address
+	if utils.IsValidEnsDomain(address) {
+		ensData, _ := GetEnsDomain(address)
+		if len(ensData.Address) > 0 {
+			address = ensData.Address
+		}
 	}
 
 	isValid := utils.IsEth1Address(address)
@@ -491,12 +493,15 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// takes the "address" parameter from the reuqest and transforms it to lower case. The ENS name can be used instead of the address
 func lowerAddressFromRequest(r *http.Request) string {
 	vars := mux.Vars(r)
 	address := vars["address"]
-	ensData, _ := GetEnsDomain(address)
-	if len(ensData.Address) > 0 {
-		address = ensData.Address
+	if utils.IsValidEnsDomain(address) {
+		ensData, _ := GetEnsDomain(address)
+		if len(ensData.Address) > 0 {
+			address = ensData.Address
+		}
 	}
 	return strings.ToLower(strings.Replace(address, "0x", "", -1))
 }

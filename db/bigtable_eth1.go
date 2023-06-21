@@ -55,7 +55,6 @@ const (
 
 const (
 	DATA_COLUMN                    = "d"
-	ENS                            = "ens"
 	INDEX_COLUMN                   = "i"
 	DEFAULT_FAMILY_BLOCKS          = "default"
 	METADATA_UPDATES_FAMILY_BLOCKS = "blocks"
