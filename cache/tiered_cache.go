@@ -157,7 +157,12 @@ func (cache *tieredCache) Set(key string, value interface{}, expiration time.Dur
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	return cache.remoteCache.Set(ctx, key, value, expiration)
+	valueMarshal, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	cache.localGoCache.Set([]byte(key), valueMarshal, int(expiration.Seconds()))
+	return cache.remoteCache.Set(ctx, key, valueMarshal, expiration)
 }
 
 func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.Duration, returnValue interface{}) (interface{}, error) {
