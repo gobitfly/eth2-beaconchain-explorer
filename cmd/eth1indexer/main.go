@@ -716,7 +716,25 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 
 	}
 
-	return g.Wait()
+	err := g.Wait()
+
+	if err != nil {
+		return err
+	}
+
+	lastBlockInCache, err := bt.GetLastBlockInBlocksTable()
+	if err != nil {
+		return err
+	}
+
+	if end > int64(lastBlockInCache) {
+		err := bt.SetLastBlockInBlocksTable(end)
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
