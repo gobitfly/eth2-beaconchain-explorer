@@ -59,33 +59,41 @@ func main() {
 	}
 
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
 	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username: cfg.Frontend.WriterDatabase.Username,
-		Password: cfg.Frontend.WriterDatabase.Password,
-		Name:     cfg.Frontend.WriterDatabase.Name,
-		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.Frontend.WriterDatabase.Port,
+		Username:     cfg.Frontend.WriterDatabase.Username,
+		Password:     cfg.Frontend.WriterDatabase.Password,
+		Name:         cfg.Frontend.WriterDatabase.Name,
+		Host:         cfg.Frontend.WriterDatabase.Host,
+		Port:         cfg.Frontend.WriterDatabase.Port,
+		MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.Frontend.ReaderDatabase.Username,
-		Password: cfg.Frontend.ReaderDatabase.Password,
-		Name:     cfg.Frontend.ReaderDatabase.Name,
-		Host:     cfg.Frontend.ReaderDatabase.Host,
-		Port:     cfg.Frontend.ReaderDatabase.Port,
+		Username:     cfg.Frontend.ReaderDatabase.Username,
+		Password:     cfg.Frontend.ReaderDatabase.Password,
+		Name:         cfg.Frontend.ReaderDatabase.Name,
+		Host:         cfg.Frontend.ReaderDatabase.Host,
+		Port:         cfg.Frontend.ReaderDatabase.Port,
+		MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
