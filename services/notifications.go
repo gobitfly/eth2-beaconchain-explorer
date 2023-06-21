@@ -1964,7 +1964,7 @@ func (n *validatorWithdrawalNotification) GetEventName() types.EventName {
 }
 
 func (n *validatorWithdrawalNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprintf(`A withdrawal of %v has been processed for validator %v.`, utils.FormatCurrentBalance(n.Amount, "ETH"), n.ValidatorIndex)
+	generalPart := fmt.Sprintf(`An automatic withdrawal of %v has been processed for validator %v.`, utils.FormatCurrentBalance(n.Amount, "ETH"), n.ValidatorIndex)
 	if includeUrl {
 		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
@@ -1980,7 +1980,7 @@ func (n *validatorWithdrawalNotification) GetEventFilter() string {
 }
 
 func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
-	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHashRaw(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	generalPart := fmt.Sprintf(`An automatic withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHashRaw(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
 	return generalPart
 }
 
@@ -2526,50 +2526,58 @@ func (n *taxReportNotification) GetInfoMarkdown() string {
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
+	lastStatsDay, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		return err
+	}
+
+	//Check that the last day of the month is already exported
 	tNow := time.Now()
 	firstDayOfMonth := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
-	if tNow.Year() == firstDayOfMonth.Year() && tNow.Month() == firstDayOfMonth.Month() && tNow.Day() == firstDayOfMonth.Day() { // Send the reports on the first day of the month
-		var dbResult []struct {
-			SubscriptionID  uint64         `db:"id"`
-			UserID          uint64         `db:"user_id"`
-			Epoch           uint64         `db:"created_epoch"`
-			EventFilter     string         `db:"event_filter"`
-			UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
-		}
+	if utils.TimeToDay(uint64(firstDayOfMonth.Unix())) > lastStatsDay {
+		return nil
+	}
 
-		name := string(eventName)
-		if utils.Config.Chain.Config.ConfigName != "" {
-			name = utils.Config.Chain.Config.ConfigName + ":" + name
-		}
+	var dbResult []struct {
+		SubscriptionID  uint64         `db:"id"`
+		UserID          uint64         `db:"user_id"`
+		Epoch           uint64         `db:"created_epoch"`
+		EventFilter     string         `db:"event_filter"`
+		UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
+	}
 
-		err := db.FrontendWriterDB.Select(&dbResult, `
+	name := string(eventName)
+	if utils.Config.Chain.Config.ConfigName != "" {
+		name = utils.Config.Chain.Config.ConfigName + ":" + name
+	}
+
+	err = db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
+			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));
 			`,
-			name)
+		name, firstDayOfMonth)
 
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
+	}
 
-		for _, r := range dbResult {
-			n := &taxReportNotification{
-				SubscriptionID:  r.SubscriptionID,
-				UserID:          r.UserID,
-				Epoch:           r.Epoch,
-				EventFilter:     r.EventFilter,
-				UnsubscribeHash: r.UnsubscribeHash,
-			}
-			if _, exists := notificationsByUserID[r.UserID]; !exists {
-				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
-			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+	for _, r := range dbResult {
+		n := &taxReportNotification{
+			SubscriptionID:  r.SubscriptionID,
+			UserID:          r.UserID,
+			Epoch:           r.Epoch,
+			EventFilter:     r.EventFilter,
+			UnsubscribeHash: r.UnsubscribeHash,
 		}
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil

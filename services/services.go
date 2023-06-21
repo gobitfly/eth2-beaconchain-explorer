@@ -1222,18 +1222,6 @@ func LatestGasNowData() *types.GasNowPageData {
 	return nil
 }
 
-func LatestLastBlockInBlocksTableData() int {
-	cacheKey := fmt.Sprintf("%d:frontend:lastBlockInBlocksTable", utils.Config.Chain.Config.DepositChainID)
-
-	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
-		return int(wanted)
-	} else {
-		utils.LogError(err, "retrieving lastBlockInBlocksTable data from cache", 0)
-	}
-
-	return -1
-}
-
 func LatestRelaysPageData() *types.RelaysResp {
 	wanted := &types.RelaysResp{}
 	cacheKey := fmt.Sprintf("%d:frontend:relaysData", utils.Config.Chain.Config.DepositChainID)
