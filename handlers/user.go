@@ -678,10 +678,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	link := "/dashboard?validators="
 
 	validatorCount := 0
-	type SearchItem = struct {
-		value    string
-		searched bool
-	}
 	ensMap := make(map[string]string)
 
 	for _, val := range watchlist {
