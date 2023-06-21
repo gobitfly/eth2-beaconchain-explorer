@@ -78,7 +78,7 @@ func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
 	go func() {
 		err = cache.TieredCache.Set(cacheKey, data, time.Minute*10)
 		if err != nil {
-			logger.WithField("cacheKey", cacheKey).WithError(err).Errorf("error setting tieredCache")
+			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetUserIdByApiKey with key %v", cacheKey), 0)
 		}
 	}()
 	return data, err
