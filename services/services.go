@@ -83,9 +83,6 @@ func Init() {
 	go startMonitoringService(ready)
 
 	ready.Add(1)
-	go lastBlockInBlocksTableUpdater(ready)
-
-	ready.Add(1)
 	go depositsLeaderboardUpdater(ready)
 
 	ready.Wait()
@@ -168,32 +165,6 @@ func aggregateDeposits() error {
 		return nil
 	}
 	return err
-}
-
-func lastBlockInBlocksTableUpdater(wg *sync.WaitGroup) {
-	firstRun := true
-
-	for {
-		lastBlock, err := db.BigtableClient.GetLastBlockInBlocksTable()
-		if err != nil {
-			utils.LogError(err, "could not retrieve latest block number from the blocks table", 0)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		cacheKey := fmt.Sprintf("%d:frontend:lastBlockInBlocksTable", utils.Config.Chain.Config.DepositChainID)
-		err = cache.TieredCache.SetUint64(cacheKey, uint64(lastBlock), time.Hour*24)
-		if err != nil {
-			utils.LogError(err, "caching lastBlockInBlocksTable", 0)
-		}
-		if firstRun {
-			logger.Info("initialized lastBlockInBlocksTable updater")
-			wg.Done()
-			firstRun = false
-		}
-		ReportStatus("lastBlockInBlocksTableUpdater", "Running", nil)
-		time.Sleep(time.Minute)
-	}
 }
 
 func getRelaysPageData() (*types.RelaysResp, error) {
