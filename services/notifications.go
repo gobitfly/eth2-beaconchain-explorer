@@ -33,6 +33,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -836,6 +837,17 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 		notifs := make([]types.TransitWebhook, 0)
 		// send the notifications to each registered webhook
 		for _, w := range webhooks {
+			urlParsed, err := url.Parse(w.Url)
+
+			if err != nil {
+				logrus.Errorf("error parsing webhook url %v: %v", w.Url, err)
+				continue
+			}
+
+			if strings.Contains(urlParsed.Hostname(), "beaconcha.in") || strings.Contains(urlParsed.Hostname(), "gnosischa.in") {
+				logrus.Errorf("using beaconcha.in or gnosischa.in as webhook target is not allowed! %v", w.Url)
+				continue
+			}
 			for event, notifications := range userNotifications {
 				eventSubscribed := false
 				// check if the webhook is subscribed to the type of event
@@ -925,24 +937,66 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 			}
 		}
 		// process notifs
-		for _, n := range notifs {
-			_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), $1, $2);`, n.Channel, n.Content)
+		batchSize := 16000 // max parameters: 65535
+		for b := 0; b < len(notifs); b += batchSize {
+			start := b
+			end := b + batchSize
+			if len(notifs) < end {
+				end = len(notifs)
+			}
+
+			numArgs := 2
+			valueStrings := make([]string, 0, batchSize)
+			valueArgs := make([]interface{}, 0, batchSize*numArgs)
+			for i, n := range notifs[start:end] {
+				valueStrings = append(valueStrings, fmt.Sprintf("(now(), $%d, $%d)", i*numArgs+1, i*numArgs+2))
+				valueArgs = append(valueArgs, n.Channel)
+				valueArgs = append(valueArgs, n.Content)
+				metrics.NotificationsQueued.WithLabelValues(n.Channel, n.Content.Event.Name).Inc()
+			}
+			stmt := fmt.Sprintf(`
+			INSERT INTO notification_queue (created, channel, content) VALUES
+			%s`,
+				strings.Join(valueStrings, ","))
+			_, err := useDB.Exec(stmt, valueArgs...)
 			if err != nil {
 				logger.WithError(err).Errorf("error inserting into webhooks_queue")
 			} else {
-				metrics.NotificationsQueued.WithLabelValues(n.Channel, n.Content.Event.Name).Inc()
+				logger.Infof("saving webhook notification queue batch %v completed", b)
 			}
 		}
+
 		// process discord notifs
+		discordNotificationArray := make([]types.TransitDiscordContent, 0, len(discordNotifMap))
+
 		for _, dNotifs := range discordNotifMap {
-			for _, n := range dNotifs {
-				_, err = useDB.Exec(`INSERT INTO notification_queue (created, channel, content) VALUES (now(), 'webhook_discord', $1);`, n)
-				if err != nil {
-					logger.WithError(err).Errorf("error inserting into webhooks_queue (discord)")
-					continue
-				} else {
-					metrics.NotificationsQueued.WithLabelValues("webhook_discord", "multi").Inc()
-				}
+			discordNotificationArray = append(discordNotificationArray, dNotifs...)
+		}
+
+		for b := 0; b < len(discordNotificationArray); b += batchSize {
+			start := b
+			end := b + batchSize
+			if len(discordNotificationArray) < end {
+				end = len(discordNotificationArray)
+			}
+
+			numArgs := 1
+			valueStrings := make([]string, 0, batchSize)
+			valueArgs := make([]interface{}, 0, batchSize*numArgs)
+			for i, n := range discordNotificationArray[start:end] {
+				valueStrings = append(valueStrings, fmt.Sprintf("(now(), 'webhook_discord', $%d)", i*numArgs+1))
+				valueArgs = append(valueArgs, n)
+				metrics.NotificationsQueued.WithLabelValues("webhook_discord", "multi").Inc()
+			}
+			stmt := fmt.Sprintf(`
+			INSERT INTO notification_queue (created, channel, content) VALUES
+			%s`,
+				strings.Join(valueStrings, ","))
+			_, err := useDB.Exec(stmt, valueArgs...)
+			if err != nil {
+				logger.WithError(err).Errorf("error inserting into webhooks_queue (discord)")
+			} else {
+				logger.Infof("saving webhook discord notification queue batch %v completed", b)
 			}
 		}
 	}
@@ -969,7 +1023,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 	wg := errgroup.Group{}
 	wg.SetLimit(20)
 
-	// now := time.Now()
+	start := time.Now()
 	for _, n := range notificationQueueItem {
 		n := n
 		// do not retry after 5 attempts
@@ -1053,7 +1107,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 	wg.Wait()
 
-	logger.Infof("webhook notifications sent")
+	logger.Infof("webhook notifications sent in %v", time.Since(start))
 	return nil
 }
 
