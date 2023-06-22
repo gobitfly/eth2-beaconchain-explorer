@@ -33,6 +33,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -965,8 +966,12 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 	logger.Infof("processing %v webhook notifications", len(notificationQueueItem))
 
+	wg := errgroup.Group{}
+	wg.SetLimit(20)
+
 	// now := time.Now()
 	for _, n := range notificationQueueItem {
+		n := n
 		// do not retry after 5 attempts
 		if n.Content.Webhook.Retries > 5 {
 			// if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
@@ -1000,7 +1005,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			continue
 		}
 
-		go func(n types.TransitWebhook) {
+		wg.Go(func() error {
 			if n.Content.Webhook.Retries > 0 {
 				time.Sleep(time.Duration(n.Content.Webhook.Retries) * time.Second)
 			}
@@ -1012,16 +1017,16 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			}
 
 			if resp != nil && resp.StatusCode < 400 {
-				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now() where id = $1`, n.Id)
+				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating notification_queue table")
-					return
+					return nil
 				}
 
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-					return
+					return nil
 				}
 			} else {
 				var errResp types.ErrorResponse
@@ -1039,12 +1044,14 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, errResp)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating users_webhooks table; increasing retries")
-					return
+					return nil
 				}
 			}
-		}(n)
-
+			return nil
+		})
 	}
+
+	wg.Wait()
 	return nil
 }
 
