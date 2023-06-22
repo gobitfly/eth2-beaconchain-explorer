@@ -559,29 +559,31 @@ func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
+	tableKey := vars["tableId"]
 
-	user, _, err := getUserSession(r)
-	if err != nil {
-		utils.LogError(err, "error retrieving session", 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	errMsgPrefix := "error loading data table state"
+	errFields := map[string]interface{}{
+		"tableKey": tableKey}
 
 	response := &types.ApiResponse{}
-	response.Status = "ERROR"
+	response.Status = errMsgPrefix
 	response.Data = ""
 
 	defer json.NewEncoder(w).Encode(response)
 
-	tableKey := vars["tableId"]
+	user, _, err := getUserSession(r)
+	if err != nil {
+		utils.LogError(err, errMsgPrefix+", could not retrieve user session", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	if user.Authenticated {
 		state, err := db.GetDataTablesState(user.UserID, tableKey)
 		if err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
-				errFields := map[string]interface{}{
-					"tableKey": tableKey}
-				utils.LogError(err, "error loading data table state from db", 0, errFields)
+				utils.LogError(err, errMsgPrefix+", could not load values from db", 0, errFields)
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 		} else {
@@ -599,29 +601,34 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
+	tableKey := vars["tableId"]
 
-	user, _, err := getUserSession(r)
-	if err != nil {
-		utils.LogError(err, "error retrieving session", 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	errMsgPrefix := "error saving data table state"
+	errFields := map[string]interface{}{
+		"tableKey": tableKey}
 
 	response := &types.ApiResponse{}
-	response.Status = "ERROR"
+	response.Status = errMsgPrefix
 	response.Data = ""
 
 	defer json.NewEncoder(w).Encode(response)
 
-	settings := types.DataTableSaveState{}
-	err = json.NewDecoder(r.Body).Decode(&settings)
+	user, _, err := getUserSession(r)
 	if err != nil {
-		utils.LogError(err, "error saving data table state could not parse body", 0)
-		response.Status = "error saving table state"
+		utils.LogError(err, errMsgPrefix+", could not retrieve user session", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	settings.Key = vars["tableId"]
+	settings := types.DataTableSaveState{}
+	err = json.NewDecoder(r.Body).Decode(&settings)
+	if err != nil {
+		utils.LogError(err, errMsgPrefix+", could not parse body", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	settings.Key = tableKey
 
 	// never store the page number
 	settings.Start = 0
@@ -629,10 +636,8 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	if user.Authenticated {
 		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
 		if err != nil {
-			errFields := map[string]interface{}{
-				"tableKey": settings.Key}
-			utils.LogError(err, "error saving data table state could save values to db", 0, errFields)
-			response.Status = "error saving table state"
+			utils.LogError(err, errMsgPrefix+", could no save values to db", 0, errFields)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	} else {
