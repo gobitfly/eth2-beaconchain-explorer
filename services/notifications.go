@@ -845,6 +845,11 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 				continue
 			}
 
+			if !utils.IsValidUrl(w.Url) {
+				logrus.Warnf("error invalid webhook url: %v", w.Url)
+				continue
+			}
+
 			if strings.Contains(urlParsed.Hostname(), "beaconcha.in") || strings.Contains(urlParsed.Hostname(), "gnosischa.in") {
 				logrus.Warnf("using beaconcha.in or gnosischa.in as webhook target is not allowed! %v", w.Url)
 				continue
