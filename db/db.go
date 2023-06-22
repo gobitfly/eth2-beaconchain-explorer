@@ -69,13 +69,17 @@ func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
 
-	if writer.MaxOpenConns == 0 && writer.MaxIdleConns == 0 {
+	if writer.MaxOpenConns == 0 {
 		writer.MaxOpenConns = 50
+	}
+	if writer.MaxIdleConns == 0 {
 		writer.MaxIdleConns = 10
 	}
 
-	if reader.MaxOpenConns == 0 && reader.MaxIdleConns == 0 {
+	if reader.MaxOpenConns == 0 {
 		reader.MaxOpenConns = 50
+	}
+	if reader.MaxIdleConns == 0 {
 		reader.MaxIdleConns = 10
 	}
 
