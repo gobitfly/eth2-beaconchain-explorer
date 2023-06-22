@@ -998,7 +998,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
-	for i := firstEpoch; i <= lastEpoch; i += epochBatchSize {
+	for i := firstEpoch; i < lastEpoch; i += epochBatchSize {
 		fromEpoch := i
 		toEpoch := fromEpoch + epochBatchSize
 		if toEpoch >= lastEpoch {
