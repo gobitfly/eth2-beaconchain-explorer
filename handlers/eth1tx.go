@@ -93,9 +93,10 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 			if txDay < currentDay {
 				// Do not show the historical price if it is the current day
-				price, err := db.GetHistoricalPrice(utils.Config.Chain.Config.DepositChainID, GetCurrency(r), txDay)
+				currency := GetCurrency(r)
+				price, err := db.GetHistoricalPrice(utils.Config.Chain.Config.DepositChainID, currency, txDay)
 				if err != nil {
-					logrus.Errorf("error retrieving historical prices %v", err)
+					utils.LogError(err, "error retrieving historical prices", 0, map[string]interface{}{"txDay": txDay, "currency": currency})
 				} else {
 					historicalEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(price))
 					hPrice, _ := historicalEthPrice.Float64()
