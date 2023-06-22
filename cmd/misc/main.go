@@ -11,8 +11,11 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 
+	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 
 	"flag"
 
@@ -20,35 +23,41 @@ import (
 )
 
 var opts = struct {
-	Command       string
-	User          uint64
-	TargetVersion int64
-	StartEpoch    uint64
-	EndEpoch      uint64
-	StartDay      uint64
-	EndDay        uint64
-	Validator     uint64
-	Validators    string
-	Address       string
-	Family        string
-	Key           string
-	DryRun        bool
+	Command         string
+	User            uint64
+	TargetVersion   int64
+	StartEpoch      uint64
+	EndEpoch        uint64
+	StartDay        uint64
+	EndDay          uint64
+	Validator       uint64
+	StartBlock      uint64
+	EndBlock        uint64
+	BatchSize       uint64
+	DataConcurrency uint64
+	Transformers    string
+	Family          string
+	Key             string
+	DryRun          bool
 }{}
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
 	flag.Uint64Var(&opts.StartDay, "day-start", 0, "start day to debug")
 	flag.Uint64Var(&opts.EndDay, "day-end", 0, "end day to debug")
 	flag.Uint64Var(&opts.Validator, "validator", 0, "validator to check for")
-	flag.StringVar(&opts.Validators, "validators", "", "comma separated list of validators (pubkey of index)")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
-	flag.StringVar(&opts.Address, "address", "0xf00", "address")
 	flag.StringVar(&opts.Family, "family", "", "big table family")
 	flag.StringVar(&opts.Key, "key", "", "big table key")
+	flag.Uint64Var(&opts.StartBlock, "blocks.start", 0, "Block to start indexing")
+	flag.Uint64Var(&opts.EndBlock, "blocks.end", 0, "Block to finish indexing")
+	flag.Uint64Var(&opts.DataConcurrency, "data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
+	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
+	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	flag.Parse()
 
@@ -74,34 +83,41 @@ func main() {
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
-
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username: cfg.Frontend.WriterDatabase.Username,
-		Password: cfg.Frontend.WriterDatabase.Password,
-		Name:     cfg.Frontend.WriterDatabase.Name,
-		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.Frontend.WriterDatabase.Port,
+		Username:     cfg.Frontend.WriterDatabase.Username,
+		Password:     cfg.Frontend.WriterDatabase.Password,
+		Name:         cfg.Frontend.WriterDatabase.Name,
+		Host:         cfg.Frontend.WriterDatabase.Host,
+		Port:         cfg.Frontend.WriterDatabase.Port,
+		MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.Frontend.ReaderDatabase.Username,
-		Password: cfg.Frontend.ReaderDatabase.Password,
-		Name:     cfg.Frontend.ReaderDatabase.Name,
-		Host:     cfg.Frontend.ReaderDatabase.Host,
-		Port:     cfg.Frontend.ReaderDatabase.Port,
+		Username:     cfg.Frontend.ReaderDatabase.Username,
+		Password:     cfg.Frontend.ReaderDatabase.Password,
+		Name:         cfg.Frontend.ReaderDatabase.Name,
+		Host:         cfg.Frontend.ReaderDatabase.Host,
+		Port:         cfg.Frontend.ReaderDatabase.Port,
+		MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
@@ -137,62 +153,12 @@ func main() {
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
-	case "debug-balances":
-		DebugBalances(opts.StartDay, opts.EndDay, opts.Validator)
-	case "get-token-metadata":
-		err = GetTokenMetadata()
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
 	case "clear-bigtable":
 		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
-
+	case "index-old-eth1-blocks":
+		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
-	}
-}
-
-func GetTokenMetadata() error {
-	gethClient, err := rpc.NewErigonClient(utils.Config.Eth1GethEndpoint)
-	if err != nil {
-		return err
-	}
-	d, err := gethClient.GetERC20TokenMetadata(utils.MustParseHex(opts.Address))
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%+v\n", d)
-	return nil
-}
-
-func DebugBalances(startDay, endDay, validator uint64) {
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
-	if err != nil {
-		logrus.Fatalf("error connecting to bigtable: %v", err)
-	}
-	defer bt.Close()
-
-	logrus.Infof("--- bal history")
-	balHist, err := bt.GetValidatorBalanceHistory([]uint64{validator}, opts.StartEpoch, opts.EndEpoch)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	for _, v := range balHist {
-		for _, b := range v {
-			fmt.Printf("%+v\n", b)
-		}
-	}
-
-	logrus.Infof("--- rew history")
-	rewHist, err := bt.GetValidatorIncomeDetailsHistory([]uint64{validator}, opts.StartEpoch, opts.EndEpoch)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	for _, v := range rewHist {
-		for _, b := range v {
-			fmt.Printf("%+v\n", b)
-		}
 	}
 }
 
@@ -299,4 +265,105 @@ func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
 	} else {
 		logrus.Infof("%v keys have been deleted", len(deletedKeys))
 	}
+}
+
+func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable) {
+	if endBlock > 0 && endBlock < startBlock {
+		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
+		return
+	}
+	if concurrency == 0 {
+		utils.LogError(nil, "concurrency must be greater than 0", 0)
+		return
+	}
+	if bt == nil {
+		utils.LogError(nil, "no bigtable provided", 0)
+		return
+	}
+
+	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	if err != nil {
+		logrus.Fatalf("error initializing erigon client: %v", err)
+	}
+
+	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+
+	logrus.Infof("transformerFlag: %v", transformerFlag)
+	transformerList := strings.Split(transformerFlag, ",")
+	if len(transformerList) == 0 {
+		utils.LogError(nil, "no transformer functions provided", 0)
+		return
+	}
+	logrus.Infof("transformers: %v", transformerList)
+	importENSChanges := false
+	/**
+	* Add additional transformers you want to sync to this switch case
+	**/
+	for _, t := range transformerList {
+		switch t {
+		case "TransformBlock":
+			transforms = append(transforms, bt.TransformBlock)
+		case "TransformTx":
+			transforms = append(transforms, bt.TransformTx)
+		case "TransformItx":
+			transforms = append(transforms, bt.TransformItx)
+		case "TransformERC20":
+			transforms = append(transforms, bt.TransformERC20)
+		case "TransformERC721":
+			transforms = append(transforms, bt.TransformERC721)
+		case "TransformERC1155":
+			transforms = append(transforms, bt.TransformERC1155)
+		case "TransformWithdrawals":
+			transforms = append(transforms, bt.TransformWithdrawals)
+		case "TransformUncle":
+			transforms = append(transforms, bt.TransformUncle)
+		case "TransformEnsNameRegistered":
+			transforms = append(transforms, bt.TransformEnsNameRegistered)
+			importENSChanges = true
+		default:
+			utils.LogError(nil, "Invalid transformer flag %v", 0)
+			return
+		}
+	}
+
+	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
+
+	if startBlock == 0 && endBlock == 0 {
+		utils.LogFatal(nil, "no start+end block defined", 0)
+		return
+	}
+
+	lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+	if err != nil {
+		utils.LogError(err, "error retrieving last blocks from blocks table", 0)
+		return
+	}
+
+	to := uint64(lastBlockFromBlocksTable)
+	if endBlock > 0 {
+		to = utilMath.MinU64(to, endBlock)
+	}
+	blockCount := utilMath.MaxU64(1, batchSize)
+
+	logrus.Infof("Starting to index all blocks ranging from %d to %d", startBlock, to)
+	for from := startBlock; from <= to; from = from + blockCount {
+		toBlock := utilMath.MinU64(to, from+blockCount-1)
+
+		logrus.Infof("indexing blocks %v to %v in data table ...", from, toBlock)
+		err = bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, int64(concurrency), cache)
+		if err != nil {
+			utils.LogError(err, "error indexing from bigtable", 0)
+		}
+		cache.Clear()
+
+	}
+
+	if importENSChanges {
+		if err = bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
+			utils.LogError(err, "error importing ens from events", 0)
+			return
+		}
+	}
+
+	logrus.Infof("index run completed")
 }

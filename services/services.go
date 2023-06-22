@@ -81,9 +81,6 @@ func Init() {
 	ready.Add(1)
 	go startMonitoringService(ready)
 
-	ready.Add(1)
-	go lastBlockInBlocksTableUpdater(ready)
-
 	ready.Wait()
 }
 
@@ -100,32 +97,6 @@ func InitNotifications(pubkeyCachePath string) {
 	}
 
 	go notificationCollector()
-}
-
-func lastBlockInBlocksTableUpdater(wg *sync.WaitGroup) {
-	firstRun := true
-
-	for {
-		lastBlock, err := db.BigtableClient.GetLastBlockInBlocksTable()
-		if err != nil {
-			utils.LogError(err, "could not retrieve latest block number from the blocks table", 0)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		cacheKey := fmt.Sprintf("%d:frontend:lastBlockInBlocksTable", utils.Config.Chain.Config.DepositChainID)
-		err = cache.TieredCache.SetUint64(cacheKey, uint64(lastBlock), time.Hour*24)
-		if err != nil {
-			utils.LogError(err, "caching lastBlockInBlocksTable", 0)
-		}
-		if firstRun {
-			logger.Info("initialized lastBlockInBlocksTable updater")
-			wg.Done()
-			firstRun = false
-		}
-		ReportStatus("lastBlockInBlocksTableUpdater", "Running", nil)
-		time.Sleep(time.Minute)
-	}
 }
 
 func getRelaysPageData() (*types.RelaysResp, error) {
@@ -280,6 +251,7 @@ func getRelaysPageData() (*types.RelaysResp, error) {
 			on tags.id = relays_blocks.tag_id 
 		left join validators
 			on validators.pubkey = relays_blocks.proposer_pubkey  
+		where validators.validatorindex is not null
 		group by 
 			blockroot, 
 			relays_blocks.block_slot,
@@ -1153,18 +1125,6 @@ func LatestGasNowData() *types.GasNowPageData {
 	}
 
 	return nil
-}
-
-func LatestLastBlockInBlocksTableData() int {
-	cacheKey := fmt.Sprintf("%d:frontend:lastBlockInBlocksTable", utils.Config.Chain.Config.DepositChainID)
-
-	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
-		return int(wanted)
-	} else {
-		utils.LogError(err, "retrieving lastBlockInBlocksTable data from cache", 0)
-	}
-
-	return -1
 }
 
 func LatestRelaysPageData() *types.RelaysResp {

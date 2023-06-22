@@ -46,6 +46,9 @@ var logger = logrus.StandardLogger().WithField("module", "db")
 var epochsCache = cache.New(time.Hour, time.Minute)
 var saveValidatorsMux = &sync.Mutex{}
 
+var farFutureEpoch = uint64(18446744073709551615)
+var maxSqlNumber = uint64(9223372036854775807)
+
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	// The golang sql driver does not properly implement PingContext
 	// therefore we use a timer to catch db connection timeouts
@@ -65,6 +68,21 @@ func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 }
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
+
+	if writer.MaxOpenConns == 0 {
+		writer.MaxOpenConns = 50
+	}
+	if writer.MaxIdleConns == 0 {
+		writer.MaxIdleConns = 10
+	}
+
+	if reader.MaxOpenConns == 0 {
+		reader.MaxOpenConns = 50
+	}
+	if reader.MaxIdleConns == 0 {
+		reader.MaxIdleConns = 10
+	}
+
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
 	if err != nil {
 		utils.LogFatal(err, "error getting Connection Writer database", 0)
@@ -73,8 +91,8 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 	dbTestConnection(dbConnWriter, "database")
 	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
 	dbConnWriter.SetConnMaxLifetime(time.Second * 60)
-	dbConnWriter.SetMaxOpenConns(200)
-	dbConnWriter.SetMaxIdleConns(200)
+	dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
+	dbConnWriter.SetMaxIdleConns(writer.MaxIdleConns)
 
 	if reader == nil {
 		return dbConnWriter, dbConnWriter
@@ -88,8 +106,8 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 	dbTestConnection(dbConnReader, "read replica database")
 	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
 	dbConnReader.SetConnMaxLifetime(time.Second * 60)
-	dbConnReader.SetMaxOpenConns(200)
-	dbConnReader.SetMaxIdleConns(200)
+	dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
+	dbConnReader.SetMaxIdleConns(reader.MaxIdleConns)
 	return dbConnWriter, dbConnReader
 }
 
@@ -1046,8 +1064,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	}
 
 	latestEpoch := latestBlock / utils.Config.Chain.Config.SlotsPerEpoch
-	farFutureEpoch := uint64(18446744073709551615)
-	maxSqlNumber := uint64(9223372036854775807)
 
 	var queries strings.Builder
 
@@ -1818,14 +1834,25 @@ func updateQueueDeposits() error {
 	// then we add any new ones that are queued
 	_, err = WriterDb.Exec(`
 		INSERT INTO validator_queue_deposits
-		SELECT validatorindex, activationeligibilityepoch 
-		FROM validators 
-		WHERE activationepoch=9223372036854775807 and status='pending' 
-		ON CONFLICT (validatorindex) DO UPDATE SET
-			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch
-		`)
+		SELECT validatorindex FROM validators WHERE activationepoch=$1 and status='pending' ON CONFLICT DO NOTHING
+	`, maxSqlNumber)
 	if err != nil {
 		logger.Errorf("error adding queued publickeys to validator_queue_deposits: %v", err)
+		return err
+	}
+
+	// now we add the activationeligibilityepoch where it is missing
+	_, err = WriterDb.Exec(`
+		UPDATE validator_queue_deposits 
+		SET 
+			activationeligibilityepoch=validators.activationeligibilityepoch
+		FROM validators
+		WHERE 
+			validator_queue_deposits.activationeligibilityepoch IS NULL AND
+			validator_queue_deposits.validatorindex = validators.validatorindex
+	`)
+	if err != nil {
+		logger.Errorf("error updating activationeligibilityepoch on validator_queue_deposits: %v", err)
 		return err
 	}
 
@@ -1846,7 +1873,7 @@ func updateQueueDeposits() error {
 					/* get the pubkeys of the indexes */
 					select pubkey from validators where validators.validatorindex in (
 						/* get the indexes we need to update */
-						select validatorindex from validator_queue_deposits where block_slot is null and block_index is null
+						select validatorindex from validator_queue_deposits where block_slot is null or block_index is null
 					)
 				)
 				ORDER BY block_slot, block_index ASC
@@ -1870,17 +1897,40 @@ func updateQueueDeposits() error {
 
 func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	var res uint64
-	err := ReaderDb.Get(&res, `
-	WITH SelectedValidator AS (
-		SELECT block_slot, block_index, activationeligibilityepoch FROM validator_queue_deposits
-		WHERE validatorindex = $1
-	)
+	var selected struct {
+		BlockSlot                  uint64 `db:"block_slot"`
+		BlockIndex                 uint64 `db:"block_index"`
+		ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
+	}
+	err := ReaderDb.Get(&selected, `
+		SELECT 
+			COALESCE(block_index, 0) as block_index, 
+			COALESCE(block_slot, 0) as block_slot, 
+			COALESCE(activationeligibilityepoch, $2) as activationeligibilityepoch
+		FROM validator_queue_deposits
+		WHERE 
+			validatorindex = $1
+		`, validatorIndex, maxSqlNumber)
+	if err == sql.ErrNoRows {
+		// If we did not find our validator in the queue it is most likly that he has not yet been added so we put him as last
+		err = ReaderDb.Get(&res, `
+			SELECT count(*)
+			FROM validator_queue_deposits
+		`)
+		if err == nil {
+			return res, nil
+		}
+	}
+	if err != nil {
+		return res, err
+	}
+	err = ReaderDb.Get(&res, `
 	SELECT count(*)
 	FROM validator_queue_deposits
 	WHERE 
-		activationeligibilityepoch < (select activationeligibilityepoch from SelectedValidator) OR 
-		block_slot < (select block_slot from SelectedValidator) OR
-		block_slot = (select block_slot from SelectedValidator) AND block_index < (select block_index from SelectedValidator)`, validatorIndex)
+		COALESCE(activationeligibilityepoch, 0) < $1 OR 
+		block_slot < $2 OR
+		block_slot = $2 AND block_index < $3`, selected.ActivationEligibilityEpoch, selected.BlockSlot, selected.BlockIndex)
 	return res, err
 }
 

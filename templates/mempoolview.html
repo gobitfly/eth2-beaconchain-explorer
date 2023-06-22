@@ -1,11 +1,11 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_num-html.js"></script>
 
   <script>
     $("#mempool").DataTable({
       searching: true,
-      ordering: false,
       pageLength: 25,
       data: {{ .Data }},
       deferRender: true,
@@ -23,6 +23,7 @@
           orderable: false
         },
         {
+          type: 'num-html',
           targets: 5,
           orderable: true,
         }
