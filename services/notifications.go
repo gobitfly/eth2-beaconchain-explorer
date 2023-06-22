@@ -990,6 +990,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 			valueStrings := make([]string, 0, batchSize)
 			valueArgs := make([]interface{}, 0, batchSize*numArgs)
 			for i, n := range discordNotificationArray[start:end] {
+				n := n
 				valueStrings = append(valueStrings, fmt.Sprintf("(now(), 'webhook_discord', $%d)", i*numArgs+1))
 				valueArgs = append(valueArgs, n)
 				metrics.NotificationsQueued.WithLabelValues("webhook_discord", "multi").Inc()
@@ -1114,10 +1115,20 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 	wg.Wait()
 
 	if len(sentUpdate) > 0 {
-		_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1);`, pq.Array(sentUpdate))
+		logrus.Info(sentUpdate)
+		res, err := useDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1)`, pq.Array(sentUpdate))
 		if err != nil {
 			logger.WithError(err).Errorf("error updating sent timestamp in notification_queue table")
 			return nil
+		}
+
+		rows, err := res.RowsAffected()
+
+		if err != nil {
+			logger.Errorf("error retrieving affected rows for webhook notification sent ts update: %v", err)
+		} else {
+
+			logrus.Infof("marked %v webhook notifications as sent", rows)
 		}
 	}
 
@@ -1164,6 +1175,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	wg := errgroup.Group{}
 	wg.SetLimit(20)
 	ids := make([]uint64, 0)
+	idsMux := &sync.Mutex{}
 
 	for _, webhook := range webhookMap {
 		webhook := webhook
@@ -1180,7 +1192,9 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 				// mark notifcations as sent in db
 
 				for _, req := range reqs {
+					idsMux.Lock()
 					ids = append(ids, req.Id)
+					idsMux.Unlock()
 				}
 			}()
 
@@ -1240,9 +1254,21 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 		})
 	}
 
-	_, err = db.FrontendWriterDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1)`, pq.Array(ids))
-	if err != nil {
-		logger.Warnf("failed to update sent for discord notifcations in queue: %v", err)
+	if len(ids) > 0 {
+		logrus.Info(ids)
+		res, err := db.FrontendWriterDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1)`, pq.Array(ids))
+		if err != nil {
+			logger.Warnf("failed to update sent for discord notifcations in queue: %v", err)
+		}
+
+		rows, err := res.RowsAffected()
+
+		if err != nil {
+			logger.Errorf("error retrieving affected rows for discord notification sent ts update: %v", err)
+		} else {
+
+			logrus.Infof("marked %v discord notifications as sent", rows)
+		}
 	}
 
 	return nil
