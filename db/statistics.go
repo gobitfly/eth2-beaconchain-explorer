@@ -987,23 +987,24 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	epochsPerDay := utils.EpochsPerDay()
-	startEpoch, endEpoch := utils.GetFirstAndLastEpochForDay(day)
+	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
 	start := time.Now()
 
-	logrus.Infof("exporting 'failed attestations' statistics lastEpoch: %v firstEpoch: %v", startEpoch, endEpoch)
+	logrus.Infof("exporting 'failed attestations' statistics firstEpoch: %v lastEpoch: %v", firstEpoch, lastEpoch)
 
 	// first key is the batch start index and the second is the validator id
 	failed := map[uint64]map[uint64]*types.ValidatorFailedAttestationsStatistic{}
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
-	for i := uint64(0); i < epochsPerDay; i += epochBatchSize {
+	for i := firstEpoch; i <= lastEpoch; i += epochBatchSize {
 		fromEpoch := i
-		toEpoch := fromEpoch + epochBatchSize - 1
-		if toEpoch >= epochsPerDay {
-			toEpoch = epochsPerDay - 1
+		toEpoch := fromEpoch + epochBatchSize
+		if toEpoch >= lastEpoch {
+			toEpoch = lastEpoch
+		} else {
+			toEpoch--
 		}
 		g.Go(func() error {
 			select {
