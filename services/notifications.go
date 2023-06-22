@@ -1163,6 +1163,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 
 	wg := errgroup.Group{}
 	wg.SetLimit(20)
+	ids := make([]uint64, 0)
 
 	for _, webhook := range webhookMap {
 		webhook := webhook
@@ -1177,13 +1178,9 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 				}
 
 				// mark notifcations as sent in db
-				ids := make([]uint64, 0)
+
 				for _, req := range reqs {
 					ids = append(ids, req.Id)
-				}
-				_, err = db.FrontendWriterDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1)`, pq.Array(ids))
-				if err != nil {
-					logger.Warnf("failed to update sent for notifcations in queue: %v", err)
 				}
 			}()
 
@@ -1241,6 +1238,11 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 			}
 			return nil
 		})
+	}
+
+	_, err = db.FrontendWriterDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1)`, pq.Array(ids))
+	if err != nil {
+		logger.Warnf("failed to update sent for discord notifcations in queue: %v", err)
 	}
 
 	return nil
