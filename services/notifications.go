@@ -840,12 +840,12 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 			urlParsed, err := url.Parse(w.Url)
 
 			if err != nil {
-				logrus.Errorf("error parsing webhook url %v: %v", w.Url, err)
+				logrus.Warnf("error parsing webhook url %v: %v", w.Url, err)
 				continue
 			}
 
 			if strings.Contains(urlParsed.Hostname(), "beaconcha.in") || strings.Contains(urlParsed.Hostname(), "gnosischa.in") {
-				logrus.Errorf("using beaconcha.in or gnosischa.in as webhook target is not allowed! %v", w.Url)
+				logrus.Warnf("using beaconcha.in or gnosischa.in as webhook target is not allowed! %v", w.Url)
 				continue
 			}
 			for event, notifications := range userNotifications {
