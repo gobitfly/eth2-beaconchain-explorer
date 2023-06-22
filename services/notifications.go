@@ -1012,7 +1012,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			}
 
 			if resp != nil && resp.StatusCode < 400 {
-				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
+				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now() where id = $1`, n.Id)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating notification_queue table")
 					return
