@@ -10,7 +10,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -1130,8 +1129,8 @@ func markColumnExported(day uint64, column string) error {
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0, lastFinalizedEpoch)
+func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
+	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, 0, 0, lastFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -1148,20 +1147,25 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string,
 	return clRewardsSeries, err
 }
 
-func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64, lastFinalizedEpoch uint64) ([]types.ValidatorIncomeHistory, error) {
+func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, upperBoundDay uint64, lastFinalizedEpoch uint64) ([]types.ValidatorIncomeHistory, error) {
+	if len(validatorIndices) == 0 {
+		return []types.ValidatorIncomeHistory{}, nil
+	}
+
 	if upperBoundDay == 0 {
 		upperBoundDay = 65536
 	}
-	queryValidatorsArr := pq.Array(validator_indices)
 
-	queryValidatorsStr := make([]string, len(validator_indices))
-	for i, v := range validator_indices {
-		queryValidatorsStr[i] = fmt.Sprintf("%d", v)
+	validatorIndices = utils.SortedUniqueUint64(validatorIndices)
+	validatorIndicesStr := make([]string, len(validatorIndices))
+	for i, v := range validatorIndices {
+		validatorIndicesStr[i] = fmt.Sprintf("%d", v)
 	}
-	queryValidatorsStr = utils.UniqueStrings(queryValidatorsStr)
-	sort.Strings(queryValidatorsStr)
+
+	validatorIndicesPqArr := pq.Array(validatorIndices)
+
 	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch+10) // updates every epoch, keep 10sec longer
-	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(queryValidatorsStr, ","))
+	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(validatorIndicesStr, ","))
 	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, []types.ValidatorIncomeHistory{}); err == nil {
 		return cached.([]types.ValidatorIncomeHistory), nil
 	}
@@ -1176,7 +1180,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		WHERE validatorindex = ANY($1) AND day BETWEEN $2 AND $3 
 		GROUP BY day 
 		ORDER BY day
-	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
+	;`, validatorIndicesPqArr, lowerBoundDay, upperBoundDay)
 	if err != nil {
 		return nil, err
 	}
@@ -1200,7 +1204,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 
 		g := errgroup.Group{}
 		g.Go(func() error {
-			latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validator_indices, lastFinalizedEpoch, lastFinalizedEpoch)
+			latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validatorIndices, lastFinalizedEpoch, lastFinalizedEpoch)
 			if err != nil {
 				logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 				return err
@@ -1218,17 +1222,17 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 
 		var lastBalance uint64
 		g.Go(func() error {
-			return GetValidatorBalanceForDay(validator_indices, lastDay, &lastBalance)
+			return GetValidatorBalanceForDay(validatorIndices, lastDay, &lastBalance)
 		})
 
 		var lastDeposits uint64
 		g.Go(func() error {
-			return GetValidatorDepositsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastDeposits)
+			return GetValidatorDepositsForEpochs(validatorIndices, firstEpoch, lastFinalizedEpoch, &lastDeposits)
 		})
 
 		var lastWithdrawals uint64
 		g.Go(func() error {
-			return GetValidatorWithdrawalsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
+			return GetValidatorWithdrawalsForEpochs(validatorIndices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
 		})
 
 		err = g.Wait()
@@ -1243,13 +1247,13 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 	}
 
 	go func() {
-		err = cache.TieredCache.Set(cacheKey, result, cacheDur)
+		err := cache.TieredCache.Set(cacheKey, result, cacheDur)
 		if err != nil {
 			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetValidatorIncomeHistory with key %v", cacheKey), 0)
 		}
 	}()
 
-	return result, err
+	return result, nil
 }
 
 func WriteChartSeriesForDay(day int64) error {

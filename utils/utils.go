@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -1350,5 +1351,25 @@ func UniqueStrings(s []string) []string {
 			result = append(result, str)
 		}
 	}
+	return result
+}
+
+func SortedUniqueUint64(arr []uint64) []uint64 {
+	if len(arr) <= 1 {
+		return arr
+	}
+
+	sort.Slice(arr, func(i, j int) bool {
+		return arr[i] < arr[j]
+	})
+
+	result := make([]uint64, 1, len(arr))
+	result[0] = arr[0]
+	for i := 1; i < len(arr); i++ {
+		if arr[i-1] != arr[i] {
+			result = append(result, arr[i])
+		}
+	}
+
 	return result
 }
