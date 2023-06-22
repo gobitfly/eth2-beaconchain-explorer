@@ -1052,6 +1052,8 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 	}
 
 	wg.Wait()
+
+	logger.Infof("webhook notifications sent")
 	return nil
 }
 
