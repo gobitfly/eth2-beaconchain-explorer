@@ -100,8 +100,8 @@ type Config struct {
 			Name         string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
 			Host         string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
 			Port         string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
-			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_WRITER_DB_MAX_OPEN_CONNS"`
-			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
+			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_READER_DB_MAX_OPEN_CONNS"`
+			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_READER_DB_MAX_IDLE_CONNS"`
 		} `yaml:"readerDatabase"`
 		WriterDatabase struct {
 			Username     string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
