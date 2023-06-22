@@ -1070,7 +1070,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 	if err != nil {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
-	client := &http.Client{Timeout: time.Second * 30}
+	client := &http.Client{Timeout: time.Second * 3}
 
 	logger.Infof("processing %v discord webhook notifications", len(notificationQueueItem))
 	webhookMap := make(map[uint64]types.UserWebhook)
@@ -1092,8 +1092,15 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 		}
 		notifMap[n.Content.Webhook.ID] = append(notifMap[n.Content.Webhook.ID], n)
 	}
+
+	wg := errgroup.Group{}
+	wg.SetLimit(20)
+
 	for _, webhook := range webhookMap {
-		go func(webhook types.UserWebhook, reqs []types.TransitDiscord) {
+		webhook := webhook
+		reqs := notifMap[webhook.ID]
+
+		wg.Go(func() error {
 			defer func() {
 				// update retries counters in db based on end result
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = $1, last_sent = now() WHERE id = $2;`, webhook.Retries, webhook.ID)
@@ -1115,7 +1122,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 			_, err = url.Parse(webhook.Url)
 			if err != nil {
 				logger.Errorf("invalid url for webhook id %v: %v", webhook.ID, err)
-				return
+				return nil
 			}
 
 			for i := 0; i < len(reqs); i++ {
@@ -1164,7 +1171,8 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					i-- // retry, IMPORTANT to be at the END of the ELSE, otherwise the wrong index will be used in the commands above!
 				}
 			}
-		}(webhook, notifMap[webhook.ID])
+			return nil
+		})
 	}
 
 	return nil
