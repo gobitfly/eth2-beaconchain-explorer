@@ -29,7 +29,14 @@ func main() {
 	epochEnd := flag.Uint64("epoch-end", 0, "end epoch to export")
 	sleepDuration := flag.Duration("sleep", time.Minute, "duration to sleep between export runs")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
+		return
+	}
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)

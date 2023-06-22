@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -30,7 +31,14 @@ func main() {
 	metricsAddr := flag.String("metrics.address", "localhost:9090", "serve metrics on that addr")
 	metricsEnabled := flag.Bool("metrics.enabled", false, "enable serving metrics")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
+		return
+	}
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
