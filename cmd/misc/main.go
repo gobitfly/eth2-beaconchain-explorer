@@ -179,6 +179,42 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 
 				if len(block.Attestations) == 0 {
 					logrus.Infof("No Attestations for slot %v", block.Slot)
+
+					g.Go(func() error {
+						select {
+						case <-gCtx.Done():
+							return nil // halt once processing of a slot failed
+						default:
+						}
+						var count uint64
+						// let's see if we have attestations for that oprphaned block
+						err := db.ReaderDb.Get(&count, `
+							SELECT COUNT(*)
+							FROM blocks_attestations WHERE 
+								block_slot=$1
+							LIMIT(1)
+						`, block.Slot)
+						if err != nil {
+							return fmt.Errorf("error counting attestations for Slot [%v]: %v", block.Slot, err)
+						}
+
+						// if we have some obsolete attestations we clean them from the db
+						if count > 0 {
+							_, err = db.WriterDb.Exec(`
+								DELETE FROM blocks_attestations
+								WHERE
+									block_slot=$1
+							`, block.Slot)
+							if err != nil {
+								return fmt.Errorf("error deleting obsolete attestations for Slot [%v]:  %v", block.Slot, err)
+							}
+							logrus.Infof("Obsolete attestations removed for Slot[%v]", block.Slot)
+						} else {
+							logrus.Infof("No obsolete attestations found for Slot[%v] so we move on", block.Slot)
+						}
+
+						return nil
+					})
 					continue
 				}
 				for i, a := range block.Attestations {
