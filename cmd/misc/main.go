@@ -164,7 +164,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 		logrus.Infof("Getting data from the node for epoch %v", epoch)
 		data, err := rpcClient.GetEpochData(epoch, false)
 		if err != nil {
-			logrus.Infof("Error getting epoch[%v] data from the client: %v", epoch, err)
+			utils.LogError(err, fmt.Sprintf("Error getting epoch[%v] data from the client", epoch), 0)
 			return
 		}
 
@@ -200,7 +200,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 							block_index=$2 AND
 							signature = $3`, block.Slot, index, att.Signature)
 						if err != nil {
-							return fmt.Errorf("error getting aggregationbits on Slot %v: %v", block.Slot, err)
+							return fmt.Errorf("error getting aggregationbits on Slot [%v] Index [%v] with Sig [%v]: %v", block.Slot, index, att.Signature, err)
 						}
 
 						if fmt.Sprintf("%x", *aggregationbits) != fmt.Sprintf("%x", string(att.AggregationBits)) {
@@ -214,7 +214,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 									signature = $4
 							`, att.AggregationBits, block.Slot, index, att.Signature)
 							if err != nil {
-								return fmt.Errorf("error updating aggregationbits on Slot %v: %v", block.Slot, err)
+								return fmt.Errorf("error updating aggregationbits on Slot [%v] Index [%v] :  %v", block.Slot, index, err)
 							}
 							logrus.Infof("Update of Slot[%v] Index[%v] complete", block.Slot, index)
 						} else {
@@ -231,7 +231,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 		err = g.Wait()
 
 		if err != nil {
-			utils.LogError(err, "error updating aggregationbits", 0)
+			utils.LogError(err, fmt.Sprintf("error updating aggregationbits for epoch [%v]", epoch), 0)
 			return
 		}
 		logrus.Infof("Update of Epoch[%v] complete", epoch)
