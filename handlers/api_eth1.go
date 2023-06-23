@@ -111,7 +111,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey.
 // @Description Mixed use of recipient addresses and proposer indexes or proposer pubkeys with an offset is discouraged as it can lead to skipped entries.
 // @Produce json
-// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20."
+// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20.". You can also use valid ENS names.
 // @Param offset query int false "Offset" default(0)
 // @Param limit query int false "Limit the amount of entries you wish to receive (Maximum: 100)" default(10) maximum(100)
 // @Param sort query string false "Sort via the block number either by 'asc' or 'desc'" default(desc)
@@ -276,7 +276,7 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 // @Tags Execution
 // @Description Returns the ether balance and any token balances for a given ethereum address.
 // @Produce json
-// @Param address path string true "provide an ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters"
+// @Param address path string true "provide an ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
 // @Param token query string false "filter for a specific token by providing a ethereum token contract address"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
@@ -286,7 +286,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -367,7 +367,7 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -446,7 +446,7 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -523,7 +523,7 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -617,7 +617,7 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -680,7 +680,7 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -1184,6 +1184,7 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string, max int) ([][]
 }
 
 func parseFromAddressIndexOrPubkey(search string) (types.AddressIndexOrPubkey, error) {
+	search = ReplaceEnsNameWithAddress(search)
 	if strings.Contains(search, "0x") && len(search) == 42 {
 		address, err := hex.DecodeString(search[2:])
 		if err != nil {

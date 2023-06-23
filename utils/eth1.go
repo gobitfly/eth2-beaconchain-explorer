@@ -251,6 +251,9 @@ func FormatHashLong(hash common.Hash) template.HTML {
 }
 
 func FormatAddressLong(address string) template.HTML {
+	if IsValidEnsDomain(address) {
+		return template.HTML(address)
+	}
 	address = FixAddressCasing(address)
 	test := `
 	<span class="text-monospace mw-100"><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`

@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -27,9 +28,23 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 
 	validatorForm := r.FormValue("validator")
 
-	validators := []string{validatorForm}
-	if strings.Contains(validatorForm, ",") {
-		validators = strings.Split(validatorForm, ",")
+	validators := []string{}
+
+	for _, userInput := range strings.Split(validatorForm, ",") {
+
+		if utils.IsValidEnsDomain(userInput) || utils.IsEth1Address(userInput) {
+			searchResult, err := FindValidatorIndicesByEth1Address(userInput)
+			if err == nil {
+				for _, res := range searchResult {
+					for _, index := range res.ValidatorIndices {
+						validators = append(validators, fmt.Sprintf("%v", index))
+					}
+				}
+			}
+
+		} else {
+			validators = append(validators, userInput)
+		}
 	}
 
 	for _, val := range validators {

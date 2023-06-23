@@ -792,6 +792,7 @@ github.com/wealdtech/go-eth2-util v1.8.1 h1:nb50hygsNoql94akg7GN6im/weg8ZZgJWHgi
 github.com/wealdtech/go-eth2-util v1.8.1/go.mod h1:vv+8jVgYRXEGty/VLPNn1RYlbQNYmTht3VR6nfh0z4E=
 github.com/wealdtech/go-multicodec v1.4.0 h1:iq5PgxwssxnXGGPTIK1srvt6U5bJwIp7k6kBrudIWxg=
 github.com/wealdtech/go-multicodec v1.4.0/go.mod h1:aedGMaTeYkIqi/KCPre1ho5rTb3hGpu/snBOS3GQLw4=
+github.com/wealdtech/go-string2eth v1.1.0 h1:USJQmysUrBYYmZs7d45pMb90hRSyEwizP7lZaOZLDAw=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 h1:bAn7/zixMGCfxrRTfdpNzjtPYqr8smhKouy9mxVdGPU=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

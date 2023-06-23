@@ -618,8 +618,73 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
         },
       },
+      {
+        // hidden column for filtering by DepositAddress
+        targets: 9,
+        orderable: false,
+        data: function (data) {
+          return data[10]
+        },
+        visible: false,
+        render: function (data, type) {
+          if (type == "filter") return data
+          return null
+        },
+      },
     ],
   }))
+
+  function create_validators_typeahead(input_container_selector, table_selector) {
+    var bhEth1Addresses = new Bloodhound({
+      datumTokenizer: Bloodhound.tokenizers.whitespace,
+      queryTokenizer: Bloodhound.tokenizers.whitespace,
+      identify: function (obj) {
+        return obj.eth1_address
+      },
+      remote: {
+        url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
+        wildcard: "%QUERY",
+      },
+    })
+    $(input_container_selector).typeahead(
+      {
+        minLength: 1,
+        highlight: true,
+        hint: false,
+        autoselect: false,
+      },
+      {
+        limit: 5,
+        name: "addresses",
+        source: bhEth1Addresses,
+        display: function (data) {
+          return data?.eth1_address || ""
+        },
+        templates: {
+          header: '<h5 class="font-weight-bold ml-3">ETH Address</h5>',
+          suggestion: function (data) {
+            var len = data.validator_indices.length > 10 ? 10 + "+" : data.validator_indices.length
+            return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">0x${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+          },
+        },
+      }
+    )
+    $(input_container_selector).on("focus", function (e) {
+      if (e.target.value !== "") {
+        $(this).trigger($.Event("keydown", { keyCode: 40 }))
+      }
+    })
+    $(input_container_selector).on("input", function () {
+      $(".tt-suggestion").first().addClass("tt-cursor")
+    })
+    $(input_container_selector).bind("typeahead:select", function (ev, suggestion) {
+      if (suggestion?.eth1_address) {
+        $(table_selector).DataTable().search(suggestion.eth1_address)
+        $(table_selector).DataTable().draw()
+      }
+    })
+  }
+  create_validators_typeahead("input[aria-controls='validators']", "#validators")
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,

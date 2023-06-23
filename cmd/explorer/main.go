@@ -541,6 +541,7 @@ func main() {
 
 			router.HandleFunc("/tables/{tableId}/state", handlers.GetDataTableStateChanges).Methods("GET")
 			router.HandleFunc("/tables/{tableId}/state", handlers.SetDataTableStateChanges).Methods("PUT")
+			router.HandleFunc("/ens/{search}", handlers.EnsSearch).Methods("GET")
 
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 
