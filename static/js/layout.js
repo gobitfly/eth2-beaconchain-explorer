@@ -378,7 +378,7 @@ $(document).ready(function () {
       limit: 5,
       name: "addresses",
       source: bhEth1Accounts,
-      display: (data) => data.name || data.address,
+      display: (data) => data.address || data.name,
       templates: {
         header: '<h3 class="h5">Address</h3>',
         suggestion: function (data) {

@@ -1627,7 +1627,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all validators that belong to an eth1 address
 // @Tags Validator
 // @Produce  json
-// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent". Is can also be a valid ENS name.
+// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent". It can also be a valid ENS name.
 // @Param limit query string false "Limit the number of results (default: 2000)"
 // @Param offset query string false "Offset the results (default: 0)"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorEth1Response}
