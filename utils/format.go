@@ -41,7 +41,7 @@ func FormatSyncParticipationStatus(status, blockSlot uint64) template.HTML {
 	} else if status == 2 {
 		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
 	} else if status == 3 {
-		return template.HTML(fmt.Sprintf(`<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" data-html="true" data-placement="top" title='Slot %v was missed'>Missed</span>`, FormatAddCommas(blockSlot)))
+		return template.HTML(fmt.Sprintf(`<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" data-html="true" data-placement="top" title='Slot %v was missed, it does not contain a block'>Missed</span>`, FormatAddCommas(blockSlot)))
 	} else {
 		return "Unknown"
 	}

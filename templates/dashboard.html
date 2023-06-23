@@ -204,9 +204,17 @@
                   <button data-toggle="tooltip" title="Open in reward history" style="visibility:hidden;" id="rewards-button" class="btn btn-primary btn-sm m-1">
                     <i class="far fa-money-bill-alt text-white" style="width:18px;"></i>
                   </button>
-                  <button data-toggle="tooltip" title="Save all to Watchlist" style="visibility:hidden;" id="bookmark-button" type="button" class="btn btn-primary btn-sm m-1">
-                    <i class="far fa-bookmark text-white" style="width:18px;"></i>
-                  </button>
+                  {{ if $.User.Authenticated }}
+                    <button data-toggle="tooltip" title="Save all to Watchlist" style="visibility:hidden;" id="bookmark-button" type="button" class="btn btn-primary btn-sm m-1">
+                      <i class="far fa-bookmark text-white" style="width:18px;"></i>
+                    </button>
+                  {{ else }}
+                    <span class="" data-toggle="tooltip" title="You need to login to follow a validator">
+                      <button style="visibility:hidden;" id="bookmark-button" disabled type="button" class="btn btn-primary btn-sm m-1 disabled">
+                        <i class="far fa-bookmark text-white" style="width:18px;"></i>
+                      </button>
+                    </span>
+                  {{ end }}
                   <button data-toggle="tooltip" data-original-title="Copy Link to Dashboard" style="visibility:hidden;" id="copy-button" data-clipboard-text="https://beaconcha.in/dashboard" type="button" class="btn btn-primary btn-sm m-1">
                     <i class="fa fa-copy text-white" style="width:18px;"></i>
                   </button>

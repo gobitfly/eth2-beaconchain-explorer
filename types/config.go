@@ -8,18 +8,22 @@ import (
 // Config is a struct to hold the configuration data
 type Config struct {
 	ReaderDatabase struct {
-		Username string `yaml:"user" envconfig:"READER_DB_USERNAME"`
-		Password string `yaml:"password" envconfig:"READER_DB_PASSWORD"`
-		Name     string `yaml:"name" envconfig:"READER_DB_NAME"`
-		Host     string `yaml:"host" envconfig:"READER_DB_HOST"`
-		Port     string `yaml:"port" envconfig:"READER_DB_PORT"`
+		Username     string `yaml:"user" envconfig:"READER_DB_USERNAME"`
+		Password     string `yaml:"password" envconfig:"READER_DB_PASSWORD"`
+		Name         string `yaml:"name" envconfig:"READER_DB_NAME"`
+		Host         string `yaml:"host" envconfig:"READER_DB_HOST"`
+		Port         string `yaml:"port" envconfig:"READER_DB_PORT"`
+		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"READER_DB_MAX_OPEN_CONNS"`
+		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"READER_DB_MAX_IDLE_CONNS"`
 	} `yaml:"readerDatabase"`
 	WriterDatabase struct {
-		Username string `yaml:"user" envconfig:"WRITER_DB_USERNAME"`
-		Password string `yaml:"password" envconfig:"WRITER_DB_PASSWORD"`
-		Name     string `yaml:"name" envconfig:"WRITER_DB_NAME"`
-		Host     string `yaml:"host" envconfig:"WRITER_DB_HOST"`
-		Port     string `yaml:"port" envconfig:"WRITER_DB_PORT"`
+		Username     string `yaml:"user" envconfig:"WRITER_DB_USERNAME"`
+		Password     string `yaml:"password" envconfig:"WRITER_DB_PASSWORD"`
+		Name         string `yaml:"name" envconfig:"WRITER_DB_NAME"`
+		Host         string `yaml:"host" envconfig:"WRITER_DB_HOST"`
+		Port         string `yaml:"port" envconfig:"WRITER_DB_PORT"`
+		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"WRITER_DB_MAX_OPEN_CONNS"`
+		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 	} `yaml:"writerDatabase"`
 	Bigtable struct {
 		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
@@ -91,18 +95,22 @@ type Config struct {
 			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`
 		ReaderDatabase struct {
-			Username string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
-			Password string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
-			Name     string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
-			Host     string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
-			Port     string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
+			Username     string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
+			Password     string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
+			Name         string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
+			Host         string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
+			Port         string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
+			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_READER_DB_MAX_OPEN_CONNS"`
+			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_READER_DB_MAX_IDLE_CONNS"`
 		} `yaml:"readerDatabase"`
 		WriterDatabase struct {
-			Username string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
-			Password string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
-			Name     string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
-			Host     string `yaml:"host" envconfig:"FRONTEND_WRITER_DB_HOST"`
-			Port     string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
+			Username     string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
+			Password     string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
+			Name         string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
+			Host         string `yaml:"host" envconfig:"FRONTEND_WRITER_DB_HOST"`
+			Port         string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
+			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_WRITER_DB_MAX_OPEN_CONNS"`
+			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
 		} `yaml:"writerDatabase"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
@@ -167,6 +175,8 @@ type Config struct {
 		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
 		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
 		PubkeyCachePath                               string `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
+		OnlineDetectionLimit                          int    `yaml:"onlineDetectionLimit" envconfig:"ONLINE_DETECTION_LIMIT"`
+		OfflineDetectionLimit                         int    `yaml:"offlineDetectionLimit" envconfig:"OFFLINE_DETECTION_LIMIT"`
 	} `yaml:"notifications"`
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
@@ -190,11 +200,13 @@ type Config struct {
 }
 
 type DatabaseConfig struct {
-	Username string
-	Password string
-	Name     string
-	Host     string
-	Port     string
+	Username     string
+	Password     string
+	Name         string
+	Host         string
+	Port         string
+	MaxOpenConns int
+	MaxIdleConns int
 }
 
 type ServiceMonitoringConfiguration struct {

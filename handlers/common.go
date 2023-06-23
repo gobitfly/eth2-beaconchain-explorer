@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/mux"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
@@ -554,98 +555,96 @@ func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint
 	return
 }
 
-func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	user, session, err := getUserSession(r)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	vars := mux.Vars(r)
+	tableKey := vars["tableId"]
+
+	errMsgPrefix := "error loading data table state"
+	errFields := map[string]interface{}{
+		"tableKey": tableKey}
 
 	response := &types.ApiResponse{}
-	response.Status = "ERROR"
+	response.Status = errMsgPrefix
+	response.Data = ""
 
 	defer json.NewEncoder(w).Encode(response)
 
-	settings := types.DataTableSaveState{}
-	err = json.NewDecoder(r.Body).Decode(&settings)
+	user, _, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error saving data table state could not parse body: %v", err)
-		response.Status = "error saving table state"
+		utils.LogError(err, errMsgPrefix+", could not retrieve user session", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// never store the page number
-	settings.Start = 0
-
-	key := settings.Key
-	if len(key) == 0 {
-		logger.Errorf("no key provided")
-		response.Status = "error saving table state"
-		return
-	}
-
-	if !user.Authenticated {
-		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
-		key = dataTableStatePrefix + key
-		count := 0
-		for k := range session.Values() {
-			k, ok := k.(string)
-			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
-				count += 1
-			}
-		}
-		if count > 50 {
-			_, ok := session.Values()[key]
-			if !ok {
-				logger.Errorf("error maximum number of datatable states stored in session")
+	if user.Authenticated {
+		state, err := db.GetDataTablesState(user.UserID, tableKey)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				utils.LogError(err, errMsgPrefix+", could not load values from db", 0, errFields)
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-		}
-		session.Values()[key] = settings
+		} else {
+			// the time for the state load of a data table must not be older than 2 hours so set it to the current time
+			state.Time = uint64(time.Now().Unix() * 1000)
 
-		err := session.Save(r, w)
-		if err != nil {
-			logger.WithError(err).Errorf("error updating session with key: %v and value: %v", key, settings)
-		}
-
-	} else {
-		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
-		if err != nil {
-			logger.Errorf("error saving data table state could save values to db: %v", err)
-			response.Status = "error saving table state"
-			return
+			response.Data = state
 		}
 	}
 
 	response.Status = "OK"
-	response.Data = ""
 }
 
-func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey string) *types.DataTableSaveState {
-	state := types.DataTableSaveState{
-		Start: 0,
+func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	tableKey := vars["tableId"]
+
+	errMsgPrefix := "error saving data table state"
+	errFields := map[string]interface{}{
+		"tableKey": tableKey}
+
+	response := &types.ApiResponse{}
+	response.Status = errMsgPrefix
+	response.Data = ""
+
+	defer json.NewEncoder(w).Encode(response)
+
+	user, _, err := getUserSession(r)
+	if err != nil {
+		utils.LogError(err, errMsgPrefix+", could not retrieve user session", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	settings := types.DataTableSaveState{}
+	err = json.NewDecoder(r.Body).Decode(&settings)
+	if err != nil {
+		utils.LogError(err, errMsgPrefix+", could not parse body", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	settings.Key = tableKey
+
+	// never store the page number
+	settings.Start = 0
+
 	if user.Authenticated {
-		state, err := db.GetDataTablesState(user.UserID, tableKey)
-		if err != nil && err != sql.ErrNoRows {
-			logger.Errorf("error getting data table state from db: %v", err)
-			return state
+		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
+		if err != nil {
+			utils.LogError(err, errMsgPrefix+", could no save values to db", 0, errFields)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-		return state
+	} else {
+		response.Data = settings
 	}
-	stateRaw, exists := session.Values()["table:state:"+utils.GetNetwork()+":"+tableKey]
-	if !exists {
-		return &state
-	}
-	state, ok := stateRaw.(types.DataTableSaveState)
-	if !ok {
-		logger.Errorf("error getting state from session: %+v", stateRaw)
-		return &state
-	}
-	return &state
+
+	response.Status = "OK"
 }
 
 // used to handle errors constructed by Template.ExecuteTemplate correctly

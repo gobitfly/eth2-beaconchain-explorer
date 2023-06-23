@@ -208,7 +208,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 							a := types.Eth1DecodedEventData{
 								Type:  typeMap[lName],
 								Raw:   fmt.Sprintf("0x%x", val),
-								Value: fmt.Sprintf("%s", val),
+								Value: fmt.Sprintf("%v", val),
 							}
 							b := typeMap[lName]
 							if b == "address" {

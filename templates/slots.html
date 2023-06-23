@@ -11,29 +11,44 @@
         searching: true,
         ajax: "/slots/data",
         stateSave: true,
-        deferLoading: {{.RecordsTotal}},
         stateSaveCallback: function (settings, data) {
-          data.search.search = ""
           data.order = []
-          data.columns = []
-          data.start = 0
-          data.key = `${settings.sTableId}`
-          fetch('/tables/state', {
-            method: "POST",
+          fetch(`/tables/${settings.sTableId}/state`, {
+            method: "PUT",
             body: JSON.stringify(data),
           })
-          .then(res => res.json())
-          .then(({ status, data }) => {
-            if (status !== "OK") {
-              console.error("error updating table state, err:", data, "status: ", status)
-            }
-          }).catch(err => {
-            console.error("error updating table state, err: ", err)
-          })
+            .then((res) => res.json())
+            .then(({ status, data }) => {
+              if (status !== "OK") {
+                console.error("error updating table state, err:", data, "status: ", status)
+              }
+              if (data !== "") {
+                localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+              } else {
+                localStorage.removeItem("DataTables_" + settings.sInstance)
+              }
+            })
+            .catch((err) => {
+              console.error("error updating table state, err: ", err)
+            })
         },
-        stateDuration: true,
-        pageLength: {{.PageLength}},
-        displayStart: {{.DisplayStart}},
+        stateLoadCallback: function (settings, callback) {
+          fetch(`/tables/${settings.sTableId}/state`, {
+            method: "GET",
+          })
+            .then((res) => res.json())
+            .then(({ status, data }) => {
+              if (status !== "OK") {
+                console.error("error loading table state, err:", data, "status: ", status)
+              }
+              var response = data !== "" ? data : JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              callback(response)
+            })
+            .catch((err) => {
+              console.error("error loading table state, err: ", err)
+            })
+        },
+        pageLength: 50,
         pagingType: "input",
         language: {
           searchPlaceholder: "Block Number / Graffiti / Proposer Name",
@@ -50,8 +65,8 @@
           } catch (e) {
             console.error(e)
           }
-          document.getElementById('header-placeholder').style.display = 'none'
-          document.getElementById('footer-placeholder').style.display = 'none'
+          document.getElementById("header-placeholder").style.display = "none"
+          document.getElementById("footer-placeholder").style.display = "none"
         },
         drawCallback: function (settings) {
           formatTimestamps()
@@ -62,8 +77,8 @@
       var q = usp.get("q")
       var t = $("#slots").DataTable(tblOpts)
       if (q) {
-        t.search(q);
-        t.draw();
+        t.search(q)
+        t.draw()
       }
       $("#slots_filter > label > input").on("input", function (ev) {
         if (ev && ev.target && ev.target.value) {
@@ -117,59 +132,49 @@
   <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
 {{ end }}
 {{ define "content" }}
-  {{ with .Data }}
-    <div class="container mt-2">
-      <div class="d-md-flex py-2 justify-content-md-between">
-        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cube mr-2"></i>Slots</h1>
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Slots</li>
-          </ol>
-        </nav>
-      </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
-      <div class="container" style="padding:0; text-align:right;">
-        <input type="checkbox" id="showonlyemptygraffiti" name="showonlyemptygraffiti" />
-        <label for="showonlyemptygraffiti">Show only empty graffiti</label>
-      </div>
-      <div class="card mt-2">
-        <div id="header-placeholder" style="height:39px;"></div>
-        <div class="card-body px-0 py-3">
-          <div class="table-responsive px-0 py-1">
-            <table class="table dataTable no-footer" id="slots" aria-describedby="slots_info" role="grid">
-              <thead>
-                <tr>
-                  <th>Epoch</th>
-                  <th>Slot</th>
-                  <th>Status</th>
-                  <th>Time</th>
-                  <th>Proposer</th>
-                  <th data-toggle="tooltip" data-placement="top" title="Attestations included in slot">Att</th>
-                  <th>
-                    <span data-toggle="tooltip" data-placement="top" title="Deposits">D<span class="d-none d-lg-inline">eposits</span> <i class="d-lg-none far fa-arrow-alt-circle-down"></i></span> / <span data-toggle="tooltip" data-placement="top" title="Withdrawals">W<span class="d-none d-lg-inline">ithdrawals</span> <i class="d-lg-none far fa-arrow-alt-circle-up"></i></span>
-                  </th>
-                  <th data-toggle="tooltip" data-placement="top" title="Slashings Proposer/Attester">S- <span>P</span>/<span>A</span></th>
-                  <th>Exits</th>
-                  <th>Votes</th>
-                  <th data-toggle="tooltip" data-placement="top" title="Sync Aggregate participation">Sync Agg %</th>
-                  <th>Graffiti</th>
-                </tr>
-              </thead>
-              <tbody>
-                {{ range $i, $row := .Data }}
-                  <tr>
-                    {{ range $j, $col := $row }}
-                      <td>{{ $col }}</td>
-                    {{ end }}
-                  </tr>
-                {{ end }}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div id="footer-placeholder" style="height:64px;"></div>
-      </div>
+  <div class="container mt-2">
+    <div class="d-md-flex py-2 justify-content-md-between">
+      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cube mr-2"></i>Slots</h1>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Slots</li>
+        </ol>
+      </nav>
     </div>
-  {{ end }}
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+    <div class="container" style="padding:0; text-align:right;">
+      <input type="checkbox" id="showonlyemptygraffiti" name="showonlyemptygraffiti" />
+      <label for="showonlyemptygraffiti">Show only empty graffiti</label>
+    </div>
+    <div class="card mt-2">
+      <div id="header-placeholder" style="height:39px;"></div>
+      <div class="card-body px-0 py-3">
+        <div class="table-responsive px-0 py-1">
+          <table class="table dataTable no-footer" id="slots" aria-describedby="slots_info" role="grid">
+            <thead>
+              <tr>
+                <th>Epoch</th>
+                <th>Slot</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th>Proposer</th>
+                <th data-toggle="tooltip" data-placement="top" title="Attestations included in slot">Att</th>
+                <th>
+                  <span data-toggle="tooltip" data-placement="top" title="Deposits">D<span class="d-none d-lg-inline">eposits</span> <i class="d-lg-none far fa-arrow-alt-circle-down"></i></span> / <span data-toggle="tooltip" data-placement="top" title="Withdrawals">W<span class="d-none d-lg-inline">ithdrawals</span> <i class="d-lg-none far fa-arrow-alt-circle-up"></i></span>
+                </th>
+                <th data-toggle="tooltip" data-placement="top" title="Slashings Proposer/Attester">S- <span>P</span>/<span>A</span></th>
+                <th>Exits</th>
+                <th>Votes</th>
+                <th data-toggle="tooltip" data-placement="top" title="Sync Aggregate participation">Sync Agg %</th>
+                <th>Graffiti</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="footer-placeholder" style="height:64px;"></div>
+    </div>
+  </div>
 {{ end }}

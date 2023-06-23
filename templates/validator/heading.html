@@ -15,7 +15,13 @@
               <i class="fa fa-edit"></i>
             </button>
           </span>
-          {{ if len .Watchlist }}
+          {{ if not .User.Authenticated }}
+            <span class="mx-1" data-toggle="tooltip" title="You need to login to follow a validator">
+              <button class="btn btn-dark text-white btn-sm disabled" id="follow-button">
+                <i class="far fa-bookmark"></i>
+              </button>
+            </span>
+          {{ else if len .Watchlist }}
             <span class="mx-1" data-toggle="tooltip" title="Stop receiving updates for this validator.">
               <form class="d-inline-block" action="{{ printf "%#x" .PublicKey }}/remove" method="post">
                 <button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button">
@@ -24,19 +30,11 @@
               </form>
             </span>
           {{ else }}
-            {{ if .User.Authenticated }}
-              <span class="mx-1" data-toggle="tooltip" title="Follow this validator and receive email notifications">
-                <button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#AddValidatorWatchlistModal">
-                  <i class="far fa-bookmark"></i>
-                </button>
-              </span>
-            {{ else }}
-              <span class="mx-1" data-toggle="tooltip" title="You need to login to follow a validator">
-                <button class="btn btn-dark text-white btn-sm disabled" id="follow-button">
-                  <i class="far fa-bookmark"></i>
-                </button>
-              </span>
-            {{ end }}
+            <span class="mx-1" data-toggle="tooltip" title="Follow this validator and receive email notifications">
+              <button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#AddValidatorWatchlistModal">
+                <i class="far fa-bookmark"></i>
+              </button>
+            </span>
           {{ end }}
           <span class="mx-1" data-toggle="tooltip" title="View daily statistics">
             <a class="btn btn-dark text-white btn-sm" href="/validator/{{ .Index }}/stats">

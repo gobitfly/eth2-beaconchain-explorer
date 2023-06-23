@@ -1638,7 +1638,7 @@ func (metadata ERC20Metadata) UnmarshalBinary(data []byte) error {
 
 type ContractMetadata struct {
 	Name    string
-	ABI     *abi.ABI `msgpack:"-"`
+	ABI     *abi.ABI `msgpack:"-" json:"-"`
 	ABIJson []byte
 }
 
@@ -2034,8 +2034,6 @@ func (configMap ExplorerConfigurationMap) GetStringValue(category ExplorerConfig
 type WithdrawalsPageData struct {
 	Stats           *Stats
 	WithdrawalChart *ChartsPageDataChart
-	Withdrawals     *DataTableResponse
-	BlsChanges      *DataTableResponse
 }
 
 type WithdrawalStats struct {

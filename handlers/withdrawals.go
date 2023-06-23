@@ -17,7 +17,6 @@ import (
 
 // Withdrawals will return information about recent withdrawals
 func Withdrawals(w http.ResponseWriter, r *http.Request) {
-	currency := GetCurrency(r)
 	templateFiles := append(layoutTemplateFiles, "withdrawals.html", "validator/withdrawalOverviewRow.html", "components/charts.html")
 	var withdrawalsTemplate = templates.GetTemplate(templateFiles...)
 
@@ -38,53 +37,9 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// withdrawalChartData, err := services.WithdrawalsChartData()
-	// if err != nil {
-	// 	logger.Errorf("error getting withdrawal chart data: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
-	// pageData.WithdrawalChart = &types.ChartsPageDataChart{
-	// 	Data:   withdrawalChartData,
-	// 	Order:  17,
-	// 	Path:   "withdrawals",
-	// 	Height: 300,
-	// }
-
-	user, session, err := getUserSession(r)
-	if err != nil {
-		logger.WithError(err).Error("error getting user session")
-	}
-
-	withdrawalsState := GetDataTableState(user, session, "withdrawals")
-	if withdrawalsState.Length == 0 {
-		withdrawalsState.Length = 10
-	}
-
-	withdrawals, err := WithdrawalsTableData(1, withdrawalsState.Search.Search, withdrawalsState.Length, withdrawalsState.Start, "", "", currency)
-	if err != nil {
-		logger.Errorf("error getting withdrawals table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-	pageData.Withdrawals = withdrawals
-
-	blsChangeState := GetDataTableState(user, session, "blsChange")
-	if blsChangeState.Length == 0 {
-		blsChangeState.Length = 10
-	}
-
-	blsChange, err := BLSTableData(1, blsChangeState.Search.Search, blsChangeState.Length, blsChangeState.Start, "", "")
-	if err != nil {
-		logger.Errorf("error getting bls table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-	pageData.BlsChanges = blsChange
-
 	data.Data = pageData
 
-	err = withdrawalsTemplate.ExecuteTemplate(w, "layout", data)
+	err := withdrawalsTemplate.ExecuteTemplate(w, "layout", data)
 	if handleTemplateError(w, r, "withdrawals.go", "withdrawals", "", err) != nil {
 		return // an error has occurred and was processed
 	}

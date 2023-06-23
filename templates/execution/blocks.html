@@ -62,13 +62,9 @@
         ],
         stateSave: true,
         stateSaveCallback: function (settings, data) {
-          data.search.search = ""
           data.order = []
-          data.columns = []
-          data.start = 0
-          data.key = `${settings.sTableId}`
-          fetch("/tables/state", {
-            method: "POST",
+          fetch(`/tables/${settings.sTableId}/state`, {
+            method: "PUT",
             body: JSON.stringify(data),
           })
             .then((res) => res.json())
@@ -76,9 +72,30 @@
               if (status !== "OK") {
                 console.error("error updating table state, err:", data, "status: ", status)
               }
+              if (data !== "") {
+                localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+              } else {
+                localStorage.removeItem("DataTables_" + settings.sInstance)
+              }
             })
             .catch((err) => {
               console.error("error updating table state, err: ", err)
+            })
+        },
+        stateLoadCallback: function (settings, callback) {
+          fetch(`/tables/${settings.sTableId}/state`, {
+            method: "GET",
+          })
+            .then((res) => res.json())
+            .then(({ status, data }) => {
+              if (status !== "OK") {
+                console.error("error loading table state, err:", data, "status: ", status)
+              }
+              var response = data !== "" ? data : JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              callback(response)
+            })
+            .catch((err) => {
+              console.error("error loading table state, err: ", err)
             })
         },
         preDrawCallback: function () {
@@ -119,7 +136,7 @@
         </nav>
       </div>
     </div>
-    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+    <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     <div class="card">
       <div class="card-body px-0 py-3">
         <div class="table-responsive px-0 py-1">
