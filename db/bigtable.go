@@ -852,7 +852,7 @@ func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint
 
 	slots := []uint64{}
 
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < endEpoch*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
 		slots = append(slots, slot)
 	}
 	orphanedSlots, err := GetOrphanedSlots(slots)
