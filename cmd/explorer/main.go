@@ -723,9 +723,6 @@ func main() {
 			}
 		}()
 	}
-	if utils.Config.Notifications.Enabled {
-		services.InitNotifications(utils.Config.Notifications.PubkeyCachePath)
-	}
 
 	if utils.Config.Metrics.Enabled {
 		go func(addr string) {
