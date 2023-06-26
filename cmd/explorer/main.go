@@ -57,8 +57,13 @@ func init() {
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
-
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)

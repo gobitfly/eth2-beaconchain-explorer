@@ -37,7 +37,13 @@ func main() {
 	statisticsResetColumns := flag.String("validators.reset", "", "validator_stats_status columns to reset. Comma separated. Use 'all' for complete resync.")
 	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	opt = &options{
 		configPath:                *configPath,
