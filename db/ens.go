@@ -413,14 +413,14 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		if err := g.Wait(); err != nil {
 			return err
 		}
-		// After processing a batch keys we remove them from bigtable
+		// After processing a batch of keys we remove them from bigtable
 		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
 		if err != nil {
 			return err
 		}
 	}
 	logger.Info("ens key indexing completed")
-	return err
+	return nil
 }
 
 func validateEnsAddress(client *ethclient.Client, address common.Address, alreadyChecked *EnsCheckedDictionary) error {
