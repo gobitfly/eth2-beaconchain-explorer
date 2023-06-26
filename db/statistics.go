@@ -184,8 +184,8 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		LastTotalPerformance      bool `db:"last_total_performance_exported"`
 		CurrentCLRewards          bool `db:"cur_cl_rewards_exported"`
 		CurrentElRewards          bool `db:"cur_el_rewards_exported"`
-		CurrentSyncDuties         bool `db:"cur_el_rewards_exported"`
-		CurrentFailedAttestations bool `db:"cur_el_rewards_exported"`
+		CurrentSyncDuties         bool `db:"cur_sync_duties_exported"`
+		CurrentFailedAttestations bool `db:"cur_failed_attestations_exported"`
 	}
 	exported := Exported{}
 	err := ReaderDb.Get(&exported, `
@@ -203,7 +203,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 
 	if err != nil {
 		return fmt.Errorf("error retrieving required data: %v", err)
-	} else if !exported.LastTotalPerformance || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
+	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
 		return fmt.Errorf("missing required export: last total performance: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
 			!exported.LastTotalPerformance, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
 	}
