@@ -6,8 +6,10 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	ethstore "github.com/gobitfly/eth.store"
@@ -62,6 +64,41 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 	}
 	defer tx.Rollback()
 
+	numArgs := 10
+	batchSize := 65535 / numArgs // max 65535 params per batch, since postgres uses int16 for binding input params
+	valueArgs := make([]interface{}, 0, batchSize*numArgs)
+	valueStrings := make([]string, 0, batchSize)
+	valueStringArr := make([]string, numArgs)
+	batchIdx, allIdx := 0, 0
+	for index, day := range validators {
+		for u := 0; u < numArgs; u++ {
+			valueStringArr[u] = fmt.Sprintf("$%d", batchIdx*numArgs+1+u)
+		}
+		valueStrings = append(valueStrings, "("+strings.Join(valueStringArr, ",")+")")
+		valueArgs = append(valueArgs, day.Day)
+		valueArgs = append(valueArgs, index)
+		valueArgs = append(valueArgs, day.EffectiveBalanceGwei.Mul(decimal.NewFromInt(1e9)))
+		valueArgs = append(valueArgs, day.StartBalanceGwei.Mul(decimal.NewFromInt(1e9)))
+		valueArgs = append(valueArgs, day.EndBalanceGwei.Mul(decimal.NewFromInt(1e9)))
+		valueArgs = append(valueArgs, day.DepositsSumGwei.Mul(decimal.NewFromInt(1e9)))
+		valueArgs = append(valueArgs, day.TxFeesSumWei)
+		valueArgs = append(valueArgs, day.ConsensusRewardsGwei.Mul(decimal.NewFromInt(1e9)))
+		valueArgs = append(valueArgs, day.TotalRewardsWei)
+		valueArgs = append(valueArgs, day.Apr)
+		batchIdx++
+		allIdx++
+		if batchIdx >= batchSize || allIdx >= len(validators) {
+			stmt := fmt.Sprintf(`INSERT INTO eth_store_stats (day, validator, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, tx_fees_sum_wei, consensus_rewards_sum_wei, total_rewards_wei, apr) VALUES %s`, strings.Join(valueStrings, ","))
+			_, err := tx.Exec(stmt, valueArgs...)
+			if err != nil {
+				return err
+			}
+			batchIdx = 0
+			valueArgs = valueArgs[:0]
+			valueStrings = valueStrings[:0]
+		}
+	}
+
 	stmt, err := tx.Prepare(`
 	INSERT INTO eth_store_stats (day, validator, effective_balances_sum_wei, start_balances_sum_wei, end_balances_sum_wei, deposits_sum_wei, tx_fees_sum_wei, consensus_rewards_sum_wei, total_rewards_wei, apr)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`)
@@ -84,24 +121,6 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 	)
 	if err != nil {
 		return err
-	}
-
-	for index, day := range validators {
-		_, err = stmt.Exec(
-			day.Day,
-			index,
-			day.EffectiveBalanceGwei.Mul(decimal.NewFromInt(1e9)),
-			day.StartBalanceGwei.Mul(decimal.NewFromInt(1e9)),
-			day.EndBalanceGwei.Mul(decimal.NewFromInt(1e9)),
-			day.DepositsSumGwei.Mul(decimal.NewFromInt(1e9)),
-			day.TxFeesSumWei,
-			day.ConsensusRewardsGwei.Mul(decimal.NewFromInt(1e9)),
-			day.TotalRewardsWei,
-			day.Apr,
-		)
-		if err != nil {
-			return err
-		}
 	}
 
 	_, err = tx.Exec(`
