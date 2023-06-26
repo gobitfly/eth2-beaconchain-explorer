@@ -1,11 +1,13 @@
-package services
+package db
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -17,18 +19,17 @@ func InitLastAttestationCache(path string) error {
 		logger.Infof("no last attestation cache path provided, using temporary directory %v", os.TempDir()+"/lastAttestationCache")
 		path = os.TempDir() + "/lastAttestationCache"
 	}
-	db, err := leveldb.OpenFile(path, nil)
+	ldb, err := leveldb.OpenFile(path, nil)
 
 	if err != nil {
 		return err
 	}
 
-	lastAttestationCacheDb = db
+	lastAttestationCacheDb = ldb
 	return nil
 }
 
-func SetLastAttestationSlots(attestedSlots map[uint64]uint64) error {
-
+func SetLastAttestationSlots(tx *sqlx.Tx, attestedSlots map[uint64]uint64) error {
 	start := time.Now()
 
 	defer func() {
@@ -39,20 +40,24 @@ func SetLastAttestationSlots(attestedSlots map[uint64]uint64) error {
 		return nil
 	}
 
-	cachedSlots, err := GetLastAttestationSlots()
+	cachedSlots, err := GetLastAttestationSlotsFromCache()
 	if err != nil {
 		return err
 	}
 
 	batch := new(leveldb.Batch)
+	dirty := make([][2]uint64, 0)
 
 	for index, slot := range attestedSlots {
 		key := fmt.Sprintf("%d", index)
 
 		if slot > cachedSlots[index] {
 			batch.Put([]byte(key), []byte(fmt.Sprintf("%d", slot)))
+			dirty = append(dirty, [2]uint64{index, slot})
 		}
 	}
+
+	UpdateLastAttestationSlots(tx, dirty)
 
 	err = lastAttestationCacheDb.Write(batch, nil)
 	if err != nil {
@@ -62,7 +67,7 @@ func SetLastAttestationSlots(attestedSlots map[uint64]uint64) error {
 	return nil
 }
 
-func GetLastAttestationSlots() (map[uint64]uint64, error) {
+func GetLastAttestationSlotsFromCache() (map[uint64]uint64, error) {
 	ret := make(map[uint64]uint64)
 	iter := lastAttestationCacheDb.NewIterator(util.BytesPrefix([]byte("")), nil)
 	defer iter.Release()
@@ -80,4 +85,24 @@ func GetLastAttestationSlots() (map[uint64]uint64, error) {
 	}
 
 	return ret, iter.Error()
+}
+
+func GetLastAttestationSlotFromCache(validatorIndex uint64) (uint64, error) {
+	key := fmt.Sprintf("%d", validatorIndex)
+
+	ret, err := lastAttestationCacheDb.Get([]byte(key), nil)
+
+	if err != nil {
+		if errors.Is(err, leveldb.ErrNotFound) {
+			return 0, nil
+		} else {
+			return 0, err
+		}
+	}
+	slot, err := strconv.ParseUint(string(ret), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return slot, nil
 }

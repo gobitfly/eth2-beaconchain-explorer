@@ -230,7 +230,7 @@ func main() {
 
 	if utils.Config.Indexer.Enabled {
 
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
+		err = db.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
 
 		if err != nil {
 			logrus.Fatalf("error initializing last attesation cache: %v", err)
