@@ -141,7 +141,7 @@ func notificationSender() {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
 
-		conn, err := db.FrontendReaderDB.Conn(ctx)
+		conn, err := db.FrontendWriterDB.Conn(ctx)
 		if err != nil {
 			logger.WithError(err).Error("error creating connection")
 			cancel()
@@ -502,7 +502,7 @@ func garbageCollectNotificationQueue(useDB *sqlx.DB) error {
 
 	rowsAffected, _ := rows.RowsAffected()
 
-	logger.Infof("Deleted %v rows from the notification_queue", rowsAffected)
+	logger.Infof("deleted %v rows from the notification_queue", rowsAffected)
 
 	return nil
 }
@@ -855,7 +855,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								continue
 							}
 						} else if w.Retries > 5 && !w.LastSent.Valid {
-							logger.Warnf("error webhook '%v' has more than 5 retries and does not have a valid last_sent timestamp", w.Url)
+							logger.Warnf("webhook '%v' has more than 5 retries and does not have a valid last_sent timestamp", w.Url)
 							continue
 						}
 
@@ -1124,7 +1124,6 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					continue // skip
 				}
 
-				logger.Infof("discord request webhook body: %s", reqBody.String())
 				resp, err := client.Post(webhook.Url, "application/json", reqBody)
 				if err != nil {
 					logger.Errorf("error sending discord webhook request: %v", err)
