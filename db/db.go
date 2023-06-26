@@ -707,8 +707,7 @@ func SaveBlock(block *types.Block) error {
 		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
@@ -901,12 +900,11 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		return fmt.Errorf("error executing save epoch statement: %w", err)
 	}
 
-	err = saveGraffitiwall(data.Blocks, tx)
-	if err != nil {
+	if err = saveGraffitiwall(data.Blocks, tx); err != nil {
 		return fmt.Errorf("error saving graffitiwall: %w", err)
 	}
-	err = tx.Commit()
-	if err != nil {
+
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
