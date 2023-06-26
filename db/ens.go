@@ -544,9 +544,11 @@ func removeEnsName(client *ethclient.Client, name string) error {
 	WHERE 
 		ens_name = $1
 	;`, name)
-	if err != nil {
-		logger.Warnf("error deleting ens name [%v]: %v", name, err)
+	if err != nil && strings.Contains(fmt.Sprintf("%v", err), "invalid byte sequence") {
+		logger.Warnf("could not delete ens name [%v]: %v", name, err)
 		return nil
+	} else if err != nil {
+		return fmt.Errorf("error deleting ens name [%v]: %v", name, err)
 	}
 	logger.Infof("Ens name remove from db: %v", name)
 	return nil
