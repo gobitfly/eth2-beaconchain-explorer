@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -1338,4 +1339,37 @@ func CmdPrompt(label string) string {
 		}
 	}
 	return strings.TrimSpace(s)
+}
+
+// UniqueStrings returns an array of strings containing each value of s only once
+func UniqueStrings(s []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, str := range s {
+		if _, ok := seen[str]; !ok {
+			seen[str] = true
+			result = append(result, str)
+		}
+	}
+	return result
+}
+
+func SortedUniqueUint64(arr []uint64) []uint64 {
+	if len(arr) <= 1 {
+		return arr
+	}
+
+	sort.Slice(arr, func(i, j int) bool {
+		return arr[i] < arr[j]
+	})
+
+	result := make([]uint64, 1, len(arr))
+	result[0] = arr[0]
+	for i := 1; i < len(arr); i++ {
+		if arr[i-1] != arr[i] {
+			result = append(result, arr[i])
+		}
+	}
+
+	return result
 }
