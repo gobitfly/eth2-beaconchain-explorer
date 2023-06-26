@@ -110,6 +110,7 @@ func notificationCollector() {
 
 			// Network DB Notifications (user related, must only run on one instance ever!!!!)
 			if utils.Config.Notifications.UserDBNotifications {
+				logger.Infof("collecting user db notifications")
 				userNotifications, err := collectUserDbNotifications(epoch)
 				if err != nil {
 					logger.Errorf("error collection user db notifications: %v", err)
