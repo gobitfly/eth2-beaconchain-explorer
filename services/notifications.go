@@ -231,7 +231,7 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 		return nil, fmt.Errorf("epochs coherence check failed, aborting")
 	}
 
-	logger.Infof("Started collecting notifications")
+	logger.Infof("started collecting notifications")
 
 	err = collectAttestationAndOfflineValidatorNotifications(notificationsByUserID, 0, epoch)
 	if err != nil {
@@ -1012,13 +1012,13 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 				metrics.NotificationsSent.WithLabelValues("webhook", resp.Status).Inc()
 			}
 
-			if resp != nil && resp.StatusCode < 400 {
-				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating notification_queue table")
-					return
-				}
+			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() where id = $1`, n.Id)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating notification_queue table")
+				return
+			}
 
+			if resp != nil && resp.StatusCode < 400 {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
