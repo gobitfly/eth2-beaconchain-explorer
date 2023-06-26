@@ -229,7 +229,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 							return fmt.Errorf("error getting aggregationbits on Slot [%v] Index [%v] with Sig [%v]: %v", block.Slot, index, att.Signature, err)
 						}
 
-						if bytes.Equal(*aggregationbits, att.AggregationBits) {
+						if !bytes.Equal(*aggregationbits, att.AggregationBits) {
 							_, err = db.WriterDb.Exec(`
 								UPDATE blocks_attestations
 								SET
