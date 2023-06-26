@@ -1640,7 +1640,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		min_effective_balance,
 		max_effective_balance,
 		COALESCE(missed_attestations, 0) AS missed_attestations,
-		COALESCE(orphaned_attestations, 0) AS orphaned_attestations,
+		0 AS orphaned_attestations,
 		COALESCE(proposed_blocks, 0) AS proposed_blocks,
 		COALESCE(missed_blocks, 0) AS missed_blocks,
 		COALESCE(orphaned_blocks, 0) AS orphaned_blocks,
