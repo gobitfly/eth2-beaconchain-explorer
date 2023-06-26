@@ -258,8 +258,10 @@ func startServicesMonitoringService() {
 		for _, service := range utils.Config.ServiceMonitoringConfigurations {
 			if service.Duration == 0 {
 				delete(servicesToCheck, service.Name)
+				logger.Infof("Removing %v from monitoring service", service.Name)
 			} else {
 				servicesToCheck[service.Name] = service.Duration
+				logger.Infof("Change timeout for %v to %v", service.Name, service.Duration)
 			}
 		}
 	}
