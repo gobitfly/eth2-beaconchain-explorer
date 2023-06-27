@@ -124,21 +124,37 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 	}
 
 	_, err = tx.Exec(`
-	insert into historical_pool_performance 
-	select 
-	eth_store_stats.day, 
-	COALESCE(validator_pool.pool, 'Unknown'), 
-	COUNT(*) as validators,
-	sum(effective_balances_sum_wei) as effective_balances_sum_wei, 
-	sum(start_balances_sum_wei) as start_balances_sum_wei, 
-	sum(end_balances_sum_wei) as end_balances_sum_wei, 
-	sum(deposits_sum_wei) as deposits_sum_wei, 
-	sum(tx_fees_sum_wei) as tx_fees_sum_wei, 
-	sum(consensus_rewards_sum_wei) as tx_fees_sum_wei, 
-	sum(total_rewards_wei) as total_rewards_wei, 
-	avg(eth_store_stats.apr) as apr
-	from validators left join validator_pool on validators.pubkey = validator_pool.publickey join eth_store_stats on validators.validatorindex = eth_store_stats.validator where day = $1 group by validator_pool.pool, eth_store_stats.day
-;`, ethStoreDay.Day)
+		insert into historical_pool_performance 
+		select 
+			eth_store_stats.day, 
+			coalesce(validator_pool.pool, 'Unknown'), 
+			count(*) as validators,
+			sum(effective_balances_sum_wei) as effective_balances_sum_wei, 
+			sum(start_balances_sum_wei) as start_balances_sum_wei, 
+			sum(end_balances_sum_wei) as end_balances_sum_wei, 
+			sum(deposits_sum_wei) as deposits_sum_wei, 
+			sum(tx_fees_sum_wei) as tx_fees_sum_wei, 
+			sum(consensus_rewards_sum_wei) as consensus_rewards_sum_wei, 
+			sum(total_rewards_wei) as total_rewards_wei, 
+			avg(eth_store_stats.apr) as apr
+		from validators 
+		left join validator_pool on validators.pubkey = validator_pool.publickey 
+		inner join eth_store_stats on validators.validatorindex = eth_store_stats.validator 
+		where day = $1 
+		group by validator_pool.pool, eth_store_stats.day
+		on conflict (day, pool) do update set
+			day                         = excluded.day,
+			pool                        = excluded.pool,
+			validators                  = excluded.validators,
+			effective_balances_sum_wei  = excluded.effective_balances_sum_wei,
+			start_balances_sum_wei      = excluded.start_balances_sum_wei,
+			end_balances_sum_wei        = excluded.end_balances_sum_wei,
+			deposits_sum_wei            = excluded.deposits_sum_wei,
+			tx_fees_sum_wei             = excluded.tx_fees_sum_wei,
+			consensus_rewards_sum_wei   = excluded.consensus_rewards_sum_wei,
+			total_rewards_wei           = excluded.total_rewards_wei,
+			apr                         = excluded.apr`,
+		ethStoreDay.Day)
 	if err != nil {
 		return err
 	}
