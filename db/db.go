@@ -2284,28 +2284,27 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 		OFFSET $2`
 
 	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	var err error = nil
+
 	if trimmedQuery != "" {
-		searchQuery := ""
-		if uiQuery, err := strconv.ParseUint(query, 10, 64); err == nil {
-			searchQuery = `
+		// Check whether the query can be used for a validator, slot or epoch search
+		if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
+			searchQuery := `
 				WHERE w.validatorindex = $3
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
 					OR ENCODE(address, 'hex') LIKE ($4 || '%')`
 
-			err := ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
+			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
-			if err != nil {
-				return nil, err
-			}
 		} else if addressLikeRE.MatchString(query) {
-			searchQuery = `WHERE ENCODE(address, 'hex') LIKE ($3 || '%')`
+			searchQuery := `WHERE ENCODE(address, 'hex') LIKE ($3 || '%')`
 
-			err := ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
+			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
-			if err != nil {
-				return nil, err
-			}
+		}
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, "", orderBy, orderDir), length, start)
@@ -2904,28 +2903,27 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 		OFFSET $2`
 
 	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	var err error = nil
+
 	if trimmedQuery != "" {
-		searchQuery := ""
-		if uiQuery, err := strconv.ParseUint(query, 10, 64); err == nil {
-			searchQuery = `
+		// Check whether the query can be used for a validator, slot or epoch search
+		if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
+			searchQuery := `
 				WHERE bls.validatorindex = $3			
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
 					OR ENCODE(pubkey, 'hex') LIKE ($4 || '%')`
 
-			err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
-			if err != nil {
-				return nil, err
-			}
 		} else if blsLikeRE.MatchString(query) {
-			searchQuery = `WHERE ENCODE(pubkey, 'hex') LIKE ($3 || '%')`
+			searchQuery := `WHERE ENCODE(pubkey, 'hex') LIKE ($3 || '%')`
 
-			err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
-			if err != nil {
-				return nil, err
-			}
+		}
+		if err != nil {
+			return nil, err
 		}
 
 	} else {
