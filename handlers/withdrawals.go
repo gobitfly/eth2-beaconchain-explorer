@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
@@ -13,6 +14,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Withdrawals will return information about recent withdrawals
@@ -96,6 +100,9 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 }
 
 func WithdrawalsTableData(draw uint64, search string, length, start uint64, orderBy, orderDir string, currency string) (*types.DataTableResponse, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+
 	orderByMap := map[string]string{
 		"0": "epoch",
 		"1": "slot",
@@ -113,14 +120,60 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		orderDir = "desc"
 	}
 
-	withdrawalCount, err := db.GetTotalWithdrawals()
-	if err != nil {
-		return nil, fmt.Errorf("error getting total withdrawals: %w", err)
+	g, gCtx := errgroup.WithContext(ctx)
+	withdrawalCount := uint64(0)
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		withdrawalCount, err = db.GetTotalWithdrawals()
+		if err != nil {
+			return fmt.Errorf("error getting total withdrawals: %w", err)
+		}
+		return nil
+	})
+
+	filteredCount := uint64(0)
+	if search != "" {
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
+			var err error
+			filteredCount, err = db.GetWithdrawalsCountForQuery(search)
+			if err != nil {
+				return fmt.Errorf("error getting withdrwal count for filter [%v]: %w", search, err)
+			}
+			return nil
+		})
 	}
 
-	withdrawals, err := db.GetWithdrawals(search, length, start, orderColumn, orderDir)
-	if err != nil {
-		return nil, fmt.Errorf("error getting withdrawals: %w", err)
+	withdrawals := []*types.Withdrawals{}
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		withdrawals, err = db.GetWithdrawals(search, length, start, orderColumn, orderDir)
+		if err != nil {
+			return fmt.Errorf("error getting withdrawals: %w", err)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	if search == "" {
+		filteredCount = withdrawalCount
 	}
 
 	formatCurrency := currency
@@ -144,7 +197,7 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    withdrawalCount,
-		RecordsFiltered: withdrawalCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 		PageLength:      length,
 		DisplayStart:    start,
@@ -201,7 +254,8 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 }
 
 func BLSTableData(draw uint64, search string, length, start uint64, orderBy, orderDir string) (*types.DataTableResponse, error) {
-
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
 	orderByMap := map[string]string{
 		"0": "block_slot",
 		"1": "block_slot",
@@ -216,14 +270,60 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 		orderDir = "desc"
 	}
 
-	total, err := db.GetTotalBLSChanges()
-	if err != nil {
-		return nil, fmt.Errorf("error getting total bls changes: %w", err)
+	g, gCtx := errgroup.WithContext(ctx)
+	totalCount := uint64(0)
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		totalCount, err = db.GetTotalBLSChanges()
+		if err != nil {
+			return fmt.Errorf("error getting total bls changes: %w", err)
+		}
+		return nil
+	})
+
+	filteredCount := uint64(0)
+	if search != "" {
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
+			var err error
+			filteredCount, err = db.GetBLSChangesCountForQuery(search)
+			if err != nil {
+				return fmt.Errorf("error getting bls changes count for filter [%v]: %w", search, err)
+			}
+			return nil
+		})
 	}
 
-	blsChange, err := db.GetBLSChanges(search, length, start, orderVar, orderDir)
-	if err != nil {
-		return nil, fmt.Errorf("error getting bls changes: %w", err)
+	blsChange := []*types.BLSChange{}
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		blsChange, err = db.GetBLSChanges(search, length, start, orderVar, orderDir)
+		if err != nil {
+			return fmt.Errorf("error getting bls changes: %w", err)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	if search == "" {
+		filteredCount = totalCount
 	}
 
 	tableData := make([][]interface{}, len(blsChange))
@@ -240,8 +340,8 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    total,
-		RecordsFiltered: total,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 		PageLength:      length,
 		DisplayStart:    start,

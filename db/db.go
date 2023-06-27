@@ -2273,6 +2273,25 @@ func GetTotalWithdrawals() (total uint64, err error) {
 	return
 }
 
+func GetWithdrawalsCountForQuery(query string) (uint64, error) {
+	bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
+	count := uint64(0)
+	err := ReaderDb.Get(&count, `
+			SELECT count(*)
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+			WHERE CAST(w.validatorindex as varchar) LIKE $1 || '%%'
+				OR address LIKE $2 || '%%'::bytea
+				OR CAST(block_slot as varchar) LIKE $1 || '%%'
+				OR CAST(block_slot / $3 as varchar) LIKE $1 || '%%'
+			`, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string) ([]*types.Withdrawals, error) {
 	withdrawals := []*types.Withdrawals{}
 
@@ -2883,6 +2902,33 @@ func GetTotalBLSChanges() (uint64, error) {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("error getting total blocks_bls_change: %w", err)
+	}
+
+	return count, nil
+}
+
+func GetBLSChangesCountForQuery(query string) (uint64, error) {
+	bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
+	count := uint64(0)
+	err := ReaderDb.Get(&count, `
+		SELECT count(*)
+		FROM blocks_bls_change bls
+		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+		LEFT JOIN (
+			SELECT 
+				validators.validatorindex as validatorindex,
+				eth1_deposits.from_address as deposit_adress
+			FROM validators 
+			INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
+		) AS val ON val.validatorindex = bls.validatorindex
+		WHERE CAST(bls.validatorindex as varchar) LIKE $1 || '%%'
+			OR pubkey LIKE $2::bytea || '%%'::bytea
+			OR CAST(block_slot as varchar) LIKE $1 || '%%'
+			OR CAST((block_slot / $3) as varchar) LIKE $1 || '%%'
+			OR val.deposit_adress LIKE $2::bytea || '%%'::bytea
+		`, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
+	if err != nil {
+		return 0, err
 	}
 
 	return count, nil
