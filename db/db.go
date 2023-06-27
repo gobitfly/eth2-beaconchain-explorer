@@ -1471,8 +1471,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtTransaction.Close()
 
 	stmtWithdrawals, err := tx.Prepare(`
-	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, amount)
-	VALUES ($1, $2, $3, $4, $5, $6)
+	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, address_text, amount)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
 	ON CONFLICT (block_slot, block_root, withdrawalindex) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1480,8 +1480,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtWithdrawals.Close()
 
 	stmtBLSChange, err := tx.Prepare(`
-	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, address)
-	VALUES ($1, $2, $3, $4, $5, $6)
+	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, pubkey_text, address)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
 	ON CONFLICT (block_slot, block_root, validatorindex) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1680,7 +1680,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 					}
 				}
 				for _, w := range payload.Withdrawals {
-					_, err := stmtWithdrawals.Exec(b.Slot, b.BlockRoot, w.Index, w.ValidatorIndex, w.Address, w.Amount)
+					_, err := stmtWithdrawals.Exec(b.Slot, b.BlockRoot, w.Index, w.ValidatorIndex, w.Address, fmt.Sprintf("%x", w.Address), w.Amount)
 					if err != nil {
 						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
 					}
@@ -1700,7 +1700,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			n = time.Now()
 			logger.Tracef("writing bls change data")
 			for _, bls := range b.SignedBLSToExecutionChange {
-				_, err := stmtBLSChange.Exec(b.Slot, b.BlockRoot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, bls.Message.Address)
+				_, err := stmtBLSChange.Exec(b.Slot, b.BlockRoot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, fmt.Sprintf("%x", bls.Message.BlsPubkey), bls.Message.Address)
 				if err != nil {
 					return fmt.Errorf("error executing stmtBLSChange for block %v: %w", b.Slot, err)
 				}
@@ -2309,12 +2309,12 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 				WHERE w.validatorindex = $3
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
-					OR ENCODE(address, 'hex') LIKE ($4 || '%')`
+					OR address_text LIKE ($4 || '%')`
 
 			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if addressLikeRE.MatchString(query) {
-			searchQuery := `WHERE ENCODE(address, 'hex') LIKE ($3 || '%')`
+			searchQuery := `WHERE address_text LIKE ($3 || '%')`
 
 			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
@@ -2935,14 +2935,14 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 				WHERE bls.validatorindex = $3			
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
-					OR ENCODE(pubkey, 'hex') LIKE ($4 || '%')
+					OR pubkey_text LIKE ($4 || '%')
 					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if blsLikeRE.MatchString(query) {
 			searchQuery := `
-				WHERE ENCODE(pubkey, 'hex') LIKE ($3 || '%')
+				WHERE pubkey_text LIKE ($3 || '%')
 				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
