@@ -121,7 +121,7 @@ func main() {
 	}
 
 	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("no cache provider set, pease set TierdCacheProvider (example redis, bigtable)")
+		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (example redis, bigtable)")
 	}
 
 	defer db.ReaderDb.Close()
