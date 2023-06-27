@@ -640,16 +640,19 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type watchlistValidators struct {
-		Index  uint64 `db:"index"`
-		Pubkey string `db:"pubkey"`
+		Index          uint64  `db:"index"`
+		Pubkey         string  `db:"pubkey"`
+		DepositAddress *[]byte `db:"from_address"`
 	}
 
 	watchlist := []watchlistValidators{}
 	err = db.WriterDb.Select(&watchlist, `
 	SELECT 
-		validatorindex as index,
-		ENCODE(pubkey, 'hex') as pubkey
+		validators.validatorindex as index,
+		ENCODE(validators.pubkey, 'hex') as pubkey,
+		eth1_deposits.from_address
 	FROM validators 
+	LEFT JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
 	WHERE pubkey = ANY($1)
 	`, pq.ByteaArray(watchlistPubkeys))
 	if err != nil {
@@ -675,13 +678,34 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	link := "/dashboard?validators="
 
 	validatorCount := 0
+	ensMap := make(map[string]string)
 
 	for _, val := range watchlist {
 		validatorCount += 1
 		link += strconv.FormatUint(val.Index, 10) + ","
+		var depositAddress string
+		var depositEnsName string
+
+		if val.DepositAddress != nil && len(*val.DepositAddress) > 0 {
+			depositAddress = fmt.Sprintf("0x%x", *val.DepositAddress)
+			if value, ok := ensMap[depositAddress]; ok {
+				depositEnsName = value
+			} else {
+				ensData, err := GetEnsDomain(depositAddress)
+				if err == nil {
+					depositEnsName = ensData.Domain
+					ensMap[depositAddress] = ensData.Domain
+				} else {
+					ensMap[depositAddress] = ""
+				}
+			}
+		}
+
 		validatorMap[val.Pubkey] = types.UserValidatorNotificationTableData{
-			Index:  val.Index,
-			Pubkey: val.Pubkey,
+			Index:          val.Index,
+			Pubkey:         val.Pubkey,
+			DepositAddress: depositAddress,
+			DepositEnsName: depositEnsName,
 		}
 	}
 	link = link[:len(link)-1]

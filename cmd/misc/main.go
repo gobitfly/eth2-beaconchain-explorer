@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -16,6 +18,7 @@ import (
 	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
+	"golang.org/x/sync/errgroup"
 
 	"flag"
 
@@ -43,7 +46,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -59,7 +62,13 @@ func main() {
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	opts.DryRun = *dryRun != "false"
 
@@ -84,32 +93,40 @@ func main() {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username: cfg.Frontend.WriterDatabase.Username,
-		Password: cfg.Frontend.WriterDatabase.Password,
-		Name:     cfg.Frontend.WriterDatabase.Name,
-		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.Frontend.WriterDatabase.Port,
+		Username:     cfg.Frontend.WriterDatabase.Username,
+		Password:     cfg.Frontend.WriterDatabase.Password,
+		Name:         cfg.Frontend.WriterDatabase.Name,
+		Host:         cfg.Frontend.WriterDatabase.Host,
+		Port:         cfg.Frontend.WriterDatabase.Port,
+		MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.Frontend.ReaderDatabase.Username,
-		Password: cfg.Frontend.ReaderDatabase.Password,
-		Name:     cfg.Frontend.ReaderDatabase.Name,
-		Host:     cfg.Frontend.ReaderDatabase.Host,
-		Port:     cfg.Frontend.ReaderDatabase.Port,
+		Username:     cfg.Frontend.ReaderDatabase.Username,
+		Password:     cfg.Frontend.ReaderDatabase.Password,
+		Name:         cfg.Frontend.ReaderDatabase.Name,
+		Host:         cfg.Frontend.ReaderDatabase.Host,
+		Port:         cfg.Frontend.ReaderDatabase.Port,
+		MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
@@ -149,8 +166,115 @@ func main() {
 		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
 		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
+	case "update-aggregation-bits":
+		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
+	}
+}
+
+func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, endEpoch uint64, concurency uint64) {
+	logrus.Infof("update-aggregation-bits epochs %v - %v", startEpoch, endEpoch)
+	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
+		logrus.Infof("Getting data from the node for epoch %v", epoch)
+		data, err := rpcClient.GetEpochData(epoch, false)
+		if err != nil {
+			utils.LogError(err, fmt.Sprintf("Error getting epoch[%v] data from the client", epoch), 0)
+			return
+		}
+
+		ctx := context.Background()
+		g, gCtx := errgroup.WithContext(ctx)
+		g.SetLimit(int(concurency))
+
+		for _, bm := range data.Blocks {
+			for _, b := range bm {
+				block := b
+				logrus.Infof("Updating data for slot %v", block.Slot)
+
+				if len(block.Attestations) == 0 {
+					logrus.Infof("No Attestations for slot %v", block.Slot)
+
+					g.Go(func() error {
+						select {
+						case <-gCtx.Done():
+							return nil // halt once processing of a slot failed
+						default:
+						}
+
+						// if we have some obsolete attestations we clean them from the db
+						rows, err := db.WriterDb.Exec(`
+								DELETE FROM blocks_attestations
+								WHERE
+									block_slot=$1
+							`, block.Slot)
+						if err != nil {
+							return fmt.Errorf("error deleting obsolete attestations for Slot [%v]:  %v", block.Slot, err)
+						}
+						if rowsAffected, _ := rows.RowsAffected(); rowsAffected > 0 {
+							logrus.Infof("%v obsolete attestations removed for Slot[%v]", rowsAffected, block.Slot)
+						} else {
+							logrus.Infof("No obsolete attestations found for Slot[%v] so we move on", block.Slot)
+						}
+
+						return nil
+					})
+					continue
+				}
+				for i, a := range block.Attestations {
+					att := a
+					index := i
+					g.Go(func() error {
+						select {
+						case <-gCtx.Done():
+							return nil // halt once processing of a slot failed
+						default:
+						}
+						var aggregationbits *[]byte
+
+						// block_slot and block_index are already unique, but to be sure we use the correct index we also check the signature
+						err := db.ReaderDb.Get(&aggregationbits, `
+						SELECT aggregationbits
+						FROM blocks_attestations WHERE 
+							block_slot=$1 AND
+							block_index=$2 AND
+							signature = $3`, block.Slot, index, att.Signature)
+						if err != nil {
+							return fmt.Errorf("error getting aggregationbits on Slot [%v] Index [%v] with Sig [%v]: %v", block.Slot, index, att.Signature, err)
+						}
+
+						if !bytes.Equal(*aggregationbits, att.AggregationBits) {
+							_, err = db.WriterDb.Exec(`
+								UPDATE blocks_attestations
+								SET
+									aggregationbits=$1
+								WHERE
+									block_slot=$2 AND
+									block_index=$3 AND
+									signature = $4
+							`, att.AggregationBits, block.Slot, index, att.Signature)
+							if err != nil {
+								return fmt.Errorf("error updating aggregationbits on Slot [%v] Index [%v] :  %v", block.Slot, index, err)
+							}
+							logrus.Infof("Update of Slot[%v] Index[%v] complete", block.Slot, index)
+						} else {
+							logrus.Infof("Slot[%v] Index[%v] was already up to date", block.Slot, index)
+						}
+
+						return nil
+					})
+
+				}
+			}
+		}
+
+		err = g.Wait()
+
+		if err != nil {
+			utils.LogError(err, fmt.Sprintf("error updating aggregationbits for epoch [%v]", epoch), 0)
+			return
+		}
+		logrus.Infof("Update of Epoch[%v] complete", epoch)
 	}
 }
 

@@ -567,11 +567,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if validatorPageData.AttestationsCount > 0 {
 			// get attestationStats from validator_stats
 			attestationStats := struct {
-				MissedAttestations   uint64 `db:"missed_attestations"`
-				OrphanedAttestations uint64 `db:"orphaned_attestations"`
+				MissedAttestations uint64 `db:"missed_attestations"`
 			}{}
 			if lastStatsDay > 0 {
-				err = db.ReaderDb.Get(&attestationStats, "select coalesce(sum(missed_attestations), 0) as missed_attestations, coalesce(sum(orphaned_attestations), 0) as orphaned_attestations from validator_stats where validatorindex = $1", index)
+				err = db.ReaderDb.Get(&attestationStats, "select coalesce(sum(missed_attestations), 0) as missed_attestations from validator_stats where validatorindex = $1", index)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestationStats: %v", err)
 				}
@@ -581,27 +580,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 			if lookback > 0 {
 				// logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
-				attestations, err := db.BigtableClient.GetValidatorFailedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
+				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %v", err)
 				}
-				missed := uint64(0)
-				orphaned := uint64(0)
-				for _, state := range attestations[index] {
-					if state == 3 {
-						orphaned++
-					} else {
-						missed++
-					}
-				}
-				attestationStats.MissedAttestations += missed
-				attestationStats.OrphanedAttestations += orphaned
-
+				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
 			}
 
 			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
-			validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations
-			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
+			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
 			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 		}
 		return nil
@@ -1625,19 +1612,25 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		for i := endEpoch; i >= startEpoch && len(tableData) < pageLength; i-- {
-			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
-				if i <= endEpoch {
+		for epoch := endEpoch; epoch >= startEpoch && len(tableData) < pageLength; epoch-- {
+			if incomeDetails[index] == nil || incomeDetails[index][epoch] == nil {
+				if epoch <= endEpoch {
+					rewardsStr := "pending..."
+					eventStr := template.HTML("")
+					if epoch < activationAndExitEpoch.ActivationEpoch {
+						rewardsStr = ""
+						eventStr = utils.FormatAttestationStatusShort(5)
+					}
 					tableData = append(tableData, []interface{}{
-						utils.FormatEpoch(i),
-						"pending...",
+						utils.FormatEpoch(epoch),
+						rewardsStr,
 						template.HTML(""),
-						template.HTML(""),
+						eventStr,
 					})
 				}
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
 		}
 	}
 
@@ -1793,7 +1786,6 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	min_effective_balance,
 	max_effective_balance,
 	COALESCE(missed_attestations, 0) AS missed_attestations,
-	COALESCE(orphaned_attestations, 0) AS orphaned_attestations,
 	COALESCE(proposed_blocks, 0) AS proposed_blocks,
 	COALESCE(missed_blocks, 0) AS missed_blocks,
 	COALESCE(orphaned_blocks, 0) AS orphaned_blocks,

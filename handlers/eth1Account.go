@@ -27,14 +27,20 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	address := template.HTMLEscapeString(vars["address"])
+	if utils.IsValidEnsDomain(address) {
+		ensData, err := GetEnsDomain(address)
+		if err != nil {
+			handleNotFoundHtml(w, r)
+			return
+		}
+		if len(ensData.Address) > 0 {
+			address = ensData.Address
+		}
+	}
+
 	isValid := utils.IsEth1Address(address)
 	if !isValid {
-		templateFiles = append(layoutTemplateFiles, "sprites.html", "execution/addressNotFound.html")
-		data := InitPageData(w, r, "blockchain", "/address", "not found", templateFiles)
-
-		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate(templateFiles...).ExecuteTemplate(w, "layout", data)) != nil {
-			return // an error has occurred and was processed
-		}
+		handleNotFoundHtml(w, r)
 		return
 	}
 
@@ -280,9 +286,10 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 	addressBytes := common.FromHex(address)
 
 	pageToken := q.Get("pageToken")
@@ -297,6 +304,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GOT TX: %+v", data)
 
 	err = json.NewEncoder(w).Encode(data)
+
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -308,10 +316,10 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
-
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 	pageToken := q.Get("pageToken")
 
 	search := ""
@@ -332,9 +340,10 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 
 	pageToken := q.Get("pageToken")
 
@@ -356,9 +365,10 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 
 	withdrawals, nextPageToken, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, q.Get("pageToken"))
 	if err != nil {
@@ -398,9 +408,10 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 	addressBytes := common.FromHex(address)
 
 	pageToken := q.Get("pageToken")
@@ -426,9 +437,10 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 
 	addressBytes := common.FromHex(address)
 	pageToken := q.Get("pageToken")
@@ -454,9 +466,10 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 
 	pageToken := q.Get("pageToken")
 	search := ""
@@ -480,9 +493,10 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-	vars := mux.Vars(r)
-	address := strings.Replace(vars["address"], "0x", "", -1)
-	address = strings.ToLower(address)
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
 	pageToken := q.Get("pageToken")
 
 	search := ""
@@ -499,5 +513,36 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
+	}
+}
+
+// takes the "address" parameter from the request and transforms it to lower case. The ENS name can be used instead of the address
+func lowerAddressFromRequest(w http.ResponseWriter, r *http.Request) (string, error) {
+	vars := mux.Vars(r)
+	address := vars["address"]
+	if utils.IsValidEnsDomain(address) {
+		ensData, err := GetEnsDomain(address)
+		if err != nil {
+			handleNotFoundJson(address, w, r, err)
+			return "", err
+		}
+		if len(ensData.Address) > 0 {
+			address = ensData.Address
+		}
+	}
+	return strings.ToLower(strings.Replace(address, "0x", "", -1)), nil
+}
+
+func handleNotFoundJson(address string, w http.ResponseWriter, r *http.Request, err error) {
+	logger.Errorf("error getting addres for ENS name [%v] not found for %v route: %v", address, r.URL.String(), err)
+	http.Error(w, "Invalid ENS name", http.StatusServiceUnavailable)
+}
+
+func handleNotFoundHtml(w http.ResponseWriter, r *http.Request) {
+	templateFiles := append(layoutTemplateFiles, "sprites.html", "execution/addressNotFound.html")
+	data := InitPageData(w, r, "blockchain", "/address", "not found", templateFiles)
+
+	if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "not valid", templates.GetTemplate(templateFiles...).ExecuteTemplate(w, "layout", data)) != nil {
+		return // an error has occurred and was processed
 	}
 }

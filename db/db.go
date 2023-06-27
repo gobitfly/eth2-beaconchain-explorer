@@ -70,6 +70,21 @@ func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 }
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
+
+	if writer.MaxOpenConns == 0 {
+		writer.MaxOpenConns = 50
+	}
+	if writer.MaxIdleConns == 0 {
+		writer.MaxIdleConns = 10
+	}
+
+	if reader.MaxOpenConns == 0 {
+		reader.MaxOpenConns = 50
+	}
+	if reader.MaxIdleConns == 0 {
+		reader.MaxIdleConns = 10
+	}
+
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
 	if err != nil {
 		utils.LogFatal(err, "error getting Connection Writer database", 0)
@@ -78,8 +93,8 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 	dbTestConnection(dbConnWriter, "database")
 	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
 	dbConnWriter.SetConnMaxLifetime(time.Second * 60)
-	dbConnWriter.SetMaxOpenConns(200)
-	dbConnWriter.SetMaxIdleConns(200)
+	dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
+	dbConnWriter.SetMaxIdleConns(writer.MaxIdleConns)
 
 	if reader == nil {
 		return dbConnWriter, dbConnWriter
@@ -93,8 +108,8 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 	dbTestConnection(dbConnReader, "read replica database")
 	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
 	dbConnReader.SetConnMaxLifetime(time.Second * 60)
-	dbConnReader.SetMaxOpenConns(200)
-	dbConnReader.SetMaxIdleConns(200)
+	dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
+	dbConnReader.SetMaxIdleConns(reader.MaxIdleConns)
 	return dbConnWriter, dbConnReader
 }
 
@@ -379,9 +394,11 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.signature
 			FROM blocks_deposits
 			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-			WHERE ENCODE(publickey, 'hex') LIKE LOWER($3)
-				OR ENCODE(withdrawalcredentials, 'hex') LIKE LOWER($3)
-				OR CAST(block_slot as varchar) LIKE LOWER($3)
+			LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+			WHERE ENCODE(blocks_deposits.publickey, 'hex') LIKE LOWER($3)
+				OR ENCODE(blocks_deposits.withdrawalcredentials, 'hex') LIKE LOWER($3)
+				OR CAST(blocks_deposits.block_slot as varchar) LIKE LOWER($3)
+				OR ENCODE(eth1_deposits.from_address, 'hex') LIKE LOWER($3)
 			ORDER BY %s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
@@ -424,10 +441,11 @@ func GetEth2DepositsCount(search string) (uint64, error) {
 		SELECT COUNT(*)
 		FROM blocks_deposits
 		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-		WHERE 
-			ENCODE(publickey, 'hex') LIKE LOWER($1)
-			OR ENCODE(withdrawalcredentials, 'hex') LIKE LOWER($1)
-			OR CAST(block_slot as varchar) LIKE LOWER($1)
+		LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+		WHERE ENCODE(blocks_deposits.publickey, 'hex') LIKE LOWER($1)
+			OR ENCODE(blocks_deposits.withdrawalcredentials, 'hex') LIKE LOWER($1)
+			OR CAST(blocks_deposits.block_slot as varchar) LIKE LOWER($1)
+			OR ENCODE(eth1_deposits.from_address, 'hex') LIKE LOWER($1)
 		`, search+"%")
 	}
 	if err != nil {
@@ -691,8 +709,7 @@ func SaveBlock(block *types.Block) error {
 		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
@@ -885,12 +902,11 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		return fmt.Errorf("error executing save epoch statement: %w", err)
 	}
 
-	err = saveGraffitiwall(data.Blocks, tx)
-	if err != nil {
+	if err = saveGraffitiwall(data.Blocks, tx); err != nil {
 		return fmt.Errorf("error saving graffitiwall: %w", err)
 	}
-	err = tx.Commit()
-	if err != nil {
+
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
@@ -2897,6 +2913,13 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 			bls.address
 		FROM blocks_bls_change bls
 		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+		LEFT JOIN (
+			SELECT 
+				validators.validatorindex as validatorindex,
+				eth1_deposits.from_address as deposit_adress
+			FROM validators 
+			INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
+		) AS val ON val.validatorindex = bls.validatorindex
 		%s
 		ORDER BY bls.%s %s
 		LIMIT $1
@@ -2912,12 +2935,15 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 				WHERE bls.validatorindex = $3			
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
-					OR ENCODE(pubkey, 'hex') LIKE ($4 || '%')`
+					OR ENCODE(pubkey, 'hex') LIKE ($4 || '%')
+					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if blsLikeRE.MatchString(query) {
-			searchQuery := `WHERE ENCODE(pubkey, 'hex') LIKE ($3 || '%')`
+			searchQuery := `
+				WHERE ENCODE(pubkey, 'hex') LIKE ($3 || '%')
+				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)

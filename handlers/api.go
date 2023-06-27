@@ -1500,7 +1500,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			activationeligibilityepoch,
 			activationepoch,
 			exitepoch,
-			lastattestationslot,
+			COALESCE(lastattestationslot, 0) as lastattestationslot,
 			status,
 			COALESCE(n.name, '') AS name,
 			COALESCE(w.total, 0) as total_withdrawals
@@ -1640,7 +1640,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		min_effective_balance,
 		max_effective_balance,
 		COALESCE(missed_attestations, 0) AS missed_attestations,
-		COALESCE(orphaned_attestations, 0) AS orphaned_attestations,
+		0 AS orphaned_attestations,
 		COALESCE(proposed_blocks, 0) AS proposed_blocks,
 		COALESCE(missed_blocks, 0) AS missed_blocks,
 		COALESCE(orphaned_blocks, 0) AS orphaned_blocks,
@@ -1678,7 +1678,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all validators that belong to an eth1 address
 // @Tags Validator
 // @Produce  json
-// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
+// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent". It can also be a valid ENS name.
 // @Param limit query string false "Limit the number of results (default: 2000)"
 // @Param offset query string false "Offset the results (default: 0)"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorEth1Response}
@@ -1710,8 +1710,8 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-
-	eth1Address, err := hex.DecodeString(strings.Replace(vars["address"], "0x", "", -1))
+	search := ReplaceEnsNameWithAddress(vars["address"])
+	eth1Address, err := hex.DecodeString(strings.Replace(search, "0x", "", -1))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "invalid eth1 address provided")
 		return
@@ -3603,7 +3603,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 // @Tags Validator
 // @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
 // @Produce json
-// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
+// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix". It can also be a valid ENS name.
 // @Param  limit query int false "Limit the number of results, maximum: 200" default(10)
 // @Param offset query int false "Offset the number of results" default(0)
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiWithdrawalCredentialsResponse}
@@ -3615,7 +3615,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	vars := mux.Vars(r)
 	q := r.URL.Query()
 
-	credentialsOrAddressString := vars["withdrawalCredentialsOrEth1address"]
+	credentialsOrAddressString := ReplaceEnsNameWithAddress(vars["withdrawalCredentialsOrEth1address"])
 	credentialsOrAddressString = strings.ToLower(credentialsOrAddressString)
 
 	if !utils.IsValidEth1Address(credentialsOrAddressString) &&

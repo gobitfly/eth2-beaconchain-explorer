@@ -23,6 +23,7 @@ type options struct {
 	statisticsDayToExport     int64
 	statisticsDaysToExport    string
 	statisticsValidatorToggle bool
+	statisticsResetColumns    string
 	statisticsChartToggle     bool
 }
 
@@ -33,15 +34,23 @@ func main() {
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
 	statisticsValidatorToggle := flag.Bool("validators.enabled", false, "Toggle exporting validator statistics")
+	statisticsResetColumns := flag.String("validators.reset", "", "validator_stats_status columns to reset. Comma separated. Use 'all' for complete resync.")
 	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	opt = &options{
 		configPath:                *configPath,
 		statisticsDayToExport:     *statisticsDayToExport,
 		statisticsDaysToExport:    *statisticsDaysToExport,
 		statisticsChartToggle:     *statisticsChartToggle,
+		statisticsResetColumns:    *statisticsResetColumns,
 		statisticsValidatorToggle: *statisticsValidatorToggle,
 	}
 
@@ -59,33 +68,41 @@ func main() {
 	}
 
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
 	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username: cfg.Frontend.WriterDatabase.Username,
-		Password: cfg.Frontend.WriterDatabase.Password,
-		Name:     cfg.Frontend.WriterDatabase.Name,
-		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.Frontend.WriterDatabase.Port,
+		Username:     cfg.Frontend.WriterDatabase.Username,
+		Password:     cfg.Frontend.WriterDatabase.Password,
+		Name:         cfg.Frontend.WriterDatabase.Name,
+		Host:         cfg.Frontend.WriterDatabase.Host,
+		Port:         cfg.Frontend.WriterDatabase.Port,
+		MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.Frontend.ReaderDatabase.Username,
-		Password: cfg.Frontend.ReaderDatabase.Password,
-		Name:     cfg.Frontend.ReaderDatabase.Name,
-		Host:     cfg.Frontend.ReaderDatabase.Host,
-		Port:     cfg.Frontend.ReaderDatabase.Port,
+		Username:     cfg.Frontend.ReaderDatabase.Username,
+		Password:     cfg.Frontend.ReaderDatabase.Password,
+		Name:         cfg.Frontend.ReaderDatabase.Name,
+		Host:         cfg.Frontend.ReaderDatabase.Host,
+		Port:         cfg.Frontend.ReaderDatabase.Port,
+		MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
@@ -124,10 +141,8 @@ func main() {
 		if *statisticsValidatorToggle {
 			logrus.Infof("exporting validator statistics for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
-				_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", d)
-				if err != nil {
-					logrus.Fatalf("error resetting status for day %v: %v", d, err)
-				}
+
+				clearStatsStatusTable(d, opt.statisticsResetColumns)
 
 				err = db.WriteValidatorStatisticsForDay(uint64(d))
 				if err != nil {
@@ -157,10 +172,7 @@ func main() {
 	} else if *statisticsDayToExport >= 0 {
 
 		if *statisticsValidatorToggle {
-			_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
-			if err != nil {
-				logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
-			}
+			clearStatsStatusTable(uint64(*statisticsDayToExport), opt.statisticsResetColumns)
 
 			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport))
 			if err != nil {
@@ -259,5 +271,26 @@ func statisticsLoop() {
 
 		services.ReportStatus("statistics", "Running", nil)
 		time.Sleep(time.Minute)
+	}
+}
+
+func clearStatsStatusTable(day uint64, columns string) {
+	if columns == "all" {
+		logrus.Infof("Delete validator_stats_status for day %v", day)
+		_, err := db.WriterDb.Exec("DELETE FROM validator_stats_status WHERE day = $1", day)
+		if err != nil {
+			logrus.Fatalf("error resetting status for day %v: %v", day, err)
+		}
+	} else if len(columns) > 0 {
+		logrus.Infof("Resetting columns %v of validator_stats_status for day %v ", columns, day)
+		cols := strings.Join(strings.Split(columns, ","), " = false,")
+		_, err := db.WriterDb.Exec(fmt.Sprintf(`
+			UPDATE validator_stats_status
+			SET %v = false
+			WHERE day = $1
+		`, cols), day)
+		if err != nil {
+			logrus.Fatalf("error resetting status for day %v: %v", day, err)
+		}
 	}
 }

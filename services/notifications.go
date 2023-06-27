@@ -1526,12 +1526,22 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		}
 	}
 
-	if len(offlineValidators) > 5000 {
-		return fmt.Errorf("retrieved more than 5000 offline validators notifications: %v, exiting", len(offlineValidators))
+	offlineValidatorsLimit := 5000
+	if utils.Config.Notifications.OfflineDetectionLimit != 0 {
+		offlineValidatorsLimit = utils.Config.Notifications.OfflineDetectionLimit
 	}
 
-	if len(onlineValidators) > 5000 {
-		return fmt.Errorf("retrieved more than 5000 online validators notifications: %v, exiting", len(onlineValidators))
+	onlineValidatorsLimit := 5000
+	if utils.Config.Notifications.OnlineDetectionLimit != 0 {
+		onlineValidatorsLimit = utils.Config.Notifications.OnlineDetectionLimit
+	}
+
+	if len(offlineValidators) > offlineValidatorsLimit {
+		return fmt.Errorf("retrieved more than %v offline validators notifications: %v, exiting", offlineValidatorsLimit, len(offlineValidators))
+	}
+
+	if len(onlineValidators) > onlineValidatorsLimit {
+		return fmt.Errorf("retrieved more than %v online validators notifications: %v, exiting", onlineValidatorsLimit, len(onlineValidators))
 	}
 
 	_, subMap, err = db.GetSubsForEventFilter(types.ValidatorIsOfflineEventName)
@@ -1964,7 +1974,7 @@ func (n *validatorWithdrawalNotification) GetEventName() types.EventName {
 }
 
 func (n *validatorWithdrawalNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprintf(`A withdrawal of %v has been processed for validator %v.`, utils.FormatCurrentBalance(n.Amount, "ETH"), n.ValidatorIndex)
+	generalPart := fmt.Sprintf(`An automatic withdrawal of %v has been processed for validator %v.`, utils.FormatCurrentBalance(n.Amount, "ETH"), n.ValidatorIndex)
 	if includeUrl {
 		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
@@ -1980,7 +1990,7 @@ func (n *validatorWithdrawalNotification) GetEventFilter() string {
 }
 
 func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
-	generalPart := fmt.Sprintf(`A withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHashRaw(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	generalPart := fmt.Sprintf(`An automatic withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatCurrentBalance(n.Amount, "ETH"), n.Slot, utils.FormatHashRaw(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
 	return generalPart
 }
 

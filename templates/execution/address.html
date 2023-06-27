@@ -123,6 +123,21 @@
         font-size: 1.2rem;
       }
     }
+    @media screen and (max-width: 360px) {
+      .header-address .text-monospace {
+        font-size: 0.7rem;
+      }
+    }
+    @media screen and (max-width: 320px) {
+      .header-address .text-monospace {
+        font-size: 0.65rem;
+      }
+    }
+    @media screen and (max-width: 294px) {
+      .header-address .text-monospace {
+        font-size: 0.6rem;
+      }
+    }
 
     [data-theme="dark"] .qrcode-light {
       display: none;
@@ -374,9 +389,9 @@
           </div>
         </div>
       </div>
-      <h2 class="text-monospace mb-md-3 header-address text-truncate">
+      <h4 class="h4 text-monospace mb-md-3 header-address text-truncate">
         {{ .Data.Address | formatAddressLong }}
-      </h2>
+      </h4>
       <div>
         {{ if .Data.Metadata.Name }}<span class="badge badge-secondary text-light my-2">{{ .Data.Metadata.Name }}</span>{{ end }}
       </div>

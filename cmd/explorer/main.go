@@ -57,8 +57,13 @@ func init() {
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
-
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -93,17 +98,21 @@ func main() {
 	go func() {
 		defer wg.Done()
 		db.MustInitDB(&types.DatabaseConfig{
-			Username: cfg.WriterDatabase.Username,
-			Password: cfg.WriterDatabase.Password,
-			Name:     cfg.WriterDatabase.Name,
-			Host:     cfg.WriterDatabase.Host,
-			Port:     cfg.WriterDatabase.Port,
+			Username:     cfg.WriterDatabase.Username,
+			Password:     cfg.WriterDatabase.Password,
+			Name:         cfg.WriterDatabase.Name,
+			Host:         cfg.WriterDatabase.Host,
+			Port:         cfg.WriterDatabase.Port,
+			MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 		}, &types.DatabaseConfig{
-			Username: cfg.ReaderDatabase.Username,
-			Password: cfg.ReaderDatabase.Password,
-			Name:     cfg.ReaderDatabase.Name,
-			Host:     cfg.ReaderDatabase.Host,
-			Port:     cfg.ReaderDatabase.Port,
+			Username:     cfg.ReaderDatabase.Username,
+			Password:     cfg.ReaderDatabase.Password,
+			Name:         cfg.ReaderDatabase.Name,
+			Host:         cfg.ReaderDatabase.Host,
+			Port:         cfg.ReaderDatabase.Port,
+			MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 		})
 	}()
 
@@ -111,17 +120,21 @@ func main() {
 	go func() {
 		defer wg.Done()
 		db.MustInitFrontendDB(&types.DatabaseConfig{
-			Username: cfg.Frontend.WriterDatabase.Username,
-			Password: cfg.Frontend.WriterDatabase.Password,
-			Name:     cfg.Frontend.WriterDatabase.Name,
-			Host:     cfg.Frontend.WriterDatabase.Host,
-			Port:     cfg.Frontend.WriterDatabase.Port,
+			Username:     cfg.Frontend.WriterDatabase.Username,
+			Password:     cfg.Frontend.WriterDatabase.Password,
+			Name:         cfg.Frontend.WriterDatabase.Name,
+			Host:         cfg.Frontend.WriterDatabase.Host,
+			Port:         cfg.Frontend.WriterDatabase.Port,
+			MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
 		}, &types.DatabaseConfig{
-			Username: cfg.Frontend.ReaderDatabase.Username,
-			Password: cfg.Frontend.ReaderDatabase.Password,
-			Name:     cfg.Frontend.ReaderDatabase.Name,
-			Host:     cfg.Frontend.ReaderDatabase.Host,
-			Port:     cfg.Frontend.ReaderDatabase.Port,
+			Username:     cfg.Frontend.ReaderDatabase.Username,
+			Password:     cfg.Frontend.ReaderDatabase.Password,
+			Name:         cfg.Frontend.ReaderDatabase.Name,
+			Host:         cfg.Frontend.ReaderDatabase.Host,
+			Port:         cfg.Frontend.ReaderDatabase.Port,
+			MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
 		})
 	}()
 
@@ -531,7 +544,9 @@ func main() {
 			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")
 			router.HandleFunc("/tools/broadcast/status/{jobID}", handlers.BroadcastStatus).Methods("GET")
 
-			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
+			router.HandleFunc("/tables/{tableId}/state", handlers.GetDataTableStateChanges).Methods("GET")
+			router.HandleFunc("/tables/{tableId}/state", handlers.SetDataTableStateChanges).Methods("PUT")
+			router.HandleFunc("/ens/{search}", handlers.EnsSearch).Methods("GET")
 
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 

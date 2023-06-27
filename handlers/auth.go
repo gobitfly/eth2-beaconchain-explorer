@@ -331,9 +331,9 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	session.DeleteValue("user_id")
 	session.DeleteValue("oauth_redirect_uri")
 
-	err = session.SCS.RenewToken(r.Context())
+	err = session.SCS.Destroy(r.Context())
 	if err != nil {
-		logger.Errorf("error renewing session tokent user: %v", err)
+		logger.Errorf("error destroying session tokent user: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)

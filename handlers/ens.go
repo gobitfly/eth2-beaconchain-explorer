@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -86,4 +87,14 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 		returnError = errors.New("not an ens domain or address")
 	}
 	return data, returnError //We always want to return the data if it was a valid address/domain even if there was an error getting data. A valid address might be enough for the caller.
+}
+
+func ReplaceEnsNameWithAddress(search string) string {
+	if utils.IsValidEnsDomain(search) {
+		ensData, _ := GetEnsDomain(search)
+		if len(ensData.Address) > 0 {
+			search = strings.Replace(ensData.Address, "0x", "", -1)
+		}
+	}
+	return search
 }

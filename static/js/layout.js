@@ -120,6 +120,14 @@ function viewHexDataAs(id, type) {
   }
 }
 
+function shortenAddress(address) {
+  if (!address) {
+    return ""
+  }
+  address = address.replace("0x", "0")
+  return `0x${address.substr(0, 6)}...${address.substr(address.length - 6)}`
+}
+
 function hex2a(hexx) {
   var hex = hexx.toString() //force conversion
   var str = ""
@@ -162,7 +170,7 @@ $(document).ready(function () {
 
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
-  let requestNum = 8
+  let requestNum = 9
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -174,6 +182,22 @@ $(document).ready(function () {
       url: "/search/validators/%QUERY",
       wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+    },
+  })
+
+  var bhEns = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj?.domain
+    },
+    remote: {
+      url: "/search/ens/%QUERY",
+      wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
+      transform: function (data) {
+        return data?.address && data?.domain ? { data: { ...data } } : null
+      },
     },
   })
 
@@ -290,6 +314,20 @@ $(document).ready(function () {
     },
     {
       limit: 5,
+      name: "ens",
+      source: bhEns,
+      display: function (data) {
+        return data?.address && data?.domain ? data.domain : null
+      },
+      templates: {
+        header: '<h3 class="h5">Ens</h3>',
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate"><a href="/ens/${data.domain}">${data.domain} Registration Overview</a></div>`
+        },
+      },
+    },
+    {
+      limit: 5,
       name: "blocks",
       source: bhBlocks,
       display: "hash",
@@ -340,10 +378,19 @@ $(document).ready(function () {
       limit: 5,
       name: "addresses",
       source: bhEth1Accounts,
-      display: "address",
+      display: (data) => data.address || data.name,
       templates: {
         header: '<h3 class="h5">Address</h3>',
         suggestion: function (data) {
+          if (data.name) {
+            return `
+              <div class="d-flex justify-content-between">
+                <div class="text-monospace text-truncate">${data.name}</div>
+                <div class="text-monospace ml-1 d-flex">
+                  ${shortenAddress(data.addres)}
+                </div>
+              </div>`
+          }
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
       },
