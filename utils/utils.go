@@ -324,6 +324,13 @@ func TimeToSlot(timestamp uint64) uint64 {
 	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.Config.SecondsPerSlot
 }
 
+func TimeToFirstSlotOfEpoch(timestamp uint64) uint64 {
+	slot := TimeToSlot(timestamp)
+	lastEpochOffset := slot % Config.Chain.Config.SlotsPerEpoch
+	slot = slot - lastEpochOffset
+	return slot
+}
+
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.Config.SecondsPerSlot*Config.Chain.Config.SlotsPerEpoch), 0)
