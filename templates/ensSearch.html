@@ -19,7 +19,7 @@
         </div>
         <div class="row border-bottom p-3 mx-0">
           <div class="col-md-3">Address:</div>
-          <div class="col-md-9">{{ formatAddressLong .Data.Result.Address }} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Data.Result.Address }}"></i></div>
+          <div class="col-md-9"><a href="/address/{{ .Data.Result.Address }}">{{ formatAddressLong .Data.Result.Address }}</a> <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .Data.Result.Address }}"></i></div>
         </div>
       {{ end }}
     </div>
