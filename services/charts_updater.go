@@ -112,7 +112,7 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 		}
 		if latestEpoch == 0 {
 			ReportStatus("chartsPageDataUpdater", "Running", nil)
-			time.Sleep(time.Second * 60 * 10)
+			time.Sleep(time.Second * 60 * 60)
 		}
 	}
 }
