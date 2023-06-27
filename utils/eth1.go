@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -49,8 +49,7 @@ func StripPrefix(hexStr string) string {
 }
 
 func EthBytesToFloat(b []byte) float64 {
-	f, _ := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(b)), new(big.Float).SetInt(big.NewInt(params.Ether))).Float64()
-	return f
+	return decimal.NewFromBigInt(new(big.Int).SetBytes(b), 0).DivRound(decimal.NewFromInt(1e18), 18).InexactFloat64()
 }
 
 func FormatBlockNumber(number uint64) template.HTML {
@@ -404,10 +403,7 @@ func FormatNumber(number interface{}) string {
 }
 
 func FormatDifficulty(number *big.Int) string {
-	f := new(big.Float).SetInt(number)
-	f.Quo(f, big.NewFloat(1e12))
-	r, _ := f.Float64()
-	return fmt.Sprintf("%.1f T", r)
+	return fmt.Sprintf("%.1f T", decimal.NewFromBigInt(number, -12).InexactFloat64())
 }
 
 func FormatHashrate(h float64) template.HTML {

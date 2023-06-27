@@ -1169,7 +1169,7 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 	e := new(big.Int).SetBytes(balance.Metadata.Decimals)
 	d := new(big.Int).Exp(big.NewInt(10), e, nil)
-	balWei := new(big.Float).SetInt(new(big.Int).SetBytes(balance.Balance))
+	balWei := new(big.Float).SetPrec(90).SetInt(new(big.Int).SetBytes(balance.Balance))
 	balEth := new(big.Float).Quo(balWei, new(big.Float).SetInt(d))
 	p := message.NewPrinter(language.English)
 	return template.HTML(p.Sprintf(fmt.Sprintf(`
