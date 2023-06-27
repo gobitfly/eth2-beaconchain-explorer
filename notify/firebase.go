@@ -90,6 +90,6 @@ func SendPushBatch(messages []*messaging.Message) error {
 		}
 	}
 
-	logger.Infof("Sent %d firebase notifications in %d of %d tries. Successful: %d | Failed: %d", len(messages), tries, len(waitBeforeTryInSeconds), resultSuccessCount, resultFailureCount)
+	logger.Infof("sent %d firebase notifications in %d of %d tries. successful: %d | failed: %d", len(messages), tries, len(waitBeforeTryInSeconds), resultSuccessCount, resultFailureCount)
 	return nil
 }
