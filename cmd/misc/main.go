@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -164,7 +165,8 @@ func main() {
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "historic-prices-export":
 		for day := opts.StartDay; day <= opts.EndDay; day++ {
-			err = services.WriteHistoricPricesForDay(int64(day))
+			ts := utils.DayToTime(int64(day)).UTC().Truncate(time.Hour * 24)
+			err = services.WriteHistoricPricesForDay(ts)
 			if err != nil {
 				logrus.Errorf("error exporting historic prices for day %v: %v", day, err)
 				break

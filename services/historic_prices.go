@@ -18,18 +18,24 @@ func StartHistoricPriceService() {
 	}
 }
 
-func WriteHistoricPricesForDay(day int64) error {
-	tDay := utils.DayToTime(day).UTC().Truncate(time.Hour * 24)
-
-	historicPrice, err := fetchHistoricPrice(tDay)
+func WriteHistoricPricesForDay(ts time.Time) error {
+	historicPrice, err := fetchHistoricPrice(ts)
 	if err != nil {
-		errMsg := fmt.Sprintf("error retrieving historic eth prices for day %v", tDay)
+		errMsg := fmt.Sprintf("error retrieving historic eth prices for day %v", ts)
 		utils.LogError(err, errMsg, 0)
 		return err
 	}
 
-	if historicPrice.MarketData.CurrentPrice.Usd == 0.0 {
-		logger.Warnf("no historic eth prices for day %v", tDay)
+	if historicPrice.MarketData.CurrentPrice.Eth == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Eur == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Usd == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Rub == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Cny == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Cad == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Jpy == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Gbp == 0.0 ||
+		historicPrice.MarketData.CurrentPrice.Aud == 0.0 {
+		logger.Warnf("no historic eth prices for day %v", ts)
 		return nil
 	}
 
@@ -45,7 +51,7 @@ func WriteHistoricPricesForDay(day int64) error {
 			jpy = excluded.jpy,
 			gbp = excluded.gbp,
 			aud = excluded.aud`,
-		tDay,
+		ts,
 		historicPrice.MarketData.CurrentPrice.Eur,
 		historicPrice.MarketData.CurrentPrice.Usd,
 		historicPrice.MarketData.CurrentPrice.Rub,
@@ -57,7 +63,7 @@ func WriteHistoricPricesForDay(day int64) error {
 	)
 
 	if err != nil {
-		errMsg := fmt.Sprintf("error saving historic eth prices for day %v", tDay)
+		errMsg := fmt.Sprintf("error saving historic eth prices for day %v", ts)
 		utils.LogError(err, errMsg, 0)
 		return err
 	}
@@ -87,35 +93,7 @@ func updateHistoricPrices() error {
 	for currentDay.Before(time.Now()) {
 		currentDayTrunc := currentDay.Truncate(time.Hour * 24)
 		if !datesMap[currentDayTrunc.Format("01-02-2006")] {
-			historicPrice, err := fetchHistoricPrice(currentDayTrunc)
-			if err != nil {
-				logger.Errorf("error retrieving historic eth prices for day %v: %v", currentDayTrunc, err)
-				currentDay = currentDay.Add(time.Hour * 24)
-				continue
-			}
-
-			if historicPrice.MarketData.CurrentPrice.Usd == 0.0 {
-				logger.Warnf("no historic eth prices for day %v", currentDayTrunc)
-				currentDay = currentDay.Add(time.Hour * 24)
-				continue
-			}
-
-			_, err = db.WriterDb.Exec("INSERT INTO price (ts, eur, usd, rub, cny, cad, jpy, gbp, aud) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-				currentDayTrunc,
-				historicPrice.MarketData.CurrentPrice.Eur,
-				historicPrice.MarketData.CurrentPrice.Usd,
-				historicPrice.MarketData.CurrentPrice.Rub,
-				historicPrice.MarketData.CurrentPrice.Cny,
-				historicPrice.MarketData.CurrentPrice.Cad,
-				historicPrice.MarketData.CurrentPrice.Jpy,
-				historicPrice.MarketData.CurrentPrice.Gbp,
-				historicPrice.MarketData.CurrentPrice.Aud,
-			)
-			if err != nil {
-				logger.Errorf("error saving historic eth prices for day %v: %v", currentDayTrunc, err)
-				currentDay = currentDay.Add(time.Hour * 24)
-				continue
-			}
+			WriteHistoricPricesForDay(currentDayTrunc)
 		}
 		currentDay = currentDay.Add(time.Hour * 24)
 	}
