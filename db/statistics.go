@@ -1166,8 +1166,9 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch+10) // updates every epoch, keep 10sec longer
 	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(validatorIndicesStr, ","))
-	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, []types.ValidatorIncomeHistory{}); err == nil {
-		return cached.([]types.ValidatorIncomeHistory), nil
+	cached := []types.ValidatorIncomeHistory{}
+	if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, &cached); err == nil {
+		return cached, nil
 	}
 
 	var result []types.ValidatorIncomeHistory
@@ -1247,7 +1248,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 	}
 
 	go func() {
-		err := cache.TieredCache.Set(cacheKey, result, cacheDur)
+		err := cache.TieredCache.Set(cacheKey, &result, cacheDur)
 		if err != nil {
 			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetValidatorIncomeHistory with key %v", cacheKey), 0)
 		}
