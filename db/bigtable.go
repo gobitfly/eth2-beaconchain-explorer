@@ -55,7 +55,7 @@ type Bigtable struct {
 	redisCache *redis.Client
 
 	lastAttestationCache    map[uint64]uint64
-	lastAttestationCacheMux sync.Mutex
+	lastAttestationCacheMux *sync.Mutex
 
 	chainId string
 }
@@ -92,7 +92,7 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 		tableValidators:         btClient.Open("beaconchain_validators"),
 		chainId:                 chainId,
 		redisCache:              rdc,
-		lastAttestationCacheMux: sync.Mutex{},
+		lastAttestationCacheMux: &sync.Mutex{},
 	}
 
 	BigtableClient = bt
