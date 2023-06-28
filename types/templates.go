@@ -362,7 +362,6 @@ type ValidatorPageData struct {
 	AttestationsCount                        uint64
 	ExecutedAttestationsCount                uint64
 	MissedAttestationsCount                  uint64
-	OrphanedAttestationsCount                uint64
 	UnmissedAttestationsPercentage           float64 // missed/(executed+orphaned)
 	StatusProposedCount                      uint64
 	StatusMissedCount                        uint64
@@ -475,7 +474,6 @@ type ValidatorStatsTableRow struct {
 	MinEffectiveBalance    sql.NullInt64 `db:"min_effective_balance"`
 	MaxEffectiveBalance    sql.NullInt64 `db:"max_effective_balance"`
 	MissedAttestations     sql.NullInt64 `db:"missed_attestations"`
-	OrphanedAttestations   sql.NullInt64 `db:"orphaned_attestations"`
 	ProposedBlocks         sql.NullInt64 `db:"proposed_blocks"`
 	MissedBlocks           sql.NullInt64 `db:"missed_blocks"`
 	OrphanedBlocks         sql.NullInt64 `db:"orphaned_blocks"`

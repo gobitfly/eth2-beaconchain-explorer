@@ -163,7 +163,7 @@ func (cache *tieredCache) Set(key string, value interface{}, expiration time.Dur
 		return err
 	}
 	cache.localGoCache.Set([]byte(key), valueMarshal, int(expiration.Seconds()))
-	return cache.remoteCache.Set(ctx, key, valueMarshal, expiration)
+	return cache.remoteCache.Set(ctx, key, value, expiration)
 }
 
 func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.Duration, returnValue interface{}) (interface{}, error) {

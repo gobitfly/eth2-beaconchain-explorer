@@ -942,29 +942,15 @@ func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]uint8, error) {
+func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
 	valLen := len(validators)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
 	defer cancel()
 
-	slots := []uint64{}
-
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
-		slots = append(slots, slot)
-	}
-	orphanedSlots, err := GetOrphanedSlots(slots)
-	if err != nil {
-		return nil, err
-	}
-	orphanedSlotsMap := make(map[uint64]bool)
-	for _, slot := range orphanedSlots {
-		orphanedSlotsMap[slot] = true
-	}
-
 	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 
-	res := make(map[uint64]map[uint64]uint8)
+	res := make(map[uint64]map[uint64]bool)
 
 	columnFilters := []gcp_bigtable.Filter{}
 	if valLen < 1000 {
@@ -994,7 +980,7 @@ func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint
 		)
 	}
 
-	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
@@ -1019,16 +1005,12 @@ func (bigtable *Bigtable) GetValidatorFailedAttestationHistory(validators []uint
 				return false
 			}
 
-			if status == 0 || orphanedSlotsMap[attesterSlot] {
+			if status == 0 {
 				if res[validator] == nil {
-					res[validator] = make(map[uint64]uint8, 0)
+					res[validator] = make(map[uint64]bool, 0)
 				}
-				if orphanedSlotsMap[attesterSlot] {
-					res[validator][attesterSlot] = 3
-				} else {
-					res[validator][attesterSlot] = 2
-				}
-			} else if res[validator] != nil && res[validator][attesterSlot] > 0 {
+				res[validator][attesterSlot] = true
+			} else if res[validator] != nil && res[validator][attesterSlot] {
 				delete(res[validator], attesterSlot)
 			}
 		}
@@ -1134,14 +1116,14 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	return res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorFailedAttestationsStatistic, error) {
+func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint64, firstEpoch uint64, lastEpoch uint64) (map[uint64]*types.ValidatorMissedAttestationsStatistic, error) {
 	if firstEpoch > lastEpoch {
 		return nil, fmt.Errorf("GetValidatorMissedAttestationsCount received an invalid firstEpoch (%d) and lastEpoch (%d) combination", firstEpoch, lastEpoch)
 	}
 
-	res := make(map[uint64]*types.ValidatorFailedAttestationsStatistic)
+	res := make(map[uint64]*types.ValidatorMissedAttestationsStatistic)
 
-	data, err := bigtable.GetValidatorFailedAttestationHistory(validators, firstEpoch, lastEpoch)
+	data, err := bigtable.GetValidatorMissedAttestationHistory(validators, firstEpoch, lastEpoch)
 
 	if err != nil {
 		return nil, err
@@ -1153,19 +1135,9 @@ func (bigtable *Bigtable) GetValidatorFailedAttestationsCount(validators []uint6
 		if len(attestations) == 0 {
 			continue
 		}
-		missed := uint64(0)
-		orphaned := uint64(0)
-		for _, state := range attestations {
-			if state == 3 {
-				orphaned++
-			} else {
-				missed++
-			}
-		}
-		res[validator] = &types.ValidatorFailedAttestationsStatistic{
-			Index:                validator,
-			MissedAttestations:   missed,
-			OrphanedAttestations: orphaned,
+		res[validator] = &types.ValidatorMissedAttestationsStatistic{
+			Index:              validator,
+			MissedAttestations: uint64(len(attestations)),
 		}
 	}
 

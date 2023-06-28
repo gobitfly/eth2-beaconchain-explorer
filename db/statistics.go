@@ -995,7 +995,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	logrus.Infof("exporting 'failed attestations' statistics firstEpoch: %v lastEpoch: %v", firstEpoch, lastEpoch)
 
 	// first key is the batch start index and the second is the validator id
-	failed := map[uint64]map[uint64]*types.ValidatorFailedAttestationsStatistic{}
+	failed := map[uint64]map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
@@ -1013,7 +1013,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 				return nil
 			default:
 			}
-			ma, err := BigtableClient.GetValidatorFailedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
+			ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
 			if err != nil {
 				logrus.Errorf("error getting 'failed attestations' %v", err)
 				return err
@@ -1029,7 +1029,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	validatorMap := map[uint64]*types.ValidatorFailedAttestationsStatistic{}
+	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	for _, f := range failed {
 
 		for key, val := range f {
@@ -1037,14 +1037,13 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 				validatorMap[key] = val
 			} else {
 				validatorMap[key].MissedAttestations += val.MissedAttestations
-				validatorMap[key].OrphanedAttestations += val.OrphanedAttestations
 			}
 		}
 	}
 
 	logrus.Infof("fetching 'failed attestations' done in %v, now we export them to the db", time.Since(start))
 	start = time.Now()
-	maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(validatorMap))
+	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(validatorMap))
 
 	for _, stat := range validatorMap {
 		maArr = append(maArr, stat)
@@ -1085,7 +1084,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	return nil
 }
 
-func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatistic, day uint64) error {
+func saveFailedAttestationBatch(batch []*types.ValidatorMissedAttestationsStatistic, day uint64) error {
 	var failedAttestationBatchNumArgs int = 4
 	batchSize := len(batch)
 	valueStrings := make([]string, 0, failedAttestationBatchNumArgs)
@@ -1096,7 +1095,7 @@ func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatis
 		valueArgs = append(valueArgs, stat.Index)
 		valueArgs = append(valueArgs, day)
 		valueArgs = append(valueArgs, stat.MissedAttestations)
-		valueArgs = append(valueArgs, stat.OrphanedAttestations)
+		valueArgs = append(valueArgs, 0)
 	}
 	stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
@@ -1166,8 +1165,9 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch+10) // updates every epoch, keep 10sec longer
 	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(validatorIndicesStr, ","))
-	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, []types.ValidatorIncomeHistory{}); err == nil {
-		return cached.([]types.ValidatorIncomeHistory), nil
+	cached := []types.ValidatorIncomeHistory{}
+	if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, &cached); err == nil {
+		return cached, nil
 	}
 
 	var result []types.ValidatorIncomeHistory
@@ -1247,7 +1247,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 	}
 
 	go func() {
-		err := cache.TieredCache.Set(cacheKey, result, cacheDur)
+		err := cache.TieredCache.Set(cacheKey, &result, cacheDur)
 		if err != nil {
 			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetValidatorIncomeHistory with key %v", cacheKey), 0)
 		}

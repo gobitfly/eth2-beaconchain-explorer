@@ -55,7 +55,7 @@
           <tr>
             <th>Day</th>
             <th colspan="3">Balance</th>
-            <th colspan="2">Attestations</th>
+            <th colspan="1">Attestations</th>
             <th colspan="3">Blocks</th>
             <th colspan="2">Slashings</th>
             <th colspan="2">Deposits</th>
@@ -66,7 +66,6 @@
             <th title="Balance at the start of the day" data-toggle="tooltip">Start</th>
             <th title="Balance at the end of the day" data-toggle="tooltip">End</th>
             <th title="Amount of missed attestations" data-toggle="tooltip">M</th>
-            <th title="Amount of orphaned attestations" data-toggle="tooltip">O</th>
             <th title="Amount of proposed blocks" data-toggle="tooltip">P</th>
             <th title="Amount of missed blocks" data-toggle="tooltip">M</th>
             <th title="Amount of orphaned blocks" data-toggle="tooltip">O</th>
@@ -84,7 +83,6 @@
               <td>{{ formatBalanceSql .StartBalance $.Rates.Currency }}</td>
               <td>{{ formatBalanceSql .EndBalance $.Rates.Currency }}</td>
               <td>{{ formatSqlInt64 .MissedAttestations }}</td>
-              <td>{{ formatSqlInt64 .OrphanedAttestations }}</td>
               <td>{{ formatSqlInt64 .ProposedBlocks }}</td>
               <td>{{ formatSqlInt64 .MissedBlocks }}</td>
               <td>{{ formatSqlInt64 .OrphanedBlocks }}</td>

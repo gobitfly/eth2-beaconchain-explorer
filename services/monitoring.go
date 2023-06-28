@@ -251,7 +251,7 @@ func startServicesMonitoringService() {
 		"latestBlockUpdater":        time.Minute * 15,
 		"notification-collector":    time.Minute * 15,
 		"relaysUpdater":             time.Minute * 15,
-		"ethstoreExporter":          time.Minute * 30,
+		"ethstoreExporter":          time.Minute * 60,
 		"statsUpdater":              time.Minute * 30,
 		"poolsUpdater":              time.Minute * 30,
 		"epochExporter":             time.Minute * 15,
