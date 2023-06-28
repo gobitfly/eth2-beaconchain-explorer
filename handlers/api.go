@@ -1560,7 +1560,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 
 	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("error getting validator last attestation slots from bigtable: %w", err))
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("error getting validator last attestation slots from bigtable: %v", err))
 	}
 	for _, validator := range data {
 		for index, lastAttestationSlot := range lastAttestationSlots {
