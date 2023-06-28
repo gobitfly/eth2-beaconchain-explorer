@@ -289,13 +289,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-
 	for _, validator := range validators {
-		for index, lastAttestationSlot := range lastAttestationSlots {
-			if validator.ValidatorIndex == index {
-				validator.LastAttestationSlot = int64(lastAttestationSlot)
-			}
-		}
+		validator.LastAttestationSlot = int64(lastAttestationSlots[validator.ValidatorIndex])
 	}
 
 	isAll := true

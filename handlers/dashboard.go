@@ -794,11 +794,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, validator := range validatorsByIndex {
-			for index, lastAttestationSlot := range lastAttestationSlots {
-				if validator.ValidatorIndex == index {
-					validator.LastAttestationSlot = int64(lastAttestationSlot)
-				}
-			}
+			validator.LastAttestationSlot = int64(lastAttestationSlots[validator.ValidatorIndex])
 		}
 	}
 

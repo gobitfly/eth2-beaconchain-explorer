@@ -1389,25 +1389,20 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
 	}
 
-	for index, lastAttestationSlot := range lastAttestationSlots {
-
-		for _, entry := range data {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
-				continue
-			}
-
-			validatorIndex, ok := eMap["validatorindex"].(int64)
-
-			if !ok {
-				logger.Errorf("error converting validatorindex to int64")
-				continue
-			}
-			if int64(index) == validatorIndex {
-				eMap["lastattestationslot"] = lastAttestationSlot
-			}
+	for _, entry := range data {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
+			continue
 		}
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
 	}
 	return data, nil
 }
@@ -3229,6 +3224,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		if len(balance) == 0 {
 			continue
 		}
+
 		for _, entry := range generalData {
 			eMap, ok := entry.(map[string]interface{})
 			if !ok {
@@ -3250,24 +3246,20 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		}
 	}
 
-	for index, lastAttestationSlot := range lastAttestationSlots {
-		for _, entry := range generalData {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
-				continue
-			}
-
-			validatorIndex, ok := eMap["validatorindex"].(int64)
-
-			if !ok {
-				logger.Errorf("error converting validatorindex to int64")
-				continue
-			}
-			if int64(index) == validatorIndex {
-				eMap["lastattestationslot"] = lastAttestationSlot
-			}
+	for _, entry := range generalData {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
+			continue
 		}
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
 	}
 
 	efficiencyData, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
