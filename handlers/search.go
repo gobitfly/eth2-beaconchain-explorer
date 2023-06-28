@@ -81,7 +81,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		result = &types.SearchAheadSlotsResult{}
 		if searchLikeRE.MatchString(search) {
-			if _, convertErr := strconv.Atoi(search); convertErr == nil {
+			if _, convertErr := strconv.ParseInt(search, 10, 32); convertErr == nil {
 				err = db.ReaderDb.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
@@ -154,7 +154,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
+		indexNumeric, errParse := strconv.ParseInt(search, 10, 32)
 		if errParse == nil { // search the validator by its index
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
 			if err != nil {
