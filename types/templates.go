@@ -321,7 +321,7 @@ type ValidatorsData struct {
 	ActivationEligibilityEpoch uint64  `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64  `db:"activationepoch"`
 	ExitEpoch                  uint64  `db:"exitepoch"`
-	LastAttestationSlot        *int64  `db:"lastattestationslot"`
+	LastAttestationSlot        int64   `db:"lastattestationslot"`
 	Name                       string  `db:"name"`
 	State                      string  `db:"state"`
 	MissedProposals            uint64  `db:"missedproposals"`
@@ -350,7 +350,7 @@ type ValidatorPageData struct {
 	ActivationEpoch                          uint64         `db:"activationepoch"`
 	ExitEpoch                                uint64         `db:"exitepoch"`
 	Index                                    uint64         `db:"index"`
-	LastAttestationSlot                      *uint64        `db:"lastattestationslot"`
+	LastAttestationSlot                      uint64         `db:"lastattestationslot"`
 	Name                                     string         `db:"name"`
 	Pool                                     string         `db:"pool"`
 	Tags                                     pq.StringArray `db:"tags"`

@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -146,11 +145,6 @@ func main() {
 		logrus.Infof("db schema applied successfully")
 	case "epoch-export":
 		logrus.Infof("exporting epochs %v - %v", opts.StartEpoch, opts.EndEpoch)
-
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
-		if err != nil {
-			logrus.Fatalf("error initializing last attesation cache: %v", err)
-		}
 
 		for epoch := opts.StartEpoch; epoch <= opts.EndEpoch; epoch++ {
 			err = exporter.ExportEpoch(epoch, rpcClient)

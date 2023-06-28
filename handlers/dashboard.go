@@ -740,7 +740,6 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.withdrawableepoch,
 			validators.slashed,
 			validators.activationeligibilityepoch,
-			validators.lastattestationslot,
 			validators.activationepoch,
 			validators.exitepoch,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
@@ -783,6 +782,21 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				if validator.ValidatorIndex == balanceIndex {
 					validator.CurrentBalance = balance[0].Balance
 					validator.EffectiveBalance = balance[0].EffectiveBalance
+				}
+			}
+		}
+
+		lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(validatorIndexArr)
+		if err != nil {
+			logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator last attestation slot data")
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			return
+		}
+
+		for _, validator := range validatorsByIndex {
+			for index, lastAttestationSlot := range lastAttestationSlots {
+				if validator.ValidatorIndex == index {
+					validator.LastAttestationSlot = int64(lastAttestationSlot)
 				}
 			}
 		}
@@ -873,10 +887,10 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			tableData[i] = append(tableData[i], nil)
 		}
 
-		if v.LastAttestationSlot != nil && *v.LastAttestationSlot != 0 {
+		if v.LastAttestationSlot != 0 {
 			tableData[i] = append(tableData[i], []interface{}{
-				*v.LastAttestationSlot,
-				utils.FormatTimestamp(utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix()),
+				v.LastAttestationSlot,
+				utils.FormatTimestamp(utils.SlotToTime(uint64(v.LastAttestationSlot)).Unix()),
 				//utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
 			})
 		} else {

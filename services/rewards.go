@@ -329,8 +329,8 @@ func getValidatorDetails(validators []uint64) [][]string {
 	result := [][]string{}
 	for _, item := range data {
 		la_date := "N/a"
-		if item.LastAttestationSlot != nil {
-			la_time := utils.SlotToTime(*item.LastAttestationSlot)
+		if item.LastAttestationSlot > 0 {
+			la_time := utils.SlotToTime(item.LastAttestationSlot)
 			la_date = la_time.Format(time.RFC822)
 		}
 		result = append(result, []string{

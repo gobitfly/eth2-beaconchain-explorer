@@ -1317,7 +1317,6 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		activationeligibilityepoch,
 		activationepoch,
 		exitepoch,
-		lastattestationslot,
 		status,
 		COALESCE(validator_names.name, '') AS name,
 		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d,
@@ -1385,6 +1384,31 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		}
 	}
 
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		return nil, fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
+	}
+
+	for index, lastAttestationSlot := range lastAttestationSlots {
+
+		for _, entry := range data {
+			eMap, ok := entry.(map[string]interface{})
+			if !ok {
+				logger.Errorf("error converting validator data to map[string]interface{}")
+				continue
+			}
+
+			validatorIndex, ok := eMap["validatorindex"].(int64)
+
+			if !ok {
+				logger.Errorf("error converting validatorindex to int64")
+				continue
+			}
+			if int64(index) == validatorIndex {
+				eMap["lastattestationslot"] = lastAttestationSlot
+			}
+		}
+	}
 	return data, nil
 }
 
@@ -1500,7 +1524,6 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			activationeligibilityepoch,
 			activationepoch,
 			exitepoch,
-			COALESCE(lastattestationslot, 0) as lastattestationslot,
 			status,
 			COALESCE(n.name, '') AS name,
 			COALESCE(w.total, 0) as total_withdrawals
@@ -1539,6 +1562,20 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("error getting validator last attestation slots from bigtable: %w", err))
+	}
+	for _, validator := range data {
+		for index, lastAttestationSlot := range lastAttestationSlots {
+
+			if validator.Validatorindex == int64(index) {
+				validator.Lastattestationslot = int64(lastAttestationSlot)
+			}
+		}
+	}
+
 	j := json.NewEncoder(w)
 	response := &types.ApiResponse{}
 	response.Status = "OK"
@@ -3127,7 +3164,6 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					activationeligibilityepoch, 
 					activationepoch, 
 					exitepoch, 
-					lastattestationslot, 
 					validators.status, 
 					validator_performance.balance, 
 					COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
@@ -3177,6 +3213,12 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving validator balance data")
+		return
+	}
+
 	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
@@ -3204,6 +3246,26 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
 				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
 				eMap["performancetotal"] = eMap["performancetotal"].(int64) + currentDayIncome[uint64(validatorIndex)]
+			}
+		}
+	}
+
+	for index, lastAttestationSlot := range lastAttestationSlots {
+		for _, entry := range generalData {
+			eMap, ok := entry.(map[string]interface{})
+			if !ok {
+				logger.Errorf("error converting validator data to map[string]interface{}")
+				continue
+			}
+
+			validatorIndex, ok := eMap["validatorindex"].(int64)
+
+			if !ok {
+				logger.Errorf("error converting validatorindex to int64")
+				continue
+			}
+			if int64(index) == validatorIndex {
+				eMap["lastattestationslot"] = lastAttestationSlot
 			}
 		}
 	}

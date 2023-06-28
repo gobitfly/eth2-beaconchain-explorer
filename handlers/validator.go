@@ -265,7 +265,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.activationeligibilityepoch,
 			validators.activationepoch,
 			validators.exitepoch,
-			validators.lastattestationslot,
 			validators.withdrawalcredentials,
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validator_pool.pool, '') AS pool,
@@ -289,6 +288,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorNotFound(data, w, r, vars, "")
 		return
 	}
+
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots([]uint64{index})
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator last attestation slot data")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
 
 	lastStatsDay, err := db.GetLastExportedStatisticDay()
 	if err != nil {

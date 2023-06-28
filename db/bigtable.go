@@ -54,6 +54,9 @@ type Bigtable struct {
 
 	redisCache *redis.Client
 
+	lastAttestationCache    map[uint64]uint64
+	lastAttestationCacheMux sync.Mutex
+
 	chainId string
 }
 
@@ -79,16 +82,17 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 	}
 
 	bt := &Bigtable{
-		client:               btClient,
-		tableData:            btClient.Open("data"),
-		tableBlocks:          btClient.Open("blocks"),
-		tableMetadataUpdates: btClient.Open("metadata_updates"),
-		tableMetadata:        btClient.Open("metadata"),
-		tableBeaconchain:     btClient.Open("beaconchain"),
-		tableMachineMetrics:  btClient.Open("machine_metrics"),
-		tableValidators:      btClient.Open("beaconchain_validators"),
-		chainId:              chainId,
-		redisCache:           rdc,
+		client:                  btClient,
+		tableData:               btClient.Open("data"),
+		tableBlocks:             btClient.Open("blocks"),
+		tableMetadataUpdates:    btClient.Open("metadata_updates"),
+		tableMetadata:           btClient.Open("metadata"),
+		tableBeaconchain:        btClient.Open("beaconchain"),
+		tableMachineMetrics:     btClient.Open("machine_metrics"),
+		tableValidators:         btClient.Open("beaconchain_validators"),
+		chainId:                 chainId,
+		redisCache:              rdc,
+		lastAttestationCacheMux: sync.Mutex{},
 	}
 
 	BigtableClient = bt
@@ -523,6 +527,21 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 
 func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.Block) error {
 
+	// Initialize in memory last attestation cache lazily
+	bigtable.lastAttestationCacheMux.Lock()
+	if bigtable.lastAttestationCache == nil {
+		t := time.Now()
+		var err error
+		bigtable.lastAttestationCache, err = bigtable.GetLastAttestationSlots([]uint64{})
+
+		if err != nil {
+			return err
+		}
+		logger.Infof("initialized in memory last attestation slot cache with %v validators in %v", len(bigtable.lastAttestationCache), time.Since(t))
+
+	}
+	bigtable.lastAttestationCacheMux.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
@@ -557,25 +576,35 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		}
 	}
 
-	mutLastAttestationSlot := gcp_bigtable.NewMutation()
-
 	for attestedSlot, inclusions := range attestationsBySlot {
 		mut := gcp_bigtable.NewMutation()
+		mutLastAttestationSlot := gcp_bigtable.NewMutation()
+		mutLastAttestationSlotSet := false
+
+		bigtable.lastAttestationCacheMux.Lock()
 		for validator, inclusionSlot := range inclusions {
 			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
-			mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-attestedSlot)*1000), []byte{})
-		}
-		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mut)
 
+			if attestedSlot > bigtable.lastAttestationCache[validator] {
+				mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((attestedSlot)*1000), []byte{})
+				bigtable.lastAttestationCache[validator] = attestedSlot
+				mutLastAttestationSlotSet = true
+			}
+
+		}
+		bigtable.lastAttestationCacheMux.Unlock()
+
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mut)
 		if err != nil {
 			return err
 		}
-	}
 
-	err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
-
-	if err != nil {
-		return err
+		if mutLastAttestationSlotSet {
+			err = bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	logger.Infof("exported attestations (new) to bigtable in %v", time.Since(start))
@@ -900,11 +929,7 @@ func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint
 	}
 
 	for _, ri := range row[ATTESTATIONS_FAMILY] {
-		attestedSlot := max_block_number - uint64(ri.Timestamp)/1000
-
-		if attestedSlot == max_block_number {
-			attestedSlot = 0
-		}
+		attestedSlot := uint64(ri.Timestamp) / 1000
 
 		validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, ATTESTATIONS_FAMILY+":"), 10, 64)
 		if err != nil {

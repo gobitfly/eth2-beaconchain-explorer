@@ -29,8 +29,7 @@ type Config struct {
 		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
 		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
 	} `yaml:"bigtable"`
-	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
-	Chain                    struct {
+	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
