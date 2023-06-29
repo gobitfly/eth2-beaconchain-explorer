@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func WriteValidatorStatisticsForDay(day uint64) error {
+func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurrencyCl uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
@@ -108,7 +108,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
-	} else if err := WriteValidatorClIcome(day); err != nil {
+	} else if err := WriteValidatorClIcome(day, concurrencyCl); err != nil {
 		return err
 	}
 
@@ -120,7 +120,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	if exported.TotalPerformance {
 		logger.Infof("Skipping total performance")
-	} else if err := WriteValidatorTotalPerformance(day); err != nil {
+	} else if err := WriteValidatorTotalPerformance(day, concurrencyTotal); err != nil {
 		return err
 	}
 
@@ -167,7 +167,7 @@ func WriteValidatorStatsExported(day uint64) error {
 	return nil
 }
 
-func WriteValidatorTotalPerformance(day uint64) error {
+func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -215,6 +215,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		return err
 	}
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 	batchSize := 1000
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
@@ -565,7 +566,7 @@ func WriteValidatorElIcome(day uint64) error {
 	return nil
 }
 
-func WriteValidatorClIcome(day uint64) error {
+func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -621,6 +622,7 @@ func WriteValidatorClIcome(day uint64) error {
 	maxValidatorIndex++
 
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 
 	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
