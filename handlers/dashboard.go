@@ -765,7 +765,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	for idx := range validatorsByIndex {
 		validatorsByIndexPubKeys[idx] = validatorsByIndex[idx].PublicKey
 	}
-	filter = pq.Array(validatorsByIndexPubKeys)
+	pubkeyFilter := pq.ByteaArray(validatorsByIndexPubKeys)
 
 	validatorsDeposits := []struct {
 		Pubkey  []byte `db:"publickey"`
@@ -776,7 +776,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			publickey,
 			from_address
 		FROM eth1_deposits
-		WHERE publickey = ANY($1)`, filter)
+		WHERE publickey = ANY($1)`, pubkeyFilter)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator deposists")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
