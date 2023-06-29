@@ -986,19 +986,7 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 
 	// \x are missed blocks
 	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
-	err := db.ReaderDb.Select(&rows, `
-		with 
-			graffities as (
-				select count(*), graffiti
-				from blocks 
-				where graffiti <> '\x' and graffiti <> '\x0000000000000000000000000000000000000000000000000000000000000000'
-				group by graffiti order by count desc limit 25
-			)
-		select count(distinct blocks.proposer) as validators, graffities.graffiti as name, graffities.count as weight
-		from blocks 
-			inner join graffities on blocks.graffiti = graffities.graffiti 
-		group by graffities.graffiti, graffities.count
-		order by weight desc`)
+	err := db.ReaderDb.Select(&rows, `select graffiti_text as name, count(*) as weight, sum(proposer_count) as validators from graffiti_stats group by graffiti_text order by weight desc limit 25`)
 	if err != nil {
 		return nil, fmt.Errorf("error getting graffiti-occurrences: %w", err)
 	}

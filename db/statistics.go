@@ -1276,6 +1276,11 @@ func WriteChartSeriesForDay(day int64) error {
 }
 
 func WriteConsensusChartSeriesForDay(day int64) error {
+	if day < 0 {
+		logger.Warnf("no consensus-charts for day < 0: %v", day)
+		return nil
+	}
+
 	epochsPerDay := utils.EpochsPerDay()
 	beaconchainDay := day * int64(epochsPerDay)
 
@@ -1294,22 +1299,22 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 
 	var err error
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether as value from epochs where epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether as value from epochs where epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error inserting STAKED_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_VALIDATOR_BALANCE_ETH' as indicator, avg(averagevalidatorbalance)/1e9 as value from epochs where epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_VALIDATOR_BALANCE_ETH' as indicator, avg(averagevalidatorbalance)/1e9 as value from epochs where epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error inserting AVG_VALIDATOR_BALANCE_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_PARTICIPATION_RATE' as indicator, avg(globalparticipationrate) as value from epochs where epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_PARTICIPATION_RATE' as indicator, avg(globalparticipationrate) as value from epochs where epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error inserting AVG_PARTICIPATION_RATE into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_STAKE_EFFECTIVENESS' as indicator, coalesce(avg(eligibleether) / avg(totalvalidatorbalance), 0) as value from epochs where totalvalidatorbalance != 0 AND eligibleether != 0 and epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_STAKE_EFFECTIVENESS' as indicator, coalesce(avg(eligibleether) / avg(totalvalidatorbalance), 0) as value from epochs where totalvalidatorbalance != 0 AND eligibleether != 0 and epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error inserting AVG_STAKE_EFFECTIVENESS into chart_series: %w", err)
 	}
@@ -1324,27 +1329,27 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 		return fmt.Errorf("error inserting EL_INVALID_DEPOSITS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'CL_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from blocks_deposits where block_slot >= $2 and block_slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'CL_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from blocks_deposits where block_slot >= $2 and block_slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting CL_DEPOSITS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'WITHDRAWALS_ETH' as indicator, sum(w.amount)/1e9 as value from blocks_withdrawals w inner join blocks b ON w.block_root = b.blockroot AND b.status = '1' where w.block_slot >= $2 and w.block_slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'WITHDRAWALS_ETH' as indicator, sum(w.amount)/1e9 as value from blocks_withdrawals w inner join blocks b ON w.block_root = b.blockroot AND b.status = '1' where w.block_slot >= $2 and w.block_slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'PROPOSED_BLOCKS' as indicator, count(*) as value from blocks where status = '1' and slot >= $2 and slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'PROPOSED_BLOCKS' as indicator, count(*) as value from blocks where status = '1' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'MISSED_BLOCKS' as indicator, count(*) as value from blocks where status = '2' and slot >= $2 and slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'MISSED_BLOCKS' as indicator, count(*) as value from blocks where status = '2' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'ORPHANED_BLOCKS' as indicator, count(*) as value from blocks where status = '3' and slot >= $2 and slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'ORPHANED_BLOCKS' as indicator, count(*) as value from blocks where status = '3' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
 	}
@@ -1658,6 +1663,37 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	// if err != nil {
 	// 	return fmt.Errorf("error calculating NEW_ACCOUNTS chart_series: %w", err)
 	// }
+
+	return nil
+}
+
+func WriteGraffitiStatisticsForDay(day int64) error {
+	if day < 0 {
+		logger.Warnf("no graffiti-stats for days before beaconchain")
+		return nil
+	}
+
+	epochsPerDay := utils.EpochsPerDay()
+	firstSlot := uint64(day) * epochsPerDay * utils.Config.Chain.Config.SlotsPerEpoch
+	firstSlotOfNextDay := uint64(day+1) * epochsPerDay * utils.Config.Chain.Config.SlotsPerEpoch
+
+	// \x are missed blocks
+	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
+	_, err := WriterDb.Exec(`
+		insert into graffiti_stats
+		select $1::int as day, graffiti, graffiti_text, count(*), count(distinct proposer) as proposer_count
+		from blocks 
+		where slot >= $2 and slot < $3 and status = '1' and graffiti <> '\x' and graffiti <> '\x0000000000000000000000000000000000000000000000000000000000000000'
+		group by day, graffiti, graffiti_text
+		on conflict (graffiti, day) do update set
+			graffiti       = excluded.graffiti,
+			day            = excluded.day,
+			graffiti_text  = excluded.graffiti_text,
+			count          = excluded.count,
+			proposer_count = excluded.proposer_count`, day, firstSlot, firstSlotOfNextDay)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
