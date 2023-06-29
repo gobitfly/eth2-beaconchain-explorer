@@ -2753,7 +2753,7 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if webhookCount >= allowed {
-		http.Error(w, "Too man webhooks exist already", 400)
+		http.Error(w, fmt.Sprintf("Too many webhooks (%v / %v) exist already", webhookCount, allowed), 400)
 		utils.SetFlash(w, r, authSessionName, "Error: We could not add another webhook, you've already reached the maximum allowed, which.")
 		http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 		return
