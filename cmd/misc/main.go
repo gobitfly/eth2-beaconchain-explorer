@@ -171,6 +171,8 @@ func main() {
 				logrus.Errorf("error exporting historic prices for day %v: %v", day, err)
 				break
 			}
+
+			time.Sleep(5 * time.Second)
 		}
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
