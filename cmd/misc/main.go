@@ -221,6 +221,32 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					})
 					continue
 				}
+
+				status := uint64(0)
+				err := db.ReaderDb.Get(&status, `
+				SELECT status
+				FROM blocks WHERE 
+					slot=$1`, block.Slot)
+				if err != nil {
+					utils.LogError(err, fmt.Errorf("error getting Slot [%v] status", block.Slot), 0)
+					return
+				}
+
+				if status != block.Status {
+					logrus.Infof("Slot[%v] has the wrong status [%v], but should be [%v]", block.Slot, status, block.Status)
+					if block.Status == 1 {
+						err := db.SaveBlock(block)
+						if err != nil {
+							utils.LogError(err, fmt.Errorf("error saving Slot [%v]", block.Slot), 0)
+							return
+						}
+						continue
+					} else {
+						utils.LogError(err, fmt.Errorf("error on Slot [%v] - no update process for status [%v]", block.Slot, block.Status), 0)
+						return
+					}
+				}
+
 				for i, a := range block.Attestations {
 					att := a
 					index := i
@@ -234,11 +260,11 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 
 						// block_slot and block_index are already unique, but to be sure we use the correct index we also check the signature
 						err := db.ReaderDb.Get(&aggregationbits, `
-						SELECT aggregationbits
-						FROM blocks_attestations WHERE 
-							block_slot=$1 AND
-							block_index=$2 AND
-							signature = $3`, block.Slot, index, att.Signature)
+							SELECT aggregationbits
+							FROM blocks_attestations WHERE 
+								block_slot=$1 AND
+								block_index=$2
+						`, block.Slot, index)
 						if err != nil {
 							return fmt.Errorf("error getting aggregationbits on Slot [%v] Index [%v] with Sig [%v]: %v", block.Slot, index, att.Signature, err)
 						}
@@ -250,9 +276,8 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 									aggregationbits=$1
 								WHERE
 									block_slot=$2 AND
-									block_index=$3 AND
-									signature = $4
-							`, att.AggregationBits, block.Slot, index, att.Signature)
+									block_index=$3
+							`, att.AggregationBits, block.Slot, index)
 							if err != nil {
 								return fmt.Errorf("error updating aggregationbits on Slot [%v] Index [%v] :  %v", block.Slot, index, err)
 							}
