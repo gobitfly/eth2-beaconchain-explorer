@@ -1271,13 +1271,15 @@ func WriteChartSeriesForDay(day int64) error {
 	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 
 	// inclusive slot
-	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
-
-	epochOffset := firstSlot % utils.Config.Chain.Config.SlotsPerEpoch
-	firstSlot = firstSlot - epochOffset
+	firstSlot := utils.TimeToFirstSlotOfEpoch(uint64(dateTrunc.Unix()))
 	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
 	// exclusive slot
 	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	// The first day is not a whole day, so we take the first slot from the next day as lastSlot
+	if firstSlot == 0 {
+		nextDateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+1, 0, 0, 0, 0, time.UTC)
+		lastSlot = int64(utils.TimeToFirstSlotOfEpoch(uint64(nextDateTrunc.Unix())))
+	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
 	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
