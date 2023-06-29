@@ -685,7 +685,7 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil // halt once processing of a block failed
+				return gCtx.Err()
 			default:
 			}
 

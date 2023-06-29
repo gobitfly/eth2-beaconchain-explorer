@@ -198,7 +198,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					g.Go(func() error {
 						select {
 						case <-gCtx.Done():
-							return nil // halt once processing of a slot failed
+							return gCtx.Err()
 						default:
 						}
 
@@ -227,7 +227,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					g.Go(func() error {
 						select {
 						case <-gCtx.Done():
-							return nil // halt once processing of a slot failed
+							return gCtx.Err()
 						default:
 						}
 						var aggregationbits *[]byte
