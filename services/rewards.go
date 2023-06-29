@@ -295,7 +295,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 	validatorFilter := pq.Array(validators)
 	var data []types.ValidatorPageData
 	err := db.WriterDb.Select(&data,
-		`SELECT validatorindex, balanceactivation, lastattestationslot
+		`SELECT validatorindex, balanceactivation
 		 FROM validators 
 		 WHERE validatorindex = ANY($1)
 		 ORDER BY validatorindex ASC`, validatorFilter)
@@ -314,7 +314,17 @@ func getValidatorDetails(validators []uint64) [][]string {
 		return [][]string{}
 	}
 
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(validators)
+	if err != nil {
+		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{
+			"validators":  validators,
+			"latestEpoch": latestEpoch,
+		})
+		return [][]string{}
+	}
+
 	for _, validator := range data {
+		validator.LastAttestationSlot = lastAttestationSlots[validator.ValidatorIndex]
 		for balanceIndex, balance := range balances {
 			if len(balance) == 0 {
 				continue
