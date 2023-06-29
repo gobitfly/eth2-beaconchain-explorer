@@ -225,7 +225,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			_, err = WriterDb.Exec(`
@@ -654,7 +654,7 @@ func WriteValidatorClIcome(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			_, err := WriterDb.Exec(stmt, valueArgs...)
@@ -755,7 +755,7 @@ func WriteValidatorBalances(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			defer logger.Infof("saving validator balance batch %v completed", start)
@@ -1010,7 +1010,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
@@ -1063,7 +1063,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			return saveFailedAttestationBatch(maArr[start:end], day)

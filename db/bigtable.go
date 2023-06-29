@@ -1160,7 +1160,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
@@ -1615,7 +1615,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
