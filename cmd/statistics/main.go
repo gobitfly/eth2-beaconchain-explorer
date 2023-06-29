@@ -66,10 +66,6 @@ func main() {
 	}
 	utils.Config = cfg
 
-	if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID != 1 {
-		logrus.Infof("Execution charts are currently only available for mainnet")
-	}
-
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
 		Password:     cfg.WriterDatabase.Password,
@@ -155,7 +151,7 @@ func main() {
 			}
 		}
 
-		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
+		if *statisticsChartToggle {
 			logrus.Infof("exporting chart series for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
 				_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
@@ -183,7 +179,7 @@ func main() {
 			}
 		}
 
-		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
+		if *statisticsChartToggle {
 			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", *statisticsDayToExport)
 			if err != nil {
 				logrus.Fatalf("error resetting status for chart series status for day %v: %v", *statisticsDayToExport, err)

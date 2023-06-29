@@ -177,46 +177,37 @@ func blocksChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	rows := []struct {
-		Epoch     uint64
-		Status    uint64
-		NbrBlocks uint64
+	data := []struct {
+		Indicator string    `db:"indicator"`
+		Time      time.Time `db:"time"`
+		Value     float64   `db:"value"`
 	}{}
 
-	err := db.ReaderDb.Select(&rows, "SELECT epoch, status, count(*) as nbrBlocks FROM blocks GROUP BY epoch, status ORDER BY epoch")
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = any('{PROPOSED_BLOCKS, MISSED_BLOCKS, ORPHANED_BLOCKS}') ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
 
-	dailyProposedBlocks := [][]float64{}
-	dailyMissedBlocks := [][]float64{}
-	dailyOrphanedBlocks := [][]float64{}
+	proposedBlocksSeries := [][]float64{}
+	missedBlocksSeries := [][]float64{}
+	orphanedBlocksSeries := [][]float64{}
 
-	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if row.Status == 1 {
-			if len(dailyProposedBlocks) == 0 || dailyProposedBlocks[len(dailyProposedBlocks)-1][0] != day {
-				dailyProposedBlocks = append(dailyProposedBlocks, []float64{day, float64(row.NbrBlocks)})
-			} else {
-				dailyProposedBlocks[len(dailyProposedBlocks)-1][1] += float64(row.NbrBlocks)
-			}
-		}
-
-		if row.Status == 2 {
-			if len(dailyMissedBlocks) == 0 || dailyMissedBlocks[len(dailyMissedBlocks)-1][0] != day {
-				dailyMissedBlocks = append(dailyMissedBlocks, []float64{day, float64(row.NbrBlocks)})
-			} else {
-				dailyMissedBlocks[len(dailyMissedBlocks)-1][1] += float64(row.NbrBlocks)
-			}
-		}
-
-		if row.Status == 3 {
-			if len(dailyOrphanedBlocks) == 0 || dailyOrphanedBlocks[len(dailyOrphanedBlocks)-1][0] != day {
-				dailyOrphanedBlocks = append(dailyOrphanedBlocks, []float64{day, float64(row.NbrBlocks)})
-			} else {
-				dailyOrphanedBlocks[len(dailyOrphanedBlocks)-1][1] += float64(row.NbrBlocks)
-			}
+	for _, d := range data {
+		switch d.Indicator {
+		case "PROPOSED_BLOCKS":
+			proposedBlocksSeries = append(proposedBlocksSeries, []float64{float64(d.Time.UnixMilli()), d.Value})
+		case "MISSED_BLOCKS":
+			missedBlocksSeries = append(missedBlocksSeries, []float64{float64(d.Time.UnixMilli()), d.Value})
+		case "ORPHANED_BLOCKS":
+			orphanedBlocksSeries = append(orphanedBlocksSeries, []float64{float64(d.Time.UnixMilli()), d.Value})
+		default:
+			return nil, fmt.Errorf("unexpected indicator %v when generating blocksChartData", d.Indicator)
 		}
 	}
 
@@ -254,17 +245,17 @@ func blocksChartData() (*types.GenericChartData, error) {
 			{
 				Name:  "Proposed",
 				Color: "#90ed7d",
-				Data:  dailyProposedBlocks,
+				Data:  proposedBlocksSeries,
 			},
 			{
 				Name:  "Missed",
 				Color: "#f7a35c",
-				Data:  dailyMissedBlocks,
+				Data:  missedBlocksSeries,
 			},
 			{
 				Name:  "Missed (Orphaned)",
 				Color: "#adadad",
-				Data:  dailyOrphanedBlocks,
+				Data:  orphanedBlocksSeries,
 			},
 		},
 	}
@@ -801,67 +792,41 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 }
 
 func depositsChartData() (*types.GenericChartData, error) {
-	var err error
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
 
-	eth1Rows := []struct {
-		Timestamp int64
-		Amount    uint64
-		Valid     bool
+	data := []struct {
+		Indicator string    `db:"indicator"`
+		Time      time.Time `db:"time"`
+		Value     float64   `db:"value"`
 	}{}
 
-	err = db.ReaderDb.Select(&eth1Rows, `
-		select
-			extract(epoch from block_ts)::int as timestamp,
-			amount,
-			valid_signature as valid
-		from eth1_deposits
-		order by timestamp`)
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = any('{EL_VALID_DEPOSITS_ETH, EL_INVALID_DEPOSITS_ETH, CL_DEPOSITS_ETH}') ORDER BY time", ts)
 	if err != nil {
-		return nil, fmt.Errorf("error getting eth1-deposits: %w", err)
+		return nil, err
 	}
 
-	eth2Rows := []struct {
-		Slot   uint64
-		Amount uint64
-	}{}
+	elValidSeries := [][]float64{}
+	elInvalidSeries := [][]float64{}
+	clSeries := [][]float64{}
 
-	err = db.ReaderDb.Select(&eth2Rows, `
-		select block_slot as slot, amount 
-		from blocks_deposits
-		order by slot`)
-	if err != nil {
-		return nil, fmt.Errorf("error getting eth2-deposits: %w", err)
-	}
-
-	dailySuccessfulEth1Deposits := [][]float64{}
-	dailyFailedEth1Deposits := [][]float64{}
-	dailyEth2Deposits := [][]float64{}
-
-	for _, row := range eth1Rows {
-		day := float64(time.Unix(row.Timestamp, 0).Truncate(time.Hour*24).Unix() * 1000)
-
-		if row.Valid {
-			if len(dailySuccessfulEth1Deposits) == 0 || dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][0] != day {
-				dailySuccessfulEth1Deposits = append(dailySuccessfulEth1Deposits, []float64{day, float64(row.Amount) / 1e9})
-			} else {
-				dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][1] += float64(row.Amount) / 1e9
-			}
-		} else {
-			if len(dailyFailedEth1Deposits) == 0 || dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][0] != day {
-				dailyFailedEth1Deposits = append(dailyFailedEth1Deposits, []float64{day, float64(row.Amount) / 1e9})
-			} else {
-				dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][1] += float64(row.Amount) / 1e9
-			}
-		}
-	}
-
-	for _, row := range eth2Rows {
-		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
-
-		if len(dailyEth2Deposits) == 0 || dailyEth2Deposits[len(dailyEth2Deposits)-1][0] != day {
-			dailyEth2Deposits = append(dailyEth2Deposits, []float64{day, float64(row.Amount) / 1e9})
-		} else {
-			dailyEth2Deposits[len(dailyEth2Deposits)-1][1] += float64(row.Amount) / 1e9
+	for _, d := range data {
+		switch d.Indicator {
+		case "EL_VALID_DEPOSITS_ETH":
+			elValidSeries = append(elValidSeries, []float64{float64(d.Time.UnixMilli()), d.Value})
+		case "EL_INVALID_DEPOSITS_ETH":
+			elInvalidSeries = append(elInvalidSeries, []float64{float64(d.Time.UnixMilli()), d.Value})
+		case "CL_DEPOSITS_ETH":
+			clSeries = append(clSeries, []float64{float64(d.Time.UnixMilli()), d.Value})
+		default:
+			return nil, fmt.Errorf("unexpected indicator %v when generating depositsChartData", d.Indicator)
 		}
 	}
 
@@ -875,19 +840,19 @@ func depositsChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name:  "ETH2",
-				Data:  dailyEth2Deposits,
+				Data:  clSeries,
 				Stack: "eth2",
 				Color: "#66bce9",
 			},
 			{
 				Name:  "ETH1 (success)",
-				Data:  dailySuccessfulEth1Deposits,
+				Data:  elValidSeries,
 				Stack: "eth1",
 				Color: "#7dc382",
 			},
 			{
 				Name:  "ETH1 (failed)",
-				Data:  dailyFailedEth1Deposits,
+				Data:  elInvalidSeries,
 				Stack: "eth1",
 				Color: "#f3454a",
 			},
@@ -902,33 +867,33 @@ func depositsChartData() (*types.GenericChartData, error) {
 // }
 
 func withdrawalsChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
 
-	var withdrawals []types.Withdrawals
+	rows := []struct {
+		Time  time.Time `db:"time"`
+		Value float64   `db:"value"`
+	}{}
 
-	err := db.ReaderDb.Select(&withdrawals, `
-			SELECT 
-				w.block_slot as slot,
-				sum(w.amount) as amount
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
-			GROUP BY w.block_slot
-			ORDER BY block_slot
-`)
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&rows, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'WITHDRAWALS_ETH' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
 
-	// logger.Infof("withdrawals: %+v", withdrawals)
+	seriesData := [][]float64{}
 
-	dailyWithdrawals := [][]float64{}
-	for _, row := range withdrawals {
-		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
-
-		if len(dailyWithdrawals) == 0 || dailyWithdrawals[len(dailyWithdrawals)-1][0] != day {
-			dailyWithdrawals = append(dailyWithdrawals, []float64{day, float64(row.Amount) / 1e9})
-		} else {
-			dailyWithdrawals[len(dailyWithdrawals)-1][1] += float64(row.Amount) / 1e9
-		}
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(row.Time.UnixMilli()),
+			row.Value,
+		})
 	}
 
 	chartData := &types.GenericChartData{
@@ -941,19 +906,8 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Withdrawals",
-				Data: dailyWithdrawals,
-				// Stack: "partial",
+				Data: seriesData,
 			},
-			// {
-			// 	Name:  "Partial Withdrawals",
-			// 	Data:  dailyWithdrawals,
-			// 	Stack: "partial",
-			// },
-			// {
-			// 	Name:  "Full Withdrawals",
-			// 	Data:  dailyWithdrawals,
-			// 	Stack: "full",
-			// },
 		},
 	}
 

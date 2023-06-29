@@ -1260,10 +1260,108 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 func WriteChartSeriesForDay(day int64) error {
 	startTs := time.Now()
+	err := WriteExecutionChartSeriesForDay(day)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("marking day export as completed in the status table")
+	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("chart_series export completed: took %v", time.Since(startTs))
+	return nil
+}
+
+func WriteConsensusChartSeriesForDay(day int64) error {
+	epochsPerDay := utils.EpochsPerDay()
+	beaconchainDay := day * int64(epochsPerDay)
+
+	startDate := utils.EpochToTime(uint64(beaconchainDay))
+	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+
+	// inclusive slot
+	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
+
+	epochOffset := firstSlot % utils.Config.Chain.Config.SlotsPerEpoch
+	firstSlot = firstSlot - epochOffset
+	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
+	// exclusive slot
+	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
+
+	var err error
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether as value from epochs where epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error inserting STAKED_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_VALIDATOR_BALANCE_ETH' as indicator, avg(averagevalidatorbalance)/1e9 as value from epochs where epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error inserting AVG_VALIDATOR_BALANCE_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_PARTICIPATION_RATE' as indicator, avg(globalparticipationrate) as value from epochs where epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error inserting AVG_PARTICIPATION_RATE into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_STAKE_EFFECTIVENESS' as indicator, coalesce(avg(eligibleether) / avg(totalvalidatorbalance), 0) as value from epochs where totalvalidatorbalance != 0 AND eligibleether != 0 and epoch >= $2 and epoch <= $3`, dateTrunc, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error inserting AVG_STAKE_EFFECTIVENESS into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_VALID_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from eth1_deposits where valid_signature = true and block_ts >= $1 and block_ts < ($1 + interval '24 hour')`, dateTrunc)
+	if err != nil {
+		return fmt.Errorf("error inserting EL_VALID_DEPOSITS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_INVALID_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from eth1_deposits where valid_signature = false and block_ts >= $1 and block_ts < ($1 + interval '24 hour')`, dateTrunc)
+	if err != nil {
+		return fmt.Errorf("error inserting EL_INVALID_DEPOSITS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'CL_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from blocks_deposits where block_slot >= $2 and block_slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting CL_DEPOSITS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'WITHDRAWALS_ETH' as indicator, sum(w.amount)/1e9 as value from blocks_withdrawals w inner join blocks b ON w.block_root = b.blockroot AND b.status = '1' where w.block_slot >= $2 and w.block_slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'PROPOSED_BLOCKS' as indicator, count(*) as value from blocks where status = '1' and slot >= $2 and slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'MISSED_BLOCKS' as indicator, count(*) as value from blocks where status = '2' and slot >= $2 and slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'ORPHANED_BLOCKS' as indicator, count(*) as value from blocks where status = '3' and slot >= $2 and slot <= $3`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+	}
+
+	return nil
+}
+
+func WriteExecutionChartSeriesForDay(day int64) error {
+	if utils.Config.Chain.Config.DepositChainID != 1 {
+		logger.Warnf("not writing chart_series for execution: chainId != 1: %v", utils.Config.Chain.Config.DepositChainID)
+		return nil
+	}
 
 	if day < 0 {
 		// before the beaconchain
-		return fmt.Errorf("this function does not yet pre-beaconchain blocks")
+		logger.Warnf("no execution charts for days before beaconchain")
+		return nil
 	}
 
 	epochsPerDay := utils.EpochsPerDay()
@@ -1478,7 +1576,7 @@ func WriteChartSeriesForDay(day int64) error {
 
 	var lastEmission float64
 	err = ReaderDb.Get(&lastEmission, "SELECT value FROM chart_series WHERE indicator = 'TOTAL_EMISSION' AND time < $1 ORDER BY time DESC LIMIT 1", dateTrunc)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return fmt.Errorf("error getting previous value for TOTAL_EMISSION chart_series: %w", err)
 	}
 
@@ -1526,10 +1624,14 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 	}
 
-	logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
-	err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
-	if err != nil {
-		return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
+	switch utils.Config.Chain.Config.DepositChainID {
+	case 1:
+		crowdSale := 72009990.50
+		logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+		err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+		if err != nil {
+			return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
+		}
 	}
 
 	logger.Infof("Exporting TX_COUNT %v", txCount)
@@ -1556,14 +1658,6 @@ func WriteChartSeriesForDay(day int64) error {
 	// if err != nil {
 	// 	return fmt.Errorf("error calculating NEW_ACCOUNTS chart_series: %w", err)
 	// }
-
-	logger.Infof("marking day export as completed in the status table")
-	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
-	if err != nil {
-		return err
-	}
-
-	logger.Infof("chart_series export completed: took %v", time.Since(startTs))
 
 	return nil
 }
