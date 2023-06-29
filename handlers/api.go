@@ -1358,18 +1358,28 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, err
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		return nil, fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
+	}
+	for _, entry := range data {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
 			continue
 		}
-		for _, entry := range data {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
+
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
 				continue
 			}
-
-			validatorIndex, ok := eMap["validatorindex"].(int64)
 
 			if !ok {
 				logger.Errorf("error converting validatorindex to int64")
@@ -1384,26 +1394,6 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		}
 	}
 
-	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
-	if err != nil {
-		return nil, fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
-	}
-
-	for _, entry := range data {
-		eMap, ok := entry.(map[string]interface{})
-		if !ok {
-			logger.Errorf("error converting validator data to map[string]interface{}")
-			continue
-		}
-
-		validatorIndex, ok := eMap["validatorindex"].(int64)
-
-		if !ok {
-			logger.Errorf("error converting validatorindex to int64")
-			continue
-		}
-		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
-	}
 	return data, nil
 }
 
@@ -1561,14 +1551,11 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("error getting validator last attestation slots from bigtable: %v", err))
+		return
 	}
-	for _, validator := range data {
-		for index, lastAttestationSlot := range lastAttestationSlots {
 
-			if validator.Validatorindex == int64(index) {
-				validator.Lastattestationslot = int64(lastAttestationSlot)
-			}
-		}
+	for _, validator := range data {
+		validator.Lastattestationslot = int64(lastAttestationSlots[uint64(validator.Validatorindex)])
 	}
 
 	j := json.NewEncoder(w)
@@ -3220,32 +3207,6 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
-			continue
-		}
-
-		for _, entry := range generalData {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
-				continue
-			}
-
-			validatorIndex, ok := eMap["validatorindex"].(int64)
-
-			if !ok {
-				logger.Errorf("error converting validatorindex to int64")
-				continue
-			}
-			if int64(balanceIndex) == validatorIndex {
-				eMap["effectivebalance"] = balance[0].EffectiveBalance
-				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
-				eMap["performancetotal"] = eMap["performancetotal"].(int64) + currentDayIncome[uint64(validatorIndex)]
-			}
-		}
-	}
-
 	for _, entry := range generalData {
 		eMap, ok := entry.(map[string]interface{})
 		if !ok {
@@ -3259,7 +3220,20 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 			logger.Errorf("error converting validatorindex to int64")
 			continue
 		}
+
 		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
+
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
+				continue
+			}
+
+			if int64(balanceIndex) == validatorIndex {
+				eMap["effectivebalance"] = balance[0].EffectiveBalance
+				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
+				eMap["performancetotal"] = eMap["performancetotal"].(int64) + currentDayIncome[uint64(validatorIndex)]
+			}
+		}
 	}
 
 	efficiencyData, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)

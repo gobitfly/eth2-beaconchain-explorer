@@ -535,6 +535,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		bigtable.lastAttestationCache, err = bigtable.GetLastAttestationSlots([]uint64{})
 
 		if err != nil {
+			bigtable.lastAttestationCacheMux.Unlock()
 			return err
 		}
 		logger.Infof("initialized in memory last attestation slot cache with %v validators in %v", len(bigtable.lastAttestationCache), time.Since(t))
@@ -577,13 +578,13 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 	}
 
 	for attestedSlot, inclusions := range attestationsBySlot {
-		mut := gcp_bigtable.NewMutation()
+		mutInclusionSlot := gcp_bigtable.NewMutation()
 		mutLastAttestationSlot := gcp_bigtable.NewMutation()
 		mutLastAttestationSlotSet := false
 
 		bigtable.lastAttestationCacheMux.Lock()
 		for validator, inclusionSlot := range inclusions {
-			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
+			mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
 
 			if attestedSlot > bigtable.lastAttestationCache[validator] {
 				mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((attestedSlot)*1000), []byte{})
@@ -594,7 +595,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		}
 		bigtable.lastAttestationCacheMux.Unlock()
 
-		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mut)
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mutInclusionSlot)
 		if err != nil {
 			return err
 		}
@@ -913,8 +914,7 @@ func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint
 			columnFilters[0],
 			gcp_bigtable.LatestNFilter(1),
 		)
-	}
-	if len(columnFilters) == 0 { // special case to retrieve data for all validators
+	} else if len(columnFilters) == 0 { // special case to retrieve data for all validators
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
 			gcp_bigtable.LatestNFilter(1),
