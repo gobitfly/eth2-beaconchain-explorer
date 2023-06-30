@@ -35,8 +35,8 @@ func WriteHistoricPricesForDay(ts time.Time) error {
 		historicPrice.MarketData.CurrentPrice.Jpy == 0.0 ||
 		historicPrice.MarketData.CurrentPrice.Gbp == 0.0 ||
 		historicPrice.MarketData.CurrentPrice.Aud == 0.0 {
-		logger.Warnf("no historic eth prices for day %v", ts)
-		return nil
+		logger.Warnf("incomplete historic eth prices for day %v", ts)
+		return fmt.Errorf("incomplete historic eth prices")
 	}
 
 	_, err = db.WriterDb.Exec(`
