@@ -141,7 +141,7 @@ func WriteValidatorStatsExported(day uint64) error {
 
 	start := time.Now()
 
-	logger.Infof("marking day export as completed in the status table")
+	logger.Infof("marking day export as completed in the validator_stats_status table for day %v", day)
 	_, err = tx.Exec(`
 		UPDATE validator_stats_status
 		SET status = true
@@ -1265,7 +1265,12 @@ func WriteChartSeriesForDay(day int64) error {
 		return err
 	}
 
-	logger.Infof("marking day export as completed in the status table")
+	err = WriteConsensusChartSeriesForDay(day)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("marking day export as completed in the chart_series_status table for day %v", day)
 	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
 	if err != nil {
 		return err
@@ -1299,57 +1304,57 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 
 	var err error
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether as value from epochs where epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether as value from epochs where epoch = $2 limit 1 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, lastEpoch-1)
 	if err != nil {
 		return fmt.Errorf("error inserting STAKED_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_VALIDATOR_BALANCE_ETH' as indicator, avg(averagevalidatorbalance)/1e9 as value from epochs where epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_VALIDATOR_BALANCE_ETH' as indicator, avg(averagevalidatorbalance)/1e9 as value from epochs where epoch >= $2 and epoch < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error inserting AVG_VALIDATOR_BALANCE_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_PARTICIPATION_RATE' as indicator, avg(globalparticipationrate) as value from epochs where epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_PARTICIPATION_RATE' as indicator, avg(globalparticipationrate) as value from epochs where epoch >= $2 and epoch < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error inserting AVG_PARTICIPATION_RATE into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_STAKE_EFFECTIVENESS' as indicator, coalesce(avg(eligibleether) / avg(totalvalidatorbalance), 0) as value from epochs where totalvalidatorbalance != 0 AND eligibleether != 0 and epoch >= $2 and epoch < $3`, dateTrunc, firstEpoch, lastEpoch)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_STAKE_EFFECTIVENESS' as indicator, coalesce(avg(eligibleether) / avg(totalvalidatorbalance), 0) as value from epochs where totalvalidatorbalance != 0 AND eligibleether != 0 and epoch >= $2 and epoch < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error inserting AVG_STAKE_EFFECTIVENESS into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_VALID_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from eth1_deposits where valid_signature = true and block_ts >= $1 and block_ts < ($1 + interval '24 hour')`, dateTrunc)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_VALID_DEPOSITS_ETH' as indicator, coalesce(sum(amount)/1e9,0) as value from eth1_deposits where valid_signature = true and block_ts >= $1 and block_ts < ($1 + interval '24 hour') on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc)
 	if err != nil {
 		return fmt.Errorf("error inserting EL_VALID_DEPOSITS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_INVALID_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from eth1_deposits where valid_signature = false and block_ts >= $1 and block_ts < ($1 + interval '24 hour')`, dateTrunc)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_INVALID_DEPOSITS_ETH' as indicator, coalesce(sum(amount)/1e9,0) as value from eth1_deposits where valid_signature = false and block_ts >= $1 and block_ts < ($1 + interval '24 hour') on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc)
 	if err != nil {
 		return fmt.Errorf("error inserting EL_INVALID_DEPOSITS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'CL_DEPOSITS_ETH' as indicator, sum(amount)/1e9 as value from blocks_deposits where block_slot >= $2 and block_slot < $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'CL_DEPOSITS_ETH' as indicator, coalesce(sum(amount)/1e9,0) as value from blocks_deposits where block_slot >= $2 and block_slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting CL_DEPOSITS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'WITHDRAWALS_ETH' as indicator, sum(w.amount)/1e9 as value from blocks_withdrawals w inner join blocks b ON w.block_root = b.blockroot AND b.status = '1' where w.block_slot >= $2 and w.block_slot < $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'WITHDRAWALS_ETH' as indicator, coalesce(sum(w.amount)/1e9,0) as value from blocks_withdrawals w inner join blocks b ON w.block_root = b.blockroot AND b.status = '1' where w.block_slot >= $2 and w.block_slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'PROPOSED_BLOCKS' as indicator, count(*) as value from blocks where status = '1' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'PROPOSED_BLOCKS' as indicator, count(*) as value from blocks where status = '1' and slot >= $2 and slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting PROPOSED_BLOCKS into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'MISSED_BLOCKS' as indicator, count(*) as value from blocks where status = '2' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'MISSED_BLOCKS' as indicator, count(*) as value from blocks where status = '2' and slot >= $2 and slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting MISSED_BLOCKS into chart_series: %w", err)
 	}
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'ORPHANED_BLOCKS' as indicator, count(*) as value from blocks where status = '3' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'ORPHANED_BLOCKS' as indicator, count(*) as value from blocks where status = '3' and slot >= $2 and slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
 		return fmt.Errorf("error inserting ORPHANED_BLOCKS into chart_series: %w", err)
 	}
@@ -1553,7 +1558,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	logger.Infof("consensus rewards: %v", totalConsensusRewards)
 
 	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
-	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalBurned.String())
+	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value", dateTrunc, totalBurned.String())
 	if err != nil {
 		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
 	}
@@ -1593,7 +1598,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 
 	if totalGasPrice.GreaterThan(decimal.NewFromInt(0)) && decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)).GreaterThan(decimal.NewFromInt(0)) {
 		logger.Infof("Exporting AVG_GASPRICE")
-		_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES($1, 'AVG_GASPRICE', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalGasPrice.Div((decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)))).String())
+		_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES($1, 'AVG_GASPRICE', $2) on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value", dateTrunc, totalGasPrice.Div((decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)))).String())
 		if err != nil {
 			return fmt.Errorf("error calculating AVG_GASPRICE chart_series err: %w", err)
 		}
