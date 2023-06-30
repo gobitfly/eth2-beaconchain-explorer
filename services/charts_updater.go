@@ -312,24 +312,26 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	rows := []struct {
-		Epoch         uint64
-		EligibleEther uint64
+	data := []struct {
+		Indicator string    `db:"indicator"`
+		Time      time.Time `db:"time"`
+		Value     float64   `db:"value"`
 	}{}
 
-	err := db.ReaderDb.Select(&rows, "SELECT epoch, eligibleether FROM epochs ORDER BY epoch")
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'STAKED_ETH' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
 
-	dailyStakedEther := [][]float64{}
-
-	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if len(dailyStakedEther) == 0 || dailyStakedEther[len(dailyStakedEther)-1][0] != day {
-			dailyStakedEther = append(dailyStakedEther, []float64{day, float64(row.EligibleEther) / 1000000000})
-		}
+	series := [][]float64{}
+	for _, d := range data {
+		series = append(series, []float64{float64(d.Time.UnixMilli()), d.Value})
 	}
 
 	chartData := &types.GenericChartData{
@@ -343,7 +345,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Staked Ether",
-				Data: dailyStakedEther,
+				Data: series,
 			},
 		},
 	}
@@ -356,24 +358,26 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	rows := []struct {
-		Epoch                   uint64
-		AverageValidatorBalance uint64
+	data := []struct {
+		Indicator string    `db:"indicator"`
+		Time      time.Time `db:"time"`
+		Value     float64   `db:"value"`
 	}{}
 
-	err := db.ReaderDb.Select(&rows, "SELECT epoch, averagevalidatorbalance FROM epochs ORDER BY epoch")
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_VALIDATOR_BALANCE_ETH' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
 
-	dailyAverageBalance := [][]float64{}
-
-	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if len(dailyAverageBalance) == 0 || dailyAverageBalance[len(dailyAverageBalance)-1][0] != day {
-			dailyAverageBalance = append(dailyAverageBalance, []float64{day, utils.RoundDecimals(float64(row.AverageValidatorBalance)/1e9, 4)})
-		}
+	series := [][]float64{}
+	for _, d := range data {
+		series = append(series, []float64{float64(d.Time.UnixMilli()), d.Value})
 	}
 
 	chartData := &types.GenericChartData{
@@ -387,7 +391,7 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Average Balance [ETH]",
-				Data: dailyAverageBalance,
+				Data: series,
 			},
 		},
 	}
@@ -444,27 +448,26 @@ func participationRateChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	rows := []struct {
-		Day                     uint64
-		Globalparticipationrate float64
+	data := []struct {
+		Indicator string    `db:"indicator"`
+		Time      time.Time `db:"time"`
+		Value     float64   `db:"value"`
 	}{}
 
 	epoch := LatestEpoch()
 	if epoch > 0 {
 		epoch--
 	}
-	err := db.ReaderDb.Select(&rows, "SELECT epoch / $2 as day, AVG(globalparticipationrate) as globalparticipationrate FROM epochs WHERE epoch < $1 GROUP BY day ORDER BY day;", epoch, utils.EpochsPerDay())
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_PARTICIPATION_RATE' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
 
-	seriesData := [][]float64{}
-
-	for _, row := range rows {
-		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime((row.Day+1)*utils.EpochsPerDay()).Unix() * 1000),
-			utils.RoundDecimals(row.Globalparticipationrate*100, 2),
-		})
+	series := [][]float64{}
+	for _, d := range data {
+		series = append(series, []float64{float64(d.Time.UnixMilli()), d.Value})
 	}
 
 	chartData := &types.GenericChartData{
@@ -477,7 +480,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Participation Rate",
-				Data: seriesData,
+				Data: series,
 			},
 		},
 	}
@@ -580,28 +583,26 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	rows := []struct {
-		Day           uint64
-		Effectiveness float64
+	data := []struct {
+		Indicator string    `db:"indicator"`
+		Time      time.Time `db:"time"`
+		Value     float64   `db:"value"`
 	}{}
 
-	err := db.ReaderDb.Select(&rows, `
-		SELECT
-			epoch / $1 as day,
-			COALESCE(AVG(eligibleether) / AVG(totalvalidatorbalance), 0) as effectiveness
-		FROM epochs where totalvalidatorbalance != 0 AND eligibleether != 0 GROUP BY day ORDER BY day`, utils.EpochsPerDay())
+	epoch := LatestEpoch()
+	if epoch > 0 {
+		epoch--
+	}
+	ts := utils.EpochToTime(epoch)
+
+	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_STAKE_EFFECTIVENESS' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
 
-	seriesData := [][]float64{}
-
-	for _, row := range rows {
-
-		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime((row.Day+1)*utils.EpochsPerDay()).Unix() * 1000),
-			utils.RoundDecimals(100*row.Effectiveness, 2),
-		})
+	series := [][]float64{}
+	for _, d := range data {
+		series = append(series, []float64{float64(d.Time.UnixMilli()), d.Value})
 	}
 
 	chartData := &types.GenericChartData{
@@ -614,7 +615,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Stake Effectiveness",
-				Data: seriesData,
+				Data: series,
 			},
 		},
 	}
@@ -862,10 +863,6 @@ func depositsChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
-// func WithdrawalsChartData() (*types.GenericChartData, error) {
-// 	return withdrawalsChartData()
-// }
-
 func withdrawalsChartData() (*types.GenericChartData, error) {
 	if LatestEpoch() == 0 {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
@@ -984,8 +981,6 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 		Validators uint64 `json:"validators"`
 	}{}
 
-	// \x are missed blocks
-	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
 	err := db.ReaderDb.Select(&rows, `select graffiti_text as name, count(*) as weight, sum(proposer_count) as validators from graffiti_stats group by graffiti_text order by weight desc limit 25`)
 	if err != nil {
 		return nil, fmt.Errorf("error getting graffiti-occurrences: %w", err)

@@ -1341,17 +1341,17 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 
 	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'PROPOSED_BLOCKS' as indicator, count(*) as value from blocks where status = '1' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
-		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+		return fmt.Errorf("error inserting PROPOSED_BLOCKS into chart_series: %w", err)
 	}
 
 	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'MISSED_BLOCKS' as indicator, count(*) as value from blocks where status = '2' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
-		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+		return fmt.Errorf("error inserting MISSED_BLOCKS into chart_series: %w", err)
 	}
 
 	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'ORPHANED_BLOCKS' as indicator, count(*) as value from blocks where status = '3' and slot >= $2 and slot < $3`, dateTrunc, firstSlot, lastSlot)
 	if err != nil {
-		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+		return fmt.Errorf("error inserting ORPHANED_BLOCKS into chart_series: %w", err)
 	}
 
 	return nil
