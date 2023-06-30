@@ -156,10 +156,6 @@ func main() {
 		}
 	case "export-epoch-missed-slots":
 		logrus.Infof("exporting epochs with missed slots")
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
-		if err != nil {
-			logrus.Fatalf("error initializing last attesation cache: %v", err)
-		}
 		epochs := []uint64{}
 		err = db.ReaderDb.Select(&epochs, `
 			WITH last_exported_epoch AS (
