@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func WriteValidatorStatisticsForDay(day uint64) error {
+func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurrencyCl uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
@@ -108,7 +108,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
-	} else if err := WriteValidatorClIcome(day); err != nil {
+	} else if err := WriteValidatorClIcome(day, concurrencyCl); err != nil {
 		return err
 	}
 
@@ -120,7 +120,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	if exported.TotalPerformance {
 		logger.Infof("Skipping total performance")
-	} else if err := WriteValidatorTotalPerformance(day); err != nil {
+	} else if err := WriteValidatorTotalPerformance(day, concurrencyTotal); err != nil {
 		return err
 	}
 
@@ -167,7 +167,7 @@ func WriteValidatorStatsExported(day uint64) error {
 	return nil
 }
 
-func WriteValidatorTotalPerformance(day uint64) error {
+func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -215,6 +215,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		return err
 	}
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 	batchSize := 1000
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
@@ -225,7 +226,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			_, err = WriterDb.Exec(`
@@ -565,7 +566,7 @@ func WriteValidatorElIcome(day uint64) error {
 	return nil
 }
 
-func WriteValidatorClIcome(day uint64) error {
+func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -621,6 +622,7 @@ func WriteValidatorClIcome(day uint64) error {
 	maxValidatorIndex++
 
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 
 	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
@@ -654,7 +656,7 @@ func WriteValidatorClIcome(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			_, err := WriterDb.Exec(stmt, valueArgs...)
@@ -755,7 +757,7 @@ func WriteValidatorBalances(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			defer logger.Infof("saving validator balance batch %v completed", start)
@@ -995,7 +997,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	logrus.Infof("exporting 'failed attestations' statistics firstEpoch: %v lastEpoch: %v", firstEpoch, lastEpoch)
 
 	// first key is the batch start index and the second is the validator id
-	failed := map[uint64]map[uint64]*types.ValidatorFailedAttestationsStatistic{}
+	failed := map[uint64]map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
@@ -1010,10 +1012,10 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
-			ma, err := BigtableClient.GetValidatorFailedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
+			ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
 			if err != nil {
 				logrus.Errorf("error getting 'failed attestations' %v", err)
 				return err
@@ -1029,7 +1031,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	validatorMap := map[uint64]*types.ValidatorFailedAttestationsStatistic{}
+	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	for _, f := range failed {
 
 		for key, val := range f {
@@ -1037,14 +1039,13 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 				validatorMap[key] = val
 			} else {
 				validatorMap[key].MissedAttestations += val.MissedAttestations
-				validatorMap[key].OrphanedAttestations += val.OrphanedAttestations
 			}
 		}
 	}
 
 	logrus.Infof("fetching 'failed attestations' done in %v, now we export them to the db", time.Since(start))
 	start = time.Now()
-	maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(validatorMap))
+	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(validatorMap))
 
 	for _, stat := range validatorMap {
 		maArr = append(maArr, stat)
@@ -1064,7 +1065,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			return saveFailedAttestationBatch(maArr[start:end], day)
@@ -1085,7 +1086,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	return nil
 }
 
-func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatistic, day uint64) error {
+func saveFailedAttestationBatch(batch []*types.ValidatorMissedAttestationsStatistic, day uint64) error {
 	var failedAttestationBatchNumArgs int = 4
 	batchSize := len(batch)
 	valueStrings := make([]string, 0, failedAttestationBatchNumArgs)
@@ -1096,7 +1097,7 @@ func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatis
 		valueArgs = append(valueArgs, stat.Index)
 		valueArgs = append(valueArgs, day)
 		valueArgs = append(valueArgs, stat.MissedAttestations)
-		valueArgs = append(valueArgs, stat.OrphanedAttestations)
+		valueArgs = append(valueArgs, 0)
 	}
 	stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
@@ -1166,8 +1167,9 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch+10) // updates every epoch, keep 10sec longer
 	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(validatorIndicesStr, ","))
-	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, []types.ValidatorIncomeHistory{}); err == nil {
-		return cached.([]types.ValidatorIncomeHistory), nil
+	cached := []types.ValidatorIncomeHistory{}
+	if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, &cached); err == nil {
+		return cached, nil
 	}
 
 	var result []types.ValidatorIncomeHistory
@@ -1247,7 +1249,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 	}
 
 	go func() {
-		err := cache.TieredCache.Set(cacheKey, result, cacheDur)
+		err := cache.TieredCache.Set(cacheKey, &result, cacheDur)
 		if err != nil {
 			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetValidatorIncomeHistory with key %v", cacheKey), 0)
 		}
@@ -1271,13 +1273,15 @@ func WriteChartSeriesForDay(day int64) error {
 	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 
 	// inclusive slot
-	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
-
-	epochOffset := firstSlot % utils.Config.Chain.Config.SlotsPerEpoch
-	firstSlot = firstSlot - epochOffset
+	firstSlot := utils.TimeToFirstSlotOfEpoch(uint64(dateTrunc.Unix()))
 	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
 	// exclusive slot
 	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	// The first day is not a whole day, so we take the first slot from the next day as lastSlot
+	if firstSlot == 0 {
+		nextDateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+1, 0, 0, 0, 0, time.UTC)
+		lastSlot = int64(utils.TimeToFirstSlotOfEpoch(uint64(nextDateTrunc.Unix())))
+	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
 	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))

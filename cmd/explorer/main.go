@@ -184,7 +184,7 @@ func main() {
 		go func() {
 			defer wg.Done()
 			cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
-			logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+			logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 
 		}()
 	}
@@ -192,11 +192,11 @@ func main() {
 	wg.Wait()
 	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
 		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
-		logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+		logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 	}
 
 	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (example redis, bigtable)")
 	}
 
 	defer db.ReaderDb.Close()
@@ -229,13 +229,6 @@ func main() {
 	logrus.Infof("database connection established")
 
 	if utils.Config.Indexer.Enabled {
-
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
-
-		if err != nil {
-			logrus.Fatalf("error initializing last attesation cache: %v", err)
-		}
-
 		var rpcClient rpc.Client
 
 		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
@@ -727,9 +720,6 @@ func main() {
 				logrus.WithError(err).Fatal("Error serving frontend")
 			}
 		}()
-	}
-	if utils.Config.Notifications.Enabled {
-		services.InitNotifications(utils.Config.Notifications.PubkeyCachePath)
 	}
 
 	if utils.Config.Metrics.Enabled {

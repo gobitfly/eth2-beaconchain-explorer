@@ -578,26 +578,6 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		}
 		return nil
 	})
-	g.Go(func() error {
-		attestedSlots := make(map[uint64]uint64)
-		for _, blockkv := range data.Blocks {
-			for _, block := range blockkv {
-				for _, attestation := range block.Attestations {
-					for _, validator := range attestation.Attesters {
-						if block.Slot > attestedSlots[validator] {
-							attestedSlots[validator] = block.Slot
-						}
-					}
-				}
-			}
-		}
-
-		err = services.SetLastAttestationSlots(attestedSlots)
-		if err != nil {
-			return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
-		}
-		return nil
-	})
 
 	err = g.Wait()
 	if err != nil {
