@@ -189,7 +189,7 @@ func blocksChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = any('{PROPOSED_BLOCKS, MISSED_BLOCKS, ORPHANED_BLOCKS}') ORDER BY time", ts)
+	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE time < $1 and indicator = any('{PROPOSED_BLOCKS, MISSED_BLOCKS, ORPHANED_BLOCKS}') ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'STAKED_ETH' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE time < $1 and indicator = 'STAKED_ETH' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_VALIDATOR_BALANCE_ETH' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE time < $1 and indicator = 'AVG_VALIDATOR_BALANCE_ETH' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +460,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_PARTICIPATION_RATE' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE time < $1 and indicator = 'AVG_PARTICIPATION_RATE' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -595,7 +595,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = 'AVG_STAKE_EFFECTIVENESS' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE time < $1 and indicator = 'AVG_STAKE_EFFECTIVENESS' ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
@@ -809,7 +809,7 @@ func depositsChartData() (*types.GenericChartData, error) {
 	}
 	ts := utils.EpochToTime(epoch)
 
-	err := db.ReaderDb.Select(&data, "SELECT time, value FROM chart_series WHERE time < $1 and indicator = any('{EL_VALID_DEPOSITS_ETH, EL_INVALID_DEPOSITS_ETH, CL_DEPOSITS_ETH}') ORDER BY time", ts)
+	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE time < $1 and indicator = any('{EL_VALID_DEPOSITS_ETH, EL_INVALID_DEPOSITS_ETH, CL_DEPOSITS_ETH}') ORDER BY time", ts)
 	if err != nil {
 		return nil, err
 	}
