@@ -1293,7 +1293,7 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 
 	// inclusive slot
-	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
+	firstSlot := utils.TimeToFirstSlotOfEpoch(uint64(dateTrunc.Unix()))
 
 	epochOffset := firstSlot % utils.Config.Chain.Config.SlotsPerEpoch
 	firstSlot = firstSlot - epochOffset
@@ -1304,7 +1304,7 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 
 	var err error
 
-	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether as value from epochs where epoch = $2 limit 1 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, lastEpoch-1)
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether/1e9 as value from epochs where epoch = $2 limit 1 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, lastEpoch-1)
 	if err != nil {
 		return fmt.Errorf("error inserting STAKED_ETH into chart_series: %w", err)
 	}
