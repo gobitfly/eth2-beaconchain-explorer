@@ -1206,7 +1206,7 @@ $(document).ready(function () {
           for (var i = 0; i < result.data.length; i++) {
             var v = result.data[i]
             var vIndex = v[1]
-            var vState = v[3]
+            var vState = v[3][1]
             if (!state.validatorsCount[vState]) state.validatorsCount[vState] = 0
             state.validatorsCount[vState]++
             var el = document.querySelector(`#selected-validators .item[data-validator-index="${vIndex}"]`)
