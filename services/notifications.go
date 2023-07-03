@@ -2290,6 +2290,8 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 	)
 }
 
+var isFirstNotificationCheck = true
+
 func collectMonitoringMachine(
 	notificationsByUserID map[uint64]map[types.EventName][]types.Notification,
 	eventName types.EventName,
@@ -2342,11 +2344,37 @@ func collectMonitoringMachine(
 		}
 	}
 
-	// if at least 90% of users would be notified, we expect an issue on our end and no one will be notified
-	const notifiedSubscriptionsRatioThreshold = 0.9
-	if float64(len(result))/float64(len(allSubscribed)) >= notifiedSubscriptionsRatioThreshold {
-		utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
+	if len(result) == 0 {
 		return nil
+	}
+
+	const subThreshold = 10
+	const subFirstRatioThreshold = 0.3
+	const subSecondRatioThreshold = 0.9
+
+	var subScriptionCount uint64
+	err = db.FrontendWriterDB.Get(&subScriptionCount,
+		`SELECT 
+			COUNT(DISTINCT user_id)
+			FROM users_subscriptions
+			WHERE event_name = $1`,
+		eventName)
+	if err != nil {
+		return err
+	}
+
+	// If less than 10 users are subscribed send the notifications
+	if subScriptionCount >= subThreshold {
+		subRatioThreshold := subSecondRatioThreshold
+		// For the machine offline check we do a low threshold check first and the next time a high threshold check
+		if isFirstNotificationCheck && eventName == types.MonitoringMachineOfflineEventName {
+			subRatioThreshold = subFirstRatioThreshold
+			isFirstNotificationCheck = false
+		}
+		if float64(len(result))/float64(len(allSubscribed)) >= subRatioThreshold {
+			utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
+			return nil
+		}
 	}
 
 	for _, r := range result {
