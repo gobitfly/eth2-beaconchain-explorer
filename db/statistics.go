@@ -1397,7 +1397,7 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 
 func WriteExecutionChartSeriesForDay(day int64) error {
 	if utils.Config.Chain.Config.DepositChainID != 1 {
-		logger.Warnf("not writing chart_series for execution: chainId != 1: %v", utils.Config.Chain.Config.DepositChainID)
+		// logger.Warnf("not writing chart_series for execution: chainId != 1: %v", utils.Config.Chain.Config.DepositChainID)
 		return nil
 	}
 
