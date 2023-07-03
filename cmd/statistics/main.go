@@ -137,7 +137,7 @@ func main() {
 
 				clearStatsStatusTable(d, opt.statisticsResetColumns)
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d), *concurrencyTotal, *concurrencyCl)
+				err = db.WriteValidatorStatisticsForDay(uint64(d), opt.concurrencyTotal, opt.concurrencyCl)
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", d, err)
 					break
@@ -177,7 +177,7 @@ func main() {
 		if opt.statisticsValidatorToggle {
 			clearStatsStatusTable(uint64(opt.statisticsDayToExport), opt.statisticsResetColumns)
 
-			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport), *concurrencyTotal, *concurrencyCl)
+			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), opt.concurrencyTotal, opt.concurrencyCl)
 			if err != nil {
 				logrus.Errorf("error exporting stats for day %v: %v", opt.statisticsDayToExport, err)
 			}
@@ -204,7 +204,7 @@ func main() {
 		return
 	}
 
-	go statisticsLoop(*concurrencyTotal, *concurrencyCl)
+	go statisticsLoop(opt.concurrencyTotal, opt.concurrencyCl)
 
 	utils.WaitForCtrlC()
 
