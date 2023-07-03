@@ -1260,12 +1260,38 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 func WriteChartSeriesForDay(day int64) error {
 	startTs := time.Now()
-	err := WriteExecutionChartSeriesForDay(day)
-	if err != nil {
-		return err
-	}
 
-	err = WriteConsensusChartSeriesForDay(day)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return gCtx.Err()
+		default:
+		}
+		err := WriteExecutionChartSeriesForDay(day)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return gCtx.Err()
+		default:
+		}
+		err := WriteConsensusChartSeriesForDay(day)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	err := g.Wait()
 	if err != nil {
 		return err
 	}
