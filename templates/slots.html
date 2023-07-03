@@ -42,6 +42,9 @@
                 console.error("error loading table state, err:", data, "status: ", status)
               }
               var response = data !== "" ? data : JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              if (q) {
+                response.search.search = q
+              }
               callback(response)
             })
             .catch((err) => {
@@ -80,7 +83,7 @@
         t.search(q)
         t.draw()
       }
-      $("#slots_filter > label > input").on("input", function (ev) {
+      $(document).on("input", "#slots_filter > label > input", function (ev) {
         if (ev && ev.target && ev.target.value) {
           var emptygraffiticheckbox = document.getElementById("showonlyemptygraffiti")
           if (emptygraffiticheckbox) {

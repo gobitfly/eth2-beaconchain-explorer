@@ -340,10 +340,6 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		address: make(map[common.Address]bool),
 		name:    make(map[string]bool),
 	}
-	mutsDelete := &types.BulkMutations{
-		Keys: make([]string, 0, 1),
-		Muts: make([]*gcp_bigtable.Mutation, 0, 1),
-	}
 
 	batchSize := 100
 	total := len(keys)
@@ -355,6 +351,10 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		batch := keys[i:to]
 		logger.Infof("Batching ENS entries %v:%v of %v", i, to, total)
 		g := new(errgroup.Group)
+		mutsDelete := &types.BulkMutations{
+			Keys: make([]string, 0, 1),
+			Muts: make([]*gcp_bigtable.Mutation, 0, 1),
+		}
 		mutDelete := gcp_bigtable.NewMutation()
 		mutDelete.DeleteRow()
 		for _, k := range batch {
@@ -413,10 +413,14 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		if err := g.Wait(); err != nil {
 			return err
 		}
+		// After processing a batch of keys we remove them from bigtable
+		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+		if err != nil {
+			return err
+		}
 	}
 	logger.Info("ens key indexing completed")
-	// After processing the keys we remove them from bigtable
-	return bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+	return nil
 }
 
 func validateEnsAddress(client *ethclient.Client, address common.Address, alreadyChecked *EnsCheckedDictionary) error {
@@ -540,9 +544,11 @@ func removeEnsName(client *ethclient.Client, name string) error {
 	WHERE 
 		ens_name = $1
 	;`, name)
-	if err != nil {
-		utils.LogError(err, fmt.Errorf("error deleting ens name [%v]", name), 0)
-		return err
+	if err != nil && strings.Contains(fmt.Sprintf("%v", err), "invalid byte sequence") {
+		logger.Warnf("could not delete ens name [%v]: %v", name, err)
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error deleting ens name [%v]: %v", name, err)
 	}
 	logger.Infof("Ens name remove from db: %v", name)
 	return nil

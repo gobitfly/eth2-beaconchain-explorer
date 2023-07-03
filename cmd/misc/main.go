@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -63,7 +62,13 @@ func main() {
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	opts.DryRun = *dryRun != "false"
 
@@ -142,11 +147,6 @@ func main() {
 	case "epoch-export":
 		logrus.Infof("exporting epochs %v - %v", opts.StartEpoch, opts.EndEpoch)
 
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
-		if err != nil {
-			logrus.Fatalf("error initializing last attesation cache: %v", err)
-		}
-
 		for epoch := opts.StartEpoch; epoch <= opts.EndEpoch; epoch++ {
 			err = exporter.ExportEpoch(epoch, rpcClient)
 
@@ -210,7 +210,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					g.Go(func() error {
 						select {
 						case <-gCtx.Done():
-							return nil // halt once processing of a slot failed
+							return gCtx.Err()
 						default:
 						}
 
@@ -239,7 +239,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					g.Go(func() error {
 						select {
 						case <-gCtx.Done():
-							return nil // halt once processing of a slot failed
+							return gCtx.Err()
 						default:
 						}
 						var aggregationbits *[]byte

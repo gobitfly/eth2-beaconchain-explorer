@@ -33,11 +33,20 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
+	// we can use a higher concurrency for cl as the querie is smaller then for the total stats
+	concurrencyTotal := flag.Uint64("concurrency.total", 10, "Concurrency to use when writing total rewards/performance postgres queries ")
+	concurrencyCl := flag.Uint64("concurrency.cl", 50, "Concurrency to use when writing cl postgres queries")
 	statisticsValidatorToggle := flag.Bool("validators.enabled", false, "Toggle exporting validator statistics")
 	statisticsResetColumns := flag.String("validators.reset", "", "validator_stats_status columns to reset. Comma separated. Use 'all' for complete resync.")
 	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	opt = &options{
 		configPath:                *configPath,
@@ -138,7 +147,7 @@ func main() {
 
 				clearStatsStatusTable(d, opt.statisticsResetColumns)
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d))
+				err = db.WriteValidatorStatisticsForDay(uint64(d), *concurrencyTotal, *concurrencyCl)
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", d, err)
 					break
@@ -168,7 +177,7 @@ func main() {
 		if *statisticsValidatorToggle {
 			clearStatsStatusTable(uint64(*statisticsDayToExport), opt.statisticsResetColumns)
 
-			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport))
+			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport), *concurrencyTotal, *concurrencyCl)
 			if err != nil {
 				logrus.Errorf("error exporting stats for day %v: %v", *statisticsDayToExport, err)
 			}
@@ -188,14 +197,14 @@ func main() {
 		return
 	}
 
-	go statisticsLoop()
+	go statisticsLoop(*concurrencyTotal, *concurrencyCl)
 
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
 }
 
-func statisticsLoop() {
+func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64) {
 	for {
 
 		latestEpoch := services.LatestFinalizedEpoch()
@@ -230,7 +239,7 @@ func statisticsLoop() {
 			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
-					err := db.WriteValidatorStatisticsForDay(day)
+					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl)
 					if err != nil {
 						logrus.Errorf("error exporting stats for day %v: %v", day, err)
 						break

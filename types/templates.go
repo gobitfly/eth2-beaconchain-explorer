@@ -310,18 +310,18 @@ type ValidatorsPageData struct {
 
 // ValidatorsData is a struct to hold data about validators
 type ValidatorsData struct {
-	TotalCount                 uint64  `db:"total_count"`
-	Epoch                      uint64  `db:"epoch"`
-	PublicKey                  []byte  `db:"pubkey"`
-	ValidatorIndex             uint64  `db:"validatorindex"`
-	WithdrawableEpoch          uint64  `db:"withdrawableepoch"`
-	CurrentBalance             uint64  `db:"balance"`
-	EffectiveBalance           uint64  `db:"effectivebalance"`
-	Slashed                    bool    `db:"slashed"`
-	ActivationEligibilityEpoch uint64  `db:"activationeligibilityepoch"`
-	ActivationEpoch            uint64  `db:"activationepoch"`
-	ExitEpoch                  uint64  `db:"exitepoch"`
-	LastAttestationSlot        *int64  `db:"lastattestationslot"`
+	TotalCount                 uint64 `db:"total_count"`
+	Epoch                      uint64 `db:"epoch"`
+	PublicKey                  []byte `db:"pubkey"`
+	ValidatorIndex             uint64 `db:"validatorindex"`
+	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
+	CurrentBalance             uint64 `db:"balance"`
+	EffectiveBalance           uint64 `db:"effectivebalance"`
+	Slashed                    bool   `db:"slashed"`
+	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch            uint64 `db:"activationepoch"`
+	ExitEpoch                  uint64 `db:"exitepoch"`
+	LastAttestationSlot        int64
 	Name                       string  `db:"name"`
 	State                      string  `db:"state"`
 	MissedProposals            uint64  `db:"missedproposals"`
@@ -346,11 +346,11 @@ type ValidatorPageData struct {
 	SlashedBy                                uint64
 	SlashedAt                                uint64
 	SlashedFor                               string
-	ActivationEligibilityEpoch               uint64         `db:"activationeligibilityepoch"`
-	ActivationEpoch                          uint64         `db:"activationepoch"`
-	ExitEpoch                                uint64         `db:"exitepoch"`
-	Index                                    uint64         `db:"index"`
-	LastAttestationSlot                      *uint64        `db:"lastattestationslot"`
+	ActivationEligibilityEpoch               uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch                          uint64 `db:"activationepoch"`
+	ExitEpoch                                uint64 `db:"exitepoch"`
+	Index                                    uint64 `db:"index"`
+	LastAttestationSlot                      uint64
 	Name                                     string         `db:"name"`
 	Pool                                     string         `db:"pool"`
 	Tags                                     pq.StringArray `db:"tags"`
@@ -362,7 +362,6 @@ type ValidatorPageData struct {
 	AttestationsCount                        uint64
 	ExecutedAttestationsCount                uint64
 	MissedAttestationsCount                  uint64
-	OrphanedAttestationsCount                uint64
 	UnmissedAttestationsPercentage           float64 // missed/(executed+orphaned)
 	StatusProposedCount                      uint64
 	StatusMissedCount                        uint64
@@ -475,7 +474,6 @@ type ValidatorStatsTableRow struct {
 	MinEffectiveBalance    sql.NullInt64 `db:"min_effective_balance"`
 	MaxEffectiveBalance    sql.NullInt64 `db:"max_effective_balance"`
 	MissedAttestations     sql.NullInt64 `db:"missed_attestations"`
-	OrphanedAttestations   sql.NullInt64 `db:"orphaned_attestations"`
 	ProposedBlocks         sql.NullInt64 `db:"proposed_blocks"`
 	MissedBlocks           sql.NullInt64 `db:"missed_blocks"`
 	OrphanedBlocks         sql.NullInt64 `db:"orphaned_blocks"`

@@ -17,10 +17,9 @@ type ValidatorBalanceStatistic struct {
 	EndBalance            uint64
 }
 
-type ValidatorFailedAttestationsStatistic struct {
-	Index                uint64
-	MissedAttestations   uint64
-	OrphanedAttestations uint64
+type ValidatorMissedAttestationsStatistic struct {
+	Index              uint64
+	MissedAttestations uint64
 }
 
 type ValidatorSyncDutiesStatistic struct {
