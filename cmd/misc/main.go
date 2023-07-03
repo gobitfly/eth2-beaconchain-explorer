@@ -164,7 +164,22 @@ func main() {
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "historic-prices-export":
-		exportHistoricPrices(opts.StartDay, opts.EndDay)
+		logrus.Infof("exporting historic prices for days %v - %v", opts.StartDay, opts.EndDay)
+		for day := opts.StartDay; day <= opts.EndDay; day++ {
+			timeStart := time.Now()
+			ts := utils.DayToTime(int64(day)).UTC().Truncate(time.Hour * 24)
+			err := services.WriteHistoricPricesForDay(ts)
+			if err != nil {
+				logrus.Errorf("error exporting historic prices for day %v: %v", day, err)
+				break
+			}
+			logrus.Printf("finished export for day %v, took %v", day, time.Since(timeStart))
+
+			// Wait to not overload the API
+			time.Sleep(5 * time.Second)
+		}
+
+		// exportHistoricPrices(opts.StartDay, opts.EndDay)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
@@ -481,19 +496,19 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	logrus.Infof("index run completed")
 }
 
-func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
-	logrus.Infof("exporting historic prices for days %v - %v", dayStart, dayEnd)
-	for day := dayStart; day <= dayEnd; day++ {
-		timeStart := time.Now()
-		ts := utils.DayToTime(int64(day)).UTC().Truncate(time.Hour * 24)
-		err := services.WriteHistoricPricesForDay(ts)
-		if err != nil {
-			logrus.Errorf("error exporting historic prices for day %v: %v", day, err)
-			break
-		}
-		logrus.Printf("finished export for day %v, took %v", day, time.Since(timeStart))
+// func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
+// 	logrus.Infof("exporting historic prices for days %v - %v", dayStart, dayEnd)
+// 	for day := dayStart; day <= dayEnd; day++ {
+// 		timeStart := time.Now()
+// 		ts := utils.DayToTime(int64(day)).UTC().Truncate(time.Hour * 24)
+// 		err := services.WriteHistoricPricesForDay(ts)
+// 		if err != nil {
+// 			logrus.Errorf("error exporting historic prices for day %v: %v", day, err)
+// 			break
+// 		}
+// 		logrus.Printf("finished export for day %v, took %v", day, time.Since(timeStart))
 
-		// Wait to not overload the API
-		time.Sleep(5 * time.Second)
-	}
-}
+// 		// Wait to not overload the API
+// 		time.Sleep(5 * time.Second)
+// 	}
+// }
