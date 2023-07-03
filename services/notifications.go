@@ -2344,10 +2344,6 @@ func collectMonitoringMachine(
 		}
 	}
 
-	if len(result) == 0 {
-		return nil
-	}
-
 	const subThreshold = 10
 	const subFirstRatioThreshold = 0.3
 	const subSecondRatioThreshold = 0.9
