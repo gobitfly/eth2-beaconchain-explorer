@@ -2376,6 +2376,10 @@ func collectMonitoringMachine(
 			return nil
 		}
 	}
+	if eventName == types.MonitoringMachineOfflineEventName {
+		// Notifications will be sent, reset the flag
+		isFirstNotificationCheck = true
+	}
 
 	for _, r := range result {
 
