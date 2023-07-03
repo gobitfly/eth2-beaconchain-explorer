@@ -1326,7 +1326,14 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
 	// exclusive slot
 	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	if firstSlot == 0 {
+		nextDateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+1, 0, 0, 0, 0, time.UTC)
+		lastSlot = int64(utils.TimeToFirstSlotOfEpoch(uint64(nextDateTrunc.Unix())))
+	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
+	lastSlot = lastEpoch * int64(utils.Config.Chain.Config.SlotsPerEpoch)
+
+	logrus.WithFields(logrus.Fields{"day": day, "firstSlot": firstSlot, "lastSlot": lastSlot, "firstEpoch": firstEpoch, "lastEpoch": lastEpoch, "startDate": startDate, "dateTrunc": dateTrunc}).Infof("exporting consensus chart_series")
 
 	var err error
 
