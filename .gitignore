@@ -26,7 +26,6 @@ webassembly
 static/monaco-editor
 tokenlists/
 lastAttestationCache
-historic_prices
 cmd/forkwatch
 **/.DS_Store
 _gitignore/
