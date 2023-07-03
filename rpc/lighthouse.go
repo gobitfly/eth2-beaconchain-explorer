@@ -60,6 +60,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 		for ; ; time.Sleep(time.Second) {
 			lc.lastBlockSeenMux.Lock()
 			if time.Since(lc.lastBlockSeen) > time.Minute*2 {
+				lc.lastBlockSeenMux.Unlock()
 				// fatal if no new block was received for more than two minutes
 				logger.Fatalf("lighthouse client error, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
 			}
