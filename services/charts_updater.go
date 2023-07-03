@@ -312,7 +312,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 		Value     float64   `db:"value"`
 	}{}
 
-	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE indicator = 'STAKED_ETH' ORDER BY time", ts)
+	err := db.ReaderDb.Select(&data, "SELECT time, value, indicator FROM chart_series WHERE indicator = 'STAKED_ETH' ORDER BY time")
 	if err != nil {
 		return nil, err
 	}
