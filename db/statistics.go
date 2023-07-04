@@ -669,7 +669,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 				(
 					SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(last.end_balance, 0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
 					FROM validator_stats cur
-					INNER JOIN validator_stats last 
+					LEFT JOIN validator_stats last 
 						ON cur.validatorindex = last.validatorindex AND last.day = GREATEST(cur.day - 1, 0)
 					WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex < $3
 				)
