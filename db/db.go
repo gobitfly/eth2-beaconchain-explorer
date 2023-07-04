@@ -2231,7 +2231,7 @@ func GetBlockNumber(slot uint64) (block uint64, err error) {
 func SaveChartSeriesPoint(date time.Time, indicator string, value any) error {
 	_, err := WriterDb.Exec(`INSERT INTO chart_series (time, indicator, value) VALUES($1, $2, $3) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value`, date, indicator, value)
 	if err != nil {
-		return fmt.Errorf("error calculating NON_FAILED_TX_GAS_USAGE chart_series: %w", err)
+		return fmt.Errorf("error saving chart_series: %v: %w", indicator, err)
 	}
 	return err
 }
