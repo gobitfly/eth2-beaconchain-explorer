@@ -1042,6 +1042,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		Missed         *uint64 `db:"missed_blocks"`
 		Orphaned       *uint64 `db:"orphaned_blocks"`
 	}{}
+	todaysProposals := proposals
 
 	err = db.ReaderDb.Select(&proposals, `
 		SELECT validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks
@@ -1054,21 +1055,50 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lastDay, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving last exported statistic day")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+	_, lastExportedEpoch := utils.GetFirstAndLastEpochForDay(lastDay)
+
+	err = db.ReaderDb.Select(&todaysProposals, `
+		SELECT
+			proposer as validatorindex,
+			SUM(CASE WHEN status = '1' THEN 1 ELSE 0 END) as proposed_blocks,
+			SUM(CASE WHEN status = '2' THEN 1 ELSE 0 END) as missed_blocks,
+			SUM(CASE WHEN status = '3' THEN 1 ELSE 0 END) as orphaned_blocks
+		FROM blocks
+		WHERE proposer = ANY($1) AND epoch > $2
+		group by proposer`, filter, lastExportedEpoch)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving validator_stats")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	for i := range todaysProposals {
+		todaysProposals[i].Day = int64(lastDay + 1)
+	}
+
+	proposals = append(todaysProposals, proposals...)
+
 	proposalsHistResult := make([][]uint64, len(proposals))
-	for i, b := range proposals {
+	for i, proposal := range proposals {
 		var proposed, missed, orphaned uint64 = 0, 0, 0
-		if b.Proposed != nil {
-			proposed = *b.Proposed
+		if proposal.Proposed != nil {
+			proposed = *proposal.Proposed
 		}
-		if b.Missed != nil {
-			missed = *b.Missed
+		if proposal.Missed != nil {
+			missed = *proposal.Missed
 		}
-		if b.Orphaned != nil {
-			orphaned = *b.Orphaned
+		if proposal.Orphaned != nil {
+			orphaned = *proposal.Orphaned
 		}
 		proposalsHistResult[i] = []uint64{
-			b.ValidatorIndex,
-			uint64(utils.DayToTime(b.Day).Unix()),
+			proposal.ValidatorIndex,
+			uint64(utils.DayToTime(proposal.Day).Unix()),
 			proposed,
 			missed,
 			orphaned,
