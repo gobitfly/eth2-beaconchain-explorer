@@ -55,6 +55,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 	firstEpoch := (lastStatsDay + 1) * utils.EpochsPerDay()
+	firstSlot := (firstEpoch-1)*utils.Config.Chain.Config.SlotsPerEpoch + 1
+	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
 	totalBalance := uint64(0)
@@ -100,12 +102,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	var lastDeposits uint64
 	g.Go(func() error {
-		return db.GetValidatorDepositsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastDeposits)
+		return db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
 	})
 
 	var lastWithdrawals uint64
 	g.Go(func() error {
-		return db.GetValidatorWithdrawalsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastWithdrawals)
+		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
 	})
 
 	var lastBalance uint64
