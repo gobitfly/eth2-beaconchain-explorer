@@ -341,8 +341,20 @@ func TimeToEpoch(ts time.Time) int64 {
 	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.Config.SecondsPerSlot) / int64(Config.Chain.Config.SlotsPerEpoch)
 }
 
-func WeiToEther(wei *big.Int) *big.Float {
-	return new(big.Float).SetPrec(90).Quo(new(big.Float).SetInt(wei), big.NewFloat(params.Ether))
+func WeiToEther(wei *big.Int) decimal.Decimal {
+	return decimal.NewFromBigInt(wei, 0).DivRound(decimal.NewFromInt(params.Ether), 18)
+}
+
+func WeiBytesToEther(wei []byte) decimal.Decimal {
+	return WeiToEther(new(big.Int).SetBytes(wei))
+}
+
+func GWeiToEther(wei *big.Int) decimal.Decimal {
+	return decimal.NewFromBigInt(wei, 0).Div(decimal.NewFromInt(params.GWei))
+}
+
+func GWeiBytesToEther(wei []byte) decimal.Decimal {
+	return GWeiToEther(new(big.Int).SetBytes(wei))
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed

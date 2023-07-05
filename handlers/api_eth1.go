@@ -316,7 +316,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).DivRound(decimal.NewFromInt(1e18), 18).String()
+	response.Ether = utils.WeiBytesToEther(metadata.EthBalance.Balance).String()
 	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
 	response.Tokens = []struct {
 		Address  string  `json:"address"`
@@ -416,8 +416,8 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			From:               utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
 			To:                 utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 			MethodId:           fmt.Sprintf("0x%x", tx.MethodId),
-			Value:              decimal.NewFromBigInt(new(big.Int).SetBytes(tx.Value), 0).DivRound(decimal.NewFromInt(1e18), 18).String(),
-			GasPrice:           decimal.NewFromBigInt(new(big.Int).SetBytes(tx.GasPrice), 0).DivRound(decimal.NewFromInt(1e18), 18).String(),
+			Value:              utils.WeiBytesToEther(tx.Value).String(),
+			GasPrice:           utils.GWeiBytesToEther(tx.GasPrice).String(),
 			IsContractCreation: tx.IsContractCreation,
 			InvokesContract:    tx.InvokesContract,
 		})
@@ -497,7 +497,7 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 			Type:        itx.Type,
 			From:        utils.FixAddressCasing(fmt.Sprintf("%x", itx.From)),
 			To:          utils.FixAddressCasing(fmt.Sprintf("%x", itx.To)),
-			Value:       decimal.NewFromBigInt(new(big.Int).SetBytes(itx.Value), 0).DivRound(decimal.NewFromInt(1e18), 18).String(),
+			Value:       utils.WeiBytesToEther(itx.Value).String(),
 		})
 	}
 
@@ -551,13 +551,13 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 	blocksParsed := make([]types.Eth1BlockParsed, 0, len(producedBlocks))
 
 	for _, blk := range producedBlocks {
-		txReward := decimal.NewFromBigInt(new(big.Int).SetBytes(blk.TxReward), 0).DivRound(decimal.NewFromInt(1e18), 18).String()
+		txReward := utils.WeiBytesToEther(blk.TxReward).String()
 		if txReward == "0" {
 			txReward = ""
 		}
 
 		uncleHash := fmt.Sprintf("0x%x", blk.UncleHash)
-		uncleReward := decimal.NewFromBigInt(new(big.Int).SetBytes(blk.UncleReward), 0).DivRound(decimal.NewFromInt(1e18), 18).String()
+		uncleReward := utils.WeiBytesToEther(blk.UncleReward).String()
 		if uncleReward == "0" {
 			uncleReward = ""
 			uncleHash = ""
@@ -646,7 +646,7 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 			BaseFee:     decimal.NewFromBigInt(new(big.Int).SetBytes(uncl.BaseFee), 0).Div(decimal.NewFromInt(1e18)).String(),
 			Difficulty:  new(big.Int).SetBytes(uncl.Difficulty).String(),
 			Time:        uncl.Time.AsTime(),
-			Reward:      decimal.NewFromBigInt(new(big.Int).SetBytes(uncl.Reward), 0).DivRound(decimal.NewFromInt(1e18), 18).String(),
+			Reward:      utils.WeiBytesToEther(uncl.Reward).String(),
 		})
 	}
 

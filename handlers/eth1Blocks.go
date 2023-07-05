@@ -216,8 +216,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetGasUsed())))
 		burnedPercentage := float64(0.0)
 		if len(txReward.Bits()) != 0 {
-			txBurnedBig := decimal.NewFromBigInt(burned, 0).DivRound(decimal.NewFromBigInt(txReward, 0), 18)
-			burnedPercentage, _ = txBurnedBig.Float64()
+			burnedPercentage = decimal.NewFromBigInt(burned, 0).DivRound(decimal.NewFromBigInt(txReward, 0), 18).InexactFloat64()
 		}
 
 		tableData[i] = []interface{}{

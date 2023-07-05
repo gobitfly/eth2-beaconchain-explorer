@@ -17,6 +17,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"github.com/shopspring/decimal"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -186,9 +187,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Errorf("error generating qr code for address %v", address)
 	}
 
-	ef := new(big.Float).SetPrec(90).SetInt(new(big.Int).SetBytes(metadata.EthBalance.Balance))
-	etherBalance := new(big.Float).Quo(ef, big.NewFloat(1e18))
-	ethPrice := new(big.Float).Mul(etherBalance, big.NewFloat(float64(price)))
+	ethPrice := utils.WeiBytesToEther(metadata.EthBalance.Balance).Mul(decimal.NewFromInt(int64(price)))
 	tabs := []types.Eth1AddressPageTabs{}
 
 	if internal != nil && len(internal.Data) != 0 {

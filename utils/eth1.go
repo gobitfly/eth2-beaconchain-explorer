@@ -49,7 +49,7 @@ func StripPrefix(hexStr string) string {
 }
 
 func EthBytesToFloat(b []byte) float64 {
-	return decimal.NewFromBigInt(new(big.Int).SetBytes(b), 0).DivRound(decimal.NewFromInt(1e18), 18).InexactFloat64()
+	return WeiBytesToEther(b).InexactFloat64()
 }
 
 func FormatBlockNumber(number uint64) template.HTML {

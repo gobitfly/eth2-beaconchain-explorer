@@ -12,7 +12,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
 	"strings"
 
@@ -75,10 +74,10 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			p := message.NewPrinter(language.English)
 
 			symbol := GetCurrencySymbol(r)
-			etherValue := decimal.NewFromBigInt(new(big.Int).SetBytes(txData.Value), 0).DivRound(decimal.NewFromInt(1e18), 18)
+			etherValue := utils.WeiBytesToEther(txData.Value)
 
 			currentPrice := GetCurrentPrice(r)
-			currentEthPrice := etherValue.Mul(decimal.NewFromFloat(float64(currentPrice)))
+			currentEthPrice := etherValue.Mul(decimal.NewFromInt(int64(currentPrice)))
 			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, currentEthPrice.InexactFloat64()))
 
 			txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
@@ -98,8 +97,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 					utils.LogError(err, "error retrieving historical prices", 0, map[string]interface{}{"txDay": txDay, "currency": currency})
 				} else {
 					historicalEthPrice := etherValue.Mul(decimal.NewFromFloat(price))
-					hPrice, _ := historicalEthPrice.Float64()
-					txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, hPrice))
+					txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, historicalEthPrice.InexactFloat64()))
 				}
 			}
 
