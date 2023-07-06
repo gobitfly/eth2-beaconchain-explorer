@@ -1425,6 +1425,10 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
+	if utils.Config.Chain.Config.DepositChainID == 1 && firstSlot < 4700013 {
+		return nil
+	}
+
 	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
 	if err != nil {
 		return err

@@ -148,10 +148,10 @@ func main() {
 		if opt.statisticsChartToggle {
 			logrus.Infof("exporting chart series for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
-				_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
-				if err != nil {
-					logrus.Fatalf("error resetting status for chart series status for day %v: %v", d, err)
-				}
+				// _, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
+				// if err != nil {
+				// 	logrus.Fatalf("error resetting status for chart series status for day %v: %v", d, err)
+				// }
 
 				err = db.WriteChartSeriesForDay(int64(d))
 				if err != nil {
