@@ -1273,7 +1273,7 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 		err := WriteExecutionChartSeriesForDay(day)
 		if err != nil {
-			return err
+			return fmt.Errorf("error writing exec chart-series for day %v: %w", day, err)
 		}
 		return nil
 	})
@@ -1286,7 +1286,7 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 		err := WriteConsensusChartSeriesForDay(day)
 		if err != nil {
-			return err
+			return fmt.Errorf("error writing cons chart-series for day %v: %w", day, err)
 		}
 		return nil
 	})
@@ -1297,9 +1297,9 @@ func WriteChartSeriesForDay(day int64) error {
 	}
 
 	logger.Infof("marking day export as completed in the chart_series_status table for day %v", day)
-	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
+	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true) on conflict (day) do update set status = excluded.status", day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marking day as exported in chart_series_status for day %v: %w", day, err)
 	}
 
 	logger.Infof("chart_series export completed: took %v", time.Since(startTs))
