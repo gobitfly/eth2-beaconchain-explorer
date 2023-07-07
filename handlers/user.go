@@ -713,9 +713,68 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	monitoringSubscriptions := make([]types.Subscription, 0)
 	networkSubscriptions := make([]types.Subscription, 0)
 
+	type subscriptionTypeCount struct {
+		Validator  uint64
+		Monitoring uint64
+		Income     uint64
+		Network    uint64
+		Rocketpool uint64
+	}
+
+	typeCount := subscriptionTypeCount{}
+	for _, sub := range subscriptions {
+		if sub.EventName == utils.GetNetwork()+":"+string(types.ValidatorIsOfflineEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.ValidatorMissedProposalEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.ValidatorExecutedProposalEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.ValidatorGotSlashedEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.SyncCommitteeSoon) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.ValidatorMissedAttestationEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.ValidatorReceivedWithdrawalEventName) {
+			typeCount.Validator++
+		} else if sub.EventName == string(types.MonitoringMachineOfflineEventName) ||
+			sub.EventName == string(types.MonitoringMachineDiskAlmostFullEventName) ||
+			sub.EventName == string(types.MonitoringMachineCpuLoadEventName) ||
+			sub.EventName == string(types.MonitoringMachineMemoryUsageEventName) ||
+			sub.EventName == string(types.MonitoringMachineSwitchedToETH2FallbackEventName) ||
+			sub.EventName == string(types.MonitoringMachineSwitchedToETH1FallbackEventName) {
+			typeCount.Monitoring++
+		} else if sub.EventName == utils.GetNetwork()+":"+string(types.TaxReportEventName) {
+			typeCount.Income++
+		} else if sub.EventName == utils.GetNetwork()+":"+string(types.NetworkSlashingEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkValidatorActivationQueueFullEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkValidatorActivationQueueNotFullEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkValidatorExitQueueFullEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkValidatorExitQueueNotFullEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkLivenessIncreasedEventName) {
+			typeCount.Network++
+		} else if sub.EventName == utils.GetNetwork()+":"+string(types.RocketpoolCommissionThresholdEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.RocketpoolNewClaimRoundStartedEventName) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.RocketpoolCollateralMinReached) ||
+			sub.EventName == utils.GetNetwork()+":"+string(types.RocketpoolCollateralMaxReached) {
+			typeCount.Rocketpool++
+		}
+	}
+
+	totalSubscriptionsTooltip := ""
+	if typeCount.Validator > 0 {
+		totalSubscriptionsTooltip += fmt.Sprintf("%v validator subscriptions<br>", typeCount.Validator)
+	}
+	if typeCount.Monitoring > 0 {
+		totalSubscriptionsTooltip += fmt.Sprintf("%v monitoring subscriptions<br>", typeCount.Monitoring)
+	}
+	if typeCount.Income > 0 {
+		totalSubscriptionsTooltip += fmt.Sprintf("%v income subscriptions<br>", typeCount.Income)
+	}
+	if typeCount.Network > 0 {
+		totalSubscriptionsTooltip += fmt.Sprintf("%v network subscriptions<br>", typeCount.Network)
+	}
+	if typeCount.Rocketpool > 0 {
+		totalSubscriptionsTooltip += fmt.Sprintf("%v rocketpool subscriptions<br>", typeCount.Rocketpool)
+	}
+
 	type metrics struct {
 		Validators         uint64
-		Subscriptions      uint64
+		Subscriptions      template.HTML
 		Notifications      uint64
 		AttestationsMissed uint64
 		ProposalsSubmitted uint64
@@ -724,13 +783,13 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	var metricsMonth metrics = metrics{
 		Validators:    uint64(validatorCount),
-		Subscriptions: uint64(len(subscriptions)),
+		Subscriptions: template.HTML(fmt.Sprintf(`<span data-html="true" data-toggle="tooltip" data-placement="top" title="%s">%v</span>`, totalSubscriptionsTooltip, len(subscriptions))),
 	}
 
 	var networkData interface{}
 
 	for _, sub := range subscriptions {
-		monthAgo := time.Now().Add(time.Hour * 24 * 31 * -1)
+		monthAgo := time.Now().Add(utils.Day * 31 * -1)
 		if sub.LastSent != nil && sub.LastSent.After(monthAgo) {
 			metricsMonth.Notifications += 1
 			switch sub.EventName {
@@ -757,7 +816,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 		val, ok := validatorMap[sub.EventFilter]
 		if !ok {
-			if (utils.GetNetwork() == "mainnet" && strings.HasPrefix(string(sub.EventName), "monitoring_")) || strings.HasPrefix(string(sub.EventName), utils.GetNetwork()+":"+"monitoring_") {
+			if strings.HasPrefix(string(sub.EventName), "monitoring_") {
 				monitoringSubscriptions = append(monitoringSubscriptions, sub)
 			}
 			continue
