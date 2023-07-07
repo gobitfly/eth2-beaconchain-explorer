@@ -1443,7 +1443,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 		return fmt.Errorf("error getting block number for slot: %v err: %w", firstSlot, err)
 	}
 
-	if firstBlock <= 15537394 {
+	if utils.Config.Chain.Config.DepositChainID == 1 && firstBlock < 15537394 {
 		return fmt.Errorf("this function does not yet handle pre merge statistics")
 	}
 
