@@ -2228,6 +2228,16 @@ func GetBlockNumber(slot uint64) (block uint64, err error) {
 	return
 }
 
+func GetNextBlockNumber(slot uint64) (block uint64, err error) {
+	err = ReaderDb.Get(&block, `SELECT exec_block_number FROM blocks where slot >= $1 and status = '1' order by slot asc limit 1`, slot)
+	return
+}
+
+func GetLastBlockNumber(slot uint64) (block uint64, err error) {
+	err = ReaderDb.Get(&block, `SELECT exec_block_number FROM blocks where slot <= $1 and status = '1' order by slot desc limit 1`, slot)
+	return
+}
+
 func SaveChartSeriesPoint(date time.Time, indicator string, value any) error {
 	_, err := WriterDb.Exec(`INSERT INTO chart_series (time, indicator, value) VALUES($1, $2, $3) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value`, date, indicator, value)
 	if err != nil {

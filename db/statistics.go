@@ -1438,16 +1438,16 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
 	}
 
-	firstBlock, err := GetBlockNumber(uint64(firstSlot))
+	firstBlock, err := GetNextBlockNumber(uint64(firstSlot))
 	if err != nil {
 		return fmt.Errorf("error getting block number for slot: %v err: %w", firstSlot, err)
 	}
 
 	if utils.Config.Chain.Config.DepositChainID == 1 && firstBlock < 15537394 {
-		return fmt.Errorf("this function does not yet handle pre merge statistics")
+		return fmt.Errorf("this function does not yet handle pre merge statistics (slot=%v, block=%v)", firstSlot, firstBlock)
 	}
 
-	lastBlock, err := GetBlockNumber(uint64(lastSlot))
+	lastBlock, err := GetLastBlockNumber(uint64(lastSlot))
 	if err != nil {
 		return fmt.Errorf("error getting block number for slot: %v err: %w", lastSlot, err)
 	}
