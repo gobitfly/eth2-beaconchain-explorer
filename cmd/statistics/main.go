@@ -155,7 +155,7 @@ func main() {
 
 				err = db.WriteChartSeriesForDay(int64(d))
 				if err != nil {
-					logrus.Errorf("error exporting chart series from day %v: %v", d, err)
+					logrus.Errorf("error writing chart series for day %v: %v", d, err)
 					break
 				}
 			}
@@ -165,7 +165,7 @@ func main() {
 			for d := firstDay; d <= lastDay; d++ {
 				err = db.WriteGraffitiStatisticsForDay(int64(d))
 				if err != nil {
-					logrus.Errorf("error exporting graffiti-stats from day %v: %v", opt.statisticsDayToExport, err)
+					logrus.Errorf("error writing graffiti stats for day %v: %v", opt.statisticsDayToExport, err)
 					break
 				}
 			}
@@ -191,14 +191,14 @@ func main() {
 
 			err = db.WriteChartSeriesForDay(int64(opt.statisticsDayToExport))
 			if err != nil {
-				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
+				logrus.Errorf("error writing chart series for day %v: %v", opt.statisticsDayToExport, err)
 			}
 		}
 
 		if opt.statisticsGraffitiToggle {
 			err = db.WriteGraffitiStatisticsForDay(int64(opt.statisticsDayToExport))
 			if err != nil {
-				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
+				logrus.Errorf("error writing graffiti stats for day %v: %v", opt.statisticsDayToExport, err)
 			}
 		}
 		return
