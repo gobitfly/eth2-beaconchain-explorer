@@ -14,6 +14,7 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
 
@@ -215,9 +216,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetGasUsed())))
 		burnedPercentage := float64(0.0)
 		if len(txReward.Bits()) != 0 {
-			txBurnedBig := new(big.Float).SetInt(burned)
-			txBurnedBig.Quo(txBurnedBig, new(big.Float).SetInt(txReward))
-			burnedPercentage, _ = txBurnedBig.Float64()
+			burnedPercentage = decimal.NewFromBigInt(burned, 0).DivRound(decimal.NewFromBigInt(txReward, 0), 18).InexactFloat64()
 		}
 
 		tableData[i] = []interface{}{

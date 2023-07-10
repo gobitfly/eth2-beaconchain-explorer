@@ -29,8 +29,7 @@ type Config struct {
 		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
 		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
 	} `yaml:"bigtable"`
-	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
-	Chain                    struct {
+	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
@@ -169,8 +168,6 @@ type Config struct {
 		Pprof   bool   `yaml:"pprof" envconfig:"METRICS_PPROF"`
 	} `yaml:"metrics"`
 	Notifications struct {
-		Enabled                                       bool   `yaml:"enabled" envconfig:"NOTIFICATIONS_ENABLED"`
-		Sender                                        bool   `yaml:"sender" envconfig:"NOTIFICATIONS_SENDER"`
 		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
 		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
 		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`

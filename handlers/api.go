@@ -1317,7 +1317,6 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		activationeligibilityepoch,
 		activationepoch,
 		exitepoch,
-		lastattestationslot,
 		status,
 		COALESCE(validator_names.name, '') AS name,
 		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d,
@@ -1359,18 +1358,28 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, err
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		return nil, fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
+	}
+	for _, entry := range data {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
 			continue
 		}
-		for _, entry := range data {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
+
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
 				continue
 			}
-
-			validatorIndex, ok := eMap["validatorindex"].(int64)
 
 			if !ok {
 				logger.Errorf("error converting validatorindex to int64")
@@ -1500,7 +1509,6 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			activationeligibilityepoch,
 			activationepoch,
 			exitepoch,
-			COALESCE(lastattestationslot, 0) as lastattestationslot,
 			status,
 			COALESCE(n.name, '') AS name,
 			COALESCE(w.total, 0) as total_withdrawals
@@ -1539,6 +1547,17 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("error getting validator last attestation slots from bigtable: %v", err))
+		return
+	}
+
+	for _, validator := range data {
+		validator.Lastattestationslot = int64(lastAttestationSlots[uint64(validator.Validatorindex)])
+	}
+
 	j := json.NewEncoder(w)
 	response := &types.ApiResponse{}
 	response.Status = "OK"
@@ -1640,7 +1659,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		min_effective_balance,
 		max_effective_balance,
 		COALESCE(missed_attestations, 0) AS missed_attestations,
-		COALESCE(orphaned_attestations, 0) AS orphaned_attestations,
+		0 AS orphaned_attestations,
 		COALESCE(proposed_blocks, 0) AS proposed_blocks,
 		COALESCE(missed_blocks, 0) AS missed_blocks,
 		COALESCE(orphaned_blocks, 0) AS orphaned_blocks,
@@ -3127,7 +3146,6 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					activationeligibilityepoch, 
 					activationepoch, 
 					exitepoch, 
-					lastattestationslot, 
 					validators.status, 
 					validator_performance.balance, 
 					COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
@@ -3177,29 +3195,39 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving validator balance data")
+		return
+	}
+
 	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
 		return
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
+	for _, entry := range generalData {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
 			continue
 		}
-		for _, entry := range generalData {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+
+		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
+
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
 				continue
 			}
 
-			validatorIndex, ok := eMap["validatorindex"].(int64)
-
-			if !ok {
-				logger.Errorf("error converting validatorindex to int64")
-				continue
-			}
 			if int64(balanceIndex) == validatorIndex {
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
 				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]

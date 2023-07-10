@@ -266,6 +266,10 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 				Path: fmt.Sprint(trace.TraceAddress),
 			}
 
+			if tracePb.Type == "call" {
+				tracePb.Type = trace.Action.CallType
+			}
+
 			if trace.Type == "create" {
 				tracePb.From = common.FromHex(trace.Action.From)
 				tracePb.To = common.FromHex(trace.Result.Address)
@@ -274,7 +278,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 				tracePb.From = common.FromHex(trace.Action.Address)
 				tracePb.To = common.FromHex(trace.Action.RefundAddress)
 				tracePb.Value = common.FromHex(trace.Action.Balance)
-			} else if trace.Type == "call" || trace.Type == "delegatecall" {
+			} else if trace.Type == "call" {
 				tracePb.From = common.FromHex(trace.Action.From)
 				tracePb.To = common.FromHex(trace.Action.To)
 				tracePb.Value = common.FromHex(trace.Action.Value)

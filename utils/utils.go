@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -46,6 +47,7 @@ import (
 	"github.com/mvdan/xurls"
 	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
 	prysm_params "github.com/prysmaticlabs/prysm/v3/config/params"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
 )
@@ -193,18 +195,11 @@ func GetTemplateFuncs() template.FuncMap {
 		"bytesToNumberString": func(input []byte) string {
 			return new(big.Int).SetBytes(input).String()
 		},
-		"bigQuo": func(num []byte, denom []byte) string {
-			numFloat := new(big.Float).SetInt(new(big.Int).SetBytes(num))
-			denomFloat := new(big.Float).SetInt(new(big.Int).SetBytes(denom))
-			res := new(big.Float).Quo(numFloat, denomFloat)
-			return res.Text('f', int(res.MinPrec()))
-		},
 		"bigDecimalShift": func(num []byte, shift []byte) string {
-			numFloat := new(big.Float).SetInt(new(big.Int).SetBytes(num))
-			denom := new(big.Int).Exp(big.NewInt(10), new(big.Int).SetBytes(shift), nil)
-			// shift := new(big.Float).SetInt(new(big.Int).SetBytes(shift))
-			res := new(big.Float).Quo(numFloat, new(big.Float).SetInt(denom))
-			return res.Text('f', int(res.MinPrec()))
+			numDecimal := decimal.NewFromBigInt(new(big.Int).SetBytes(num), 0)
+			denomDecimal := decimal.NewFromBigInt(new(big.Int).Exp(big.NewInt(10), new(big.Int).SetBytes(shift), nil), 0)
+			res := numDecimal.DivRound(denomDecimal, 18)
+			return res.String()
 		},
 		"trimTrailingZero": func(num string) string {
 			if strings.Contains(num, ".") {
@@ -323,6 +318,13 @@ func TimeToSlot(timestamp uint64) uint64 {
 	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.Config.SecondsPerSlot
 }
 
+func TimeToFirstSlotOfEpoch(timestamp uint64) uint64 {
+	slot := TimeToSlot(timestamp)
+	lastEpochOffset := slot % Config.Chain.Config.SlotsPerEpoch
+	slot = slot - lastEpochOffset
+	return slot
+}
+
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.Config.SecondsPerSlot*Config.Chain.Config.SlotsPerEpoch), 0)
@@ -346,8 +348,20 @@ func TimeToEpoch(ts time.Time) int64 {
 	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.Config.SecondsPerSlot) / int64(Config.Chain.Config.SlotsPerEpoch)
 }
 
-func WeiToEther(wei *big.Int) *big.Float {
-	return new(big.Float).Quo(new(big.Float).SetInt(wei), big.NewFloat(params.Ether))
+func WeiToEther(wei *big.Int) decimal.Decimal {
+	return decimal.NewFromBigInt(wei, 0).DivRound(decimal.NewFromInt(params.Ether), 18)
+}
+
+func WeiBytesToEther(wei []byte) decimal.Decimal {
+	return WeiToEther(new(big.Int).SetBytes(wei))
+}
+
+func GWeiToEther(gwei *big.Int) decimal.Decimal {
+	return decimal.NewFromBigInt(gwei, 0).Div(decimal.NewFromInt(params.GWei))
+}
+
+func GWeiBytesToEther(gwei []byte) decimal.Decimal {
+	return GWeiToEther(new(big.Int).SetBytes(gwei))
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed
@@ -1338,4 +1352,37 @@ func CmdPrompt(label string) string {
 		}
 	}
 	return strings.TrimSpace(s)
+}
+
+// UniqueStrings returns an array of strings containing each value of s only once
+func UniqueStrings(s []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, str := range s {
+		if _, ok := seen[str]; !ok {
+			seen[str] = true
+			result = append(result, str)
+		}
+	}
+	return result
+}
+
+func SortedUniqueUint64(arr []uint64) []uint64 {
+	if len(arr) <= 1 {
+		return arr
+	}
+
+	sort.Slice(arr, func(i, j int) bool {
+		return arr[i] < arr[j]
+	})
+
+	result := make([]uint64, 1, len(arr))
+	result[0] = arr[0]
+	for i := 1; i < len(arr); i++ {
+		if arr[i-1] != arr[i] {
+			result = append(result, arr[i])
+		}
+	}
+
+	return result
 }

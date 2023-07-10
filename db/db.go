@@ -75,6 +75,9 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 	if writer.MaxIdleConns == 0 {
 		writer.MaxIdleConns = 10
 	}
+	if writer.MaxOpenConns < writer.MaxIdleConns {
+		writer.MaxIdleConns = writer.MaxOpenConns
+	}
 
 	if reader.MaxOpenConns == 0 {
 		reader.MaxOpenConns = 50
@@ -82,7 +85,11 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 	if reader.MaxIdleConns == 0 {
 		reader.MaxIdleConns = 10
 	}
+	if reader.MaxOpenConns < reader.MaxIdleConns {
+		reader.MaxIdleConns = reader.MaxOpenConns
+	}
 
+	logger.Infof("initializing writer db connection to %v with %v/%v conn limit", writer.Host, writer.MaxIdleConns, writer.MaxOpenConns)
 	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
 	if err != nil {
 		utils.LogFatal(err, "error getting Connection Writer database", 0)
@@ -98,6 +105,7 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 		return dbConnWriter, dbConnWriter
 	}
 
+	logger.Infof("initializing reader db connection to %v with %v/%v conn limit", writer.Host, reader.MaxIdleConns, reader.MaxOpenConns)
 	dbConnReader, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", reader.Username, reader.Password, reader.Host, reader.Port, reader.Name))
 	if err != nil {
 		utils.LogFatal(err, "error getting Connection Reader database", 0)
@@ -2223,7 +2231,7 @@ func GetBlockNumber(slot uint64) (block uint64, err error) {
 func SaveChartSeriesPoint(date time.Time, indicator string, value any) error {
 	_, err := WriterDb.Exec(`INSERT INTO chart_series (time, indicator, value) VALUES($1, $2, $3) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value`, date, indicator, value)
 	if err != nil {
-		return fmt.Errorf("error calculating NON_FAILED_TX_GAS_USAGE chart_series: %w", err)
+		return fmt.Errorf("error saving chart_series: %v: %w", indicator, err)
 	}
 	return err
 }
