@@ -299,6 +299,75 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 	return err
 }
 
+func AddBatchSubscription(subscriptions []types.SubscriptionMin) error {
+	tx, err := FrontendWriterDB.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(pq.CopyIn("users_subscriptions", "user_id", "event_name", "event_filter", "created_ts", "created_epoch", "event_threshold"))
+	if err != nil {
+		return err
+	}
+
+	for _, sub := range subscriptions {
+		now := time.Now()
+		nowTs := now.Unix()
+		nowEpoch := utils.TimeToEpoch(now)
+		name := string(sub.EventName)
+		if sub.Network != "" {
+			name = strings.ToLower(sub.Network) + ":" + string(sub.EventName)
+		}
+		_, err = stmt.Exec(sub.UserID, name, sub.EventFilter, nowTs, nowEpoch, sub.EventThreshold)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = stmt.Exec()
+	if err != nil {
+		return err
+	}
+
+	err = stmt.Close()
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeleteBatchSubscription(subscriptions []types.SubscriptionMin) error {
+	tx, err := FrontendWriterDB.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, sub := range subscriptions {
+		name := string(sub.EventName)
+		if sub.Network != "" && !types.IsUserIndexed(sub.EventName) {
+			name = strings.ToLower(sub.Network) + ":" + string(sub.EventName)
+		}
+		_, err := tx.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", sub.UserID, name, sub.EventFilter)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func DeleteAllSubscription(userID uint64, network string, eventName types.EventName) error {
 	name := string(eventName)
 	if network != "" && !types.IsUserIndexed(eventName) {

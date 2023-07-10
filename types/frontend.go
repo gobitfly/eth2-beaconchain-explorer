@@ -246,6 +246,14 @@ type Subscription struct {
 	State           sql.NullString `db:"internal_state" swaggertype:"string"`
 }
 
+type SubscriptionMin struct {
+	UserID         uint64
+	Network        string
+	EventName      EventName
+	EventFilter    string
+	EventThreshold float64
+}
+
 type TaggedValidators struct {
 	UserID             uint64 `db:"user_id"`
 	Tag                string `db:"tag"`
