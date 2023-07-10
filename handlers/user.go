@@ -17,8 +17,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -1876,7 +1874,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 	filterLen := len(filter)
 
 	if filterLen != 96 && filterLen != 0 && isPkey {
-		logger.Errorf("error invalid pubkey characters or length: %v in function: %s", err, runtime.FuncForPC(reflect.ValueOf(internUserNotificationsSubscribe).Pointer()).Name())
+		logger.Errorf("error invalid pubkey characters or length: %v in function: internUserNotificationsSubscribe", err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2051,7 +2049,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 	filterLen := len(filter)
 
 	if len(filter) != 96 && filterLen != 0 && isPkey {
-		logger.Errorf("error invalid pubkey characters or length: %v in function: %s", err, runtime.FuncForPC(reflect.ValueOf(internUserNotificationsUnsubscribe).Pointer()).Name())
+		logger.Errorf("error invalid pubkey characters or length: %v in function: internUserNotificationsUnsubscribe", err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2136,7 +2134,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	filterLen := len(filter)
 
 	if len(filter) != 96 && filterLen != 0 && isPkey {
-		logger.Errorf("error invalid pubkey characters or length: %v in function: %s", err, runtime.FuncForPC(reflect.ValueOf(UserNotificationsUnsubscribe).Pointer()).Name())
+		logger.Errorf("error invalid pubkey characters or length: %v in function: UserNotificationsUnsubscribe", err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
