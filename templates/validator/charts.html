@@ -197,7 +197,7 @@
                                         .then(data => {
                                             incomeHistoryNew = data.consensusChartData;
                                             executionIncomeHistoryNew = data.executionChartData;
-                                
+
                                             // Find the series by name and update the data
                                             var consensusIncomeSeries = chart.series.find(series => series.name === 'Consensus Income');
                                             consensusIncomeSeries.setData(incomeHistoryNew);
