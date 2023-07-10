@@ -169,7 +169,60 @@
                         chart: {
                             type: 'column',
                             height: '500px',
-                            pointInterval: 24 * 3600 * 1000
+                            pointInterval: 24 * 3600 * 1000,
+                            events: {
+                                load: function () {
+                                    var chart = this,
+                                        btnWidth = 144,
+                                        btnHeight = 30,
+                                        btnX = chart.plotLeft,
+                                        btnY = chart.chartHeight - btnHeight - 10; // 10px margin from the bottom
+                                        normalState = {
+                                            fill: '#FFAA31'
+                                        },
+                                        hoverState = {
+                                            fill: '#F29A00',
+                                        }
+                                    callback = function () {
+                                        var baseURL = window.location.protocol + "//" + window.location.host;
+                                        var urlParts = window.location.href.split("/");
+                                        var lastPart = urlParts[urlParts.length - 1];
+                                        var validatorId = lastPart.split("#")[0];
+
+                                        // Build the API URL
+                                        var apiURL = baseURL + "/dashboard/data/allbalances?validators=" + validatorId;
+
+                                        fetch(apiURL)
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            incomeHistoryNew = data.consensusChartData;
+                                            executionIncomeHistoryNew = data.executionChartData;
+                                
+                                            // Find the series by name and update the data
+                                            var consensusIncomeSeries = chart.series.find(series => series.name === 'Consensus Income');
+                                            consensusIncomeSeries.setData(incomeHistoryNew);
+
+                                            var executionIncomeSeries = chart.series.find(series => series.name === 'Execution Income');
+                                            executionIncomeSeries.setData(executionIncomeHistoryNew);
+
+                                            // Update the navigator series
+                                            chart.navigator.series[0].setData(incomeHistoryNew);
+                                        });
+                                    }
+                                    // Create custom button
+                                    var buttonRect = chart.renderer.button('Show all rewards', btnX, btnY, callback, normalState, hoverState, 'callout')
+                                    .attr({
+                                        fill: '#FFAA31',
+                                        cursor: 'pointer',
+                                        class: 'btn-all-rewards',
+                                        zIndex: 3,
+                                        fontFamily: 'Inter,sans-serif', // font family
+                                        fontWeight: '500', // font weight
+                                        fontSize: '14px', // font size
+                                    })
+                                    .add();
+                                }
+                            }
                         },
                         title: {
                             text: 'Daily Income'
@@ -262,3 +315,57 @@
     {{ end }}
   {{ end }}
 {{ end }}
+
+<!-- var buttonText = chart.renderer.text('Show all rewards', btnX + btnWidth / 2, btnY + btnHeight / 2 + 5) // +5 for vertical centering
+.attr({
+    zIndex: 4,
+    'text-anchor': 'middle'
+})
+.css({
+    cursor: 'pointer',
+    color: '#232024', // text color
+    fontFamily: 'Inter,sans-serif', // font family
+    fontWeight: '500', // font weight
+    fontSize: '14px', // font size
+    lineHeight: btnHeight + 'px', // center text vertically
+    textAlign: 'center' // center text horizontally
+})
+.on('click', function () {
+    var baseURL = window.location.protocol + "//" + window.location.host;
+    var urlParts = window.location.href.split("/");
+    var lastPart = urlParts[urlParts.length - 1];
+    var validatorId = lastPart.split("#")[0];
+
+    var apiURL = baseURL + "/dashboard/data/allbalances?validators=" + validatorId;
+
+    fetch(apiURL)
+    .then(response => response.json())
+    .then(data => {
+        incomeHistoryNew = data.consensusChartData[0]
+        executionIncomeHistoryNew = data.executionChartData
+        chart.update({
+            series: [{
+                name: "Consensus Income",
+                data: incomeHistoryNew,
+                index: 2
+            },
+            {
+                name: "Execution Income",
+                data: executionIncomeHistoryNew,
+                index: 1
+            }
+            ]
+        })
+    });
+})
+.on('mouseover', function () {
+    buttonRect.attr({
+        fill: '#F29A00' // darker orange
+    });
+})
+.on('mouseout', function () {
+    buttonRect.attr({
+        fill: '#FFAA31' // original orange
+    });
+})
+.add(); -->

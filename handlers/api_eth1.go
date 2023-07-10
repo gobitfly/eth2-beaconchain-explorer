@@ -182,7 +182,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(indices) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false, 0)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -1031,7 +1031,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	return maps.Values(resultPerProposer), nil
 }
 
-func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool, lastDays uint64) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
 
 	order := "DESC"
@@ -1041,29 +1041,59 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64,
 
 	status := ""
 	if onlyFinalized {
-		status = `and status = '1'`
+		status = `AND status = '1'`
 	}
 
-	query := fmt.Sprintf(`SELECT 
-			exec_block_number,
-			proposer,
-			slot,
-			epoch  
-		FROM blocks 
-		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 AND status != '3' %s
-		ORDER BY exec_block_number %s
-		OFFSET $2 LIMIT $3`, status, order)
+	if lastDays == 0 {
+		query := fmt.Sprintf(`SELECT 
+				exec_block_number,
+				proposer,
+				slot,
+				epoch  
+			FROM blocks 
+			WHERE proposer = ANY($1)
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0 AND status != '3' %s
+			ORDER BY exec_block_number %s
+			OFFSET $2 LIMIT $3`, status, order)
 
-	err := db.ReaderDb.Select(&blockListSub,
-		query,
-		pq.Array(indices),
-		offset,
-		limit,
-	)
-	if err != nil {
-		return nil, nil, err
+		err := db.ReaderDb.Select(&blockListSub,
+			query,
+			pq.Array(indices),
+			offset,
+			limit,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		epochsPerDay := utils.EpochsPerDay()
+		slotsPerEpoch := utils.Config.Chain.Config.SlotsPerEpoch
+		currentSlot := services.LatestSlot()
+		slotOffset := currentSlot - (lastDays * uint64(epochsPerDay) * uint64(slotsPerEpoch))
+
+		query := fmt.Sprintf(`SELECT 
+				exec_block_number,
+				proposer,
+				slot,
+				epoch  
+			FROM blocks 
+			WHERE proposer = ANY($1)
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0 AND status != '3' %s
+			AND slot >= $2
+			ORDER BY exec_block_number %s
+			OFFSET $3`, status, order)
+
+		err := db.ReaderDb.Select(&blockListSub,
+			query,
+			pq.Array(indices),
+			slotOffset,
+			offset,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
+
 	blockList, blockProposerMap := getBlockNumbersAndMapProposer(blockListSub)
 	return blockList, blockProposerMap, nil
 }

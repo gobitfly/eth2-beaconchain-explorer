@@ -1128,11 +1128,26 @@ func markColumnExported(day uint64, column string) error {
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0, lastFinalizedEpoch)
-	if err != nil {
-		return nil, err
+func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string, lastFinalizedEpoch uint64, days uint64) ([]*types.ChartDataPoint, error) {
+	var incomeHistory []types.ValidatorIncomeHistory
+	var err error
+	if days == 0 {
+		incomeHistory, err = GetValidatorIncomeHistory(validator_indices, 0, 0, lastFinalizedEpoch)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tNow := time.Now()
+		lastDay := time.Date(tNow.Year(), tNow.Month(), tNow.Day(), 0, 0, 0, 0, time.UTC)
+		firstDay := lastDay.AddDate(0, -1, 0)
+		lowerBound := utils.TimeToDay(uint64(firstDay.Unix()))
+		upperBound := utils.TimeToDay(uint64(lastDay.Unix()))
+		incomeHistory, err = GetValidatorIncomeHistory(validator_indices, lowerBound, upperBound, lastFinalizedEpoch)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	var clRewardsSeries = make([]*types.ChartDataPoint, len(incomeHistory))
 
 	for i := 0; i < len(incomeHistory); i++ {
