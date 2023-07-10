@@ -529,10 +529,11 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 			}
 			continue
 		}
-		totalReward, _ := utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).Float64()
-		relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]
-		if ok {
-			totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
+		var totalReward float64
+		if relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]; ok {
+			totalReward = utils.WeiToEther(relayData.MevBribe.BigInt()).InexactFloat64()
+		} else {
+			totalReward = utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).InexactFloat64()
 		}
 
 		chartData[len(blocks)-1-i] = &types.ChartDataPoint{

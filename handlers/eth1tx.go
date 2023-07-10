@@ -12,13 +12,13 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -74,13 +74,11 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			p := message.NewPrinter(language.English)
 
 			symbol := GetCurrencySymbol(r)
-			ef := new(big.Float).SetInt(new(big.Int).SetBytes(txData.Value))
-			etherValue := new(big.Float).Quo(ef, big.NewFloat(1e18))
+			etherValue := utils.WeiBytesToEther(txData.Value)
 
 			currentPrice := GetCurrentPrice(r)
-			currentEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(float64(currentPrice)))
-			cPrice, _ := currentEthPrice.Float64()
-			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, cPrice))
+			currentEthPrice := etherValue.Mul(decimal.NewFromInt(int64(currentPrice)))
+			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, currentEthPrice.InexactFloat64()))
 
 			txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
 			latestEpoch, err := db.GetLatestEpoch()
@@ -98,9 +96,8 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					utils.LogError(err, "error retrieving historical prices", 0, map[string]interface{}{"txDay": txDay, "currency": currency})
 				} else {
-					historicalEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(price))
-					hPrice, _ := historicalEthPrice.Float64()
-					txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, hPrice))
+					historicalEthPrice := etherValue.Mul(decimal.NewFromFloat(price))
+					txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, historicalEthPrice.InexactFloat64()))
 				}
 			}
 
