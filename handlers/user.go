@@ -716,8 +716,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	type subscriptionTypeCount struct {
 		Validator  uint64
 		Monitoring uint64
-		Income     uint64
 		Network    uint64
+		Income     uint64
 		Rocketpool uint64
 	}
 
@@ -738,8 +738,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			sub.EventName == string(types.MonitoringMachineSwitchedToETH2FallbackEventName) ||
 			sub.EventName == string(types.MonitoringMachineSwitchedToETH1FallbackEventName) {
 			typeCount.Monitoring++
-		} else if sub.EventName == utils.GetNetwork()+":"+string(types.TaxReportEventName) {
-			typeCount.Income++
 		} else if sub.EventName == utils.GetNetwork()+":"+string(types.NetworkSlashingEventName) ||
 			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkValidatorActivationQueueFullEventName) ||
 			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkValidatorActivationQueueNotFullEventName) ||
@@ -747,6 +745,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkValidatorExitQueueNotFullEventName) ||
 			sub.EventName == utils.GetNetwork()+":"+string(types.NetworkLivenessIncreasedEventName) {
 			typeCount.Network++
+		} else if sub.EventName == utils.GetNetwork()+":"+string(types.TaxReportEventName) {
+			typeCount.Income++
 		} else if sub.EventName == utils.GetNetwork()+":"+string(types.RocketpoolCommissionThresholdEventName) ||
 			sub.EventName == utils.GetNetwork()+":"+string(types.RocketpoolNewClaimRoundStartedEventName) ||
 			sub.EventName == utils.GetNetwork()+":"+string(types.RocketpoolCollateralMinReached) ||
@@ -762,11 +762,11 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	if typeCount.Monitoring > 0 {
 		totalSubscriptionsTooltip += fmt.Sprintf("%v monitoring subscriptions<br>", typeCount.Monitoring)
 	}
-	if typeCount.Income > 0 {
-		totalSubscriptionsTooltip += fmt.Sprintf("%v income subscriptions<br>", typeCount.Income)
-	}
 	if typeCount.Network > 0 {
 		totalSubscriptionsTooltip += fmt.Sprintf("%v network subscriptions<br>", typeCount.Network)
+	}
+	if typeCount.Income > 0 {
+		totalSubscriptionsTooltip += fmt.Sprintf("%v income subscriptions<br>", typeCount.Income)
 	}
 	if typeCount.Rocketpool > 0 {
 		totalSubscriptionsTooltip += fmt.Sprintf("%v rocketpool subscriptions<br>", typeCount.Rocketpool)
