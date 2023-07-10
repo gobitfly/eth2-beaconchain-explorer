@@ -19,11 +19,11 @@ func StartHistoricPriceService() {
 }
 
 func WriteHistoricPricesForDay(ts time.Time) error {
+	tsFormatted := ts.Format("01-02-2006")
+
 	historicPrice, err := fetchHistoricPrice(ts)
 	if err != nil {
-		errMsg := fmt.Sprintf("error retrieving historic eth prices for day %v", ts)
-		utils.LogError(err, errMsg, 0)
-		return err
+		return fmt.Errorf("error retrieving historic eth prices for %v: %w", tsFormatted, err)
 	}
 
 	if historicPrice.MarketData.CurrentPrice.Eth == 0.0 ||
@@ -35,8 +35,7 @@ func WriteHistoricPricesForDay(ts time.Time) error {
 		historicPrice.MarketData.CurrentPrice.Jpy == 0.0 ||
 		historicPrice.MarketData.CurrentPrice.Gbp == 0.0 ||
 		historicPrice.MarketData.CurrentPrice.Aud == 0.0 {
-		logger.Warnf("incomplete historic eth prices for day %v", ts)
-		return fmt.Errorf("incomplete historic eth prices")
+		return fmt.Errorf("incomplete historic eth prices for %v", tsFormatted)
 	}
 
 	_, err = db.WriterDb.Exec(`
@@ -63,9 +62,7 @@ func WriteHistoricPricesForDay(ts time.Time) error {
 	)
 
 	if err != nil {
-		errMsg := fmt.Sprintf("error saving historic eth prices for day %v", ts)
-		utils.LogError(err, errMsg, 0)
-		return err
+		return fmt.Errorf("error saving historic eth prices for %v: %w", tsFormatted, err)
 	}
 	return nil
 }
@@ -93,7 +90,13 @@ func updateHistoricPrices() error {
 	for currentDay.Before(time.Now()) {
 		currentDayTrunc := currentDay.Truncate(time.Hour * 24)
 		if !datesMap[currentDayTrunc.Format("01-02-2006")] {
-			WriteHistoricPricesForDay(currentDayTrunc)
+			err = WriteHistoricPricesForDay(currentDayTrunc)
+			if err != nil {
+				utils.LogError(err, "error writing historic price", 0)
+			}
+
+			// Wait to not overload the API
+			time.Sleep(5 * time.Second)
 		}
 		currentDay = currentDay.Add(time.Hour * 24)
 	}

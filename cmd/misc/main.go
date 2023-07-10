@@ -489,7 +489,8 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 		ts := utils.DayToTime(int64(day)).UTC().Truncate(time.Hour * 24)
 		err := services.WriteHistoricPricesForDay(ts)
 		if err != nil {
-			logrus.Errorf("error exporting historic prices for day %v: %v", day, err)
+			errMsg := fmt.Sprintf("error exporting historic prices for day %v", day)
+			utils.LogError(err, errMsg, 0)
 			break
 		}
 		logrus.Printf("finished export for day %v, took %v", day, time.Since(timeStart))
