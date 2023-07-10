@@ -1874,8 +1874,9 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 	filterLen := len(filter)
 
 	if filterLen != 96 && filterLen != 0 && isPkey {
-		errMsg := fmt.Errorf("error invalid pubkey characters or length")
-		utils.LogError(err, errMsg, 0)
+		errMsg1 := fmt.Errorf("error invalid pubkey characters or length")
+		errMsg2 := fmt.Errorf("filter: %v, len: %v", filter, len(filter))
+		utils.LogError(errMsg2, errMsg1, 0)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2050,8 +2051,9 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 	filterLen := len(filter)
 
 	if len(filter) != 96 && filterLen != 0 && isPkey {
-		errMsg := fmt.Errorf("error invalid pubkey characters or length")
-		utils.LogError(err, errMsg, 0)
+		errMsg1 := fmt.Errorf("error invalid pubkey characters or length")
+		errMsg2 := fmt.Errorf("filter: %v, len: %v", filter, len(filter))
+		utils.LogError(errMsg2, errMsg1, 0)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2136,8 +2138,9 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	filterLen := len(filter)
 
 	if len(filter) != 96 && filterLen != 0 && isPkey {
-		errMsg := fmt.Errorf("error invalid pubkey characters or length")
-		utils.LogError(err, errMsg, 0)
+		errMsg1 := fmt.Errorf("error invalid pubkey characters or length")
+		errMsg2 := fmt.Errorf("filter: %v, len: %v", filter, len(filter))
+		utils.LogError(errMsg2, errMsg1, 0)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
