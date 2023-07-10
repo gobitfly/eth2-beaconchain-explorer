@@ -221,7 +221,7 @@ func fetchChainlinkFeed(chainId uint64) {
 }
 
 func getPriceFromFeed(feed *chainlink_feed.Feed) (float64, error) {
-	decimals, _ := decimal.NewFromString("100000000")
+	decimals := decimal.NewFromInt(100000000)
 
 	res, err := feed.LatestRoundData(nil)
 	if err != nil {

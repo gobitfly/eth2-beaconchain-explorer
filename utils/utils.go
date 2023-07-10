@@ -353,8 +353,8 @@ func GWeiToEther(wei *big.Int) decimal.Decimal {
 	return decimal.NewFromBigInt(wei, 0).Div(decimal.NewFromInt(params.GWei))
 }
 
-func GWeiBytesToEther(wei []byte) decimal.Decimal {
-	return GWeiToEther(new(big.Int).SetBytes(wei))
+func GWeiBytesToEther(gwei []byte) decimal.Decimal {
+	return GWeiToEther(new(big.Int).SetBytes(gwei))
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed
