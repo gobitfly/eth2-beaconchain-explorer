@@ -349,8 +349,8 @@ func WeiBytesToEther(wei []byte) decimal.Decimal {
 	return WeiToEther(new(big.Int).SetBytes(wei))
 }
 
-func GWeiToEther(wei *big.Int) decimal.Decimal {
-	return decimal.NewFromBigInt(wei, 0).Div(decimal.NewFromInt(params.GWei))
+func GWeiToEther(gwei *big.Int) decimal.Decimal {
+	return decimal.NewFromBigInt(gwei, 0).Div(decimal.NewFromInt(params.GWei))
 }
 
 func GWeiBytesToEther(gwei []byte) decimal.Decimal {
