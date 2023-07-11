@@ -2911,13 +2911,6 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 			bls.address
 		FROM blocks_bls_change bls
 		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
-		LEFT JOIN (
-			SELECT 
-				validators.validatorindex as validatorindex,
-				eth1_deposits.from_address as deposit_adress
-			FROM validators 
-			INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
-		) AS val ON val.validatorindex = bls.validatorindex
 		%s
 		ORDER BY bls.%s %s
 		LIMIT $1
@@ -2927,21 +2920,32 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 	var err error = nil
 
 	if trimmedQuery != "" {
+		joinQuery := `
+			LEFT JOIN (
+				SELECT 
+					validators.validatorindex as validatorindex,
+					eth1_deposits.from_address as deposit_adress
+				FROM validators 
+				INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
+			) AS val ON val.validatorindex = bls.validatorindex`
+
 		// Check whether the query can be used for a validator, slot or epoch search
 		if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
-			searchQuery := `
+			searchQuery := fmt.Sprintf(`
+				%s
 				WHERE bls.validatorindex = $3			
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
 					OR pubkey_text LIKE ($4 || '%')
-					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`
+					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`, joinQuery)
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if blsLikeRE.MatchString(query) {
-			searchQuery := `
+			searchQuery := fmt.Sprintf(`
+				%s
 				WHERE pubkey_text LIKE ($3 || '%')
-				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`
+				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`, joinQuery)
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
