@@ -2912,6 +2912,7 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 		FROM blocks_bls_change bls
 		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
 		%s
+		%s
 		ORDER BY bls.%s %s
 		LIMIT $1
 		OFFSET $2`
@@ -2931,23 +2932,21 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 
 		// Check whether the query can be used for a validator, slot or epoch search
 		if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
-			searchQuery := fmt.Sprintf(`
-				%s
+			searchQuery := `
 				WHERE bls.validatorindex = $3			
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
 					OR pubkey_text LIKE ($4 || '%')
-					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`, joinQuery)
+					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`
 
-			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if blsLikeRE.MatchString(query) {
-			searchQuery := fmt.Sprintf(`
-				%s
+			searchQuery := `
 				WHERE pubkey_text LIKE ($3 || '%')
-				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`, joinQuery)
+				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`
 
-			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
 		}
 		if err != nil {
@@ -2955,7 +2954,7 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 		}
 
 	} else {
-		err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, "", orderBy, orderDir), length, start)
+		err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, "", "", orderBy, orderDir), length, start)
 		if err != nil {
 			return nil, err
 		}
