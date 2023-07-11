@@ -495,8 +495,10 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 		}
 		logrus.Printf("finished export for day %v, took %v", day, time.Since(timeStart))
 
-		// Wait to not overload the API
-		time.Sleep(5 * time.Second)
+		if day < dayEnd {
+			// Wait to not overload the API
+			time.Sleep(5 * time.Second)
+		}
 	}
 
 	logrus.Info("historic price update run completed")
