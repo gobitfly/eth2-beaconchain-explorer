@@ -88,7 +88,7 @@ func updateHistoricPrices() error {
 	currentDay := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
 	for currentDay.Before(time.Now()) {
-		currentDayTrunc := currentDay.Truncate(time.Hour * 24)
+		currentDayTrunc := currentDay.Truncate(utils.Day)
 		if !datesMap[currentDayTrunc.Format("01-02-2006")] {
 			err = WriteHistoricPricesForDay(currentDayTrunc)
 			if err != nil {
@@ -98,7 +98,7 @@ func updateHistoricPrices() error {
 			// Wait to not overload the API
 			time.Sleep(5 * time.Second)
 		}
-		currentDay = currentDay.Add(time.Hour * 24)
+		currentDay = currentDay.Add(utils.Day)
 	}
 	return nil
 }
