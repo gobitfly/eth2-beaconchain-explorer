@@ -2359,7 +2359,7 @@ func collectMonitoringMachine(
 		return err
 	}
 
-	// If less than 10 users are subscribed send the notifications
+	// If there are too few users subscribed to this event, we always send the notifications
 	if subScriptionCount >= subThreshold {
 		subRatioThreshold := subSecondRatioThreshold
 		// For the machine offline check we do a low threshold check first and the next time a high threshold check
@@ -2371,10 +2371,6 @@ func collectMonitoringMachine(
 			utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
 			return nil
 		}
-	}
-	if eventName == types.MonitoringMachineOfflineEventName {
-		// Notifications will be sent, reset the flag
-		isFirstNotificationCheck = true
 	}
 
 	for _, r := range result {
@@ -2396,6 +2392,11 @@ func collectMonitoringMachine(
 		}
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+	}
+
+	if eventName == types.MonitoringMachineOfflineEventName {
+		// Notifications will be sent, reset the flag
+		isFirstNotificationCheck = true
 	}
 
 	return nil
