@@ -2299,9 +2299,9 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 		LIMIT $1
 		OFFSET $2`
 
-	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
 	var err error = nil
 
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
 	if trimmedQuery != "" {
 		// Check whether the query can be used for a validator, slot or epoch search
 		if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
@@ -2319,14 +2319,12 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
 		}
-		if err != nil {
-			return nil, err
-		}
 	} else {
-		err := ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, "", orderBy, orderDir), length, start)
-		if err != nil {
-			return nil, err
-		}
+		err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, "", orderBy, orderDir), length, start)
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	return withdrawals, nil
