@@ -498,4 +498,6 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 		// Wait to not overload the API
 		time.Sleep(5 * time.Second)
 	}
+
+	logrus.Info("historic price update run completed")
 }
