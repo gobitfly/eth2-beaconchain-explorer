@@ -810,14 +810,14 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 		return err
 	}
 
-	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
-
-	// for getting the withrawals / deposits for the current day we have to go 31 slots in the past as the balance for an epoch is the value after the first slot
-	firstSlot := (firstEpoch-1)*utils.Config.Chain.Config.SlotsPerEpoch + 1 // The second slot of the last epoch of the previous day
-	if firstEpoch == 0 {
-		firstSlot = 0
+	// The end_balance of a day is the balance after the first slot of the last epoch of that day.
+	// Therefore the last 31 slots of the day are not included in the end_balance of that day.
+	// Since our income calculation is base on subtracting end_balances the deposits and withdrawals that happen during those slots must be added to the next day instead.
+	firstSlot := uint64(0)
+	if day > 0 {
+		firstSlot = utils.GetLastBalanceInfoSlotForDay(day-1) + 1
 	}
-	lastSlot := lastEpoch * utils.Config.Chain.Config.SlotsPerEpoch // The first slot of the last epoch of the day
+	lastSlot := utils.GetLastBalanceInfoSlotForDay(day)
 
 	tx, err := WriterDb.Beginx()
 	if err != nil {
@@ -1202,8 +1202,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 		}
 
 		currentDay := lastDay + 1
-		firstEpoch := currentDay * utils.EpochsPerDay()
-		firstSlot := (firstEpoch-1)*utils.Config.Chain.Config.SlotsPerEpoch + 1
+		firstSlot := utils.GetLastBalanceInfoSlotForDay(lastDay) + 1
 		lastSlot := lastFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 		totalBalance := uint64(0)

@@ -1118,6 +1118,10 @@ func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
 	return firstEpoch, lastEpoch
 }
 
+func GetLastBalanceInfoSlotForDay(day uint64) uint64 {
+	return ((day+1)*EpochsPerDay() - 1) * Config.Chain.Config.SlotsPerEpoch
+}
+
 // ForkVersionAtEpoch returns the forkversion active a specific epoch
 func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
 	if epoch >= Config.Chain.Config.CappellaForkEpoch {

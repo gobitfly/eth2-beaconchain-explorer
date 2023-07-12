@@ -54,8 +54,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	if err != nil {
 		return nil, nil, err
 	}
-	firstEpoch := (lastStatsDay + 1) * utils.EpochsPerDay()
-	firstSlot := (firstEpoch-1)*utils.Config.Chain.Config.SlotsPerEpoch + 1
+	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
