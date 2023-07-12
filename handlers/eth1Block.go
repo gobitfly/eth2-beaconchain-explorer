@@ -228,7 +228,8 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		//MinerFormatted: utils.FormatAddress(block.Coinbase, nil, names[string(block.Coinbase)], false, false, false),
 		MinerFormatted: utils.FormatAddressWithLimits(block.Coinbase, names[string(block.Coinbase)], false, "address", 42, 42, true),
 		Reward:         blockReward,
-		MevReward:      db.CalculateMevFromBlock(block),
+		//MevReward:      db.CalculateMevFromBlock(block), // deprecated, don't show this value as mev
+		MevReward:      new(big.Int),
 		TxFees:         txFees,
 		GasUsage:       utils.FormatBlockUsage(block.GasUsed, block.GasLimit),
 		GasLimit:       block.GasLimit,
