@@ -698,10 +698,10 @@ func main() {
 		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))
 
 		if utils.Config.Frontend.HttpWriteTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+			utils.Config.Frontend.HttpWriteTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpReadTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+			utils.Config.Frontend.HttpReadTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpIdleTimeout == 0 {
 			utils.Config.Frontend.HttpIdleTimeout = time.Second * 60
