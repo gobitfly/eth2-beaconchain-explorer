@@ -66,6 +66,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	limit := uint64(100)
 	vars := mux.Vars(r)
 
 	var blockList []uint64
@@ -79,14 +80,14 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		blockList = append(blockList, temp)
 	}
 
-	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, uint64(100))
+	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
 		sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from bigtable")
 		return
 	}
 
-	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, 100)
+	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, limit)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "can not retrieve proposer information")
 		return
@@ -1090,7 +1091,8 @@ func findExecBlockNumbersByExecBlockNumber(execBlocks []uint64, offset, limit ui
 			epoch  
 		FROM blocks 
 		WHERE exec_block_number = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0
+			AND status = '1'
 		ORDER BY exec_block_number DESC
 		OFFSET $2 LIMIT $3`,
 		pq.Array(execBlocks),
