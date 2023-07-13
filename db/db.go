@@ -3156,26 +3156,26 @@ func GetTotalValidatorWithdrawals(validators []uint64, totalWithdrawals *uint64)
 	`, validatorsPQArray)
 }
 
-func GetValidatorDepositsForEpochs(validators []uint64, fromEpoch uint64, toEpoch uint64, deposits *uint64) error {
+func GetValidatorDepositsForSlots(validators []uint64, fromSlot uint64, toSlot uint64, deposits *uint64) error {
 	validatorsPQArray := pq.Array(validators)
 	return ReaderDb.Get(deposits, `
 		SELECT 
 			COALESCE(SUM(amount), 0) 
 		FROM blocks_deposits d
-		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.slot >= $2 and b.slot <= $3
 		WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))
-	`, validatorsPQArray, fromEpoch, toEpoch)
+	`, validatorsPQArray, fromSlot, toSlot)
 }
 
-func GetValidatorWithdrawalsForEpochs(validators []uint64, fromEpoch uint64, toEpoch uint64, withdrawals *uint64) error {
+func GetValidatorWithdrawalsForSlots(validators []uint64, fromSlot uint64, toSlot uint64, withdrawals *uint64) error {
 	validatorsPQArray := pq.Array(validators)
 	return ReaderDb.Get(withdrawals, `
 		SELECT 
 			COALESCE(SUM(amount), 0) 
 		FROM blocks_withdrawals d
-		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.epoch >= $2 and b.epoch <= $3        
+		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' and b.slot >= $2 and b.slot <= $3        
 		WHERE validatorindex = ANY($1)
-	`, validatorsPQArray, fromEpoch, toEpoch)
+	`, validatorsPQArray, fromSlot, toSlot)
 }
 
 func GetValidatorBalanceForDay(validators []uint64, day uint64, balance *uint64) error {

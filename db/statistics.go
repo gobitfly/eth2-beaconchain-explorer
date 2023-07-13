@@ -810,12 +810,14 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 		return err
 	}
 
-	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
-	// for getting the withrawals / deposits for the current day we have to go 1 epoch in the past as they affect the balance one epoch after they have happend
-	if firstEpoch > 0 {
-		firstEpoch--
+	// The end_balance of a day is the balance after the first slot of the last epoch of that day.
+	// Therefore the last 31 slots of the day are not included in the end_balance of that day.
+	// Since our income calculation is base on subtracting end_balances the deposits and withdrawals that happen during those slots must be added to the next day instead.
+	firstSlot := uint64(0)
+	if day > 0 {
+		firstSlot = utils.GetLastBalanceInfoSlotForDay(day-1) + 1
 	}
-	lastEpoch--
+	lastSlot := utils.GetLastBalanceInfoSlotForDay(day)
 
 	tx, err := WriterDb.Beginx()
 	if err != nil {
@@ -825,7 +827,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 	defer tx.Rollback()
 
 	start := time.Now()
-	logrus.Infof("Update Withdrawals + Deposits for day [%v] epoch %v -> %v", day, firstEpoch, lastEpoch)
+	logrus.Infof("Update Withdrawals + Deposits for day [%v] slot %v -> %v", day, firstSlot, lastSlot)
 
 	logger.Infof("exporting deposits and deposits_amount statistics")
 	depositsQry := `
@@ -835,7 +837,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
+			where blocks.slot >= $1 and blocks.slot <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
 			group by validators.validatorindex
 		) 
 		on conflict (validatorindex, day) do
@@ -852,7 +854,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 				from blocks_deposits
 				inner join validators on blocks_deposits.publickey = validators.pubkey
 				inner join blocks on blocks_deposits.block_root = blocks.blockroot
-				where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
+				where blocks.slot >= $1 and blocks.slot <= $2 and blocks.status = '1'
 				group by validators.validatorindex, day
 			) 
 			on conflict (validatorindex, day) do
@@ -860,7 +862,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 				deposits_amount = excluded.deposits_amount;`
 	}
 
-	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
+	_, err = tx.Exec(depositsQry, firstSlot, lastSlot, day)
 	if err != nil {
 		return err
 	}
@@ -874,13 +876,13 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 			select validatorindex, $3, count(*), sum(amount)
 			from blocks_withdrawals
 			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
-			where block_slot >= $1 and block_slot < $2 and blocks.status = '1'
+			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
 			group by validatorindex
 		) 
 		on conflict (validatorindex, day) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	_, err = tx.Exec(withdrawalsQuery, firstSlot, lastSlot, day)
 	if err != nil {
 		return err
 	}
@@ -1200,7 +1202,8 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 		}
 
 		currentDay := lastDay + 1
-		firstEpoch := currentDay * utils.EpochsPerDay()
+		firstSlot := utils.GetLastBalanceInfoSlotForDay(lastDay) + 1
+		lastSlot := lastFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 		totalBalance := uint64(0)
 
@@ -1229,12 +1232,12 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 		var lastDeposits uint64
 		g.Go(func() error {
-			return GetValidatorDepositsForEpochs(validatorIndices, firstEpoch, lastFinalizedEpoch, &lastDeposits)
+			return GetValidatorDepositsForSlots(validatorIndices, firstSlot, lastSlot, &lastDeposits)
 		})
 
 		var lastWithdrawals uint64
 		g.Go(func() error {
-			return GetValidatorWithdrawalsForEpochs(validatorIndices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
+			return GetValidatorWithdrawalsForSlots(validatorIndices, firstSlot, lastSlot, &lastWithdrawals)
 		})
 
 		err = g.Wait()
