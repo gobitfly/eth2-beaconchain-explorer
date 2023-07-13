@@ -2344,9 +2344,20 @@ func collectMonitoringMachine(
 		}
 	}
 
-	const subThreshold = 10
-	const subFirstRatioThreshold = 0.3
-	const subSecondRatioThreshold = 0.9
+	subThreshold := uint64(10)
+	if utils.Config.Notifications.MachineEventThreshold != 0 {
+		subThreshold = utils.Config.Notifications.MachineEventThreshold
+	}
+
+	subFirstRatioThreshold := 0.3
+	if utils.Config.Notifications.MachineEventFirstRatioThreshold != 0 {
+		subFirstRatioThreshold = utils.Config.Notifications.MachineEventFirstRatioThreshold
+	}
+
+	subSecondRatioThreshold := 0.9
+	if utils.Config.Notifications.MachineEventSecondRatioThreshold != 0 {
+		subSecondRatioThreshold = utils.Config.Notifications.MachineEventSecondRatioThreshold
+	}
 
 	var subScriptionCount uint64
 	err = db.FrontendWriterDB.Get(&subScriptionCount,
