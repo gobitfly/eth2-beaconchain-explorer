@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
@@ -80,7 +81,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		result = &types.SearchAheadSlotsResult{}
-		if _, convertErr := strconv.ParseInt(search, 10, 32); convertErr == nil {
+		if _, parseErr := strconv.ParseInt(search, 10, 32); parseErr == nil {
 			err = db.ReaderDb.Select(result, `
 			SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 			FROM blocks 
@@ -101,19 +102,21 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ORDER BY slot LIMIT 10`, blockHash)
 		}
 	case "blocks":
-		var number uint64
-		number, err = strconv.ParseUint(search, 10, 64)
-		if err != nil {
+		number, parseErr := strconv.ParseUint(search, 10, 64)
+		if parseErr != nil {
 			break
 		}
-		var block *types.Eth1Block
-		block, err = db.BigtableClient.GetBlockFromBlocksTable(number)
-		if err == nil {
-			result = &types.SearchAheadBlocksResult{{
-				Block: block.Number,
-				Hash:  fmt.Sprintf("%#x", block.Hash),
-			}}
+		block, blockErr := db.BigtableClient.GetBlockFromBlocksTable(number)
+		if blockErr != nil {
+			if blockErr != db.ErrBlockNotFound {
+				err = blockErr
+			}
+			break
 		}
+		result = &types.SearchAheadBlocksResult{{
+			Block: block.Number,
+			Hash:  fmt.Sprintf("%#x", block.Hash),
+		}}
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 		err = db.ReaderDb.Select(graffiti, `
@@ -143,13 +146,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		var tx *types.Eth1TransactionIndexed
 		tx, err = db.BigtableClient.GetIndexedEth1Transaction(txHash)
-		if err == nil && tx != nil {
-			result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
+		if err != nil || tx == nil {
+			break
 		}
+		result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
 	case "epochs":
-		var epochNumber uint64
-		epochNumber, err = strconv.ParseUint(search, 10, 32)
-		if err != nil {
+		epochNumber, parseErr := strconv.ParseUint(search, 10, 32)
+		if parseErr != nil {
 			break
 		}
 		result = &types.SearchAheadEpochsResult{}
@@ -157,8 +160,8 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		indexNumeric, errParse := strconv.ParseInt(search, 10, 32)
-		if errParse == nil { // search the validator by its index
+		indexNumeric, parseErr := strconv.ParseInt(search, 10, 32)
+		if parseErr == nil { // search the validator by its index
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
 		} else if thresholdHexLikeRE.MatchString(search) {
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE LOWER($1 || '%')`, search)
@@ -175,21 +178,17 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if utils.IsValidEnsDomain(search) {
 			ensData, _ = GetEnsDomain(search)
 			if len(ensData.Address) > 0 {
-				search = strings.Replace(ensData.Address, "0x", "", -1)
+				search = ensData.Address
 			}
-		}
-		if len(search) <= 1 {
-			break
-		}
-		if len(search)%2 != 0 {
-			search = search[:len(search)-1]
 		}
 		if !searchLikeRE.MatchString(search) {
 			break
 		}
-		var eth1AddressHash []byte
-		eth1AddressHash, err = hex.DecodeString(search)
-		if err != nil {
+		if len(search)%2 != 0 { // pad with 0 if uneven
+			search = search + "0"
+		}
+		eth1AddressHash, decodeErr := hex.DecodeString(search)
+		if decodeErr != nil {
 			break
 		}
 		result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
@@ -329,9 +328,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		result = &res
 	case "ens":
-		var data *types.EnsDomainResponse
-		data, err = GetEnsDomain(search)
+		if !utils.IsValidEnsDomain(search) {
+			break
+		}
+		data, ensErr := GetEnsDomain(search)
 		if err != nil {
+			if ensErr != sql.ErrNoRows {
+				err = ensErr
+			}
 			break
 		}
 		result = &data

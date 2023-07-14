@@ -59,7 +59,8 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 
 	errorMsg := "Error: Something went wrong. No validators added to the watchlist, please try again in a bit."
 
-	for _, val := range validators {
+	pubkeys := make([][]byte, len(validators))
+	for i, val := range validators {
 		pubkey, _, err := GetValidatorIndexFrom(val)
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -72,7 +73,10 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 			return
 		}
+		pubkeys[i] = pubkey
+	}
 
+	for _, pubkey := range pubkeys {
 		err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: hex.EncodeToString(pubkey)}}, utils.GetNetwork())
 		if err != nil {
 			logger.WithError(err).Errorf("error adding validator to watchlist: %v", user.UserID)
