@@ -175,11 +175,15 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ORDER BY index LIMIT 10`, search+"%")
 		}
 	case "eth1_addresses":
-		var ensData *types.EnsDomainResponse
 		if utils.IsValidEnsDomain(search) {
-			ensData, _ = GetEnsDomain(search)
+			ensData, _ := GetEnsDomain(search)
 			if len(ensData.Address) > 0 {
-				search = ensData.Address
+				result = []*types.Eth1AddressSearchItem{{
+					Address: ensData.Address,
+					Name:    ensData.Domain,
+					Token:   "",
+				}}
+				break
 			}
 		}
 		if !searchLikeRE.MatchString(search) {
@@ -195,11 +199,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
 		if err != nil {
 			err = fmt.Errorf("error searching for eth1AddressHash: %v", err)
-		} else if ensData != nil && len(ensData.Domain) > 0 {
-			cast, ok := result.([]*types.Eth1AddressSearchItem)
-			if ok && len(cast) > 0 {
-				cast[0].Name = ensData.Domain
-			}
 		}
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
@@ -239,7 +238,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if utils.IsValidEnsDomain(search) {
 			ensData, _ = GetEnsDomain(search)
 			if len(ensData.Address) > 0 {
-				search = ensData.Address
+				search = strings.Replace(ensData.Address, "0x", "", -1)
 			}
 		}
 		if !searchLikeRE.MatchString(search) {
@@ -330,7 +329,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		data, ensErr := GetEnsDomain(search)
-		if err != nil {
+		if ensErr != nil {
 			if ensErr != sql.ErrNoRows {
 				err = ensErr
 			}
