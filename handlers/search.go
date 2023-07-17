@@ -134,12 +134,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		result = graffiti
 	case "transactions":
-		if !transactionLikeRE.MatchString(strings.ToLower(strings.Replace(search, "0x", "", -1))) {
+		search = strings.ToLower(strings.Replace(search, "0x", "", -1))
+		if !transactionLikeRE.MatchString(search) {
 			break
 		}
 		result = &types.SearchAheadTransactionsResult{}
 		var txHash []byte
-		txHash, err = hex.DecodeString(strings.ToLower(strings.Replace(search, "0x", "", -1)))
+		txHash, err = hex.DecodeString(search)
 		if err != nil {
 			err = fmt.Errorf("error parsing txHash %v: %v", search, err)
 			break
@@ -234,21 +235,18 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		result, err = FindValidatorIndicesByEth1Address(search)
 	case "count_indexed_validators_by_eth1_address":
-		if len(search) <= 1 {
-			break
-		}
 		var ensData *types.EnsDomainResponse
 		if utils.IsValidEnsDomain(search) {
 			ensData, _ = GetEnsDomain(search)
 			if len(ensData.Address) > 0 {
-				search = strings.Replace(ensData.Address, "0x", "", -1)
+				search = ensData.Address
 			}
-		}
-		if len(search)%2 != 0 {
-			search = search[:len(search)-1]
 		}
 		if !searchLikeRE.MatchString(search) {
 			break
+		}
+		if len(search)%2 != 0 { // pad with 0 if uneven
+			search = search + "0"
 		}
 		// find validators per eth1-address (limit result by N addresses and M validators per address)
 		result = &[]struct {

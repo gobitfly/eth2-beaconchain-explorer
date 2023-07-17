@@ -41,7 +41,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 					validators = append(validators, fmt.Sprintf("%v", index))
 				}
 			}
-		} else if _, err := strconv.Atoi(userInput); err == nil {
+		} else if _, err := strconv.ParseUint(userInput, 10, 32); err == nil {
 			validators = append(validators, userInput)
 		} else {
 			invalidValidators = append(invalidValidators, userInput)
@@ -52,6 +52,7 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 		if len(invalidValidators) > 1 {
 			desc = "validators"
 		}
+		logger.Warn("Invalid validators when adding to watchlist: ", invalidValidators)
 		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: Invalid %s %v. No validators added to the watchlist, please try again in a bit.", desc, strings.Join(invalidValidators, ", ")))
 		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 		return

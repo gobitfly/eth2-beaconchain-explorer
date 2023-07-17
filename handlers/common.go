@@ -541,7 +541,7 @@ func GetTruncCurrentPriceFormatted(r *http.Request) string {
 
 // GetValidatorIndexFrom gets the validator index from users input
 func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint64, err error) {
-	validatorIndex, err = strconv.ParseUint(userInput, 10, 64)
+	validatorIndex, err = strconv.ParseUint(userInput, 10, 32)
 	if err == nil {
 		pubKey, err = db.GetValidatorPublicKey(validatorIndex)
 		return
