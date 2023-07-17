@@ -70,7 +70,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	searchType := vars["type"]
 	search := vars["search"]
 	search = strings.Replace(search, "0x", "", -1)
-	search = strings.Replace(search, "0X", "", -1)
 	var err error
 	logger := logger.WithField("searchType", searchType)
 	var result interface{}
