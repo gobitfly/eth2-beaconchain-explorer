@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
@@ -13,6 +14,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -45,7 +47,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, export-epoch-missed-slots")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, export-epoch-missed-slots")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -198,6 +200,8 @@ func main() {
 		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
+	case "historic-prices-export":
+		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
@@ -512,4 +516,26 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	}
 
 	logrus.Infof("index run completed")
+}
+
+func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
+	logrus.Infof("exporting historic prices for days %v - %v", dayStart, dayEnd)
+	for day := dayStart; day <= dayEnd; day++ {
+		timeStart := time.Now()
+		ts := utils.DayToTime(int64(day)).UTC().Truncate(utils.Day)
+		err := services.WriteHistoricPricesForDay(ts)
+		if err != nil {
+			errMsg := fmt.Sprintf("error exporting historic prices for day %v", day)
+			utils.LogError(err, errMsg, 0)
+			return
+		}
+		logrus.Printf("finished export for day %v, took %v", day, time.Since(timeStart))
+
+		if day < dayEnd {
+			// Wait to not overload the API
+			time.Sleep(5 * time.Second)
+		}
+	}
+
+	logrus.Info("historic price update run completed")
 }

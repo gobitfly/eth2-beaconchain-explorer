@@ -1118,7 +1118,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 			}
 			jReversed := reversePaddedIndex(j, 100000)
 
-			if idx.Path == "[]" || bytes.Equal(idx.Value, []byte{0x0}) { // skip top level call & empty calls
+			if idx.Path == "[]" || bytes.Equal(idx.Value, []byte{0x0}) { // skip top level and empty calls
 				continue
 			}
 
@@ -1136,17 +1136,6 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
 			bigtable.markBalanceUpdate(indexedItx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 
-			b, err := proto.Marshal(indexedItx)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			mut := gcp_bigtable.NewMutation()
-			mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
-
-			bulkData.Keys = append(bulkData.Keys, key)
-			bulkData.Muts = append(bulkData.Muts, mut)
-
 			indexes := []string{
 				// fmt.Sprintf("%s:i:ITX::%s:%s:%s", bigtable.chainId, reversePaddedBigtableTimestamp(blk.GetTime()), fmt.Sprintf("%04d", i), fmt.Sprintf("%05d", j)),
 				fmt.Sprintf("%s:I:ITX:%x:TO:%x:%s:%s:%s", bigtable.chainId, idx.GetFrom(), idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
@@ -1155,12 +1144,40 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				fmt.Sprintf("%s:I:ITX:%x:TIME:%s:%s:%s", bigtable.chainId, idx.GetTo(), reversePaddedBigtableTimestamp(blk.GetTime()), iReversed, jReversed),
 			}
 
-			for _, idx := range indexes {
+			// Delete existing delegatecall data or add/update other data
+			if idx.GetType() == "delegatecall" {
 				mut := gcp_bigtable.NewMutation()
-				mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+				mut.DeleteCellsInColumn(DEFAULT_FAMILY, DATA_COLUMN)
 
-				bulkData.Keys = append(bulkData.Keys, idx)
+				bulkData.Keys = append(bulkData.Keys, key)
 				bulkData.Muts = append(bulkData.Muts, mut)
+
+				for _, idx := range indexes {
+					mut := gcp_bigtable.NewMutation()
+					mut.DeleteCellsInColumn(DEFAULT_FAMILY, key)
+
+					bulkData.Keys = append(bulkData.Keys, idx)
+					bulkData.Muts = append(bulkData.Muts, mut)
+				}
+			} else {
+				b, err := proto.Marshal(indexedItx)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				mut := gcp_bigtable.NewMutation()
+				mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+
+				bulkData.Keys = append(bulkData.Keys, key)
+				bulkData.Muts = append(bulkData.Muts, mut)
+
+				for _, idx := range indexes {
+					mut := gcp_bigtable.NewMutation()
+					mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+					bulkData.Keys = append(bulkData.Keys, idx)
+					bulkData.Muts = append(bulkData.Muts, mut)
+				}
 			}
 		}
 	}
