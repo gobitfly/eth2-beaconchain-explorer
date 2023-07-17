@@ -166,14 +166,11 @@ func main() {
 				WHERE finalized 
 				AND rewards_exported
 			)
-			SELECT e.epoch FROM (
-				SELECT (slot / $1) AS epoch
-				FROM blocks
-				WHERE status = '0' 
+			SELECT epoch 
+			FROM blocks
+			WHERE status = '0' 
 				AND slot < (SELECT slot FROM last_exported_epoch)
-				ORDER BY slot desc
-			) AS e 
-			GROUP BY e.epoch 
+			GROUP BY epoch 
 			ORDER BY epoch;
 		`, utils.Config.Chain.Config.SlotsPerEpoch)
 		if err != nil {
