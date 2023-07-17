@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"embed"
+	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
