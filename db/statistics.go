@@ -248,14 +248,14 @@ func WriteValidatorTotalPerformance(day uint64) error {
 					SELECT 
 						vs1.validatorindex, 
 						vs1.day, 
-						COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
-						COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0) AS cl_proposer_rewards_gwei_total_new, 
-						COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
-						COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new,
-						COALESCE(vs1.missed_attestations, 0) + COALESCE(vs2.missed_attestations_total, 0) AS missed_attestations_total_new,
-						COALESCE(vs1.participated_sync, 0) + COALESCE(vs2.participated_sync_total, 0) AS participated_sync_total_new,
-						COALESCE(vs1.missed_sync, 0) + COALESCE(vs2.missed_sync_total, 0) AS missed_sync_total_new,
-						COALESCE(vs1.orphaned_sync, 0) + COALESCE(vs2.orphaned_sync_total, 0) AS orphaned_sync_total_new
+						COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS,
+						COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0),
+						COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0),
+						COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0),
+						COALESCE(vs1.missed_attestations, 0) + COALESCE(vs2.missed_attestations_total, 0),
+						COALESCE(vs1.participated_sync, 0) + COALESCE(vs2.participated_sync_total, 0),
+						COALESCE(vs1.missed_sync, 0) + COALESCE(vs2.missed_sync_total, 0),
+						COALESCE(vs1.orphaned_sync, 0) + COALESCE(vs2.orphaned_sync_total, 0)
 					FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex < $3
 				) 
 				ON CONFLICT (validatorindex, day) DO UPDATE SET 
