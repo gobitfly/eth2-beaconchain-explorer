@@ -25,17 +25,23 @@ type options struct {
 	statisticsValidatorToggle bool
 	statisticsResetColumns    string
 	statisticsChartToggle     bool
+	statisticsGraffitiToggle  bool
+	concurrencyTotal          uint64
+	concurrencyCl             uint64
 }
 
-var opt *options
+var opt = &options{}
 
 func main() {
-	configPath := flag.String("config", "", "Path to the config file")
-	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
-	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
-	statisticsValidatorToggle := flag.Bool("validators.enabled", false, "Toggle exporting validator statistics")
-	statisticsResetColumns := flag.String("validators.reset", "", "validator_stats_status columns to reset. Comma separated. Use 'all' for complete resync.")
-	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
+	flag.StringVar(&opt.configPath, "config", "", "Path to the config file")
+	flag.Int64Var(&opt.statisticsDayToExport, "statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
+	flag.StringVar(&opt.statisticsDaysToExport, "statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
+	flag.BoolVar(&opt.statisticsValidatorToggle, "validators.enabled", false, "Toggle exporting validator statistics")
+	flag.StringVar(&opt.statisticsResetColumns, "validators.reset", "", "validator_stats_status columns to reset. Comma separated. Use 'all' for complete resync.")
+	flag.BoolVar(&opt.statisticsChartToggle, "charts.enabled", false, "Toggle exporting chart series")
+	flag.BoolVar(&opt.statisticsGraffitiToggle, "graffiti.enabled", false, "Toggle exporting graffiti statistics")
+	flag.Uint64Var(&opt.concurrencyTotal, "concurrency.total", 10, "Concurrency to use when writing total rewards/performance postgres queries")
+	flag.Uint64Var(&opt.concurrencyCl, "concurrency.cl", 50, "Concurrency to use when writing cl postgres queries")
 
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -45,27 +51,14 @@ func main() {
 		return
 	}
 
-	opt = &options{
-		configPath:                *configPath,
-		statisticsDayToExport:     *statisticsDayToExport,
-		statisticsDaysToExport:    *statisticsDaysToExport,
-		statisticsChartToggle:     *statisticsChartToggle,
-		statisticsResetColumns:    *statisticsResetColumns,
-		statisticsValidatorToggle: *statisticsValidatorToggle,
-	}
-
-	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
+	logrus.Printf("version: %v, config file path: %v", version.Version, opt.configPath)
 	cfg := &types.Config{}
-	err := utils.ReadConfig(cfg, *configPath)
+	err := utils.ReadConfig(cfg, opt.configPath)
 
 	if err != nil {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-
-	if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID != 1 {
-		logrus.Infof("Execution charts are currently only available for mainnet")
-	}
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
@@ -124,8 +117,8 @@ func main() {
 		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
 	}
 
-	if *statisticsDaysToExport != "" {
-		s := strings.Split(*statisticsDaysToExport, "-")
+	if opt.statisticsDaysToExport != "" {
+		s := strings.Split(opt.statisticsDaysToExport, "-")
 		if len(s) < 2 {
 			logrus.Fatalf("invalid arg")
 		}
@@ -138,13 +131,13 @@ func main() {
 			utils.LogFatal(err, "error parsing last day of statisticsDaysToExport flag to uint", 0)
 		}
 
-		if *statisticsValidatorToggle {
+		if opt.statisticsValidatorToggle {
 			logrus.Infof("exporting validator statistics for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
 
 				clearStatsStatusTable(d, opt.statisticsResetColumns)
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d))
+				err = db.WriteValidatorStatisticsForDay(uint64(d), opt.concurrencyTotal, opt.concurrencyCl)
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", d, err)
 					break
@@ -152,7 +145,7 @@ func main() {
 			}
 		}
 
-		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
+		if opt.statisticsChartToggle {
 			logrus.Infof("exporting chart series for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
 				_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
@@ -168,40 +161,57 @@ func main() {
 			}
 		}
 
-		return
-	} else if *statisticsDayToExport >= 0 {
-
-		if *statisticsValidatorToggle {
-			clearStatsStatusTable(uint64(*statisticsDayToExport), opt.statisticsResetColumns)
-
-			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport))
-			if err != nil {
-				logrus.Errorf("error exporting stats for day %v: %v", *statisticsDayToExport, err)
+		if opt.statisticsGraffitiToggle {
+			for d := firstDay; d <= lastDay; d++ {
+				err = db.WriteGraffitiStatisticsForDay(int64(d))
+				if err != nil {
+					logrus.Errorf("error exporting graffiti-stats from day %v: %v", opt.statisticsDayToExport, err)
+					break
+				}
 			}
 		}
 
-		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
-			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", *statisticsDayToExport)
+		return
+	} else if opt.statisticsDayToExport >= 0 {
+
+		if opt.statisticsValidatorToggle {
+			clearStatsStatusTable(uint64(opt.statisticsDayToExport), opt.statisticsResetColumns)
+
+			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), opt.concurrencyTotal, opt.concurrencyCl)
 			if err != nil {
-				logrus.Fatalf("error resetting status for chart series status for day %v: %v", *statisticsDayToExport, err)
+				logrus.Errorf("error exporting stats for day %v: %v", opt.statisticsDayToExport, err)
+			}
+		}
+
+		if opt.statisticsChartToggle {
+			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", opt.statisticsDayToExport)
+			if err != nil {
+				logrus.Fatalf("error resetting status for chart series status for day %v: %v", opt.statisticsDayToExport, err)
 			}
 
-			err = db.WriteChartSeriesForDay(int64(*statisticsDayToExport))
+			err = db.WriteChartSeriesForDay(int64(opt.statisticsDayToExport))
 			if err != nil {
-				logrus.Errorf("error exporting chart series from day %v: %v", *statisticsDayToExport, err)
+				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
+			}
+		}
+
+		if opt.statisticsGraffitiToggle {
+			err = db.WriteGraffitiStatisticsForDay(int64(opt.statisticsDayToExport))
+			if err != nil {
+				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
 			}
 		}
 		return
 	}
 
-	go statisticsLoop()
+	go statisticsLoop(opt.concurrencyTotal, opt.concurrencyCl)
 
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
 }
 
-func statisticsLoop() {
+func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64) {
 	for {
 
 		latestEpoch := services.LatestFinalizedEpoch()
@@ -236,7 +246,7 @@ func statisticsLoop() {
 			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
-					err := db.WriteValidatorStatisticsForDay(day)
+					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl)
 					if err != nil {
 						logrus.Errorf("error exporting stats for day %v: %v", day, err)
 						break
@@ -255,16 +265,28 @@ func statisticsLoop() {
 			if lastExportedDayChart != 0 {
 				lastExportedDayChart++
 			}
-			if utils.Config.Chain.Config.DepositChainID == 1 {
-				logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
-				if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
-					for day := lastExportedDayChart; day <= previousDay; day++ {
-						err = db.WriteChartSeriesForDay(int64(day))
-						if err != nil {
-							logrus.Errorf("error exporting chart series from day %v: %v", day, err)
-							break
-						}
+			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
+			if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
+				for day := lastExportedDayChart; day <= previousDay; day++ {
+					err = db.WriteChartSeriesForDay(int64(day))
+					if err != nil {
+						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+						break
 					}
+				}
+			}
+		}
+
+		if opt.statisticsGraffitiToggle {
+			var lastDay int64
+			err := db.WriterDb.Get(&lastDay, "select COALESCE(max(day), 0) from graffiti_stats")
+			if err != nil {
+				logrus.Errorf("error retreiving latest exported day from graffiti_stats: %v", err)
+			} else {
+				nextDay := lastDay + 1
+				err = db.WriteGraffitiStatisticsForDay(nextDay)
+				if err != nil {
+					logrus.Errorf("error exporting graffiti-stats for day %v: %v", nextDay, err)
 				}
 			}
 		}

@@ -33,6 +33,8 @@ type LighthouseClient struct {
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
 	signer              gtypes.Signer
+	lastBlockSeen       time.Time
+	lastBlockSeenMux    *sync.Mutex
 }
 
 // NewLighthouseClient is used to create a new Lighthouse client
@@ -42,6 +44,7 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
 		signer:              signer,
+		lastBlockSeenMux:    &sync.Mutex{},
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
@@ -49,6 +52,22 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 }
 
 func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
+	// setup health check & exit if the new block chan does no longer receive new blocks
+	lc.lastBlockSeenMux.Lock()
+	lc.lastBlockSeen = time.Now()
+	lc.lastBlockSeenMux.Unlock()
+	go func() {
+		for ; ; time.Sleep(time.Second) {
+			lc.lastBlockSeenMux.Lock()
+			if time.Since(lc.lastBlockSeen) > time.Minute*2 {
+				lc.lastBlockSeenMux.Unlock()
+				// fatal if no new block was received for more than two minutes
+				logger.Fatalf("lighthouse client error, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
+			}
+			lc.lastBlockSeenMux.Unlock()
+		}
+	}()
+
 	blkCh := make(chan *types.Block, 10)
 	go func() {
 		stream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
@@ -57,43 +76,6 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 			utils.LogFatal(err, "getting eventsource stream error", 0)
 		}
 		defer stream.Close()
-
-		// for {
-		// 	select {
-		// 	case e := <-stream.Events:
-		// 		var parsed StreamedBlockEventData
-		// 		err = json.Unmarshal([]byte(e.Data()), &parsed)
-		// 		if err != nil {
-		// 			logger.Warnf("failed to decode block event: %v", err)
-		// 		} else {
-		// 			slot := uint64(parsed.Slot)
-		// 			blks, err := lc.GetBlocksBySlot(parsed.Slot)
-		// 			if err != nil {
-		// 				logger.Warnf("failed to fetch block(s) for slot %d: %v", slot, err)
-		// 				continue
-		// 			}
-		// 			for _, blk := range blks {
-		// 				blkCh <- blk
-		// 			}
-		// 		}
-		// 	}
-		// }
-		// poll sync status 2 times per slot
-		// t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot) / 2)
-
-		// lastHeadSlot := uint64(0)
-		// headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
-		// if err == nil {
-		// 	var parsedHead StandardBeaconHeaderResponse
-		// 	err = json.Unmarshal(headResp, &parsedHead)
-		// 	if err != nil {
-		// 		logger.Warnf("failed to decode head, starting blocks channel at slot 0")
-		// 	} else {
-		// 		lastHeadSlot = uint64(parsedHead.Data.Header.Message.Slot)
-		// 	}
-		// } else {
-		// 	logger.Warnf("failed to fetch head, starting blocks channel at slot 0")
-		// }
 
 		for {
 			e := <-stream.Events
@@ -116,6 +98,9 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 				// logger.Infof("pushing block %v", blk.Slot)
 				blkCh <- blk
 			}
+			lc.lastBlockSeenMux.Lock()
+			lc.lastBlockSeen = time.Now()
+			lc.lastBlockSeenMux.Unlock()
 		}
 	}()
 	return blkCh

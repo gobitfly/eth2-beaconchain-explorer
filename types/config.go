@@ -29,8 +29,7 @@ type Config struct {
 		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
 		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
 	} `yaml:"bigtable"`
-	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
-	Chain                    struct {
+	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
@@ -169,12 +168,15 @@ type Config struct {
 		Pprof   bool   `yaml:"pprof" envconfig:"METRICS_PPROF"`
 	} `yaml:"metrics"`
 	Notifications struct {
-		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
-		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
-		PubkeyCachePath                               string `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
-		OnlineDetectionLimit                          int    `yaml:"onlineDetectionLimit" envconfig:"ONLINE_DETECTION_LIMIT"`
-		OfflineDetectionLimit                         int    `yaml:"offlineDetectionLimit" envconfig:"OFFLINE_DETECTION_LIMIT"`
+		UserDBNotifications                           bool    `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath                       string  `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool    `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
+		PubkeyCachePath                               string  `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
+		OnlineDetectionLimit                          int     `yaml:"onlineDetectionLimit" envconfig:"ONLINE_DETECTION_LIMIT"`
+		OfflineDetectionLimit                         int     `yaml:"offlineDetectionLimit" envconfig:"OFFLINE_DETECTION_LIMIT"`
+		MachineEventThreshold                         uint64  `yaml:"machineEventThreshold" envconfig:"MACHINE_EVENT_THRESHOLD"`
+		MachineEventFirstRatioThreshold               float64 `yaml:"machineEventFirstRatioThreshold" envconfig:"MACHINE_EVENT_FIRST_RATIO_THRESHOLD"`
+		MachineEventSecondRatioThreshold              float64 `yaml:"machineEventSecondRatioThreshold" envconfig:"MACHINE_EVENT_SECOND_RATIO_THRESHOLD"`
 	} `yaml:"notifications"`
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`

@@ -310,18 +310,18 @@ type ValidatorsPageData struct {
 
 // ValidatorsData is a struct to hold data about validators
 type ValidatorsData struct {
-	TotalCount                 uint64  `db:"total_count"`
-	Epoch                      uint64  `db:"epoch"`
-	PublicKey                  []byte  `db:"pubkey"`
-	ValidatorIndex             uint64  `db:"validatorindex"`
-	WithdrawableEpoch          uint64  `db:"withdrawableepoch"`
-	CurrentBalance             uint64  `db:"balance"`
-	EffectiveBalance           uint64  `db:"effectivebalance"`
-	Slashed                    bool    `db:"slashed"`
-	ActivationEligibilityEpoch uint64  `db:"activationeligibilityepoch"`
-	ActivationEpoch            uint64  `db:"activationepoch"`
-	ExitEpoch                  uint64  `db:"exitepoch"`
-	LastAttestationSlot        *int64  `db:"lastattestationslot"`
+	TotalCount                 uint64 `db:"total_count"`
+	Epoch                      uint64 `db:"epoch"`
+	PublicKey                  []byte `db:"pubkey"`
+	ValidatorIndex             uint64 `db:"validatorindex"`
+	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
+	CurrentBalance             uint64 `db:"balance"`
+	EffectiveBalance           uint64 `db:"effectivebalance"`
+	Slashed                    bool   `db:"slashed"`
+	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch            uint64 `db:"activationepoch"`
+	ExitEpoch                  uint64 `db:"exitepoch"`
+	LastAttestationSlot        int64
 	Name                       string  `db:"name"`
 	State                      string  `db:"state"`
 	MissedProposals            uint64  `db:"missedproposals"`
@@ -346,11 +346,11 @@ type ValidatorPageData struct {
 	SlashedBy                                uint64
 	SlashedAt                                uint64
 	SlashedFor                               string
-	ActivationEligibilityEpoch               uint64         `db:"activationeligibilityepoch"`
-	ActivationEpoch                          uint64         `db:"activationepoch"`
-	ExitEpoch                                uint64         `db:"exitepoch"`
-	Index                                    uint64         `db:"index"`
-	LastAttestationSlot                      *uint64        `db:"lastattestationslot"`
+	ActivationEligibilityEpoch               uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch                          uint64 `db:"activationepoch"`
+	ExitEpoch                                uint64 `db:"exitepoch"`
+	Index                                    uint64 `db:"index"`
+	LastAttestationSlot                      uint64
 	Name                                     string         `db:"name"`
 	Pool                                     string         `db:"pool"`
 	Tags                                     pq.StringArray `db:"tags"`

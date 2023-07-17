@@ -50,8 +50,12 @@ type Bigtable struct {
 	tableMetadataUpdates *gcp_bigtable.Table
 	tableMetadata        *gcp_bigtable.Table
 	tableMachineMetrics  *gcp_bigtable.Table
+	tableValidators      *gcp_bigtable.Table
 
 	redisCache *redis.Client
+
+	lastAttestationCache    map[uint64]uint64
+	lastAttestationCacheMux *sync.Mutex
 
 	chainId string
 }
@@ -78,15 +82,17 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 	}
 
 	bt := &Bigtable{
-		client:               btClient,
-		tableData:            btClient.Open("data"),
-		tableBlocks:          btClient.Open("blocks"),
-		tableMetadataUpdates: btClient.Open("metadata_updates"),
-		tableMetadata:        btClient.Open("metadata"),
-		tableBeaconchain:     btClient.Open("beaconchain"),
-		tableMachineMetrics:  btClient.Open("machine_metrics"),
-		chainId:              chainId,
-		redisCache:           rdc,
+		client:                  btClient,
+		tableData:               btClient.Open("data"),
+		tableBlocks:             btClient.Open("blocks"),
+		tableMetadataUpdates:    btClient.Open("metadata_updates"),
+		tableMetadata:           btClient.Open("metadata"),
+		tableBeaconchain:        btClient.Open("beaconchain"),
+		tableMachineMetrics:     btClient.Open("machine_metrics"),
+		tableValidators:         btClient.Open("beaconchain_validators"),
+		chainId:                 chainId,
+		redisCache:              rdc,
+		lastAttestationCacheMux: &sync.Mutex{},
 	}
 
 	BigtableClient = bt
@@ -521,6 +527,22 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 
 func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.Block) error {
 
+	// Initialize in memory last attestation cache lazily
+	bigtable.lastAttestationCacheMux.Lock()
+	if bigtable.lastAttestationCache == nil {
+		t := time.Now()
+		var err error
+		bigtable.lastAttestationCache, err = bigtable.GetLastAttestationSlots([]uint64{})
+
+		if err != nil {
+			bigtable.lastAttestationCacheMux.Unlock()
+			return err
+		}
+		logger.Infof("initialized in memory last attestation slot cache with %v validators in %v", len(bigtable.lastAttestationCache), time.Since(t))
+
+	}
+	bigtable.lastAttestationCacheMux.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
@@ -556,17 +578,37 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 	}
 
 	for attestedSlot, inclusions := range attestationsBySlot {
-		mut := gcp_bigtable.NewMutation()
-		for validator, inclusionSlot := range inclusions {
-			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
-		}
-		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mut)
+		mutInclusionSlot := gcp_bigtable.NewMutation()
+		mutLastAttestationSlot := gcp_bigtable.NewMutation()
+		mutLastAttestationSlotSet := false
 
+		bigtable.lastAttestationCacheMux.Lock()
+		for validator, inclusionSlot := range inclusions {
+			mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
+
+			if attestedSlot > bigtable.lastAttestationCache[validator] {
+				mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((attestedSlot)*1000), []byte{})
+				bigtable.lastAttestationCache[validator] = attestedSlot
+				mutLastAttestationSlotSet = true
+			}
+
+		}
+		bigtable.lastAttestationCacheMux.Unlock()
+
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mutInclusionSlot)
 		if err != nil {
 			return err
 		}
+
+		if mutLastAttestationSlotSet {
+			err = bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
+			if err != nil {
+				return err
+			}
+		}
 	}
-	logger.Infof("exported attestations to bigtable in %v", time.Since(start))
+
+	logger.Infof("exported attestations (new) to bigtable in %v", time.Since(start))
 	return nil
 }
 
@@ -839,6 +881,62 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	}, gcp_bigtable.RowFilter(filter))
 	if err != nil {
 		return nil, err
+	}
+
+	return res, nil
+}
+
+func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint64]uint64, error) {
+	valLen := len(validators)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
+	defer cancel()
+
+	res := make(map[uint64]uint64, len(validators))
+
+	columnFilters := []gcp_bigtable.Filter{}
+	if valLen < 1000 {
+		columnFilters = make([]gcp_bigtable.Filter, 0, len(validators))
+		for _, validator := range validators {
+			columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
+		}
+	}
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+		gcp_bigtable.InterleaveFilters(columnFilters...),
+		gcp_bigtable.LatestNFilter(1),
+	)
+
+	if len(columnFilters) == 1 { // special case to retrieve data for one validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+			columnFilters[0],
+			gcp_bigtable.LatestNFilter(1),
+		)
+	} else if len(columnFilters) == 0 { // special case to retrieve data for all validators
+		filter = gcp_bigtable.ChainFilters(
+			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
+			gcp_bigtable.LatestNFilter(1),
+		)
+	}
+
+	key := fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId)
+
+	row, err := bigtable.tableValidators.ReadRow(ctx, key, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ri := range row[ATTESTATIONS_FAMILY] {
+		attestedSlot := uint64(ri.Timestamp) / 1000
+
+		validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, ATTESTATIONS_FAMILY+":"), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+		}
+
+		res[validator] = attestedSlot
 	}
 
 	return res, nil
@@ -1160,7 +1258,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(startEpoch, endEpoch uin
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)
@@ -1615,7 +1713,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			ranges := bigtable.getEpochRanges(fromEpoch, toEpoch)

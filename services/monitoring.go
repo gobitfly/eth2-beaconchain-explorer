@@ -38,10 +38,16 @@ func startClDataMonitoringService() {
 
 		// retrieve the max attestationslot from the validators table and check that it is not older than 15 minutes
 		var maxAttestationSlot uint64
-		err := db.WriterDb.Get(&maxAttestationSlot, "SELECT MAX(lastattestationslot) FROM validators;")
+		lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots([]uint64{})
 		if err != nil {
-			logger.Errorf("error retrieving max attestation slot from validators table: %v", err)
+			logger.Errorf("error retrieving max attestation slot data from bigtable: %v", err)
 			continue
+		}
+
+		for _, lastAttestationSlot := range lastAttestationSlots {
+			if lastAttestationSlot > maxAttestationSlot {
+				maxAttestationSlot = lastAttestationSlot
+			}
 		}
 
 		if time.Since(utils.SlotToTime(maxAttestationSlot)) > time.Minute*15 {

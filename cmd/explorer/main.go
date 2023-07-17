@@ -229,13 +229,6 @@ func main() {
 	logrus.Infof("database connection established")
 
 	if utils.Config.Indexer.Enabled {
-
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
-
-		if err != nil {
-			logrus.Fatalf("error initializing last attesation cache: %v", err)
-		}
-
 		var rpcClient rpc.Client
 
 		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
@@ -633,7 +626,6 @@ func main() {
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
-			// authRouter.HandleFunc("/notifications-center/monitoring/updatesubs", handlers.UserUpdateMonitoringSubscriptions).Methods("POST")
 
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")

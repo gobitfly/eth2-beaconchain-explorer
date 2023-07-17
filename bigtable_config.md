@@ -13,6 +13,12 @@ Column families:
 * Name: `vb` | GC Policy: None
 
 ----
+Table name: `beaconchain_validators`
+
+Column families:
+* Name: `at` | GC Policy: Version based policy with a maximum of 1 versions
+
+----
 Table name: `blocks`
 
 Column families:

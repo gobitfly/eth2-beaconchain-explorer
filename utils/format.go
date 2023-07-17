@@ -435,10 +435,9 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
 }
 
-func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice template.HTML) template.HTML {
+func FormatEtherValue(symbol string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
 	p := message.NewPrinter(language.English)
-	ep, _ := ethPrice.Float64()
-	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/ETH</span>`, symbol, ep, currentPrice))
+	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/ETH</span>`, symbol, ethPrice.InexactFloat64(), currentPrice))
 }
 
 // FormatGraffiti will return the graffiti formated as html
@@ -1169,16 +1168,17 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 	e := new(big.Int).SetBytes(balance.Metadata.Decimals)
 	d := new(big.Int).Exp(big.NewInt(10), e, nil)
-	balWei := new(big.Float).SetInt(new(big.Int).SetBytes(balance.Balance))
-	balEth := new(big.Float).Quo(balWei, new(big.Float).SetInt(d))
+	balWei := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
+	balEth := balWei.DivRound(decimal.NewFromBigInt(d, 0), int32(e.Int64()))
+
 	p := message.NewPrinter(language.English)
-	return template.HTML(p.Sprintf(fmt.Sprintf(`
+	return template.HTML(p.Sprintf(`
 		<div class="d-flex align-items-center">
 			<svg style="width: 1rem; height: 1rem;">
 				<use xlink:href="#ethereum-diamond-logo"/>
 			</svg> 
-			<span class="token-holdings">%%.%df Ether</span>
-		</div>`, e.Int64()), balEth))
+			<span class="token-holdings">%v Ether</span>
+		</div>`, balEth))
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {

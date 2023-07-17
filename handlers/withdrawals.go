@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -56,7 +55,6 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := ReplaceEnsNameWithAddress(q.Get("search[value]"))
-	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -211,7 +209,6 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := ReplaceEnsNameWithAddress(q.Get("search[value]"))
-	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
