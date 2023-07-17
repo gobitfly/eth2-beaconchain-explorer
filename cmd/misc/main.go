@@ -166,8 +166,33 @@ func main() {
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
+	case "migrate-last-attestation-slot-bigtable":
+		migrateLastAttestationSlotToBigtable()
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
+	}
+}
+
+// one time migration of the last attestation slot values from postgres to bigtable
+// will write the last attestation slot that is currently in postgres to bigtable
+// this can safely be done for active validators as bigtable will only keep the most recent
+// last attestation slot
+func migrateLastAttestationSlotToBigtable() {
+	validators := []types.Validator{}
+
+	err := db.WriterDb.Select(&validators, "SELECT validatorindex, lastattestationslot FROM validators WHERE lastattestationslot IS NOT NULL ORDER BY validatorindex")
+
+	if err != nil {
+		utils.LogFatal(err, "error retrieving last attestation slot", 0)
+	}
+
+	for _, validator := range validators {
+		logrus.Infof("setting last attestation slot %v for validator %v", validator.Index, validator.LastAttestationSlot)
+
+		err := db.BigtableClient.SetLastAttestationSlot(validator.Index, uint64(validator.LastAttestationSlot.Int64))
+		if err != nil {
+			utils.LogFatal(err, "error setting last attestation slot", 0)
+		}
 	}
 }
 
