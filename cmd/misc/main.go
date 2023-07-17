@@ -187,7 +187,7 @@ func migrateLastAttestationSlotToBigtable() {
 	}
 
 	for _, validator := range validators {
-		logrus.Infof("setting last attestation slot %v for validator %v", validator.Index, validator.LastAttestationSlot)
+		logrus.Infof("setting last attestation slot %v for validator %v", validator.LastAttestationSlot, validator.Index)
 
 		err := db.BigtableClient.SetLastAttestationSlot(validator.Index, uint64(validator.LastAttestationSlot.Int64))
 		if err != nil {
