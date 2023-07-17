@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -135,7 +136,8 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 	})
 
 	filteredCount := uint64(0)
-	if search != "" {
+	trimmedSearch := strings.ToLower(strings.TrimPrefix(search, "0x"))
+	if trimmedSearch != "" {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
@@ -170,7 +172,7 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		return nil, err
 	}
 
-	if search == "" {
+	if trimmedSearch == "" {
 		filteredCount = withdrawalCount
 	}
 
@@ -284,7 +286,8 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 	})
 
 	filteredCount := uint64(0)
-	if search != "" {
+	trimmedSearch := strings.ToLower(strings.TrimPrefix(search, "0x"))
+	if trimmedSearch != "" {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
@@ -319,7 +322,7 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 		return nil, err
 	}
 
-	if search == "" {
+	if trimmedSearch == "" {
 		filteredCount = totalCount
 	}
 

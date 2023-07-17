@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"embed"
-	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -2277,17 +2276,32 @@ func GetTotalWithdrawals() (total uint64, err error) {
 }
 
 func GetWithdrawalsCountForQuery(query string) (uint64, error) {
-	bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
 	count := uint64(0)
-	err := ReaderDb.Get(&count, `
-			SELECT count(*)
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
-			WHERE CAST(w.validatorindex as varchar) LIKE $1 || '%%'
-				OR address LIKE $2 || '%%'::bytea
-				OR CAST(block_slot as varchar) LIKE $1 || '%%'
-				OR CAST(block_slot / $3 as varchar) LIKE $1 || '%%'
-			`, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
+
+	withdrawalsQuery := `
+		SELECT count(*)
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+		%s`
+
+	var err error = nil
+
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	// Check whether the query can be used for a validator, slot or epoch search
+	if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
+		searchQuery := `
+				WHERE w.validatorindex = $1
+					OR block_slot = $1
+					OR (block_slot / $3) = $1
+					OR address_text LIKE ($2 || '%')`
+		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
+			uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+	} else if addressLikeRE.MatchString(query) {
+		searchQuery := `WHERE address_text LIKE ($1 || '%')`
+		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
+			trimmedQuery)
+	}
+
 	if err != nil {
 		return 0, err
 	}
@@ -2913,25 +2927,45 @@ func GetTotalBLSChanges() (uint64, error) {
 }
 
 func GetBLSChangesCountForQuery(query string) (uint64, error) {
-	bquery, _ := hex.DecodeString(strings.TrimPrefix(query, "0x"))
 	count := uint64(0)
-	err := ReaderDb.Get(&count, `
-		SELECT count(*)
+
+	blsQuery := `
+		SELECT COUNT(*)
 		FROM blocks_bls_change bls
 		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+		%s
+		%s`
+
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	var err error = nil
+
+	joinQuery := `
 		LEFT JOIN (
 			SELECT 
 				validators.validatorindex as validatorindex,
 				eth1_deposits.from_address as deposit_adress
 			FROM validators 
 			INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
-		) AS val ON val.validatorindex = bls.validatorindex
-		WHERE CAST(bls.validatorindex as varchar) LIKE $1 || '%%'
-			OR pubkey LIKE $2::bytea || '%%'::bytea
-			OR CAST(block_slot as varchar) LIKE $1 || '%%'
-			OR CAST((block_slot / $3) as varchar) LIKE $1 || '%%'
-			OR val.deposit_adress LIKE $2::bytea || '%%'::bytea
-		`, strings.ToLower(query), bquery, utils.Config.Chain.Config.SlotsPerEpoch)
+		) AS val ON val.validatorindex = bls.validatorindex`
+
+	// Check whether the query can be used for a validator, slot or epoch search
+	if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
+		searchQuery := `
+			WHERE bls.validatorindex = $1			
+				OR block_slot = $1
+				OR (block_slot / $3) = $1
+				OR pubkey_text LIKE ($2 || '%')
+				OR ENCODE(val.deposit_adress, 'hex') LIKE ($2 || '%')`
+
+		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
+			uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+	} else if blsLikeRE.MatchString(query) {
+		searchQuery := `
+				WHERE pubkey_text LIKE ($1 || '%')
+				OR ENCODE(val.deposit_adress, 'hex') LIKE ($1 || '%')`
+		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
+			trimmedQuery)
+	}
 	if err != nil {
 		return 0, err
 	}
