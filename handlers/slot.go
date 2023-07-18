@@ -241,7 +241,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN blocks_tags ON blocks.slot = blocks_tags.slot and blocks.blockroot = blocks_tags.blockroot
 		LEFT JOIN tags ON blocks_tags.tag_id = tags.id
-		LEFT JOIN epochs ON (GREATEST(blocks.slot,1)-1)/32 = epochs.epoch
+		LEFT JOIN epochs ON (GREATEST(blocks.slot,1)-1)/$2 = epochs.epoch
 		WHERE blocks.slot = $1 
 		group by
 			blocks.epoch,
@@ -252,7 +252,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			epoch_participation_rate
 		ORDER BY blocks.blockroot DESC, blocks.status ASC limit 1
 		`,
-		blockSlot)
+		blockSlot, utils.Config.Chain.Config.SlotsPerEpoch)
 	if err != nil {
 		return nil, err
 	}
