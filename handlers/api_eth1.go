@@ -182,7 +182,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(indices) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false, 0, 0)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -1010,27 +1010,36 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	return maps.Values(resultPerProposer), nil
 }
 
-func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool, lowerBoundDay uint64, upperBoundDay uint64) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
+
+	if upperBoundDay == 0 {
+		upperBoundDay = 65536
+	}
+	lowerBoundEpoch := lowerBoundDay * utils.EpochsPerDay()
+	upperBoundEpoch := (upperBoundDay+1)*utils.EpochsPerDay() - 1
 
 	order := "DESC"
 	if isSortAsc {
 		order = "ASC"
 	}
 
-	status := ""
+	status := "status != '3'"
 	if onlyFinalized {
-		status = `and status = '1'`
+		status = `status = '1'`
 	}
 
-	query := fmt.Sprintf(`SELECT 
+	query := fmt.Sprintf(`
+		SELECT 
 			exec_block_number,
 			proposer,
 			slot,
 			epoch  
 		FROM blocks 
 		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 AND status != '3' %s
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0
+			AND epoch BETWEEN $4 AND $5
+			AND %s
 		ORDER BY exec_block_number %s
 		OFFSET $2 LIMIT $3`, status, order)
 
@@ -1039,6 +1048,8 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64,
 		pq.Array(indices),
 		offset,
 		limit,
+		lowerBoundEpoch,
+		upperBoundEpoch,
 	)
 	if err != nil {
 		return nil, nil, err

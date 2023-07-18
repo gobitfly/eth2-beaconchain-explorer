@@ -19,10 +19,12 @@
     <script>
       $(".income-chart-btn").on("click", () => {
         $("#incomeChart").removeClass("d-none")
+        $("#load-income-btn:not(.loaded)").removeClass("d-none")
         $("#proposedChart").addClass("d-none")
       })
       $(".proposed-chart-btn").on("click", () => {
         $("#incomeChart").addClass("d-none")
+        $("#load-income-btn:not(.loaded)").addClass("d-none")
         $("#proposedChart").removeClass("d-none")
       })
     </script>
@@ -164,9 +166,14 @@
             </ul>
             <div class="tab-content h-100" id="myTabContent">
               <div id="charts" class="tab-pane fade w-100 h-100 show active" role="tabpanel" aria-labelledby="charts-tab">
-                <div class="btn-group border rounded mt-2 ml-2 charts-btn-group" role="group" aria-label="Charts buttons group">
-                  <button type="button" class="btn btn-link btn-sm border-right income-chart-btn nav-link">Income</button>
-                  <button type="button" class="btn btn-link btn-sm proposed-chart-btn nav-link">Proposals</button>
+                <div class="d-flex justify-content-between flex-nowrap px-2 pt-2">
+                  <div class="btn-group border rounded charts-btn-group" role="group" aria-label="Charts buttons group">
+                    <button type="button" class="btn btn-link btn-sm border-right income-chart-btn nav-link">Income</button>
+                    <button type="button" class="btn btn-link btn-sm proposed-chart-btn nav-link">Proposals</button>
+                  </div>
+                  <button type="button" id="load-income-btn" class="btn btn-link btn-sm border rounded nav-link">
+                    Load More
+                  </button>
                 </div>
                 <div id="incomeChart" class="w-100 mb-2" aria-labelledby="incomeChart-tab">
                   {{ template "validatorIncomeChart" $ }}

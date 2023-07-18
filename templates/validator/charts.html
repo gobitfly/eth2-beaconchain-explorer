@@ -155,14 +155,17 @@
     </div>
     {{ if .IncomeHistoryChartData }}
       <script>
+
         var incomeHistory = {{.IncomeHistoryChartData}}
         var executionIncomeHistory = {{ .ExecutionIncomeHistoryData }}
         var currency = {{$.Rates.Currency}}
         var ethPrice = {{$.Rates.EthPrice}}
 
+        var incomeChart;
+
         window.addEventListener('load', function () {
-          Highcharts.stockChart('income-chart', {
-            colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b", "#91e8e1"],
+          incomeChart = Highcharts.stockChart('income-chart', {
+            colors: ["#90ed7d", "#7cb5ec"],
             rangeSelector: {
               enabled: false
             },
@@ -176,12 +179,6 @@
             },
             legend: {
               enabled: true
-            },
-            navigator: {
-              series: {
-                data: incomeHistory,
-                color: '#7cb5ec',
-              }
             },
             plotOptions: {
               column: {
@@ -214,16 +211,17 @@
                 },
               }
             }],
-            series: [{
-              name: "Consensus Income",
-              data: incomeHistory,
-              index: 2
-            },
-            {
-              name: "Execution Income",
-              data: executionIncomeHistory,
-              index: 1
-            }
+            series: [
+              {
+                name: "Execution Income",
+                data: executionIncomeHistory,
+                showInNavigator: false
+              },
+              {
+                name: "Consensus Income",
+                data: incomeHistory,
+                showInNavigator: true
+              }
             ],
             tooltip: {
               split: false,
@@ -256,8 +254,49 @@
               }
             }
           });
+
+          var incomeChartLoaded = false;
+          $("#load-income-btn").on("click", () => {
+            if (incomeChartLoaded) {
+              return
+            }
+            incomeChartLoaded = true
+            const minTime = incomeHistory[0].x / 1000
+            const genesisTimestamp = {{$.ChainGenesisTimestamp}}
+            const minDay = Math.floor((minTime - genesisTimestamp) / (24 * 60 * 60)) // floor shouldn't be necessary but just in case
+
+            const url = '/dashboard/data/allbalances?validators=' + {{.ValidatorIndex}} + '&end_day=' + Math.max(0, minDay - 1)
+            $("#load-income-btn").text("Loading...")
+            fetch(url)
+              .then(response => {
+                if (!response.ok) {
+                  throw new Error('Network response was not ok.');
+                }
+                return response.json();
+              })
+              .then(data => {
+                incomeChart.update({
+                  series: [
+                    {
+                      data: data.executionChartData.concat(executionIncomeHistory)
+                    },
+                    {
+                      data: data.consensusChartData.concat(incomeHistory)
+                    }
+                  ],
+                });
+                $("#load-income-btn").addClass("loaded").addClass("d-none")
+              })
+              .catch(error => {
+                console.error(error);
+                $("#load-income-btn").text("Load More")
+                alert('Error loading data. Please try again.');
+                incomeChartLoaded = false
+              });
+          });
         })
       </script>
     {{ end }}
   {{ end }}
 {{ end }}
+001058219
