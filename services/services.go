@@ -84,16 +84,15 @@ func Init() {
 	ready.Wait()
 }
 
-func InitNotifications(pubkeyCachePath string) {
+func InitNotificationSender() {
+	logger.Infof("starting notifications-sender")
+	go notificationSender()
+}
 
+func InitNotificationCollector(pubkeyCachePath string) {
 	err := initPubkeyCache(pubkeyCachePath)
 	if err != nil {
 		logger.Fatalf("error initializing pubkey cache path for notifications: %v", err)
-	}
-
-	if utils.Config.Notifications.Sender {
-		logger.Infof("starting notifications-sender")
-		go notificationSender()
 	}
 
 	go notificationCollector()
@@ -1623,12 +1622,6 @@ func getBurnPageData() (*types.BurnPageData, error) {
 		txReward := new(big.Int).SetBytes(blk.GetTxReward())
 
 		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(blk.GetGasUsed())))
-		// burnedPercentage := float64(0.0)
-		if len(txReward.Bits()) != 0 {
-			txBurnedBig := new(big.Float).SetInt(burned)
-			txBurnedBig.Quo(txBurnedBig, new(big.Float).SetInt(txReward))
-			// burnedPercentage, _ = txBurnedBig.Float64()
-		}
 
 		blockReward := new(big.Int).Add(utils.Eth1BlockReward(blockNumber, blk.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(blk.GetUncleReward())))
 

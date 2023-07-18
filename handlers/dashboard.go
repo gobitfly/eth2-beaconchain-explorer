@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
@@ -528,10 +529,11 @@ func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDat
 			}
 			continue
 		}
-		totalReward, _ := utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).Float64()
-		relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]
-		if ok {
-			totalReward, _ = utils.WeiToEther(relayData.MevBribe.BigInt()).Float64()
+		var totalReward float64
+		if relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]; ok {
+			totalReward = utils.WeiToEther(relayData.MevBribe.BigInt()).InexactFloat64()
+		} else {
+			totalReward = utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).InexactFloat64()
 		}
 
 		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
@@ -740,19 +742,16 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.withdrawableepoch,
 			validators.slashed,
 			validators.activationeligibilityepoch,
-			validators.lastattestationslot,
 			validators.activationepoch,
 			validators.exitepoch,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '1') as executedproposals,
 			(SELECT COUNT(*) FROM blocks WHERE proposer = validators.validatorindex AND status = '2') as missedproposals,
 			COALESCE(validator_performance.cl_performance_7d, 0) as performance7d,
 			COALESCE(validator_names.name, '') AS name,
-		    validators.status AS state,
-			eth1_deposits.from_address
+		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
-		LEFT JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
 		WHERE validators.validatorindex = ANY($1)
 		LIMIT $2`, filter, validatorLimit)
 
@@ -760,6 +759,37 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator data")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
+	}
+
+	validatorsByIndexPubKeys := make([][]byte, len(validatorsByIndex))
+	for idx := range validatorsByIndex {
+		validatorsByIndexPubKeys[idx] = validatorsByIndex[idx].PublicKey
+	}
+	pubkeyFilter := pq.ByteaArray(validatorsByIndexPubKeys)
+
+	validatorsDeposits := []struct {
+		Pubkey  []byte `db:"publickey"`
+		Address []byte `db:"from_address"`
+	}{}
+	err = db.ReaderDb.Select(&validatorsDeposits, `
+		SELECT
+			publickey,
+			from_address
+		FROM eth1_deposits
+		WHERE publickey = ANY($1)`, pubkeyFilter)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator deposists")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	validatorsDepositsMap := make(map[string][]string)
+	for _, deposit := range validatorsDeposits {
+		key := hex.EncodeToString(deposit.Pubkey)
+		if _, ok := validatorsDepositsMap[key]; !ok {
+			validatorsDepositsMap[key] = make([]string, 0)
+		}
+		validatorsDepositsMap[key] = append(validatorsDepositsMap[key], fmt.Sprintf("%#x", deposit.Address))
 	}
 
 	latestEpoch := services.LatestEpoch()
@@ -785,6 +815,17 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 					validator.EffectiveBalance = balance[0].EffectiveBalance
 				}
 			}
+		}
+
+		lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(validatorIndexArr)
+		if err != nil {
+			logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator last attestation slot data")
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			return
+		}
+
+		for _, validator := range validatorsByIndex {
+			validator.LastAttestationSlot = int64(lastAttestationSlots[validator.ValidatorIndex])
 		}
 	}
 
@@ -873,10 +914,10 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			tableData[i] = append(tableData[i], nil)
 		}
 
-		if v.LastAttestationSlot != nil && *v.LastAttestationSlot != 0 {
+		if v.LastAttestationSlot != 0 {
 			tableData[i] = append(tableData[i], []interface{}{
-				*v.LastAttestationSlot,
-				utils.FormatTimestamp(utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix()),
+				v.LastAttestationSlot,
+				utils.FormatTimestamp(utils.SlotToTime(uint64(v.LastAttestationSlot)).Unix()),
 				//utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
 			})
 		} else {
@@ -890,8 +931,9 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency))
 
-		if v.DepositAddress != nil {
-			tableData[i] = append(tableData[i], fmt.Sprintf("0x%x", *v.DepositAddress))
+		validatorDeposits := validatorsDepositsMap[hex.EncodeToString(v.PublicKey)]
+		if validatorDeposits != nil {
+			tableData[i] = append(tableData[i], validatorDeposits)
 		} else {
 			tableData[i] = append(tableData[i], nil)
 		}
@@ -1001,6 +1043,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		Missed         *uint64 `db:"missed_blocks"`
 		Orphaned       *uint64 `db:"orphaned_blocks"`
 	}{}
+	todaysProposals := proposals
 
 	err = db.ReaderDb.Select(&proposals, `
 		SELECT validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks
@@ -1013,21 +1056,50 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lastDay, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving last exported statistic day")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+	_, lastExportedEpoch := utils.GetFirstAndLastEpochForDay(lastDay)
+
+	err = db.ReaderDb.Select(&todaysProposals, `
+		SELECT
+			proposer as validatorindex,
+			SUM(CASE WHEN status = '1' THEN 1 ELSE 0 END) as proposed_blocks,
+			SUM(CASE WHEN status = '2' THEN 1 ELSE 0 END) as missed_blocks,
+			SUM(CASE WHEN status = '3' THEN 1 ELSE 0 END) as orphaned_blocks
+		FROM blocks
+		WHERE proposer = ANY($1) AND epoch > $2
+		group by proposer`, filter, lastExportedEpoch)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving validator_stats")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+
+	for i := range todaysProposals {
+		todaysProposals[i].Day = int64(lastDay + 1)
+	}
+
+	proposals = append(todaysProposals, proposals...)
+
 	proposalsHistResult := make([][]uint64, len(proposals))
-	for i, b := range proposals {
+	for i, proposal := range proposals {
 		var proposed, missed, orphaned uint64 = 0, 0, 0
-		if b.Proposed != nil {
-			proposed = *b.Proposed
+		if proposal.Proposed != nil {
+			proposed = *proposal.Proposed
 		}
-		if b.Missed != nil {
-			missed = *b.Missed
+		if proposal.Missed != nil {
+			missed = *proposal.Missed
 		}
-		if b.Orphaned != nil {
-			orphaned = *b.Orphaned
+		if proposal.Orphaned != nil {
+			orphaned = *proposal.Orphaned
 		}
 		proposalsHistResult[i] = []uint64{
-			b.ValidatorIndex,
-			uint64(utils.DayToTime(b.Day).Unix()),
+			proposal.ValidatorIndex,
+			uint64(utils.DayToTime(proposal.Day).Unix()),
 			proposed,
 			missed,
 			orphaned,

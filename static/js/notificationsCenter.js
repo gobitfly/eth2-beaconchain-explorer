@@ -199,10 +199,16 @@ function loadMonitoringData(data) {
   }
 
   for (let i = 0; i < data.length; i++) {
+    // monitoring_hdd_almostfull as an exception saves the threshold value inverted, i.e. the remaining free space
+    var eventThreshold = data[i].EventThreshold
+    if (data[i].EventName === "monitoring_hdd_almostfull") {
+      eventThreshold = 1 - eventThreshold
+    }
+
     mdata.push({
       id: data[i].ID,
       notification: data[i].EventName,
-      threshold: data[i].EventThreshold ? 1 - data[i].EventThreshold : data[i].EventThreshold,
+      threshold: eventThreshold,
       mostRecent: data[i].LastSent || 0,
       machine: data[i].EventFilter,
       event: {},

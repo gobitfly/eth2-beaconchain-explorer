@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"eth2-exporter/cache"
 	"eth2-exporter/metrics"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
@@ -20,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func WriteValidatorStatisticsForDay(day uint64) error {
+func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurrencyCl uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
@@ -107,7 +108,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
-	} else if err := WriteValidatorClIcome(day); err != nil {
+	} else if err := WriteValidatorClIcome(day, concurrencyCl); err != nil {
 		return err
 	}
 
@@ -119,7 +120,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	if exported.TotalPerformance {
 		logger.Infof("Skipping total performance")
-	} else if err := WriteValidatorTotalPerformance(day); err != nil {
+	} else if err := WriteValidatorTotalPerformance(day, concurrencyTotal); err != nil {
 		return err
 	}
 
@@ -140,7 +141,7 @@ func WriteValidatorStatsExported(day uint64) error {
 
 	start := time.Now()
 
-	logger.Infof("marking day export as completed in the status table")
+	logger.Infof("marking day export as completed in the validator_stats_status table for day %v", day)
 	_, err = tx.Exec(`
 		UPDATE validator_stats_status
 		SET status = true
@@ -166,7 +167,7 @@ func WriteValidatorStatsExported(day uint64) error {
 	return nil
 }
 
-func WriteValidatorTotalPerformance(day uint64) error {
+func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -217,6 +218,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		return err
 	}
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 	batchSize := 1000
 	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 		start := b
@@ -227,7 +229,7 @@ func WriteValidatorTotalPerformance(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			_, err = WriterDb.Exec(`INSERT INTO validator_stats (
@@ -589,7 +591,7 @@ func WriteValidatorElIcome(day uint64) error {
 	return nil
 }
 
-func WriteValidatorClIcome(day uint64) error {
+func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -645,6 +647,7 @@ func WriteValidatorClIcome(day uint64) error {
 	maxValidatorIndex++
 
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 
 	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
@@ -678,7 +681,7 @@ func WriteValidatorClIcome(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			_, err := WriterDb.Exec(stmt, valueArgs...)
@@ -691,7 +694,7 @@ func WriteValidatorClIcome(day uint64) error {
 				(
 					SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(last.end_balance, 0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
 					FROM validator_stats cur
-					INNER JOIN validator_stats last 
+					LEFT JOIN validator_stats last 
 						ON cur.validatorindex = last.validatorindex AND last.day = GREATEST(cur.day - 1, 0)
 					WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex < $3
 				)
@@ -779,7 +782,7 @@ func WriteValidatorBalances(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			defer logger.Infof("saving validator balance batch %v completed", start)
@@ -832,12 +835,14 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 		return err
 	}
 
-	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
-	// for getting the withrawals / deposits for the current day we have to go 1 epoch in the past as they affect the balance one epoch after they have happend
-	if firstEpoch > 0 {
-		firstEpoch--
+	// The end_balance of a day is the balance after the first slot of the last epoch of that day.
+	// Therefore the last 31 slots of the day are not included in the end_balance of that day.
+	// Since our income calculation is base on subtracting end_balances the deposits and withdrawals that happen during those slots must be added to the next day instead.
+	firstSlot := uint64(0)
+	if day > 0 {
+		firstSlot = utils.GetLastBalanceInfoSlotForDay(day-1) + 1
 	}
-	lastEpoch--
+	lastSlot := utils.GetLastBalanceInfoSlotForDay(day)
 
 	tx, err := WriterDb.Beginx()
 	if err != nil {
@@ -847,7 +852,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 	defer tx.Rollback()
 
 	start := time.Now()
-	logrus.Infof("Update Withdrawals + Deposits for day [%v] epoch %v -> %v", day, firstEpoch, lastEpoch)
+	logrus.Infof("Update Withdrawals + Deposits for day [%v] slot %v -> %v", day, firstSlot, lastSlot)
 
 	logger.Infof("exporting deposits and deposits_amount statistics")
 	depositsQry := `
@@ -857,7 +862,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
+			where blocks.slot >= $1 and blocks.slot <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
 			group by validators.validatorindex
 		) 
 		on conflict (validatorindex, day) do
@@ -874,7 +879,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 				from blocks_deposits
 				inner join validators on blocks_deposits.publickey = validators.pubkey
 				inner join blocks on blocks_deposits.block_root = blocks.blockroot
-				where blocks.epoch >= $1 and blocks.epoch <= $2 and blocks.status = '1'
+				where blocks.slot >= $1 and blocks.slot <= $2 and blocks.status = '1'
 				group by validators.validatorindex, day
 			) 
 			on conflict (validatorindex, day) do
@@ -882,7 +887,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 				deposits_amount = excluded.deposits_amount;`
 	}
 
-	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
+	_, err = tx.Exec(depositsQry, firstSlot, lastSlot, day)
 	if err != nil {
 		return err
 	}
@@ -896,13 +901,13 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 			select validatorindex, $3, count(*), sum(amount)
 			from blocks_withdrawals
 			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
-			where block_slot >= $1 and block_slot < $2 and blocks.status = '1'
+			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
 			group by validatorindex
 		) 
 		on conflict (validatorindex, day) do
 			update set withdrawals = excluded.withdrawals, 
 			withdrawals_amount = excluded.withdrawals_amount;`
-	_, err = tx.Exec(withdrawalsQuery, firstEpoch*utils.Config.Chain.Config.SlotsPerEpoch, (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, day)
+	_, err = tx.Exec(withdrawalsQuery, firstSlot, lastSlot, day)
 	if err != nil {
 		return err
 	}
@@ -1019,7 +1024,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	logrus.Infof("exporting 'failed attestations' statistics firstEpoch: %v lastEpoch: %v", firstEpoch, lastEpoch)
 
 	// first key is the batch start index and the second is the validator id
-	failed := map[uint64]map[uint64]*types.ValidatorFailedAttestationsStatistic{}
+	failed := map[uint64]map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
@@ -1034,10 +1039,10 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
-			ma, err := BigtableClient.GetValidatorFailedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
+			ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
 			if err != nil {
 				logrus.Errorf("error getting 'failed attestations' %v", err)
 				return err
@@ -1053,7 +1058,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		return err
 	}
 
-	validatorMap := map[uint64]*types.ValidatorFailedAttestationsStatistic{}
+	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	for _, f := range failed {
 
 		for key, val := range f {
@@ -1061,14 +1066,13 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 				validatorMap[key] = val
 			} else {
 				validatorMap[key].MissedAttestations += val.MissedAttestations
-				validatorMap[key].OrphanedAttestations += val.OrphanedAttestations
 			}
 		}
 	}
 
 	logrus.Infof("fetching 'failed attestations' done in %v, now we export them to the db", time.Since(start))
 	start = time.Now()
-	maArr := make([]*types.ValidatorFailedAttestationsStatistic, 0, len(validatorMap))
+	maArr := make([]*types.ValidatorMissedAttestationsStatistic, 0, len(validatorMap))
 
 	for _, stat := range validatorMap {
 		maArr = append(maArr, stat)
@@ -1088,7 +1092,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
-				return nil
+				return gCtx.Err()
 			default:
 			}
 			return saveFailedAttestationBatch(maArr[start:end], day)
@@ -1109,7 +1113,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	return nil
 }
 
-func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatistic, day uint64) error {
+func saveFailedAttestationBatch(batch []*types.ValidatorMissedAttestationsStatistic, day uint64) error {
 	var failedAttestationBatchNumArgs int = 4
 	batchSize := len(batch)
 	valueStrings := make([]string, 0, failedAttestationBatchNumArgs)
@@ -1120,7 +1124,7 @@ func saveFailedAttestationBatch(batch []*types.ValidatorFailedAttestationsStatis
 		valueArgs = append(valueArgs, stat.Index)
 		valueArgs = append(valueArgs, day)
 		valueArgs = append(valueArgs, stat.MissedAttestations)
-		valueArgs = append(valueArgs, stat.OrphanedAttestations)
+		valueArgs = append(valueArgs, 0)
 	}
 	stmt := fmt.Sprintf(`
 		insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) VALUES
@@ -1153,8 +1157,8 @@ func markColumnExported(day uint64, column string) error {
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validator_indices, 0, 0, lastFinalizedEpoch)
+func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
+	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, 0, 0, lastFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -1171,11 +1175,29 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string,
 	return clRewardsSeries, err
 }
 
-func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64, upperBoundDay uint64, lastFinalizedEpoch uint64) ([]types.ValidatorIncomeHistory, error) {
+func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, upperBoundDay uint64, lastFinalizedEpoch uint64) ([]types.ValidatorIncomeHistory, error) {
+	if len(validatorIndices) == 0 {
+		return []types.ValidatorIncomeHistory{}, nil
+	}
+
 	if upperBoundDay == 0 {
 		upperBoundDay = 65536
 	}
-	queryValidatorsArr := pq.Array(validator_indices)
+
+	validatorIndices = utils.SortedUniqueUint64(validatorIndices)
+	validatorIndicesStr := make([]string, len(validatorIndices))
+	for i, v := range validatorIndices {
+		validatorIndicesStr[i] = fmt.Sprintf("%d", v)
+	}
+
+	validatorIndicesPqArr := pq.Array(validatorIndices)
+
+	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch+10) // updates every epoch, keep 10sec longer
+	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(validatorIndicesStr, ","))
+	cached := []types.ValidatorIncomeHistory{}
+	if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, &cached); err == nil {
+		return cached, nil
+	}
 
 	var result []types.ValidatorIncomeHistory
 	err := ReaderDb.Select(&result, `
@@ -1187,7 +1209,7 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		WHERE validatorindex = ANY($1) AND day BETWEEN $2 AND $3 
 		GROUP BY day 
 		ORDER BY day
-	;`, queryValidatorsArr, lowerBoundDay, upperBoundDay)
+	;`, validatorIndicesPqArr, lowerBoundDay, upperBoundDay)
 	if err != nil {
 		return nil, err
 	}
@@ -1205,13 +1227,14 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		}
 
 		currentDay := lastDay + 1
-		firstEpoch := currentDay * utils.EpochsPerDay()
+		firstSlot := utils.GetLastBalanceInfoSlotForDay(lastDay) + 1
+		lastSlot := lastFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 		totalBalance := uint64(0)
 
 		g := errgroup.Group{}
 		g.Go(func() error {
-			latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validator_indices, lastFinalizedEpoch, lastFinalizedEpoch)
+			latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validatorIndices, lastFinalizedEpoch, lastFinalizedEpoch)
 			if err != nil {
 				logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
 				return err
@@ -1229,17 +1252,17 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 
 		var lastBalance uint64
 		g.Go(func() error {
-			return GetValidatorBalanceForDay(validator_indices, lastDay, &lastBalance)
+			return GetValidatorBalanceForDay(validatorIndices, lastDay, &lastBalance)
 		})
 
 		var lastDeposits uint64
 		g.Go(func() error {
-			return GetValidatorDepositsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastDeposits)
+			return GetValidatorDepositsForSlots(validatorIndices, firstSlot, lastSlot, &lastDeposits)
 		})
 
 		var lastWithdrawals uint64
 		g.Go(func() error {
-			return GetValidatorWithdrawalsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
+			return GetValidatorWithdrawalsForSlots(validatorIndices, firstSlot, lastSlot, &lastWithdrawals)
 		})
 
 		err = g.Wait()
@@ -1253,15 +1276,68 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		})
 	}
 
-	return result, err
+	go func() {
+		err := cache.TieredCache.Set(cacheKey, &result, cacheDur)
+		if err != nil {
+			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetValidatorIncomeHistory with key %v", cacheKey), 0)
+		}
+	}()
+
+	return result, nil
 }
 
 func WriteChartSeriesForDay(day int64) error {
 	startTs := time.Now()
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	defer cancel()
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return gCtx.Err()
+		default:
+		}
+		err := WriteExecutionChartSeriesForDay(day)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return gCtx.Err()
+		default:
+		}
+		err := WriteConsensusChartSeriesForDay(day)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	err := g.Wait()
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("marking day export as completed in the chart_series_status table for day %v", day)
+	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("chart_series export completed: took %v", time.Since(startTs))
+	return nil
+}
+
+func WriteConsensusChartSeriesForDay(day int64) error {
 	if day < 0 {
-		// before the beaconchain
-		return fmt.Errorf("this function does not yet pre-beaconchain blocks")
+		logger.Warnf("no consensus-charts for day < 0: %v", day)
+		return nil
 	}
 
 	epochsPerDay := utils.EpochsPerDay()
@@ -1271,13 +1347,110 @@ func WriteChartSeriesForDay(day int64) error {
 	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 
 	// inclusive slot
-	firstSlot := utils.TimeToSlot(uint64(dateTrunc.Unix()))
+	firstSlot := utils.TimeToFirstSlotOfEpoch(uint64(dateTrunc.Unix()))
 
 	epochOffset := firstSlot % utils.Config.Chain.Config.SlotsPerEpoch
 	firstSlot = firstSlot - epochOffset
 	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
 	// exclusive slot
 	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	if firstSlot == 0 {
+		nextDateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+1, 0, 0, 0, 0, time.UTC)
+		lastSlot = int64(utils.TimeToFirstSlotOfEpoch(uint64(nextDateTrunc.Unix())))
+	}
+	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
+	lastSlot = lastEpoch * int64(utils.Config.Chain.Config.SlotsPerEpoch)
+
+	logrus.WithFields(logrus.Fields{"day": day, "firstSlot": firstSlot, "lastSlot": lastSlot, "firstEpoch": firstEpoch, "lastEpoch": lastEpoch, "startDate": startDate, "dateTrunc": dateTrunc}).Infof("exporting consensus chart_series")
+
+	var err error
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'STAKED_ETH' as indicator, eligibleether/1e9 as value from epochs where epoch = $2 limit 1 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, lastEpoch-1)
+	if err != nil {
+		return fmt.Errorf("error inserting STAKED_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_VALIDATOR_BALANCE_ETH' as indicator, avg(averagevalidatorbalance)/1e9 as value from epochs where epoch >= $2 and epoch < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error inserting AVG_VALIDATOR_BALANCE_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_PARTICIPATION_RATE' as indicator, avg(globalparticipationrate) as value from epochs where epoch >= $2 and epoch < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error inserting AVG_PARTICIPATION_RATE into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'AVG_STAKE_EFFECTIVENESS' as indicator, coalesce(avg(eligibleether) / avg(totalvalidatorbalance), 0) as value from epochs where totalvalidatorbalance != 0 AND eligibleether != 0 and epoch >= $2 and epoch < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstEpoch, lastEpoch)
+	if err != nil {
+		return fmt.Errorf("error inserting AVG_STAKE_EFFECTIVENESS into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_VALID_DEPOSITS_ETH' as indicator, coalesce(sum(amount)/1e9,0) as value from eth1_deposits where valid_signature = true and block_ts >= $1 and block_ts < ($1 + interval '24 hour') on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc)
+	if err != nil {
+		return fmt.Errorf("error inserting EL_VALID_DEPOSITS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'EL_INVALID_DEPOSITS_ETH' as indicator, coalesce(sum(amount)/1e9,0) as value from eth1_deposits where valid_signature = false and block_ts >= $1 and block_ts < ($1 + interval '24 hour') on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc)
+	if err != nil {
+		return fmt.Errorf("error inserting EL_INVALID_DEPOSITS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'CL_DEPOSITS_ETH' as indicator, coalesce(sum(amount)/1e9,0) as value from blocks_deposits where block_slot >= $2 and block_slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting CL_DEPOSITS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'WITHDRAWALS_ETH' as indicator, coalesce(sum(w.amount)/1e9,0) as value from blocks_withdrawals w inner join blocks b ON w.block_root = b.blockroot AND b.status = '1' where w.block_slot >= $2 and w.block_slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting WITHDRAWALS_ETH into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'PROPOSED_BLOCKS' as indicator, count(*) as value from blocks where status = '1' and slot >= $2 and slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting PROPOSED_BLOCKS into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'MISSED_BLOCKS' as indicator, count(*) as value from blocks where status = '2' and slot >= $2 and slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting MISSED_BLOCKS into chart_series: %w", err)
+	}
+
+	_, err = WriterDb.Exec(`insert into chart_series select $1 as time, 'ORPHANED_BLOCKS' as indicator, count(*) as value from blocks where status = '3' and slot >= $2 and slot < $3 on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value`, dateTrunc, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error inserting ORPHANED_BLOCKS into chart_series: %w", err)
+	}
+
+	return nil
+}
+
+func WriteExecutionChartSeriesForDay(day int64) error {
+	if utils.Config.Chain.Config.DepositChainID != 1 {
+		// logger.Warnf("not writing chart_series for execution: chainId != 1: %v", utils.Config.Chain.Config.DepositChainID)
+		return nil
+	}
+
+	if day < 0 {
+		// before the beaconchain
+		logger.Warnf("no execution charts for days before beaconchain")
+		return nil
+	}
+
+	epochsPerDay := utils.EpochsPerDay()
+	beaconchainDay := day * int64(epochsPerDay)
+
+	startDate := utils.EpochToTime(uint64(beaconchainDay))
+	dateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+
+	// inclusive slot
+	firstSlot := utils.TimeToFirstSlotOfEpoch(uint64(dateTrunc.Unix()))
+	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
+	// exclusive slot
+	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	// The first day is not a whole day, so we take the first slot from the next day as lastSlot
+	if firstSlot == 0 {
+		nextDateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+1, 0, 0, 0, 0, time.UTC)
+		lastSlot = int64(utils.TimeToFirstSlotOfEpoch(uint64(nextDateTrunc.Unix())))
+	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
 	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
@@ -1446,7 +1619,7 @@ func WriteChartSeriesForDay(day int64) error {
 	logger.Infof("consensus rewards: %v", totalConsensusRewards)
 
 	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
-	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalBurned.String())
+	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value", dateTrunc, totalBurned.String())
 	if err != nil {
 		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
 	}
@@ -1474,7 +1647,7 @@ func WriteChartSeriesForDay(day int64) error {
 
 	var lastEmission float64
 	err = ReaderDb.Get(&lastEmission, "SELECT value FROM chart_series WHERE indicator = 'TOTAL_EMISSION' AND time < $1 ORDER BY time DESC LIMIT 1", dateTrunc)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return fmt.Errorf("error getting previous value for TOTAL_EMISSION chart_series: %w", err)
 	}
 
@@ -1486,7 +1659,7 @@ func WriteChartSeriesForDay(day int64) error {
 
 	if totalGasPrice.GreaterThan(decimal.NewFromInt(0)) && decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)).GreaterThan(decimal.NewFromInt(0)) {
 		logger.Infof("Exporting AVG_GASPRICE")
-		_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES($1, 'AVG_GASPRICE', $2) ON CONFLICT (time, indicator) DO UPDATE SET value = EXCLUDED.value", dateTrunc, totalGasPrice.Div((decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)))).String())
+		_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES($1, 'AVG_GASPRICE', $2) on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value", dateTrunc, totalGasPrice.Div((decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)))).String())
 		if err != nil {
 			return fmt.Errorf("error calculating AVG_GASPRICE chart_series err: %w", err)
 		}
@@ -1522,10 +1695,14 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 	}
 
-	logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
-	err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
-	if err != nil {
-		return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
+	switch utils.Config.Chain.Config.DepositChainID {
+	case 1:
+		crowdSale := 72009990.50
+		logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+		err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+		if err != nil {
+			return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
+		}
 	}
 
 	logger.Infof("Exporting TX_COUNT %v", txCount)
@@ -1553,13 +1730,36 @@ func WriteChartSeriesForDay(day int64) error {
 	// 	return fmt.Errorf("error calculating NEW_ACCOUNTS chart_series: %w", err)
 	// }
 
-	logger.Infof("marking day export as completed in the status table")
-	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
+	return nil
+}
+
+func WriteGraffitiStatisticsForDay(day int64) error {
+	if day < 0 {
+		logger.Warnf("no graffiti-stats for days before beaconchain")
+		return nil
+	}
+
+	epochsPerDay := utils.EpochsPerDay()
+	firstSlot := uint64(day) * epochsPerDay * utils.Config.Chain.Config.SlotsPerEpoch
+	firstSlotOfNextDay := uint64(day+1) * epochsPerDay * utils.Config.Chain.Config.SlotsPerEpoch
+
+	// \x are missed blocks
+	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
+	_, err := WriterDb.Exec(`
+		insert into graffiti_stats
+		select $1::int as day, graffiti, graffiti_text, count(*), count(distinct proposer) as proposer_count
+		from blocks 
+		where slot >= $2 and slot < $3 and status = '1' and graffiti <> '\x' and graffiti <> '\x0000000000000000000000000000000000000000000000000000000000000000'
+		group by day, graffiti, graffiti_text
+		on conflict (graffiti, day) do update set
+			graffiti       = excluded.graffiti,
+			day            = excluded.day,
+			graffiti_text  = excluded.graffiti_text,
+			count          = excluded.count,
+			proposer_count = excluded.proposer_count`, day, firstSlot, firstSlotOfNextDay)
 	if err != nil {
 		return err
 	}
-
-	logger.Infof("chart_series export completed: took %v", time.Since(startTs))
 
 	return nil
 }

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
@@ -69,55 +70,52 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	searchType := vars["type"]
 	search := vars["search"]
 	search = strings.Replace(search, "0x", "", -1)
-	search = strings.Replace(search, "0X", "", -1)
 	var err error
 	logger := logger.WithField("searchType", searchType)
 	var result interface{}
 
 	switch searchType {
 	case "slots":
-		if len(search) <= 1 {
+		if len(search) <= 1 || !searchLikeRE.MatchString(search) {
 			break
 		}
 		result = &types.SearchAheadSlotsResult{}
-		if searchLikeRE.MatchString(search) {
-			if _, convertErr := strconv.Atoi(search); convertErr == nil {
-				err = db.ReaderDb.Select(result, `
-				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
-				FROM blocks 
-				WHERE slot = $1
-				ORDER BY slot LIMIT 10`, search)
-			} else if len(search) == 64 {
-				blockHash, err := hex.DecodeString(search)
-				if err != nil {
-					logger.Errorf("error parsing blockHash to int: %v", err)
-					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-					return
-				}
-				err = db.ReaderDb.Select(result, `
-				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
-				FROM blocks 
-				WHERE blockroot = $1 OR
-					stateroot = $1
-				ORDER BY slot LIMIT 10`, blockHash)
-				if err != nil {
-					logger.Errorf("error reading block root: %v", err)
-					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-					return
-				}
+		if _, parseErr := strconv.ParseInt(search, 10, 32); parseErr == nil {
+			err = db.ReaderDb.Select(result, `
+			SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
+			FROM blocks 
+			WHERE slot = $1
+			ORDER BY slot LIMIT 10`, search)
+		} else if len(search) == 64 {
+			var blockHash []byte
+			blockHash, err = hex.DecodeString(search)
+			if err != nil {
+				err = fmt.Errorf("error parsing blockHash to int: %v", err)
+				break
 			}
+			err = db.ReaderDb.Select(result, `
+			SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
+			FROM blocks 
+			WHERE blockroot = $1 OR
+				stateroot = $1
+			ORDER BY slot LIMIT 10`, blockHash)
 		}
 	case "blocks":
-		number, err := strconv.ParseUint(search, 10, 64)
-		if err == nil {
-			block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
-			if err == nil {
-				result = &types.SearchAheadBlocksResult{{
-					Block: block.Number,
-					Hash:  fmt.Sprintf("%#x", block.Hash),
-				}}
-			}
+		number, parseErr := strconv.ParseUint(search, 10, 64)
+		if parseErr != nil {
+			break
 		}
+		block, blockErr := db.BigtableClient.GetBlockFromBlocksTable(number)
+		if blockErr != nil {
+			if blockErr != db.ErrBlockNotFound {
+				err = blockErr
+			}
+			break
+		}
+		result = &types.SearchAheadBlocksResult{{
+			Block: block.Number,
+			Hash:  fmt.Sprintf("%#x", block.Hash),
+		}}
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 		err = db.ReaderDb.Select(graffiti, `
@@ -127,48 +125,46 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			GROUP BY graffiti
 			ORDER BY count desc
 			LIMIT 10`, "%"+search+"%")
-		if err == nil {
-			for i := range *graffiti {
-				(*graffiti)[i].Graffiti = utils.FormatGraffitiString((*graffiti)[i].Graffiti)
-			}
+		if err != nil {
+			break
+		}
+		for i := range *graffiti {
+			(*graffiti)[i].Graffiti = utils.FormatGraffitiString((*graffiti)[i].Graffiti)
 		}
 		result = graffiti
 	case "transactions":
-		result = &types.SearchAheadTransactionsResult{}
-		if transactionLikeRE.MatchString(strings.ToLower(strings.Replace(search, "0x", "", -1))) {
-			txHash, txHashErr := hex.DecodeString(strings.ToLower(strings.Replace(search, "0x", "", -1)))
-			if txHashErr != nil {
-				logger.Errorf("error parsing txHash %v: %v", search, txHashErr)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-			var tx *types.Eth1TransactionIndexed
-			tx, err = db.BigtableClient.GetIndexedEth1Transaction(txHash)
-			if err == nil && tx != nil {
-				result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
-			}
+		search = strings.ToLower(strings.Replace(search, "0x", "", -1))
+		if !transactionLikeRE.MatchString(search) {
+			break
 		}
+		result = &types.SearchAheadTransactionsResult{}
+		var txHash []byte
+		txHash, err = hex.DecodeString(search)
+		if err != nil {
+			err = fmt.Errorf("error parsing txHash %v: %v", search, err)
+			break
+		}
+		var tx *types.Eth1TransactionIndexed
+		tx, err = db.BigtableClient.GetIndexedEth1Transaction(txHash)
+		if err != nil || tx == nil {
+			break
+		}
+		result = &types.SearchAheadTransactionsResult{{TxHash: fmt.Sprintf("%x", tx.Hash)}}
 	case "epochs":
+		epochNumber, parseErr := strconv.ParseUint(search, 10, 32)
+		if parseErr != nil {
+			break
+		}
 		result = &types.SearchAheadEpochsResult{}
-		err = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
+		err = db.ReaderDb.Select(result, "SELECT epoch FROM epochs WHERE epoch = $1 ORDER BY epoch LIMIT 10", epochNumber)
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
-		if errParse == nil { // search the validator by its index
+		indexNumeric, parseErr := strconv.ParseInt(search, 10, 32)
+		if parseErr == nil { // search the validator by its index
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
-			if err != nil {
-				logger.Errorf("error reading result data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
 		} else if thresholdHexLikeRE.MatchString(search) {
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE LOWER($1 || '%')`, search)
-			if err != nil {
-				logger.Errorf("error reading result data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
 		} else {
 			err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
@@ -176,70 +172,41 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE LOWER(validator_names.name) LIKE LOWER($1)
 			ORDER BY index LIMIT 10`, search+"%")
-			if err != nil {
-				logger.Errorf("error reading result data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
 		}
 	case "eth1_addresses":
-
-		var ensData *types.EnsDomainResponse
 		if utils.IsValidEnsDomain(search) {
-			ensData, _ = GetEnsDomain(search)
+			ensData, _ := GetEnsDomain(search)
 			if len(ensData.Address) > 0 {
-				search = strings.Replace(ensData.Address, "0x", "", -1)
+				result = []*types.Eth1AddressSearchItem{{
+					Address: ensData.Address,
+					Name:    ensData.Domain,
+					Token:   "",
+				}}
+				break
 			}
 		}
-		// start := time.Now()
-		if len(search) <= 1 {
+		if !searchLikeRE.MatchString(search) {
 			break
 		}
-		if len(search)%2 != 0 {
-			search = search[:len(search)-1]
+		if len(search)%2 != 0 { // pad with 0 if uneven
+			search = search + "0"
 		}
-		if searchLikeRE.MatchString(search) {
-			eth1AddressHash, err := hex.DecodeString(search)
-			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
-			result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
-			if err != nil {
-				logger.Errorf("error searching for eth1AddressHash: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			} else if ensData != nil && len(ensData.Domain) > 0 {
-				cast, ok := result.([]*types.Eth1AddressSearchItem)
-				if ok && len(cast) > 0 {
-					cast[0].Name = ensData.Domain
-				}
-			}
-		} else {
-			result = []*types.Eth1AddressSearchItem{}
+		eth1AddressHash, decodeErr := hex.DecodeString(search)
+		if decodeErr != nil {
+			break
 		}
-		// logger.WithFields(logrus.Fields{
-		// 	"duration": time.Since(start),
-		// }).Infof("finished searching for eth1_addresses")
+		result, err = db.BigtableClient.SearchForAddress(eth1AddressHash, 10)
+		if err != nil {
+			err = fmt.Errorf("error searching for eth1AddressHash: %v", err)
+		}
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
-		indexNumeric, errParse := strconv.ParseInt(search, 10, 64)
+		indexNumeric, errParse := strconv.ParseInt(search, 10, 32)
 		if errParse == nil { // search the validator by its index
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
-			if err != nil {
-				logger.Errorf("error reading result data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
 		} else if thresholdHexLikeRE.MatchString(search) {
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE LOWER($1 || '%')`, search)
-			if err != nil {
-				logger.Errorf("error reading result data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
 		} else {
 			err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
@@ -247,37 +214,25 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE LOWER(validator_names.name) LIKE LOWER($1)
 			ORDER BY index LIMIT 10`, search+"%")
-			if err != nil {
-				logger.Errorf("error reading result data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
 		}
 	case "validators_by_pubkey":
-		result = &types.SearchAheadPubkeyResult{}
-		if thresholdHexLikeRE.MatchString(search) {
-			// Find the validators that have made a deposit but have no index yet and therefore are not in the validators table
-			err = db.ReaderDb.Select(result, `
-				SELECT DISTINCT
-					ENCODE(eth1_deposits.publickey, 'hex') AS pubkey
-					FROM eth1_deposits
-					LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey
-					WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, search)
-			if err != nil {
-				logger.Errorf("error reading result data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
-		}
-	case "indexed_validators_by_eth1_addresses":
-		result, err = FindValidatorIndicesByEth1Address(search)
-		if err != nil {
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		}
-	case "count_indexed_validators_by_eth1_address":
-		if len(search) <= 1 {
+		if !thresholdHexLikeRE.MatchString(search) {
 			break
 		}
+		result = &types.SearchAheadPubkeyResult{}
+		// Find the validators that have made a deposit but have no index yet and therefore are not in the validators table
+		err = db.ReaderDb.Select(result, `
+		SELECT DISTINCT
+			ENCODE(eth1_deposits.publickey, 'hex') AS pubkey
+			FROM eth1_deposits
+			LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey
+			WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, search)
+	case "indexed_validators_by_eth1_addresses":
+		if !utils.IsValidEnsDomain(search) && !utils.IsEth1Address(search) {
+			break
+		}
+		result, err = FindValidatorIndicesByEth1Address(search)
+	case "count_indexed_validators_by_eth1_address":
 		var ensData *types.EnsDomainResponse
 		if utils.IsValidEnsDomain(search) {
 			ensData, _ = GetEnsDomain(search)
@@ -285,37 +240,33 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				search = strings.Replace(ensData.Address, "0x", "", -1)
 			}
 		}
-		if len(search)%2 != 0 {
-			search = search[:len(search)-1]
+		if !searchLikeRE.MatchString(search) {
+			break
 		}
-		if searchLikeRE.MatchString(search) {
-			// find validators per eth1-address (limit result by N addresses and M validators per address)
-			result = &[]struct {
-				Eth1Address string `db:"from_address" json:"eth1_address"`
-				Count       uint64 `db:"count" json:"count"`
-			}{}
-			eth1AddressHash, err := hex.DecodeString(search)
-			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to hex: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
-			err = db.ReaderDb.Select(result, `
-			SELECT from_address, COUNT(*) FROM (
-				SELECT 
-					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address
-				FROM eth1_deposits
-				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address LIKE $1 || '%'::bytea
-			) a 
-			GROUP BY from_address`, eth1AddressHash)
-			if err != nil {
-				logger.Errorf("error retrieving count of indexed validators by address data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
+		if len(search)%2 != 0 { // pad with 0 if uneven
+			search = search + "0"
 		}
+		// find validators per eth1-address (limit result by N addresses and M validators per address)
+		result = &[]struct {
+			Eth1Address string `db:"from_address" json:"eth1_address"`
+			Count       uint64 `db:"count" json:"count"`
+		}{}
+		var eth1AddressHash []byte
+		eth1AddressHash, err = hex.DecodeString(search)
+		if err != nil {
+			err = fmt.Errorf("error parsing eth1AddressHash to hex: %v", err)
+			break
+		}
+		err = db.ReaderDb.Select(result, `
+		SELECT from_address, COUNT(*) FROM (
+			SELECT 
+				DISTINCT ON(validatorindex) validatorindex,
+				ENCODE(from_address::bytea, 'hex') as from_address
+			FROM eth1_deposits
+			INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+			WHERE from_address LIKE $1 || '%'::bytea
+		) a 
+		GROUP BY from_address`, eth1AddressHash)
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
@@ -337,10 +288,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE validatorrow <= $2 AND graffitirow <= 10
 			GROUP BY graffiti
 			ORDER BY count DESC`, "%"+search+"%", searchValidatorsResultLimit)
-		if err == nil {
-			for i := range res {
-				res[i].Graffiti = utils.FormatGraffitiString(res[i].Graffiti)
-			}
+		if err != nil {
+			break
+		}
+		for i := range res {
+			res[i].Graffiti = utils.FormatGraffitiString(res[i].Graffiti)
 		}
 		result = &res
 	case "indexed_validators_by_name":
@@ -364,18 +316,25 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE validatorrow <= $2 AND namerow <= 10
 			GROUP BY name
 			ORDER BY count DESC, name DESC`, "%"+search+"%", searchValidatorsResultLimit)
-		if err == nil {
-			for i := range res {
-				res[i].Name = string(utils.FormatValidatorName(res[i].Name))
-			}
+		if err != nil {
+			break
+		}
+		for i := range res {
+			res[i].Name = string(utils.FormatValidatorName(res[i].Name))
 		}
 		result = &res
 	case "ens":
-		data, err := GetEnsDomain(search)
-		if err == nil {
-			result = &data
+		if !utils.IsValidEnsDomain(search) {
+			break
 		}
-
+		data, ensErr := GetEnsDomain(search)
+		if ensErr != nil {
+			if ensErr != sql.ErrNoRows {
+				err = ensErr
+			}
+			break
+		}
+		result = &data
 	default:
 		http.Error(w, "Not found", 404)
 		return
@@ -383,13 +342,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("searchType", searchType).Error("error doing query for searchAhead")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		logger.WithError(err).Error("error encoding searchAhead")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 

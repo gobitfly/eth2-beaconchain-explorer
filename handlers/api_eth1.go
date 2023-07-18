@@ -66,6 +66,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	limit := uint64(100)
 	vars := mux.Vars(r)
 
 	var blockList []uint64
@@ -79,14 +80,14 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		blockList = append(blockList, temp)
 	}
 
-	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, uint64(100))
+	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
 		sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from bigtable")
 		return
 	}
 
-	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, 100)
+	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, limit)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "can not retrieve proposer information")
 		return
@@ -316,7 +317,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).DivRound(decimal.NewFromInt(1e18), 18).String()
+	response.Ether = utils.WeiBytesToEther(metadata.EthBalance.Balance).String()
 	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
 	response.Tokens = []struct {
 		Address  string  `json:"address"`
@@ -327,16 +328,6 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		Currency string  `json:"currency,omitempty"`
 	}{}
 	for _, m := range metadata.Balances {
-		// var price float64
-		// if len(m.Metadata.Price) > 0 {
-		// 	price, err = strconv.ParseFloat(string(m.Metadata.Price), 64)
-		// 	if err != nil {
-		// 		logger.Errorf("error parsing price to float for address: %v route: %v err: %v", address, r.URL.String(), err)
-		// 		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
-		// 		return
-		// 	}
-		// }
-
 		// if there is a token filter and we are currently not on the right value, skip to the next loop iteration
 		if len(token) > 0 && token != fmt.Sprintf("%x", m.Token) {
 			continue
@@ -353,9 +344,6 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 			Address: fmt.Sprintf("0x%x", m.Token),
 			Balance: decimal.NewFromBigInt(new(big.Int).SetBytes(m.Balance), 0).Div(decimal.NewFromBigInt(big.NewInt(1), int32(new(big.Int).SetBytes(m.Metadata.Decimals).Int64()))).String(),
 			Symbol:  m.Metadata.Symbol,
-			// Decimals: decimals.String(),
-			// Price:   price,
-			// Currency: "USD",
 		})
 	}
 
@@ -429,8 +417,8 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			From:               utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
 			To:                 utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 			MethodId:           fmt.Sprintf("0x%x", tx.MethodId),
-			Value:              new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.Value)), big.NewFloat(1e18)).String(),   //new(big.Int).Div(new(big.Int).SetBytes(tx.Value), big.NewInt(1e18)).String(),
-			GasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.GasPrice)), big.NewFloat(1e9)).String(), //new(big.Int).Div(new(big.Int).SetBytes(tx.GasPrice), new(big.Int).SetInt64(1e18)).String(),
+			Value:              utils.WeiBytesToEther(tx.Value).String(),
+			GasPrice:           utils.GWeiBytesToEther(tx.GasPrice).String(),
 			IsContractCreation: tx.IsContractCreation,
 			InvokesContract:    tx.InvokesContract,
 		})
@@ -510,7 +498,7 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 			Type:        itx.Type,
 			From:        utils.FixAddressCasing(fmt.Sprintf("%x", itx.From)),
 			To:          utils.FixAddressCasing(fmt.Sprintf("%x", itx.To)),
-			Value:       new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(itx.Value)), big.NewFloat(1e18)).String(),
+			Value:       utils.WeiBytesToEther(itx.Value).String(),
 		})
 	}
 
@@ -564,47 +552,39 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 	blocksParsed := make([]types.Eth1BlockParsed, 0, len(producedBlocks))
 
 	for _, blk := range producedBlocks {
-		txReward := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.TxReward)), big.NewFloat(1e18)).String()
+		txReward := utils.WeiBytesToEther(blk.TxReward).String()
 		if txReward == "0" {
 			txReward = ""
 		}
 
 		uncleHash := fmt.Sprintf("0x%x", blk.UncleHash)
-		uncleReward := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.UncleReward)), big.NewFloat(1e18)).String()
+		uncleReward := utils.WeiBytesToEther(blk.UncleReward).String()
 		if uncleReward == "0" {
 			uncleReward = ""
 			uncleHash = ""
 		}
-		// mev := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.Mev)), big.NewFloat(1e18)).String()
-		// if mev == "0" {
-		// 	mev = ""
-		// }
+
 		difficulty := new(big.Int).SetBytes(blk.Difficulty).String()
 		if difficulty == "0" {
 			difficulty = ""
 		}
 
-		// blkReward := utils.Eth1BlockReward(blk.Number, blk.Difficulty)
-
 		blocksParsed = append(blocksParsed, types.Eth1BlockParsed{
 			Hash:                     fmt.Sprintf("0x%x", blk.Hash),
 			ParentHash:               fmt.Sprintf("0x%x", blk.ParentHash),
 			UncleHash:                uncleHash,
-			Coinbase:                 fmt.Sprintf("0x%x", blk.Coinbase), //new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.Coinbase)), big.NewFloat(1e18)).String(),
+			Coinbase:                 fmt.Sprintf("0x%x", blk.Coinbase),
 			Difficulty:               difficulty,
 			Number:                   blk.Number,
 			GasLimit:                 blk.GasLimit,
 			GasUsed:                  blk.GasUsed,
 			Time:                     blk.Time.AsTime(),
-			BaseFee:                  new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.BaseFee)), big.NewFloat(1e9)).String(),
+			BaseFee:                  decimal.NewFromBigInt(new(big.Int).SetBytes(blk.BaseFee), 0).Div(decimal.NewFromInt(1e9)).String(),
 			UncleCount:               blk.UncleCount,
 			TransactionCount:         blk.TransactionCount,
 			InternalTransactionCount: blk.InternalTransactionCount,
 			TxReward:                 txReward,
 			UncleReward:              uncleReward,
-			// Mev:                      mev,
-			// LowestGasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.LowestGasPrice)), big.NewFloat(1e9)).String(),
-			// HighestGasPrice:          new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.HighestGasPrice)), big.NewFloat(1e9)).String(),
 		})
 	}
 
@@ -664,10 +644,10 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 			Number:      uncl.Number,
 			GasLimit:    uncl.GasLimit,
 			GasUsed:     uncl.GasUsed,
-			BaseFee:     new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(uncl.BaseFee)), big.NewFloat(1e9)).String(),
+			BaseFee:     decimal.NewFromBigInt(new(big.Int).SetBytes(uncl.BaseFee), 0).Div(decimal.NewFromInt(1e18)).String(),
 			Difficulty:  new(big.Int).SetBytes(uncl.Difficulty).String(),
 			Time:        uncl.Time.AsTime(),
-			Reward:      new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(uncl.Reward)), big.NewFloat(1e18)).String(),
+			Reward:      utils.WeiBytesToEther(uncl.Reward).String(),
 		})
 	}
 
@@ -1111,7 +1091,8 @@ func findExecBlockNumbersByExecBlockNumber(execBlocks []uint64, offset, limit ui
 			epoch  
 		FROM blocks 
 		WHERE exec_block_number = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0
+			AND status = '1'
 		ORDER BY exec_block_number DESC
 		OFFSET $2 LIMIT $3`,
 		pq.Array(execBlocks),

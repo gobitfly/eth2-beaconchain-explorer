@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
 	"time"
@@ -162,7 +163,7 @@ func (cache *tieredCache) Set(key string, value interface{}, expiration time.Dur
 		return err
 	}
 	cache.localGoCache.Set([]byte(key), valueMarshal, int(expiration.Seconds()))
-	return cache.remoteCache.Set(ctx, key, valueMarshal, expiration)
+	return cache.remoteCache.Set(ctx, key, value, expiration)
 }
 
 func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.Duration, returnValue interface{}) (interface{}, error) {
@@ -171,7 +172,7 @@ func (cache *tieredCache) GetWithLocalTimeout(key string, localExpiration time.D
 	if err == nil {
 		err = json.Unmarshal([]byte(wanted), returnValue)
 		if err != nil {
-			logrus.Errorf("error (GetWithLocalTimeout) unmarshalling data for key %v: %v", key, err)
+			utils.LogError(err, "error unmarshalling data for key", 0, map[string]interface{}{"key": key})
 			return nil, err
 		}
 		return returnValue, nil
