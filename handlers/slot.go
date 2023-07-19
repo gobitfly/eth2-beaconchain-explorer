@@ -39,9 +39,12 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/attesterSlashing.html",
 		"slot/proposerSlashing.html",
 		"slot/exits.html",
+		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html")
-	slotFutureTemplateFiles := append(layoutTemplateFiles, "slot/slotFuture.html")
+	slotFutureTemplateFiles := append(layoutTemplateFiles,
+		"slot/slotFuture.html",
+		"components/timestamp.html")
 	blockNotFoundTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
 	var slotTemplate = templates.GetTemplate(slotTemplateFiles...)
 	var slotFutureTemplate = templates.GetTemplate(slotFutureTemplateFiles...)
