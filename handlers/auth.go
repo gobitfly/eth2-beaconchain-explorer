@@ -175,7 +175,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
 		if len(r.FormValue("g-recaptcha-response")) == 0 {
 			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
-			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
+			logger.Warnf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
