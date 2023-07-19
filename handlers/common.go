@@ -94,6 +94,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetTotalValidatorDeposits(validators, &totalDeposits)
 	})
 
+	var firstActivationEpoch uint64
+	g.Go(func() error {
+		return db.GetFirstActivationEpoch(validators, &firstActivationEpoch)
+	})
+
 	var totalWithdrawals uint64
 	g.Go(func() error {
 		return db.GetTotalValidatorWithdrawals(validators, &totalWithdrawals)
@@ -214,13 +219,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 	}
 
-	lookbackAmount := getProposalLuckBlockLookbackAmount(1)
-	startPeriod := len(slots) - lookbackAmount
-	if startPeriod < 0 {
-		startPeriod = 0
-	}
-
-	validatorProposalData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
+	validatorProposalData.ProposalLuck = getProposalLuck(slots, len(validators), firstActivationEpoch)
 	avgSlotInterval := uint64(getAvgSlotInterval(1))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
@@ -317,30 +316,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}, balancesMap, nil
 }
 
-func getProposalLuckBlockLookbackAmount(validatorCount int) int {
-	switch {
-	case validatorCount <= 4:
-		return 10
-	case validatorCount <= 10:
-		return 15
-	case validatorCount <= 20:
-		return 20
-	case validatorCount <= 50:
-		return 30
-	case validatorCount <= 100:
-		return 50
-	case validatorCount <= 200:
-		return 65
-	default:
-		return 75
-	}
-}
-
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
 // given the blocks proposed by the validators and the number of validators
 //
 // precondition: slots is sorted by ascending block number
-func getProposalLuck(slots []uint64, validatorsCount int) float64 {
+func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) float64 {
 	// Return 0 if there are no proposed blocks or no validators
 	if len(slots) == 0 || validatorsCount == 0 {
 		return 0
@@ -364,7 +344,7 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 	// Get the timeframe for which we should consider qualified proposals
 	var proposalTimeframe time.Duration
 	// Time since the first block in the proposed block slice
-	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
+	timeSinceFirstBlock := time.Since(utils.EpochToTime(fromEpoch))
 
 	targetBlocks := 8.0
 
