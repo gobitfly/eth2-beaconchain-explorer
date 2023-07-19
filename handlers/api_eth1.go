@@ -975,7 +975,8 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		}
 
 		txFees := big.NewInt(0).SetBytes(block.TxReward)
-		mev := big.NewInt(0).SetBytes(block.Mev)
+		//mev := big.NewInt(0).SetBytes(block.Mev) // this handling has been deprecated
+		mev := big.NewInt(0)
 		income := big.NewInt(0).Add(txFees, mev)
 
 		var mevBribe *big.Int = big.NewInt(0)
