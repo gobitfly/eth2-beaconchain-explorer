@@ -288,6 +288,45 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	return err
 }
 
+// AddSubscription adds a new subscription to the database.
+func AddSubscriptionBatch(userID uint64, network string, eventName types.EventName, eventFilter []string, eventThreshold float64) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	nowEpoch := utils.TimeToEpoch(now)
+
+	var onConflictDo string = "NOTHING"
+	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolCollateralMaxReached || eventName == types.RocketpoolCollateralMinReached || eventName == types.ValidatorIsOfflineEventName {
+		onConflictDo = "UPDATE SET event_threshold = $6"
+	}
+
+	name := string(eventName)
+	if network != "" {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	numArgs := 6
+	valueStrings := make([]string, 0, len(eventFilter))
+	valueArgs := make([]interface{}, 0, len(eventFilter)*numArgs)
+
+	for i, filter := range eventFilter {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, TO_TIMESTAMP($%d), $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6))
+		valueArgs = append(valueArgs, userID)
+		valueArgs = append(valueArgs, name)
+		valueArgs = append(valueArgs, filter)
+		valueArgs = append(valueArgs, nowTs)
+		valueArgs = append(valueArgs, nowEpoch)
+		valueArgs = append(valueArgs, eventThreshold)
+	}
+	stmt := fmt.Sprintf(`
+		INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES
+		%s
+		ON CONFLICT (user_id, event_name, event_filter) DO %s`,
+		strings.Join(valueStrings, ","), onConflictDo)
+	_, err := FrontendWriterDB.Exec(stmt, valueArgs...)
+
+	return err
+}
+
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, network string, eventName types.EventName, eventFilter string) error {
 	name := string(eventName)
@@ -296,6 +335,16 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 	}
 
 	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, name, eventFilter)
+	return err
+}
+
+func DeleteSubscriptionBatch(userID uint64, network string, eventName types.EventName, eventFilter []string) error {
+	name := string(eventName)
+	if network != "" && !types.IsUserIndexed(eventName) {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = ANY($3)", userID, name, eventFilter)
 	return err
 }
 

@@ -80,6 +80,38 @@ func RemoveFromWatchlist(userId uint64, validator_publickey string, network stri
 	return err
 }
 
+func RemoveFromWatchlistBatch(userId uint64, validator_publickeys []string, network string) error {
+	keys := [][]byte{}
+	for _, keyString := range validator_publickeys {
+		key, err := hex.DecodeString(keyString)
+		if err != nil {
+			return err
+		}
+		keys = append(keys, key)
+	}
+	tx, err := FrontendWriterDB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %v", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_filter = ANY($2) AND event_name LIKE ($3 || '%')", userId, validator_publickeys, network+":")
+	if err != nil {
+		return fmt.Errorf("error deleting subscriptions for validator: %v", err)
+	}
+
+	tag := network + ":" + string(types.ValidatorTagsWatchlist)
+
+	_, err = tx.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 AND validator_publickey = ANY($2) AND tag = $3", userId, keys, tag)
+	if err != nil {
+		return fmt.Errorf("error deleting validator from watchlist: %v", err)
+	}
+
+	err = tx.Commit()
+
+	return err
+}
+
 type WatchlistFilter struct {
 	Tag            types.Tag
 	UserId         uint64
