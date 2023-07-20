@@ -156,7 +156,7 @@ func HandleRecapture(w http.ResponseWriter, r *http.Request, errorRoute string) 
 		valid, err := ValidateReCAPTCHA(recaptchaResponse)
 		if err != nil || !valid {
 			SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
-			logger.Warnf("error validating recaptcha %v route: %v", recaptchaResponse, r.URL.String(), err)
+			logger.Warnf("error validating recaptcha %v route: %v -> %v", recaptchaResponse, r.URL.String(), err)
 			http.Redirect(w, r, errorRoute, http.StatusSeeOther)
 			return fmt.Errorf("invalid recatca")
 		}
