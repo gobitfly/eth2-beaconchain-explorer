@@ -212,6 +212,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		SELECT
 			blocks.epoch,
 			COALESCE(epochs.finalized, false) AS epoch_finalized,
+			COALESCE(prev_epoch.finalized, false) AS prev_epoch_finalized,
 			COALESCE(epochs.globalparticipationrate, 0) AS epoch_participation_rate,
 			blocks.slot,
 			blocks.blockroot,
@@ -245,6 +246,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		LEFT JOIN blocks_tags ON blocks.slot = blocks_tags.slot and blocks.blockroot = blocks_tags.blockroot
 		LEFT JOIN tags ON blocks_tags.tag_id = tags.id
 		LEFT JOIN epochs ON (GREATEST(blocks.slot,1)-1)/$2 = epochs.epoch
+		LEFT JOIN epochs prev_epoch ON GREATEST(((GREATEST(blocks.slot,1)-1)/$2-1),0) = prev_epoch.epoch
 		WHERE blocks.slot = $1 
 		group by
 			blocks.epoch,
@@ -252,6 +254,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			blocks.blockroot,
 			validator_names."name",
 			epoch_finalized,
+			prev_epoch.finalized,
 			epoch_participation_rate
 		ORDER BY blocks.blockroot DESC, blocks.status ASC limit 1
 		`,
