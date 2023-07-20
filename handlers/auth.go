@@ -172,7 +172,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 // LoginPost handles authenticating the user.
 func LoginPost(w http.ResponseWriter, r *http.Request) {
 
-	if err := utils.HandleRecapture(w, r, "/login"); err != nil {
+	if err := utils.HandleRecaptcha(w, r, "/login"); err != nil {
 		return
 	}
 

@@ -120,7 +120,7 @@ func PricingPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.HandleRecapture(w, r, "/pricing"); err != nil {
+	if err := utils.HandleRecaptcha(w, r, "/pricing"); err != nil {
 		return
 	}
 

@@ -143,7 +143,7 @@ func GetFlashes(w http.ResponseWriter, r *http.Request, name string) []interface
 	return flashes
 }
 
-func HandleRecapture(w http.ResponseWriter, r *http.Request, errorRoute string) error {
+func HandleRecaptcha(w http.ResponseWriter, r *http.Request, errorRoute string) error {
 	if len(Config.Frontend.RecaptchaSecretKey) > 0 && len(Config.Frontend.RecaptchaSiteKey) > 0 {
 		recaptchaResponse := r.FormValue("g-recaptcha-response")
 		if len(recaptchaResponse) == 0 {
