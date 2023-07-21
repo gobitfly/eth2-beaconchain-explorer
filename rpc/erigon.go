@@ -618,10 +618,10 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 		if err != nil {
 			if strings.Contains(err.Error(), "abi") {
 				ret.Symbol = "UNKNOWN"
-				return nil
+			} else {
+				logger.Warnf("error retrieving symbol: %v", err)
 			}
-
-			return fmt.Errorf("error retrieving symbol: %v", err)
+			return nil
 		}
 
 		ret.Symbol = symbol
@@ -631,18 +631,20 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 	g.Go(func() error {
 		totalSupply, err := contract.TotalSupply(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving total supply: %v", err)
+			logger.Warnf("error retrieving total supply: %v", err)
+		} else {
+			ret.TotalSupply = totalSupply.Bytes()
 		}
-		ret.TotalSupply = totalSupply.Bytes()
 		return nil
 	})
 
 	g.Go(func() error {
 		decimals, err := contract.Decimals(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving decimals: %v", err)
+			logger.Warnf("error retrieving decimals: %v", err)
+		} else {
+			ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		}
-		ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		return nil
 	})
 	err = g.Wait()
