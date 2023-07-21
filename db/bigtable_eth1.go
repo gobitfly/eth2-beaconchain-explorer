@@ -3110,7 +3110,12 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 				logrus.Warnf("Hit rate limit when fetching contract metadata for address %x", address)
 			} else {
 				logAdditionalInfo := map[string]interface{}{"address": fmt.Sprintf("%x", address)}
-				utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
+				if strings.Contains(err.Error(), "unsupported arg type") {
+					// open issue in the go-ethereum lib: https://github.com/ethereum/go-ethereum/issues/24572
+					logrus.Warnf("could not parse ABI for %x: %v", address, err)
+				} else {
+					utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
+				}
 				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 				if err != nil {
 					utils.LogError(err, "Caching contract metadata", 0, logAdditionalInfo)
