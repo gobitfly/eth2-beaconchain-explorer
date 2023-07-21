@@ -467,8 +467,8 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 					}
 					return err
 				}
-				logrus.Infof("deleting block at height %v with hash %x", dbBlock.Number, dbBlock.Hash)
-				err = bt.DeleteBlock(dbBlock.Number, dbBlock.Hash)
+				logrus.Infof("deleting block at height %v with hash %x or %x", dbBlock.Number, dbBlock.Hash, nodeBlock.Hash().Bytes())
+				err = bt.DeleteBlock(dbBlock.Number, dbBlock.Hash, nodeBlock.Hash().Bytes())
 				if err != nil {
 					return err
 				}

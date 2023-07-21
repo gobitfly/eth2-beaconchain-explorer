@@ -742,6 +742,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 						if err != nil {
 							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", block.Number, err)
 						}
+						logger.Infof("saved keys for block [%v] with hash [%x]", block.Number, block.Hash)
 
 						err = bigtable.WriteBulk(&bulkMutsData, bigtable.GetDataTable())
 						if err != nil {
@@ -3272,41 +3273,52 @@ func (bigtable *Bigtable) GetBlockKeys(blockNumber uint64, blockHash []byte) ([]
 	}
 
 	if row == nil {
-		return nil, fmt.Errorf("keys for block %v not found", blockNumber)
+		logrus.Warnf("keys for block %v not found", blockNumber)
+		return nil, nil
 	}
 
 	return strings.Split(string(row[METADATA_UPDATES_FAMILY_BLOCKS][0].Value), ","), nil
 }
 
 // Deletes all block data from bigtable
-func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, blockHash []byte) error {
+func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, dbBlockHash []byte, nodeBlockHash []byte) error {
 
 	// First receive all keys that were written by this block (entities & indices)
-	keys, err := bigtable.GetBlockKeys(blockNumber, blockHash)
+	keys, err := bigtable.GetBlockKeys(blockNumber, dbBlockHash)
 	if err != nil {
 		return err
+	}
+
+	// If no keys were found for the db block hash, try the node block hash
+	if keys == nil {
+		keys, err = bigtable.GetBlockKeys(blockNumber, nodeBlockHash)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Delete all of those keys
+	if keys != nil {
+		mutsDelete := &types.BulkMutations{
+			Keys: make([]string, 0, len(keys)),
+			Muts: make([]*gcp_bigtable.Mutation, 0, len(keys)),
+		}
+		for _, key := range keys {
+			mutDelete := gcp_bigtable.NewMutation()
+			mutDelete.DeleteRow()
+			mutsDelete.Keys = append(mutsDelete.Keys, key)
+			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+		}
+
+		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+		if err != nil {
+			return err
+		}
+	}
+
 	mutsDelete := &types.BulkMutations{
-		Keys: make([]string, 0, len(keys)),
-		Muts: make([]*gcp_bigtable.Mutation, 0, len(keys)),
-	}
-	for _, key := range keys {
-		mutDelete := gcp_bigtable.NewMutation()
-		mutDelete.DeleteRow()
-		mutsDelete.Keys = append(mutsDelete.Keys, key)
-		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-	}
-
-	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
-	if err != nil {
-		return err
-	}
-
-	mutsDelete = &types.BulkMutations{
-		Keys: make([]string, 0, len(keys)),
-		Muts: make([]*gcp_bigtable.Mutation, 0, len(keys)),
+		Keys: make([]string, 0),
+		Muts: make([]*gcp_bigtable.Mutation, 0),
 	}
 	mutDelete := gcp_bigtable.NewMutation()
 	mutDelete.DeleteRow()
