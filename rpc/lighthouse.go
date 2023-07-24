@@ -134,12 +134,18 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 		return nil, fmt.Errorf("error parsing finality checkpoints of head: %v", err)
 	}
 
+	// The epoch in the Finalized Object is not the finalized epoch, but the epoch for the checkpoint - the 'real' finalized epoch is the one before
+	var finalizedEpoch = uint64(parsedFinality.Data.Finalized.Epoch)
+	if finalizedEpoch > 0 {
+		finalizedEpoch--
+	}
+
 	return &types.ChainHead{
 		HeadSlot:                   uint64(parsedHead.Data.Header.Message.Slot),
 		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.Config.SlotsPerEpoch,
 		HeadBlockRoot:              utils.MustParseHex(parsedHead.Data.Root),
-		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
-		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
+		FinalizedSlot:              (finalizedEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch, // The first Slot of the next epoch is finalized.
+		FinalizedEpoch:             finalizedEpoch,
 		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
 		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
 		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),
