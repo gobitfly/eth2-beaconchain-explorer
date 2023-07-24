@@ -2851,7 +2851,11 @@ func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
 	// confirm all claims via db lookup and refreshtoken check
 	userID, err := db.GetByRefreshToken(unsafeClaims.UserID, unsafeClaims.AppID, unsafeClaims.DeviceID, refreshTokenHashed)
 	if err != nil {
-		logger.Errorf("Error refreshtoken check: %v | %v | %v", unsafeClaims.UserID, refreshTokenHashed, err)
+		if err == sql.ErrNoRows {
+			logger.Warnf("No refresh token found for user: %v | %v", unsafeClaims.UserID, refreshTokenHashed)
+		} else {
+			logger.Errorf("Error refreshtoken check: %v | %v | %v", unsafeClaims.UserID, refreshTokenHashed, err)
+		}
 		w.WriteHeader(http.StatusUnauthorized)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.UnauthorizedClient, "invalid token credentials")
 		return
