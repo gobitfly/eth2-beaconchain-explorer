@@ -651,7 +651,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 
 	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
-	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+	for b := 0; b < int(maxValidatorIndex); b += batchSize {
 		start := b
 		end := b + batchSize
 		if int(maxValidatorIndex) < end {
