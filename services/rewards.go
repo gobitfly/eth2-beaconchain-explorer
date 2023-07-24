@@ -229,15 +229,19 @@ func GeneratePdfReport(hist rewardHistory, currency string) []byte {
 	pdf.Ln(10)
 	pdf.SetFont("Times", "", 9)
 
-	header = [colCount]string{"Index", "Activation Balance", "Balance", "Income", "Last Attestation"}
+	const (
+		vColCount = 4
+		vColWd    = 50.0
+	)
+	vHeader := [vColCount]string{"Index", "Activation Balance", "Balance", "Last Attestation"}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	// pdf.Ln(10)
 	pdf.SetTextColor(224, 224, 224)
 	pdf.SetFillColor(64, 64, 64)
 	pdf.Cell(-5, 0, "")
-	for col := 0; col < colCount; col++ {
-		pdf.CellFormat(colWd, maxHt, header[col], "1", 0, "CM", true, 0, "")
+	for col := 0; col < vColCount; col++ {
+		pdf.CellFormat(vColWd, maxHt, vHeader[col], "1", 0, "CM", true, 0, "")
 	}
 	pdf.Ln(-1)
 	pdf.SetTextColor(24, 24, 24)
@@ -255,17 +259,17 @@ func GeneratePdfReport(hist rewardHistory, currency string) []byte {
 			y = pdf.GetY()
 		}
 
-		for col := 0; col < colCount; col++ {
+		for col := 0; col < vColCount; col++ {
 			if i%2 != 0 {
 				pdf.SetFillColor(191, 191, 191)
 			}
-			pdf.Rect(x, y, colWd, maxHt, "D")
+			pdf.Rect(x, y, vColWd, maxHt, "D")
 			cellY := y
 			pdf.SetXY(x, cellY)
-			pdf.CellFormat(colWd, maxHt, row[col], "", 0,
+			pdf.CellFormat(vColWd, maxHt, row[col], "", 0,
 				"LM", true, 0, "")
 			cellY += lineHt
-			x += colWd
+			x += vColWd
 		}
 		y += maxHt
 	}
@@ -323,7 +327,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 		return [][]string{}
 	}
 
-	for _, validator := range data {
+	for i, validator := range data {
 		validator.LastAttestationSlot = lastAttestationSlots[validator.ValidatorIndex]
 		for balanceIndex, balance := range balances {
 			if len(balance) == 0 {
@@ -334,6 +338,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 				validator.EffectiveBalance = balance[0].EffectiveBalance
 			}
 		}
+		data[i] = validator
 	}
 
 	result := [][]string{}
@@ -347,7 +352,6 @@ func getValidatorDetails(validators []uint64) [][]string {
 			fmt.Sprintf("%d", item.ValidatorIndex),
 			addCommas(float64(item.BalanceActivation)/float64(1e9), "%.5f"),
 			addCommas(float64(item.CurrentBalance)/float64(1e9), "%.5f"),
-			addCommas(float64(item.CurrentBalance)/float64(1e9)-float64(item.BalanceActivation)/float64(1e9), "%.5f"),
 			la_date,
 		})
 	}
