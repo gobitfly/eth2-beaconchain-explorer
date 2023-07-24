@@ -3159,14 +3159,14 @@ func GetTotalValidatorDeposits(validators []uint64, totalDeposits *uint64) error
 	`, validatorsPQArray)
 }
 
-func GetFirstActivationEpoch(validators []uint64, totalWithdrawals *uint64) error {
+func GetFirstActivationEpoch(validators []uint64, firstActivationEpoch *uint64) error {
 	validatorsPQArray := pq.Array(validators)
-	return ReaderDb.Get(totalWithdrawals, `
+	return ReaderDb.Get(firstActivationEpoch, `
 		SELECT 
 			activationepoch
 		FROM validators
 		WHERE validatorindex = ANY($1) 
-		ORDER BY activationepoch limit(1)
+		ORDER BY activationepoch LIMIT 1
 	`, validatorsPQArray)
 }
 
