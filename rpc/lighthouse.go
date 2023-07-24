@@ -52,17 +52,24 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 }
 
 func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
-	// setup health check & exit if the new block chan does no longer receive new blocks
+	// setup health check & reconnect if the new block chan no longer receive new blocks
 	lc.lastBlockSeenMux.Lock()
 	lc.lastBlockSeen = time.Now()
 	lc.lastBlockSeenMux.Unlock()
+	reConnect := make(chan int64, 10)
+	reConnectValue := int64(0)
 	go func() {
 		for ; ; time.Sleep(time.Second) {
 			lc.lastBlockSeenMux.Lock()
-			if time.Since(lc.lastBlockSeen) > time.Minute*2 {
-				lc.lastBlockSeenMux.Unlock()
-				// fatal if no new block was received for more than two minutes
-				logger.Fatalf("lighthouse client error, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
+			if reConnectValue == 0 {
+				reConnectValue++
+				reConnect <- reConnectValue
+			} else if time.Since(lc.lastBlockSeen) > time.Minute*2 {
+				// if we did not receive a new block more than two minutes we try to reconnect to the lighthouse node
+				logger.Errorf("lighthouse client error, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
+				lc.lastBlockSeen = time.Now()
+				reConnectValue++
+				reConnect <- reConnectValue
 			}
 			lc.lastBlockSeenMux.Unlock()
 		}
@@ -70,37 +77,40 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 
 	blkCh := make(chan *types.Block, 10)
 	go func() {
-		stream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
-
-		if err != nil {
-			utils.LogFatal(err, "getting eventsource stream error", 0)
-		}
-		defer stream.Close()
+		var stream *eventsource.Stream = &eventsource.Stream{}
 
 		for {
-			e := <-stream.Events
-			// logger.Infof("retrieved %v via event stream", e.Data())
-			var parsed StreamedBlockEventData
-			err = json.Unmarshal([]byte(e.Data()), &parsed)
-			if err != nil {
-				logger.Warnf("failed to decode block event: %v", err)
-				continue
-			}
+			select {
+			case <-reConnect:
+				newStream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
 
-			logger.Infof("retrieving data for slot %v", parsed.Slot)
-			blks, err := lc.GetBlocksBySlot(uint64(parsed.Slot))
-			if err != nil {
-				logger.Warnf("failed to fetch block(s) for slot %d: %v", uint64(parsed.Slot), err)
-				continue
+				if err != nil {
+					utils.LogError(err, "error subscribing to lighthouse node", 0)
+				} else {
+					stream = newStream
+				}
+			case e := <-stream.Events:
+				var parsed StreamedBlockEventData
+				err := json.Unmarshal([]byte(e.Data()), &parsed)
+				if err != nil {
+					logger.Warnf("failed to decode block event: %v", err)
+					continue
+				}
+
+				logger.Infof("retrieving data for slot %v", parsed.Slot)
+				blks, err := lc.GetBlocksBySlot(uint64(parsed.Slot))
+				if err != nil {
+					logger.Warnf("failed to fetch block(s) for slot %d: %v", uint64(parsed.Slot), err)
+					continue
+				}
+				logger.Infof("retrieved %v blocks for slot %v", len(blks), parsed.Slot)
+				for _, blk := range blks {
+					blkCh <- blk
+				}
+				lc.lastBlockSeenMux.Lock()
+				lc.lastBlockSeen = time.Now()
+				lc.lastBlockSeenMux.Unlock()
 			}
-			logger.Infof("retrieved %v blocks for slot %v", len(blks), parsed.Slot)
-			for _, blk := range blks {
-				// logger.Infof("pushing block %v", blk.Slot)
-				blkCh <- blk
-			}
-			lc.lastBlockSeenMux.Lock()
-			lc.lastBlockSeen = time.Now()
-			lc.lastBlockSeenMux.Unlock()
 		}
 	}()
 	return blkCh
