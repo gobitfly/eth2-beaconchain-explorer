@@ -47,7 +47,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -207,8 +207,33 @@ func main() {
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
+	case "migrate-last-attestation-slot-bigtable":
+		migrateLastAttestationSlotToBigtable()
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
+	}
+}
+
+// one time migration of the last attestation slot values from postgres to bigtable
+// will write the last attestation slot that is currently in postgres to bigtable
+// this can safely be done for active validators as bigtable will only keep the most recent
+// last attestation slot
+func migrateLastAttestationSlotToBigtable() {
+	validators := []types.Validator{}
+
+	err := db.WriterDb.Select(&validators, "SELECT validatorindex, lastattestationslot FROM validators WHERE lastattestationslot IS NOT NULL ORDER BY validatorindex")
+
+	if err != nil {
+		utils.LogFatal(err, "error retrieving last attestation slot", 0)
+	}
+
+	for _, validator := range validators {
+		logrus.Infof("setting last attestation slot %v for validator %v", validator.LastAttestationSlot, validator.Index)
+
+		err := db.BigtableClient.SetLastAttestationSlot(validator.Index, uint64(validator.LastAttestationSlot.Int64))
+		if err != nil {
+			utils.LogFatal(err, "error setting last attestation slot", 0)
+		}
 	}
 }
 
