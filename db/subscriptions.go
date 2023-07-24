@@ -95,14 +95,14 @@ func RemoveFromWatchlistBatch(userId uint64, validator_publickeys []string, netw
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_filter = ANY($2) AND event_name LIKE ($3 || '%')", userId, validator_publickeys, network+":")
+	_, err = tx.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_filter = ANY($2) AND event_name LIKE ($3 || '%')", userId, pq.StringArray(validator_publickeys), network+":")
 	if err != nil {
 		return fmt.Errorf("error deleting subscriptions for validator: %v", err)
 	}
 
 	tag := network + ":" + string(types.ValidatorTagsWatchlist)
 
-	_, err = tx.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 AND validator_publickey = ANY($2) AND tag = $3", userId, keys, tag)
+	_, err = tx.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 AND validator_publickey = ANY($2) AND tag = $3", userId, pq.ByteaArray(keys), tag)
 	if err != nil {
 		return fmt.Errorf("error deleting validator from watchlist: %v", err)
 	}
