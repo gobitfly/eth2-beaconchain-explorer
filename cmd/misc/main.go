@@ -47,7 +47,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -157,6 +157,39 @@ func main() {
 		for epoch := opts.StartEpoch; epoch <= opts.EndEpoch; epoch++ {
 			err = exporter.ExportEpoch(epoch, rpcClient)
 
+			if err != nil {
+				logrus.Errorf("error exporting epoch: %v", err)
+			}
+			logrus.Printf("finished export for epoch %v", epoch)
+		}
+	case "export-epoch-missed-slots":
+		logrus.Infof("exporting epochs with missed slots")
+		epochs := []uint64{}
+		err = db.ReaderDb.Select(&epochs, `
+			WITH last_exported_epoch AS (
+				SELECT (MAX(epoch)*$1) AS slot 
+				FROM epochs 
+				WHERE finalized 
+				AND rewards_exported
+			)
+			SELECT epoch 
+			FROM blocks
+			WHERE status = '0' 
+				AND slot < (SELECT slot FROM last_exported_epoch)
+			GROUP BY epoch 
+			ORDER BY epoch;
+		`, utils.Config.Chain.Config.SlotsPerEpoch)
+		if err != nil {
+			utils.LogError(err, "Error getting epochs with missing slot status from db", 0)
+			return
+		} else if len(epochs) == 0 {
+			logrus.Infof("No epochs with missing slot status found")
+			return
+		}
+
+		logrus.Infof("Found %v epochs with missing slot status", len(epochs))
+		for _, epoch := range epochs {
+			err = exporter.ExportEpoch(epoch, rpcClient)
 			if err != nil {
 				logrus.Errorf("error exporting epoch: %v", err)
 			}
