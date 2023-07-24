@@ -1402,7 +1402,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	signatureWrapper := &types.MyCryptoSignature{}
 	err = json.Unmarshal([]byte(signature), signatureWrapper)
 	if err != nil {
-		logger.Errorf("error decoding submitted signature %v: %v", signature, err)
+		logger.Warnf("error decoding submitted signature %v: %v", signature, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
@@ -1410,7 +1410,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	msg, err := sanitizeMessage(signatureWrapper.Msg)
 	if err != nil {
-		logger.Errorf("Message is invalid %v: %v", signatureWrapper.Msg, err)
+		logger.Warnf("Message is invalid %v: %v", signatureWrapper.Msg, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided message is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
@@ -1419,7 +1419,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	sig, err := sanitizeSignature(signatureWrapper.Sig)
 	if err != nil {
-		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
+		logger.Warnf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
@@ -1427,7 +1427,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	recoveredPubkey, err := crypto.SigToPub(msgHash, sig)
 	if err != nil {
-		logger.Errorf("error recovering pubkey: %v", err)
+		logger.Warnf("error recovering pubkey: %v", err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
