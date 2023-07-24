@@ -47,7 +47,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, export-epoch-missed-slots")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -93,6 +93,12 @@ func main() {
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
+
+	erigonClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	if err != nil {
+		logrus.Fatalf("error initializing erigon client: %v", err)
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
 		Password:     cfg.WriterDatabase.Password,
@@ -194,11 +200,13 @@ func main() {
 	case "clear-bigtable":
 		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
-		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
+		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
+	case "index-missing-blocks":
+		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
@@ -414,7 +422,65 @@ func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
 	}
 }
 
-func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable) {
+// Let's find blocks that are missing in bt and index them.
+func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient) {
+
+	if end == 0 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
+			return
+		}
+		end = uint64(lastBlockFromBlocksTable)
+	}
+
+	batchSize := uint64(10000)
+	if start == 0 {
+		start = 1
+	}
+	for i := start; i < end; i += batchSize {
+		targetCount := batchSize
+		if i+targetCount >= end {
+			targetCount = end - i
+		}
+		to := i + targetCount - 1
+
+		list, err := bt.GetBlocksDescending(uint64(to), uint64(targetCount))
+		if err != nil {
+			utils.LogError(err, "can not retrieve blocks via GetBlocksDescending from bigtable", 0)
+			return
+		}
+		if uint64(len(list)) == targetCount {
+			logrus.Infof("found all blocks [%v]->[%v]", i, to)
+		} else {
+			logrus.Infof("oh no we are missing some blocks [%v]->[%v]", i, to)
+			blocksMap := make(map[uint64]bool)
+			for _, item := range list {
+				blocksMap[item.Number] = true
+			}
+			for j := uint64(i); j <= uint64(to); j++ {
+				if !blocksMap[j] {
+					logrus.Infof("block [%v] not found so we need to index it", j)
+					if _, err := db.BigtableClient.GetBlockFromBlocksTable(j); err != nil {
+						logrus.Infof("could not load [%v] from blocks table so we need to fetch it from the node and save it", j)
+						bc, _, err := client.GetBlock(int64(j))
+						if err != nil {
+							utils.LogError(err, fmt.Sprintf("error getting block: %v from ethereum node", j), 0)
+						}
+						err = bt.SaveBlock(bc)
+						if err != nil {
+							utils.LogError(err, fmt.Sprintf("error saving block: %v ", j), 0)
+						}
+					}
+
+					IndexOldEth1Blocks(j, j, 1, 1, "all", bt, client)
+				}
+			}
+		}
+	}
+}
+
+func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
 	if endBlock > 0 && endBlock < startBlock {
 		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
 		return
@@ -428,16 +494,13 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		return
 	}
 
-	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
-	if err != nil {
-		logrus.Fatalf("error initializing erigon client: %v", err)
-	}
-
 	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
-	if len(transformerList) == 0 {
+	if transformerFlag == "all" {
+		transformerList = []string{"TransformBlock", "TransformTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered"}
+	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
 		return
 	}
