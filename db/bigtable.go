@@ -612,6 +612,21 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 	return nil
 }
 
+// This method is only to be used for migrating the last attestation slot to bigtable and should not be used for any other purpose
+func (bigtable *Bigtable) SetLastAttestationSlot(validator uint64, lastAttestationSlot uint64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	mutLastAttestationSlot := gcp_bigtable.NewMutation()
+	mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp(lastAttestationSlot*1000), []byte{})
+	err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Block) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)

@@ -14,7 +14,9 @@ import (
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
-	templateFiles := append(layoutTemplateFiles, "epochs.html")
+	templateFiles := append(layoutTemplateFiles,
+		"epochs.html",
+		"components/timestamp.html")
 	var epochsTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")

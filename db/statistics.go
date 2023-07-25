@@ -182,18 +182,20 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	start := time.Now()
 	logger.Infof("validating if required data has been exported for total performance")
 	type Exported struct {
-		LastClRewards    bool `db:"last_cl_rewards_exported"`
-		LastElRewards    bool `db:"last_el_rewards_exported"`
-		CurrentCLRewards bool `db:"cur_cl_rewards_exported"`
-		CurrentElRewards bool `db:"cur_el_rewards_exported"`
+		LastTotalPerformance      bool `db:"last_total_performance_exported"`
+		CurrentCLRewards          bool `db:"cur_cl_rewards_exported"`
+		CurrentElRewards          bool `db:"cur_el_rewards_exported"`
+		CurrentSyncDuties         bool `db:"cur_sync_duties_exported"`
+		CurrentFailedAttestations bool `db:"cur_failed_attestations_exported"`
 	}
 	exported := Exported{}
 	err := ReaderDb.Get(&exported, `
 		SELECT 
-			last.cl_rewards_exported as last_cl_rewards_exported, 
-			last.el_rewards_exported as last_el_rewards_exported, 
+			last.total_performance_exported as last_total_performance_exported, 
 			cur.cl_rewards_exported as cur_cl_rewards_exported, 
-			cur.el_rewards_exported as cur_el_rewards_exported
+			cur.el_rewards_exported as cur_el_rewards_exported,
+			cur.sync_duties_exported as cur_sync_duties_exported,
+			cur.failed_attestations_exported as cur_failed_attestations_exported
 		FROM validator_stats_status cur
 		INNER JOIN validator_stats_status last 
 				ON last.day = GREATEST(cur.day - 1, 0)
@@ -202,8 +204,9 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 
 	if err != nil {
 		return fmt.Errorf("error retrieving required data: %v", err)
-	} else if !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.LastClRewards || !exported.LastElRewards {
-		return fmt.Errorf("missing required export: cur cl rewards: %v, cur el rewards: %v, last cl rewards: %v, last el rewards: %v", !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.LastClRewards, !exported.LastElRewards)
+	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
+		return fmt.Errorf("missing required export: last total performance: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
+			!exported.LastTotalPerformance, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
 	}
 	logger.Infof("validating completed, took %v", time.Since(start))
 
@@ -229,21 +232,43 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 				return gCtx.Err()
 			default:
 			}
-			_, err = WriterDb.Exec(`
-				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei_total, cl_proposer_rewards_gwei_total, el_rewards_wei_total, mev_rewards_wei_total) (
+			_, err = WriterDb.Exec(`INSERT INTO validator_stats (
+				validatorindex,
+				day,
+
+				cl_rewards_gwei_total,
+				cl_proposer_rewards_gwei_total,
+				el_rewards_wei_total,
+				mev_rewards_wei_total,
+
+				missed_attestations_total,
+
+				participated_sync_total,
+				missed_sync_total,
+				orphaned_sync_total
+				) (
 					SELECT 
 						vs1.validatorindex, 
 						vs1.day, 
-						COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total_new, 
-						COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0) AS cl_proposer_rewards_gwei_total_new, 
-						COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0) AS el_rewards_wei_total_new, 
-						COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0) AS mev_rewards_wei_total_new 
+						COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0),
+						COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0),
+						COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0),
+						COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0),
+						COALESCE(vs1.missed_attestations, 0) + COALESCE(vs2.missed_attestations_total, 0),
+						COALESCE(vs1.participated_sync, 0) + COALESCE(vs2.participated_sync_total, 0),
+						COALESCE(vs1.missed_sync, 0) + COALESCE(vs2.missed_sync_total, 0),
+						COALESCE(vs1.orphaned_sync, 0) + COALESCE(vs2.orphaned_sync_total, 0)
 					FROM validator_stats vs1 LEFT JOIN validator_stats vs2 ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex < $3
-				) ON CONFLICT (validatorindex, day) DO UPDATE SET 
+				) 
+				ON CONFLICT (validatorindex, day) DO UPDATE SET 
 					cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
 					cl_proposer_rewards_gwei_total = excluded.cl_proposer_rewards_gwei_total,
 					el_rewards_wei_total = excluded.el_rewards_wei_total,
-					mev_rewards_wei_total = excluded.mev_rewards_wei_total;
+					mev_rewards_wei_total = excluded.mev_rewards_wei_total,
+					missed_attestations_total = excluded.missed_attestations_total,
+					participated_sync_total = excluded.participated_sync_total,
+					missed_sync_total = excluded.missed_sync_total,
+					orphaned_sync_total = excluded.orphaned_sync_total;
 				`, day, start, end)
 			if err != nil {
 				return err
@@ -626,7 +651,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 
 	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
-	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+	for b := 0; b < int(maxValidatorIndex); b += batchSize {
 		start := b
 		end := b + batchSize
 		if int(maxValidatorIndex) < end {

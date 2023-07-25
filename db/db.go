@@ -1053,18 +1053,23 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 	}
 
 	var currentState []*types.Validator
-	err := tx.Select(&currentState, "SELECT validatorindex, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status FROM validators;")
+	err := tx.Select(&currentState, "SELECT validatorindex, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, status FROM validators;")
 
 	if err != nil {
 		return err
+	}
+
+	lastAttestationSlots, err := BigtableClient.GetLastAttestationSlots([]uint64{})
+	if err != nil {
+		return fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
 	}
 
 	currentStateMap := make(map[uint64]*types.Validator, len(currentState))
 	latestBlock := uint64(0)
 
 	for _, v := range currentState {
-		if uint64(v.LastAttestationSlot.Int64) > latestBlock {
-			latestBlock = uint64(v.LastAttestationSlot.Int64)
+		if lastAttestationSlots[v.Index] > latestBlock {
+			latestBlock = lastAttestationSlots[v.Index]
 		}
 		currentStateMap[v.Index] = v
 	}
@@ -1078,11 +1083,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	var queries strings.Builder
 
-	type ValidatorLastAttestationSlot struct {
-		Validator           uint64
-		LastAttestationSlot int64
-	}
-	validatorLastAttestationSlotUpdate := make([]ValidatorLastAttestationSlot, 0, len(data.Validators))
 	updates := 0
 	for _, v := range data.Validators {
 
@@ -1098,10 +1098,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		}
 		if v.ActivationEpoch == farFutureEpoch {
 			v.ActivationEpoch = maxSqlNumber
-		}
-
-		if currentStateMap[v.Index] != nil && currentStateMap[v.Index].LastAttestationSlot.Int64 > v.LastAttestationSlot.Int64 {
-			v.LastAttestationSlot.Int64 = currentStateMap[v.Index].LastAttestationSlot.Int64
 		}
 
 		c := currentStateMap[v.Index]
@@ -1121,10 +1117,9 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				activationepoch,
 				exitepoch,
 				pubkeyhex,
-				status,
-				lastattestationslot
+				status
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`,
 				v.Index,
 				v.PublicKey,
 				v.WithdrawableEpoch,
@@ -1137,7 +1132,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				v.ExitEpoch,
 				fmt.Sprintf("%x", v.PublicKey),
 				v.Status,
-				v.LastAttestationSlot,
 			)
 
 			if err != nil {
@@ -1158,16 +1152,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 			// ELSE 'active_online'
 			// END
 
-			offline := false
-
-			lastSeen := c.LastAttestationSlot.Int64
-			if v.LastAttestationSlot.Int64 > lastSeen {
-				lastSeen = v.LastAttestationSlot.Int64
-			}
-
-			if lastSeen < int64(thresholdSlot) {
-				offline = true
-			}
+			offline := lastAttestationSlots[v.Index] < thresholdSlot
 
 			if v.ExitEpoch <= latestEpoch && v.Slashed {
 				v.Status = "slashed"
@@ -1189,17 +1174,6 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 				v.Status = "active_offline"
 			} else {
 				v.Status = "active_online"
-			}
-
-			if c.LastAttestationSlot != v.LastAttestationSlot && v.LastAttestationSlot.Valid && c.LastAttestationSlot.Int64 < v.LastAttestationSlot.Int64 {
-				// logger.Infof("LastAttestationSlot changed for validator %v from %v to %v", v.Index, c.LastAttestationSlot.Int64, v.LastAttestationSlot.Int64)
-
-				// queries.WriteString(fmt.Sprintf("UPDATE validators SET lastattestationslot = %d WHERE validatorindex = %d;\n", v.LastAttestationSlot.Int64, c.Index))
-				// updates++
-				validatorLastAttestationSlotUpdate = append(validatorLastAttestationSlotUpdate, ValidatorLastAttestationSlot{
-					Validator:           v.Index,
-					LastAttestationSlot: v.LastAttestationSlot.Int64,
-				})
 			}
 
 			if c.Status != v.Status {
@@ -1261,29 +1235,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		logger.Infof("update completed, took %v", time.Since(updateStart))
 	}
 
-	logger.Infof("updating the last attestation slot for %v validators", len(validatorLastAttestationSlotUpdate))
 	s := time.Now()
-	validatorIndexArray := make([]int64, 0, len(validatorLastAttestationSlotUpdate))
-	lastAttestationSlotArray := make([]int64, 0, len(validatorLastAttestationSlotUpdate))
-
-	for _, u := range validatorLastAttestationSlotUpdate {
-		validatorIndexArray = append(validatorIndexArray, int64(u.Validator))
-		lastAttestationSlotArray = append(lastAttestationSlotArray, u.LastAttestationSlot)
-	}
-
-	_, err = tx.Exec(`UPDATE validators AS v SET
-	lastattestationslot = GREATEST(v.lastattestationslot, v2.lastattestationslot)
-	FROM (SELECT * FROM UNNEST($1::INT[], $2::INT[])) AS v2(validatorindex, lastattestationslot)
-	WHERE v2.validatorindex = v.validatorindex;
-	`, validatorIndexArray, lastAttestationSlotArray)
-	if err != nil {
-		utils.LogError(err, "error executing transaction", 0)
-		return err
-	}
-
-	logger.Infof("last attestation slot update completed, took %v", time.Since(s))
-
-	s = time.Now()
 	newValidators := []struct {
 		Validatorindex  uint64
 		ActivationEpoch uint64
@@ -3156,6 +3108,17 @@ func GetTotalValidatorDeposits(validators []uint64, totalDeposits *uint64) error
 		FROM blocks_deposits d
 		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1' 
 		WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))
+	`, validatorsPQArray)
+}
+
+func GetFirstActivationEpoch(validators []uint64, firstActivationEpoch *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(firstActivationEpoch, `
+		SELECT 
+			activationepoch
+		FROM validators
+		WHERE validatorindex = ANY($1) 
+		ORDER BY activationepoch LIMIT 1
 	`, validatorsPQArray)
 }
 
