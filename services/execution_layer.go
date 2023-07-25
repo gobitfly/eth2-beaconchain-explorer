@@ -64,7 +64,7 @@ func headBlockRootHashUpdater(wg *sync.WaitGroup) {
 		LIMIT 1`)
 
 		if err != nil {
-			logger.WithError(err).Error("error getting blockrroot hash for chain head")
+			logger.WithError(err).Error("error getting blockroot hash for chain head")
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:%s", utils.Config.Chain.Config.DepositChainID, latestBlockHashRootCacheKey)
 		err = cache.TieredCache.SetString(cacheKey, string(blockRootHash), time.Hour*24)
