@@ -80,6 +80,11 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		blockList = append(blockList, temp)
 	}
 
+	if len(blockList) > int(limit) {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
+		return
+	}
+
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
