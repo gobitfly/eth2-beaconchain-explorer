@@ -288,7 +288,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressTransactionsTableData(addressBytes, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	// logger.Infof("GOT TX: %+v", data)
@@ -315,7 +315,7 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 	search := ""
 	data, err := db.BigtableClient.GetAddressBlocksMinedTableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -340,7 +340,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 	search := ""
 	data, err := db.BigtableClient.GetAddressUnclesMinedTableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -410,7 +410,7 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 
 	data, err := db.BigtableClient.GetAddressInternalTableData(addressBytes, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	// logger.Infof("GOT TX: %+v", data)
@@ -466,7 +466,7 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressErc721TableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	// logger.Infof("GOT TX: %+v", data)
