@@ -249,6 +249,7 @@ func startServicesMonitoringService() {
 		"mempoolUpdater":            time.Minute * 15,
 		"indexPageDataUpdater":      time.Minute * 15,
 		"latestBlockUpdater":        time.Minute * 15,
+		"headBlockRootHashUpdater":  time.Minute * 15,
 		"notification-collector":    time.Minute * 15,
 		"relaysUpdater":             time.Minute * 15,
 		"ethstoreExporter":          time.Minute * 60,

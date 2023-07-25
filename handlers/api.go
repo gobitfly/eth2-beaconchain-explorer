@@ -393,15 +393,9 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 		// simply check the latest slot (might be empty which causes an error)
 		blockSlot = int64(services.LatestSlot())
 	} else if slotOrHash == "head" {
-		// retrieve the slot containing the head block of the chain (cannot return an empty slot unless there is no block in the chain yet)
-		err := db.ReaderDb.Get(&blockRootHash, `
-			SELECT blockroot
-			FROM blocks
-			WHERE status = '1'
-			ORDER BY slot DESC
-			LIMIT 1`)
-
-		if err != nil || len(blockRootHash) != 32 {
+		// retrieve the slot containing the head block of the chain
+		blockRootHash = services.Eth1HeadBlockRootHash()
+		if len(blockRootHash) != 32 {
 			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 			return
 		}
