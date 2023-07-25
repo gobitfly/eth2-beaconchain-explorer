@@ -1130,8 +1130,8 @@ func markColumnExported(day uint64, column string) error {
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64, lowerBoundDay uint64, upperBoundDay uint64) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, lowerBoundDay, upperBoundDay, lastFinalizedEpoch)
+func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
+	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, lowerBoundDay, 0, lastFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}

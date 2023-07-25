@@ -59,7 +59,7 @@
           },
           chart: {
             type: 'column',
-            height: '500px'
+            height: '535px'
           },
           xAxis: {
             lineWidth: 0,
@@ -163,7 +163,7 @@
 
         var incomeChart;
 
-        window.addEventListener('load', function () {
+        document.addEventListener('DOMContentLoaded', function () {
           incomeChart = Highcharts.stockChart('income-chart', {
             colors: ["#90ed7d", "#7cb5ec"],
             rangeSelector: {
@@ -171,8 +171,20 @@
             },
             chart: {
               type: 'column',
-              height: '500px',
-              pointInterval: 24 * 3600 * 1000
+              height: '535px',
+              pointInterval: 24 * 3600 * 1000,
+              events: {
+                load: function () {
+                  const activationEpoch = {{.ActivationEpoch}}
+                  const firstDayEpoch = timeToEpoch(incomeHistory[0].x)
+                  if (activationEpoch < firstDayEpoch) {
+                    $("#load-income-btn").removeClass("d-none")
+                  }
+                }
+              }
+            },
+            credits: {
+              enabled: false
             },
             title: {
               text: 'Daily Income'
@@ -252,6 +264,21 @@
 
                 return text
               }
+            },
+            responsive: {
+              rules: [{
+                condition: {
+                  callback: function () {
+                    return window.innerWidth >= 820
+                  }
+                },
+                chartOptions: {
+                  legend: {
+                    itemMarginTop: 7,
+                    itemMarginBottom: -7
+                  }
+                }
+              }]
             }
           });
 
@@ -261,11 +288,8 @@
               return
             }
             incomeChartLoaded = true
-            const minTime = incomeHistory[0].x / 1000
-            const genesisTimestamp = {{$.ChainGenesisTimestamp}}
-            const minDay = Math.floor((minTime - genesisTimestamp) / (24 * 60 * 60)) // floor shouldn't be necessary but just in case
 
-            const url = '/dashboard/data/allbalances?validators=' + {{.ValidatorIndex}} + '&end_day=' + Math.max(0, minDay - 1)
+            const url = '/dashboard/data/allbalances?validators=' + {{.ValidatorIndex}}
             $("#load-income-btn").text("Loading...")
             fetch(url)
               .then(response => {
@@ -278,19 +302,19 @@
                 incomeChart.update({
                   series: [
                     {
-                      data: data.executionChartData.concat(executionIncomeHistory)
+                      data: data.executionChartData
                     },
                     {
-                      data: data.consensusChartData.concat(incomeHistory)
+                      data: data.consensusChartData
                     }
                   ],
                 });
-                $("#load-income-btn").addClass("loaded").addClass("d-none")
+                $("#load-income-btn").addClass("d-none")
               })
               .catch(error => {
                 console.error(error);
-                $("#load-income-btn").text("Load More")
-                alert('Error loading data. Please try again.');
+                $("#load-income-btn").text("Show all rewards")
+                alert('Error loading income data. Please try again.');
                 incomeChartLoaded = false
               });
           });
@@ -299,4 +323,3 @@
     {{ end }}
   {{ end }}
 {{ end }}
-001058219

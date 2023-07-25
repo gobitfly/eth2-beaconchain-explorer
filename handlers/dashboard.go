@@ -443,31 +443,21 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 	return nextData, nil
 }
 
-func parseDayParam(param string) (uint64, error) {
-	if len(param) == 0 {
-		return 0, nil
-	}
-	val, err := strconv.ParseUint(param, 10, 23)
-	if err != nil {
-		return 0, err
-	}
-	return val, nil
-}
-
 // Dashboard Chart that combines balance data and
 func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
-	lowerBoundDay, err := parseDayParam(r.URL.Query().Get("start_day"))
-	if err != nil {
-		logger.Error(err)
-		http.Error(w, "Error: invalid start_day parameter", http.StatusBadRequest)
-		return
-	}
-
-	upperBoundDay, err := parseDayParam(r.URL.Query().Get("end_day"))
-	if err != nil {
-		logger.Error(err)
-		http.Error(w, "Error: invalid end_day parameter", http.StatusBadRequest)
-		return
+	var lowerBoundDay uint64
+	param := r.URL.Query().Get("days")
+	if len(param) != 0 {
+		days, err := strconv.ParseUint(param, 10, 32)
+		if err != nil {
+			logger.Error(err)
+			http.Error(w, "Error: invalid days parameter", http.StatusBadRequest)
+			return
+		}
+		lastStatsDay := services.LatestExportedStatisticDay()
+		if days < lastStatsDay {
+			lowerBoundDay = lastStatsDay - days + 1
+		}
 	}
 
 	currency := GetCurrency(r)
@@ -488,12 +478,12 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	var incomeHistoryChartData []*types.ChartDataPoint
 	var executionChartData []*types.ChartDataPoint
 	g.Go(func() error {
-		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch(), lowerBoundDay, upperBoundDay)
+		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch(), lowerBoundDay)
 		return err
 	})
 
 	g.Go(func() error {
-		executionChartData, err = getExecutionChartData(queryValidatorIndices, currency, lowerBoundDay, upperBoundDay)
+		executionChartData, err = getExecutionChartData(queryValidatorIndices, currency, lowerBoundDay)
 		return err
 	})
 
@@ -519,9 +509,9 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint64, upperBoundDay uint64) ([]*types.ChartDataPoint, error) {
+func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
 	var limit uint64 = 300
-	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false, true, lowerBoundDay, upperBoundDay)
+	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false, true, lowerBoundDay)
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +579,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch(), 0, 0)
+	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch(), 0)
 	if err != nil {
 		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

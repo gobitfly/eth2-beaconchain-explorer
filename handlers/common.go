@@ -50,10 +50,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, errors.New("no validators provided")
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return nil, nil, err
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 	firstEpoch := (lastStatsDay + 1) * utils.EpochsPerDay()
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
@@ -118,7 +115,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetValidatorPropsosals(validators, &proposals)
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
 		return nil, nil, err
 	}
