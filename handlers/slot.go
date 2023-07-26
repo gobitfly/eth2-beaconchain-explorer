@@ -246,7 +246,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		LEFT JOIN blocks_tags ON blocks.slot = blocks_tags.slot and blocks.blockroot = blocks_tags.blockroot
 		LEFT JOIN tags ON blocks_tags.tag_id = tags.id
 		LEFT JOIN epochs ON (GREATEST(blocks.slot,1)-1)/$2 = epochs.epoch
-		LEFT JOIN epochs prev_epoch ON GREATEST(((GREATEST(blocks.slot,1)-1)/$2-1),0) = prev_epoch.epoch
+		LEFT JOIN epochs prev_epoch ON GREATEST((blocks.slot-1)/$2-1,0) = prev_epoch.epoch
 		WHERE blocks.slot = $1 
 		group by
 			blocks.epoch,
