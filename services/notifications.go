@@ -1147,7 +1147,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					}
 
 					if strings.Contains(errResp.Body, "You are being rate limited") {
-						logger.Warnf("could not push to descord webhook due to rate limit. %v url: %v", errResp.Body, webhook.Url)
+						logger.Warnf("could not push to discord webhook due to rate limit. %v url: %v", errResp.Body, webhook.Url)
 					} else {
 						utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
 					}
