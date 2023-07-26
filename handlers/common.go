@@ -51,7 +51,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	lastStatsDay := services.LatestExportedStatisticDay()
-	firstEpoch := (lastStatsDay + 1) * utils.EpochsPerDay()
+	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
+	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
 	totalBalance := uint64(0)
@@ -90,6 +91,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetTotalValidatorDeposits(validators, &totalDeposits)
 	})
 
+	var firstActivationEpoch uint64
+	g.Go(func() error {
+		return db.GetFirstActivationEpoch(validators, &firstActivationEpoch)
+	})
+
 	var totalWithdrawals uint64
 	g.Go(func() error {
 		return db.GetTotalValidatorWithdrawals(validators, &totalWithdrawals)
@@ -97,12 +103,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	var lastDeposits uint64
 	g.Go(func() error {
-		return db.GetValidatorDepositsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastDeposits)
+		return db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
 	})
 
 	var lastWithdrawals uint64
 	g.Go(func() error {
-		return db.GetValidatorWithdrawalsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastWithdrawals)
+		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
 	})
 
 	var lastBalance uint64
@@ -210,13 +216,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 	}
 
-	lookbackAmount := getProposalLuckBlockLookbackAmount(1)
-	startPeriod := len(slots) - lookbackAmount
-	if startPeriod < 0 {
-		startPeriod = 0
-	}
-
-	validatorProposalData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
+	validatorProposalData.ProposalLuck = getProposalLuck(slots, len(validators), firstActivationEpoch)
 	avgSlotInterval := uint64(getAvgSlotInterval(1))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
@@ -313,30 +313,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}, balancesMap, nil
 }
 
-func getProposalLuckBlockLookbackAmount(validatorCount int) int {
-	switch {
-	case validatorCount <= 4:
-		return 10
-	case validatorCount <= 10:
-		return 15
-	case validatorCount <= 20:
-		return 20
-	case validatorCount <= 50:
-		return 30
-	case validatorCount <= 100:
-		return 50
-	case validatorCount <= 200:
-		return 65
-	default:
-		return 75
-	}
-}
-
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
 // given the blocks proposed by the validators and the number of validators
 //
 // precondition: slots is sorted by ascending block number
-func getProposalLuck(slots []uint64, validatorsCount int) float64 {
+func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) float64 {
 	// Return 0 if there are no proposed blocks or no validators
 	if len(slots) == 0 || validatorsCount == 0 {
 		return 0
@@ -359,32 +340,32 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 
 	// Get the timeframe for which we should consider qualified proposals
 	var proposalTimeframe time.Duration
-	// Time since the first block in the proposed block slice
-	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
+	// Time since the first epoch of the related validators
+	timeSinceFirstEpoch := time.Since(utils.EpochToTime(fromEpoch))
 
 	targetBlocks := 8.0
 
 	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
 	switch {
-	case timeSinceFirstBlock < fiveDays:
+	case timeSinceFirstEpoch < fiveDays:
 		proposalTimeframe = fiveDays
-	case timeSinceFirstBlock < oneWeek:
+	case timeSinceFirstEpoch < oneWeek:
 		proposalTimeframe = oneWeek
-	case timeSinceFirstBlock < oneMonth:
+	case timeSinceFirstEpoch < oneMonth:
 		proposalTimeframe = oneMonth
-	case timeSinceFirstBlock > year && expectedSlotProposals <= targetBlocks/12:
+	case timeSinceFirstEpoch > year && expectedSlotProposals <= targetBlocks/12:
 		proposalTimeframe = year
-	case timeSinceFirstBlock > sixMonths && expectedSlotProposals <= targetBlocks/6:
+	case timeSinceFirstEpoch > sixMonths && expectedSlotProposals <= targetBlocks/6:
 		proposalTimeframe = sixMonths
-	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= targetBlocks/5:
+	case timeSinceFirstEpoch > fiveMonths && expectedSlotProposals <= targetBlocks/5:
 		proposalTimeframe = fiveMonths
-	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= targetBlocks/4:
+	case timeSinceFirstEpoch > fourMonths && expectedSlotProposals <= targetBlocks/4:
 		proposalTimeframe = fourMonths
-	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= targetBlocks/3:
+	case timeSinceFirstEpoch > threeMonths && expectedSlotProposals <= targetBlocks/3:
 		proposalTimeframe = threeMonths
-	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= targetBlocks/2:
+	case timeSinceFirstEpoch > twoMonths && expectedSlotProposals <= targetBlocks/2:
 		proposalTimeframe = twoMonths
-	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
+	case timeSinceFirstEpoch > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
 		proposalTimeframe = sixWeeks
 	default:
 		proposalTimeframe = oneMonth
@@ -538,7 +519,7 @@ func GetTruncCurrentPriceFormatted(r *http.Request) string {
 
 // GetValidatorIndexFrom gets the validator index from users input
 func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint64, err error) {
-	validatorIndex, err = strconv.ParseUint(userInput, 10, 64)
+	validatorIndex, err = strconv.ParseUint(userInput, 10, 32)
 	if err == nil {
 		pubKey, err = db.GetValidatorPublicKey(validatorIndex)
 		return

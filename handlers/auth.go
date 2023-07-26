@@ -172,21 +172,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 // LoginPost handles authenticating the user.
 func LoginPost(w http.ResponseWriter, r *http.Request) {
 
-	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
-		if len(r.FormValue("g-recaptcha-response")) == 0 {
-			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
-			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
-		if err != nil || !valid {
-			utils.SetFlash(w, r, "pricing_flash", "Error: Invalid CAPTCHA")
-			logger.Warnf("error validating recaptcha %v route: %v", r.URL.String(), err)
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
+	if err := utils.HandleRecaptcha(w, r, "/login"); err != nil {
+		return
 	}
 
 	session, err := utils.SessionStore.Get(r, authSessionName)

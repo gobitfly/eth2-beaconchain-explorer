@@ -907,7 +907,7 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *freecach
 		idx.HighestGasPrice = maxGasPrice.Bytes()
 	}
 
-	idx.Mev = CalculateMevFromBlock(block).Bytes()
+	idx.Mev = CalculateMevFromBlock(block).Bytes() // deprecated but we still write the value to keep all blocks consistent
 
 	// Mark Coinbase for balance update
 	bigtable.markBalanceUpdate(idx.Coinbase, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -947,7 +947,6 @@ func CalculateMevFromBlock(block *types.Eth1Block) *big.Int {
 
 	for _, tx := range block.GetTransactions() {
 		for _, itx := range tx.GetItx() {
-			//log.Printf("%v - %v", common.HexToAddress(itx.To), common.HexToAddress(block.Miner))
 			if common.BytesToAddress(itx.To) == common.BytesToAddress(block.GetCoinbase()) {
 				mevReward = new(big.Int).Add(mevReward, new(big.Int).SetBytes(itx.GetValue()))
 			}
@@ -3111,7 +3110,12 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 				logrus.Warnf("Hit rate limit when fetching contract metadata for address %x", address)
 			} else {
 				logAdditionalInfo := map[string]interface{}{"address": fmt.Sprintf("%x", address)}
-				utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
+				if strings.Contains(err.Error(), "unsupported arg type") {
+					// open issue in the go-ethereum lib: https://github.com/ethereum/go-ethereum/issues/24572
+					logrus.Warnf("could not parse ABI for %x: %v", address, err)
+				} else {
+					utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
+				}
 				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 				if err != nil {
 					utils.LogError(err, "Caching contract metadata", 0, logAdditionalInfo)

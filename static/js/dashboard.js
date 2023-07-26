@@ -501,6 +501,7 @@ $(document).ready(function () {
     },
     order: [[1, "asc"]],
     columnDefs: [
+      // Pubkey
       {
         targets: 0,
         data: "0",
@@ -516,6 +517,7 @@ $(document).ready(function () {
           return `<a href="/validator/${data}">0x${data.substr(0, 8)}...</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
         },
       },
+      // Index
       {
         targets: 1,
         data: "1",
@@ -528,6 +530,7 @@ $(document).ready(function () {
           }
         },
       },
+      // Current balance / Effective balance
       {
         targets: 2,
         data: "2",
@@ -536,6 +539,7 @@ $(document).ready(function () {
           return `${data[0]}`
         },
       },
+      // Index / State / Queue ahead / Estimated activation ts
       {
         targets: 3,
         data: "3",
@@ -553,6 +557,7 @@ $(document).ready(function () {
           return `<span>${s}</span>`
         },
       },
+      // Activation epoch / Activation ts
       {
         targets: 4,
         visible: false,
@@ -563,6 +568,7 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         },
       },
+      // Exit epoch / Exit ts
       {
         targets: 5,
         visible: false,
@@ -573,6 +579,7 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         },
       },
+      // Withdrawable epoch / Withdrawable ts
       {
         targets: 6,
         data: "6",
@@ -582,6 +589,7 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         },
       },
+      // Last attestation / Last attestation ts
       {
         targets: 7,
         data: "7",
@@ -591,6 +599,7 @@ $(document).ready(function () {
           return `${data[1]}`
         },
       },
+      // Executed proposals / Missed proposals
       {
         targets: 8,
         data: "8",
@@ -599,14 +608,22 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
         },
       },
+      // Performance last 7d
       {
-        // hidden column for filtering by DepositAddress
         targets: 9,
+        data: "9",
+        render: function (data, type, row, meta) {
+          return data
+        },
+      },
+      // Deposit address
+      {
+        targets: 10,
         orderable: false,
         data: function (data) {
           return data[10]
         },
-        visible: false,
+        visible: false, // hidden column for filtering only
         render: function (data, type) {
           if (type == "filter") return data
           return null

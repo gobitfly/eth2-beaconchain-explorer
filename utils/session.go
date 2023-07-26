@@ -142,3 +142,24 @@ func GetFlashes(w http.ResponseWriter, r *http.Request, name string) []interface
 	session.Save(r, w)
 	return flashes
 }
+
+func HandleRecaptcha(w http.ResponseWriter, r *http.Request, errorRoute string) error {
+	if len(Config.Frontend.RecaptchaSecretKey) > 0 && len(Config.Frontend.RecaptchaSiteKey) > 0 {
+		recaptchaResponse := r.FormValue("g-recaptcha-response")
+		if len(recaptchaResponse) == 0 {
+			SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Warnf("error no recaptcha response present for route: %v", r.URL.String())
+			http.Redirect(w, r, errorRoute, http.StatusSeeOther)
+			return fmt.Errorf("no recaptcha")
+		}
+
+		valid, err := ValidateReCAPTCHA(recaptchaResponse)
+		if err != nil || !valid {
+			SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Warnf("error validating recaptcha %v route: %v -> %v", recaptchaResponse, r.URL.String(), err)
+			http.Redirect(w, r, errorRoute, http.StatusSeeOther)
+			return fmt.Errorf("invalid recaptcha")
+		}
+	}
+	return nil
+}
