@@ -38,7 +38,7 @@ var proposedChartDefault = document.getElementById("proposed-chart").innerHTML
 var summaryDefaultValue = "0.000"
 var countdownIntervals = new Map()
 var VALLIMIT = 280
-var allIncomeLoaded = false;
+var allIncomeLoaded = false
 
 function hideValidatorHist() {
   if ($.fn.dataTable.isDataTable("#dash-validator-history-table")) {
@@ -1309,32 +1309,32 @@ $(document).ready(function () {
 
   $("#load-income-btn").on("click", () => {
     if (allIncomeLoaded || incomeChart == null) {
-      return;
+      return
     }
-    allIncomeLoaded = true;
-    
-    const url = '/dashboard/data/allbalances?validators=' + state.validators.join(",");
-    $("#load-income-btn").text("Loading...");
+    allIncomeLoaded = true
+
+    const url = "/dashboard/data/allbalances?validators=" + state.validators.join(",")
+    $("#load-income-btn").text("Loading...")
     fetch(url)
-      .then(response => {
+      .then((response) => {
         if (!response.ok) {
-          throw new Error('Network response was not ok.');
+          throw new Error("Network response was not ok.")
         }
-        return response.json();
+        return response.json()
       })
-      .then(data => {
-        createIncomeChart(data.consensusChartData, data.executionChartData);
-        $("#load-income-btn").addClass("d-none");
+      .then((data) => {
+        createIncomeChart(data.consensusChartData, data.executionChartData)
+        $("#load-income-btn").addClass("d-none")
       })
-      .catch(error => {
-        console.error(error);
-        alert('Error loading income data. Please try again.');
-        allIncomeLoaded = false;
+      .catch((error) => {
+        console.error(error)
+        alert("Error loading income data. Please try again.")
+        allIncomeLoaded = false
       })
       .finally(() => {
-        $("#load-income-btn").text("Show all rewards");
-      });
-  });
+        $("#load-income-btn").text("Show all rewards")
+      })
+  })
 })
 
 function createIncomeChart(income, executionIncomeHistory) {
@@ -1354,11 +1354,11 @@ function createIncomeChart(income, executionIncomeHistory) {
       events: {
         load: function () {
           $("#load-income-btn").removeClass("d-none")
-        }
-      }
+        },
+      },
     },
     credits: {
-      enabled: false
+      enabled: false,
     },
     legend: {
       enabled: true,
@@ -1401,15 +1401,15 @@ function createIncomeChart(income, executionIncomeHistory) {
 
         // date and epochs
         const startEpoch = timeToEpoch(tooltip.chart.hoverPoint.x)
-        const timeForOneDay = 24 * 60* 60 * 1000
+        const timeForOneDay = 24 * 60 * 60 * 1000
         const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
         const startDate = luxon.DateTime.fromMillis(tooltip.chart.hoverPoints[0].x)
-        const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch+1))
-        text += `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`;
+        const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch + 1))
+        text += `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`
 
         // income
         for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
-          const value = tooltip.chart.hoverPoints[i].y;
+          const value = tooltip.chart.hoverPoints[i].y
           text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, 1)}<br/>`
           total += value
         }
@@ -1420,7 +1420,7 @@ function createIncomeChart(income, executionIncomeHistory) {
         }
 
         return text
-      }
+      },
     },
     yAxis: [
       {
@@ -1449,20 +1449,22 @@ function createIncomeChart(income, executionIncomeHistory) {
       },
     ],
     responsive: {
-      rules: [{
-        condition: {
-          callback: function () {
-            return window.innerWidth >= 820
-          }
+      rules: [
+        {
+          condition: {
+            callback: function () {
+              return window.innerWidth >= 820
+            },
+          },
+          chartOptions: {
+            legend: {
+              itemMarginTop: 7,
+              itemMarginBottom: -7,
+            },
+          },
         },
-        chartOptions: {
-          legend: {
-            itemMarginTop: 7,
-            itemMarginBottom: -7
-          }
-        }  
-      }]  
-    }
+      ],
+    },
   })
 }
 
