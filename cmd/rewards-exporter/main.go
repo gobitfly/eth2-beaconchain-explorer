@@ -140,10 +140,9 @@ func main() {
 	}
 
 	if *epoch == -1 {
-		lastExportedEpoch := uint64(0)
 		for {
 			notExportedEpochs := []uint64{}
-			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch > $1 ORDER BY epoch desc LIMIT 10", lastExportedEpoch)
+			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported ORDER BY epoch desc LIMIT 10")
 			if err != nil {
 				utils.LogFatal(err, "getting chain head from lighthouse error", 0)
 			}
@@ -161,10 +160,6 @@ func main() {
 					logrus.Errorf("error marking rewards_exported as true for epoch %v: %v", e, err)
 				}
 				services.ReportStatus("rewardsExporter", "Running", nil)
-
-				if e > lastExportedEpoch {
-					lastExportedEpoch = e
-				}
 			}
 
 			services.ReportStatus("rewardsExporter", "Running", nil)
