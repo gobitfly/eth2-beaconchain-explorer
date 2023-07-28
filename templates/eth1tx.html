@@ -128,7 +128,12 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">From:</div>
-                <div class="col-md-9">{{ formatEth1AddressFull .From }}</div>
+                <div class="col-md-9 d-flex flex-wrap">
+                  {{ formatEth1AddressFull .From }}
+                  {{ if ne .FromName "" }}
+                    <div class="ml-2 flex-shrink-1"><span class="badge badge-pill badge-ens align-middle">{{ .FromName }}</span></div>
+                  {{ end }}
+                </div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                 <div class="col-md-3">{{ if .IsContractCreation }}Created{{ else if .TargetIsContract }}Interacted With{{ else }}To{{ end }}:</div>
@@ -148,7 +153,7 @@
                             {{ end }}
                           {{ end }}
                           {{ if ne .ToName "" }}
-                            <div class="flex-shrink-1"><span class="badge badge-dark align-middle text-white">Name: {{ .ToName }}</span></div>
+                            <div class="flex-shrink-1"><span class="badge badge-pill badge-ens align-middle">{{ .ToName }}</span></div>
                           {{ end }}
                         </div>
                       </div>

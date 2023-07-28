@@ -158,6 +158,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		}
 		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
 	} else { // name set
+		addCopyToClipboard = true
 		tooltip = fmt.Sprintf("%s\n%s", name, addressString) // set tool tip first, as we will change name
 		// limit name if necessary
 		if nameLimit > 0 && len(name) > nameLimit {

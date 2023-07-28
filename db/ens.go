@@ -586,3 +586,26 @@ func GetEnsNameForAddress(address common.Address) (name *string, err error) {
 	;`, address.Bytes())
 	return name, err
 }
+
+func GetEnsNamesForAddress(addressMap map[string]string) error {
+	type pair struct {
+		Address []byte `db:"address"`
+		EnsName string `db:"ens_name"`
+	}
+	dbAddresses := []pair{}
+	addresses := make([][]byte, 0, len(addressMap))
+	for add := range addressMap {
+		addresses = append(addresses, []byte(add))
+	}
+
+	err := ReaderDb.Select(&dbAddresses, `
+	SELECT address, ens_name 
+	FROM ens
+	WHERE
+		address = ANY($1) 
+	;`, addresses)
+	for _, foundling := range dbAddresses {
+		addressMap[string(foundling.Address)] = foundling.EnsName
+	}
+	return err
+}

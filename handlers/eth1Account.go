@@ -28,15 +28,13 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	address := template.HTMLEscapeString(vars["address"])
-	if utils.IsValidEnsDomain(address) {
-		ensData, err := GetEnsDomain(address)
-		if err != nil {
-			handleNotFoundHtml(w, r)
-			return
-		}
-		if len(ensData.Address) > 0 {
-			address = ensData.Address
-		}
+	ensData, err := GetEnsDomain(address)
+	if err != nil && utils.IsValidEnsDomain(address) {
+		handleNotFoundHtml(w, r)
+		return
+	}
+	if len(ensData.Address) > 0 {
+		address = ensData.Address
 	}
 
 	isValid := utils.IsEth1Address(address)
@@ -250,6 +248,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = types.Eth1AddressPageData{
 		Address:            address,
+		EnsName:            ensData.Domain,
 		IsContract:         isContract,
 		QRCode:             pngStr,
 		QRCodeInverse:      pngStrInverse,
