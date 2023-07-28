@@ -1145,8 +1145,12 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 						}
 						errResp.Status = resp.Status
 					}
-					utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
 
+					if strings.Contains(errResp.Body, "You are being rate limited") {
+						logger.Warnf("could not push to discord webhook due to rate limit. %v url: %v", errResp.Body, webhook.Url)
+					} else {
+						utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
+					}
 					_, err = useDB.Exec(`UPDATE users_webhooks SET request = $2, response = $3 WHERE id = $1;`, webhook.ID, reqs[i].Content.DiscordRequest, errResp)
 					if err != nil {
 						logger.Errorf("error storing failure data in users_webhooks table: %v", err)
