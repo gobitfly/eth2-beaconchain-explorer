@@ -82,7 +82,13 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 				Ts:     utils.SlotToTime(slot),
 				Status: 4,
 			}
-			blocks[31-i] = &block
+			n := int(utils.Config.Chain.Config.SlotsPerEpoch) - 1 - i
+			if len(blocks) < n {
+				logger.Errorf("error retrieving epoch %v (future)", epoch)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			blocks[n] = &block
 		}
 		epochPageData = types.EpochPageData{
 			Epoch:         epoch,
