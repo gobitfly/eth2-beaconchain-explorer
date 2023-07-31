@@ -40,7 +40,7 @@ func handleValidatorsQuery(w http.ResponseWriter, r *http.Request, checkValidato
 	// Parse all the validator indices and pubkeys from the query string
 	queryValidatorIndices, queryValidatorPubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && (checkValidatorLimit || err != ErrTooManyValidators) {
-		logger.Warnf("error parsing validators from query string: %v; Route: %v", err, r.URL.String())
+		logger.Warnf("could not parse validators from query string: %v; Route: %v", err, r.URL.String())
 		http.Error(w, "Invalid query", http.StatusBadRequest)
 		return nil, nil, false, err
 	}
@@ -57,7 +57,7 @@ func handleValidatorsQuery(w http.ResponseWriter, r *http.Request, checkValidato
 		// Check after the redirect whether all validators are correct
 		err = checkValidatorsQuery(queryValidatorIndices, queryValidatorPubkeys)
 		if err != nil {
-			utils.LogError(err, fmt.Errorf("error finding validators in database from query string"), 0, fieldMap)
+			logger.Warnf("could not find validators in database from query string: %v; Route: %v", err, r.URL.String())
 			http.Error(w, "Not found", http.StatusNotFound)
 			return nil, nil, false, err
 		}
