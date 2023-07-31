@@ -100,13 +100,16 @@ table {
   }
 }
 
-.navbar{
+.navbar {
   box-shadow: unset;
 }
 
-.main-navigation{
+.main-navigation {
   background-color: var(--bg-color);
   border-bottom: 1px solid var(--border-color);
+  z-index: 998;
+  position: sticky;
+  top: 0;
 }
 
 .main-navigation .navbar-toggler {
@@ -131,11 +134,9 @@ table {
     padding: 0;
     margin-bottom: var(--header-bar-height);
     position: fixed;
-    top: 0;
     left: 0;
     right: 0;
     max-height: 100%;
-    z-index: 999;
     overflow-y: auto;
   }
 
@@ -182,19 +183,18 @@ table {
   }
 }
 
-
 @media (min-width: 1140px) {
   .navbar {
     padding: 0;
     padding-top: var(--header-bar-height);
   }
-  
-  .navbar-brand{
+
+  .navbar-brand {
     padding: 0;
   }
 }
 
-.navbar-brand{
+.navbar-brand {
   padding: 0;
 }
 .icon-inside {
@@ -699,7 +699,7 @@ body main {
   font-weight: 300;
 }
 
-.style-nav2-text{
+.style-nav2-text {
   font-family: "Mukta", sans-serif;
   font-size: 1.375rem;
   line-height: 2.3125rem;
