@@ -1835,8 +1835,8 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 func internUserNotificationsSubscribe(event, filter string, threshold float64, w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
-	filter = strings.Replace(filter, "0x", "", -1)
 
+	filter = strings.Replace(filter, "0x", "", -1)
 	event = strings.TrimPrefix(event, utils.GetNetwork()+":")
 
 	eventName, err := types.EventNameFromString(event)
@@ -1846,11 +1846,15 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 		return false
 	}
 
-	isPkey := !pkeyRegex.MatchString(filter)
+	isPkey := searchPubkeyExactRE.MatchString(filter)
 	filterLen := len(filter)
 
-	if filterLen != 96 && filterLen != 0 && isPkey {
-		logger.Errorf("error invalid pubkey characters or length: %v", err)
+	if filterLen != 0 && !isPkey {
+		errMsg := fmt.Errorf("error invalid pubkey characters or length")
+		errFields := map[string]interface{}{
+			"filter":     filter,
+			"filter_len": len(filter)}
+		utils.LogError(nil, errMsg, 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2021,11 +2025,15 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		return false
 	}
 
-	isPkey := !pkeyRegex.MatchString(filter)
+	isPkey := searchPubkeyExactRE.MatchString(filter)
 	filterLen := len(filter)
 
-	if len(filter) != 96 && filterLen != 0 && isPkey {
-		logger.Errorf("error invalid pubkey characters or length: %v", err)
+	if filterLen != 0 && !isPkey {
+		errMsg := fmt.Errorf("error invalid pubkey characters or length")
+		errFields := map[string]interface{}{
+			"filter":     filter,
+			"filter_len": len(filter)}
+		utils.LogError(nil, errMsg, 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2093,10 +2101,9 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 	q := r.URL.Query()
-	event := q.Get("event")
 	filter := q.Get("filter")
 	filter = strings.Replace(filter, "0x", "", -1)
-
+	event := q.Get("event")
 	event = strings.TrimPrefix(event, utils.GetNetwork()+":")
 
 	eventName, err := types.EventNameFromString(event)
@@ -2106,11 +2113,16 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isPkey := !pkeyRegex.MatchString(filter)
+	isPkey := searchPubkeyExactRE.MatchString(filter)
 	filterLen := len(filter)
 
-	if len(filter) != 96 && filterLen != 0 && isPkey {
-		logger.Errorf("error invalid pubkey characters or length: %v", err)
+	if filterLen != 0 && !isPkey {
+		errMsg := fmt.Errorf("error invalid pubkey characters or length")
+		errFields := map[string]interface{}{
+			"filter":     filter,
+			"filter_len": len(filter)}
+		utils.LogError(nil, errMsg, 0, errFields)
+
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
