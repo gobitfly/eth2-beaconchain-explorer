@@ -367,7 +367,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch)
-
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
 		}
@@ -380,7 +379,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency)
-
 		if err != nil {
 			return fmt.Errorf("error calling getExecutionChartData: %v", err)
 		}

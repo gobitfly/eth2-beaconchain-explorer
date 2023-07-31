@@ -794,8 +794,8 @@ func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTM
 			<b>%s %s</b>
 		</span>`,
 			className,
-			FormatClCurrency(income.Cl, currency, 5, true, true, true),
-			FormatElCurrency(income.Cl, currency, 5, true, true, true),
+			FormatClCurrency(income.Cl, currency, 5, true, true, false),
+			FormatElCurrency(income.El, currency, 5, true, true, false),
 			incomeTrimmed,
 			currency))
 	} else {

@@ -267,6 +267,21 @@ func WriteValidatorStatisticsForDay(day uint64) error {
         )
         ON CONFLICT (validatorindex, day) DO
             UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+
+		// on gnosis withdrawals do not affect validator-balances
+		if utils.Config.Chain.Config.DepositChainID == 100 {
+			stmt = `
+			INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
+			(
+				SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(last.end_balance, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+				FROM validator_stats cur
+				INNER JOIN validator_stats last 
+					ON cur.validatorindex = last.validatorindex AND last.day = GREATEST(cur.day - 1, 0)
+				WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+			)
+			ON CONFLICT (validatorindex, day) DO
+				UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+		}
 		if day == 0 {
 			stmt = `
 			INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
@@ -277,6 +292,19 @@ func WriteValidatorStatisticsForDay(day uint64) error {
             )
             ON CONFLICT (validatorindex, day) DO
                 UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+
+			// on gnosis withdrawals do not affect validator-balances
+			if utils.Config.Chain.Config.DepositChainID == 100 {
+				stmt = `
+				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
+				(
+					SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(cur.start_balance,0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
+					FROM validator_stats cur
+					WHERE cur.day = $1 AND cur.validatorindex >= $2 AND cur.validatorindex <= $3
+				)
+				ON CONFLICT (validatorindex, day) DO
+					UPDATE SET cl_rewards_gwei = excluded.cl_rewards_gwei;`
+			}
 		}
 		_, err = tx.Exec(stmt, day, start, end)
 		if err != nil {
@@ -694,9 +722,12 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		})
 
 		var lastWithdrawals uint64
-		g.Go(func() error {
-			return GetValidatorWithdrawalsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
-		})
+		// on gnosis withdrawals do not affect validator-balances
+		if utils.Config.Chain.Config.DepositChainID != 100 {
+			g.Go(func() error {
+				return GetValidatorWithdrawalsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
+			})
+		}
 
 		err = g.Wait()
 		if err != nil {
