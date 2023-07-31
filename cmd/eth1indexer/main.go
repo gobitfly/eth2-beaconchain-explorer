@@ -60,9 +60,6 @@ func main() {
 	tokenPriceExportList := flag.String("token.price.list", "", "Tokenlist path to use for the token price export")
 	tokenPriceExportFrequency := flag.Duration("token.price.frequency", time.Hour, "Token price export interval")
 
-	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
-	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
-
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
@@ -135,7 +132,7 @@ func main() {
 		logrus.Fatalf("node chain id mismatch, wanted %v got %v", chainId, nodeChainId.String())
 	}
 
-	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId, utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainId, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
