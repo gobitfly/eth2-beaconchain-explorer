@@ -765,6 +765,12 @@ body main {
   font-weight: 500;
 }
 
+.page-title .h4 {
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
 .style-table-header {
   font-family: "Mukta", sans-serif;
   font-size: 0.875rem;
@@ -1113,4 +1119,9 @@ body main {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.page-title {
+  margin-top: 0.625rem;
+  margin-bottom: 0.625rem;
 }
