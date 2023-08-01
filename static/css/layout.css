@@ -774,9 +774,21 @@ body main {
   font-weight: 500;
 }
 
+.page-title {
+  margin-top: 0.625rem;
+  margin-bottom: 0.625rem;
+}
+
 .page-title .h4 {
   font-family: "Montserrat", sans-serif;
   font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.sub-page-title {
+  font-family: "Montserrat", sans-serif;
+  margin-bottom: 0.625rem;
+  font-size: 1.125rem;
   font-weight: 500;
 }
 
@@ -1128,9 +1140,4 @@ body main {
   100% {
     transform: rotate(360deg);
   }
-}
-
-.page-title {
-  margin-top: 0.625rem;
-  margin-bottom: 0.625rem;
 }

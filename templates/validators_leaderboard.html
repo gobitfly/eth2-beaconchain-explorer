@@ -81,19 +81,11 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container mt-2">
-      <div class="my-3">
+      <div class="page-title">
         <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-medal"></i> Validator Staking Leaderboard</h1>
-
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Leaderboard</li>
-            </ol>
-          </nav>
+          <h4 class="h4 mb-1 mb-md-0"><i class="fas fa-medal"></i> Validator Staking Leaderboard</h4>
         </div>
-        The Validator Leaderboard is ordered by the 7 day income by default.
+        <div class="sub-page-title">The Validator Leaderboard is ordered by the 7 day income by default.</div>
       </div>
       <div class="card">
         <div class="card-body px-0 py-2">
