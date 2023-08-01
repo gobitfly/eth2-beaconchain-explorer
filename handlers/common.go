@@ -122,10 +122,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, err
 	}
 	currentDayClIncome := int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)
-	// on gnosis withdrawals do not affect validator-balances
-	if utils.Config.Chain.Config.DepositChainID == 100 {
-		currentDayClIncome = int64(totalBalance - lastBalance - lastDeposits)
-	}
 
 	elClPrice := price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, utils.Config.Frontend.ClCurrencySymbol)
 

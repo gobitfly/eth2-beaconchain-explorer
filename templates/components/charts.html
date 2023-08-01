@@ -40,8 +40,10 @@
 
     {{if .WithdrawalChart}}
     var series = {{.WithdrawalChart.Data.Series}}
-    var currency = {{$.Rates.Currency}}
+    var selectedCurrency = {{$.Rates.Currency}}
     var ethPrice = {{$.Rates.EthPrice}}
+    var clPrice = {{$.Rates.ClPrice}}
+    var clCurrency = {{config.Frontend.ClCurrencySymbol}}
 
     window.addEventListener('load', function() {
         Highcharts.stockChart('withdrawal-chart',{
@@ -93,8 +95,9 @@
             tooltip: {
                 useHTML: true,
                 formatter: function(t) {
+                    
                     var text = '<span>'+ Highcharts.dateFormat('%A, %b %e, %Y', this.x) +'</span><br/>';
-                    var income = getIncomeChartValueString(this.y, currency, ethPrice)
+                    var income = getIncomeChartValueString(this.y, selectedCurrency, selectedCurrency, clPrice)
                     text += '<b>'+income+'</b>'
 
                     return text;

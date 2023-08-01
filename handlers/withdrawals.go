@@ -9,7 +9,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -177,7 +176,7 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), currency, 6))),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
 		}
 	}
 
