@@ -804,7 +804,7 @@ func SlotAttestationsData(w http.ResponseWriter, r *http.Request) {
 func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
-
+	currency := GetCurrency(r)
 	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
 	if err != nil {
 		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
@@ -823,7 +823,7 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), utils.Config.Frontend.ElCurrencySymbol, 6))),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
 		})
 	}
 

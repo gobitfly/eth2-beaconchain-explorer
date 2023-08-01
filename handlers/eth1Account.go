@@ -41,7 +41,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address = strings.Replace(address, "0x", "", -1)
 	address = strings.ToLower(address)
 
-	// currency := GetCurrency(r)
+	currency := GetCurrency(r)
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
 
@@ -148,7 +148,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-				template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(utils.Config.Frontend.ClCurrencyDivisor)), utils.Config.Frontend.ClCurrencySymbol, 6))),
+				template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
 			})
 		}
 
@@ -167,7 +167,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		withdrawalSummary = template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(sumWithdrawals), big.NewInt(utils.Config.Frontend.ClCurrencyDivisor)), utils.Config.Frontend.ClCurrencySymbol, 6)))
+		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false))
 		return nil
 	})
 	// }
@@ -357,6 +357,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	currency := GetCurrency(r)
 	q := r.URL.Query()
 	vars := mux.Vars(r)
 	address := strings.Replace(vars["address"], "0x", "", -1)
@@ -376,7 +377,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(utils.Config.Frontend.ClCurrencyDivisor)), utils.Config.Frontend.ClCurrencySymbol, 6))),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
 		}
 	}
 

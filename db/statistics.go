@@ -695,9 +695,12 @@ func GetValidatorIncomeHistory(validator_indices []uint64, lowerBoundDay uint64,
 		})
 
 		var lastWithdrawals uint64
+		// on gnosis withdrawals do not affect validator-balances
+		//if utils.Config.Chain.Config.DepositChainID != 100 {
 		g.Go(func() error {
 			return GetValidatorWithdrawalsForEpochs(validator_indices, firstEpoch, lastFinalizedEpoch, &lastWithdrawals)
 		})
+		//}
 
 		err = g.Wait()
 		if err != nil {
