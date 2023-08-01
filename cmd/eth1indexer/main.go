@@ -283,38 +283,49 @@ func main() {
 			},
 		).Infof("last blocks")
 
-		if lastBlockFromBlocksTable < int(lastBlockFromNode) {
-			logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
+		if lastBlockFromNode > 0 {
+			if lastBlockFromBlocksTable < int(lastBlockFromNode) {
+				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
 
-			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
-			if err != nil {
-				errMsg := "error indexing from node"
-				errFields := map[string]interface{}{
-					"start":       int64(lastBlockFromBlocksTable) - *offsetBlocks,
-					"end":         int64(lastBlockFromNode),
-					"concurrency": *concurrencyBlocks}
-				if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
-					utils.LogFatal(err, errMsg, 0, errFields)
-				} else {
-					utils.LogError(err, errMsg, 0, errFields)
+				startBlock := int64(lastBlockFromBlocksTable) - *offsetBlocks
+				if startBlock < 0 {
+					startBlock = 0
 				}
-				continue
-			} else {
-				lastSuccessulBlockIndexingTs = time.Now()
+
+				err = IndexFromNode(bt, client, startBlock, int64(lastBlockFromNode), *concurrencyBlocks)
+				if err != nil {
+					errMsg := "error indexing from node"
+					errFields := map[string]interface{}{
+						"start":       startBlock,
+						"end":         int64(lastBlockFromNode),
+						"concurrency": *concurrencyBlocks}
+					if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
+						utils.LogFatal(err, errMsg, 0, errFields)
+					} else {
+						utils.LogError(err, errMsg, 0, errFields)
+					}
+					continue
+				} else {
+					lastSuccessulBlockIndexingTs = time.Now()
+				}
 			}
-		}
 
-		if lastBlockFromDataTable < int(lastBlockFromNode) {
-			// transforms = append(transforms, bt.TransformTx)
+			if lastBlockFromDataTable < int(lastBlockFromNode) {
+				logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
 
-			logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
-			err = bt.IndexEventsWithTransformers(int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData, cache)
-			if err != nil {
-				logrus.WithError(err).Errorf("error indexing from bigtable")
+				startBlock := int64(lastBlockFromBlocksTable) - *offsetData
+				if startBlock < 0 {
+					startBlock = 0
+				}
+
+				err = bt.IndexEventsWithTransformers(startBlock, int64(lastBlockFromNode), transforms, *concurrencyData, cache)
+				if err != nil {
+					utils.LogError(err, "error indexing from bigtable", 0, map[string]interface{}{"start": startBlock, "end": int64(lastBlockFromNode), "concurrency": *concurrencyData})
+					cache.Clear()
+					continue
+				}
 				cache.Clear()
-				continue
 			}
-			cache.Clear()
 		}
 
 		if *enableBalanceUpdater {
