@@ -52,5 +52,12 @@ playground:
 	go build --ldflags=${LDFLAGS} -o bin/re_calculate_stats_totals cmd/playground/re_calculate_stats_totals/main.go
 	go build --ldflags=${LDFLAGS} -o bin/fix_eth2_deposit_validity cmd/playground/fix_eth2_deposit_validity/main.go
 
+
+notification-sender:
+	go build --ldflags=${LDFLAGS} -o bin/notification-sender cmd/notification-sender/main.go
+
+notification-collector:
+	go build --ldflags=${LDFLAGS} -o bin/notification-collector cmd/notification-collector/main.go
+
 addhooks:
 	git config core.hooksPath hooks
