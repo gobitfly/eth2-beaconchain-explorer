@@ -1066,6 +1066,66 @@ body main {
   line-height: 1.45rem !important;
 }
 
+.m-d {
+  margin: 0.625rem;
+}
+
+.my-d {
+  margin-top: 0.625rem;
+  margin-bottom: 0.625rem;
+}
+
+.mx-d {
+  margin-left: 0.625rem;
+  margin-right: 0.625rem;
+}
+
+.mt-d {
+  margin-top: 0.625rem;
+}
+
+.mb-d {
+  margin-bottom: 0.625rem;
+}
+
+.ml-d {
+  margin-left: 0.625rem;
+}
+
+.mr-d {
+  margin-right: 0.625rem;
+}
+
+.p-d {
+  padding: 0.625rem;
+}
+
+.py-d {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+.px-d {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+
+.pt-d {
+  padding-top: 0.625rem;
+}
+
+.pb-d {
+  padding-bottom: 0.625rem;
+}
+
+.pl-d {
+  padding-left: 0.625rem;
+}
+
+.pr-d {
+  padding-right: 0.625rem;
+}
+
 @media screen and (max-width: 450px) {
   .custom-modal {
     padding: 0 !important;
