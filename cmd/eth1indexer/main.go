@@ -313,7 +313,7 @@ func main() {
 			if lastBlockFromDataTable < int(lastBlockFromNode) {
 				logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
 
-				startBlock := int64(lastBlockFromBlocksTable) - *offsetBlocks
+				startBlock := int64(lastBlockFromBlocksTable) - *offsetData
 				if startBlock < 0 {
 					startBlock = 0
 				}
