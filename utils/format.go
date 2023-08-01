@@ -204,14 +204,17 @@ func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, dig
 
 // IfToDec trys to parse given parameter to decimal.Decimal, it only logs on error
 func IfToDec(valIf interface{}) decimal.Decimal {
+	var err error
 	var val decimal.Decimal
 	switch valIf.(type) {
+	case *float64:
+		val, err = decimal.NewFromString(fmt.Sprintf("%v", *valIf.(*float64)))
+	case *int64:
+		val, err = decimal.NewFromString(fmt.Sprintf("%v", *valIf.(*int64)))
+	case *uint64:
+		val, err = decimal.NewFromString(fmt.Sprintf("%v", *valIf.(*uint64)))
 	case int, int64, float64, uint64, *big.Float:
-		var err error
 		val, err = decimal.NewFromString(fmt.Sprintf("%v", valIf))
-		if err != nil {
-			logger.WithFields(logrus.Fields{"type": reflect.TypeOf(valIf), "val": valIf}).Errorf("invalid value passed to IfToDec")
-		}
 	case []uint8:
 		val = decimal.NewFromBigInt(new(big.Int).SetBytes(valIf.([]byte)), 0)
 	case *big.Int:
@@ -220,6 +223,9 @@ func IfToDec(valIf interface{}) decimal.Decimal {
 		val = valIf.(decimal.Decimal)
 	default:
 		logger.WithFields(logrus.Fields{"type": reflect.TypeOf(valIf), "val": valIf}).Errorf("invalid value passed to IfToDec")
+	}
+	if err != nil {
+		logger.WithFields(logrus.Fields{"type": reflect.TypeOf(valIf), "val": valIf, "error": err}).Errorf("invalid value passed to IfToDec")
 	}
 	return val
 }

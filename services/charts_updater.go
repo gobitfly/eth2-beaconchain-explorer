@@ -935,7 +935,7 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 		Title:        "Withdrawals",
 		Subtitle:     "Daily Amount of withdrawals in ETH.",
 		XAxisTitle:   "",
-		YAxisTitle:   "Withdrawals ETH",
+		YAxisTitle:   "Withdrawals {{.ClCurrency}}",
 		StackingMode: "normal",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
