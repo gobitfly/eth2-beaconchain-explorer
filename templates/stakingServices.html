@@ -15,11 +15,11 @@
       </div>
     {{ end }}
     <section style="background: var(--bg-color-light)">
-      <div class="container">
+      <div class="container mb-d">
         <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
           <div class="col-md-6 mb-5">
-            <h1 class="h6 font-weight-bold text-primary">Staking Services</h1>
-            <h2 class="mb-4">Find the best Ethereum staking services on beaconcha.in</h2>
+            <h4 class="h4 font-weight-bold text-primary">Staking Services</h4>
+            <div class="mb-d">Find the best Ethereum staking services on beaconcha.in</div>
             <a href="#stakingServices" class="btn btn-sm btn-outline-primary">View services</a>
           </div>
           <div class="col-md-5 p-1">
@@ -137,24 +137,20 @@
       </div>
     </section>
     <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
-    <div class="container mt-2">
-      <section class="my-5">
+    <div class="container">
+      <section>
         <div class="row">
           <div class="col-md-12">
-            <h1 class="h2 mb-4 font-weight-bold text-primary text-center">Staking Services</h1>
-            <div class="text-center">
-              <div>beaconcha.in has not vetted any of the Staking Services listed below! Please do your own research.</div>
-              <br />
-              <div>
+            <div class="page-title">
+              <h4 class="h2 font-weight-bold text-primary ">Staking Services</h4>
+            </div>
+            <div>
+              <div class="sub-page-title">beaconcha.in has not vetted any of the Staking Services listed below! Please do your own research.</div>
+              <div class="mb-d">
                 <b>Real-time staking pool <a href="/pools"> benchmarks</a>.</b>
               </div>
-              <br />
             </div>
             <div class="table-responsive">
-              <style>
-                #stakingServices {
-                }
-              </style>
               <table class="table" id="stakingServices">
                 <thead>
                   <tr>
@@ -171,511 +167,22 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr style="border-bottom: 3px solid orange;">
-                    <td data-column="Service">
-                      <a href="https://ethpool.org/">Ethpool</a><span> by beaconcha.in</span>
-                      <br />
-                      <span style="font-size: xx-small; font-style: italic;">Hardware Wallet Support</span>
-                    </td>
-                    <td data-column="No Supermajority client" style="text-align: center;">✅</td>
-                    <td data-column="Validator key owner">User & Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">2% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://discord.io/ethermine  " target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ethermine_org" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <!-- <tr style="border: 3px solid orange;">
-                    <td data-column="Service">
-                      <a href="https://ethpool.org/">Ethpool &lt;&gt; Rocket Pool <i class="fas fa-rocket"></i></a>
-                    </td>
-                    <td data-column="Validator key owner">User &amp; Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">16 ETH</td>
-                    <td data-column="Fee">US$9.99/validator/month</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://discord.io/ethermine  " target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ethermine_org" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr style="border-bottom: 3px solid orange;">
-                    <td data-column="Service"><a href="https://staking.ethermine.org/">Ethermine Staking</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">✅</td>
-                    <td data-column="Validator key owner">User & Service</td>
-                    <td data-column="Withdrawal key owner">User & Service</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">0.1 ETH</td>
-                    <td data-column="Fee">8% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://discord.io/ethermine  " target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ethermine_org" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>-->
-                  <tr>
-                    <td data-column="Service"><a href="https://abyss.finance/hosting">Abyss Finance</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">User & Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">?</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/abyssfinance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/abyssfinance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:hello@abyss.finance" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.allnodes.com/eth2/staking">Allnodes</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">User & Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">US$10/validator/month</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://discord.allnodes.com/" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/allnodes" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/allnodes" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:support@allnodes.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.ankr.com/staking/stake/">Ankr Staking</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Service</td>
-                    <td data-column="Pool token">Yes</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">10% of rewards</td>
-                    <td data-column="Open Source">Yes</td>
-                    <td data-column="Social">
-                      <a href="https://discord.gg/2BSdr2g" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ankr" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/ankrnetwork" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://atomicwallet.io">Atomic Wallet</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">?</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/atomicwallet" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/AtomicWallet" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:support@atomicwallet.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.attestant.io/">Attestant</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">✅</td>
-                    <td data-column="Validator key owner">User & Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">1000 ETH</td>
-                    <td data-column="Fee">17.5% of rewards</td>
-                    <td data-column="Open Source">Yes</td>
-                    <td data-column="Social">
-                      <a href="https://invite.gg/attestant" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/attestantio" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/attestant" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:info@attestant.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.binance.com/en/staking">Binance Exchange</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Service</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">?</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.bitcoinsuisse.com/staking/ethereum-2">Bitcoin Suisse Exchange</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Service</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">15% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/bitcoinsuisseag" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/bitcoinsuisse_announcements" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:info@bitcoinsuisse.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://staking.bitfinex.com/">Bitfinex Exchange</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Service</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">?</td>
-                    <td data-column="Min. Stake">0.00001 ETH</td>
-                    <td data-column="Fee">25% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/bitfinex" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://bifrost.finance/">Bitfrost</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">0.1 ETH</td>
-                    <td data-column="Fee">15% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://discord.com/invite/XjnjdKBNXj" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/bifrost_finance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/bifrost_finance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://stake.bloq.com/">BloqStake</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">4-8% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://www.linkedin.com/company/bloq-inc/" target="_blank"><i class="fab fa-linkedin ml-1 mr-1"></i></a><a href="https://twitter.com/bloqinc" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="mailto:support@bloq.com" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.bloxstaking.com/">Bloxstaking</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">User</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">Yes</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">Free</td>
-                    <td data-column="Open Source">Yes</td>
-                    <td data-column="Social">
-                      <a href="https://discord.gg/cvWkmDg" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/Blox_Staking" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><a href="mailto:contact@blox.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.coinbase.com/earn/staking/ethereum">Coinbase Exchange</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Service</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">?</td>
-                    <td data-column="Min. Stake">0.00001 ETH</td>
-                    <td data-column="Fee">25% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/coinbase" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://consensys.net/codefi/staking/">Codefi Staking</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">5% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://discord.gg/YTcA2mxKCm" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/ConsenSysCodefi" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.cybavo.com/eth2-staking/">Cybavo</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">Service & User</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">10% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/cybavo" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://dragonstake.io/">Dragonstake</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">?</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">?</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://everstake.one/">Everstake</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">?</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">?</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://guarda.com/">Guarda Wallet</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Service</td>
-                    <td data-column="Pool token">Yes</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">0.1 ETH</td>
-                    <td data-column="Fee">9.99% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/GuardaWallet" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/Guarda_community" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:hello@guarda.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://token.im/">imToken & InfStones</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">US$100/validator</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/imTokenOfficial" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><a href="support@token.im" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.kraken.com/en-us/features/staking-coins">Kraken Exchange</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">0.00001 ETH</td>
-                    <td data-column="Fee">15% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/krakenfx" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.launchnodes.com/">Launchnodes</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">User</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">US$49.5/validator/month</td>
-                    <td data-column="Open Source"><a href="https://github.com/launchnodes/ValidatorNodeProduct">Yes</a></td>
-                    <td data-column="Social">
-                      <a href="https://aws.amazon.com/marketplace/seller-profile?id=0eee06cf-d077-4219-9d46-642372b9df1b" target="_blank"><i class="fab fa-aws ml-1 mr-1"></i></a><a href="https://twitter.com/launchnodes" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://www.linkedin.com/company/launchnodes" target="_blank"><i class="fab fa-linkedin-in ml-1 mr-1"></i></a><a href="mailto:support@launchnodes.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.lido.fi">Lido Finance</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Service</td>
-                    <td data-column="Pool token">Yes</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">10% of rewards</td>
-                    <td data-column="Open Source"><a href="https://github.com/lidofinance">Yes</a></td>
-                    <td data-column="Social">
-                      <a href="https://discord.com/invite/vgdPfhZ" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/lidofinance" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/lidofinance" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:info@lido.fi"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://midl.dev/ethereum/">MIDL.dev</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">US$45USD/validator/month</td>
-                    <td data-column="Open Source">Yes</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/midl_dev" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><a href="mailto:hello@midl.dev"></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.mycointainer.com/">MyContainer</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">0.1 ETH</td>
-                    <td data-column="Fee">2.27% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/MyCointainerCom" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/mycointainer" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://ethereum-staking.p2p.org">P2P.org</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">10% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/P2Pvalidator" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/P2Pstaking" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:letsgo@p2p.org" target="_blank"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Pool)</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">✅</td>
-                    <td data-column="Validator key owner">User</td>
-                    <td data-column="Withdrawal key owner">Smart Contract</td>
-                    <td data-column="Pool token">Yes</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">0.01 ETH</td>
-                    <td data-column="Fee">15% of rewards</td>
-                    <td data-column="Open Source"><a href="https://github.com/rocket-pool">Yes</a></td>
-                    <td data-column="Social">
-                      <a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/Rocket_Pool" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Validator)</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">✅</td>
-                    <td data-column="Validator key owner">User</td>
-                    <td data-column="Withdrawal key owner">Smart Contract</td>
-                    <td data-column="Pool token">Yes</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">16 ETH</td>
-                    <td data-column="Fee">Free</td>
-                    <td data-column="Open Source">Yes</td>
-                    <td data-column="Social">
-                      <a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/Rocket_Pool" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://www.stafi.io/">StaFi</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">Yes</td>
-                    <td data-column="Min. Stake">0.01 ETH</td>
-                    <td data-column="Fee">20% of rewards</td>
-                    <td data-column="Open Source">Yes</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/Stafi_Protocol" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://staked.us/">StakedUs</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">32 ETH</td>
-                    <td data-column="Fee">US$5/validator/month</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <a href="https://discord.gg/48sPdbm" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/staked_us" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/staked_official" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:staked@staked.us"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://stake.fish/">stakefish</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❌</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">User</td>
-                    <td data-column="Pool token">No</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">0.1 ETH</td>
-                    <td data-column="Fee">10% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/stakefish" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/stakefish" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:hi@stake.fish"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://stakewise.io/app/pool">Stakewise Pool</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">Service</td>
-                    <td data-column="Withdrawal key owner">Smart Contract</td>
-                    <td data-column="Pool token">Yes</td>
-                    <td data-column="3rd Party Software">No</td>
-                    <td data-column="Min. Stake">Any amount</td>
-                    <td data-column="Fee">10% of rewards</td>
-                    <td data-column="Open Source">Yes</td>
-                    <td data-column="Social">
-                      <a href="https://discord.gg/8Zf7tKyXeZ" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a><a href="https://twitter.com/stakewise_io" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/stakewise_io" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:kirill@stakewise.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://stakingfacilities.com/">Staking Facilities</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">?</td>
-                    <td data-column="Min. Stake">?</td>
-                    <td data-column="Fee">?</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i
-                      ><a href="https://twitter.com/StakingFac" target="_blank"
-                        ><i class="fab fa-twitter ml-1 mr-1"></i><a href="https://t.me/stakingfacilities" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a></a
-                      ><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td data-column="Service"><a href="https://swissborg.com/">Swissborg</a></td>
-                    <td data-column="No Supermajority client" style="text-align: center;">❓</td>
-                    <td data-column="Validator key owner">?</td>
-                    <td data-column="Withdrawal key owner">?</td>
-                    <td data-column="Pool token">?</td>
-                    <td data-column="3rd Party Software">Yes</td>
-                    <td data-column="Min. Stake">?</td>
-                    <td data-column="Fee">1% of rewards</td>
-                    <td data-column="Open Source">No</td>
-                    <td data-column="Social">
-                      <i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/swissborg" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i>
-                    </td>
-                  </tr>
+                  {{ range .StakingServices }}
+                    {{ template "stakingServiceRow" . }}
+                  {{ end }}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       </section>
-      <section class="my-5">
+      <section class="mt-d">
         <div class="row">
           <div class="col-md-12">
-            <div class="row justify-content-center">
-              <div class="col-md-12 col-lg-10 text-center">
+            <div class="row">
+              <div class="col-md-12 col-lg-10">
                 <h1 class="h4 ">Request to add your Staking Service</h1>
-                <p class="text-muted col-md-8 px-0 mx-auto">
+                <p class="text-muted col-md-8 px-0">
                   If you have a staking service and want it to be listed above please create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/stakingServices.html">pull request <i class="fab fa-github"></i></a>
                 </p>
               </div>
@@ -685,4 +192,48 @@
       </section>
     </div>
   {{ end }}
+{{ end }}
+
+{{ define "stakingServiceRow" }}
+  <tr {{ if .IsHighlighted }}style="border-bottom: 3px solid orange;"{{ end }}>
+    <td data-column="Service">
+      <a href="{{ .Link }}">{{ .Name }}</a>
+      {{ if len .OperatedBy }}<span> {{ .OperatedBy }}</span>{{ end }}
+      {{ if .HasHardwareWalletSupport }}
+        <br />
+        <span style="font-size: xx-small; font-style: italic;">Hardware Wallet Support</span>
+      {{ end }}
+    </td>
+    <td data-column="No Supermajority client" style="text-align: center;">{{ labelCheckIcon .HasNoSupermajorityClient }}</td>
+    <td data-column="Validator key owner">{{ labelOrQuestionmark .ValidatorKeyOwner }}</td>
+    <td data-column="Withdrawal key owner">{{ labelOrQuestionmark .WithdrawalKeyOwner }}</td>
+    <td data-column="Pool token">{{ labelYesNo .HasPoolToken }}</td>
+    <td data-column="3rd Party Software">{{ labelYesNo .HasThirdPartySoftware }}</td>
+    <td data-column="Min. Stake">{{ labelOrQuestionmark .MinStake }}</td>
+    <td data-column="Fee">{{ labelOrQuestionmark .Fee }}</td>
+    {{ if len .OpenSourceLink }}
+      <td data-column="Open Source"><a href="{{ .OpenSourceLink }}">Yes</a></td>
+    {{ else }}
+      <td data-column="Open Source">{{ labelYesNo .IsOpenSource }}</td>
+    {{ end }}
+    <td data-column="Social" class="d-flex">
+      {{ if len .AWS }}<a href="{{ .AWS }}" target="_blank"><i class="fab fa-aws ml-1 mr-1"></i></a>{{ end }}{{ if len .LinkedIn }}<a href="{{ .LinkedIn }}" target="_blank"><i class="fab fa-linkedin ml-1 mr-1"></i></a>{{ end }}{{ if len .Discord }}
+        <a href="{{ .Discord }}" target="_blank"><i class="fab fa-discord ml-1 mr-1"></i></a>
+      {{ else if not ( or (len .LinkedIn) (len .AWS)) }}
+        <i class="fab fa-discord ml-1 mr-1"></i>
+      {{ end }}{{ if len .Twitter }}
+        <a href="{{ .Twitter }}" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
+      {{ else }}
+        <i class="fab fa-twitter ml-1 mr-1"></i>
+      {{ end }}{{ if len .Telegram }}
+        <a href="{{ .Telegram }}" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a>
+      {{ else if not ( and (len .LinkedIn) (len .AWS)) }}
+        <i class="fab fa-telegram ml-1 mr-1"></i>
+      {{ end }}{{ if len .EMail }}
+        <a href="mailto:{{ .EMail }}"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+      {{ else }}
+        <i class="fa fa-mail-bulk ml-1 mr-1"></i>
+      {{ end }}
+    </td>
+  </tr>
 {{ end }}

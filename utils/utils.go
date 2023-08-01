@@ -243,6 +243,28 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return dict, nil
 		},
+		"labelCheckIcon": func(value *bool) string {
+			if value == nil {
+				return "❓"
+			} else if *value {
+				return "✅"
+			}
+			return "❌"
+		},
+		"labelYesNo": func(value *bool) string {
+			if value == nil {
+				return "?"
+			} else if *value {
+				return "Yes"
+			}
+			return "No"
+		},
+		"labelOrQuestionmark": func(value string) string {
+			if len(value) > 0 {
+				return value
+			}
+			return "?"
+		},
 	}
 }
 

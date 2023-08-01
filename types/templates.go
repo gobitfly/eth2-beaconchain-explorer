@@ -1328,9 +1328,34 @@ type MobilePricing struct {
 }
 
 type StakeWithUsPageData struct {
-	FlashMessage string
-	RecaptchaKey string
+	FlashMessage    string
+	RecaptchaKey    string
+	StakingServices []StakingService
 }
+
+type StakingService struct {
+	Name                     string
+	OperatedBy               string
+	HasHardwareWalletSupport bool
+	Link                     string
+	HasNoSupermajorityClient *bool
+	ValidatorKeyOwner        string
+	WithdrawalKeyOwner       string
+	HasPoolToken             *bool
+	HasThirdPartySoftware    *bool
+	MinStake                 string
+	Fee                      string
+	IsOpenSource             *bool
+	OpenSourceLink           string
+	Discord                  string
+	Twitter                  string
+	Telegram                 string
+	EMail                    string
+	LinkedIn                 string
+	AWS                      string
+	IsHighlighted            bool
+}
+
 type RateLimitError struct {
 	TimeLeft time.Duration
 }
