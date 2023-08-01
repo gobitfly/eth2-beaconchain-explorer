@@ -276,11 +276,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Total: float64(income.ClProposerIncomeTotal) + elClPrice*float64(income.ElIncomeTotal) + float64(currentDayProposerIncome),
 	}
 
-	logger.WithFields(logrus.Fields{
-		"income.ElIncomeTotal":         income.ElIncomeTotal,
-		"income.ClProposerIncomeTotal": income.ClProposerIncomeTotal,
-		"currentDayProposerIncome":     currentDayProposerIncome,
-	}).Infof("DEBUG: GetValidatorEarnings")
+	// logger.WithFields(logrus.Fields{
+	// 	"income.ElIncomeTotal":         income.ElIncomeTotal,
+	// 	"income.ClProposerIncomeTotal": income.ClProposerIncomeTotal,
+	// 	"currentDayProposerIncome":     currentDayProposerIncome,
+	// }).Infof("DEBUG: GetValidatorEarnings")
 
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
@@ -512,15 +512,15 @@ func GetCurrencySymbol(r *http.Request) string {
 func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
-		fmt.Printf("DEBUG: GetCurrentPrice: error: %v, using maincurr-usd\n", err)
+		//fmt.Printf("DEBUG: GetCurrentPrice: error: %v, using maincurr-usd\n", err)
 		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 	}
 
 	if cookie.Value == utils.Config.Frontend.MainCurrencySymbol {
-		fmt.Printf("DEBUG: GetCurrentPrice: value is maincurr, using maincurrency-usd %v\n", price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
+		//fmt.Printf("DEBUG: GetCurrentPrice: value is maincurr, using maincurrency-usd %v\n", price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
 	}
-	fmt.Printf("DEBUG: GetCurrentPrice: %v %v, %v\n", utils.Config.Frontend.MainCurrencySymbol, cookie.Value, price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
+	//fmt.Printf("DEBUG: GetCurrentPrice: %v %v, %v\n", utils.Config.Frontend.MainCurrencySymbol, cookie.Value, price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
 	return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
 }
 
