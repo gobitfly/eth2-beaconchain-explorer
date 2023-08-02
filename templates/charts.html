@@ -344,26 +344,16 @@
           <path d="M350,603.44071a50,50,0,1,0,50,50A50,50,0,0,0,350,603.44071Zm-8.62518,72.37488-21.50721-21.50733,6.0326-6.03253,15.49487,15.49494,32.70483-32.70484,6.03248,6.0326Z" transform="translate(-99 -38.44071)" fill="#6c63ff" />
         </svg>
       </div>
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-bar"></i> Charts from the Ethereum Network</h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Charts</li>
-            </ol>
-          </nav>
-        </div>
+      <div class="d-md-flex page-title justify-content-md-between">
+        <h4 class="h4"><i class="fas fa-chart-bar"></i> Charts from the Ethereum Network</h4>
       </div>
       <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
-      <div id="consensus-charts">
-        <h3>Consensus Charts <a class="text-muted cursor-pointer" href="#consensus-charts" onclick="this.setAttribute('data-clipboard-text', window.location.href + '#consensus-charts')" data-clipboard-text="">#</a></h3>
-        <hr class="mb-4" />
-      </div>
+      <div class="sub-page-title">Consensus Charts <a class="text-muted cursor-pointer" href="#consensus-charts" onclick="this.setAttribute('data-clipboard-text', window.location.href + '#consensus-charts')" data-clipboard-text="">#</a></div>
+      <hr class="pb-d" />
       <div class="row">
         {{ range $i, $e := . }}
           {{ if lt .Order 20 }}
-            <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}">
+            <div class="col-md-6 mb-d px-d" id="chart-holder-{{ .Order }}">
               <div class="card">
                 <div id="chart-{{ .Order }}">
                   <div style="height:400px; display: flex; justify-content: center; align-items:center;">
@@ -375,7 +365,7 @@
               </div>
             </div>
             {{ if .Data.IsNormalChart }}
-              <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}-nogaps" style="display:none">
+              <div class="col-md-6 mb-d px-d" id="chart-holder-{{ .Order }}-nogaps" style="display:none">
                 <div class="card">
                   <div id="chart-{{ .Order }}-nogaps">
                     <div style="height: 400px; display: flex; justify-content: center; align-items:center;">
@@ -389,7 +379,7 @@
             {{ end }}
           {{ end }}
         {{ end }}
-        <div class="col-md-6 mb-4">
+        <div class="col-md-6 mb-d  px-d">
           <div style="height:400px;" class="card">
             <div class="text-center p-2">
               <a href="/charts/slotviz">
@@ -407,12 +397,12 @@
       </div>
       {{ if $.Mainnet }}
         <div id="execution-charts">
-          <h3>Execution Charts <a class="text-muted cursor-pointer" href="#execution-charts" onclick="this.setAttribute('data-clipboard-text', window.location.href + '#execution-charts')" data-clipboard-text="asdf">#</a></h3>
-          <hr class="mb-4" />
+          <div class="sub-page-title">Execution Charts <a class="text-muted cursor-pointer" href="#execution-charts" onclick="this.setAttribute('data-clipboard-text', window.location.href + '#execution-charts')" data-clipboard-text="asdf">#</a></div>
+          <hr class="pb-d" />
           <div class="row">
             {{ range $i, $e := . }}
               {{ if gt .Order 19 }}
-                <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}">
+                <div class="col-md-6 mb-d px-d" id="chart-holder-{{ .Order }}">
                   <div class="card">
                     <div id="chart-{{ .Order }}">
                       <div style="height:400px; display: flex; justify-content: center; align-items:center;">
@@ -424,7 +414,7 @@
                   </div>
                 </div>
                 {{ if .Data.IsNormalChart }}
-                  <div class="col-md-6 mb-4" id="chart-holder-{{ .Order }}-nogaps" style="display:none">
+                  <div class="col-md-6 mb-d px-d" id="chart-holder-{{ .Order }}-nogaps" style="display:none">
                     <div class="card">
                       <div id="chart-{{ .Order }}-nogaps">
                         <div style="height: 400px; display: flex; justify-content: center; align-items:center;">
@@ -442,7 +432,7 @@
         </div>
       {{ end }}
       {{ with $.Data.Disclaimer }}
-        <div style="padding-top: 5vh; font-size: 12px; font-style: italic;">
+        <div class="mb-d" style="font-size: 12px; font-style: italic;">
           <div style="display:flex;">
             <div style="padding-right: 5px;">
               <sup>1</sup>

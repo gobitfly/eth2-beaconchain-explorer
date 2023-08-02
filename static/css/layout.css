@@ -782,13 +782,16 @@ body main {
 .page-title .h4 {
   font-family: "Montserrat", sans-serif;
   font-size: 1.5rem;
+  line-height: 1.5rem;
   font-weight: 500;
+  margin-bottom: 0;
 }
 
 .sub-page-title {
   font-family: "Montserrat", sans-serif;
   margin-bottom: 0.625rem;
   font-size: 1.125rem;
+  line-height: 1.125rem;
   font-weight: 500;
 }
 
