@@ -41,6 +41,7 @@ func main() {
 	concurrencyBlocks := flag.Int64("blocks.concurrency", 30, "Concurrency to use when indexing blocks from erigon")
 	startBlocks := flag.Int64("blocks.start", 0, "Block to start indexing")
 	endBlocks := flag.Int64("blocks.end", 0, "Block to finish indexing")
+	bulkBlocks := flag.Int64("blocks.bulk", 7200, "Maximum number of blocks to be processed before saving")
 	offsetBlocks := flag.Int64("blocks.offset", 100, "Blocks offset")
 	checkBlocksGaps := flag.Bool("blocks.gaps", false, "Check for gaps in the blocks table")
 	checkBlocksGapsLookback := flag.Int("blocks.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
@@ -48,6 +49,7 @@ func main() {
 	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	startData := flag.Int64("data.start", 0, "Block to start indexing")
 	endData := flag.Int64("data.end", 0, "Block to finish indexing")
+	bulkData := flag.Int64("data.bulk", 7200, "Maximum number of blocks to be processed before saving")
 	offsetData := flag.Int64("data.offset", 1000, "Data offset")
 	checkDataGaps := flag.Bool("data.gaps", false, "Check for gaps in the data table")
 	checkDataGapsLookback := flag.Int("data.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
@@ -292,39 +294,65 @@ func main() {
 					startBlock = 0
 				}
 
-				err = IndexFromNode(bt, client, startBlock, int64(lastBlockFromNode), *concurrencyBlocks)
-				if err != nil {
-					errMsg := "error indexing from node"
-					errFields := map[string]interface{}{
-						"start":       startBlock,
-						"end":         int64(lastBlockFromNode),
-						"concurrency": *concurrencyBlocks}
-					if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
-						utils.LogFatal(err, errMsg, 0, errFields)
-					} else {
-						utils.LogError(err, errMsg, 0, errFields)
+				if *bulkBlocks <= 0 || *bulkBlocks > int64(lastBlockFromNode)-startBlock+1 {
+					*bulkBlocks = int64(lastBlockFromNode) - startBlock + 1
+				}
+
+				for startBlock <= int64(lastBlockFromNode) {
+					endBlock := startBlock + *bulkBlocks - 1
+					if endBlock > int64(lastBlockFromNode) {
+						endBlock = int64(lastBlockFromNode)
 					}
-					continue
-				} else {
-					lastSuccessulBlockIndexingTs = time.Now()
+
+					err = IndexFromNode(bt, client, startBlock, endBlock, *concurrencyBlocks)
+					if err != nil {
+						errMsg := "error indexing from node"
+						errFields := map[string]interface{}{
+							"start":       startBlock,
+							"end":         endBlock,
+							"concurrency": *concurrencyBlocks}
+						if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
+							utils.LogFatal(err, errMsg, 0, errFields)
+						} else {
+							utils.LogError(err, errMsg, 0, errFields)
+						}
+						continue
+					} else {
+						lastSuccessulBlockIndexingTs = time.Now()
+					}
+
+					startBlock = endBlock + 1
 				}
 			}
 
 			if lastBlockFromDataTable < int(lastBlockFromNode) {
 				logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
 
-				startBlock := int64(lastBlockFromBlocksTable) - *offsetData
+				startBlock := int64(lastBlockFromDataTable) - *offsetData
 				if startBlock < 0 {
 					startBlock = 0
 				}
 
-				err = bt.IndexEventsWithTransformers(startBlock, int64(lastBlockFromNode), transforms, *concurrencyData, cache)
-				if err != nil {
-					utils.LogError(err, "error indexing from bigtable", 0, map[string]interface{}{"start": startBlock, "end": int64(lastBlockFromNode), "concurrency": *concurrencyData})
-					cache.Clear()
-					continue
+				if *bulkData <= 0 || *bulkData > int64(lastBlockFromNode)-startBlock+1 {
+					*bulkData = int64(lastBlockFromNode) - startBlock + 1
 				}
-				cache.Clear()
+
+				for startBlock <= int64(lastBlockFromNode) {
+					endBlock := startBlock + *bulkData - 1
+					if endBlock > int64(lastBlockFromNode) {
+						endBlock = int64(lastBlockFromNode)
+					}
+
+					err = bt.IndexEventsWithTransformers(startBlock, endBlock, transforms, *concurrencyData, cache)
+					if err != nil {
+						utils.LogError(err, "error indexing from bigtable", 0, map[string]interface{}{"start": startBlock, "end": endBlock, "concurrency": *concurrencyData})
+						cache.Clear()
+						continue
+					}
+					cache.Clear()
+
+					startBlock = endBlock + 1
+				}
 			}
 		}
 
