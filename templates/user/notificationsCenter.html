@@ -29,26 +29,19 @@
           </div>
         {{ end }}
       {{ end }}
-      <div class="d-flex flex-column flex-sm-row align-items-start justify-content-center align-items-sm-center justify-content-sm-between ml-1 my-2">
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb font-size-1 mb-0 breadcrumb-custom">
-            <li class="breadcrumb-item"><a href="/">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Notifications</li>
-          </ol>
-        </nav>
-        <!-- <a href="/user/notifications">Old version</a> -->
-      </div>
-      <div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section flex-wrap">
+      <div class="row d-flex align-items-center justify-content-between mx-0 container-min-width heading-section flex-wrap">
         <div class="pl-0">
-          <h1 class="heading text-nowrap">Notifications Center</h1>
-          <h2 class="heading-l3 text-muted font-weight-light">Manage the notifications you want to receive</h2>
+          <div class="page-title">
+            <h4 class="h4">Notifications Center</h4>
+          </div>
+          <div class="sub-page-title">Manage the notifications you want to receive</div>
         </div>
-        <button class="btn btn-dark text-white mx-0 my-2 mr-md-3" data-toggle="modal" data-target="#NotificationChannelModal">
+        <button class="btn btn-dark text-white mx-0 my-d mr-md-3" data-toggle="modal" data-target="#NotificationChannelModal">
           <span class="text-nowrap">Notification Channels</span>
         </button>
       </div>
       <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
-      <div class="row flex-column flex-sm-row justify-content-center align-content-center mx-0 my-2 metrics-section mx-auto">
+      <div class="row flex-column flex-sm-row justify-content-center align-content-center mx-0 mb-d metrics-section mx-auto">
         <div class="col-12 col-sm col-xl mr-sm-3 mt-1 mb-2 p-2 shadow-sm border custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
@@ -105,7 +98,7 @@
           </div>
         </div>
       </div>
-      <div class="row flex-xl-nowrap mx-0 my-3 container-min-width">
+      <div class="row flex-xl-nowrap mx-0 container-min-width">
         <div class="col-12 col-xl mb-3 p-1 shadow-sm border container-height custom-border-radius custom-background-color">
           <div class="mt-3 d-flex flex-row align-items-start align-items-center justify-content-between mx-3 mb-2">
             <div>
@@ -183,7 +176,7 @@
           {{ end }}
         </div>
       </div>
-      <div id="watchlist-container" class="mx-0 my-3 p-1 shadow-sm border container-min-width validators-container-min-height custom-border-radius custom-background-color">
+      <div id="watchlist-container" class="mx-0 my-0 p-1 shadow-sm border container-min-width validators-container-min-height custom-border-radius custom-background-color">
         <div class="row d-flex flex-lg-nowrap align-items-center mx-2 mt-3 py-2">
           <div class="col-12 col-md-3 d-flex justify-content-start px-0">
             <h2 class="heading-l2 mb-2 mb-md-0">Validators</h2>

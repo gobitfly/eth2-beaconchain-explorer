@@ -28,22 +28,22 @@
 {{ end }}
 
 {{ define "content" }}
-  <div class="container mt-2">
-    <div class="mt-4 mb-3">
-      <div class="d-md-flex py-2 justify-content-md-between">
-        <h1 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt mr-2"></i>Validator Income History</h1>
-
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Income History</li>
-          </ol>
-        </nav>
+  <div class="container">
+    <div class="d-md-flex justify-content-md-between">
+      <div class="page-title">
+        <h4 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt mr-2"></i>Validator Income History</h4>
       </div>
-      <p class="mb-4">Get the income history of your validators or subscribe to our monthly income report</p>
-    </div>
 
-    <div class="d-flex justify-content-center align-items-center my-3" style="width: 100%;">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Income History</li>
+        </ol>
+      </nav>
+    </div>
+    <p class="mb-d">Get the income history of your validators or subscribe to our monthly income report</p>
+
+    <div class="d-flex justify-content-center align-items-center mb-d" style="width: 100%;">
       <div id="totals-div" class="card d-none" style="border-radius: 20px; border-style: none;">
         <div class="card-body">
           <span>Total Income </span>
@@ -123,8 +123,8 @@
         }
       </script>
       <div id="subscriptions-div" class="d-none">
-        <h1 class="h4 mb-1 mb-md-0 mt-4" id="subs-header">Subscriptions</h1>
-        <div class="card mt-2">
+        <div class="sub-page-title" id="subs-header">Subscriptions</div>
+        <div class="card">
           <div class="card-body p-0">
             <div id="subscriptions-table-art" class="d-flex justify-content-center align-items-center p-2">
               <svg style="width:30%; height: auto;" id="5e1838a0-6e06-4e3f-aa75-de6d8e6cdfa0" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1007.04 858">
