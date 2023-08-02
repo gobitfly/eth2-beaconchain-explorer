@@ -54,8 +54,10 @@ func Init() {
 	ready.Add(1)
 	go indexPageDataUpdater(ready)
 
-	ready.Add(1)
-	go poolsUpdater(ready)
+	if utils.Config.Chain.Config.DepositChainID != 100 {
+		ready.Add(1)
+		go poolsUpdater(ready)
+	}
 
 	ready.Add(1)
 	go relaysUpdater(ready)
@@ -69,8 +71,10 @@ func Init() {
 	ready.Add(1)
 	go mempoolUpdater(ready)
 
-	ready.Add(1)
-	go burnUpdater(ready)
+	if utils.Config.Chain.Config.DepositChainID != 100 {
+		ready.Add(1)
+		go burnUpdater(ready)
+	}
 
 	ready.Add(1)
 	go gasNowUpdater(ready)
@@ -455,8 +459,7 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	err := db.ReaderDb.Select(&poolData.PoolInfos, `
 	select pool as name, validators as count, apr * 100 as avg_performance_1d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 7) * 100 as avg_performance_7d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 31) * 100 as avg_performance_31d from historical_pool_performance hpp where day = (select max(day) from historical_pool_performance) order by validators desc;
 	`)
-
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
