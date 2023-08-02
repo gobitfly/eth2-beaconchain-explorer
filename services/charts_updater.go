@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"hash/fnv"
+	"html/template"
 	"math"
 	"sort"
 	"sync"
@@ -667,7 +668,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", epoch),
 		XAxisTitle:           "Balance",
 		YAxisTitle:           "# of Validators",
-		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
+		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrencySymbol)),
 		StackingMode:         "false",
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
@@ -717,7 +718,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", epoch),
 		XAxisTitle:           "Effective Balance",
 		YAxisTitle:           "# of Validators",
-		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
+		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrencySymbol)),
 		StackingMode:         "false",
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
@@ -817,7 +818,7 @@ func depositsChartData() (*types.GenericChartData, error) {
 		from eth1_deposits
 		order by timestamp`)
 	if err != nil {
-		return nil, fmt.Errorf("error getting eth1-deposits: %w", err)
+		return nil, fmt.Errorf("error getting execution-deposits: %w", err)
 	}
 
 	eth2Rows := []struct {
@@ -830,7 +831,7 @@ func depositsChartData() (*types.GenericChartData, error) {
 		from blocks_deposits
 		order by slot`)
 	if err != nil {
-		return nil, fmt.Errorf("error getting eth2-deposits: %w", err)
+		return nil, fmt.Errorf("error getting consensus-deposits: %w", err)
 	}
 
 	dailySuccessfulEth1Deposits := [][]float64{}
@@ -842,15 +843,15 @@ func depositsChartData() (*types.GenericChartData, error) {
 
 		if row.Valid {
 			if len(dailySuccessfulEth1Deposits) == 0 || dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][0] != day {
-				dailySuccessfulEth1Deposits = append(dailySuccessfulEth1Deposits, []float64{day, float64(row.Amount) / 1e9})
+				dailySuccessfulEth1Deposits = append(dailySuccessfulEth1Deposits, []float64{day, utils.ClToMainCurrency(row.Amount).InexactFloat64()})
 			} else {
-				dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][1] += float64(row.Amount) / 1e9
+				dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][1] += utils.ClToMainCurrency(row.Amount).InexactFloat64()
 			}
 		} else {
 			if len(dailyFailedEth1Deposits) == 0 || dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][0] != day {
-				dailyFailedEth1Deposits = append(dailyFailedEth1Deposits, []float64{day, float64(row.Amount) / 1e9})
+				dailyFailedEth1Deposits = append(dailyFailedEth1Deposits, []float64{day, utils.ClToMainCurrency(row.Amount).InexactFloat64()})
 			} else {
-				dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][1] += float64(row.Amount) / 1e9
+				dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][1] += utils.ClToMainCurrency(row.Amount).InexactFloat64()
 			}
 		}
 	}
@@ -859,34 +860,34 @@ func depositsChartData() (*types.GenericChartData, error) {
 		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
 
 		if len(dailyEth2Deposits) == 0 || dailyEth2Deposits[len(dailyEth2Deposits)-1][0] != day {
-			dailyEth2Deposits = append(dailyEth2Deposits, []float64{day, float64(row.Amount) / 1e9})
+			dailyEth2Deposits = append(dailyEth2Deposits, []float64{day, utils.ClToMainCurrency(row.Amount).InexactFloat64()})
 		} else {
-			dailyEth2Deposits[len(dailyEth2Deposits)-1][1] += float64(row.Amount) / 1e9
+			dailyEth2Deposits[len(dailyEth2Deposits)-1][1] += utils.ClToMainCurrency(row.Amount).InexactFloat64()
 		}
 	}
 
 	chartData := &types.GenericChartData{
 		Title:        "Deposits",
-		Subtitle:     "Daily Amount of deposited ETH.",
+		Subtitle:     fmt.Sprintf("Daily Amount of deposited %s.", utils.Config.Frontend.MainCurrencySymbol),
 		XAxisTitle:   "Income",
-		YAxisTitle:   "Deposited ETH",
+		YAxisTitle:   fmt.Sprintf("Deposited %s", utils.Config.Frontend.MainCurrencySymbol),
 		StackingMode: "normal",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name:  "ETH2",
+				Name:  "Consensus",
 				Data:  dailyEth2Deposits,
 				Stack: "eth2",
 				Color: "#66bce9",
 			},
 			{
-				Name:  "ETH1 (success)",
+				Name:  "Execution (success)",
 				Data:  dailySuccessfulEth1Deposits,
 				Stack: "eth1",
 				Color: "#7dc382",
 			},
 			{
-				Name:  "ETH1 (failed)",
+				Name:  "Execution (failed)",
 				Data:  dailyFailedEth1Deposits,
 				Stack: "eth1",
 				Color: "#f3454a",
@@ -925,17 +926,17 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
 
 		if len(dailyWithdrawals) == 0 || dailyWithdrawals[len(dailyWithdrawals)-1][0] != day {
-			dailyWithdrawals = append(dailyWithdrawals, []float64{day, float64(row.Amount) / 1e9})
+			dailyWithdrawals = append(dailyWithdrawals, []float64{day, utils.ClToMainCurrency(row.Amount).InexactFloat64()})
 		} else {
-			dailyWithdrawals[len(dailyWithdrawals)-1][1] += float64(row.Amount) / 1e9
+			dailyWithdrawals[len(dailyWithdrawals)-1][1] += utils.ClToMainCurrency(row.Amount).InexactFloat64()
 		}
 	}
 
 	chartData := &types.GenericChartData{
 		Title:        "Withdrawals",
-		Subtitle:     "Daily Amount of withdrawals in ETH.",
+		Subtitle:     fmt.Sprintf("Daily Amount of withdrawals in %s.", utils.Config.Frontend.MainCurrencySymbol),
 		XAxisTitle:   "",
-		YAxisTitle:   "Withdrawals {{.ClCurrency}}",
+		YAxisTitle:   fmt.Sprintf("Withdrawals %s", utils.Config.Frontend.MainCurrencySymbol),
 		StackingMode: "normal",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{

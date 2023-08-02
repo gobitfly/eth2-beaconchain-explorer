@@ -45,8 +45,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
 
-	fmt.Printf("symbol: %v, price: %v\n", symbol, price)
-
 	addressBytes := common.FromHex(address)
 	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes), templateFiles)
 

@@ -144,6 +144,24 @@ func CurrencyToCl(valIf interface{}, currency string) decimal.Decimal {
 	return val.Mul(decimal.NewFromFloat(price.GetPrice(Config.Frontend.ClCurrencySymbol, currency)))
 }
 
+func ClToMainCurrency(valIf interface{}) decimal.Decimal {
+	val := IfToDec(valIf)
+	res := val.DivRound(decimal.NewFromInt(Config.Frontend.ClCurrencyDivisor), 18)
+	if Config.Frontend.ClCurrencySymbol == Config.Frontend.MainCurrencySymbol {
+		return res
+	}
+	return res.Mul(decimal.NewFromFloat(price.GetPrice(Config.Frontend.ClCurrencySymbol, Config.Frontend.MainCurrencySymbol)))
+}
+
+func ElToMainCurrency(valIf interface{}) decimal.Decimal {
+	val := IfToDec(valIf)
+	res := val.DivRound(decimal.NewFromInt(Config.Frontend.ElCurrencyDivisor), 18)
+	if Config.Frontend.ElCurrencySymbol == Config.Frontend.MainCurrencySymbol {
+		return res
+	}
+	return res.Mul(decimal.NewFromFloat(price.GetPrice(Config.Frontend.ElCurrencySymbol, Config.Frontend.MainCurrencySymbol)))
+}
+
 func ClToCurrency(valIf interface{}, currency string) decimal.Decimal {
 	val := IfToDec(valIf)
 	res := val.DivRound(decimal.NewFromInt(Config.Frontend.ClCurrencyDivisor), 18)
