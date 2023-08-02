@@ -458,25 +458,14 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container-fluid container-xl">
-      <div class="mt-4">
-        <div class="d-flex align-items-center justify-content-md-end">
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
-              <li class="breadcrumb-item"><a href="/">Home</a></li>
-              <li class="breadcrumb-item"><a href="/pools">Pools</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Rocket Pool</li>
-            </ol>
-          </nav>
-        </div>
-      </div>
-      <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">
-        <a href="https://rocketpool.net/"
+      <div class="page-title">
+        <a href="https://rocketpool.net/" class="h4"
           >Rocket Pool
           <i class="fas fa-rocket"></i>
         </a>
-      </h1>
-      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
-      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+      </div>
+      <div class="sub-page-title">Minipools</div>
+      <div class="card mb-d px-3 py-4" style="min-width: 320px;">
         <div class="table-responsive">
           <table class="table table-hover" id="minipools" width="100%">
             <thead style="background-color: var(--bg);">
@@ -495,8 +484,8 @@
           </table>
         </div>
       </div>
-      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
-      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+      <div class="sub-page-title">Nodes</div>
+      <div class="card mb-d px-3 py-4" style="min-width: 320px;">
         <div class="table-responsive">
           <table class="table table-hover" id="nodes" width="100%">
             <thead style="background-color: var(--bg);">
@@ -514,8 +503,8 @@
           </table>
         </div>
       </div>
-      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
-      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+      <div class="sub-page-title">DAO Members</div>
+      <div class="card mb-d px-3 py-4" style="min-width: 320px;">
         <div class="table-responsive">
           <table class="table table-hover" id="dao_members" width="100%">
             <thead style="background-color: var(--bg);">
@@ -533,8 +522,8 @@
           </table>
         </div>
       </div>
-      <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
-      <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
+      <div class="sub-page-title">Proposals</div>
+      <div class="card mb-d px-3 py-4" style="min-width: 320px;">
         <div class="table-responsive">
           <table class="table table-hover" id="dao_proposals" width="100%">
             <thead style="background-color: var(--bg);">
