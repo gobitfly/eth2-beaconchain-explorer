@@ -285,6 +285,7 @@ func main() {
 			},
 		).Infof("last blocks")
 
+		continueAfterError := false
 		if lastBlockFromNode > 0 {
 			if lastBlockFromBlocksTable < int(lastBlockFromNode) {
 				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
@@ -298,7 +299,7 @@ func main() {
 					*bulkBlocks = int64(lastBlockFromNode) - startBlock + 1
 				}
 
-				for startBlock <= int64(lastBlockFromNode) {
+				for startBlock <= int64(lastBlockFromNode) && !continueAfterError {
 					endBlock := startBlock + *bulkBlocks - 1
 					if endBlock > int64(lastBlockFromNode) {
 						endBlock = int64(lastBlockFromNode)
@@ -316,12 +317,16 @@ func main() {
 						} else {
 							utils.LogError(err, errMsg, 0, errFields)
 						}
+						continueAfterError = true
 						continue
 					} else {
 						lastSuccessulBlockIndexingTs = time.Now()
 					}
 
 					startBlock = endBlock + 1
+				}
+				if continueAfterError {
+					continue
 				}
 			}
 
@@ -337,7 +342,7 @@ func main() {
 					*bulkData = int64(lastBlockFromNode) - startBlock + 1
 				}
 
-				for startBlock <= int64(lastBlockFromNode) {
+				for startBlock <= int64(lastBlockFromNode) && !continueAfterError {
 					endBlock := startBlock + *bulkData - 1
 					if endBlock > int64(lastBlockFromNode) {
 						endBlock = int64(lastBlockFromNode)
@@ -347,11 +352,15 @@ func main() {
 					if err != nil {
 						utils.LogError(err, "error indexing from bigtable", 0, map[string]interface{}{"start": startBlock, "end": endBlock, "concurrency": *concurrencyData})
 						cache.Clear()
+						continueAfterError = true
 						continue
 					}
 					cache.Clear()
 
 					startBlock = endBlock + 1
+				}
+				if continueAfterError {
+					continue
 				}
 			}
 		}
