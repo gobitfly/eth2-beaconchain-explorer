@@ -1129,6 +1129,68 @@ body main {
   padding-right: 0.625rem;
 }
 
+@media (min-width: 640px) {
+  .m-sm-d {
+    margin: 0.625rem;
+  }
+
+  .my-sm-d {
+    margin-top: 0.625rem;
+    margin-bottom: 0.625rem;
+  }
+
+  .mx-sm-d {
+    margin-left: 0.625rem;
+    margin-right: 0.625rem;
+  }
+
+  .mt-sm-d {
+    margin-top: 0.625rem;
+  }
+
+  .mb-sm-d {
+    margin-bottom: 0.625rem;
+  }
+
+  .ml-sm-d {
+    margin-left: 0.625rem;
+  }
+
+  .mr-sm-d {
+    margin-right: 0.625rem;
+  }
+
+  .p-sm-d {
+    padding: 0.625rem;
+  }
+
+  .py-sm-d {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  .px-sm-d {
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+
+  .pt-sm-d {
+    padding-top: 0.625rem;
+  }
+
+  .pb-d {
+    padding-bottom: 0.625rem;
+  }
+
+  .pl-sm-d {
+    padding-left: 0.625rem;
+  }
+
+  .pr-sm-d {
+    padding-right: 0.625rem;
+  }
+}
+
 @media screen and (max-width: 450px) {
   .custom-modal {
     padding: 0 !important;
