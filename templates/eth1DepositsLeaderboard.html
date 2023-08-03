@@ -188,22 +188,11 @@
 {{ end }}
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <div class="heading">
-            <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i>Ethereum Validator Deposit Leaderboard</h1>
-          </div>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Ethereum Validator Deposits</li>
-            </ol>
-          </nav>
-        </div>
+    <div class="container">
+      <div class="page-title">
+        <h4 class="h4"><i class="fas fa-file-signature mr-2"></i>Ethereum Validator Deposit Leaderboard</h4>
       </div>
-      <div id="scatterChart" class="card my-3 justify-content-center align-items-center">
+      <div id="scatterChart" class="card mb-d justify-content-center align-items-center">
         <div class="p-2 w-25 ">
           <svg id="f885adbf-893a-4cbc-9f2f-51541a368feb" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1090.76 795.07">
             <defs>
@@ -364,8 +353,8 @@
           </svg>
         </div>
       </div>
-      <h6 class="">This table displays the leaderboard for deposits made by Ethereum Addresses to the Deposit Contract</h6>
-      <div class="card">
+      <h6>This table displays the leaderboard for deposits made by Ethereum Addresses to the Deposit Contract</h6>
+      <div class="card mt-d">
         <div class="card-body px-0 py-2">
           <div class="table-responsive pt-2">
             <table class="table" id="deposits">
