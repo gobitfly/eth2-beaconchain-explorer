@@ -20,13 +20,16 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="broadcast-status container mt-2">
-      <section class="my-5">
+    <div class="broadcast-status container">
+      <section>
         <div class="row">
           <div class="col-md-12">
             <div class="row justify-content-center">
-              <div class="col-md-12 col-lg-8 text-center">
-                <h4 class="h4 pb-3">{{ .JobTitle }}<br />{{ .Job.ID }}</h4>
+              <div class="col-md-12 col-lg-8">
+                <div class="page-title">
+                  <h4 class="h4">{{ .JobTitle }}</h4>
+                </div>
+                <div class="sub-page-title">{{ .Job.ID }}</div>
                 <div class="card text-left">
                   <div class="card-body">
                     <div class="row flex-nowrap border-bottom p-3 mx-0">
