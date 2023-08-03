@@ -292,16 +292,8 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0"><i class="mr-2 fas fa-user-circle"></i>Account Settings</h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Settings</li>
-            </ol>
-          </nav>
-        </div>
+      <div class="page-title">
+        <h4 class="h4"><i class="mr-2 fas fa-user-circle"></i>Account Settings</h4>
       </div>
       <div class="row ">
         <div class="col-xl-7 col-lg-7 col-md-10 col-sm-12 m-auto">
@@ -338,7 +330,7 @@
             <div class="tab-content h-100" id="dashTabContent">
               <div id="account" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="account-tab">
                 <!-- Upgrade to premium -->
-                <div class="card my-3">
+                <div class="card my-d">
                   <div class="card-header justify-content-between d-flex align-items-center">
                     <h3 class="h5">
                       <span>beaconcha.in Premium</span> <span class="mx-1">|</span>
@@ -393,7 +385,7 @@
                 </div>
 
                 <!-- Update Email -->
-                <div class="card my-3">
+                <div class="card mb-d">
                   <div class="card-header">
                     <h3 class="h5">Update Email</h3>
                   </div>
@@ -414,7 +406,7 @@
                 </div>
 
                 <!-- Update Password -->
-                <div class="card my-3">
+                <div class="card mb-d">
                   <div class="card-header">
                     <h3 class="h5">Update Password</h3>
                   </div>
@@ -440,7 +432,7 @@
                 </div>
 
                 <!-- Delete Account -->
-                <div class="card my-3">
+                <div class="card mb-d">
                   <div class="card-header">
                     <h3 class="h5">Delete Account <i class="fas fa-exclamation-triangle text-warning"></i></h3>
                   </div>
@@ -456,7 +448,7 @@
 
               <div id="app" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="app-tab">
                 <!-- Monitoring Helper -->
-                <div class="card my-3">
+                <div class="card mb-d">
                   <div class="card-header">
                     <h3 class="h5">Set up client monitoring</h3>
                   </div>
@@ -702,7 +694,7 @@
                 {{ $lastPairedElement := sub $pairedDevicesLen 1 }}
 
                 {{ if gt $pairedDevicesLen 0 }}
-                  <div class="card my-3">
+                  <div class="card mb-d">
                     <div class="card-header">
                       <h3 class="h5">Paired devices</h3>
                     </div>
@@ -770,7 +762,7 @@
 
               <div id="api" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="api-tab">
                 <!-- User Api Key -->
-                <div class="card my-3">
+                <div class="card mb-d">
                   <div class="card-header justify-content-between d-flex align-items-center">
                     <h3 class="h5">
                       <span>Api Key</span> <span class="mx-1">|</span>
@@ -830,7 +822,7 @@
                   </div>
                 </div>
                 {{ if .Subscription.ApiKey }}
-                  <div class="card my-3">
+                  <div class="card mb-d">
                     <div class="card-header justify-content-between d-flex align-items-center">
                       <h3 class="h5">
                         <span
@@ -840,7 +832,7 @@
                     </div>
                     <div class="card-body">
                       {{ if not (eqsp .Subscription.PriceID .Diamond) }}
-                        <div class="my-3">
+                        <div>
                           <div class="d-flex justify-content-between">
                             <div>Daily:</div>
                             <div>{{ formatThousandsInt .ApiStatistics.Daily }} / {{ formatThousandsInt .ApiStatistics.MaxDaily }}</div>
