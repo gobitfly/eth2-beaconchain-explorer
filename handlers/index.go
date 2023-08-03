@@ -25,7 +25,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		"index/recentBlocks.html",
 		"index/recentEpochs.html",
 		"index/genesisCountdown.html",
-		"index/depositDistribution.html",
+		// "index/depositDistribution.html",
 		"svg/bricks.html",
 		"svg/professor.html",
 		"svg/timeline.html",

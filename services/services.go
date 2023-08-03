@@ -54,10 +54,8 @@ func Init() {
 	ready.Add(1)
 	go indexPageDataUpdater(ready)
 
-	if utils.Config.Chain.Config.DepositChainID != 100 {
-		ready.Add(1)
-		go poolsUpdater(ready)
-	}
+	ready.Add(1)
+	go poolsUpdater(ready)
 
 	ready.Add(1)
 	go relaysUpdater(ready)
@@ -71,10 +69,8 @@ func Init() {
 	ready.Add(1)
 	go mempoolUpdater(ready)
 
-	if utils.Config.Chain.Config.DepositChainID != 100 {
-		ready.Add(1)
-		go burnUpdater(ready)
-	}
+	ready.Add(1)
+	go burnUpdater(ready)
 
 	ready.Add(1)
 	go gasNowUpdater(ready)
@@ -467,7 +463,7 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	err = db.ReaderDb.Get(ethstoreData, `
 	select 'ETH.STORE' as name, -1 as count, apr * 100 as avg_performance_1d, (select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) * 100 as avg_performance_7d, (select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 31) * 100 as avg_performance_31d from eth_store_stats e where day = (select max(day) from eth_store_stats) LIMIT 1;
 	`)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
@@ -520,7 +516,7 @@ func indexPageDataUpdater(wg *sync.WaitGroup) {
 			time.Sleep(time.Second * 10)
 			continue
 		}
-		logger.Infof("index page data update completed in %v", time.Since(start))
+		logger.WithFields(logrus.Fields{"genesis": data.Genesis, "currentEpoch": data.CurrentEpoch, "networkName": data.NetworkName, "networkStartTs": data.NetworkStartTs}).Infof("index page data update completed in %v", time.Since(start))
 
 		cacheKey := fmt.Sprintf("%d:frontend:indexPageData", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
