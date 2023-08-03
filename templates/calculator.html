@@ -867,28 +867,20 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-calculator mr-1"></i> Staking Calculator</h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Staking Calculator</li>
-            </ol>
-          </nav>
-        </div>
+    <div class="container">
+      <div class="page-title">
+        <h4 class="h4"><i class="fas fa-calculator mr-1"></i> Staking Calculator</h4>
       </div>
 
-      <div class="row my-3">
-        <div class="col-xl-4 col-md-5 col-sm-12 py-3 variables">
+      <div class="row mb-d">
+        <div class="col-xl-4 col-md-5 col-sm-12 variables">
           <div class="stake">
-            <h5 class="mb-0">Your Ethereum Stake <span id="yourStake-currency">ETH</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></h5>
-            <div class="justify-content-between d-flex p-3 pb-0 align-content-center">
+            <div class="sub-page-title">Your Ethereum Stake <span id="yourStake-currency">ETH</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></div>
+            <div class="justify-content-between d-flex pb-0 align-content-center">
               <input id="staking-variable-yourStake" class="staking-variable form-control col-6" type="text" value="32" />
               <h5 class="mb-0 mt-1" id="validator-count col-6"><span id="validator-count">0</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="The total number of validators that can be added to the network with your stake. A minimum of 32 ethereum is needed for a validator to participate in the network. Ignore this value when you are staking over a pool."></i></h5>
             </div>
-            <div class="p-3 pt-0">
+            <div class="pb-d">
               <span id="staking-variable-yourStake-validation" class="input-validation">Your ethereum stake must be greater than 0</span>
             </div>
           </div>
@@ -996,8 +988,8 @@
           </div>
         </div>
         <div class="col-md-7 col-sm-12">
-          <h5 class="my-3 px-0 col-10">Estimated Rewards</h5>
-          <div style="height: calc(54px - 1rem);" class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
+          <h5 class="sub-page-title">Estimated Rewards</h5>
+          <div style="height: calc(54px - 1rem);" class="mb-d px-0 col-10 d-flex justif-content-center align-items-center">
             <button style="width:38px; height:28px;" data-toggle="tooltip" data-original-title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
               <i class="fa fa-copy"></i>
             </button>
@@ -1011,9 +1003,9 @@
               <i class="fab fa-linkedin-in"></i>
             </button>
           </div>
-          <div id="stakeChart" class="card my-3"></div>
-          <div id="breakEvenChart" class="card my-3"></div>
-          <div class="card my-3 table-responsive">
+          <div id="stakeChart" class="card mb-d"></div>
+          <div id="breakEvenChart" class="card mb-d"></div>
+          <div class="card table-responsive">
             <table class="table p-0">
               <tbody>
                 <tr>
