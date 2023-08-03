@@ -313,9 +313,9 @@
 {{ define "content" }}
   {{ with .Data }}
     {{ $isBlockView := (contains $.Meta.Path "block") }}
-    <div class="container mt-2">
-      <div class="d-md-flex py-2 justify-content-md-between">
-        <h1 class="h4 my-3 mb-md-0">
+    <div class="container">
+      <div class="page-title">
+        <h4 class="h4">
           {{ if $isBlockView }}
             {{ with .ExecutionData }}
               {{ if gt .PreviousBlock 0 }}
@@ -335,14 +335,7 @@
               <a href="/slot/{{ .NextSlot }}"><i class="fa fa-chevron-right"></i></a>
             {{ end }}
           {{ end }}
-        </h1>
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
-            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item"><a href="/slots" title="Slots">Slots</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Slot details</li>
-          </ol>
-        </nav>
+        </h4>
       </div>
       {{ if ne (len .Tags) 0 }}
         <div class="tags">
