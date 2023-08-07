@@ -48,6 +48,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		ElRewards           bool `db:"el_rewards_exported"`
 		TotalPerformance    bool `db:"total_performance_exported"`
 		BlockStats          bool `db:"block_stats_exported"`
+		TotalAccumation     bool `db:"total_accumulation_exported"`
 	}
 	exported := Exported{}
 
@@ -61,7 +62,8 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 			cl_rewards_exported,
 			el_rewards_exported,
 			total_performance_exported,
-			block_stats_exported
+			block_stats_exported,
+			total_accumulation_exported
 		FROM validator_stats_status 
 		WHERE day = $1;
 		`, day)
@@ -118,6 +120,12 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		return err
 	}
 
+	if exported.TotalAccumation {
+		logger.Infof("Skipping total accumulation")
+	} else if err := WriteValidatorTotalAccumulation(day, concurrencyTotal); err != nil {
+		return err
+	}
+
 	if exported.TotalPerformance {
 		logger.Infof("Skipping total performance")
 	} else if err := WriteValidatorTotalPerformance(day, concurrencyTotal); err != nil {
@@ -153,7 +161,8 @@ func WriteValidatorStatsExported(day uint64) error {
 		AND cl_rewards_exported = true
 		AND el_rewards_exported = true
 		AND total_performance_exported = true
-		AND block_stats_exported = true;
+		AND block_stats_exported = true
+		AND total_accumulation_exported = true;
 		`, day)
 	if err != nil {
 		return err
@@ -167,12 +176,12 @@ func WriteValidatorStatsExported(day uint64) error {
 	return nil
 }
 
-func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
+func WriteValidatorTotalAccumulation(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.TaskDuration.WithLabelValues("db_update_validator_total_accumulation_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	if err := checkIfDayIsFinalized(day); err != nil {
@@ -180,9 +189,9 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	}
 
 	start := time.Now()
-	logger.Infof("validating if required data has been exported for total performance")
+	logger.Infof("validating if required data has been exported for total accumulation")
 	type Exported struct {
-		LastTotalPerformance      bool `db:"last_total_performance_exported"`
+		LastTotalAccumulation     bool `db:"last_total_accumulation_exported"`
 		CurrentCLRewards          bool `db:"cur_cl_rewards_exported"`
 		CurrentElRewards          bool `db:"cur_el_rewards_exported"`
 		CurrentSyncDuties         bool `db:"cur_sync_duties_exported"`
@@ -191,7 +200,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	exported := Exported{}
 	err := ReaderDb.Get(&exported, `
 		SELECT 
-			last.total_performance_exported as last_total_performance_exported, 
+			last.total_accumulation_exported as last_total_accumulation_exported, 
 			cur.cl_rewards_exported as cur_cl_rewards_exported, 
 			cur.el_rewards_exported as cur_el_rewards_exported,
 			cur.sync_duties_exported as cur_sync_duties_exported,
@@ -204,15 +213,15 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 
 	if err != nil {
 		return fmt.Errorf("error retrieving required data: %v", err)
-	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
-		return fmt.Errorf("missing required export: last total performance: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
-			!exported.LastTotalPerformance, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
+	} else if !(exported.LastTotalAccumulation || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
+		return fmt.Errorf("missing required export: last total accumulation: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
+			!exported.LastTotalAccumulation, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
 	}
 	logger.Infof("validating completed, took %v", time.Since(start))
 
 	start = time.Now()
 
-	logger.Infof("exporting total income stats")
+	logger.Infof("exporting total accumulation stats")
 	maxValidatorIndex, err := GetTotalValidatorsCount()
 	if err != nil {
 		return err
@@ -272,6 +281,84 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 				`, day, start, end)
 			if err != nil {
 				return err
+			}
+
+			logger.Infof("populate total accumulation for validator stats table done for batch %v", start)
+			return err
+		})
+	}
+	if err = g.Wait(); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "total_accumulation_exported"); err != nil {
+		return err
+	}
+
+	logger.Infof("total accumulation for statistics export of day %v completed, took %v", day, time.Since(exportStart))
+	return nil
+}
+
+func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+	exportStart := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
+	}()
+
+	if err := checkIfDayIsFinalized(day); err != nil {
+		return err
+	}
+
+	start := time.Now()
+	logger.Infof("validating if required data has been exported for total performance")
+	type Exported struct {
+		LastTotalPerformance     bool `db:"last_total_performance_exported"`
+		CurrentTotalAccumulation bool `db:"cur_total_accumulation_exported"`
+	}
+	exported := Exported{}
+	err := ReaderDb.Get(&exported, `
+		SELECT 
+			last.total_performance_exported as last_total_performance_exported, 
+			cur.total_accumulation_exported as cur_total_accumulation_exported
+		FROM validator_stats_status cur
+		INNER JOIN validator_stats_status last 
+				ON last.day = GREATEST(cur.day - 1, 0)
+		WHERE cur.day = $1;
+	`, day)
+
+	if err != nil {
+		return fmt.Errorf("error retrieving required data: %v", err)
+	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentTotalAccumulation {
+		return fmt.Errorf("missing required export: last total performance: %v, cur total exported: %v",
+			!exported.LastTotalPerformance, !exported.CurrentTotalAccumulation)
+	}
+	logger.Infof("validating completed, took %v", time.Since(start))
+
+	start = time.Now()
+
+	logger.Infof("exporting total performance stats")
+	maxValidatorIndex, err := GetTotalValidatorsCount()
+	if err != nil {
+		return err
+	}
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
+	batchSize := 1000
+	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+		start := b
+		end := b + batchSize
+		if int(maxValidatorIndex) < end {
+			end = int(maxValidatorIndex)
+		}
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
 			}
 
 			_, err = WriterDb.Exec(`insert into validator_performance (
