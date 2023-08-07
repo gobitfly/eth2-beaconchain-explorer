@@ -2935,7 +2935,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 				Symbol:      "UNKNOWN",
 				TotalSupply: []byte{0x0}}
 
-			err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
+			err = cache.TieredCache.Set(cacheKey, metadata, time.Minute*10)
 			if err != nil {
 				return nil, err
 			}
