@@ -1922,12 +1922,11 @@ func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]s
 	return deleteKeys, err
 }
 
-func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
+func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error) {
 	dayIncome := make(map[uint64]int64)
-	dayProposerIncome := make(map[uint64]int64)
 	lastDay, err := GetLastExportedStatisticDay()
 	if err != nil {
-		return dayIncome, dayProposerIncome, err
+		return dayIncome, err
 	}
 
 	currentDay := uint64(lastDay + 1)
@@ -1935,7 +1934,7 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[ui
 	endEpoch := startEpoch + utils.EpochsPerDay() - 1
 	income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
 	if err != nil {
-		return dayIncome, dayProposerIncome, err
+		return dayIncome, err
 	}
 
 	// agregate all epoch income data to total day income for each validator
@@ -1945,27 +1944,10 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[ui
 		}
 		for _, validatorEpochIncome := range validatorIncome {
 			dayIncome[validatorIndex] += validatorEpochIncome.TotalClRewards()
-			dayProposerIncome[validatorIndex] += int64(validatorEpochIncome.ProposerAttestationInclusionReward) + int64(validatorEpochIncome.ProposerSlashingInclusionReward) + int64(validatorEpochIncome.ProposerSyncInclusionReward)
 		}
 	}
 
-	return dayIncome, dayProposerIncome, nil
-}
-
-func GetCurrentDayProposerIncomeTotal(validator_indices []uint64) (int64, error) {
-	_, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
-
-	if err != nil {
-		return 0, err
-	}
-
-	proposerTotal := int64(0)
-
-	for _, i := range proposerIncome {
-		proposerTotal += i
-	}
-
-	return proposerTotal, nil
+	return dayIncome, nil
 }
 
 func reversePaddedUserID(userID uint64) string {

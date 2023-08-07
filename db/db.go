@@ -3091,7 +3091,6 @@ func GetValidatorIncomePerforamance(validators []uint64, incomePerformance *type
 		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
 		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
 		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
-		COALESCE(SUM(cl_proposer_performance_total), 0) AS cl_proposer_performance_total,
 		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
 		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
 		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,

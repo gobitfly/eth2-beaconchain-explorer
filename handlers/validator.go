@@ -419,10 +419,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			futureProposalEpoch = earnings.ProposalData.LastScheduledSlot / data.ChainConfig.SlotsPerEpoch
 		}
 
-		if utils.Config.Frontend.Validator.ShowProposerRewards {
-			validatorPageData.IncomeProposerFormatted = &earnings.ProposerTotalFormatted
-		}
-
 		vbalance, ok := balances[validatorPageData.ValidatorIndex]
 		if ok {
 			validatorPageData.CurrentBalance = vbalance.Balance
