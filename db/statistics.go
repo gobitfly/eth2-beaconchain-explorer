@@ -653,7 +653,6 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 				return gCtx.Err()
 			default:
 			}
-			logrus.Infof("saving validator proposer rewards gwei batch %v completed", start)
 			stmt := `
 				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
 				(
