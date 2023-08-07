@@ -50,10 +50,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, errors.New("no validators provided")
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return nil, nil, err
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
@@ -124,7 +121,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetValidatorPropsosals(validators, &proposals)
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
 		return nil, nil, err
 	}

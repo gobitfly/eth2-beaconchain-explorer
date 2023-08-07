@@ -297,12 +297,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
 
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		logger.Errorf("error getting lastStatsDay for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 
 	timings.BasicInfo = time.Since(timings.Start)
 
@@ -365,6 +360,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 
+	var lowerBoundDay uint64
+	if lastStatsDay > 30 {
+		lowerBoundDay = lastStatsDay - 30
+	}
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		start := time.Now()
@@ -372,7 +372,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch)
+		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch, lowerBoundDay)
 
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
@@ -385,7 +385,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			timings.Charts = time.Since(start)
 		}()
-		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency)
+		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency, lowerBoundDay)
 
 		if err != nil {
 			return fmt.Errorf("error calling getExecutionChartData: %v", err)
