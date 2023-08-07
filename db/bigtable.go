@@ -720,6 +720,40 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 	return nil
 }
 
+// GetMaxValidatorindexForEpoch returns the higest validatorindex with a balance at that epoch
+func (bigtable *Bigtable) GetMaxValidatorindexForEpoch(epoch uint64) (uint64, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	defer cancel()
+
+	ranges := bigtable.getEpochRanges(epoch, epoch)
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(VALIDATOR_BALANCES_FAMILY),
+		gcp_bigtable.LatestNFilter(1),
+	)
+	validator := uint64(0)
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
+			val, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+			if val > validator && val < uint64(2147483647) {
+				validator = val
+			}
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter), gcp_bigtable.LimitRows(1))
+	if err != nil {
+		return 0, err
+	}
+
+	return validator, nil
+}
+
 func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorBalance, error) {
 
 	valLen := len(validators)

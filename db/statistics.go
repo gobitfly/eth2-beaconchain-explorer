@@ -621,15 +621,15 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	logger.Infof("validating took %v", time.Since(start))
 
 	start = time.Now()
+	_, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
 	logger.Infof("exporting cl_rewards_wei statistics")
 
-	maxValidatorIndex := uint64(0)
-
-	err = ReaderDb.Get(&maxValidatorIndex, `
-		SELECT Max(validatorindex) FROM validator_stats WHERE day = $1`, day)
+	maxValidatorIndex, err := BigtableClient.GetMaxValidatorindexForEpoch(lastEpoch)
 	if err != nil {
-		return fmt.Errorf("could not get max validator index from validator_stats table")
+		return fmt.Errorf("could not get max validator index from validator income history for last epoch [%v] of day [%v]: %v", lastEpoch, day, err)
+	} else if maxValidatorIndex == uint64(0) {
+		return fmt.Errorf("no validator found for last epoch [%v] of day [%v]: %v", lastEpoch, day, err)
 	}
 
 	maxValidatorIndex++
