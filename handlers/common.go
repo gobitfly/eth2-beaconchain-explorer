@@ -14,7 +14,6 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,8 +26,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
-
-var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
 
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()
