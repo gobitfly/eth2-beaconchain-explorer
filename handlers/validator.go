@@ -2067,7 +2067,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// sanity check for right amount of slots in response
-		if uint64(len(syncDuties))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
+		if uint64(len(syncDutiesValidator))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
 			// extract correct slots
 			tableData = make([][]interface{}, length)
 			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
