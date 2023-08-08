@@ -25,8 +25,6 @@ import (
 * so that we can label the transction function calls instead of the "id"
 **/
 func main() {
-	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
-	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	metricsAddr := flag.String("metrics.address", "localhost:9090", "serve metrics on that addr")
 	metricsEnabled := flag.Bool("metrics.enabled", false, "enable serving metrics")
@@ -76,7 +74,7 @@ func main() {
 		}()
 	}
 
-	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, "1", utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, "1", utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Errorf("error initializing bigtable: %v", err)
 		return
