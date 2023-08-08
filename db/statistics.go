@@ -651,7 +651,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 
 	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
-	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+	for b := 0; b < int(maxValidatorIndex); b += batchSize {
 		start := b
 		end := b + batchSize
 		if int(maxValidatorIndex) < end {
@@ -1157,8 +1157,8 @@ func markColumnExported(day uint64, column string) error {
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, 0, 0, lastFinalizedEpoch)
+func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
+	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, lowerBoundDay, 0, lastFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}

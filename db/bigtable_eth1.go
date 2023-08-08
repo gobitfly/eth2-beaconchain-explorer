@@ -2410,7 +2410,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 		data[i] = &types.Transfer{
 			From:   from,
 			To:     to,
-			Amount: utils.FormatTokenValue(tb),
+			Amount: utils.FormatTokenValue(tb, false),
 			Token:  utils.FormatTokenName(tb),
 		}
 
@@ -2511,7 +2511,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatTokenValue(tb),
+			utils.FormatTokenValue(tb, true),
 			utils.FormatTokenName(tb),
 		}
 
@@ -2935,7 +2935,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 				Symbol:      "UNKNOWN",
 				TotalSupply: []byte{0x0}}
 
-			err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
+			err = cache.TieredCache.Set(cacheKey, metadata, time.Minute*10)
 			if err != nil {
 				return nil, err
 			}
@@ -3110,7 +3110,12 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 				logrus.Warnf("Hit rate limit when fetching contract metadata for address %x", address)
 			} else {
 				logAdditionalInfo := map[string]interface{}{"address": fmt.Sprintf("%x", address)}
-				utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
+				if strings.Contains(err.Error(), "unsupported arg type") {
+					// open issue in the go-ethereum lib: https://github.com/ethereum/go-ethereum/issues/24572
+					logrus.Warnf("could not parse ABI for %x: %v", address, err)
+				} else {
+					utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
+				}
 				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
 				if err != nil {
 					utils.LogError(err, "Caching contract metadata", 0, logAdditionalInfo)
@@ -3417,7 +3422,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatTokenValue(tb),
+			utils.FormatTokenValue(tb, false),
 		}
 
 	}

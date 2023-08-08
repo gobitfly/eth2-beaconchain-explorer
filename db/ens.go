@@ -483,11 +483,16 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 		logger.Warnf("could not resolve name [%v]: %v", name, err)
 		return removeEnsName(client, name)
 	}
-	ensName, err := go_ens.NewName(client, name)
+
+	// we need to get the main domain to get the expiration date
+	parts := strings.Split(name, ".")
+	mainName := strings.Join(parts[len(parts)-2:], ".")
+	ensName, err := go_ens.NewName(client, mainName)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error getting create ens name: %v", name), 0)
+		logger.Warnf("could not create name via go_ens.NewName for [%v]: %v", name, err)
 		return removeEnsName(client, name)
 	}
+
 	expires, err := ensName.Expires()
 	if err != nil {
 		logger.Warnf("could not get ens expire date [%v]: %v", name, err)

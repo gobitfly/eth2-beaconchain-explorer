@@ -622,6 +622,7 @@ type VotesVisChartData struct {
 type BlockPageData struct {
 	Epoch                  uint64  `db:"epoch"`
 	EpochFinalized         bool    `db:"epoch_finalized"`
+	PrevEpochFinalized     bool    `db:"prev_epoch_finalized"`
 	EpochParticipationRate float64 `db:"epoch_participation_rate"`
 	Ts                     time.Time
 	NextSlot               uint64

@@ -1141,9 +1141,9 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	}
 	symbolTitle := FormatTokenSymbolTitle(balance.Metadata.Symbol)
 	symbol := FormatTokenSymbol(balance.Metadata.Symbol)
-	pflt, _ := price.Float64()
-	flt, _ := num.Div(mul).Round(5).Float64()
-	bflt, _ := price.Mul(num.Div(mul)).Float64()
+	pflt := price.InexactFloat64()
+	flt := num.Div(mul).Round(5).InexactFloat64()
+	bflt := price.Mul(num.Div(mul)).InexactFloat64()
 	return template.HTML(p.Sprintf(`
 	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between flex-wrap">
 		<div class="token-icon p-1">
@@ -1181,14 +1181,19 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 		</div>`, balEth))
 }
 
-func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
+func FormatTokenValue(balance *types.Eth1AddressBalance, fullAmountTooltip bool) template.HTML {
 	decimals := new(big.Int).SetBytes(balance.Metadata.Decimals)
 	p := message.NewPrinter(language.English)
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
-	f, _ := num.DivRound(mul, int32(decimals.Int64())).Float64()
+	tokenValue := num.DivRound(mul, int32(decimals.Int64()))
+	tokenValueFormatted := FormatThousandsEnglish(tokenValue.String())
 
-	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
+	tooltip := ""
+	if fullAmountTooltip {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, tokenValueFormatted)
+	}
+	return template.HTML(p.Sprintf("<span%s>%s</span>", tooltip, tokenValueFormatted))
 }
 
 func FormatErc20Decimals(balance []byte, metadata *types.ERC20Metadata) decimal.Decimal {

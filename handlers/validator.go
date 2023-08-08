@@ -297,12 +297,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
 
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		logger.Errorf("error getting lastStatsDay for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 
 	timings.BasicInfo = time.Since(timings.Start)
 
@@ -365,6 +360,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 
+	var lowerBoundDay uint64
+	if lastStatsDay > 30 {
+		lowerBoundDay = lastStatsDay - 30
+	}
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		start := time.Now()
@@ -372,7 +372,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch)
+		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch, lowerBoundDay)
 
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
@@ -385,7 +385,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			timings.Charts = time.Since(start)
 		}()
-		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency)
+		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency, lowerBoundDay)
 
 		if err != nil {
 			return fmt.Errorf("error calling getExecutionChartData: %v", err)
@@ -1402,7 +1402,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	signatureWrapper := &types.MyCryptoSignature{}
 	err = json.Unmarshal([]byte(signature), signatureWrapper)
 	if err != nil {
-		logger.Errorf("error decoding submitted signature %v: %v", signature, err)
+		logger.Warnf("error decoding submitted signature %v: %v", signature, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
@@ -1410,7 +1410,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	msg, err := sanitizeMessage(signatureWrapper.Msg)
 	if err != nil {
-		logger.Errorf("Message is invalid %v: %v", signatureWrapper.Msg, err)
+		logger.Warnf("Message is invalid %v: %v", signatureWrapper.Msg, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided message is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
@@ -1419,7 +1419,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	sig, err := sanitizeSignature(signatureWrapper.Sig)
 	if err != nil {
-		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
+		logger.Warnf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
@@ -1427,7 +1427,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	recoveredPubkey, err := crypto.SigToPub(msgHash, sig)
 	if err != nil {
-		logger.Errorf("error recovering pubkey: %v", err)
+		logger.Warnf("error recovering pubkey: %v", err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return

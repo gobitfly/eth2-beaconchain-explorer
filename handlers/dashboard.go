@@ -40,7 +40,7 @@ func handleValidatorsQuery(w http.ResponseWriter, r *http.Request, checkValidato
 	// Parse all the validator indices and pubkeys from the query string
 	queryValidatorIndices, queryValidatorPubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil && (checkValidatorLimit || err != ErrTooManyValidators) {
-		logger.Warnf("error parsing validators from query string: %v; Route: %v", err, r.URL.String())
+		logger.Warnf("could not parse validators from query string: %v; Route: %v", err, r.URL.String())
 		http.Error(w, "Invalid query", http.StatusBadRequest)
 		return nil, nil, false, err
 	}
@@ -57,7 +57,7 @@ func handleValidatorsQuery(w http.ResponseWriter, r *http.Request, checkValidato
 		// Check after the redirect whether all validators are correct
 		err = checkValidatorsQuery(queryValidatorIndices, queryValidatorPubkeys)
 		if err != nil {
-			utils.LogError(err, fmt.Errorf("error finding validators in database from query string"), 0, fieldMap)
+			logger.Warnf("could not find validators in database from query string: %v; Route: %v", err, r.URL.String())
 			http.Error(w, "Not found", http.StatusNotFound)
 			return nil, nil, false, err
 		}
@@ -445,6 +445,21 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 
 // Dashboard Chart that combines balance data and
 func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
+	var lowerBoundDay uint64
+	param := r.URL.Query().Get("days")
+	if len(param) != 0 {
+		days, err := strconv.ParseUint(param, 10, 32)
+		if err != nil {
+			logger.Error(err)
+			http.Error(w, "Error: invalid days parameter", http.StatusBadRequest)
+			return
+		}
+		lastStatsDay := services.LatestExportedStatisticDay()
+		if days < lastStatsDay {
+			lowerBoundDay = lastStatsDay - days + 1
+		}
+	}
+
 	currency := GetCurrency(r)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -463,12 +478,12 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	var incomeHistoryChartData []*types.ChartDataPoint
 	var executionChartData []*types.ChartDataPoint
 	g.Go(func() error {
-		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch())
+		incomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch(), lowerBoundDay)
 		return err
 	})
 
 	g.Go(func() error {
-		executionChartData, err = getExecutionChartData(queryValidatorIndices, currency)
+		executionChartData, err = getExecutionChartData(queryValidatorIndices, currency, lowerBoundDay)
 		return err
 	})
 
@@ -494,9 +509,9 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getExecutionChartData(indices []uint64, currency string) ([]*types.ChartDataPoint, error) {
+func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
 	var limit uint64 = 300
-	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false, true)
+	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false, true, lowerBoundDay)
 	if err != nil {
 		return nil, err
 	}
@@ -564,7 +579,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch())
+	incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart(queryValidatorIndices, currency, services.LatestFinalizedEpoch(), 0)
 	if err != nil {
 		logger.Errorf("failed to genereate income history chart data for dashboard view: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

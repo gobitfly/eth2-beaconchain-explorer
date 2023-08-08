@@ -256,8 +256,9 @@ func startServicesMonitoringService() {
 		"poolsUpdater":              time.Minute * 30,
 		"epochExporter":             time.Minute * 15,
 		"statistics":                time.Minute * 90,
+		"ethStoreStatistics":        time.Minute * 15,
+		"lastExportedStatisticDay":  time.Minute * 15,
 		//"notification-sender", //exclude for now as the sender is only running on mainnet
-		//"poolInfoUpdater":  time.Minute * 30,
 	}
 
 	if utils.Config.ServiceMonitoringConfigurations != nil {

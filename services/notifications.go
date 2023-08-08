@@ -1145,8 +1145,12 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 						}
 						errResp.Status = resp.Status
 					}
-					utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
 
+					if strings.Contains(errResp.Body, "You are being rate limited") {
+						logger.Warnf("could not push to discord webhook due to rate limit. %v url: %v", errResp.Body, webhook.Url)
+					} else {
+						utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
+					}
 					_, err = useDB.Exec(`UPDATE users_webhooks SET request = $2, response = $3 WHERE id = $1;`, webhook.ID, reqs[i].Content.DiscordRequest, errResp)
 					if err != nil {
 						logger.Errorf("error storing failure data in users_webhooks table: %v", err)
@@ -2576,10 +2580,7 @@ func (n *taxReportNotification) GetInfoMarkdown() string {
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return err
-	}
+	lastStatsDay := LatestExportedStatisticDay()
 
 	//Check that the last day of the month is already exported
 	tNow := time.Now()
@@ -2601,7 +2602,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		name = utils.Config.Chain.Config.ConfigName + ":" + name
 	}
 
-	err = db.FrontendWriterDB.Select(&dbResult, `
+	err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));

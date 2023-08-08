@@ -80,24 +80,26 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			currentEthPrice := etherValue.Mul(decimal.NewFromInt(int64(currentPrice)))
 			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, currentEthPrice.InexactFloat64()))
 
-			txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
-			latestEpoch, err := db.GetLatestEpoch()
-			if err != nil {
-				logrus.Error(err)
-			}
-
 			txData.HistoricalEtherPrice = ""
-			currentDay := latestEpoch / utils.EpochsPerDay()
-
-			if txDay < currentDay {
-				// Do not show the historical price if it is the current day
-				currency := GetCurrency(r)
-				price, err := db.GetHistoricalPrice(utils.Config.Chain.Config.DepositChainID, currency, txDay)
+			if txData.Timestamp.Unix() >= int64(utils.Config.Chain.GenesisTimestamp) {
+				txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
+				latestEpoch, err := db.GetLatestEpoch()
 				if err != nil {
-					utils.LogError(err, "error retrieving historical prices", 0, map[string]interface{}{"txDay": txDay, "currency": currency})
-				} else {
-					historicalEthPrice := etherValue.Mul(decimal.NewFromFloat(price))
-					txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, historicalEthPrice.InexactFloat64()))
+					logrus.Error(err)
+				}
+
+				currentDay := latestEpoch / utils.EpochsPerDay()
+
+				if txDay < currentDay {
+					// Do not show the historical price if it is the current day
+					currency := GetCurrency(r)
+					price, err := db.GetHistoricalPrice(utils.Config.Chain.Config.DepositChainID, currency, txDay)
+					if err != nil {
+						utils.LogError(err, "error retrieving historical prices", 0, map[string]interface{}{"txDay": txDay, "currency": currency})
+					} else {
+						historicalEthPrice := etherValue.Mul(decimal.NewFromFloat(price))
+						txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, historicalEthPrice.InexactFloat64()))
+					}
 				}
 			}
 
