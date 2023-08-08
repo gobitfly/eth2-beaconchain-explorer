@@ -380,14 +380,8 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	g.Go(func() error {
 		symbol, err := contract.Symbol(nil)
 		if err != nil {
-			if strings.Contains(err.Error(), "abi") {
-				ret.Symbol = "UNKNOWN"
-			} else {
-				logger.Warnf("error retrieving symbol: %v", err)
-			}
-			return nil
+			return fmt.Errorf("error retrieving symbol: %v", err)
 		}
-
 		ret.Symbol = symbol
 		return nil
 	})
@@ -395,31 +389,21 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	g.Go(func() error {
 		totalSupply, err := contract.TotalSupply(nil)
 		if err != nil {
-			logger.Warnf("error retrieving total supply: %v", err)
-		} else {
-			ret.TotalSupply = totalSupply.Bytes()
+			return fmt.Errorf("error retrieving total supply: %v", err)
 		}
+		ret.TotalSupply = totalSupply.Bytes()
 		return nil
 	})
 
 	g.Go(func() error {
 		decimals, err := contract.Decimals(nil)
 		if err != nil {
-			logger.Warnf("error retrieving decimals: %v", err)
-		} else {
-			ret.Decimals = big.NewInt(int64(decimals)).Bytes()
+			return fmt.Errorf("error retrieving decimals: %v", err)
 		}
+		ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		return nil
 	})
 	err = g.Wait()
-
-	if err == nil && len(ret.Decimals) == 0 && ret.Symbol == "" && len(ret.TotalSupply) == 0 {
-		// it's possible that a token contract implements the ERC20 interfaces but does not return any values; we use a backup in this case
-		ret = &types.ERC20Metadata{
-			Decimals:    []byte{0x0},
-			Symbol:      "UNKNOWN",
-			TotalSupply: []byte{0x0}}
-	}
 
 	return ret, err
 }

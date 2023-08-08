@@ -2929,7 +2929,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
 
 		if err != nil {
-			logger.Errorf("error retrieving metadata for token %x: %v", address, err)
+			logger.Warnf("error retrieving metadata for token %x: %v", address, err)
 			metadata = &types.ERC20Metadata{
 				Decimals:    []byte{0x0},
 				Symbol:      "UNKNOWN",
