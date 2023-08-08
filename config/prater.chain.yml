@@ -44,7 +44,7 @@ DENEB_FORK_EPOCH: 18446744073709551615
 # Byzantium
 BYZANTIUM_FORK_BLOCK: 0
 # Constantinople
-CONSTANTINOPLE_FORK_EPOCH: 0
+CONSTANTINOPLE_FORK_BLOCK: 0
 
 # Time parameters
 # ---------------------------------------------------------------
