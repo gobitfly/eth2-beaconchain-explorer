@@ -1965,6 +1965,11 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// last epoch containing the duties shown on this page
 		lastShownEpoch := moveAway(firstShownEpoch, epochsDiff)
+		// handle overflow on last page
+		if !ascOrdering && lastShownEpoch > firstShownEpoch {
+			lastShownEpoch = 0
+			length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
+		}
 		// amount of epochs fetched by bigtable
 		limit := diffValue(firstShownEpoch, lastShownEpoch) + 1
 
