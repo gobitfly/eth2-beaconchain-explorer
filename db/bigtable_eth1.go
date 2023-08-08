@@ -2410,7 +2410,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 		data[i] = &types.Transfer{
 			From:   from,
 			To:     to,
-			Amount: utils.FormatTokenValue(tb),
+			Amount: utils.FormatTokenValue(tb, false),
 			Token:  utils.FormatTokenName(tb),
 		}
 
@@ -2511,7 +2511,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatTokenValue(tb),
+			utils.FormatTokenValue(tb, true),
 			utils.FormatTokenName(tb),
 		}
 
@@ -2950,7 +2950,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 				Symbol:      "UNKNOWN",
 				TotalSupply: []byte{0x0}}
 
-			err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
+			err = cache.TieredCache.Set(cacheKey, metadata, time.Minute*10)
 			if err != nil {
 				return nil, err
 			}
@@ -3453,7 +3453,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatTokenValue(tb),
+			utils.FormatTokenValue(tb, false),
 		}
 
 	}

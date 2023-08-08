@@ -625,6 +625,22 @@ label.btn.btn-light:hover {
   }
 }
 
+.load-income-btn {
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+  position: relative;
+  bottom: 0.4rem;
+}
+
+@media (min-width: 820px) {
+  .load-income-btn {
+    position: absolute;
+    bottom: 0.8rem;
+    left: 1rem;
+  }
+}
+
 .badge-ens {
   background: #3e4461;
   color: #ffffff;

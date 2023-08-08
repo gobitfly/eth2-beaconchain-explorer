@@ -14,7 +14,6 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,8 +26,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
-
-var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
 
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()
@@ -50,10 +47,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, errors.New("no validators provided")
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return nil, nil, err
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
@@ -124,7 +118,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetValidatorPropsosals(validators, &proposals)
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
 		return nil, nil, err
 	}

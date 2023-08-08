@@ -125,8 +125,8 @@
               {{- end }}
             {{ end }}
             {{ if not .ShowSyncingMessage }}
-              {{ if gt .FinalizationDelay 3 }}
-                <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
+              {{ if gt .FinalizationDelay 5 }}
+                <div data-toggle="tooltip" title="" data-original-title="Finality: The last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
                     <span class="item-icon"><i class="fas fa-exclamation-triangle"></i></span>
                   </div>

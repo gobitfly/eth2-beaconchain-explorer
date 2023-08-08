@@ -239,11 +239,11 @@ func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64) {
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}
+
+			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
 			if lastExportedDayValidator != 0 {
 				lastExportedDayValidator++
 			}
-
-			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
 					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl)
@@ -262,10 +262,11 @@ func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64) {
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}
+
+			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
 			if lastExportedDayChart != 0 {
 				lastExportedDayChart++
 			}
-			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
 			if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
 				for day := lastExportedDayChart; day <= previousDay; day++ {
 					err = db.WriteChartSeriesForDay(int64(day))

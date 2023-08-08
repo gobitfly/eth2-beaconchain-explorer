@@ -137,7 +137,7 @@ func Eth1TokenTransfers(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetTokenTransactionsTableData(token, address, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	// logger.Infof("GOT TX: %+v", data)

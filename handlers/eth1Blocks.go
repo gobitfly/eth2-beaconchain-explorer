@@ -64,7 +64,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	data, err := getEth1BlocksTableData(draw, start, length, recordsTotal)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -129,7 +129,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 	}
 
 	displayStart := start
-	if start > recordsTotal {
+	if start >= recordsTotal {
 		start = 1
 	} else {
 		start = recordsTotal - start
