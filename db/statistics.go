@@ -48,7 +48,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		ElRewards           bool `db:"el_rewards_exported"`
 		TotalPerformance    bool `db:"total_performance_exported"`
 		BlockStats          bool `db:"block_stats_exported"`
-		TotalAccumation     bool `db:"total_accumulation_exported"`
+		TotalAccumulation   bool `db:"total_accumulation_exported"`
 	}
 	exported := Exported{}
 
@@ -73,7 +73,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	}
 	logger.Infof("getting exported state took %v", time.Since(start))
 
-	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalPerformance && exported.BlockStats && exported.Status {
+	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalAccumulation && exported.TotalPerformance && exported.BlockStats && exported.Status {
 		logger.Infof("Skipping day %v as it is already exported", day)
 		return nil
 	}
@@ -120,7 +120,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		return err
 	}
 
-	if exported.TotalAccumation {
+	if exported.TotalAccumulation {
 		logger.Infof("Skipping total accumulation")
 	} else if err := WriteValidatorTotalAccumulation(day, concurrencyTotal); err != nil {
 		return err
