@@ -133,6 +133,7 @@
                   {{ if ne .FromName "" }}
                     <div class="ml-2 flex-shrink-1"><span class="badge badge-pill badge-ens align-middle">{{ .FromName }}</span></div>
                   {{ end }}
+                  <i class="fa fa-copy text-muted p-1 ml-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .From }}"></i>
                 </div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
@@ -155,6 +156,7 @@
                           {{ if ne .ToName "" }}
                             <div class="flex-shrink-1"><span class="badge badge-pill badge-ens align-middle">{{ .ToName }}</span></div>
                           {{ end }}
+                          <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .To }}"></i>
                         </div>
                       </div>
                     </div>
