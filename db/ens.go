@@ -588,6 +588,9 @@ func GetEnsNameForAddress(address common.Address) (name *string, err error) {
 }
 
 func GetEnsNamesForAddress(addressMap map[string]string) error {
+	if len(addressMap) == 0 {
+		return nil
+	}
 	type pair struct {
 		Address []byte `db:"address"`
 		EnsName string `db:"ens_name"`
@@ -602,10 +605,15 @@ func GetEnsNamesForAddress(addressMap map[string]string) error {
 	SELECT address, ens_name 
 	FROM ens
 	WHERE
-		address = ANY($1) 
+		address = ANY($1) AND
+		is_primary_name AND
+		valid_to >= now()
 	;`, addresses)
+	if err != nil {
+		return err
+	}
 	for _, foundling := range dbAddresses {
 		addressMap[string(foundling.Address)] = foundling.EnsName
 	}
-	return err
+	return nil
 }

@@ -3074,6 +3074,9 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 }
 
 func (bigtable *Bigtable) GetAddressNames(addresses map[string]string) error {
+	if len(addresses) == 0 {
+		return nil
+	}
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
