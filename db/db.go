@@ -3192,3 +3192,15 @@ func GetOrphanedSlots(slots []uint64) ([]uint64, error) {
 
 	return orphaned, err
 }
+
+func GetOrphanedSlotsMap(slots []uint64) (map[uint64]bool, error) {
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
+	}
+	return orphanedSlotsMap, nil
+}
