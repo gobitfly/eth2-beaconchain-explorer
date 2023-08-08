@@ -145,7 +145,7 @@ func main() {
 			for {
 				err = UpdateTokenPrices(bt, client, *tokenPriceExportList)
 				if err != nil {
-					utils.LogError(err, "error while updating token prices", 0)
+					logrus.Warnf("error while updating token prices: %v", err)
 					time.Sleep(*tokenPriceExportFrequency)
 				}
 				time.Sleep(*tokenPriceExportFrequency)
