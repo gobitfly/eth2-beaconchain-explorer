@@ -81,9 +81,6 @@ type Rates struct {
 	TickerCurrencySymbol              string                `json:"trickerCurrencySymbol"`
 	SelectedCurrency                  string                `json:"selectedCurrency"`
 	SelectedCurrencySymbol            string                `json:"selectedCurrencySymbol"`
-	SelectedCurrencyPrice             float64               `json:"selectedCurrencyPrice"`
-	SelectedCurrencyPriceFormatted    template.HTML         `json:"selectedCurrencyPriceFormatted"`
-	SelectedCurrencyPriceKFormatted   template.HTML         `json:"selectedCurrencyKFormatted"`
 	MainCurrency                      string                `json:"mainCurrency"`
 	MainCurrencySymbol                string                `json:"mainCurrencySymbol"`
 	MainCurrencyPrice                 float64               `json:"mainCurrencyPrice"`
