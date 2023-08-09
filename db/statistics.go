@@ -852,6 +852,29 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 	defer tx.Rollback()
 
 	start := time.Now()
+	logrus.Infof("Resetting Withdrawals + Deposits for day [%v]", day)
+
+	firstDayExtraCondition := ""
+	if day == 0 {
+		// genesis-deposits will be added to day -1.
+		firstDayExtraCondition = " OR day = -1"
+	}
+
+	resetQry := fmt.Sprintf(`
+		UPDATE validator_stats SET 
+			deposits = NULL, 
+			deposits_amount = NULL,
+			withdrawals = NULL, 
+			withdrawals_amount = NULL
+		WHERE day = $1%s;`, firstDayExtraCondition)
+
+	_, err = tx.Exec(resetQry, day)
+	if err != nil {
+		return err
+	}
+	logger.Infof("reset completed, took %v", time.Since(start))
+
+	start = time.Now()
 	logrus.Infof("Update Withdrawals + Deposits for day [%v] slot %v -> %v", day, firstSlot, lastSlot)
 
 	logger.Infof("exporting deposits and deposits_amount statistics")
