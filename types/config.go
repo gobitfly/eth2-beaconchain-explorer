@@ -196,7 +196,10 @@ type Config struct {
 		ElEndpoint string `yaml:"elEndpoint" envconfig:"NODE_JOBS_PROCESSOR_EL_ENDPOINT"`
 		ClEndpoint string `yaml:"clEndpoint" envconfig:"NODE_JOBS_PROCESSOR_CL_ENDPOINT"`
 	} `yaml:"nodeJobsProcessor"`
-	ServiceMonitoringConfigurations []ServiceMonitoringConfiguration `yaml:"serviceMonitoringConfigurations" envconfig:"SERVICE_MONITORING_CONFIGURATIONS"`
+	Monitoring struct {
+		ApiKey                          string                           `yaml:"apiKey" envconfig:"MONITORING_API_KEY"`
+		ServiceMonitoringConfigurations []ServiceMonitoringConfiguration `yaml:"serviceMonitoringConfigurations" envconfig:"SERVICE_MONITORING_CONFIGURATIONS"`
+	} `yaml:"monitoring"`
 }
 
 type DatabaseConfig struct {
