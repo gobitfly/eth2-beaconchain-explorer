@@ -3703,6 +3703,98 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
+func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	q := r.URL.Query()
+	data := types.ApiProposalLuckResponse{}
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	indices, pubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse validators")
+		return
+	}
+	if len(pubkeys) > 0 {
+		indicesFromPubkeys, err := resolveIndices(pubkeys)
+		if err != nil {
+			sendErrorResponse(w, r.URL.String(), "could not resolve pubkeys to indices")
+			return
+		}
+		indices = append(indices, indicesFromPubkeys...)
+	}
+
+	if len(indices) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no validators provided")
+		return
+	}
+
+	// dedup indices
+	allKeys := make(map[uint64]bool)
+	list := []uint64{}
+	for _, item := range indices {
+		if _, ok := allKeys[item]; !ok {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	indices = list
+
+	g := errgroup.Group{}
+
+	var firstActivationEpoch uint64
+	g.Go(func() error {
+		return db.GetFirstActivationEpoch(indices, &firstActivationEpoch)
+	})
+
+	var slots []uint64
+	g.Go(func() error {
+		return db.ReaderDb.Select(&slots, `
+			SELECT
+				slot
+			FROM blocks
+			WHERE proposer = ANY($1)
+			AND exec_block_number IS NOT NULL
+			ORDER BY slot ASC`, pq.Array(indices))
+	})
+
+	err = g.Wait()
+	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "error processing request, please try again later")
+		logger.WithError(err).Error("error retrieving data from db for proposal luck")
+		return
+	}
+
+	proposalLuck, proposalTimeFrame := getProposalLuck(slots, len(indices), firstActivationEpoch)
+	if proposalLuck > 0 {
+		data.ProposalLuck = &proposalLuck
+		timeframeName := getProposalTimeframeName(proposalTimeFrame)
+		data.TimeFrameName = &timeframeName
+	}
+
+	avgProposalInterval := getAvgSlotInterval(len(indices))
+	data.AverageProposalInterval = avgProposalInterval
+
+	var estimateLowerBoundSlot *uint64
+	if len(slots) > 0 {
+		estimateLowerBoundSlot = &slots[len(slots)-1]
+	} else if len(indices) == 1 {
+		activationSlot := firstActivationEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+		estimateLowerBoundSlot = &activationSlot
+	}
+
+	if estimateLowerBoundSlot != nil {
+		nextProposalEstimate := utils.SlotToTime(*estimateLowerBoundSlot + uint64(avgProposalInterval)).Unix()
+		data.NextProposalEstimateTs = &nextProposalEstimate
+	}
+
+	response.Data = data
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
+	}
+}
+
 func DecodeMapStructure(input interface{}, output interface{}) error {
 	config := &mapstructure.DecoderConfig{
 		Metadata: nil,
