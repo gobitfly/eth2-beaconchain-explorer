@@ -98,7 +98,7 @@
               </div>
             </div>
             {{ if .Mainnet }}
-              <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
+              <div data-toggle="tooltip" title="" data-original-title="Price: 1 {{ .Rates.MainCurrencySymbol }} = {{ .Rates.MainCurrencyTickerPriceKFormatted }} {{ .Rates.TickerCurrencySymbol }}" id="banner-eth-price">
                 <div class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
                     <span class="item-icon"><i class="fas fa-cubes"></i></span>
@@ -107,8 +107,8 @@
                   <div class="info-item-body">
                     <a id="banner-eth-price-data">
                       <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.TickerCurrencySymbol }}</span>
-                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.TickerCurrencyPriceKFormatted }}</span>
-                      <span id="currentCurrencyPrice" class="price">{{ .Rates.TickerCurrencyPriceFormatted }}</span>
+                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.MainCurrencyTickerPriceKFormatted }}</span>
+                      <span id="currentCurrencyPrice" class="price">{{ .Rates.MainCurrencyTickerPriceFormatted }}</span>
                     </a>
                   </div>
                 </div>
