@@ -1,8 +1,8 @@
 # Prater config
 
 # Extends the mainnet preset
-PRESET_BASE: 'mainnet'
-CONFIG_NAME: 'prater'
+PRESET_BASE: "mainnet"
+CONFIG_NAME: "prater"
 
 # Transition
 # ---------------------------------------------------------------
@@ -23,7 +23,6 @@ GENESIS_FORK_VERSION: 0x00001020
 # Customized for Prater: 1919188 seconds (Mar-23-2021 02:00:00 PM +UTC)
 GENESIS_DELAY: 1919188
 
-
 # Forking
 # ---------------------------------------------------------------
 # Some forks are disabled for now:
@@ -42,6 +41,10 @@ CAPELLA_FORK_EPOCH: 162304
 # Sharding
 DENEB_FORK_VERSION: 0x04001020
 DENEB_FORK_EPOCH: 18446744073709551615
+# Byzantium
+BYZANTIUM_FORK_BLOCK: 0
+# Constantinople
+CONSTANTINOPLE_FORK_BLOCK: 0
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -56,7 +59,6 @@ SHARD_COMMITTEE_PERIOD: 256
 # 2**11 (= 2,048) Eth1 blocks ~8 hours
 ETH1_FOLLOW_DISTANCE: 2048
 
-
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
@@ -69,7 +71,6 @@ EJECTION_BALANCE: 16000000000
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
 CHURN_LIMIT_QUOTIENT: 65536
-
 
 # Deposit contract
 # ---------------------------------------------------------------
@@ -90,14 +91,12 @@ MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
 # 2
 PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
-
 # Sync committee
 # ---------------------------------------------------------------
 # 2**9 (= 512)
 SYNC_COMMITTEE_SIZE: 512
 # 2**8 (= 256)
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
-
 
 # Sync protocol
 # ---------------------------------------------------------------
@@ -142,7 +141,6 @@ CUSTODY_PERIOD_TO_RANDAO_PADDING: 2048
 # 2**15 (= 32,768) epochs, ~146 days
 MAX_CHUNK_CHALLENGE_DELAY: 32768
 
-
 # Max operations
 # ---------------------------------------------------------------
 # 2**8 (= 256)
@@ -155,7 +153,6 @@ MAX_CUSTODY_CHUNK_CHALLENGES: 4
 MAX_CUSTODY_CHUNK_CHALLENGE_RESP: 16
 # 2**0 (= 1)
 MAX_CUSTODY_SLASHINGS: 1
-
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------
@@ -181,12 +178,10 @@ HYSTERESIS_DOWNWARD_MULTIPLIER: 1
 # 5 (plus 1.25)
 HYSTERESIS_UPWARD_MULTIPLIER: 5
 
-
 # Fork Choice
 # ---------------------------------------------------------------
 # 2**3 (= 8)
 SAFE_SLOTS_TO_UPDATE_JUSTIFIED: 8
-
 
 # Gwei values
 # ---------------------------------------------------------------
@@ -196,7 +191,6 @@ MIN_DEPOSIT_AMOUNT: 1000000000
 MAX_EFFECTIVE_BALANCE: 32000000000
 # 2**0 * 10**9 (= 1,000,000,000) Gwei
 EFFECTIVE_BALANCE_INCREMENT: 1000000000
-
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -215,7 +209,6 @@ SLOTS_PER_HISTORICAL_ROOT: 8192
 # 2**2 (= 4) epochs 25.6 minutes
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 
-
 # State list lengths
 # ---------------------------------------------------------------
 # 2**16 (= 65,536) epochs ~0.8 years
@@ -226,7 +219,6 @@ EPOCHS_PER_SLASHINGS_VECTOR: 8192
 HISTORICAL_ROOTS_LIMIT: 16777216
 # 2**40 (= 1,099,511,627,776) validator spots
 VALIDATOR_REGISTRY_LIMIT: 1099511627776
-
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------
@@ -242,7 +234,6 @@ INACTIVITY_PENALTY_QUOTIENT: 67108864
 MIN_SLASHING_PENALTY_QUOTIENT: 128
 # 1 (lower safety margin at Phase 0 genesis)
 PROPORTIONAL_SLASHING_MULTIPLIER: 1
-
 
 # Max operations per block
 # ---------------------------------------------------------------
@@ -293,7 +284,6 @@ MIN_SAMPLE_PRICE: 8
 # ---------------------------------------------------------------
 # 2**4 (= 16)
 MAX_BLS_TO_EXECUTION_CHANGES: 16
-
 
 # Execution
 # ---------------------------------------------------------------

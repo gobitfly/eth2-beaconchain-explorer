@@ -1153,10 +1153,7 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
-	lastExportedDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return types.SyncCommitteesStats{}, err
-	}
+	lastExportedDay := services.LatestExportedStatisticDay()
 	epochsPerDay := utils.EpochsPerDay()
 	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
 
@@ -1317,7 +1314,6 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		activationeligibilityepoch,
 		activationepoch,
 		exitepoch,
-		lastattestationslot,
 		status,
 		COALESCE(validator_names.name, '') AS name,
 		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d,
@@ -1359,18 +1355,28 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, err
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		return nil, fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
+	}
+	for _, entry := range data {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
 			continue
 		}
-		for _, entry := range data {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
+
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
 				continue
 			}
-
-			validatorIndex, ok := eMap["validatorindex"].(int64)
 
 			if !ok {
 				logger.Errorf("error converting validatorindex to int64")
@@ -1500,7 +1506,6 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			activationeligibilityepoch,
 			activationepoch,
 			exitepoch,
-			COALESCE(lastattestationslot, 0) as lastattestationslot,
 			status,
 			COALESCE(n.name, '') AS name,
 			COALESCE(w.total, 0) as total_withdrawals
@@ -1539,6 +1544,17 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("error getting validator last attestation slots from bigtable: %v", err))
+		return
+	}
+
+	for _, validator := range data {
+		validator.Lastattestationslot = int64(lastAttestationSlots[uint64(validator.Validatorindex)])
+	}
+
 	j := json.NewEncoder(w)
 	response := &types.ApiResponse{}
 	response.Status = "OK"
@@ -1640,7 +1656,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		min_effective_balance,
 		max_effective_balance,
 		COALESCE(missed_attestations, 0) AS missed_attestations,
-		COALESCE(orphaned_attestations, 0) AS orphaned_attestations,
+		0 AS orphaned_attestations,
 		COALESCE(proposed_blocks, 0) AS proposed_blocks,
 		COALESCE(missed_blocks, 0) AS missed_blocks,
 		COALESCE(orphaned_blocks, 0) AS orphaned_blocks,
@@ -1678,7 +1694,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all validators that belong to an eth1 address
 // @Tags Validator
 // @Produce  json
-// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
+// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent". It can also be a valid ENS name.
 // @Param limit query string false "Limit the number of results (default: 2000)"
 // @Param offset query string false "Offset the results (default: 0)"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorEth1Response}
@@ -1710,8 +1726,8 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-
-	eth1Address, err := hex.DecodeString(strings.Replace(vars["address"], "0x", "", -1))
+	search := ReplaceEnsNameWithAddress(vars["address"])
+	eth1Address, err := hex.DecodeString(strings.Replace(search, "0x", "", -1))
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "invalid eth1 address provided")
 		return
@@ -2832,7 +2848,11 @@ func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
 	// confirm all claims via db lookup and refreshtoken check
 	userID, err := db.GetByRefreshToken(unsafeClaims.UserID, unsafeClaims.AppID, unsafeClaims.DeviceID, refreshTokenHashed)
 	if err != nil {
-		logger.Errorf("Error refreshtoken check: %v | %v | %v", unsafeClaims.UserID, refreshTokenHashed, err)
+		if err == sql.ErrNoRows {
+			logger.Warnf("No refresh token found for user: %v | %v", unsafeClaims.UserID, refreshTokenHashed)
+		} else {
+			logger.Errorf("Error refreshtoken check: %v | %v | %v", unsafeClaims.UserID, refreshTokenHashed, err)
+		}
 		w.WriteHeader(http.StatusUnauthorized)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.UnauthorizedClient, "invalid token credentials")
 		return
@@ -3127,7 +3147,6 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 					activationeligibilityepoch, 
 					activationepoch, 
 					exitepoch, 
-					lastattestationslot, 
 					validators.status, 
 					validator_performance.balance, 
 					COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
@@ -3177,29 +3196,39 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		return
 	}
 
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "error retrieving validator balance data")
+		return
+	}
+
 	currentDayIncome, _, err := db.GetCurrentDayClIncome(queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "error retrieving current day income")
 		return
 	}
 
-	for balanceIndex, balance := range balances {
-		if len(balance) == 0 {
+	for _, entry := range generalData {
+		eMap, ok := entry.(map[string]interface{})
+		if !ok {
+			logger.Errorf("error converting validator data to map[string]interface{}")
 			continue
 		}
-		for _, entry := range generalData {
-			eMap, ok := entry.(map[string]interface{})
-			if !ok {
-				logger.Errorf("error converting validator data to map[string]interface{}")
+
+		validatorIndex, ok := eMap["validatorindex"].(int64)
+
+		if !ok {
+			logger.Errorf("error converting validatorindex to int64")
+			continue
+		}
+
+		eMap["lastattestationslot"] = lastAttestationSlots[uint64(validatorIndex)]
+
+		for balanceIndex, balance := range balances {
+			if len(balance) == 0 {
 				continue
 			}
 
-			validatorIndex, ok := eMap["validatorindex"].(int64)
-
-			if !ok {
-				logger.Errorf("error converting validatorindex to int64")
-				continue
-			}
 			if int64(balanceIndex) == validatorIndex {
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
 				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
@@ -3603,7 +3632,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 // @Tags Validator
 // @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
 // @Produce json
-// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix"
+// @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix". It can also be a valid ENS name.
 // @Param  limit query int false "Limit the number of results, maximum: 200" default(10)
 // @Param offset query int false "Offset the number of results" default(0)
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiWithdrawalCredentialsResponse}
@@ -3615,7 +3644,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	vars := mux.Vars(r)
 	q := r.URL.Query()
 
-	credentialsOrAddressString := vars["withdrawalCredentialsOrEth1address"]
+	credentialsOrAddressString := ReplaceEnsNameWithAddress(vars["withdrawalCredentialsOrEth1address"])
 	credentialsOrAddressString = strings.ToLower(credentialsOrAddressString)
 
 	if !utils.IsValidEth1Address(credentialsOrAddressString) &&

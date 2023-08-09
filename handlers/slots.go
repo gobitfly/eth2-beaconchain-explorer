@@ -21,48 +21,9 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 	var blocksTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
-	q := r.URL.Query()
 
 	data := InitPageData(w, r, "blockchain", "/slots", "Slots", templateFiles)
 
-	user, session, err := getUserSession(r)
-	if err != nil {
-		logger.WithError(err).Error("error getting user session")
-	}
-
-	state := GetDataTableState(user, session, "slots")
-
-	length := uint64(50)
-	start := uint64(0)
-	search := ""
-	searchForEmpty := false
-
-	if state.Length != 0 {
-		length = state.Length
-	}
-
-	if state.Search.Search != "" {
-		search = state.Search.Search
-	}
-
-	if q.Get("search[value]") != "" {
-		search = q.Get("search[value]")
-	}
-
-	if q.Get("q") != "" {
-		search = q.Get("q")
-	}
-
-	search = strings.Replace(search, "0x", "", -1)
-
-	tableData, err := GetSlotsTableData(0, start, length, search, searchForEmpty)
-	if err != nil {
-		logger.Errorf("error rendering blocks table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-
-	data.Data = tableData
 	if handleTemplateError(w, r, "blocks.go", "Blocks", "", blocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}

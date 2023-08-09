@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"eth2-exporter/cache"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -64,10 +65,23 @@ func GetUserApiKeyById(id uint64) (string, error) {
 }
 
 func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
+	cacheKey := fmt.Sprintf("userIdByApiKey:%s", apiKey)
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute*10, new(types.UserWithPremium)); err == nil {
+		return cached.(*types.UserWithPremium), nil
+	}
 	data := &types.UserWithPremium{}
 	row := FrontendWriterDB.QueryRow("SELECT id, (SELECT product_id from users_app_subscriptions WHERE user_id = users.id AND active = true order by id desc limit 1) FROM users WHERE api_key = $1", apiKey)
 	err := row.Scan(&data.ID, &data.Product)
-	return data, err
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		err := cache.TieredCache.Set(cacheKey, data, time.Minute*10)
+		if err != nil {
+			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetUserIdByApiKey with key %v", cacheKey), 0)
+		}
+	}()
+	return data, nil
 }
 
 // DeleteUserById deletes a user.

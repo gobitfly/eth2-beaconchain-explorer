@@ -237,7 +237,7 @@
       <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Blocks (Proposed: {{ .ProposedBlocksCount }}, Missed: {{ .MissedBlocksCount }}, Orphaned: {{ .OrphanedBlocksCount }}, Scheduled: {{ .ScheduledBlocksCount }})"><i class="fas fa-cubes poin"></i> {{ .BlocksCount }}{{ if ne .BlocksCount 0 }}({{ formatPercentageColoredEmoji .UnmissedBlocksPercentage }}){{ end }}</span>
     </div>
     <div class="mx-3">
-      <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{ .ExecutedAttestationsCount }}, Missed: {{ .MissedAttestationsCount }}, Orphaned: {{ .OrphanedAttestationsCount }})"><i class="fas fa-file-signature"></i> {{ .AttestationsCount }}{{ if ne .AttestationsCount 0 }}({{ formatPercentageColoredEmoji .UnmissedAttestationsPercentage }}){{ end }}</span>
+      <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{ .ExecutedAttestationsCount }}, Missed: {{ .MissedAttestationsCount }})"><i class="fas fa-file-signature"></i> {{ .AttestationsCount }}{{ if ne .AttestationsCount 0 }}({{ formatPercentageColoredEmoji .UnmissedAttestationsPercentage }}){{ end }}</span>
     </div>
     <div class="mx-3">
       <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{ .ParticipatedSyncCountSlots }}, Missed: {{ .MissedSyncCountSlots }}, Orphaned: {{ .OrphanedSyncCountSlots }}, Scheduled: {{ .ScheduledSyncCountSlots }})">

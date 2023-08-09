@@ -168,6 +168,7 @@
                 </div>
                 <div id="incomeChart" class="w-100 mb-2" aria-labelledby="incomeChart-tab">
                   {{ template "validatorIncomeChart" $ }}
+                  <button type="button" id="load-income-btn" class="load-income-btn btn btn-primary btn-sm text-white d-none">Show all rewards</button>
                 </div>
                 <div id="proposedChart" class="w-100 mb-2 d-none" aria-labelledby="proposedChart-tab">
                   {{ template "validatorProposedChart" . }}

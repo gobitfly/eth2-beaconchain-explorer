@@ -70,36 +70,35 @@ function setValidatorEffectiveness(elem, eff) {
   }
 }
 
-function setUtc() {
-  if ($("#optionLocal").is(":checked") || $("#optionTs").is(":checked")) {
-    var unixTs = $("#unixTs").text()
-    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
-    $("#timestamp").text(ts.toUTC().toFormat("MMM-dd-yyyy hh:mm:ss a"))
-  }
-}
-
-function setLocal() {
-  if ($("#optionUtc").is(":checked") || $("#optionTs").is(":checked")) {
-    var unixTs = $("#unixTs").text()
-    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
-    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + ts.toFormat("Z"))
-  }
-}
-
 function setTs() {
-  var unixTs = $("#unixTs").text()
-  var utc = luxon.DateTime.fromMillis(unixTs * 1000)
-  $("#timestamp").text(utc["ts"] / 1000)
+  let timestamp = $("#timestamp")
+  let unixTs = timestamp.attr("aria-ethereum-date")
+  if (!unixTs) {
+    unixTs = $("#unixTs").text()
+  }
+  var ts = luxon.DateTime.fromMillis(unixTs * 1000)
+  let optionName = timestamp.attr("aria-timestamp-options")
+  let selectedOption = document.querySelector(`input[name="${optionName}"]:checked`)?.value
+
+  let text = ""
+  switch (selectedOption) {
+    case "local":
+      text = ts.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + ts.toFormat("Z")
+      break
+    case "utc":
+      text = ts.toUTC().toFormat("MMM-dd-yyyy hh:mm:ss a")
+      break
+    default:
+      text = ts["ts"] / 1000
+      break
+  }
+
+  timestamp.text(text)
 }
 
 function copyTs() {
   var text = $("#timestamp").text()
-  tsArr = text.split(" ")
-  if (tsArr.length > 1) {
-    navigator.clipboard.writeText(tsArr[0] + " " + tsArr[1])
-  } else {
-    navigator.clipboard.writeText(tsArr[0])
-  }
+  navigator.clipboard.writeText(text)
 }
 
 function viewHexDataAs(id, type) {
@@ -118,6 +117,14 @@ function viewHexDataAs(id, type) {
       $(`#${id}`).text(hex2a(extraDataHex.replace("0x", "")))
     }
   }
+}
+
+function shortenAddress(address) {
+  if (!address) {
+    return ""
+  }
+  address = address.replace("0x", "0")
+  return `0x${address.substr(0, 6)}...${address.substr(address.length - 6)}`
 }
 
 function hex2a(hexx) {
@@ -162,7 +169,7 @@ $(document).ready(function () {
 
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
-  let requestNum = 8
+  let requestNum = 9
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -174,6 +181,22 @@ $(document).ready(function () {
       url: "/search/validators/%QUERY",
       wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+    },
+  })
+
+  var bhEns = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj?.domain
+    },
+    remote: {
+      url: "/search/ens/%QUERY",
+      wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
+      transform: function (data) {
+        return data?.address && data?.domain ? { data: { ...data } } : null
+      },
     },
   })
 
@@ -290,6 +313,20 @@ $(document).ready(function () {
     },
     {
       limit: 5,
+      name: "ens",
+      source: bhEns,
+      display: function (data) {
+        return data?.address && data?.domain ? data.domain : null
+      },
+      templates: {
+        header: '<h3 class="h5">Ens</h3>',
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate"><a href="/ens/${data.domain}">${data.domain} Registration Overview</a></div>`
+        },
+      },
+    },
+    {
+      limit: 5,
       name: "blocks",
       source: bhBlocks,
       display: "hash",
@@ -340,10 +377,19 @@ $(document).ready(function () {
       limit: 5,
       name: "addresses",
       source: bhEth1Accounts,
-      display: "address",
+      display: (data) => data.address || data.name,
       templates: {
         header: '<h3 class="h5">Address</h3>',
         suggestion: function (data) {
+          if (data.name) {
+            return `
+              <div class="d-flex justify-content-between">
+                <div class="text-monospace text-truncate">${data.name}</div>
+                <div class="text-monospace ml-1 d-flex">
+                  ${shortenAddress(data.addres)}
+                </div>
+              </div>`
+          }
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         },
       },
@@ -499,6 +545,8 @@ function formatAriaEthereumDate(elem) {
     $(elem).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
     $(elem).attr("data-original-title", formatTimestampsTooltip(local))
     $(elem).attr("data-toggle", "tooltip")
+  } else if (format === "TIMESTAMP") {
+    setTs()
   } else {
     $(elem).text(local.toFormat(format))
   }

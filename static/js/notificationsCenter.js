@@ -139,6 +139,57 @@ function create_typeahead(input_container) {
   // })
 }
 
+function create_validators_typeahead(input_container_selector, table_selector) {
+  var bhEth1Addresses = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.eth1_address
+    },
+    remote: {
+      url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
+      wildcard: "%QUERY",
+    },
+  })
+  $(input_container_selector).typeahead(
+    {
+      minLength: 1,
+      highlight: true,
+      hint: false,
+      autoselect: false,
+    },
+    {
+      limit: 5,
+      name: "addresses",
+      source: bhEth1Addresses,
+      display: function (data) {
+        return data?.eth1_address || ""
+      },
+      templates: {
+        header: '<h5 class="font-weight-bold ml-3">ETH Address</h5>',
+        suggestion: function (data) {
+          var len = data.validator_indices.length > 10 ? 10 + "+" : data.validator_indices.length
+          return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">0x${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+        },
+      },
+    }
+  )
+  $(input_container_selector).on("focus", function (e) {
+    if (e.target.value !== "") {
+      $(this).trigger($.Event("keydown", { keyCode: 40 }))
+    }
+  })
+  $(input_container_selector).on("input", function () {
+    $(".tt-suggestion").first().addClass("tt-cursor")
+  })
+  $(input_container_selector).bind("typeahead:select", function (ev, suggestion) {
+    if (suggestion?.eth1_address) {
+      $(table_selector).DataTable().search(suggestion.eth1_address)
+      $(table_selector).DataTable().draw()
+    }
+  })
+}
+
 function loadMonitoringData(data) {
   let mdata = []
   // let id = 0
@@ -148,10 +199,16 @@ function loadMonitoringData(data) {
   }
 
   for (let i = 0; i < data.length; i++) {
+    // monitoring_hdd_almostfull as an exception saves the threshold value inverted, i.e. the remaining free space
+    var eventThreshold = data[i].EventThreshold
+    if (data[i].EventName === "monitoring_hdd_almostfull") {
+      eventThreshold = 1 - eventThreshold
+    }
+
     mdata.push({
       id: data[i].ID,
       notification: data[i].EventName,
-      threshold: data[i].EventThreshold ? 1 - data[i].EventThreshold : data[i].EventThreshold,
+      threshold: eventThreshold,
       mostRecent: data[i].LastSent || 0,
       machine: data[i].EventFilter,
       event: {},
@@ -560,7 +617,7 @@ function loadValidatorsData(data) {
         responsivePriority: 2,
         data: null,
         render: function (data, type, row, meta) {
-          if (type === "display") {
+          if (type === "display" || type === "filter") {
             if (!row.Notification) {
               row.Notification = []
             }
@@ -683,6 +740,20 @@ function loadValidatorsData(data) {
         data: null,
         defaultContent: '<div class="d-flex align-items-center"><i class="fas fa-pen fa-xs text-muted i-custom mx-2" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#ManageNotificationModal"></i><i class="fas fa-times fa-lg mx-2 i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i></div>',
       },
+      {
+        // hidden column for filtering by DepositAddress
+        targets: 7,
+        orderable: false,
+        data: "DepositAddress",
+        visible: false,
+      },
+      {
+        // hidden column for filtering by DepositEnsName
+        targets: 8,
+        orderable: false,
+        data: "DepositEnsName",
+        visible: false,
+      },
     ],
     rowId: function (data, type, row, meta) {
       return data ? data.Pubkey : null
@@ -751,6 +822,8 @@ function loadValidatorsData(data) {
   //   //   }
   //   // })
   // }
+
+  create_validators_typeahead("input[aria-controls='validators-notifications']", "#validators-notifications")
 }
 
 // function remove_item_from_event_container(pubkey) {

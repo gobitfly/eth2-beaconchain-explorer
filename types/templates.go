@@ -310,14 +310,15 @@ type ValidatorsData struct {
 	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
-	LastAttestationSlot        *int64 `db:"lastattestationslot"`
-	Name                       string `db:"name"`
-	State                      string `db:"state"`
-	MissedProposals            uint64 `db:"missedproposals"`
-	ExecutedProposals          uint64 `db:"executedproposals"`
-	MissedAttestations         uint64 `db:"missedattestations"`
-	ExecutedAttestations       uint64 `db:"executedattestations"`
-	Performance7d              int64  `db:"performance7d"`
+	LastAttestationSlot        int64
+	Name                       string  `db:"name"`
+	State                      string  `db:"state"`
+	MissedProposals            uint64  `db:"missedproposals"`
+	ExecutedProposals          uint64  `db:"executedproposals"`
+	MissedAttestations         uint64  `db:"missedattestations"`
+	ExecutedAttestations       uint64  `db:"executedattestations"`
+	Performance7d              int64   `db:"performance7d"`
+	DepositAddress             *[]byte `db:"from_address"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
@@ -334,11 +335,11 @@ type ValidatorPageData struct {
 	SlashedBy                                uint64
 	SlashedAt                                uint64
 	SlashedFor                               string
-	ActivationEligibilityEpoch               uint64         `db:"activationeligibilityepoch"`
-	ActivationEpoch                          uint64         `db:"activationepoch"`
-	ExitEpoch                                uint64         `db:"exitepoch"`
-	Index                                    uint64         `db:"index"`
-	LastAttestationSlot                      *uint64        `db:"lastattestationslot"`
+	ActivationEligibilityEpoch               uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch                          uint64 `db:"activationepoch"`
+	ExitEpoch                                uint64 `db:"exitepoch"`
+	Index                                    uint64 `db:"index"`
+	LastAttestationSlot                      uint64
 	Name                                     string         `db:"name"`
 	Pool                                     string         `db:"pool"`
 	Tags                                     pq.StringArray `db:"tags"`
@@ -350,7 +351,6 @@ type ValidatorPageData struct {
 	AttestationsCount                        uint64
 	ExecutedAttestationsCount                uint64
 	MissedAttestationsCount                  uint64
-	OrphanedAttestationsCount                uint64
 	UnmissedAttestationsPercentage           float64 // missed/(executed+orphaned)
 	StatusProposedCount                      uint64
 	StatusMissedCount                        uint64
@@ -463,7 +463,6 @@ type ValidatorStatsTableRow struct {
 	MinEffectiveBalance    sql.NullInt64 `db:"min_effective_balance"`
 	MaxEffectiveBalance    sql.NullInt64 `db:"max_effective_balance"`
 	MissedAttestations     sql.NullInt64 `db:"missed_attestations"`
-	OrphanedAttestations   sql.NullInt64 `db:"orphaned_attestations"`
 	ProposedBlocks         sql.NullInt64 `db:"proposed_blocks"`
 	MissedBlocks           sql.NullInt64 `db:"missed_blocks"`
 	OrphanedBlocks         sql.NullInt64 `db:"orphaned_blocks"`
@@ -612,6 +611,7 @@ type VotesVisChartData struct {
 type BlockPageData struct {
 	Epoch                  uint64  `db:"epoch"`
 	EpochFinalized         bool    `db:"epoch_finalized"`
+	PrevEpochFinalized     bool    `db:"prev_epoch_finalized"`
 	EpochParticipationRate float64 `db:"epoch_participation_rate"`
 	Ts                     time.Time
 	NextSlot               uint64
@@ -1264,9 +1264,11 @@ type UserNotificationChannels struct {
 }
 
 type UserValidatorNotificationTableData struct {
-	Index        uint64
-	Pubkey       string
-	Notification []struct {
+	Index          uint64
+	Pubkey         string
+	DepositAddress string
+	DepositEnsName string
+	Notification   []struct {
 		Notification string
 		Timestamp    uint64
 		Threshold    string
@@ -1557,6 +1559,7 @@ type DataTableSaveStateColumns struct {
 
 type Eth1AddressPageData struct {
 	Address            string `json:"address"`
+	EnsName            string `json:"ensName"`
 	IsContract         bool
 	QRCode             string `json:"qr_code_base64"`
 	QRCodeInverse      string
@@ -2021,8 +2024,6 @@ func (configMap ExplorerConfigurationMap) GetStringValue(category ExplorerConfig
 type WithdrawalsPageData struct {
 	Stats           *Stats
 	WithdrawalChart *ChartsPageDataChart
-	Withdrawals     *DataTableResponse
-	BlsChanges      *DataTableResponse
 }
 
 type WithdrawalStats struct {

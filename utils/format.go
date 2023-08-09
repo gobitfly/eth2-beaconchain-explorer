@@ -226,9 +226,9 @@ func IfToDec(valIf interface{}) decimal.Decimal {
 	var val decimal.Decimal
 	switch valIf.(type) {
 	case *float64:
-		val, err = decimal.NewFromString(fmt.Sprintf("%v", *valIf.(*float64)))
+		val = decimal.NewFromFloat(*valIf.(*float64))
 	case *int64:
-		val, err = decimal.NewFromString(fmt.Sprintf("%v", *valIf.(*int64)))
+		val = decimal.NewFromInt(*valIf.(*int64))
 	case *uint64:
 		val, err = decimal.NewFromString(fmt.Sprintf("%v", *valIf.(*uint64)))
 	case int, int64, float64, uint64, *big.Float:
@@ -344,6 +344,14 @@ func FormatFloatWithDigits(num float64, min, max int) template.HTML {
 	return template.HTML(FormatFloatWithDigitsString(num, min, max))
 }
 
+// FormatFloatWithDigitsString formats num with max amount of digits after comma but stop after min number of non-zero-digits after comma. In other words it can be used to format a number with the least amount of characters keeping a threshold of significant digits.
+//
+// examples:
+//
+//	FormatFloatWithDigitsString(0.01234,2,2) = "0.01"
+//	FormatFloatWithDigitsString(0.01234,2,3) = "0.012"
+//	FormatFloatWithDigitsString(0.01234,2,4) = "0.012"
+//	FormatFloatWithDigitsString(0.01234,3,4) = "0.0123"
 func FormatFloatWithDigitsString(num float64, min, max int) string {
 	if max > 18 {
 		max = 18
@@ -565,10 +573,9 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	return template.HTML(p.Sprintf(tpl, float64(e)/float64(Config.Frontend.ClCurrencyDivisor)*price.GetPrice(Config.Frontend.ClCurrency, currency), rr))
 }
 
-func FormatEtherValue(symbol string, ethPrice *big.Float, currentPrice template.HTML) template.HTML {
+func FormatEtherValue(symbol string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
 	p := message.NewPrinter(language.English)
-	ep, _ := ethPrice.Float64()
-	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/%s</span>`, symbol, ep, currentPrice, Config.Frontend.ClCurrency))
+	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/%s</span>`, symbol, ethPrice.InexactFloat64(), currentPrice, Config.Frontend.ClCurrency))
 }
 
 // FormatGraffiti will return the graffiti formated as html
@@ -1267,9 +1274,9 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	}
 	symbolTitle := FormatTokenSymbolTitle(balance.Metadata.Symbol)
 	symbol := FormatTokenSymbol(balance.Metadata.Symbol)
-	pflt, _ := price.Float64()
-	flt, _ := num.Div(mul).Round(5).Float64()
-	bflt, _ := price.Mul(num.Div(mul)).Float64()
+	pflt := price.InexactFloat64()
+	flt := num.Div(mul).Round(5).InexactFloat64()
+	bflt := price.Mul(num.Div(mul)).InexactFloat64()
 	return template.HTML(p.Sprintf(`
 	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between flex-wrap">
 		<div class="token-icon p-1">
@@ -1294,26 +1301,32 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 	e := new(big.Int).SetBytes(balance.Metadata.Decimals)
 	d := new(big.Int).Exp(big.NewInt(10), e, nil)
-	balWei := new(big.Float).SetInt(new(big.Int).SetBytes(balance.Balance))
-	balEth := new(big.Float).Quo(balWei, new(big.Float).SetInt(d))
+	balWei := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
+	balEth := balWei.DivRound(decimal.NewFromBigInt(d, 0), int32(e.Int64()))
+
 	p := message.NewPrinter(language.English)
-	return template.HTML(p.Sprintf(fmt.Sprintf(`
+	return template.HTML(p.Sprintf(`
 		<div class="d-flex align-items-center">
 			<svg style="width: 1rem; height: 1rem;">
 				<use xlink:href="#ethereum-diamond-logo"/>
 			</svg> 
-			<span class="token-holdings">%%.%df %v</span>
-		</div>`, e.Int64(), Config.Frontend.ElCurrency), balEth))
+			<span class="token-holdings">%v %v</span>
+		</div>`, balEth, Config.Frontend.ClCurrency))
 }
 
-func FormatTokenValue(balance *types.Eth1AddressBalance) template.HTML {
+func FormatTokenValue(balance *types.Eth1AddressBalance, fullAmountTooltip bool) template.HTML {
 	decimals := new(big.Int).SetBytes(balance.Metadata.Decimals)
 	p := message.NewPrinter(language.English)
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(decimals, 0))
 	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
-	f, _ := num.DivRound(mul, int32(decimals.Int64())).Float64()
+	tokenValue := num.DivRound(mul, int32(decimals.Int64()))
+	tokenValueFormatted := FormatThousandsEnglish(tokenValue.String())
 
-	return template.HTML(p.Sprintf("%s", FormatThousandsEnglish(strconv.FormatFloat(f, 'f', -1, 64))))
+	tooltip := ""
+	if fullAmountTooltip {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, tokenValueFormatted)
+	}
+	return template.HTML(p.Sprintf("<span%s>%s</span>", tooltip, tokenValueFormatted))
 }
 
 func FormatErc20Decimals(balance []byte, metadata *types.ERC20Metadata) decimal.Decimal {

@@ -55,6 +55,7 @@ require (
 	github.com/swaggo/http-swagger v1.3.0
 	github.com/swaggo/swag v1.8.3
 	github.com/urfave/negroni v1.0.0
+	github.com/wealdtech/go-ens/v3 v3.5.5
 	github.com/wealdtech/go-eth2-types/v2 v2.8.1
 	github.com/wealdtech/go-eth2-util v1.8.1
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
@@ -107,7 +108,6 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/urfave/cli v1.22.12 // indirect
 	github.com/wealdtech/go-bytesutil v1.2.1 // indirect
-	github.com/wealdtech/go-ens/v3 v3.5.5 // indirect
 	github.com/wealdtech/go-merkletree v1.0.1-0.20190605192610-2bb163c2ea2a // indirect
 	github.com/wealdtech/go-multicodec v1.4.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect

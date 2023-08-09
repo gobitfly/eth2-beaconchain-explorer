@@ -123,6 +123,21 @@
         font-size: 1.2rem;
       }
     }
+    @media screen and (max-width: 360px) {
+      .header-address .text-monospace {
+        font-size: 0.7rem;
+      }
+    }
+    @media screen and (max-width: 320px) {
+      .header-address .text-monospace {
+        font-size: 0.65rem;
+      }
+    }
+    @media screen and (max-width: 294px) {
+      .header-address .text-monospace {
+        font-size: 0.6rem;
+      }
+    }
 
     [data-theme="dark"] .qrcode-light {
       display: none;
@@ -361,8 +376,7 @@
       <div class="mb-1 mb-md-0 mt-md-3 d-flex justify-content-between">
         <h1 class="font-weight-bold header-address">
           <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
-          <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-          <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
+          {{ if len .Data.EnsName }}<span class="badge badge-pill badge-ens">{{ .Data.EnsName }}</span>{{ end }}
         </h1>
         <div class="dropdown">
           <button class="btn btn-sm btn-primary text-white dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">More</button>
@@ -374,9 +388,11 @@
           </div>
         </div>
       </div>
-      <h2 class="text-monospace mb-md-3 header-address text-truncate">
+      <h4 class="h4 text-monospace mb-md-3 header-address text-truncate">
         {{ .Data.Address | formatAddressLong }}
-      </h2>
+        <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
+        <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
+      </h4>
       <div>
         {{ if .Data.Metadata.Name }}<span class="badge badge-secondary text-light my-2">{{ .Data.Metadata.Name }}</span>{{ end }}
       </div>

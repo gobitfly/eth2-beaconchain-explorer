@@ -14,6 +14,7 @@ import (
 	"strconv"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,6 +25,7 @@ func Eth1Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/eth1blocks", "Ethereum Blocks", templateFiles)
+
 	if handleTemplateError(w, r, "eth1Blocks.go", "Eth1Blocks", "", eth1BlocksTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
@@ -62,7 +64,7 @@ func Eth1BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	data, err := getEth1BlocksTableData(draw, start, length, recordsTotal)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -126,7 +128,8 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		recordsTotal = services.LatestEth1BlockNumber()
 	}
 
-	if start > recordsTotal {
+	displayStart := start
+	if start >= recordsTotal {
 		start = 1
 	} else {
 		start = recordsTotal - start
@@ -183,8 +186,8 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 			}
 		}
 
-		slotText := "-"
-		epochText := "-"
+		slotText := template.HTML("-")
+		epochText := template.HTML("-")
 		status := template.HTML("-")
 		proposer := template.HTML("-")
 		if sData != nil {
@@ -200,8 +203,8 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 			}
 
 			if posActive && sData != nil {
-				slotText = fmt.Sprintf(`<A href="slot/%d">%s</A>`, sData.Slot, utils.FormatAddCommas(sData.Slot))
-				epochText = fmt.Sprintf(`<A href="epoch/%d">%s</A>`, sData.Epoch, utils.FormatAddCommas(sData.Epoch))
+				slotText = template.HTML(fmt.Sprintf(`<A href="slot/%d">%s</A>`, sData.Slot, utils.FormatAddCommas(sData.Slot)))
+				epochText = template.HTML(fmt.Sprintf(`<A href="epoch/%d">%s</A>`, sData.Epoch, utils.FormatAddCommas(sData.Epoch)))
 			}
 		}
 
@@ -213,24 +216,22 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		burned := new(big.Int).Mul(baseFee, big.NewInt(int64(b.GetGasUsed())))
 		burnedPercentage := float64(0.0)
 		if len(txReward.Bits()) != 0 {
-			txBurnedBig := new(big.Float).SetInt(burned)
-			txBurnedBig.Quo(txBurnedBig, new(big.Float).SetInt(txReward))
-			burnedPercentage, _ = txBurnedBig.Float64()
+			burnedPercentage = decimal.NewFromBigInt(burned, 0).DivRound(decimal.NewFromBigInt(txReward, 0), 18).InexactFloat64()
 		}
 
 		tableData[i] = []interface{}{
 			epochText, // Epoch
-			fmt.Sprintf(`%s<BR /><span style="font-size: .63rem; color: grey;">%v</span>`, slotText, utils.FormatTimestamp(b.GetTime().AsTime().Unix())), // Slot
-			fmt.Sprintf(`<A href="block/%d">%v</A>`, blockNumber, utils.FormatAddCommas(blockNumber)),                                                    // Block
+			template.HTML(fmt.Sprintf(`%s<BR /><span style="font-size: .63rem; color: grey;">%v</span>`, slotText, utils.FormatTimestamp(b.GetTime().AsTime().Unix()))), // Slot
+			template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, blockNumber, utils.FormatAddCommas(blockNumber))),                                                    // Block
 			status,                             // Status
 			fmt.Sprintf("%x", b.GetCoinbase()), // Recipient
 			proposer,                           // Proposer
-			fmt.Sprintf(`<span data-toggle="tooltip" data-placement="top" title="%d transactions (%d internal transactions)">%d<BR /><span style="font-size: .63rem; color: grey;">%d</span></span>`, b.GetTransactionCount(), b.GetInternalTransactionCount(), b.GetTransactionCount(), b.GetInternalTransactionCount()),                                                                                                                                                                               // Transactions
-			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="Gas Used %%" style="font-size: .63rem; color: grey;">%.2f%%</span>&nbsp;<span data-toggle="tooltip" data-placement="top" title="%% of Gas Target" style="font-size: .63rem; color: grey;">(%+.2f%%)</span>`, utils.FormatAddCommas(b.GetGasUsed()), float64(int64(float64(b.GetGasUsed())/float64(b.GetGasLimit())*10000.0))/100.0, float64(int64(((float64(b.GetGasUsed())-gasHalf)/gasHalf)*10000.0))/100.0), // Gas Used
+			template.HTML(fmt.Sprintf(`<span data-toggle="tooltip" data-placement="top" title="%d transactions (%d internal transactions)">%d<BR /><span style="font-size: .63rem; color: grey;">%d</span></span>`, b.GetTransactionCount(), b.GetInternalTransactionCount(), b.GetTransactionCount(), b.GetInternalTransactionCount())),                                                                                                                                                                               // Transactions
+			template.HTML(fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="Gas Used %%" style="font-size: .63rem; color: grey;">%.2f%%</span>&nbsp;<span data-toggle="tooltip" data-placement="top" title="%% of Gas Target" style="font-size: .63rem; color: grey;">(%+.2f%%)</span>`, utils.FormatAddCommas(b.GetGasUsed()), float64(int64(float64(b.GetGasUsed())/float64(b.GetGasLimit())*10000.0))/100.0, float64(int64(((float64(b.GetGasUsed())-gasHalf)/gasHalf)*10000.0))/100.0)), // Gas Used
 			utils.FormatAddCommas(b.GetGasLimit()),                               // Gas Limit
 			utils.FormatAmountFormatted(baseFee, "GWei", 5, 4, true, true, true), // Base Fee
-			utils.FormatAmountFormatted(new(big.Int).Add(utils.Eth1BlockReward(blockNumber, b.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward()))), utils.Config.Frontend.ElCurrency, 5, 4, true, true, true),                                               // Reward
-			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="%% of Transactions Fees" style="font-size: .63rem; color: grey;">%.2f%%</span>`, utils.FormatAmountFormatted(burned, "GWei", 5, 4, true, true, false), float64(int64(burnedPercentage*10000.0))/100.0), // Burned Fees
+			utils.FormatAmountFormatted(new(big.Int).Add(utils.Eth1BlockReward(blockNumber, b.GetDifficulty()), new(big.Int).Add(txReward, new(big.Int).SetBytes(b.GetUncleReward()))), utils.Config.Frontend.ElCurrency, 5, 4, true, true, true),                                                                         // Reward
+			fmt.Sprintf(`%v<BR /><span data-toggle="tooltip" data-placement="top" title="%% of Transactions Fees" style="font-size: .63rem; color: grey;">%.2f%%</span>`, utils.FormatAmountFormatted(burned, utils.Config.Frontend.ElCurrency, 5, 4, true, true, false), float64(int64(burnedPercentage*10000.0))/100.0), // Burned Fees
 		}
 	}
 
@@ -239,6 +240,8 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		RecordsTotal:    recordsTotal,
 		RecordsFiltered: recordsTotal,
 		Data:            tableData,
+		DisplayStart:    displayStart,
+		PageLength:      length,
 	}
 
 	return data, nil

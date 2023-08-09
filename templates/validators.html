@@ -3,17 +3,17 @@
   <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
         var validatorsDataTable;
-        var totalCount = {{.TotalCount}};
-        var depositedCount = {{.DepositedCount}};
-        var pendingCount = {{.PendingCount}};
-        var activeOnlineCount = {{.ActiveOnlineCount}};
-        var activeOfflineCount = {{.ActiveOfflineCount}};
-        var slashingOnlineCount = {{.SlashingOnlineCount}};
-        var slashingOfflineCount = {{.SlashingOfflineCount}};
-        var exitingOnlineCount = {{.ExitingOnlineCount}};
-        var exitingOfflineCount = {{.ExitingOfflineCount}};
-        var exitedCount = {{.ExitedCount}};
-        var voluntaryExitsCount = {{.VoluntaryExitsCount}};
+        const totalCount = {{.TotalCount}};
+        const depositedCount = {{.DepositedCount}};
+        const pendingCount = {{.PendingCount}};
+        const activeOnlineCount = {{.ActiveOnlineCount}};
+        const activeOfflineCount = {{.ActiveOfflineCount}};
+        const slashingOnlineCount = {{.SlashingOnlineCount}};
+        const slashingOfflineCount = {{.SlashingOfflineCount}};
+        const exitingOnlineCount = {{.ExitingOnlineCount}};
+        const exitingOfflineCount = {{.ExitingOfflineCount}};
+        const exitedCount = {{.ExitedCount}};
+        const voluntaryExitsCount = {{.VoluntaryExitsCount}};
         var stateFilterDropDownHtml = `<div><label>
             <div class="dropdown" style="display:inline-block;">
             <button class="btn btn-primary dropdown-toggle text-white" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true"><span>All ${totalCount}</span></button>
@@ -231,6 +231,7 @@
                     {
                         targets: 7,
                         data: '7',
+                        orderable: false,
                         render: function(data, type, row, meta) {
                             if (data === null)
                                 return 'No Attestation found';

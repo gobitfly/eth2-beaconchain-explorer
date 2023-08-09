@@ -185,7 +185,7 @@ func main() {
 		go func() {
 			defer wg.Done()
 			cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
-			logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+			logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 
 		}()
 	}
@@ -193,11 +193,11 @@ func main() {
 	wg.Wait()
 	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
 		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
-		logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+		logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 	}
 
 	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (example redis, bigtable)")
 	}
 
 	defer db.ReaderDb.Close()
@@ -230,13 +230,6 @@ func main() {
 	logrus.Infof("database connection established")
 
 	if utils.Config.Indexer.Enabled {
-
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
-
-		if err != nil {
-			logrus.Fatalf("error initializing last attesation cache: %v", err)
-		}
-
 		var rpcClient rpc.Client
 
 		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
@@ -343,7 +336,6 @@ func main() {
 		apiV1Router.HandleFunc("/ethstore/{day}", handlers.ApiEthStoreDay).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/execution/gasnow", handlers.ApiEth1GasNowData).Methods("GET", "OPTIONS")
-		// query params: token
 		apiV1Router.HandleFunc("/execution/block/{blockNumber}", handlers.ApiETH1ExecBlocks).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/{addressIndexOrPubkey}/produced", handlers.ApiETH1AccountProducedBlocks).Methods("GET", "OPTIONS")
 
@@ -353,22 +345,6 @@ func main() {
 		apiV1Router.HandleFunc("/execution/address/{address}/blocks", handlers.ApiEth1AddressBlocks).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/address/{address}/uncles", handlers.ApiEth1AddressUncles).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/address/{address}/tokens", handlers.ApiEth1AddressTokens).Methods("GET", "OPTIONS")
-		// // query params: type={erc20,erc721,erc1155}, address
-
-		// apiV1Router.HandleFunc("/execution/transactions", handlers.ApiEth1Tx).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/transaction/{txhash}/itx", handlers.ApiEth1TxItx).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/transaction/{txhash}/status", handlers.ApiEth1TxStatus).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/token/{token}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/overall/epoch/{epoch}/rewards", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/overall/daily/eth-price?offset={timestamp}&limit={limit}&order={order}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/blocksize?offset={timestamp}&limit={limit}&order={order}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/daily/avg-gas-limit?offset={timestamp}&limit={limit}&order={order} OR ?timestamp={timestamp}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/daily/gas-used?offset={timestamp}&limit={limit}&order={order} OR ?timestamp={timestamp}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/gas-orcale", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/token/{token}/supply?block={block}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/utils/execution/publish-txn?raw={txndata}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-
-		// apiV1Router.HandleFunc("/execution/block/{blockNumber}", handlers.APIETH1).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/widget", handlers.GetMobileWidgetStatsGet).Methods("GET")
 		apiV1Router.HandleFunc("/dashboard/widget", handlers.GetMobileWidgetStatsPost).Methods("POST")
@@ -399,10 +375,6 @@ func main() {
 
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
-
-		// logrus.Infof("initializing frontend services")
-		// services.Init() // Init frontend services
-		// logrus.Infof("frontend services initiated")
 
 		logrus.Infof("initializing prices")
 		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
@@ -545,7 +517,9 @@ func main() {
 			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")
 			router.HandleFunc("/tools/broadcast/status/{jobID}", handlers.BroadcastStatus).Methods("GET")
 
-			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
+			router.HandleFunc("/tables/{tableId}/state", handlers.GetDataTableStateChanges).Methods("GET")
+			router.HandleFunc("/tables/{tableId}/state", handlers.SetDataTableStateChanges).Methods("PUT")
+			router.HandleFunc("/ens/{search}", handlers.EnsSearch).Methods("GET")
 
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 
@@ -574,8 +548,6 @@ func main() {
 			router.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribeByHash).Methods("GET")
 
 			router.HandleFunc("/monitoring/{module}", handlers.Monitoring).Methods("GET", "OPTIONS")
-
-			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
 			signUpRouter := router.PathPrefix("/").Subrouter()
 			signUpRouter.HandleFunc("/login", handlers.Login).Methods("GET")
@@ -632,7 +604,6 @@ func main() {
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
-			// authRouter.HandleFunc("/notifications-center/monitoring/updatesubs", handlers.UserUpdateMonitoringSubscriptions).Methods("POST")
 
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
@@ -666,9 +637,7 @@ func main() {
 				router.PathPrefix("/js").Handler(http.StripPrefix("/js/", jsHandler))
 			}
 			legalFs := http.Dir(utils.Config.Frontend.LegalDir)
-			//router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", http.FileServer(legalFs)))
 			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", handlers.CustomFileServer(http.FileServer(legalFs), legalFs, handlers.NotFound)))
-			//router.PathPrefix("/").Handler(http.FileServer(http.FS(static.Files)))
 			fileSys := http.FS(static.Files)
 			router.PathPrefix("/").Handler(handlers.CustomFileServer(http.FileServer(fileSys), fileSys, handlers.NotFound))
 
@@ -678,23 +647,7 @@ func main() {
 			router.Use(metrics.HttpMiddleware)
 		}
 
-		// l := negroni.NewLogger()
-		// l.SetFormat(`{{.Request.Header.Get "X-Forwarded-For"}}, {{.Request.RemoteAddr}} | {{.StartTime}} | {{.Status}} | {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}{{if ne .Request.URL.RawQuery ""}}?{{.Request.URL.RawQuery}}{{end}}`)
-
-		n := negroni.New(negroni.NewRecovery()) //, l
-
-		// Customize the logging middleware to include a proper module entry for the frontend
-		//frontendLogger := negronilogrus.NewMiddleware()
-		//frontendLogger.Before = func(entry *logrus.Entry, request *http.Request, s string) *logrus.Entry {
-		//	entry = negronilogrus.DefaultBefore(entry, request, s)
-		//	return entry.WithField("module", "frontend")
-		//}
-		//frontendLogger.After = func(entry *logrus.Entry, writer negroni.ResponseWriter, duration time.Duration, s string) *logrus.Entry {
-		//	entry = negronilogrus.DefaultAfter(entry, writer, duration, s)
-		//	return entry.WithField("module", "frontend")
-		//}
-		//n.Use(frontendLogger)
-
+		n := negroni.New(negroni.NewRecovery())
 		n.Use(gzip.Gzip(gzip.DefaultCompression))
 
 		pa := &proxyaddr.ProxyAddr{}
@@ -726,9 +679,6 @@ func main() {
 				logrus.WithError(err).Fatal("Error serving frontend")
 			}
 		}()
-	}
-	if utils.Config.Notifications.Enabled {
-		services.InitNotifications(utils.Config.Notifications.PubkeyCachePath)
 	}
 
 	if utils.Config.Metrics.Enabled {

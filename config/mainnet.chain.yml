@@ -1,14 +1,14 @@
 # Mainnet config
 
 # Extends the mainnet preset
-PRESET_BASE: 'mainnet'
+PRESET_BASE: "mainnet"
 
 # Free-form short name of the network that this configuration applies to - known
 # canonical network names include:
 # * 'mainnet' - there can be only one
 # * 'prater' - testnet
 # Must match the regex: [a-z0-9\-]
-CONFIG_NAME: 'mainnet'
+CONFIG_NAME: "mainnet"
 
 # Transition
 # ---------------------------------------------------------------
@@ -17,8 +17,6 @@ TERMINAL_TOTAL_DIFFICULTY: 11579208923731619542357098500868790785326998466564056
 # By default, don't use these params
 TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000000
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
-
-
 
 # Genesis
 # ---------------------------------------------------------------
@@ -31,7 +29,6 @@ GENESIS_FORK_VERSION: 0x00000000
 # 604800 seconds (7 days)
 GENESIS_DELAY: 604800
 
-
 # Forking
 # ---------------------------------------------------------------
 # Some forks are disabled for now:
@@ -40,19 +37,20 @@ GENESIS_DELAY: 604800
 
 # Altair
 ALTAIR_FORK_VERSION: 0x01000000
-ALTAIR_FORK_EPOCH: 74240  # Oct 27, 2021, 10:56:23am UTC
+ALTAIR_FORK_EPOCH: 74240 # Oct 27, 2021, 10:56:23am UTC
 # Bellatrix
 BELLATRIX_FORK_VERSION: 0x02000000
-BELLATRIX_FORK_EPOCH: 144896  # Sept 6, 2022, 11:34:47am UTC
+BELLATRIX_FORK_EPOCH: 144896 # Sept 6, 2022, 11:34:47am UTC
 # Capella
 CAPELLA_FORK_VERSION: 0x03000000
-CAPELLA_FORK_EPOCH: 194048  # April 12, 2023, 10:27:35pm UTC
+CAPELLA_FORK_EPOCH: 194048 # April 12, 2023, 10:27:35pm UTC
 # Deneb
 DENEB_FORK_VERSION: 0x04000000
 DENEB_FORK_EPOCH: 18446744073709551615
-
-
-
+# Byzantium
+BYZANTIUM_FORK_BLOCK: 4370000
+# Constantinople
+CONSTANTINOPLE_FORK_BLOCK: 7280000
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -67,7 +65,6 @@ SHARD_COMMITTEE_PERIOD: 256
 # 2**11 (= 2,048) Eth1 blocks ~8 hours
 ETH1_FOLLOW_DISTANCE: 2048
 
-
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
@@ -80,7 +77,6 @@ EJECTION_BALANCE: 16000000000
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
 CHURN_LIMIT_QUOTIENT: 65536
-
 
 # Fork choice
 # ---------------------------------------------------------------
@@ -105,14 +101,12 @@ MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
 # 2
 PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
-
 # Sync committee
 # ---------------------------------------------------------------
 # 2**9 (= 512)
 SYNC_COMMITTEE_SIZE: 512
 # 2**8 (= 256)
 EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
-
 
 # Sync protocol
 # ---------------------------------------------------------------
@@ -157,7 +151,6 @@ CUSTODY_PERIOD_TO_RANDAO_PADDING: 2048
 # 2**15 (= 32,768) epochs, ~146 days
 MAX_CHUNK_CHALLENGE_DELAY: 32768
 
-
 # Max operations
 # ---------------------------------------------------------------
 # 2**8 (= 256)
@@ -170,7 +163,6 @@ MAX_CUSTODY_CHUNK_CHALLENGES: 4
 MAX_CUSTODY_CHUNK_CHALLENGE_RESP: 16
 # 2**0 (= 1)
 MAX_CUSTODY_SLASHINGS: 1
-
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------
@@ -196,12 +188,10 @@ HYSTERESIS_DOWNWARD_MULTIPLIER: 1
 # 5 (plus 1.25)
 HYSTERESIS_UPWARD_MULTIPLIER: 5
 
-
 # Fork Choice
 # ---------------------------------------------------------------
 # 2**3 (= 8)
 SAFE_SLOTS_TO_UPDATE_JUSTIFIED: 8
-
 
 # Gwei values
 # ---------------------------------------------------------------
@@ -211,7 +201,6 @@ MIN_DEPOSIT_AMOUNT: 1000000000
 MAX_EFFECTIVE_BALANCE: 32000000000
 # 2**0 * 10**9 (= 1,000,000,000) Gwei
 EFFECTIVE_BALANCE_INCREMENT: 1000000000
-
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -230,7 +219,6 @@ SLOTS_PER_HISTORICAL_ROOT: 8192
 # 2**2 (= 4) epochs 25.6 minutes
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 
-
 # State list lengths
 # ---------------------------------------------------------------
 # 2**16 (= 65,536) epochs ~0.8 years
@@ -241,7 +229,6 @@ EPOCHS_PER_SLASHINGS_VECTOR: 8192
 HISTORICAL_ROOTS_LIMIT: 16777216
 # 2**40 (= 1,099,511,627,776) validator spots
 VALIDATOR_REGISTRY_LIMIT: 1099511627776
-
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------
@@ -257,7 +244,6 @@ INACTIVITY_PENALTY_QUOTIENT: 67108864
 MIN_SLASHING_PENALTY_QUOTIENT: 128
 # 1 (lower safety margin at Phase 0 genesis)
 PROPORTIONAL_SLASHING_MULTIPLIER: 1
-
 
 # Max operations per block
 # ---------------------------------------------------------------
@@ -308,7 +294,6 @@ MIN_SAMPLE_PRICE: 8
 # ---------------------------------------------------------------
 # 2**4 (= 16)
 MAX_BLS_TO_EXECUTION_CHANGES: 16
-
 
 # Execution
 # ---------------------------------------------------------------

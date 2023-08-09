@@ -114,7 +114,7 @@
                   .attr("style", "font-size: .7rem; z-index: 99;")
                   .text((d) => {
                     if (d.participation) {
-                      var txt = d.finalized ? "finalized" : "justifying"
+                      var txt = d.finalized ? "finalized" : d.justified ? "justified" :"justifying"
                       return txt + " " + d.participation + "%"
                     } else {
                       return d.slots[0].Slot ? "processing..." : ""
@@ -126,7 +126,7 @@
 
                   .text((d) => {
                     if (d.participation) {
-                      var txt = d.finalized ? "finalized" : "justifying"
+                      var txt = d.finalized ? "finalized" : d.justified ? "justified" : "justifying"
                       return txt + " " + d.participation + "%"
                     } else {
                       return d.slots[0].Slot ? "processing..." : ""
@@ -182,9 +182,11 @@
                     .attr("x", (d, i) => x(i))
                     .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
                     .attr("slot", (d) => d.Slot)
-                    .on("click", (d) => {
+                    .on("mouseup", (d) => {
                       var slot = d.target.getAttribute("slot")
-                      if (slot) {
+                      if (d.which == 2 ){
+                        window.open(`/slot/${slot}`,"_blank");
+                      } else if (d.which == 1){
                         window.location = "/slot/" + slot
                       }
                     })
@@ -321,9 +323,13 @@
                   .attr("data-original-title", (d, i) => `epoch ${d.epoch} participation ${d.participation}%`)
                   .attr("data-toggle", "tooltip")
                   .attr("epoch", (d) => d.epoch)
-                  .on("click", (d) => {
+                  .on("mouseup", (d) => {
                     var epoch = d.target.getAttribute("epoch")
-                    window.location = "/epoch/" + epoch
+                    if (d.which == 2 ){
+                      window.open(`/epoch/${epoch}`,"_blank");
+                    } else if (d.which == 1){
+                      window.location = "/epoch/" + epoch
+                    }
                   })
               },
               (update) => {

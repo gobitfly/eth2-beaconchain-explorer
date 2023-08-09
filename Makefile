@@ -5,7 +5,7 @@ BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
 LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILDDATE} -X ${PACKAGE}/version.GitCommit=${GITCOMMIT} -X ${PACKAGE}/version.GitDate=${GITDATE} -s -w"
 
-all: explorer stats frontend-data-updater eth1indexer ethstore-exporter rewards-exporter node-jobs-processor signatures
+all: explorer stats frontend-data-updater eth1indexer ethstore-exporter rewards-exporter node-jobs-processor signatures notification-sender notification-collector
 
 lint:
 	golint ./...
@@ -43,6 +43,12 @@ signatures:
 
 misc:
 	go build --ldflags=${LDFLAGS} -o bin/misc cmd/misc/main.go
+
+notification-sender:
+	go build --ldflags=${LDFLAGS} -o bin/notification-sender cmd/notification-sender/main.go
+
+notification-collector:
+	go build --ldflags=${LDFLAGS} -o bin/notification-collector cmd/notification-collector/main.go
 
 playground:
 	go build --ldflags=${LDFLAGS} -o bin/add_income_stats cmd/playground/add_income_stats/main.go

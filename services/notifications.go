@@ -110,6 +110,7 @@ func notificationCollector() {
 
 			// Network DB Notifications (user related, must only run on one instance ever!!!!)
 			if utils.Config.Notifications.UserDBNotifications {
+				logger.Infof("collecting user db notifications")
 				userNotifications, err := collectUserDbNotifications(epoch)
 				if err != nil {
 					logger.Errorf("error collection user db notifications: %v", err)
@@ -140,7 +141,7 @@ func notificationSender() {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
 
-		conn, err := db.FrontendReaderDB.Conn(ctx)
+		conn, err := db.FrontendWriterDB.Conn(ctx)
 		if err != nil {
 			logger.WithError(err).Error("error creating connection")
 			cancel()
@@ -230,49 +231,49 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 		return nil, fmt.Errorf("epochs coherence check failed, aborting")
 	}
 
-	logger.Infof("Started collecting notifications")
+	logger.Infof("started collecting notifications")
 
 	err = collectAttestationAndOfflineValidatorNotifications(notificationsByUserID, 0, epoch)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_missed_attestation").Inc()
 		return nil, fmt.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 	}
-	logger.Infof("collecting attestation & offline notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting attestation & offline notifications took: %v", time.Since(start))
 
 	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName, epoch)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_executed_block_proposal").Inc()
 		return nil, fmt.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
 	}
-	logger.Infof("collecting block proposal proposed notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting block proposal proposed notifications took: %v", time.Since(start))
 
 	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName, epoch)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_missed_block_proposal").Inc()
 		return nil, fmt.Errorf("error collecting validator_proposal_missed notifications: %v", err)
 	}
-	logger.Infof("collecting block proposal missed notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting block proposal missed notifications took: %v", time.Since(start))
 
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID, epoch)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_validator_got_slashed").Inc()
 		return nil, fmt.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
-	logger.Infof("collecting validator got slashed notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting validator got slashed notifications took: %v", time.Since(start))
 
 	err = collectWithdrawalNotifications(notificationsByUserID, epoch)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_validator_withdrawal").Inc()
 		return nil, fmt.Errorf("error collecting withdrawal notifications: %v", err)
 	}
-	logger.Infof("collecting withdrawal notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting withdrawal notifications took: %v", time.Since(start))
 
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_network").Inc()
 		return nil, fmt.Errorf("error collecting network notifications: %v", err)
 	}
-	logger.Infof("collecting network notifications took: %v\n", time.Since(start))
+	logger.Infof("collecting network notifications took: %v", time.Since(start))
 
 	// Rocketpool
 	{
@@ -292,28 +293,28 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
 				return nil, fmt.Errorf("error collecting rocketpool commission: %v", err)
 			}
-			logger.Infof("collecting rocketpool commissions took: %v\n", time.Since(start))
+			logger.Infof("collecting rocketpool commissions took: %v", time.Since(start))
 
 			err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
 			if err != nil {
 				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
 				return nil, fmt.Errorf("error collecting new rocketpool claim round: %v", err)
 			}
-			logger.Infof("collecting rocketpool claim round took: %v\n", time.Since(start))
+			logger.Infof("collecting rocketpool claim round took: %v", time.Since(start))
 
 			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolCollateralMaxReached, epoch)
 			if err != nil {
 				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
 				return nil, fmt.Errorf("error collecting rocketpool max collateral: %v", err)
 			}
-			logger.Infof("collecting rocketpool max collateral took: %v\n", time.Since(start))
+			logger.Infof("collecting rocketpool max collateral took: %v", time.Since(start))
 
 			err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolCollateralMinReached, epoch)
 			if err != nil {
 				metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
 				return nil, fmt.Errorf("error collecting rocketpool min collateral: %v", err)
 			}
-			logger.Infof("collecting rocketpool min collateral took: %v\n", time.Since(start))
+			logger.Infof("collecting rocketpool min collateral took: %v", time.Since(start))
 		}
 	}
 
@@ -322,7 +323,7 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 		metrics.Errors.WithLabelValues("notifications_collect_sync_committee").Inc()
 		return nil, fmt.Errorf("error collecting sync committee: %v", err)
 	}
-	logger.Infof("collecting sync committee took: %v\n", time.Since(start))
+	logger.Infof("collecting sync committee took: %v", time.Since(start))
 
 	return notificationsByUserID, nil
 }
@@ -501,7 +502,7 @@ func garbageCollectNotificationQueue(useDB *sqlx.DB) error {
 
 	rowsAffected, _ := rows.RowsAffected()
 
-	logger.Infof("Deleted %v rows from the notification_queue", rowsAffected)
+	logger.Infof("deleted %v rows from the notification_queue", rowsAffected)
 
 	return nil
 }
@@ -854,7 +855,7 @@ func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventN
 								continue
 							}
 						} else if w.Retries > 5 && !w.LastSent.Valid {
-							logger.Warn("error webhook has more than 5 retries and does not have a valid last_sent timestamp")
+							logger.Warnf("webhook '%v' has more than 5 retries and does not have a valid last_sent timestamp", w.Url)
 							continue
 						}
 
@@ -1011,13 +1012,13 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 				metrics.NotificationsSent.WithLabelValues("webhook", resp.Status).Inc()
 			}
 
-			if resp != nil && resp.StatusCode < 400 {
-				_, err := useDB.Exec(`UPDATE notification_queue SET sent = now();`)
-				if err != nil {
-					logger.WithError(err).Errorf("error updating notification_queue table")
-					return
-				}
+			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() where id = $1`, n.Id)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating notification_queue table")
+				return
+			}
 
+			if resp != nil && resp.StatusCode < 400 {
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0, last_sent = now() WHERE id = $1;`, n.Content.Webhook.ID)
 				if err != nil {
 					logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
@@ -1123,7 +1124,6 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					continue // skip
 				}
 
-				logger.Infof("discord request webhook body: %s", reqBody.String())
 				resp, err := client.Post(webhook.Url, "application/json", reqBody)
 				if err != nil {
 					logger.Errorf("error sending discord webhook request: %v", err)
@@ -1145,8 +1145,12 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 						}
 						errResp.Status = resp.Status
 					}
-					utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
 
+					if strings.Contains(errResp.Body, "You are being rate limited") {
+						logger.Warnf("could not push to discord webhook due to rate limit. %v url: %v", errResp.Body, webhook.Url)
+					} else {
+						utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
+					}
 					_, err = useDB.Exec(`UPDATE users_webhooks SET request = $2, response = $3 WHERE id = $1;`, webhook.ID, reqs[i].Content.DiscordRequest, errResp)
 					if err != nil {
 						logger.Errorf("error storing failure data in users_webhooks table: %v", err)
@@ -2292,6 +2296,8 @@ func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[ty
 	)
 }
 
+var isFirstNotificationCheck = true
+
 func collectMonitoringMachine(
 	notificationsByUserID map[uint64]map[types.EventName][]types.Notification,
 	eventName types.EventName,
@@ -2344,11 +2350,44 @@ func collectMonitoringMachine(
 		}
 	}
 
-	// if at least 90% of users would be notified, we expect an issue on our end and no one will be notified
-	const notifiedSubscriptionsRatioThreshold = 0.9
-	if float64(len(result))/float64(len(allSubscribed)) >= notifiedSubscriptionsRatioThreshold {
-		utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
-		return nil
+	subThreshold := uint64(10)
+	if utils.Config.Notifications.MachineEventThreshold != 0 {
+		subThreshold = utils.Config.Notifications.MachineEventThreshold
+	}
+
+	subFirstRatioThreshold := 0.3
+	if utils.Config.Notifications.MachineEventFirstRatioThreshold != 0 {
+		subFirstRatioThreshold = utils.Config.Notifications.MachineEventFirstRatioThreshold
+	}
+
+	subSecondRatioThreshold := 0.9
+	if utils.Config.Notifications.MachineEventSecondRatioThreshold != 0 {
+		subSecondRatioThreshold = utils.Config.Notifications.MachineEventSecondRatioThreshold
+	}
+
+	var subScriptionCount uint64
+	err = db.FrontendWriterDB.Get(&subScriptionCount,
+		`SELECT 
+			COUNT(DISTINCT user_id)
+			FROM users_subscriptions
+			WHERE event_name = $1`,
+		eventName)
+	if err != nil {
+		return err
+	}
+
+	// If there are too few users subscribed to this event, we always send the notifications
+	if subScriptionCount >= subThreshold {
+		subRatioThreshold := subSecondRatioThreshold
+		// For the machine offline check we do a low threshold check first and the next time a high threshold check
+		if isFirstNotificationCheck && eventName == types.MonitoringMachineOfflineEventName {
+			subRatioThreshold = subFirstRatioThreshold
+			isFirstNotificationCheck = false
+		}
+		if float64(len(result))/float64(len(allSubscribed)) >= subRatioThreshold {
+			utils.LogError(nil, fmt.Errorf("error too many users would be notified concerning: %v", eventName), 0)
+			return nil
+		}
 	}
 
 	for _, r := range result {
@@ -2370,6 +2409,11 @@ func collectMonitoringMachine(
 		}
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+	}
+
+	if eventName == types.MonitoringMachineOfflineEventName {
+		// Notifications will be sent, reset the flag
+		isFirstNotificationCheck = true
 	}
 
 	return nil
@@ -2538,10 +2582,7 @@ func (n *taxReportNotification) GetInfoMarkdown() string {
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return err
-	}
+	lastStatsDay := LatestExportedStatisticDay()
 
 	//Check that the last day of the month is already exported
 	tNow := time.Now()
@@ -2563,7 +2604,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		name = utils.Config.Chain.Config.ConfigName + ":" + name
 	}
 
-	err = db.FrontendWriterDB.Select(&dbResult, `
+	err := db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));

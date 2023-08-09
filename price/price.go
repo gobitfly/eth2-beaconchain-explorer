@@ -4,13 +4,13 @@ import (
 	"context"
 	"eth2-exporter/price/chainlink_feed"
 	"fmt"
-	"math/big"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -220,15 +220,12 @@ func GetPrice(a, b string) float64 {
 }
 
 func getPriceFromFeed(feed *chainlink_feed.Feed) (float64, error) {
-	decimals, _ := new(big.Float).SetString("100000000") // 8 decimal places for the Chainlink feeds
+	decimals := decimal.NewFromInt(1e8) // 8 decimal places for the Chainlink feeds
 	res, err := feed.LatestRoundData(nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch latest chainlink eth/usd price feed data: %v", err)
 	}
-	priceRaw := new(big.Float).SetInt(res.Answer)
-	priceRaw.Quo(priceRaw, decimals)
-	price, _ := priceRaw.Float64()
-	return price, nil
+	return decimal.NewFromBigInt(res.Answer, 0).Div(decimals).InexactFloat64(), nil
 }
 
 func GetAvailableCurrencies() []string {

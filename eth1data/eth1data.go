@@ -189,7 +189,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 						err := boundContract.UnpackLogIntoMap(logData, name, *log)
 
 						if err != nil {
-							logger.Errorf("error decoding event %v", name)
+							logger.Warnf("error decoding event [%v] for tx [0x%x]", name, tx.Hash())
 						}
 
 						eth1Event := &types.Eth1EventData{
