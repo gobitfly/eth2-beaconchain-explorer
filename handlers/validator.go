@@ -390,7 +390,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			timings.Earnings = time.Since(start)
 		}()
-		earnings, balances, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
+		earnings, balances, err := GetValidatorEarnings([]uint64{index}, currency)
 		if err != nil {
 			return fmt.Errorf("error retrieving validator earnings: %v", err)
 		}
@@ -797,7 +797,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.IncomeToday.Total = float64(validatorPageData.IncomeToday.Cl) + price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, utils.Config.Frontend.ClCurrencySymbol)*float64(validatorPageData.IncomeToday.El)
+	validatorPageData.IncomeToday.Total = float64(validatorPageData.IncomeToday.Cl) + price.GetPrice(utils.Config.Frontend.ElCurrency, utils.Config.Frontend.ClCurrency)*float64(validatorPageData.IncomeToday.El)
 	validatorPageData.FutureDutiesEpoch = protomath.MaxU64(futureProposalEpoch, futureSyncDutyEpoch)
 
 	data.Data = validatorPageData

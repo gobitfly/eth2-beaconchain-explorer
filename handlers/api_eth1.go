@@ -260,7 +260,7 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gasnowData.Data.PriceUSD = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD")
+	gasnowData.Data.PriceUSD = price.GetPrice(utils.Config.Frontend.ClCurrency, "USD")
 	gasnowData.Data.Currency = ""
 
 	err := json.NewEncoder(w).Encode(gasnowData)

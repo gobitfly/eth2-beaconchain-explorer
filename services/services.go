@@ -640,7 +640,7 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
-	currency := utils.Config.Frontend.MainCurrencySymbol
+	currency := utils.Config.Frontend.MainCurrency
 
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
@@ -1162,24 +1162,56 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = LatestProposedSlot()
 	data.FinalityDelay = FinalizationDelay()
 	data.IsSyncing = IsSyncing()
-	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))
-	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)
-	data.EurRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "EUR"))
-	data.EurTruncPrice = utils.KFormatterEthPrice(data.EurRoundPrice)
-	data.GbpRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "GBP"))
-	data.GbpTruncPrice = utils.KFormatterEthPrice(data.GbpRoundPrice)
-	data.CnyRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CNY"))
-	data.CnyTruncPrice = utils.KFormatterEthPrice(data.CnyRoundPrice)
-	data.RubRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "RUB"))
-	data.RubTruncPrice = utils.KFormatterEthPrice(data.RubRoundPrice)
-	data.CadRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CAD"))
-	data.CadTruncPrice = utils.KFormatterEthPrice(data.CadRoundPrice)
-	data.AudRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "AUD"))
-	data.AudTruncPrice = utils.KFormatterEthPrice(data.AudRoundPrice)
-	data.JpyRoundPrice = price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "JPY"))
-	data.JpyTruncPrice = utils.KFormatterEthPrice(data.JpyRoundPrice)
+	data.Rates = GetRates(utils.Config.Frontend.MainCurrency)
 
 	return data
+}
+
+func GetRates(selectedCurrency string) *types.Rates {
+	r := types.Rates{}
+
+	r.SelectedCurrency = selectedCurrency
+	r.SelectedCurrencySymbol = price.GetCurrencySymbol(r.SelectedCurrency)
+
+	r.MainCurrency = utils.Config.Frontend.MainCurrency
+	r.ClCurrency = utils.Config.Frontend.ClCurrency
+	r.ElCurrency = utils.Config.Frontend.ElCurrency
+	r.TickerCurrency = selectedCurrency
+	if r.TickerCurrency == utils.Config.Frontend.MainCurrency {
+		r.TickerCurrency = "USD"
+	}
+
+	r.MainCurrencySymbol = price.GetCurrencySymbol(utils.Config.Frontend.MainCurrency)
+	r.ElCurrencySymbol = price.GetCurrencySymbol(utils.Config.Frontend.ElCurrency)
+	r.ClCurrencySymbol = price.GetCurrencySymbol(utils.Config.Frontend.ClCurrency)
+	r.TickerCurrencySymbol = price.GetCurrencySymbol(r.TickerCurrencySymbol)
+
+	r.MainCurrencyPrice = price.GetPrice(utils.Config.Frontend.MainCurrency, r.SelectedCurrency)
+	r.ClCurrencyPrice = price.GetPrice(utils.Config.Frontend.ClCurrency, r.SelectedCurrency)
+	r.ElCurrencyPrice = price.GetPrice(utils.Config.Frontend.ElCurrency, r.SelectedCurrency)
+	r.TickerCurrencyPrice = price.GetPrice(utils.Config.Frontend.ElCurrency, r.TickerCurrency)
+
+	r.MainCurrencyPriceFormatted = utils.FormatAddCommas(uint64(r.MainCurrencyPrice))
+	r.ClCurrencyPriceFormatted = utils.FormatAddCommas(uint64(r.ClCurrencyPrice))
+	r.ElCurrencyPriceFormatted = utils.FormatAddCommas(uint64(r.ElCurrencyPrice))
+	r.TickerCurrencyPriceFormatted = utils.FormatAddCommas(uint64(r.TickerCurrencyPrice))
+
+	r.MainCurrencyPriceKFormatted = utils.KFormatterEthPrice(uint64(r.MainCurrencyPrice))
+	r.ClCurrencyPriceKFormatted = utils.KFormatterEthPrice(uint64(r.ClCurrencyPrice))
+	r.ElCurrencyPriceKFormatted = utils.KFormatterEthPrice(uint64(r.ElCurrencyPrice))
+	r.TickerCurrencyPriceKFormatted = utils.FormatAddCommas(uint64(r.TickerCurrencyPrice))
+
+	r.MainCurrencyPrices = map[string]types.RatesPrice{}
+	for _, c := range price.GetAvailableCurrencies() {
+		p := types.RatesPrice{}
+		p.Symbol = price.GetCurrencySymbol(c)
+		cPrice := price.GetPrice(utils.Config.Frontend.MainCurrency, c)
+		p.RoundPrice = uint64(cPrice)
+		p.TruncPrice = utils.KFormatterEthPrice(uint64(cPrice))
+		r.MainCurrencyPrices[c] = p
+	}
+
+	return &r
 }
 
 func GetLatestStats() *types.Stats {
@@ -1360,7 +1392,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		logrus.WithError(err).Error("error updating gas now history")
 	}
 
-	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD")
+	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ClCurrency, "USD")
 	gpoData.Data.Currency = "USD"
 
 	// gpoData.RapidUSD = gpoData.Rapid * 21000 * params.GWei / params.Ether * usd

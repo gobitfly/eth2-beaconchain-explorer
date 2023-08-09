@@ -110,7 +110,7 @@ func main() {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 
-	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrencySymbol, utils.Config.Frontend.ElCurrencySymbol)
+	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
 
 	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
 		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)

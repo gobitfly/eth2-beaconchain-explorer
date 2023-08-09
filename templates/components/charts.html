@@ -40,10 +40,10 @@
 
     {{if .WithdrawalChart}}
     var series = {{.WithdrawalChart.Data.Series}}
-    var selectedCurrency = {{$.Rates.Currency}}
-    var ethPrice = {{$.Rates.EthPrice}}
-    var clPrice = {{$.Rates.ClPrice}}
-    var clCurrency = {{config.Frontend.ClCurrencySymbol}}
+    var selectedCurrency = {{$.Rates.SelectedCurrency}}
+    var ethPrice = {{$.Rates.MainCurrencyPrice}}
+    var clPrice = {{$.Rates.ClCurrencyPrice}}
+    var clCurrency = {{config.Frontend.ClCurrency}}
 
     window.addEventListener('load', function() {
         Highcharts.stockChart('withdrawal-chart',{

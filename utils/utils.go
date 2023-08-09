@@ -474,26 +474,26 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Chain.DomainVoluntaryExit = "0x04000000"
 	}
 
-	if cfg.Frontend.ClCurrencySymbol == "" {
+	if cfg.Frontend.ClCurrency == "" {
 		switch cfg.Chain.Name {
 		case "gnosis":
-			cfg.Frontend.MainCurrencySymbol = "GNO"
-			cfg.Frontend.ClCurrencySymbol = "mGNO"
+			cfg.Frontend.MainCurrency = "GNO"
+			cfg.Frontend.ClCurrency = "mGNO"
 			cfg.Frontend.ClCurrencyDivisor = 1e9
 		default:
-			cfg.Frontend.MainCurrencySymbol = "ETH"
-			cfg.Frontend.ClCurrencySymbol = "ETH"
+			cfg.Frontend.MainCurrency = "ETH"
+			cfg.Frontend.ClCurrency = "ETH"
 			cfg.Frontend.ClCurrencyDivisor = 1e9
 		}
 	}
 
-	if cfg.Frontend.ElCurrencySymbol == "" {
+	if cfg.Frontend.ElCurrency == "" {
 		switch cfg.Chain.Name {
 		case "gnosis":
-			cfg.Frontend.ElCurrencySymbol = "xDAI"
+			cfg.Frontend.ElCurrency = "xDAI"
 			cfg.Frontend.ElCurrencyDivisor = 1e18
 		default:
-			cfg.Frontend.ElCurrencySymbol = "ETH"
+			cfg.Frontend.ElCurrency = "ETH"
 			cfg.Frontend.ElCurrencyDivisor = 1e18
 		}
 	}
@@ -509,8 +509,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 		"depositChainID":         cfg.Chain.Config.DepositChainID,
 		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
 		"depositContractAddress": cfg.Chain.Config.DepositContractAddress,
-		"clCurrencySymbol":       cfg.Frontend.ClCurrencySymbol,
-		"elCurrencySymbol":       cfg.Frontend.ElCurrencySymbol,
+		"clCurrency":             cfg.Frontend.ClCurrency,
+		"elCurrency":             cfg.Frontend.ElCurrency,
+		"mainCurrency":           cfg.Frontend.MainCurrency,
 	}).Infof("did init config")
 
 	return nil

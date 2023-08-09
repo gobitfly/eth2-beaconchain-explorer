@@ -38,7 +38,7 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
-	Rates                 PageRates
+	Rates                 *Rates
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
@@ -76,38 +76,39 @@ type NavigationLink struct {
 	IsHighlighted bool
 }
 
-type PageRates struct {
-	EthPrice               float64
-	EthRoundPrice          uint64
-	EthTruncPrice          template.HTML
-	UsdRoundPrice          uint64
-	UsdTruncPrice          template.HTML
-	EurRoundPrice          uint64
-	EurTruncPrice          template.HTML
-	GbpRoundPrice          uint64
-	GbpTruncPrice          template.HTML
-	CnyRoundPrice          uint64
-	CnyTruncPrice          template.HTML
-	RubRoundPrice          uint64
-	RubTruncPrice          template.HTML
-	CadRoundPrice          uint64
-	CadTruncPrice          template.HTML
-	AudRoundPrice          uint64
-	AudTruncPrice          template.HTML
-	JpyRoundPrice          uint64
-	JpyTruncPrice          template.HTML
-	Currency               string
-	CurrentPriceFormatted  template.HTML
-	CurrentPriceKFormatted template.HTML
-	CurrentSymbol          string
-	ExchangeRate           float64
+type Rates struct {
+	TickerCurrency                  string                `json:"trickerCurrency"`
+	TickerCurrencySymbol            string                `json:"trickerCurrencySymbol"`
+	TickerCurrencyPrice             float64               `json:"tickerCurrencyPrice"`
+	TickerCurrencyPriceFormatted    template.HTML         `json:"tickerCurrencyPriceFormatted"`
+	TickerCurrencyPriceKFormatted   template.HTML         `json:"tickerCurrencyKFormatted"`
+	SelectedCurrency                string                `json:"selectedCurrency"`
+	SelectedCurrencySymbol          string                `json:"selectedCurrencySymbol"`
+	SelectedCurrencyPrice           float64               `json:"selectedCurrencyPrice"`
+	SelectedCurrencyPriceFormatted  template.HTML         `json:"selectedCurrencyPriceFormatted"`
+	SelectedCurrencyPriceKFormatted template.HTML         `json:"selectedCurrencyKFormatted"`
+	MainCurrency                    string                `json:"mainCurrency"`
+	MainCurrencySymbol              string                `json:"mainCurrencySymbol"`
+	MainCurrencyPrice               float64               `json:"mainCurrencyPrice"`
+	MainCurrencyPriceFormatted      template.HTML         `json:"mainCurrencyPriceFormatted"`
+	MainCurrencyPriceKFormatted     template.HTML         `json:"mainCurrencyKFormatted"`
+	ElCurrency                      string                `json:"elCurrency"`
+	ElCurrencySymbol                string                `json:"elCurrencySymbol"`
+	ElCurrencyPrice                 float64               `json:"elCurrencyPrice"`
+	ElCurrencyPriceFormatted        template.HTML         `json:"elCurrencyPriceFormatted"`
+	ElCurrencyPriceKFormatted       template.HTML         `json:"elCurrencyKFormatted"`
+	ClCurrency                      string                `json:"clCurrency"`
+	ClCurrencySymbol                string                `json:"clCurrencySymbol"`
+	ClCurrencyPrice                 float64               `json:"clCurrencyPrice"`
+	ClCurrencyPriceFormatted        template.HTML         `json:"clCurrencyPriceFormatted"`
+	ClCurrencyPriceKFormatted       template.HTML         `json:"clCurrencyKFormatted"`
+	MainCurrencyPrices              map[string]RatesPrice `json:"mainCurrencyTickerPrices"`
+}
 
-	TickerCurrency string
-	CurrencyPrice  float64
-	ElPrice        float64
-	ClPrice        float64
-	ElRoundPrice   uint64
-	ClRoundPrice   uint64
+type RatesPrice struct {
+	Symbol     string        `json:"symbol"`
+	RoundPrice uint64        `json:"roundPrice"`
+	TruncPrice template.HTML `json:"truncPrice"`
 }
 
 // Meta is a struct to hold metadata about the page
@@ -126,42 +127,13 @@ type Meta struct {
 
 // LatestState is a struct to hold data for the banner
 type LatestState struct {
-	LastProposedSlot      uint64        `json:"lastProposedSlot"`
-	CurrentSlot           uint64        `json:"currentSlot"`
-	CurrentEpoch          uint64        `json:"currentEpoch"`
-	CurrentFinalizedEpoch uint64        `json:"currentFinalizedEpoch"`
-	FinalityDelay         uint64        `json:"finalityDelay"`
-	IsSyncing             bool          `json:"syncing"`
-	EthPrice              float64       `json:"ethPrice"`
-	EthRoundPrice         uint64        `json:"ethRoundPrice"`
-	EthTruncPrice         template.HTML `json:"ethTruncPrice"`
-	UsdRoundPrice         uint64        `json:"usdRoundPrice"`
-	UsdTruncPrice         template.HTML `json:"usdTruncPrice"`
-	EurRoundPrice         uint64        `json:"eurRoundPrice"`
-	EurTruncPrice         template.HTML `json:"eurTruncPrice"`
-	GbpRoundPrice         uint64        `json:"gbpRoundPrice"`
-	GbpTruncPrice         template.HTML `json:"gbpTruncPrice"`
-	CnyRoundPrice         uint64        `json:"cnyRoundPrice"`
-	CnyTruncPrice         template.HTML `json:"cnyTruncPrice"`
-	RubRoundPrice         uint64        `json:"rubRoundPrice"`
-	RubTruncPrice         template.HTML `json:"rubTruncPrice"`
-	CadRoundPrice         uint64        `json:"cadRoundPrice"`
-	CadTruncPrice         template.HTML `json:"cadTruncPrice"`
-	AudRoundPrice         uint64        `json:"audRoundPrice"`
-	AudTruncPrice         template.HTML `json:"audTruncPrice"`
-	JpyRoundPrice         uint64        `json:"jpyRoundPrice"`
-	JpyTruncPrice         template.HTML `json:"jpyTruncPrice"`
-	Currency              string        `json:"currency"`
-
-	TickerCurrency string  `json:"selectedCurrency"`
-	TickerPrice    float64 `json:"tickerPrice"`
-
-	ClPrice      float64 `json:"clPrice"`
-	ClRoundPrice float64 `json:"clRoundPrice"`
-	ClTruncPrice float64 `json:"clTruncPrice"`
-	ElPrice      float64 `json:"elPrice"`
-	ElRoundPrice float64 `json:"elRoundPrice"`
-	ElTruncPrice float64 `json:"elTruncPrice"`
+	LastProposedSlot      uint64 `json:"lastProposedSlot"`
+	CurrentSlot           uint64 `json:"currentSlot"`
+	CurrentEpoch          uint64 `json:"currentEpoch"`
+	CurrentFinalizedEpoch uint64 `json:"currentFinalizedEpoch"`
+	FinalityDelay         uint64 `json:"finalityDelay"`
+	IsSyncing             bool   `json:"syncing"`
+	Rates                 *Rates `json:"rates"`
 }
 
 type Stats struct {
@@ -221,8 +193,8 @@ type IndexPageData struct {
 	DepositDistribution       *ChartsPageDataChart
 	Countdown                 interface{}
 	SlotVizData               *SlotVizPageData `json:"slotVizData"`
-	ClCurrencySymbol          string
-	ElCurrencySymbol          string
+	ClCurrency                string
+	ElCurrency                string
 	ValidatorsPerEpoch        uint64
 	ValidatorsPerDay          uint64
 	NewDepositProcessAfter    string

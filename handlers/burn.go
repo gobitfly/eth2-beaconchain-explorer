@@ -24,11 +24,11 @@ func Burn(w http.ResponseWriter, r *http.Request) {
 
 	currency := GetCurrency(r)
 
-	if currency == utils.Config.Frontend.ClCurrencySymbol {
+	if currency == utils.Config.Frontend.ClCurrency {
 		currency = "USD"
 	}
 
-	latestBurn.Price = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
+	latestBurn.Price = price.GetPrice(utils.Config.Frontend.ClCurrency, currency)
 	latestBurn.Currency = currency
 
 	data.Data = latestBurn
@@ -47,7 +47,7 @@ func BurnPageData(w http.ResponseWriter, r *http.Request) {
 		currency = "USD"
 	}
 
-	latestBurn.Price = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
+	latestBurn.Price = price.GetPrice(utils.Config.Frontend.ClCurrency, currency)
 	latestBurn.Currency = currency
 
 	err := json.NewEncoder(w).Encode(latestBurn)

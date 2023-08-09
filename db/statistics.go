@@ -615,7 +615,7 @@ func GetValidatorIncomeHistoryChart(validator_indices []uint64, currency string,
 	}
 	var clRewardsSeries = make([]*types.ChartDataPoint, len(incomeHistory))
 
-	p := price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
+	p := price.GetPrice(utils.Config.Frontend.ClCurrency, currency)
 
 	for i := 0; i < len(incomeHistory); i++ {
 		color := "#7cb5ec"
@@ -982,8 +982,8 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 	}
 
-	logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))).String())
-	err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD"))).String())
+	logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ClCurrency, "USD"))).String())
+	err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(72009990.50)).Mul(decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ClCurrency, "USD"))).String())
 	if err != nil {
 		return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
 	}

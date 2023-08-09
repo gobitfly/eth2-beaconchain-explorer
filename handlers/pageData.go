@@ -53,47 +53,19 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		LatestFinalizedEpoch:  services.LatestFinalizedEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		Rates: types.PageRates{
-			EthPrice:               0,
-			EthRoundPrice:          0,
-			EthTruncPrice:          "",
-			UsdRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "USD")),
-			UsdTruncPrice:          "",
-			EurRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "EUR")),
-			EurTruncPrice:          "",
-			GbpRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "GBP")),
-			GbpTruncPrice:          "",
-			CnyRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CNY")),
-			CnyTruncPrice:          "",
-			RubRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "RUB")),
-			RubTruncPrice:          "",
-			CadRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "CAD")),
-			CadTruncPrice:          "",
-			AudRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "AUD")),
-			AudTruncPrice:          "",
-			JpyRoundPrice:          price.GetEthRoundPrice(price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, "JPY")),
-			JpyTruncPrice:          "",
-			Currency:               GetCurrency(r),
-			TickerCurrency:         GetTickerCurrency(r),
-			CurrentPriceFormatted:  GetCurrentPriceFormatted(r),
-			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
-			CurrentSymbol:          GetCurrencySymbol(r),
-
-			ElPrice: price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, GetCurrency(r)),
-			ClPrice: price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, GetCurrency(r)),
-		},
-		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet" || utils.Config.Chain.Config.ConfigName == "gnosis",
-		DepositContract:     utils.Config.Chain.Config.DepositContractAddress,
-		ClientsUpdated:      ethclients.ClientsUpdated(),
-		ChainConfig:         utils.Config.Chain.Config,
-		Lang:                "en-US",
-		NoAds:               user.Authenticated && user.Subscription != "",
-		Debug:               utils.Config.Frontend.Debug,
-		GasNow:              services.LatestGasNowData(),
-		ShowSyncingMessage:  services.IsSyncing(),
-		GlobalNotification:  services.GlobalNotificationMessage(),
-		AvailableCurrencies: price.GetAvailableCurrencies(),
-		MainMenuItems:       createMenuItems(active, isMainnet),
+		Rates:                 services.GetRates(GetCurrency(r)),
+		Mainnet:               utils.Config.Chain.Config.ConfigName == "mainnet" || utils.Config.Chain.Config.ConfigName == "gnosis",
+		DepositContract:       utils.Config.Chain.Config.DepositContractAddress,
+		ClientsUpdated:        ethclients.ClientsUpdated(),
+		ChainConfig:           utils.Config.Chain.Config,
+		Lang:                  "en-US",
+		NoAds:                 user.Authenticated && user.Subscription != "",
+		Debug:                 utils.Config.Frontend.Debug,
+		GasNow:                services.LatestGasNowData(),
+		ShowSyncingMessage:    services.IsSyncing(),
+		GlobalNotification:    services.GlobalNotificationMessage(),
+		AvailableCurrencies:   price.GetAvailableCurrencies(),
+		MainMenuItems:         createMenuItems(active, isMainnet),
 	}
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)
@@ -117,11 +89,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			data.DebugSession = jsn
 		}
 	}
-	data.Rates.ElPrice = price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, data.Rates.Currency)
-	data.Rates.ClPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, data.Rates.Currency)
-	data.Rates.EthPrice = price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, data.Rates.Currency)
-	data.Rates.ExchangeRate = price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, data.Rates.Currency)
-	data.Rates.EthRoundPrice = price.GetEthRoundPrice(data.Rates.EthPrice)
 
 	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
 	if len(acceptedLangs) > 0 {

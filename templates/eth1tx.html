@@ -201,7 +201,7 @@
                         <li class="mb-1">
                           <i class="fa-li fas fa-long-arrow-alt-right"></i>
                           <span>Deposit of</span>
-                          <span>{{ formatBytesAmount $deposit.Amount config.Frontend.ElCurrencySymbol 8 }}</span>
+                          <span>{{ formatBytesAmount $deposit.Amount config.Frontend.ElCurrency 8 }}</span>
                           <span>to Validator</span>
                           <span>{{ formatPublicKey $deposit.ValidatorPubkey }}</span>
                           <span>with withdrawal credentials</span>
@@ -215,18 +215,18 @@
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">Value:</div>
                 <div class="col-md-9">
-                  {{ formatBytesAmount .Value config.Frontend.ElCurrencySymbol 8 }}
+                  {{ formatBytesAmount .Value config.Frontend.ElCurrency 8 }}
                   <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value">
-                    {{ formatElCurrency .Value $.Rates.TickerCurrency 8 true false false }}
+                    {{ formatElCurrency .Value $.Rates.SelectedCurrency 8 true false false }}
                   </span>
                 </div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                 <div class="col-md-3">Transaction Fee:</div>
                 <div class="col-md-9">
-                  {{ formatBytesAmount .Gas.TxFee config.Frontend.ElCurrencySymbol 8 }}
+                  {{ formatBytesAmount .Gas.TxFee config.Frontend.ElCurrency 8 }}
                   <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value">
-                    {{ formatElCurrency .Gas.TxFee $.Rates.TickerCurrency 8 true false false }}
+                    {{ formatElCurrency .Gas.TxFee $.Rates.SelectedCurrency 8 true false false }}
                   </span>
                 </div>
               </div>

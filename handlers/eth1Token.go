@@ -79,7 +79,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 			tokenPrice = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Price), 0)
 		}
 
-		ethUsdRate := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD"))
+		ethUsdRate := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrency, "USD"))
 		if !ethUsdRate.IsZero() {
 			ethExchangeRate, _ = tokenPrice.Div(ethUsdRate).Float64()
 		}
@@ -87,7 +87,7 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token), templateFiles)
 	supply := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0).Div(decimal.NewFromInt(10).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Decimals), 0)))
-	priceUsd := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD")*ethExchangeRate).DivRound(decimal.NewFromInt(utils.Config.Frontend.ElCurrencyDivisor), 18)
+	priceUsd := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrency, "USD")*ethExchangeRate).DivRound(decimal.NewFromInt(utils.Config.Frontend.ElCurrencyDivisor), 18)
 	marketCapUsd := priceUsd.Mul(supply)
 
 	data.Data = types.Eth1TokenPageData{

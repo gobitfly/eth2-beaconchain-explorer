@@ -343,16 +343,16 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:                           fmt.Sprintf("Staked %v", utils.Config.Frontend.ClCurrencySymbol),
-		Subtitle:                        fmt.Sprintf("History of daily staked %v, which is the sum of all Effective Balances.", utils.Config.Frontend.ClCurrencySymbol),
+		Title:                           fmt.Sprintf("Staked %v", utils.Config.Frontend.ClCurrency),
+		Subtitle:                        fmt.Sprintf("History of daily staked %v, which is the sum of all Effective Balances.", utils.Config.Frontend.ClCurrency),
 		XAxisTitle:                      "",
-		YAxisTitle:                      utils.Config.Frontend.ElCurrencySymbol,
+		YAxisTitle:                      utils.Config.Frontend.ElCurrency,
 		StackingMode:                    "false",
 		Type:                            "column",
 		ColumnDataGroupingApproximation: "close",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: fmt.Sprintf("Staked %v", utils.Config.Frontend.ClCurrencySymbol),
+				Name: fmt.Sprintf("Staked %v", utils.Config.Frontend.ClCurrency),
 				Data: dailyStakedEther,
 			},
 		},
@@ -390,13 +390,13 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		Title:                           "Validator Balance",
 		Subtitle:                        "Average Daily Validator Balance.",
 		XAxisTitle:                      "",
-		YAxisTitle:                      utils.Config.Frontend.ElCurrencySymbol,
+		YAxisTitle:                      utils.Config.Frontend.ElCurrency,
 		StackingMode:                    "false",
 		Type:                            "column",
 		ColumnDataGroupingApproximation: "average",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: fmt.Sprintf("Average Balance [%s]", utils.Config.Frontend.ClCurrencySymbol),
+				Name: fmt.Sprintf("Average Balance [%s]", utils.Config.Frontend.ClCurrency),
 				Data: dailyAverageBalance,
 			},
 		},
@@ -668,7 +668,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", epoch),
 		XAxisTitle:           "Balance",
 		YAxisTitle:           "# of Validators",
-		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrencySymbol)),
+		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrency)),
 		StackingMode:         "false",
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
@@ -718,7 +718,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", epoch),
 		XAxisTitle:           "Effective Balance",
 		YAxisTitle:           "# of Validators",
-		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrencySymbol)),
+		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrency)),
 		StackingMode:         "false",
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
@@ -868,9 +868,9 @@ func depositsChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Deposits",
-		Subtitle:     fmt.Sprintf("Daily Amount of deposited %s.", utils.Config.Frontend.MainCurrencySymbol),
+		Subtitle:     fmt.Sprintf("Daily Amount of deposited %s.", utils.Config.Frontend.MainCurrency),
 		XAxisTitle:   "Income",
-		YAxisTitle:   fmt.Sprintf("Deposited %s", utils.Config.Frontend.MainCurrencySymbol),
+		YAxisTitle:   fmt.Sprintf("Deposited %s", utils.Config.Frontend.MainCurrency),
 		StackingMode: "normal",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
@@ -934,9 +934,9 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Withdrawals",
-		Subtitle:     fmt.Sprintf("Daily Amount of withdrawals in %s.", utils.Config.Frontend.MainCurrencySymbol),
+		Subtitle:     fmt.Sprintf("Daily Amount of withdrawals in %s.", utils.Config.Frontend.MainCurrency),
 		XAxisTitle:   "",
-		YAxisTitle:   fmt.Sprintf("Withdrawals %s", utils.Config.Frontend.MainCurrencySymbol),
+		YAxisTitle:   fmt.Sprintf("Withdrawals %s", utils.Config.Frontend.MainCurrency),
 		StackingMode: "normal",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{

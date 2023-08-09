@@ -157,11 +157,11 @@
         <script>
             var clIncomeHistory = {{.IncomeHistoryChartData}}
             var elIncomeHistory = {{.ExecutionIncomeHistoryData}}
-            var currency = {{$.Rates.Currency}}
-            var elCurrency = {{config.Frontend.ElCurrencySymbol}}
-            var clCurrency = {{config.Frontend.ClCurrencySymbol}}
-            var elPrice = {{$.Rates.ElPrice}}
-            var clPrice = {{$.Rates.ClPrice}}
+            var selectedCurrency = {{$.Rates.SelectedCurrency}}
+            var elCurrency = {{config.Frontend.ElCurrency}}
+            var clCurrency = {{config.Frontend.ClCurrency}}
+            var elPrice = {{$.Rates.ElCurrencyPrice}}
+            var clPrice = {{$.Rates.ClCurrencyPrice}}
 
                 window.addEventListener('load', function () {
                     Highcharts.stockChart('income-chart', {
@@ -266,13 +266,14 @@
                                         iPrice = elPrice
                                         iCurrency = elCurrency
                                     }
-                                    text += `<br/><span style="color:${series.color}">\u25CF</span> <b>${series.name}:</b> ${getIncomeChartValueString(value, iCurrency, currency, iPrice)}`
+                                    // console.log(`sname: ${series.name} si: ${series.index} iprice: ${iPrice} iCurr: ${iCurrency} sCurr: ${selectedCurrency} value: ${value}`)
+                                    text += `<br/><span style="color:${series.color}">\u25CF</span> <b>${series.name}:</b> ${getIncomeChartValueString(value, iCurrency, selectedCurrency, iPrice)}`
 
                                     total += value
                                 }
 
                                 if (tooltip.chart.hoverPoints.length > 1) {
-                                    text += `<br/><b>Total:</b> ${getIncomeChartValueString(total, currency, currency, clPrice)}`
+                                    text += `<br/><b>Total:</b> ${getIncomeChartValueString(total, selectedCurrency, selectedCurrency, clPrice)}`
                                 }
 
                                 return text

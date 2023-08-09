@@ -63,16 +63,16 @@
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Reward:</div>
                 <div class="col-md-10">
-                  {{ formatAmount .Reward config.Frontend.ElCurrencySymbol 5 }}
+                  {{ formatAmount .Reward config.Frontend.ElCurrency 5 }}
                   {{ if gt (bigIntCmp .MevReward 0) 0 }}
                     +
-                    {{ formatAmount .MevReward config.Frontend.ElCurrencySymbol 5 }}
+                    {{ formatAmount .MevReward config.Frontend.ElCurrency 5 }}
                   {{ end }}
                 </div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Tx Fees:</div>
-                <div class="col-md-10">{{ formatAmount .TxFees config.Frontend.ElCurrencySymbol 5 }}</div>
+                <div class="col-md-10">{{ formatAmount .TxFees config.Frontend.ElCurrency 5 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Gas Usage:</div>
@@ -110,7 +110,7 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Burned fees:</div>
-                <div class="col-md-10">{{ formatAmount .BurnedFees config.Frontend.ElCurrencySymbol 5 }}</div>
+                <div class="col-md-10">{{ formatAmount .BurnedFees config.Frontend.ElCurrency 5 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Extra:</div>
@@ -152,7 +152,7 @@
                       <td>{{ .Number }}</td>
                       <td>{{ subUI64 $.Data.Number .Number }}</td>
                       <td>{{ .MinerFormatted }}</td>
-                      <td>{{ formatAmount .Reward config.Frontend.ElCurrencySymbol 5 }}</td>
+                      <td>{{ formatAmount .Reward config.Frontend.ElCurrency 5 }}</td>
                       <td>{{ .Extra }}</td>
                     </tr>
                   {{ end }}

@@ -81,7 +81,7 @@ func main() {
 	}
 
 	logrus.Infof("initializing prices")
-	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrencySymbol, utils.Config.Frontend.ElCurrencySymbol)
+	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
 
 	logrus.Infof("initializing frontend services")
 	services.Init() // Init frontend services

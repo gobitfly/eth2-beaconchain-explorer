@@ -106,9 +106,9 @@
                   </div>
                   <div class="info-item-body">
                     <a id="banner-eth-price-data">
-                      <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
-                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.CurrentPriceKFormatted }}</span>
-                      <span id="currentCurrencyPrice" class="price">{{ .Rates.CurrentPriceFormatted }}</span>
+                      <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.TickerCurrencySymbol }}</span>
+                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.TickerCurrencyPriceKFormatted }}</span>
+                      <span id="currentCurrencyPrice" class="price">{{ .Rates.TickerCurrencyPriceFormatted }}</span>
                     </a>
                   </div>
                 </div>
@@ -156,9 +156,9 @@
               <div class="dropdown">
                 <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <div id="currencyFlagDropdown">
-                    <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.Currency }}.svg" />
+                    <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.SelectedCurrency }}.svg" />
                   </div>
-                  <div id="currencyDropdown">{{ .Rates.Currency }}</div>
+                  <div id="currencyDropdown">{{ .Rates.SelectedCurrency }}</div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
                   {{ range .AvailableCurrencies }}
@@ -343,8 +343,7 @@
       <script src="/js/layout.js"></script>
       <script src="/js/banner.js"></script>
         <script>
-            var currency = {{.Rates.Currency}}
-            var exchangeRate = {{.Rates.ExchangeRate}}
+            var currency = {{.Rates.SelectedCurrency}}
 
             function slotToTime(slot) {
                 var gts = {{.ChainGenesisTimestamp}}

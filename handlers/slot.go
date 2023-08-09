@@ -725,8 +725,8 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 			Method:        methodFormatted,
 			FromFormatted: v.FromFormatted,
 			ToFormatted:   v.ToFormatted,
-			Value:         utils.FormatAmountFormatted(v.Value, utils.Config.Frontend.ElCurrencySymbol, 5, 0, true, true, false),
-			Fee:           utils.FormatAmountFormatted(v.Fee, utils.Config.Frontend.ElCurrencySymbol, 5, 0, true, true, false),
+			Value:         utils.FormatAmountFormatted(v.Value, utils.Config.Frontend.ElCurrency, 5, 0, true, true, false),
+			Fee:           utils.FormatAmountFormatted(v.Fee, utils.Config.Frontend.ElCurrency, 5, 0, true, true, false),
 			GasPrice:      utils.FormatAmountFormatted(v.GasPrice, "GWei", 5, 0, true, true, false),
 		}
 	}

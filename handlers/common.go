@@ -123,7 +123,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 	currentDayClIncome := int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)
 
-	elClPrice := price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, utils.Config.Frontend.ClCurrencySymbol)
+	elClPrice := price.GetPrice(utils.Config.Frontend.ElCurrency, utils.Config.Frontend.ClCurrency)
 
 	// calculate combined el and cl earnings
 	earnings1d := float64(income.ClIncome1d) + elClPrice*float64(income.ElIncome1d)
@@ -271,12 +271,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Cl:    income.ClProposerIncomeTotal + currentDayProposerIncome,
 		Total: float64(income.ClProposerIncomeTotal) + elClPrice*float64(income.ElIncomeTotal) + float64(currentDayProposerIncome),
 	}
-
-	// logger.WithFields(logrus.Fields{
-	// 	"income.ElIncomeTotal":         income.ElIncomeTotal,
-	// 	"income.ClProposerIncomeTotal": income.ClProposerIncomeTotal,
-	// 	"currentDayProposerIncome":     currentDayProposerIncome,
-	// }).Infof("DEBUG: GetValidatorEarnings")
 
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
@@ -463,15 +457,17 @@ func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
-	currency := GetCurrency(r)
 	data := services.LatestState()
-	// data.Currency = currency
-	data.EthPrice = price.GetPrice(utils.Config.Frontend.ClCurrencySymbol, currency)
-	data.EthRoundPrice = uint64(data.EthPrice)
-	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
+
+	data.Rates = services.GetRates(GetCurrency(r))
+
+	userAgent := r.Header.Get("User-Agent")
+	userAgent = strings.ToLower(userAgent)
+	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
+		data.Rates.MainCurrencyPriceFormatted = utils.KFormatterEthPrice(uint64(data.Rates.MainCurrencyPrice))
+	}
 
 	err := json.NewEncoder(w).Encode(data)
-
 	if err != nil {
 		logger.Errorf("error sending latest index page data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -483,24 +479,17 @@ func GetCurrency(r *http.Request) string {
 	if cookie, err := r.Cookie("currency"); err == nil {
 		return cookie.Value
 	}
-	return utils.Config.Frontend.MainCurrencySymbol
-}
-
-func GetTickerCurrency(r *http.Request) string {
-	cookie, err := r.Cookie("currency")
-	if err != nil {
-		return "USD"
-	}
-	if cookie.Value == utils.Config.Frontend.MainCurrencySymbol {
-		return "USD"
-	}
-	return cookie.Value
+	return utils.Config.Frontend.MainCurrency
 }
 
 func GetCurrencySymbol(r *http.Request) string {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
+		logger.WithError(err).Errorf("error in handlers.GetCurrencySymbol")
 		return "$"
+	}
+	if cookie.Value == utils.Config.Frontend.MainCurrency {
+		return "USD"
 	}
 	return price.GetCurrencySymbol(cookie.Value)
 }
@@ -508,28 +497,23 @@ func GetCurrencySymbol(r *http.Request) string {
 func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
-		//fmt.Printf("DEBUG: GetCurrentPrice: error: %v, using maincurr-usd\n", err)
-		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
+		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrency, "USD"))
 	}
-
-	if cookie.Value == utils.Config.Frontend.MainCurrencySymbol {
-		//fmt.Printf("DEBUG: GetCurrentPrice: value is maincurr, using maincurrency-usd %v\n", price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
-		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, "USD"))
+	if cookie.Value == utils.Config.Frontend.MainCurrency {
+		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrency, "USD"))
 	}
-	//fmt.Printf("DEBUG: GetCurrentPrice: %v %v, %v\n", utils.Config.Frontend.MainCurrencySymbol, cookie.Value, price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
-	return uint64(price.GetPrice(utils.Config.Frontend.MainCurrencySymbol, cookie.Value))
+	return uint64(price.GetPrice(utils.Config.Frontend.MainCurrency, cookie.Value))
 }
 
 func GetCurrentElPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
-		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD"))
+		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrency, "USD"))
 	}
-
-	if cookie.Value == utils.Config.Frontend.ElCurrencySymbol {
-		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, "USD"))
+	if cookie.Value == utils.Config.Frontend.ElCurrency {
+		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrency, "USD"))
 	}
-	return uint64(price.GetPrice(utils.Config.Frontend.ElCurrencySymbol, cookie.Value))
+	return uint64(price.GetPrice(utils.Config.Frontend.ElCurrency, cookie.Value))
 }
 
 func GetCurrentPriceFormatted(r *http.Request) template.HTML {

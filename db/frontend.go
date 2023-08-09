@@ -525,7 +525,7 @@ func GetHistoricalPrice(chainId uint64, currency string, day uint64) (float64, e
 		// Don't show a historical price for testnets
 		return 0.0, nil
 	}
-	if currency == utils.Config.Frontend.ClCurrencySymbol {
+	if currency == utils.Config.Frontend.ClCurrency {
 		currency = "USD"
 	}
 	currency = strings.ToLower(currency)
