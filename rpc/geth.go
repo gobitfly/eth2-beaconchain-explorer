@@ -380,8 +380,14 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	g.Go(func() error {
 		symbol, err := contract.Symbol(nil)
 		if err != nil {
+			if strings.Contains(err.Error(), "abi") {
+				ret.Symbol = "UNKNOWN"
+				return nil
+			}
+
 			return fmt.Errorf("error retrieving symbol: %v", err)
 		}
+
 		ret.Symbol = symbol
 		return nil
 	})
