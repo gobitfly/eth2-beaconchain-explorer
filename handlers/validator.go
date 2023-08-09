@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 	protomath "github.com/protolambda/zrnt/eth2/util/math"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/csrf"
@@ -2002,11 +2003,17 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
 		syncDutiesValidator := syncDuties[validatorIndex]
 		syncDutiesAllValidators := make([]uint64, limit*utils.Config.Chain.Config.SlotsPerEpoch)
 		for _, duties := range syncDuties {
-			for idx := range duties {
-				if duties[idx].Status == 1 {
+			for idx := range syncDutiesValidator {
+				slot := syncDutiesValidator[idx].Slot
+				index := slices.IndexFunc[*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
+					return duty.Slot == slot
+				})
+
+				if index >= 0 && duties[index].Status == 1 {
 					syncDutiesAllValidators[idx]++
 				}
 			}
@@ -2030,8 +2037,13 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			nextPeriodSyncDutiesValidator := nextPeriodSyncDuties[validatorIndex]
 			nextPeriodSyncDutiesAllValidators := make([]uint64, nextPeriodLimit*utils.Config.Chain.Config.SlotsPerEpoch)
 			for _, duties := range nextPeriodSyncDuties {
-				for idx := range duties {
-					if duties[idx].Status == 1 {
+				for idx := range nextPeriodSyncDutiesValidator {
+					slot := nextPeriodSyncDutiesValidator[idx].Slot
+					index := slices.IndexFunc[*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
+						return duty.Slot == slot
+					})
+
+					if index >= 0 && duties[index].Status == 1 {
 						nextPeriodSyncDutiesAllValidators[idx]++
 					}
 				}
@@ -2071,6 +2083,11 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			// extract correct slots
 			tableData = make([][]interface{}, length)
 			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
+				participation := uint64(0)
+				if uint64(len(syncDutiesAllValidators)) > slotIndex {
+					participation = syncDutiesAllValidators[slotIndex]
+				}
+
 				slot := syncDutiesValidator[slotIndex].Slot
 				epoch := utils.EpochOfSlot(slot)
 				status := syncDutiesValidator[slotIndex].Status
@@ -2083,7 +2100,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 					utils.FormatEpoch(epoch),
 					utils.FormatBlockSlot(slot),
 					utils.FormatSyncParticipationStatus(status, slot),
-					utils.FormatSyncParticipations(syncDutiesAllValidators[slotIndex]),
+					utils.FormatSyncParticipations(participation),
 				}
 			}
 		}
