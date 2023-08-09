@@ -1966,7 +1966,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// last epoch containing the duties shown on this page
 		lastShownEpoch := moveAway(firstShownEpoch, epochsDiff)
-		// handle overflow on last page
+		// handle overflow on last page for validators that were part of the very first sync period starting during epoch 0
 		if !ascOrdering && lastShownEpoch > firstShownEpoch {
 			lastShownEpoch = 0
 			length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
