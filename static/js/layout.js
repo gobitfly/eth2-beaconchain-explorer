@@ -1,15 +1,3 @@
-//We want to prevent the intial page scroll to tab anchors
-function stopInitialScrollEvent(event) {
-  event.preventDefault()
-  event.stopImmediatePropagation()
-  event.stopPropagation()
-  window.scrollTo(0, 0)
-}
-window.addEventListener("scroll", stopInitialScrollEvent)
-window.addEventListener("load", function (event) {
-  window.removeEventListener("scroll", stopInitialScrollEvent)
-})
-
 function applyTTFix() {
   $("button, a").on("mousedown", (evt) => {
     evt.preventDefault() // prevent setting the browser focus on all mouse buttons, which prevents tooltips from disapearing
@@ -158,6 +146,50 @@ var observeDOM = (function () {
 })()
 
 observeDOM(document.documentElement, applyTTFix)
+
+/**
+ * Listens to navigation events triggered by tab navigation and activates the related content. The id of the content must have the following pattern: hashtag + "X"
+ * This way we prevent the browser from jumping down to the tab content on intitial navigation
+ * @param tabContainerId: Id if the parent container of the tab content's
+ * @param defaultTab: Id of the default content to be displayed (without the X)
+ **/
+function activateTabbarSwitcher(tabContainerId, defaultTab) {
+  const handleTabChange = (url) => {
+    const split = url?.split("#")
+    var selectedTab = defaultTab
+    if (split?.length == 2) {
+      selectedTab = split[1]
+    }
+    const container = $(`#${tabContainerId}`)
+    if (!container) {
+      console.log("container not found")
+      return
+    }
+
+    container.find(".tab-pane.active").removeClass("active")
+
+    console.log("selectedTab", selectedTab)
+
+    var someTabTriggerEl = document.getElementById(`${selectedTab}X`)
+    if (!someTabTriggerEl) {
+      return
+    }
+    new bootstrap.Tab(someTabTriggerEl).show()
+  }
+
+  window.addEventListener("DOMContentLoaded", function (ev) {
+    console.log("load")
+    handleTabChange(window.location.href)
+  })
+  navigation.addEventListener("navigate", (event) => {
+    console.log("navigate", document.location.hash, event)
+    if (!event.destination?.url) {
+      return
+    }
+    handleTabChange(event.destination?.url)
+  })
+  handleTabChange(window.location.href)
+}
 
 // typeahead
 $(document).ready(function () {

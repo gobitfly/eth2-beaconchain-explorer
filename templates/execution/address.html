@@ -209,16 +209,15 @@
 
 {{ define "js" }}
   <script>
-
-    window.addEventListener('resize', function(ev) {
-      if(window.innerWidth >= 820) {
-        $("#overview-tab").tab('show')
+    window.addEventListener("resize", function (ev) {
+      if (window.innerWidth >= 820) {
+        $("#overview-tab").tab("show")
       }
     })
 
-    window.addEventListener('load', function(ev) {
+    window.addEventListener("load", function (ev) {
       if (window.innerWidth >= 820) {
-        $("#overview-tab").tab('show')
+        $("#overview-tab").tab("show")
       }
     })
 
@@ -245,7 +244,6 @@
     //   rootMargin: '0px',
     //   threshold: 0
     // }
-
 
     // let observerRow = new IntersectionObserver(handleIntersection, optionsRow);
     // const row = document.querySelectorAll('#transactions-table tbody tr')
@@ -290,7 +288,6 @@
       setupInfiniteScroll({{.WithdrawalsTable.PagingToken}},'withdrawals-table', 'withdrawals-table-inf-scroll', 'withdrawals')
     {{ end }}
 
-
     function setupInfiniteScroll(pageToken, tableID, loadingID, urlPart) {
       var previousToken = ""
       var isLoading = false
@@ -301,24 +298,24 @@
       }
       const getTransactions = async (token) => {
         try {
-           const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}`)
-           const data = await res.json()
+          const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}`)
+          const data = await res.json()
 
           //  console.log('got data: ', data)
 
-           if (data && data.data && data.pagingToken && data.pagingToken.length) {
-             previousToken = pageToken
-             pageToken = data.pagingToken
+          if (data && data.data && data.pagingToken && data.pagingToken.length) {
+            previousToken = pageToken
+            pageToken = data.pagingToken
             //  console.log('setting new pagetoken:\n',"new:", pageToken,'\n',"pre:", previousToken)
 
-             // udpate the table
-             for (let i = 0; i < data.data.length; i++) {
-              const row = data.data[i];
+            // udpate the table
+            for (let i = 0; i < data.data.length; i++) {
+              const row = data.data[i]
               for (let j = 0; j < data.data[i].length; j++) {
                 const col = data.data[i][j]
-                const el = document.createElement('div')
-                const content = document.createElement('div')
-                content.classList.add('tbl-col-content')
+                const el = document.createElement("div")
+                const content = document.createElement("div")
+                content.classList.add("tbl-col-content")
                 // el.classList.add(tableID+"-col")
                 el.classList.add("tbl-col")
                 content.innerHTML = col
@@ -326,33 +323,32 @@
                 infLoading.insertAdjacentElement("beforebegin", el)
                 drawCallback()
               }
-             }
-           } else if (data.pagingToken === "") {
-             infLoading.remove()
-           } else if (data && data.data && data.data.length == 0) {
-              infLoading.querySelector('span').innerText = 'No entries found.'
-           }
-           isLoading = false
+            }
+          } else if (data.pagingToken === "") {
+            infLoading.remove()
+          } else if (data && data.data && data.data.length == 0) {
+            infLoading.querySelector("span").innerText = "No entries found."
+          }
+          isLoading = false
         } catch (err) {
           console.error("error getting transactions: ", err)
-          infLoading.querySelector('span').innerText = 'Something went wrong fetching please try again another time.'
+          infLoading.querySelector("span").innerText = "Something went wrong fetching please try again another time."
           isLoading = false
         }
       }
 
       let optionsScroll = {
         root: null,
-        rootMargin: '300px',
-        threshold: 0
+        rootMargin: "300px",
+        threshold: 0,
       }
-
 
       const handleTableEnd = (entries, observer) => {
         for (let i = 0; i < entries.length; i++) {
-          const entry = entries[i];
+          const entry = entries[i]
           if (entry.isIntersecting) {
             // console.log('intersecting');
-            if(!isLoading) {
+            if (!isLoading) {
               // console.log(tableID,'token:', pageToken)
               isLoading = true
               getTransactions(pageToken)
@@ -367,7 +363,7 @@
       observerScroll.observe(transactionsLastElement)
     }
 
-
+    activateTabbarSwitcher("address-tab-content", "transactions")
   </script>
 {{ end }}
 {{ define "content" }}
@@ -470,41 +466,41 @@
       </div>
       <div class="card-body px-0 py-0">
         <div class="tab-content" id="address-tab-content">
-          <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
+          <div class="tab-pane" id="transactionsX" role="tabpanel" aria-labelledby="transaction-tab">
             {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
           </div>
           {{ if len .Data.InternalTxnsTable.Data }}
-            <div class="tab-pane fade" id="internalTxns" role="tabpanel" aria-labelledby="internalTxns-tab">
+            <div class="tab-pane" id="internalTxnsX" role="tabpanel" aria-labelledby="internalTxns-tab">
               {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
             </div>
           {{ end }}
           {{ if len .Data.BlocksMinedTable.Data }}
-            <div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab">
+            <div class="tab-pane" id="blocksX" role="tabpanel" aria-labelledby="blocks-tab">
               {{ template "AddressBlocksMinedGrid" .Data.BlocksMinedTable }}
             </div>
           {{ end }}
           {{ if len .Data.UnclesMinedTable.Data }}
-            <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">
+            <div class="tab-pane" id="unclesX" role="tabpanel" aria-labelledby="uncles-tab">
               {{ template "AddressUnclesMinedGrid" .Data.UnclesMinedTable }}
             </div>
           {{ end }}
           {{ if len .Data.Erc20Table.Data }}
-            <div class="tab-pane fade" id="erc20Txns" role="tabpanel" aria-labelledby="erc20Txns-tab">
+            <div class="tab-pane" id="erc20TxnsX" role="tabpanel" aria-labelledby="erc20Txns-tab">
               {{ template "AddressErc20TransactionsGrid" .Data.Erc20Table }}
             </div>
           {{ end }}
           {{ if len .Data.Erc721Table.Data }}
-            <div class="tab-pane fade" id="erc721Txns" role="tabpanel" aria-labelledby="erc721Txns-tab">
+            <div class="tab-pane" id="erc721TxnsX" role="tabpanel" aria-labelledby="erc721Txns-tab">
               {{ template "AddressErc721Grid" .Data.Erc721Table }}
             </div>
           {{ end }}
           {{ if len .Data.Erc1155Table.Data }}
-            <div class="tab-pane fade" id="erc1155Txns" role="tabpanel" aria-labelledby="erc1155Txns-tab">
+            <div class="tab-pane" id="erc1155TxnsX" role="tabpanel" aria-labelledby="erc1155Txns-tab">
               {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
             </div>
           {{ end }}
           {{ if len .Data.WithdrawalsTable.Data }}
-            <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+            <div class="tab-pane" id="withdrawalsX" role="tabpanel" aria-labelledby="withdrawals-tab">
               {{ template "AddressWithdrawalsGrid" .Data.WithdrawalsTable }}
             </div>
           {{ end }}
