@@ -153,7 +153,7 @@ observeDOM(document.documentElement, applyTTFix)
  * @param tabContainerId: Id if the parent container of the tab content's
  * @param defaultTab: Id of the default content to be displayed (without the X)
  **/
-function activateTabbarSwitcher(tabContainerId, defaultTab) {
+function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
   const handleTabChange = (url) => {
     const split = url?.split("#")
     var selectedTab = defaultTab
@@ -162,13 +162,10 @@ function activateTabbarSwitcher(tabContainerId, defaultTab) {
     }
     const container = $(`#${tabContainerId}`)
     if (!container) {
-      console.log("container not found")
       return
     }
 
     container.find(".tab-pane.active").removeClass("active")
-
-    console.log("selectedTab", selectedTab)
 
     var someTabTriggerEl = document.getElementById(`${selectedTab}X`)
     if (!someTabTriggerEl) {
@@ -176,18 +173,34 @@ function activateTabbarSwitcher(tabContainerId, defaultTab) {
     }
     new bootstrap.Tab(someTabTriggerEl).show()
   }
+  const handleTabChangeClick = (event) => {
+    var href = event.currentTarget.href
+    if (href) {
+      handleTabChange(href)
+    }
+  }
 
   window.addEventListener("DOMContentLoaded", function (ev) {
-    console.log("load")
     handleTabChange(window.location.href)
   })
-  navigation.addEventListener("navigate", (event) => {
-    console.log("navigate", document.location.hash, event)
-    if (!event.destination?.url) {
+
+  if (window.navigation) {
+    window.navigation.addEventListener("navigate", (event) => {
+      if (!event.destination?.url) {
+        return
+      }
+      handleTabChange(event.destination?.url)
+    })
+  } else {
+    //handle Firefox specific way as it does not support the navigation way
+    const tabBarContainer = $(`#${tabBar}`)
+    if (!tabBarContainer) {
       return
     }
-    handleTabChange(event.destination?.url)
-  })
+
+    tabBarContainer.find(`.nav-link`).on("click", handleTabChangeClick)
+  }
+
   handleTabChange(window.location.href)
 }
 
