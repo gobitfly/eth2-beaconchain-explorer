@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurrencyCl uint64) error {
+func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurrencyCl uint64, concurrencyFailedAttestations uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
@@ -78,7 +78,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 
 	if exported.FailedAttestations {
 		logger.Infof("Skipping failed attestations")
-	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(day); err != nil {
+	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(day, concurrencyFailedAttestations); err != nil {
 		return err
 	}
 
@@ -1005,7 +1005,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 	return nil
 }
 
-func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
+func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -1027,6 +1027,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	failed := map[uint64]map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
 	for i := firstEpoch; i < lastEpoch; i += epochBatchSize {
 		fromEpoch := i

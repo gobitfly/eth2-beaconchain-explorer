@@ -19,15 +19,16 @@ import (
 )
 
 type options struct {
-	configPath                string
-	statisticsDayToExport     int64
-	statisticsDaysToExport    string
-	statisticsValidatorToggle bool
-	statisticsResetColumns    string
-	statisticsChartToggle     bool
-	statisticsGraffitiToggle  bool
-	concurrencyTotal          uint64
-	concurrencyCl             uint64
+	configPath                    string
+	statisticsDayToExport         int64
+	statisticsDaysToExport        string
+	statisticsValidatorToggle     bool
+	statisticsResetColumns        string
+	statisticsChartToggle         bool
+	statisticsGraffitiToggle      bool
+	concurrencyTotal              uint64
+	concurrencyCl                 uint64
+	concurrencyFailedAttestations uint64
 }
 
 var opt = &options{}
@@ -42,6 +43,7 @@ func main() {
 	flag.BoolVar(&opt.statisticsGraffitiToggle, "graffiti.enabled", false, "Toggle exporting graffiti statistics")
 	flag.Uint64Var(&opt.concurrencyTotal, "concurrency.total", 10, "Concurrency to use when writing total rewards/performance postgres queries")
 	flag.Uint64Var(&opt.concurrencyCl, "concurrency.cl", 50, "Concurrency to use when writing cl postgres queries")
+	flag.Uint64Var(&opt.concurrencyFailedAttestations, "concurrency.fa", 10, "Concurrency to use when fetching failed attestaations from bt")
 
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -138,7 +140,7 @@ func main() {
 
 				clearStatsStatusTable(d, opt.statisticsResetColumns)
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d), opt.concurrencyTotal, opt.concurrencyCl)
+				err = db.WriteValidatorStatisticsForDay(uint64(d), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", d, err)
 					break
@@ -178,7 +180,7 @@ func main() {
 		if opt.statisticsValidatorToggle {
 			clearStatsStatusTable(uint64(opt.statisticsDayToExport), opt.statisticsResetColumns)
 
-			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), opt.concurrencyTotal, opt.concurrencyCl)
+			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 			if err != nil {
 				logrus.Errorf("error exporting stats for day %v: %v", opt.statisticsDayToExport, err)
 			}
@@ -205,14 +207,14 @@ func main() {
 		return
 	}
 
-	go statisticsLoop(opt.concurrencyTotal, opt.concurrencyCl)
+	go statisticsLoop(opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
 }
 
-func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64) {
+func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64, concurrencyFailedAttestations uint64) {
 	for {
 
 		latestEpoch := services.LatestFinalizedEpoch()
@@ -247,7 +249,7 @@ func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64) {
 			}
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
-					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl)
+					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl, concurrencyFailedAttestations)
 					if err != nil {
 						logrus.Errorf("error exporting stats for day %v: %v", day, err)
 						break
