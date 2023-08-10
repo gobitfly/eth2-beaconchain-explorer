@@ -7,7 +7,7 @@ SELECT 'setting new validator_stats_status columns to true for already exported 
 UPDATE validator_stats_status
 SET 
     total_accumulation_exported = true
-WHERE total_performance_exported=true;
+WHERE total_performance_exported = true;
 
 -- +goose StatementEnd
 
