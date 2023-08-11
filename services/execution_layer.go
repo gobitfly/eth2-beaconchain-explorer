@@ -10,6 +10,7 @@ import (
 )
 
 const latestBlockNumberCacheKey = "latestEth1BlockNumber"
+const latestBlockHashRootCacheKey = "latestEth1BlockRootHash"
 
 // latestBlockUpdater updates the most recent eth1 block number variable
 func latestBlockUpdater(wg *sync.WaitGroup) {
@@ -47,8 +48,6 @@ func LatestEth1BlockNumber() uint64 {
 	}
 	return 0
 }
-
-const latestBlockHashRootCacheKey = "latestEth1BlockRootHash"
 
 // headBlockRootHashUpdater updates the hash of the current chain head block
 func headBlockRootHashUpdater(wg *sync.WaitGroup) {
