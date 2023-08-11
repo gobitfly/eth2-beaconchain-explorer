@@ -2943,7 +2943,7 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 		LEFT JOIN (
 			SELECT 
 				validators.validatorindex as validatorindex,
-				eth1_deposits.from_address as deposit_adress
+				eth1_deposits.from_address as deposit_address
 			FROM validators 
 			INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
 		) AS val ON val.validatorindex = bls.validatorindex`
@@ -2955,14 +2955,14 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 				OR block_slot = $1
 				OR (block_slot / $3) = $1
 				OR pubkey_text LIKE ($2 || '%')
-				OR ENCODE(val.deposit_adress, 'hex') LIKE ($2 || '%')`
+				OR ENCODE(val.deposit_address, 'hex') LIKE ($2 || '%')`
 
 		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
 			uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 	} else if blsLikeRE.MatchString(query) {
 		searchQuery := `
 				WHERE pubkey_text LIKE ($1 || '%')
-				OR ENCODE(val.deposit_adress, 'hex') LIKE ($1 || '%')`
+				OR ENCODE(val.deposit_address, 'hex') LIKE ($1 || '%')`
 		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
 			trimmedQuery)
 	}
@@ -3014,7 +3014,7 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 			LEFT JOIN (
 				SELECT 
 					validators.validatorindex as validatorindex,
-					eth1_deposits.from_address as deposit_adress
+					eth1_deposits.from_address as deposit_address
 				FROM validators 
 				INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
 			) AS val ON val.validatorindex = bls.validatorindex`
@@ -3026,14 +3026,14 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
 					OR pubkey_text LIKE ($4 || '%')
-					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`
+					OR ENCODE(val.deposit_address, 'hex') LIKE ($4 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if blsLikeRE.MatchString(query) {
 			searchQuery := `
 				WHERE pubkey_text LIKE ($3 || '%')
-				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`
+				OR ENCODE(val.deposit_address, 'hex') LIKE ($3 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
