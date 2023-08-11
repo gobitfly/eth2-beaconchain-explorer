@@ -264,11 +264,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				WHERE from_address_text LIKE $1 || '%'
 			) a 
 			GROUP BY from_address_text`, trimmed)
-			if err != nil {
-				logger.Errorf("error retrieving count of indexed validators by address data: %v", err)
-				http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-				return
-			}
 		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
