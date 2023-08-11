@@ -70,7 +70,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 					logger.Errorf("lighthouse client error, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
 					reConnectWithError <- true
 				} else if offlineCount%20 == 0 {
-					logger.Warn("lighthouse client still offline, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
+					logger.Warnf("lighthouse client still offline, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
 					reConnectWithError <- false
 				}
 				offlineCount++
@@ -94,7 +94,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 					if throwError {
 						utils.LogError(err, "error subscribing to lighthouse node", 0)
 					} else {
-						logger.Warnf("error subscribing to lighthouse node: %v", err)
+						logger.Warnf("error subscribing to lighthouse node: %w", err)
 					}
 				} else {
 					stream = newStream
