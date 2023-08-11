@@ -56,20 +56,26 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 	lc.lastBlockSeenMux.Lock()
 	lc.lastBlockSeen = time.Now()
 	lc.lastBlockSeenMux.Unlock()
-	reConnect := make(chan int64, 10)
-	reConnectValue := int64(0)
+	reConnectWithError := make(chan bool, 10)
+	offlineCount := uint64(0)
 	go func() {
+		reConnectWithError <- true
 		for ; ; time.Sleep(time.Second) {
 			lc.lastBlockSeenMux.Lock()
-			if reConnectValue == 0 {
-				reConnectValue++
-				reConnect <- reConnectValue
-			} else if time.Since(lc.lastBlockSeen) > time.Minute*2 {
+			if time.Since(lc.lastBlockSeen) > time.Minute*2 {
 				// if we did not receive a new block more than two minutes we try to reconnect to the lighthouse node
-				logger.Errorf("lighthouse client error, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
-				lc.lastBlockSeen = time.Now()
-				reConnectValue++
-				reConnect <- reConnectValue
+
+				// We log an error every 2 minutes and a warning every 20 seconds in between
+				if offlineCount%120 == 0 {
+					logger.Errorf("lighthouse client error, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
+					reConnectWithError <- true
+				} else if offlineCount%20 == 0 {
+					logger.Warn("lighthouse client still offline, no new block retrieved since %v (%v ago)", lc.lastBlockSeen, time.Since(lc.lastBlockSeen))
+					reConnectWithError <- false
+				}
+				offlineCount++
+			} else {
+				offlineCount = 0
 			}
 			lc.lastBlockSeenMux.Unlock()
 		}
@@ -81,11 +87,15 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 
 		for {
 			select {
-			case <-reConnect:
+			case throwError := <-reConnectWithError:
 				newStream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
 
 				if err != nil {
-					utils.LogError(err, "error subscribing to lighthouse node", 0)
+					if throwError {
+						utils.LogError(err, "error subscribing to lighthouse node", 0)
+					} else {
+						logger.Warnf("error subscribing to lighthouse node: %v", err)
+					}
 				} else {
 					stream = newStream
 				}
