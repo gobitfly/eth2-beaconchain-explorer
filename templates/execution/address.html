@@ -466,41 +466,41 @@
       </div>
       <div class="card-body px-0 py-0">
         <div class="tab-content" id="address-tab-content">
-          <div class="tab-pane" id="transactionsX" role="tabpanel" aria-labelledby="transaction-tab">
+          <div class="tab-pane fade" id="transactionsTabPanel" role="tabpanel" aria-labelledby="transaction-tab">
             {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
           </div>
           {{ if len .Data.InternalTxnsTable.Data }}
-            <div class="tab-pane" id="internalTxnsX" role="tabpanel" aria-labelledby="internalTxns-tab">
+            <div class="tab-pane fade" id="internalTxnsTabPanel" role="tabpanel" aria-labelledby="internalTxns-tab">
               {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
             </div>
           {{ end }}
           {{ if len .Data.BlocksMinedTable.Data }}
-            <div class="tab-pane" id="blocksX" role="tabpanel" aria-labelledby="blocks-tab">
+            <div class="tab-pane fade" id="blocksTabPanel" role="tabpanel" aria-labelledby="blocks-tab">
               {{ template "AddressBlocksMinedGrid" .Data.BlocksMinedTable }}
             </div>
           {{ end }}
           {{ if len .Data.UnclesMinedTable.Data }}
-            <div class="tab-pane" id="unclesX" role="tabpanel" aria-labelledby="uncles-tab">
+            <div class="tab-pane fade" id="unclesTabPanel" role="tabpanel" aria-labelledby="uncles-tab">
               {{ template "AddressUnclesMinedGrid" .Data.UnclesMinedTable }}
             </div>
           {{ end }}
           {{ if len .Data.Erc20Table.Data }}
-            <div class="tab-pane" id="erc20TxnsX" role="tabpanel" aria-labelledby="erc20Txns-tab">
+            <div class="tab-pane fade" id="erc20TxnsTabPanel" role="tabpanel" aria-labelledby="erc20Txns-tab">
               {{ template "AddressErc20TransactionsGrid" .Data.Erc20Table }}
             </div>
           {{ end }}
           {{ if len .Data.Erc721Table.Data }}
-            <div class="tab-pane" id="erc721TxnsX" role="tabpanel" aria-labelledby="erc721Txns-tab">
+            <div class="tab-pane fade" id="erc721TxnsTabPanel" role="tabpanel" aria-labelledby="erc721Txns-tab">
               {{ template "AddressErc721Grid" .Data.Erc721Table }}
             </div>
           {{ end }}
           {{ if len .Data.Erc1155Table.Data }}
-            <div class="tab-pane" id="erc1155TxnsX" role="tabpanel" aria-labelledby="erc1155Txns-tab">
+            <div class="tab-pane fade" id="erc1155TxnsTabPanel" role="tabpanel" aria-labelledby="erc1155Txns-tab">
               {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
             </div>
           {{ end }}
           {{ if len .Data.WithdrawalsTable.Data }}
-            <div class="tab-pane" id="withdrawalsX" role="tabpanel" aria-labelledby="withdrawals-tab">
+            <div class="tab-pane fade" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawals-tab">
               {{ template "AddressWithdrawalsGrid" .Data.WithdrawalsTable }}
             </div>
           {{ end }}

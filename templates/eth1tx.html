@@ -69,7 +69,7 @@
         </div>
         <div class="card-body px-0 py-1">
           <div class="tab-content h-100" id="eth1tx-tab-content">
-            <div id="overviewX" class="tab-pane" role="tabpanel" aria-labelledby="overview-tab">
+            <div id="overviewTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="overview-tab">
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3"><span class="align-middle">Transaction Hash:</span></div>
                 <div class="col-md-9">
@@ -296,7 +296,7 @@
               </div>
             </div>
             {{ if .Events }}
-              <div id="eventsX" class="tab-pane" role="tabpanel" aria-labelledby="events-tab">
+              <div id="eventsTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="events-tab">
                 {{ range $index, $event := .Events }}
                   <div class="row p-3 mx-0 {{ if $index }}border-top{{ end }}" {{ if $index }}style="border-width:4px !important;"{{ end }}>
                     <div class="col-md-3">Address:</div>
@@ -376,7 +376,7 @@
               </div>
             {{ end }}
             {{ if .InternalTxns }}
-              <div id="internal-txnsX" class="tab-pane" role="tabpanel" aria-labelledby="internal-txns-tab">
+              <div id="internal-txnsTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="internal-txns-tab">
                 <div class="table-responsive">
                   <table class="table table-borderless text-monospace">
                     <thead>

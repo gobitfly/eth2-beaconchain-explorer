@@ -149,13 +149,14 @@ observeDOM(document.documentElement, applyTTFix)
 
 /**
  * Listens to navigation events triggered by tab navigation and activates the related content.
- * The id of the content must have the following pattern: hashtag + "X"
+ * The id of the content must have the following pattern: hashtag + "TabPanel"
  * This way we prevent the browser from jumping down to the tab content on intitial navigation
  * @param tabContainerId: Id if the parent container of the tab content's
  * @param tabBar: Id of the tabbar container
- * @param defaultTab: Id of the default content to be displayed (without the X)
+ * @param defaultTab: Id of the default content to be displayed (without the trailing TabPanel)
  **/
 function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
+  var lastTab = defaultTab
   const handleTabChange = (url) => {
     const split = url?.split("#")
     var selectedTab = defaultTab
@@ -167,13 +168,19 @@ function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
       return
     }
 
-    container.find(".tab-pane.active").removeClass("active")
+    container.find(".tab-pane.active").removeClass("active show")
 
-    var someTabTriggerEl = document.getElementById(`${selectedTab}X`)
-    if (!someTabTriggerEl) {
-      return
+    var someTabTriggerEl = container.find(`#${selectedTab}TabPanel`)
+    if (!someTabTriggerEl.length) {
+      someTabTriggerEl = container.find(`#${lastTab}TabPanel`)
+      if (!someTabTriggerEl.length) {
+        return
+      }
+    } else {
+      lastTab = selectedTab
     }
-    new bootstrap.Tab(someTabTriggerEl).show()
+
+    new bootstrap.Tab(someTabTriggerEl[0]).show()
   }
   const handleTabChangeClick = (event) => {
     var href = event.currentTarget.href
