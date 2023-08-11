@@ -15,7 +15,7 @@ BEGIN
 LOOP
     count := (count + 1);
     RAISE NOTICE 'count = %', count;
-    EXIT WHEN (SELECT count(*) from (SELECT from_address_text FROM eth1_deposits WHERE from_address_text = '' LIMIT(1)) as sub) = 0;
+    EXIT WHEN (SELECT count(*) FROM (SELECT from_address_text FROM eth1_deposits WHERE from_address_text = '' LIMIT(1)) AS sub) = 0;
     WITH to_update AS (
         SELECT tx_hash, merkletree_index
         FROM eth1_deposits
