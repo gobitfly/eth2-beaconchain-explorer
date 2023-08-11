@@ -18,12 +18,12 @@ func latestBlockUpdater(wg *sync.WaitGroup) {
 	for {
 		recent, err := db.BigtableClient.GetMostRecentBlockFromDataTable()
 		if err != nil {
-			logger.WithError(err).Error("error getting most recent eth1 block")
+			utils.LogError(err, "error getting most recent eth1 block", 0)
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:%s", utils.Config.Chain.Config.DepositChainID, latestBlockNumberCacheKey)
 		err = cache.TieredCache.SetUint64(cacheKey, recent.GetNumber(), time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching %s: %v", latestBlockNumberCacheKey, err)
+			utils.LogError(err, fmt.Sprintf("error caching latest block number with cache key %s", latestBlockNumberCacheKey), 0)
 		}
 
 		if firstRun {
@@ -43,7 +43,7 @@ func LatestEth1BlockNumber() uint64 {
 	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
 		return wanted
 	} else {
-		logger.Errorf("error retrieving %s from cache: %v", latestBlockNumberCacheKey, err)
+		utils.LogError(err, fmt.Sprintf("error retrieving latest block number from cache with key %s", latestBlockNumberCacheKey), 0)
 	}
 	return 0
 }
@@ -64,12 +64,12 @@ func headBlockRootHashUpdater(wg *sync.WaitGroup) {
 		LIMIT 1`)
 
 		if err != nil {
-			logger.WithError(err).Error("error getting blockroot hash for chain head")
+			utils.LogError(err, "error getting blockroot hash for chain head", 0)
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:%s", utils.Config.Chain.Config.DepositChainID, latestBlockHashRootCacheKey)
 		err = cache.TieredCache.SetString(cacheKey, string(blockRootHash), time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching %s: %v", latestBlockHashRootCacheKey, err)
+			utils.LogError(err, fmt.Sprintf("error caching latest blockroot hash with cache key %s", latestBlockHashRootCacheKey), 0)
 		}
 
 		if firstRun {
@@ -89,7 +89,7 @@ func Eth1HeadBlockRootHash() []byte {
 	if wanted, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Second*5); err == nil {
 		return []byte(wanted)
 	} else {
-		logger.Errorf("error retrieving %s from cache: %v", latestBlockHashRootCacheKey, err)
+		utils.LogError(err, fmt.Sprintf("error retrieving latest blockroot hash from cache with key %s", latestBlockHashRootCacheKey), 0)
 	}
 	return []byte{}
 }
