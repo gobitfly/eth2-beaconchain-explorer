@@ -246,12 +246,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if len(search)%2 != 0 { // pad with 0 if uneven
 			search = search + "0"
 		}
+		// find validators per eth1-address (limit result by N addresses and M validators per address)
+		result = &[]struct {
+			Eth1Address string `db:"from_address_text" json:"eth1_address"`
+			Count       uint64 `db:"count" json:"count"`
+		}{}
 		if searchLikeRE.MatchString(search) {
-			// find validators per eth1-address (limit result by N addresses and M validators per address)
-			result = &[]struct {
-				Eth1Address string `db:"from_address_text" json:"eth1_address"`
-				Count       uint64 `db:"count" json:"count"`
-			}{}
 			trimmed := strings.ToLower(strings.TrimPrefix(search, "0x"))
 
 			err = db.ReaderDb.Select(result, `
