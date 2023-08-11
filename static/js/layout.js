@@ -148,9 +148,11 @@ var observeDOM = (function () {
 observeDOM(document.documentElement, applyTTFix)
 
 /**
- * Listens to navigation events triggered by tab navigation and activates the related content. The id of the content must have the following pattern: hashtag + "X"
+ * Listens to navigation events triggered by tab navigation and activates the related content.
+ * The id of the content must have the following pattern: hashtag + "X"
  * This way we prevent the browser from jumping down to the tab content on intitial navigation
  * @param tabContainerId: Id if the parent container of the tab content's
+ * @param tabBar: Id of the tabbar container
  * @param defaultTab: Id of the default content to be displayed (without the X)
  **/
 function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
