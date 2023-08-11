@@ -94,7 +94,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 					if throwError {
 						utils.LogError(err, "error subscribing to lighthouse node", 0)
 					} else {
-						logger.Warnf("error subscribing to lighthouse node: %w", err)
+						logger.Warnf("error subscribing to lighthouse node: %v", err)
 					}
 				} else {
 					stream = newStream
