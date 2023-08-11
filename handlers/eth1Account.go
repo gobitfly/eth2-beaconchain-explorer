@@ -28,15 +28,13 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	address := template.HTMLEscapeString(vars["address"])
-	if utils.IsValidEnsDomain(address) {
-		ensData, err := GetEnsDomain(address)
-		if err != nil {
-			handleNotFoundHtml(w, r)
-			return
-		}
-		if len(ensData.Address) > 0 {
-			address = ensData.Address
-		}
+	ensData, err := GetEnsDomain(address)
+	if err != nil && utils.IsValidEnsDomain(address) {
+		handleNotFoundHtml(w, r)
+		return
+	}
+	if len(ensData.Address) > 0 {
+		address = ensData.Address
 	}
 
 	isValid := utils.IsEth1Address(address)
@@ -48,7 +46,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address = strings.Replace(address, "0x", "", -1)
 	address = strings.ToLower(address)
 
-	// currency := GetCurrency(r)
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
 
@@ -80,13 +77,16 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 
 		isContract, err = eth1data.IsContract(ctx, common.BytesToAddress(addressBytes))
-		return err
+		if err != nil {
+			return fmt.Errorf("IsContract: %w", err)
+		}
+		return nil
 	})
 	g.Go(func() error {
 		var err error
 		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressTransactionsTableData: %w", err)
 		}
 		return nil
 	})
@@ -94,7 +94,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		var err error
 		internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressInternalTableData: %w", err)
 		}
 		return nil
 	})
@@ -102,7 +102,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		var err error
 		erc20, err = db.BigtableClient.GetAddressErc20TableData(addressBytes, "", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressErc20TableData: %w", err)
 		}
 		return nil
 	})
@@ -110,7 +110,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		var err error
 		erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressErc721TableData: %w", err)
 		}
 		return nil
 	})
@@ -118,7 +118,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		var err error
 		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressErc1155TableData: %w", err)
 		}
 		return nil
 	})
@@ -126,7 +126,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		var err error
 		blocksMined, err = db.BigtableClient.GetAddressBlocksMinedTableData(address, "", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressBlocksMinedTableData: %w", err)
 		}
 		return nil
 	})
@@ -134,7 +134,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		var err error
 		unclesMined, err = db.BigtableClient.GetAddressUnclesMinedTableData(address, "", "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressUnclesMinedTableData: %w", err)
 		}
 		return nil
 	})
@@ -142,7 +142,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		var err error
 		addressWithdrawals, nextPageToken, err := db.GetAddressWithdrawals(addressBytes, 25, "")
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressWithdrawals: %w", err)
 		}
 
 		withdrawalsData := make([][]interface{}, 0, len(addressWithdrawals))
@@ -168,12 +168,11 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	g.Go(func() error {
 		sumWithdrawals, err := db.GetAddressWithdrawalsTotal(addressBytes)
 		if err != nil {
-			return err
+			return fmt.Errorf("GetAddressWithdrawalsTotal: %w", err)
 		}
 		withdrawalSummary = template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(sumWithdrawals), big.NewInt(1e9)), "Ether", 6)))
 		return nil
 	})
-	// }
 
 	if err := g.Wait(); err != nil {
 		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "g.Wait()", err) != nil {
@@ -238,7 +237,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 			Data: erc1155,
 		})
 	}
-
 	if withdrawals != nil && len(withdrawals.Data) != 0 {
 		tabs = append(tabs, types.Eth1AddressPageTabs{
 			Id:   "withdrawals",
@@ -250,6 +248,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = types.Eth1AddressPageData{
 		Address:            address,
+		EnsName:            ensData.Domain,
 		IsContract:         isContract,
 		QRCode:             pngStr,
 		QRCodeInverse:      pngStrInverse,
@@ -288,7 +287,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressTransactionsTableData(addressBytes, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	// logger.Infof("GOT TX: %+v", data)
@@ -315,7 +314,7 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 	search := ""
 	data, err := db.BigtableClient.GetAddressBlocksMinedTableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -340,7 +339,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 	search := ""
 	data, err := db.BigtableClient.GetAddressUnclesMinedTableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -410,7 +409,7 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 
 	data, err := db.BigtableClient.GetAddressInternalTableData(addressBytes, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	// logger.Infof("GOT TX: %+v", data)
@@ -466,7 +465,7 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressErc721TableData(address, search, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 block table data")
+		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
 	// logger.Infof("GOT TX: %+v", data)

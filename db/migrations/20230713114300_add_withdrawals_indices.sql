@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'up SQL query - add column for blocks_withdrawals';
-ALTER TABLE blocks_withdrawals ADD COLUMN address_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE blocks_withdrawals ADD COLUMN IF NOT EXISTS address_text TEXT NOT NULL DEFAULT '';
 
 SELECT 'populate new blocks_withdrawals column'; 
 UPDATE blocks_withdrawals SET address_text = ENCODE(address, 'hex') WHERE address_text = '';
@@ -12,7 +12,7 @@ CREATE INDEX IF NOT EXISTS idx_blocks_withdrawals_block_slot ON blocks_withdrawa
 CREATE INDEX IF NOT EXISTS idx_blocks_withdrawals_search ON blocks_withdrawals (validatorindex, block_slot, address_text);
 
 SELECT 'add column for blocks_bls_change';
-ALTER TABLE blocks_bls_change ADD COLUMN pubkey_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE blocks_bls_change ADD COLUMN IF NOT EXISTS pubkey_text TEXT NOT NULL DEFAULT '';
 
 SELECT 'populate new blocks_bls_change column'; 
 UPDATE blocks_bls_change SET pubkey_text = ENCODE(pubkey, 'hex') WHERE pubkey_text = '';
@@ -31,7 +31,7 @@ DROP INDEX IF EXISTS idx_blocks_withdrawals_block_slot;
 DROP INDEX IF EXISTS idx_blocks_withdrawals_search;
 
 SELECT 'drop column for blocks_withdrawals';
-ALTER TABLE blocks_withdrawals DROP COLUMN address_text;
+ALTER TABLE blocks_withdrawals DROP COLUMN IF EXISTS address_text;
 
 SELECT 'drop blocks_bls_change indices'; 
 DROP INDEX IF EXISTS idx_blocks_bls_change_pubkey_text;
@@ -39,5 +39,5 @@ DROP INDEX IF EXISTS idx_blocks_bls_change_block_slot;
 DROP INDEX IF EXISTS idx_blocks_bls_change_search;
 
 SELECT 'drop column for blocks_bls_change';
-ALTER TABLE blocks_bls_change DROP COLUMN pubkey_text;
+ALTER TABLE blocks_bls_change DROP COLUMN IF EXISTS pubkey_text;
 -- +goose StatementEnd

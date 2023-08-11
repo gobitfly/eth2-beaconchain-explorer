@@ -70,36 +70,35 @@ function setValidatorEffectiveness(elem, eff) {
   }
 }
 
-function setUtc() {
-  if ($("#optionLocal").is(":checked") || $("#optionTs").is(":checked")) {
-    var unixTs = $("#unixTs").text()
-    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
-    $("#timestamp").text(ts.toUTC().toFormat("MMM-dd-yyyy hh:mm:ss a"))
-  }
-}
-
-function setLocal() {
-  if ($("#optionUtc").is(":checked") || $("#optionTs").is(":checked")) {
-    var unixTs = $("#unixTs").text()
-    var ts = luxon.DateTime.fromMillis(unixTs * 1000)
-    $("#timestamp").text(ts.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + ts.toFormat("Z"))
-  }
-}
-
 function setTs() {
-  var unixTs = $("#unixTs").text()
-  var utc = luxon.DateTime.fromMillis(unixTs * 1000)
-  $("#timestamp").text(utc["ts"] / 1000)
+  let timestamp = $("#timestamp")
+  let unixTs = timestamp.attr("aria-ethereum-date")
+  if (!unixTs) {
+    unixTs = $("#unixTs").text()
+  }
+  var ts = luxon.DateTime.fromMillis(unixTs * 1000)
+  let optionName = timestamp.attr("aria-timestamp-options")
+  let selectedOption = document.querySelector(`input[name="${optionName}"]:checked`)?.value
+
+  let text = ""
+  switch (selectedOption) {
+    case "local":
+      text = ts.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + ts.toFormat("Z")
+      break
+    case "utc":
+      text = ts.toUTC().toFormat("MMM-dd-yyyy hh:mm:ss a")
+      break
+    default:
+      text = ts["ts"] / 1000
+      break
+  }
+
+  timestamp.text(text)
 }
 
 function copyTs() {
   var text = $("#timestamp").text()
-  tsArr = text.split(" ")
-  if (tsArr.length > 1) {
-    navigator.clipboard.writeText(tsArr[0] + " " + tsArr[1])
-  } else {
-    navigator.clipboard.writeText(tsArr[0])
-  }
+  navigator.clipboard.writeText(text)
 }
 
 function viewHexDataAs(id, type) {
@@ -546,6 +545,8 @@ function formatAriaEthereumDate(elem) {
     $(elem).text(local.toFormat("MMM-dd-yyyy HH:mm:ss") + " UTC" + local.toFormat("Z"))
     $(elem).attr("data-original-title", formatTimestampsTooltip(local))
     $(elem).attr("data-toggle", "tooltip")
+  } else if (format === "TIMESTAMP") {
+    setTs()
   } else {
     $(elem).text(local.toFormat(format))
   }

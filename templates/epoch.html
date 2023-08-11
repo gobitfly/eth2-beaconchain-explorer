@@ -169,14 +169,8 @@
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Time:</div>
-            <div class="col-md-6"><span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
-            <div class="col-md-3 text-right">
-              <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
-              <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" autocomplete="off" /> Timestamp </label>
-                <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" autocomplete="off" /> UTC </label>
-                <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" autocomplete="off" checked /> Local </label>
-              </div>
+            <div class="col-md-9 d-flex justify-between flex-wrap">
+              {{ template "timestamp" .Ts }}
             </div>
           </div>
           <div class="row border-bottom p-3 mx-0">

@@ -77,7 +77,7 @@
                   <span class="badge badge-light text-black px-1"><i class="fas fa-exclamation-circle"></i> Not Included</span>
                 </span>
               {{ end }}
-            {{ else if and (gtf .EpochParticipationRate 0.66) (ltf .EpochParticipationRate 1) (le .Status 1 ) }}
+            {{ else if and (gtf .EpochParticipationRate 0.66) (ltf .EpochParticipationRate 1) (le .Status 1 ) .PrevEpochFinalized }}
               <span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="This block can be considered as safe, and is highly unlikely to be reverted." data-container="body">
                 <span class="badge badge-secondary text-white px-1"><i class="fas fa-check"></i> Not Finalized (Safe)</span>
               </span>
@@ -94,15 +94,7 @@
       <div class="row border-bottom p-3 mx-0">
         <div class="col-md-2">Time:</div>
         <div class="col-md-10 d-flex justify-between flex-wrap">
-          <div><span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
-          <div class="flex-grow-1 text-right">
-            <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
-            <div class="btn-group btn-group-toggle" data-toggle="buttons">
-              <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" autocomplete="off" /> Timestamp </label>
-              <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" autocomplete="off" /> UTC </label>
-              <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" autocomplete="off" checked /> Local </label>
-            </div>
-          </div>
+          {{ template "timestamp" .Ts }}
         </div>
       </div>
       {{ if ne .Slot 0 }}

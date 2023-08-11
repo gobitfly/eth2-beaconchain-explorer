@@ -47,7 +47,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -93,6 +93,12 @@ func main() {
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
+
+	erigonClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	if err != nil {
+		logrus.Fatalf("error initializing erigon client: %v", err)
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
 		Password:     cfg.WriterDatabase.Password,
@@ -156,18 +162,78 @@ func main() {
 			}
 			logrus.Printf("finished export for epoch %v", epoch)
 		}
+	case "export-epoch-missed-slots":
+		logrus.Infof("exporting epochs with missed slots")
+		epochs := []uint64{}
+		err = db.ReaderDb.Select(&epochs, `
+			WITH last_exported_epoch AS (
+				SELECT (MAX(epoch)*$1) AS slot 
+				FROM epochs 
+				WHERE finalized 
+				AND rewards_exported
+			)
+			SELECT epoch 
+			FROM blocks
+			WHERE status = '0' 
+				AND slot < (SELECT slot FROM last_exported_epoch)
+			GROUP BY epoch 
+			ORDER BY epoch;
+		`, utils.Config.Chain.Config.SlotsPerEpoch)
+		if err != nil {
+			utils.LogError(err, "Error getting epochs with missing slot status from db", 0)
+			return
+		} else if len(epochs) == 0 {
+			logrus.Infof("No epochs with missing slot status found")
+			return
+		}
+
+		logrus.Infof("Found %v epochs with missing slot status", len(epochs))
+		for _, epoch := range epochs {
+			err = exporter.ExportEpoch(epoch, rpcClient)
+			if err != nil {
+				logrus.Errorf("error exporting epoch: %v", err)
+			}
+			logrus.Printf("finished export for epoch %v", epoch)
+		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
 	case "clear-bigtable":
 		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
-		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt)
+		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
+	case "index-missing-blocks":
+		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
+	case "migrate-last-attestation-slot-bigtable":
+		migrateLastAttestationSlotToBigtable()
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
+	}
+}
+
+// one time migration of the last attestation slot values from postgres to bigtable
+// will write the last attestation slot that is currently in postgres to bigtable
+// this can safely be done for active validators as bigtable will only keep the most recent
+// last attestation slot
+func migrateLastAttestationSlotToBigtable() {
+	validators := []types.Validator{}
+
+	err := db.WriterDb.Select(&validators, "SELECT validatorindex, lastattestationslot FROM validators WHERE lastattestationslot IS NOT NULL ORDER BY validatorindex")
+
+	if err != nil {
+		utils.LogFatal(err, "error retrieving last attestation slot", 0)
+	}
+
+	for _, validator := range validators {
+		logrus.Infof("setting last attestation slot %v for validator %v", validator.LastAttestationSlot, validator.Index)
+
+		err := db.BigtableClient.SetLastAttestationSlot(validator.Index, uint64(validator.LastAttestationSlot.Int64))
+		if err != nil {
+			utils.LogFatal(err, "error setting last attestation slot", 0)
+		}
 	}
 }
 
@@ -219,6 +285,32 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					})
 					continue
 				}
+
+				status := uint64(0)
+				err := db.ReaderDb.Get(&status, `
+				SELECT status
+				FROM blocks WHERE 
+					slot=$1`, block.Slot)
+				if err != nil {
+					utils.LogError(err, fmt.Errorf("error getting Slot [%v] status", block.Slot), 0)
+					return
+				}
+
+				if status != block.Status {
+					logrus.Infof("Slot[%v] has the wrong status [%v], but should be [%v]", block.Slot, status, block.Status)
+					if block.Status == 1 {
+						err := db.SaveBlock(block)
+						if err != nil {
+							utils.LogError(err, fmt.Errorf("error saving Slot [%v]", block.Slot), 0)
+							return
+						}
+						continue
+					} else {
+						utils.LogError(err, fmt.Errorf("error on Slot [%v] - no update process for status [%v]", block.Slot, block.Status), 0)
+						return
+					}
+				}
+
 				for i, a := range block.Attestations {
 					att := a
 					index := i
@@ -232,11 +324,11 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 
 						// block_slot and block_index are already unique, but to be sure we use the correct index we also check the signature
 						err := db.ReaderDb.Get(&aggregationbits, `
-						SELECT aggregationbits
-						FROM blocks_attestations WHERE 
-							block_slot=$1 AND
-							block_index=$2 AND
-							signature = $3`, block.Slot, index, att.Signature)
+							SELECT aggregationbits
+							FROM blocks_attestations WHERE 
+								block_slot=$1 AND
+								block_index=$2
+						`, block.Slot, index)
 						if err != nil {
 							return fmt.Errorf("error getting aggregationbits on Slot [%v] Index [%v] with Sig [%v]: %v", block.Slot, index, att.Signature, err)
 						}
@@ -248,9 +340,8 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 									aggregationbits=$1
 								WHERE
 									block_slot=$2 AND
-									block_index=$3 AND
-									signature = $4
-							`, att.AggregationBits, block.Slot, index, att.Signature)
+									block_index=$3
+							`, att.AggregationBits, block.Slot, index)
 							if err != nil {
 								return fmt.Errorf("error updating aggregationbits on Slot [%v] Index [%v] :  %v", block.Slot, index, err)
 							}
@@ -381,7 +472,65 @@ func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
 	}
 }
 
-func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable) {
+// Let's find blocks that are missing in bt and index them.
+func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient) {
+
+	if end == 0 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
+			return
+		}
+		end = uint64(lastBlockFromBlocksTable)
+	}
+
+	batchSize := uint64(10000)
+	if start == 0 {
+		start = 1
+	}
+	for i := start; i < end; i += batchSize {
+		targetCount := batchSize
+		if i+targetCount >= end {
+			targetCount = end - i
+		}
+		to := i + targetCount - 1
+
+		list, err := bt.GetBlocksDescending(uint64(to), uint64(targetCount))
+		if err != nil {
+			utils.LogError(err, "can not retrieve blocks via GetBlocksDescending from bigtable", 0)
+			return
+		}
+		if uint64(len(list)) == targetCount {
+			logrus.Infof("found all blocks [%v]->[%v]", i, to)
+		} else {
+			logrus.Infof("oh no we are missing some blocks [%v]->[%v]", i, to)
+			blocksMap := make(map[uint64]bool)
+			for _, item := range list {
+				blocksMap[item.Number] = true
+			}
+			for j := uint64(i); j <= uint64(to); j++ {
+				if !blocksMap[j] {
+					logrus.Infof("block [%v] not found so we need to index it", j)
+					if _, err := db.BigtableClient.GetBlockFromBlocksTable(j); err != nil {
+						logrus.Infof("could not load [%v] from blocks table so we need to fetch it from the node and save it", j)
+						bc, _, err := client.GetBlock(int64(j))
+						if err != nil {
+							utils.LogError(err, fmt.Sprintf("error getting block: %v from ethereum node", j), 0)
+						}
+						err = bt.SaveBlock(bc)
+						if err != nil {
+							utils.LogError(err, fmt.Sprintf("error saving block: %v ", j), 0)
+						}
+					}
+
+					IndexOldEth1Blocks(j, j, 1, 1, "all", bt, client)
+				}
+			}
+		}
+	}
+}
+
+func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
 	if endBlock > 0 && endBlock < startBlock {
 		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
 		return
@@ -395,16 +544,13 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		return
 	}
 
-	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
-	if err != nil {
-		logrus.Fatalf("error initializing erigon client: %v", err)
-	}
-
 	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
-	if len(transformerList) == 0 {
+	if transformerFlag == "all" {
+		transformerList = []string{"TransformBlock", "TransformTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered"}
+	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
 		return
 	}

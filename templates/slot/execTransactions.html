@@ -76,6 +76,7 @@
             for (let i = startElement; i < data.length; ++i) {
               infLoading.appendChild(getTransactionsElement(data[i], i == lastElement))
             }
+            $("#transactions_table").find('[data-toggle="tooltip"]').tooltip()
           } catch (err) {
             console.error("error getting lazy transactions: ", err)
             infLoading.appendChild(getInfoElementTransactions("Error loading transactions...", "red"))
