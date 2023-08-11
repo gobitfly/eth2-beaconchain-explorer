@@ -356,7 +356,7 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
-	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, name, eventFilter)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_name = $2 AND event_filter = $3", userID, name, eventFilter)
 	return err
 }
 
@@ -366,7 +366,7 @@ func DeleteSubscriptionBatch(userID uint64, network string, eventName types.Even
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
-	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = ANY($3)", userID, name, pq.Array(eventFilter))
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_name = $2 AND event_filter = ANY($3)", userID, name, pq.Array(eventFilter))
 	return err
 }
 
@@ -376,7 +376,7 @@ func DeleteAllSubscription(userID uint64, network string, eventName types.EventN
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
-	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2", userID, name)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_name = $2", userID, name)
 	return err
 }
 
