@@ -2,7 +2,7 @@
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'up SQL query - add column eth1_deposits for from_address_text';
-ALTER TABLE eth1_deposits ADD COLUMN from_address_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE eth1_deposits ADD COLUMN IF NOT EXISTS from_address_text TEXT NOT NULL DEFAULT '';
 -- +goose StatementEnd
 
 -- +goose StatementBegin
@@ -44,5 +44,5 @@ DROP INDEX IF EXISTS idx_eth1_deposits_from_address_text;
 
 -- +goose StatementBegin
 SELECT 'drop column from_address_text from eth1_deposits';
-ALTER TABLE eth1_deposits DROP COLUMN from_address_text;
+ALTER TABLE eth1_deposits DROP COLUMN IF EXISTS from_address_text;
 -- +goose StatementEnd
