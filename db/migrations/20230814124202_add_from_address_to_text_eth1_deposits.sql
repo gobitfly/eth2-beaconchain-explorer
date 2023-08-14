@@ -1,17 +1,17 @@
 -- +goose NO TRANSACTION
 -- +goose Up
--- +goose StatementBegin
 SELECT 'up SQL query - add column eth1_deposits for from_address_text';
+-- +goose StatementBegin
 ALTER TABLE eth1_deposits ADD COLUMN IF NOT EXISTS from_address_text TEXT NOT NULL DEFAULT '';
 -- +goose StatementEnd
 
--- +goose StatementBegin
 SELECT 'create new eth1_deposits index for from_address_text'; 
+-- +goose StatementBegin
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_eth1_deposits_from_address_text ON eth1_deposits (from_address_text);
 -- +goose StatementEnd
 
--- +goose StatementBegin
 SELECT 'populate new eth1_deposits column from_address_text, 1000 at a time'; 
+-- +goose StatementBegin
 DO
 $do$
 DECLARE
@@ -37,12 +37,12 @@ $do$;
 -- +goose StatementEnd
 
 -- +goose Down
--- +goose StatementBegin
 SELECT 'down SQL query - drop from_address_text index from eth1_deposits '; 
+-- +goose StatementBegin
 DROP INDEX IF EXISTS idx_eth1_deposits_from_address_text;
 -- +goose StatementEnd
 
--- +goose StatementBegin
 SELECT 'drop column from_address_text from eth1_deposits';
+-- +goose StatementBegin
 ALTER TABLE eth1_deposits DROP COLUMN IF EXISTS from_address_text;
 -- +goose StatementEnd
