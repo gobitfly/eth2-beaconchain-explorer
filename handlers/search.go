@@ -248,25 +248,23 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		// find validators per eth1-address (limit result by N addresses and M validators per address)
 		result = &[]struct {
-			Eth1Address string `db:"from_address" json:"eth1_address"`
+			Eth1Address string `db:"from_address_text" json:"eth1_address"`
 			Count       uint64 `db:"count" json:"count"`
 		}{}
-		var eth1AddressHash []byte
-		eth1AddressHash, err = hex.DecodeString(search)
-		if err != nil {
-			err = fmt.Errorf("error parsing eth1AddressHash to hex: %v", err)
-			break
+		if searchLikeRE.MatchString(search) {
+			trimmed := strings.ToLower(strings.TrimPrefix(search, "0x"))
+
+			err = db.ReaderDb.Select(result, `
+			SELECT from_address_text, COUNT(*) FROM (
+				SELECT 
+					DISTINCT ON(validatorindex) validatorindex,					
+					from_address_text
+				FROM eth1_deposits
+				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+				WHERE from_address_text LIKE $1 || '%'
+			) a 
+			GROUP BY from_address_text`, trimmed)
 		}
-		err = db.ReaderDb.Select(result, `
-		SELECT from_address, COUNT(*) FROM (
-			SELECT 
-				DISTINCT ON(validatorindex) validatorindex,
-				ENCODE(from_address::bytea, 'hex') as from_address
-			FROM eth1_deposits
-			INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-			WHERE from_address LIKE $1 || '%'::bytea
-		) a 
-		GROUP BY from_address`, eth1AddressHash)
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
@@ -355,7 +353,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 // search can ether be a valid ETH address or an ENS name mapping to one
 func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByEth1Result, error) {
 	result := &[]struct {
-		Eth1Address      string        `db:"from_address" json:"eth1_address"`
+		Eth1Address      string        `db:"from_address_text" json:"eth1_address"`
 		ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 		Count            uint64        `db:"count" json:"-"`
 	}{}
@@ -376,51 +374,34 @@ func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByE
 	if len(eth1AddressHash) == 20 {
 		// if it is an eth1-address just search for exact match
 		err = db.ReaderDb.Select(result, `
-			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+			SELECT from_address_text, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
-					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					from_address_text,
+					DENSE_RANK() OVER (PARTITION BY from_address_text ORDER BY validatorindex) AS validatorrow,
+					DENSE_RANK() OVER (ORDER BY from_address_text) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address = $1
+				WHERE from_address_text = $1
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address
-			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
-	} else if len(eth1AddressHash) <= 16 {
-		// if the lenght is less then 32 use byte-wise comparison
-		err = db.ReaderDb.Select(result, `
-			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
-				SELECT 
-					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
-					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
-				FROM eth1_deposits
-				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address LIKE $1 || '%'::bytea
-			) a 
-			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address
-			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+			GROUP BY from_address_text
+			ORDER BY count DESC`, search, searchValidatorsResultLimit)
 	} else {
-		// otherwise use hex (see BIDS-1570)
 		err = db.ReaderDb.Select(result, `
-			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+			SELECT from_address_text, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
-					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+					from_address_text,
+					DENSE_RANK() OVER (PARTITION BY from_address_text ORDER BY validatorindex) AS validatorrow,
+					DENSE_RANK() OVER (ORDER BY from_address_text) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE encode(from_address,'hex') LIKE $1
+				WHERE from_address_text LIKE $1 || '%'
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address
-			ORDER BY count DESC`, search+"%", searchValidatorsResultLimit)
+			GROUP BY from_address_text
+			ORDER BY count DESC`, search, searchValidatorsResultLimit)
 	}
 	if err != nil {
 		utils.LogError(err, "error getting validators for eth1 address from db", 0)
