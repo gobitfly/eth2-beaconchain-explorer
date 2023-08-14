@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'up SQL query - add column eth1_deposits for from_address_text';
-ALTER TABLE eth1_deposits ADD COLUMN from_address_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE eth1_deposits ADD COLUMN IF NOT EXISTS from_address_text TEXT NOT NULL DEFAULT '';
 
 SELECT 'create new eth1_deposits index for from_address_text'; 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_eth1_deposits_from_address_text ON eth1_deposits (from_address_text);
@@ -38,5 +38,5 @@ SELECT 'down SQL query - drop from_address_text index from eth1_deposits ';
 DROP INDEX IF EXISTS idx_eth1_deposits_from_address_text;
 
 SELECT 'drop column from_address_text from eth1_deposits';
-ALTER TABLE eth1_deposits DROP COLUMN from_address_text;
+ALTER TABLE eth1_deposits DROP COLUMN IF EXISTS from_address_text;
 -- +goose StatementEnd
