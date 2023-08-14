@@ -1,6 +1,9 @@
 {{ define "css" }}
 {{ end }}
 {{ define "js" }}
+  <script>
+    activateTabbarSwitcher("tabContent", "tab", "slots")
+  </script>
 {{ end }}
 
 {{ define "content" }}
@@ -24,12 +27,12 @@
       </li>
     </ul>
     <div class="tab-content" id="tabContent">
-      <div class="tab-pane fade show active" id="slots" role="tabpanel" aria-labelledby="overview-tab">
+      <div class="tab-pane fade" id="slotsTabPanel" role="tabpanel" aria-labelledby="overview-tab">
         <div class="card block-card">
           {{ template "slot_finder" . }}
         </div>
       </div>
-      <div class="tab-pane fade" id="upgrade-scheduler" role="tabpanel" aria-labelledby="overview-tab">
+      <div class="tab-pane fade" id="upgrade-schedulerTabPanel" role="tabpanel" aria-labelledby="overview-tab">
         <div class="card block-card">
           {{ template "upgrade_scheduler" . }}
         </div>
