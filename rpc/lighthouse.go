@@ -56,9 +56,9 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 	lc.lastBlockSeenMux.Lock()
 	lc.lastBlockSeen = time.Now()
 	lc.lastBlockSeenMux.Unlock()
-	reConnectWithError := make(chan bool, 10)
-	offlineCount := uint64(0)
+	reConnectWithError := make(chan bool)
 	go func() {
+		offlineCount := uint64(0)
 		reConnectWithError <- true
 		for ; ; time.Sleep(time.Second) {
 			lc.lastBlockSeenMux.Lock()
@@ -87,6 +87,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 
 		for {
 			select {
+			// (re-)connects to the client, when triggered from the routine above
 			case throwError := <-reConnectWithError:
 				newStream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
 
@@ -99,6 +100,7 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 				} else {
 					stream = newStream
 				}
+			// listens to the events by the client and forwards the new blocks in the blks channel
 			case e := <-stream.Events:
 				var parsed StreamedBlockEventData
 				err := json.Unmarshal([]byte(e.Data()), &parsed)
