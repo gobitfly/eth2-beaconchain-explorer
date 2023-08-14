@@ -556,6 +556,14 @@ func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	return publicKey, err
 }
 
+// GetValidatorPublicKeys will return the public key for a list of validator indices and or public keys
+func GetValidatorPublicKeys(indices []uint64, keys [][]byte) ([][]byte, error) {
+	var publicKeys [][]byte
+	err := ReaderDb.Select(&publicKeys, "SELECT pubkey FROM validators WHERE validatorindex = ANY($1) OR pubkey = ANY($2)", indices, keys)
+
+	return publicKeys, err
+}
+
 // GetValidatorIndex will return the validator-index for a public key from the database
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
