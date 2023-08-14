@@ -396,7 +396,7 @@
 
     <div class="mb-3 overview-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); grid-auto-flow: row; gap: 1rem;">
       <div class="overview-content d-flex flex-column">
-        <ul class="nav nav-tabs border-0 border-bottom-0 flex-grow-0" id="addressTabs" role="tablist">
+        <ul class="nav nav-tabs border-0 border-bottom-0 flex-grow-0" role="tablist">
           <li style="margin: 0;" class="nav-item" role="presentation">
             <a href="#overview" class="nav-link border-bottom-radius-0 border-bottom-0 active" id="overview-tab" data-toggle="tab" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
           </li>
@@ -514,7 +514,7 @@
 {{ end }}
 
 {{ define "AddressTabs" }}
-  <ul class="nav nav-pills border-0 border-bottom-0 address-tabs" role="tablist">
+  <ul class="nav nav-pills border-0 border-bottom-0 address-tabs" role="tablist" id="addressTabs">
     <li style="margin: 0;" class="nav-item" role="presentation">
       <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab" role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
     </li>
