@@ -270,16 +270,6 @@
                 if (tooltip.chart.hoverPoints.length > 1) {
                     text += `<br/><b>Total:</b> ${getIncomeChartValueString(total, selectedCurrency, selectedCurrency, clPrice)}`
                 }
-                // income
-                for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
-                  const value = tooltip.chart.hoverPoints[i].y;
-                  text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, ethPrice)}<br/>`
-                  total += value
-                }
-                // add total if hovered point contains rewards for both EL and CL
-                if (tooltip.chart.hoverPoints.length > 1) {
-                  text += `<b>Total:</b> ${getIncomeChartValueString(total, currency, ethPrice)}`
-                }
                 return text
               }
             },
