@@ -448,20 +448,21 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 		return err
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
+
 	start = time.Now()
 	logger.Infof("populate validator_performance rank7d")
 
 	_, err = WriterDb.Exec(`
-		insert into validator_performance (                                                                                                 
-			validatorindex,          
-			balance,
-			rank7d
-		) (
-			select validatorindex, 0, row_number() over(order by validator_performance.cl_performance_7d desc) as rank7d from validator_performance
-		) 
-			on conflict (validatorindex) do update set 
-				rank7d=excluded.rank7d
-		;
+		WITH ranked_performance AS (
+			SELECT
+				validatorindex, 
+				row_number() OVER (ORDER BY cl_performance_7d DESC) AS rank7d
+			FROM validator_performance
+		)
+		UPDATE validator_performance vp
+		SET rank7d = rp.rank7d
+		FROM ranked_performance rp
+		WHERE vp.validatorindex = rp.validatorindex
 		`)
 	if err != nil {
 		return err
