@@ -409,6 +409,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
 		case "gnosis":
 			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.Config)
+		case "dencun-devnet-8":
+			err = yaml.Unmarshal([]byte(config.DencunDevnet8Yml), &cfg.Chain.Config)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
 		}
@@ -450,6 +452,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.GenesisTimestamp = 1675263600
 		case "gnosis":
 			cfg.Chain.GenesisTimestamp = 1638993340
+		case "dencun-devnet-8":
+			cfg.Chain.GenesisTimestamp = 1692182400
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
@@ -467,6 +471,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.GenesisValidatorsRoot = "0x53a92d8f2bb1d85f62d16a156e6ebcd1bcaba652d0900b2c2f387826f3481f6f"
 		case "gnosis":
 			cfg.Chain.GenesisValidatorsRoot = "0xf5dcb5564e829aab27264b9becd5dfaa017085611224cb3036f573368dbb9d47"
+		case "dencun-devnet-8":
+			cfg.Chain.GenesisValidatorsRoot = "0x6079c0b803059b77610f0198ce4b4c459cf43afd4992359084894f719d40faba"
 		default:
 			return fmt.Errorf("tried to set known genesis-validators-root, but unknown chain-name")
 		}

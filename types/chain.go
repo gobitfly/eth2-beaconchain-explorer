@@ -100,8 +100,14 @@ type ChainConfig struct {
 	MaxExtraDataBytes                       uint64 `yaml:"MAX_EXTRA_DATA_BYTES"`
 
 	// capella
-	// https://github.com/ethereum/consensus-specs/blob/dev/presets/minimal/capella.yaml
+	// https://github.com/ethereum/consensus-specs/blob/dev/presets/mainnet/capella.yaml
 	MaxWithdrawalsPerPayload        uint64 `yaml:"MAX_WITHDRAWALS_PER_PAYLOAD"`
 	MaxValidatorsPerWithdrawalSweep uint64 `yaml:"MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP"`
 	MaxBlsToExecutionChange         uint64 `yaml:"MAX_BLS_TO_EXECUTION_CHANGES"`
+
+	// deneb
+	// https://github.com/ethereum/consensus-specs/blob/dev/presets/mainnet/deneb.yaml
+	FieldElementsPerBlob       uint64 `yaml:"FIELD_ELEMENTS_PER_BLOB"`
+	MaxBlobCommitmentsPerBlock uint64 `yaml:"MAX_BLOB_COMMITMENTS_PER_BLOCK"`
+	MaxBlobsPerBlock           uint64 `yaml:"MAX_BLOBS_PER_BLOCK"`
 }

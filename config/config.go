@@ -22,3 +22,6 @@ var TestnetChainYml string
 
 //go:embed gnosis.chain.yml
 var GnosisChainYml string
+
+//go:embed dencun-devnet-8.chain.yml
+var DencunDevnet8Yml string
