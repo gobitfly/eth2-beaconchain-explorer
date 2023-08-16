@@ -48,6 +48,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		ElRewards           bool `db:"el_rewards_exported"`
 		TotalPerformance    bool `db:"total_performance_exported"`
 		BlockStats          bool `db:"block_stats_exported"`
+		TotalAccumulation   bool `db:"total_accumulation_exported"`
 	}
 	exported := Exported{}
 
@@ -61,7 +62,8 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 			cl_rewards_exported,
 			el_rewards_exported,
 			total_performance_exported,
-			block_stats_exported
+			block_stats_exported,
+			total_accumulation_exported
 		FROM validator_stats_status 
 		WHERE day = $1;
 		`, day)
@@ -71,7 +73,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	}
 	logger.Infof("getting exported state took %v", time.Since(start))
 
-	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalPerformance && exported.BlockStats && exported.Status {
+	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalAccumulation && exported.TotalPerformance && exported.BlockStats && exported.Status {
 		logger.Infof("Skipping day %v as it is already exported", day)
 		return nil
 	}
@@ -118,6 +120,12 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		return err
 	}
 
+	if exported.TotalAccumulation {
+		logger.Infof("Skipping total accumulation")
+	} else if err := WriteValidatorTotalAccumulation(day, concurrencyTotal); err != nil {
+		return err
+	}
+
 	if exported.TotalPerformance {
 		logger.Infof("Skipping total performance")
 	} else if err := WriteValidatorTotalPerformance(day, concurrencyTotal); err != nil {
@@ -153,7 +161,8 @@ func WriteValidatorStatsExported(day uint64) error {
 		AND cl_rewards_exported = true
 		AND el_rewards_exported = true
 		AND total_performance_exported = true
-		AND block_stats_exported = true;
+		AND block_stats_exported = true
+		AND total_accumulation_exported = true;
 		`, day)
 	if err != nil {
 		return err
@@ -167,12 +176,12 @@ func WriteValidatorStatsExported(day uint64) error {
 	return nil
 }
 
-func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
+func WriteValidatorTotalAccumulation(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.TaskDuration.WithLabelValues("db_update_validator_total_accumulation_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	if err := checkIfDayIsFinalized(day); err != nil {
@@ -180,9 +189,9 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	}
 
 	start := time.Now()
-	logger.Infof("validating if required data has been exported for total performance")
+	logger.Infof("validating if required data has been exported for total accumulation")
 	type Exported struct {
-		LastTotalPerformance      bool `db:"last_total_performance_exported"`
+		LastTotalAccumulation     bool `db:"last_total_accumulation_exported"`
 		CurrentCLRewards          bool `db:"cur_cl_rewards_exported"`
 		CurrentElRewards          bool `db:"cur_el_rewards_exported"`
 		CurrentSyncDuties         bool `db:"cur_sync_duties_exported"`
@@ -191,7 +200,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	exported := Exported{}
 	err := ReaderDb.Get(&exported, `
 		SELECT 
-			last.total_performance_exported as last_total_performance_exported, 
+			last.total_accumulation_exported as last_total_accumulation_exported, 
 			cur.cl_rewards_exported as cur_cl_rewards_exported, 
 			cur.el_rewards_exported as cur_el_rewards_exported,
 			cur.sync_duties_exported as cur_sync_duties_exported,
@@ -204,15 +213,15 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 
 	if err != nil {
 		return fmt.Errorf("error retrieving required data: %v", err)
-	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
-		return fmt.Errorf("missing required export: last total performance: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
-			!exported.LastTotalPerformance, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
+	} else if !(exported.LastTotalAccumulation || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
+		return fmt.Errorf("missing required export: last total accumulation: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
+			!exported.LastTotalAccumulation, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
 	}
 	logger.Infof("validating completed, took %v", time.Since(start))
 
 	start = time.Now()
 
-	logger.Infof("exporting total income stats")
+	logger.Infof("exporting total accumulation stats")
 	maxValidatorIndex, err := GetTotalValidatorsCount()
 	if err != nil {
 		return err
@@ -274,14 +283,87 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 				return err
 			}
 
+			logger.Infof("populate total accumulation for validator stats table done for batch %v", start)
+			return err
+		})
+	}
+	if err = g.Wait(); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "total_accumulation_exported"); err != nil {
+		return err
+	}
+
+	logger.Infof("total accumulation for statistics export of day %v completed, took %v", day, time.Since(exportStart))
+	return nil
+}
+
+func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+	exportStart := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
+	}()
+
+	if err := checkIfDayIsFinalized(day); err != nil {
+		return err
+	}
+
+	start := time.Now()
+	logger.Infof("validating if required data has been exported for total performance")
+	type Exported struct {
+		LastTotalPerformance     bool `db:"last_total_performance_exported"`
+		CurrentTotalAccumulation bool `db:"cur_total_accumulation_exported"`
+	}
+	exported := Exported{}
+	err := ReaderDb.Get(&exported, `
+		SELECT 
+			last.total_performance_exported as last_total_performance_exported, 
+			cur.total_accumulation_exported as cur_total_accumulation_exported
+		FROM validator_stats_status cur
+		INNER JOIN validator_stats_status last 
+				ON last.day = GREATEST(cur.day - 1, 0)
+		WHERE cur.day = $1;
+	`, day)
+
+	if err != nil {
+		return fmt.Errorf("error retrieving required data: %v", err)
+	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentTotalAccumulation {
+		return fmt.Errorf("missing required export: last total performance: %v, cur total exported: %v",
+			!exported.LastTotalPerformance, !exported.CurrentTotalAccumulation)
+	}
+	logger.Infof("validating completed, took %v", time.Since(start))
+
+	start = time.Now()
+
+	logger.Infof("exporting total performance stats")
+	maxValidatorIndex, err := GetTotalValidatorsCount()
+	if err != nil {
+		return err
+	}
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
+	batchSize := 1000
+	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+		start := b
+		end := b + batchSize
+		if int(maxValidatorIndex) < end {
+			end = int(maxValidatorIndex)
+		}
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
+			}
+
 			_, err = WriterDb.Exec(`insert into validator_performance (
 				validatorindex,
 				balance,
-				performance1d,
-				performance7d,
-				performance31d,
-				performance365d,
-
 				rank7d,
 
 				cl_performance_1d,
@@ -305,11 +387,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 				) (
 					select 
 					vs_now.validatorindex, 
-						COALESCE(vs_now.end_balance, 0) as balance, 
-						0 as performance1d, 
-						0 as performance7d, 
-						0 as performance31d, 
-						0 as performance365d, 
+						COALESCE(vs_now.end_balance, 0) as balance,
 						0 as rank7d,
 
 						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
@@ -338,12 +416,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 					where vs_now.day = $1 AND vs_now.validatorindex >= $6 AND vs_now.validatorindex < $7
 				) 
 				on conflict (validatorindex) do update set 
-					balance = excluded.balance, 
-					performance1d=excluded.performance1d,
-					performance7d=excluded.performance7d,
-					performance31d=excluded.performance31d,
-					performance365d=excluded.performance365d,
-
+					balance = excluded.balance,
 					rank7d=excluded.rank7d,
 
 					cl_performance_1d=excluded.cl_performance_1d,
@@ -381,14 +454,10 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	_, err = WriterDb.Exec(`
 		insert into validator_performance (                                                                                                 
 			validatorindex,          
-			balance,             
-			performance1d,
-			performance7d,
-			performance31d,  
-			performance365d,                                                                                             
+			balance,
 			rank7d
 		) (
-			select validatorindex, 0, 0, 0, 0, 0, row_number() over(order by validator_performance.cl_performance_7d desc) as rank7d from validator_performance
+			select validatorindex, 0, row_number() over(order by validator_performance.cl_performance_7d desc) as rank7d from validator_performance
 		) 
 			on conflict (validatorindex) do update set 
 				rank7d=excluded.rank7d

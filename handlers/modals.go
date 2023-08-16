@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"database/sql"
+	"context"
 	"encoding/hex"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -10,6 +10,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // UsersModalAddValidator a validator to the watchlist and subscribes to events
@@ -60,51 +63,31 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 
 	errorMsg := "Error: Something went wrong. No validators added to the watchlist, please try again in a bit."
 
-	pubkeys := make([][]byte, len(validators))
-	for i, val := range validators {
-		pubkey, _, err := GetValidatorIndexFrom(val)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				logger.Warnf("Could not find validator %v when trying to add to watchlist", val)
-				utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: Could not find validator %v. No validators added to the watchlist, please try again.", val))
-			} else {
-				utils.LogError(err, "error parsing form", 0)
-				utils.SetFlash(w, r, authSessionName, errorMsg)
-			}
-			http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
-			return
-		}
-		pubkeys[i] = pubkey
+	pubkeys, err := GetValidatorKeysFrom(validators)
+	if err != nil {
+		logger.Warnf("Could not find validators when trying to add to watchlist: %v", err)
+		utils.SetFlash(w, r, authSessionName, "Error: Could not find validator all validators. No validators added to the watchlist, please try again")
+		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+		return
 	}
 
-	for _, pubkey := range pubkeys {
-		err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: hex.EncodeToString(pubkey)}}, utils.GetNetwork())
-		if err != nil {
-			logger.WithError(err).Errorf("error adding validator to watchlist: %v", user.UserID)
-			utils.SetFlash(w, r, authSessionName, errorMsg)
-			http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
-			return
-		}
+	pubKeyStrings := []string{}
+	entries := []db.WatchlistEntry{}
+	for _, key := range pubkeys {
+		keyString := hex.EncodeToString(key)
+		pubKeyStrings = append(pubKeyStrings, keyString)
+		entries = append(entries, db.WatchlistEntry{UserId: user.UserID, Validator_publickey: keyString})
+	}
+	err = db.AddToWatchlist(entries, utils.GetNetwork())
+	if err != nil {
+		logger.WithError(err).Errorf("error adding validators to watchlist: %v", user.UserID)
+		utils.SetFlash(w, r, authSessionName, errorMsg)
+		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+		return
+	}
 
-		for _, ev := range types.AddWatchlistEvents {
-			if r.FormValue(string(ev.Event)) == "on" {
-				err := db.AddSubscription(user.UserID, utils.GetNetwork(), ev.Event, hex.EncodeToString(pubkey), 0)
-				if err != nil {
-					logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
-					utils.SetFlash(w, r, authSessionName, errorMsg)
-					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
-					return
-				}
-			} else {
-				err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), ev.Event, hex.EncodeToString(pubkey))
-				if err != nil {
-					logger.WithError(err).Errorf("error deleting subscription for user: %v", user.UserID)
-					utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating a subscription, please try again in a bit.")
-					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
-					return
-				}
-			}
-		}
+	if err = handleEventSubscriptions(w, r, user, pubKeyStrings); err != nil {
+		return
 	}
 
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
@@ -163,16 +146,10 @@ func UserModalRemoveSelectedValidator(w http.ResponseWriter, r *http.Request) {
 	validatorsInput := r.FormValue("validators")
 	validators := strings.Split(validatorsInput, ",")
 
-	hasError := false
-	for _, v := range validators {
-		err := db.RemoveFromWatchlist(user.UserID, v, utils.GetNetwork())
-		if err != nil {
-			logger.WithError(err).Errorf("error removing validator from watchlist")
-			if !hasError {
-				utils.SetFlash(w, r, authSessionName, "Error: Could not remove one or more of your validators.")
-				hasError = true
-			}
-		}
+	err = db.RemoveFromWatchlistBatch(user.UserID, validators, utils.GetNetwork())
+	if err != nil {
+		logger.WithError(err).Errorf("error removing validator from watchlist")
+		utils.SetFlash(w, r, authSessionName, "Error: Could not remove one or more of your validators.")
 	}
 
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
@@ -191,9 +168,6 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
-	// const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
-
 	validatorsForm := r.FormValue("validators")
 
 	validators := strings.Split(validatorsForm, ",")
@@ -202,36 +176,65 @@ func UserModalManageNotificationModal(w http.ResponseWriter, r *http.Request) {
 	for _, ev := range types.AddWatchlistEvents {
 		events[ev.Event] = r.FormValue(string(ev.Event)) == "on"
 	}
+	publicKeys, err := GetValidatorKeysFrom(validators)
+	if err != nil {
+		utils.LogError(err, "error getting validator keys", 0)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
+		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+		return
+	}
+	pubKeyStrings := []string{}
+	for _, key := range publicKeys {
+		pubKeyStrings = append(pubKeyStrings, hex.EncodeToString(key))
+	}
 
-	for _, validator := range validators {
-		pubkey, _, err := GetValidatorIndexFrom(validator)
-		if err != nil {
-			utils.LogError(err, "error parsing form", 0)
-			utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
-			http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
-			return
-		}
-
-		for eventName, active := range events {
-			if active {
-				err := db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, hex.EncodeToString(pubkey), 0)
-				if err != nil {
-					logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
-					utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
-					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
-					return
-				}
-			} else {
-				err := db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, hex.EncodeToString(pubkey))
-				if err != nil {
-					logger.WithError(err).Errorf("error deleting subscription for user: %v", user.UserID)
-					utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
-					http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
-					return
-				}
-			}
-		}
+	if err = handleEventSubscriptions(w, r, user, pubKeyStrings); err != nil {
+		return
 	}
 
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+}
+
+func handleEventSubscriptions(w http.ResponseWriter, r *http.Request, user *types.User, pubKeyStrings []string) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+
+	g, gCtx := errgroup.WithContext(ctx)
+	events := make(map[types.EventName]bool, 0)
+	for _, ev := range types.AddWatchlistEvents {
+		events[ev.Event] = r.FormValue(string(ev.Event)) == "on"
+	}
+	for n, a := range events {
+		eventName := n
+		active := a
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
+			}
+			logger.Infof("eventName: %v, active: %v", eventName, active)
+			if active {
+				err := db.AddSubscriptionBatch(user.UserID, utils.GetNetwork(), eventName, pubKeyStrings, 0)
+				if err != nil {
+					logger.WithError(err).Errorf("error adding subscription for user: %v", user.UserID)
+					return err
+				}
+			} else {
+				err := db.DeleteSubscriptionBatch(user.UserID, utils.GetNetwork(), eventName, pubKeyStrings)
+				if err != nil {
+					logger.WithError(err).Errorf("error deleting subscription for user: %v", user.UserID)
+					return err
+				}
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating the validators in your watchlist, please try again in a bit.")
+		http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
+		return err
+	}
+	return nil
 }

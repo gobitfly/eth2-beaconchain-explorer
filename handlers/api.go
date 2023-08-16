@@ -372,11 +372,11 @@ func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlots godoc
-// @Summary Get a slot by its slot number or root hash
+// @Summary Get a slot by its slot number or root hash. Alternatively get the latest slot or the slot containing the head block.
 // @Tags Slot
-// @Description Returns a slot by its slot number or root hash or the latest slot with string latest
+// @Description Returns a slot by its slot number or root hash, the latest slot with string latest or the slot containing the head block with string head
 // @Produce  json
-// @Param  slotOrHash path string true "Slot or root hash or the string latest"
+// @Param  slotOrHash path string true "Slot or root hash or the string latest or head"
 // @Success 200 {object} types.ApiResponse{data=types.APISlotResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/slot/{slotOrHash} [get]
@@ -384,25 +384,36 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
-
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
+
 	blockSlot := int64(-1)
-	blockRootHash, err := hex.DecodeString(slotOrHash)
-	if slotOrHash != "latest" && (err != nil || len(slotOrHash) != 64) {
-		blockRootHash = []byte{}
-		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
-		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "could not parse slot number")
+	blockRootHash := []byte{}
+
+	if slotOrHash == "latest" {
+		// simply check the latest slot (might be empty which causes an error)
+		blockSlot = int64(services.LatestSlot())
+	} else if slotOrHash == "head" {
+		// retrieve the slot containing the head block of the chain
+		blockRootHash = services.Eth1HeadBlockRootHash()
+		if len(blockRootHash) != 32 {
+			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 			return
+		}
+	} else {
+		var err error
+		blockRootHash, err = hex.DecodeString(slotOrHash)
+		if err != nil || len(slotOrHash) != 64 {
+			// not a valid root hash, try to parse as slot number instead
+			blockRootHash = []byte{}
+			blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+			if err != nil {
+				sendErrorResponse(w, r.URL.String(), "could not parse slot number")
+				return
+			}
 		}
 	}
 
-	if slotOrHash == "latest" {
-		blockSlot = int64(services.LatestSlot())
-	}
-
 	if len(blockRootHash) != 32 {
-		// blockRootHash is required for the SQL statement below, if none has passed we retrieve it manually
 		err := db.ReaderDb.Get(&blockRootHash, `SELECT blockroot FROM blocks WHERE slot = $1`, blockSlot)
 
 		if err != nil || len(blockRootHash) != 32 {
@@ -456,7 +467,7 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 	LEFT JOIN
 		(SELECT beaconblockroot, sum(array_length(validators, 1)) AS votes FROM blocks_attestations GROUP BY beaconblockroot) ba ON (blocks.blockroot = ba.beaconblockroot)
 	WHERE
-		blocks.blockroot = $1;`, blockRootHash)
+		blocks.blockroot = $1`, blockRootHash)
 
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")

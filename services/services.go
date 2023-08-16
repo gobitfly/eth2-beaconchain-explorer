@@ -49,6 +49,9 @@ func Init() {
 	go latestBlockUpdater(ready)
 
 	ready.Add(1)
+	go headBlockRootHashUpdater(ready)
+
+	ready.Add(1)
 	go slotVizUpdater(ready)
 
 	ready.Add(1)

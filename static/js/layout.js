@@ -1,15 +1,3 @@
-//We want to prevent the intial page scroll to tab anchors
-function stopInitialScrollEvent(event) {
-  event.preventDefault()
-  event.stopImmediatePropagation()
-  event.stopPropagation()
-  window.scrollTo(0, 0)
-}
-window.addEventListener("scroll", stopInitialScrollEvent)
-window.addEventListener("load", function (event) {
-  window.removeEventListener("scroll", stopInitialScrollEvent)
-})
-
 function applyTTFix() {
   $("button, a").on("mousedown", (evt) => {
     evt.preventDefault() // prevent setting the browser focus on all mouse buttons, which prevents tooltips from disapearing
@@ -158,6 +146,72 @@ var observeDOM = (function () {
 })()
 
 observeDOM(document.documentElement, applyTTFix)
+
+/**
+ * Listens to navigation events triggered by tab navigation and activates the related content.
+ * The id of the content must have the following pattern: hashtag + "TabPanel"
+ * This way we prevent the browser from jumping down to the tab content on intitial navigation
+ * @param tabContainerId: Id if the parent container of the tab content's
+ * @param tabBar: Id of the tabbar container
+ * @param defaultTab: Id of the default content to be displayed (without the trailing TabPanel)
+ **/
+function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
+  var lastTab = defaultTab
+  const handleTabChange = (url) => {
+    const split = url?.split("#")
+    var selectedTab = defaultTab
+    if (split?.length == 2) {
+      selectedTab = split[1]
+    }
+    const container = $(`#${tabContainerId}`)
+    if (!container) {
+      return
+    }
+
+    container.find(".tab-pane.active").removeClass("active show")
+
+    var someTabTriggerEl = container.find(`#${selectedTab}TabPanel`)
+    if (!someTabTriggerEl.length) {
+      someTabTriggerEl = container.find(`#${lastTab}TabPanel`)
+      if (!someTabTriggerEl.length) {
+        return
+      }
+    } else {
+      lastTab = selectedTab
+    }
+
+    new bootstrap.Tab(someTabTriggerEl[0]).show()
+  }
+  const handleTabChangeClick = (event) => {
+    var href = event.currentTarget.href
+    if (href) {
+      handleTabChange(href)
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", function (ev) {
+    handleTabChange(window.location.href)
+  })
+
+  if (window.navigation) {
+    window.navigation.addEventListener("navigate", (event) => {
+      if (!event.destination?.url) {
+        return
+      }
+      handleTabChange(event.destination?.url)
+    })
+  } else {
+    //handle Firefox specific way as it does not support the navigation way
+    const tabBarContainer = $(`#${tabBar}`)
+    if (!tabBarContainer) {
+      return
+    }
+
+    tabBarContainer.find(`.nav-link`).on("click", handleTabChangeClick)
+  }
+
+  handleTabChange(window.location.href)
+}
 
 // typeahead
 $(document).ready(function () {

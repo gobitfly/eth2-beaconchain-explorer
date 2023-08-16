@@ -512,18 +512,26 @@ func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	return fmt.Sprintf("%s %s", symbol, utils.KFormatterEthPrice(price))
 }
 
-// GetValidatorIndexFrom gets the validator index from users input
-func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint64, err error) {
-	validatorIndex, err = strconv.ParseUint(userInput, 10, 32)
-	if err == nil {
-		pubKey, err = db.GetValidatorPublicKey(validatorIndex)
-		return
+// GetValidatorKeysFrom gets the validator keys from users input
+func GetValidatorKeysFrom(userInput []string) (pubKeys [][]byte, err error) {
+	indexList := []uint64{}
+	keyList := [][]byte{}
+	for _, input := range userInput {
+
+		validatorIndex, err := strconv.ParseUint(input, 10, 32)
+		if err == nil {
+			indexList = append(indexList, validatorIndex)
+		}
+
+		pubKey, err := hex.DecodeString(strings.Replace(input, "0x", "", -1))
+		if err == nil {
+			keyList = append(keyList, pubKey)
+		}
 	}
 
-	pubKey, err = hex.DecodeString(strings.Replace(userInput, "0x", "", -1))
-	if err == nil {
-		validatorIndex, err = db.GetValidatorIndex(pubKey)
-		return
+	pubKeys, err = db.GetValidatorPublicKeys(indexList, keyList)
+	if len(pubKeys) != len(userInput) {
+		err = fmt.Errorf("not all validators found in db")
 	}
 	return
 }
