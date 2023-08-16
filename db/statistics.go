@@ -81,59 +81,59 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	if exported.FailedAttestations {
 		logger.Infof("Skipping failed attestations")
 	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(day, concurrencyFailedAttestations); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorFailedAttestationsStatisticsForDay: %w", err)
 	}
 
 	if exported.SyncDuties {
 		logger.Infof("Skipping sync duties")
 	} else if err := WriteValidatorSyncDutiesForDay(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorSyncDutiesForDay: %w", err)
 	}
 
 	if exported.WithdrawalsDeposits {
 		logger.Infof("Skipping withdrawals / deposits")
 	} else if err := WriteValidatorDepositWithdrawals(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorDepositWithdrawals: %w", err)
 	}
 
 	if exported.BlockStats {
 		logger.Infof("Skipping block stats")
 	} else if err := WriteValidatorBlockStats(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorBlockStats: %w", err)
 	}
 
 	if exported.Balance {
 		logger.Infof("Skipping balances")
 	} else if err := WriteValidatorBalances(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorBalances: %w", err)
 	}
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
 	} else if err := WriteValidatorClIcome(day, concurrencyCl); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorClIcome: %w", err)
 	}
 
 	if exported.ElRewards {
 		logger.Infof("Skipping el rewards")
 	} else if err := WriteValidatorElIcome(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorElIcome: %w", err)
 	}
 
 	if exported.TotalAccumulation {
 		logger.Infof("Skipping total accumulation")
 	} else if err := WriteValidatorTotalAccumulation(day, concurrencyTotal); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorTotalAccumulation: %w", err)
 	}
 
 	if exported.TotalPerformance {
 		logger.Infof("Skipping total performance")
 	} else if err := WriteValidatorTotalPerformance(day, concurrencyTotal); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorTotalPerformance: %w", err)
 	}
 
 	if err := WriteValidatorStatsExported(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorStatsExported: %w", err)
 	}
 
 	logger.Infof("statistics export of day %v completed, took %v", day, time.Since(exportStart))
