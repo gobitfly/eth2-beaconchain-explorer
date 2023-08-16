@@ -25,10 +25,7 @@ func main() {
 
 	if *versionFlag {
 		fmt.Println(version.Version)
-<<<<<<< HEAD
 		fmt.Println(version.GoVersion)
-=======
->>>>>>> origin/master
 		return
 	}
 
