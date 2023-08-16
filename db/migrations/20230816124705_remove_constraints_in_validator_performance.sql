@@ -37,5 +37,4 @@ ALTER TABLE validator_performance ALTER COLUMN mev_performance_7d SET DEFAULT 0;
 ALTER TABLE validator_performance ALTER COLUMN mev_performance_31d SET DEFAULT 0;
 ALTER TABLE validator_performance ALTER COLUMN mev_performance_365d SET DEFAULT 0;
 ALTER TABLE validator_performance ALTER COLUMN mev_performance_total SET DEFAULT 0;
-
 -- +goose StatementEnd
