@@ -521,13 +521,7 @@ func FormatEpoch(epoch uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%d\">%s</a>", epoch, FormatAddCommas(epoch)))
 }
 
-// FormatEth1AddressString will return the eth1-address formated as html string
-func FormatEth1AddressString(addr []byte) template.HTML {
-	eth1Addr := common.BytesToAddress(addr)
-	return template.HTML(eth1Addr.Hex())
-}
-
-// FormatEth1AddressString will return the eth1-address formated as html string
+// FormatEth1AddressStringLowerCase will return the eth1-address formated as html string in lower case
 func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("0x%x", addr))
 }
@@ -688,23 +682,6 @@ func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool) te
 	return FormatWithdawalCredentials(credentials, addCopyButton)
 }
 
-func FormatName(name string, trunc_opt ...bool) template.HTML {
-	trunc := true
-	if len(trunc_opt) > 0 {
-		trunc = trunc_opt[0]
-	}
-
-	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
-	if len(name) > 8 && trunc {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s…</span>", name[:8]))
-	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", name))
-}
-
-func AddCopyButton(element template.HTML, copyContent string) template.HTML {
-	return template.HTML(fmt.Sprintf(`<span title="%s" data-toggle="tooltip">%v<span>`, copyContent, element)) + " " + template.HTML(CopyButton(copyContent))
-}
-
 func CopyButton(clipboardText interface{}) string {
 	value := fmt.Sprintf("%v", clipboardText)
 	if len(value) < 2 || value[0] != '0' || value[1] != 'x' {
@@ -715,26 +692,6 @@ func CopyButton(clipboardText interface{}) string {
 
 func CopyButtonText(clipboardText interface{}) string {
 	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=%v></i>`, clipboardText)
-}
-
-func CopyButtonWithTitle(clipboardText interface{}, title string) string {
-	value := fmt.Sprintf("%v", clipboardText)
-	if len(value) < 2 || value[0] != '0' || value[1] != 'x' {
-		value = "0x" + value
-	}
-	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="%v" data-clipboard-text=%s></i>`, title, value)
-}
-
-func Reverse(s string) string {
-	runes := []rune(s)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
-	}
-	return string(runes)
-}
-
-func FormatBitvector(b []byte) template.HTML {
-	return formatBits(b, len(b)*8)
 }
 
 func FormatBitlist(b []byte) template.HTML {
@@ -1053,27 +1010,9 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 	}
 }
 
-func FormatEth1AddressWithName(address []byte, name string) template.HTML {
-	eth1Addr := common.BytesToAddress(address)
-	if name != "" {
-		return template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
-	} else {
-		return FormatEth1Address(address)
-	}
-}
-
 // FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)
 func FormatValidatorInt64(validator int64) template.HTML {
 	return FormatValidator(uint64(validator))
-}
-
-// FormatValidatosrInt64 will return html formatted text for validators
-func FormatValidatorsInt64(validators []int64) template.HTML {
-	formatedValidators := make([]string, len(validators))
-	for i, v := range validators {
-		formatedValidators[i] = string(FormatValidatorInt64(v))
-	}
-	return template.HTML(strings.Join(formatedValidators, " "))
 }
 
 // FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
@@ -1093,19 +1032,6 @@ func FormatSlashedValidatorWithName(validator uint64, name string) template.HTML
 	} else {
 		return FormatSlashedValidator(validator)
 	}
-}
-
-// FormatSlashedValidatorsInt64 will return html formatted text for slashed validators
-func FormatSlashedValidatorsInt64(validators []int64) template.HTML {
-	str := ""
-	for i, v := range validators {
-		if i == len(validators)+1 {
-			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>", v, v)
-		} else {
-			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>, ", v, v)
-		}
-	}
-	return template.HTML(str)
 }
 
 // FormatSlashedValidators will return html formatted text for slashed validators
@@ -1175,24 +1101,6 @@ func FormatPercentageColoredEmoji(percentage float64) template.HTML {
 		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% <i class="fas fa-meh"></i></span>`, percentage))
 	}
 	return template.HTML(fmt.Sprintf(`<span class="text-danger">%.0f%% <i class="fas fa-frown"></i></span>`, percentage))
-}
-
-func FormatPercentageColored(percentage float64) template.HTML {
-	if math.IsInf(percentage, 0) || math.IsNaN(percentage) {
-		percentage = 0
-	} else {
-		percentage = percentage * 100
-	}
-	if percentage == 100 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success">%.0f%%</span>`, percentage))
-	} else if percentage >= 90 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success">%.0f%%</span>`, percentage))
-	} else if percentage >= 80 {
-		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%%</span>`, percentage))
-	} else if percentage >= 60 {
-		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% </span>`, percentage))
-	}
-	return template.HTML(fmt.Sprintf(`<span class="text-danger">%.0f%%</span>`, percentage))
 }
 
 func DerefString(str *string) string {
