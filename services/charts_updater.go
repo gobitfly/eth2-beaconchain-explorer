@@ -630,7 +630,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", epoch),
 		XAxisTitle:           "Balance",
 		YAxisTitle:           "# of Validators",
-		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrency)),
+		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+' %s' }`, utils.Config.Frontend.ClCurrency)),
 		StackingMode:         "false",
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
@@ -680,7 +680,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", epoch),
 		XAxisTitle:           "Effective Balance",
 		YAxisTitle:           "# of Validators",
-		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+'%s' }`, utils.Config.Frontend.MainCurrency)),
+		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){ return this.value+' %s' }`, utils.Config.Frontend.ClCurrency)),
 		StackingMode:         "false",
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
@@ -744,11 +744,10 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 		Title:         "Income Distribution (365 days)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 365 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
-		XAxisLabelsFormatter: `function(){
-  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
-  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
-}
-`,
+		XAxisLabelsFormatter: template.JS(fmt.Sprintf(`function(){
+  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+' %[1]v<span>'
+  return '<span style="color:var(--success)">'+this.value+' %[1]v<span>'
+}`, utils.Config.Frontend.ClCurrency)),
 		YAxisTitle:   "# of Validators",
 		StackingMode: "false",
 		Type:         "column",
@@ -854,9 +853,9 @@ func withdrawalsChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Withdrawals",
-		Subtitle:     fmt.Sprintf("Daily Amount of withdrawals in %s.", utils.Config.Frontend.MainCurrency),
+		Subtitle:     fmt.Sprintf("Daily Amount of withdrawals in %s.", utils.Config.Frontend.ClCurrency),
 		XAxisTitle:   "",
-		YAxisTitle:   fmt.Sprintf("Withdrawals %s", utils.Config.Frontend.MainCurrency),
+		YAxisTitle:   fmt.Sprintf("Withdrawals %s", utils.Config.Frontend.ClCurrency),
 		StackingMode: "normal",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
