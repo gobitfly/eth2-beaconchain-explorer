@@ -3948,7 +3948,9 @@ func parseApiValidatorParamToIndices(origParam string, limit int) (indices []uin
 			if err != nil {
 				return nil, fmt.Errorf("invalid validator-parameter: %v", param)
 			}
-			indices = append(indices, index)
+			if index < db.MaxSqlInteger {
+				indices = append(indices, index)
+			}
 		}
 	}
 

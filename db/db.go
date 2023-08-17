@@ -48,6 +48,8 @@ var saveValidatorsMux = &sync.Mutex{}
 var farFutureEpoch = uint64(18446744073709551615)
 var maxSqlNumber = uint64(9223372036854775807)
 
+const MaxSqlInteger = 2147483647
+
 var addressLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{0,40}$`)
 var blsLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{0,96}$`)
 
@@ -1548,7 +1550,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 
 			// Set proposer to MAX_SQL_INTEGER if it is the genesis-block (since we are using integers for validator-indices right now)
 			if b.Slot == 0 {
-				b.Proposer = 2147483647
+				b.Proposer = MaxSqlInteger
 			}
 			syncAggBits := []byte{}
 			syncAggSig := []byte{}
