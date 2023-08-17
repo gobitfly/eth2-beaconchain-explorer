@@ -1,4 +1,4 @@
-name: Publish Docker newfrontend images
+name: Publish Docker gnosis images
 
 on:
   # Trigger the workflow on push or pull request,
