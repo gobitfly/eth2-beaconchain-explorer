@@ -508,11 +508,11 @@ func WriteValidatorBlockStats(day uint64) error {
 		(
 			select proposer, $3, sum(case when status = '1' then 1 else 0 end), sum(case when status = '2' then 1 else 0 end), sum(case when status = '3' then 1 else 0 end)
 			from blocks
-			where epoch >= $1 and epoch <= $2 and proposer != 2147483647
+			where epoch >= $1 and epoch <= $2 and proposer != $4
 			group by proposer
 		) 
 		on conflict (validatorindex, day) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
-		firstEpoch, lastEpoch, day)
+		firstEpoch, lastEpoch, day, MaxSqlInteger)
 	if err != nil {
 		return fmt.Errorf("error inserting blocks into validator_stats for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
 	}

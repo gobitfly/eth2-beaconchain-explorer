@@ -278,8 +278,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
-		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex < 2147483647 AND validatorindex >= 0) validator_performance_count(total_count) ON true
-		WHERE validators.validatorindex = $1`, index)
+		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex < $2 AND validatorindex >= 0) validator_performance_count(total_count) ON true
+		WHERE validators.validatorindex = $1`, index, db.MaxSqlInteger)
 
 	if err == sql.ErrNoRows {
 		validatorNotFound(data, w, r, vars, "")
