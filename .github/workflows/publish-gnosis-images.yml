@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - gnosis
+      - BIDS-1846/gnosis
 
 jobs:
   build:
