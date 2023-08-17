@@ -181,6 +181,7 @@ function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
     }
 
     new bootstrap.Tab(someTabTriggerEl[0]).show()
+    $(`[href='#${selectedTab}']`).trigger("shown")
   }
   const handleTabChangeClick = (event) => {
     var href = event.currentTarget.href
