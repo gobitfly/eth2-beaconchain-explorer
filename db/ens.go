@@ -524,6 +524,10 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 		valid_to = excluded.valid_to
 	`, nameHash[:], name, addr.Bytes(), isPrimary, expires)
 	if err != nil {
+		if strings.Contains(fmt.Sprintf("%v", err), "invalid byte sequence") {
+			logger.Warnf("could not insert ens name [%v]: %v", name, err)
+			return nil
+		}
 		utils.LogError(err, fmt.Errorf("error writing ens data for name [%v]", name), 0)
 		return err
 	}
