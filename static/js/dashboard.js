@@ -269,7 +269,15 @@ function renderProposedHistoryTable(data) {
         targets: 1,
         data: "1",
         render: function (data, type, row, meta) {
-          return "<span>" + getRelativeTime(luxon.DateTime.fromMillis(data * 1000)) + "</span>"
+          // date and epochs
+          const startEpoch = timeToEpoch(data * 1000)
+          const startDate = luxon.DateTime.fromMillis(data * 1000)
+          const timeForOneDay = 24 * 60 * 60 * 1000
+          const endEpoch = timeToEpoch(data * 1000 + timeForOneDay) - 1
+          const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch + 1))
+          const tooltip = `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`
+
+          return `<span data-html="true" data-toggle="tooltip" data-placement="top" title="${tooltip}">${startDate.toFormat("yyyy-MM-dd")}</span>`
         },
       },
       {
