@@ -556,6 +556,14 @@ func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	return publicKey, err
 }
 
+// GetValidatorPublicKeys will return the public key for a list of validator indices and or public keys
+func GetValidatorPublicKeys(indices []uint64, keys [][]byte) ([][]byte, error) {
+	var publicKeys [][]byte
+	err := ReaderDb.Select(&publicKeys, "SELECT pubkey FROM validators WHERE validatorindex = ANY($1) OR pubkey = ANY($2)", indices, keys)
+
+	return publicKeys, err
+}
+
 // GetValidatorIndex will return the validator-index for a public key from the database
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
@@ -2227,6 +2235,40 @@ func GetTotalWithdrawals() (total uint64, err error) {
 	return
 }
 
+func GetWithdrawalsCountForQuery(query string) (uint64, error) {
+	count := uint64(0)
+
+	withdrawalsQuery := `
+		SELECT count(*)
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+		%s`
+
+	var err error = nil
+
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	// Check whether the query can be used for a validator, slot or epoch search
+	if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
+		searchQuery := `
+				WHERE w.validatorindex = $1
+					OR block_slot = $1
+					OR (block_slot / $3) = $1
+					OR address_text LIKE ($2 || '%')`
+		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
+			uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+	} else if addressLikeRE.MatchString(query) {
+		searchQuery := `WHERE address_text LIKE ($1 || '%')`
+		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
+			trimmedQuery)
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string) ([]*types.Withdrawals, error) {
 	withdrawals := []*types.Withdrawals{}
 
@@ -2844,6 +2886,53 @@ func GetTotalBLSChanges() (uint64, error) {
 	return count, nil
 }
 
+func GetBLSChangesCountForQuery(query string) (uint64, error) {
+	count := uint64(0)
+
+	blsQuery := `
+		SELECT COUNT(*)
+		FROM blocks_bls_change bls
+		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+		%s
+		%s`
+
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	var err error = nil
+
+	joinQuery := `
+		LEFT JOIN (
+			SELECT 
+				validators.validatorindex as validatorindex,
+				eth1_deposits.from_address_text as deposit_address_text
+			FROM validators 
+			INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
+		) AS val ON val.validatorindex = bls.validatorindex`
+
+	// Check whether the query can be used for a validator, slot or epoch search
+	if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
+		searchQuery := `
+			WHERE bls.validatorindex = $1			
+				OR block_slot = $1
+				OR (block_slot / $3) = $1
+				OR pubkey_text LIKE ($2 || '%')
+				OR deposit_address_text LIKE ($2 || '%')`
+
+		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
+			uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+	} else if blsLikeRE.MatchString(query) {
+		searchQuery := `
+				WHERE pubkey_text LIKE ($1 || '%')
+				OR deposit_address_text LIKE ($1 || '%')`
+		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
+			trimmedQuery)
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string) ([]*types.BLSChange, error) {
 	blsChange := []*types.BLSChange{}
 
@@ -2885,7 +2974,7 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 			LEFT JOIN (
 				SELECT 
 					validators.validatorindex as validatorindex,
-					eth1_deposits.from_address as deposit_adress
+					eth1_deposits.from_address_text as deposit_address_text
 				FROM validators 
 				INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
 			) AS val ON val.validatorindex = bls.validatorindex`
@@ -2897,14 +2986,14 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 					OR block_slot = $3
 					OR (block_slot / $5) = $3
 					OR pubkey_text LIKE ($4 || '%')
-					OR ENCODE(val.deposit_adress, 'hex') LIKE ($4 || '%')`
+					OR deposit_address_text LIKE ($4 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
 				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if blsLikeRE.MatchString(query) {
 			searchQuery := `
 				WHERE pubkey_text LIKE ($3 || '%')
-				OR ENCODE(val.deposit_adress, 'hex') LIKE ($3 || '%')`
+				OR deposit_address_text LIKE ($3 || '%')`
 
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
 				length, start, trimmedQuery)
@@ -3191,4 +3280,16 @@ func GetOrphanedSlots(slots []uint64) ([]uint64, error) {
 		`, slotsPQArray)
 
 	return orphaned, err
+}
+
+func GetOrphanedSlotsMap(slots []uint64) (map[uint64]bool, error) {
+	orphanedSlots, err := GetOrphanedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+	orphanedSlotsMap := make(map[uint64]bool)
+	for _, slot := range orphanedSlots {
+		orphanedSlotsMap[slot] = true
+	}
+	return orphanedSlotsMap, nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 	protomath "github.com/protolambda/zrnt/eth2/util/math"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gorilla/csrf"
@@ -297,12 +298,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
 
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		logger.Errorf("error getting lastStatsDay for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 
 	timings.BasicInfo = time.Since(timings.Start)
 
@@ -365,6 +361,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 
+	var lowerBoundDay uint64
+	if lastStatsDay > 30 {
+		lowerBoundDay = lastStatsDay - 30
+	}
+
 	g := errgroup.Group{}
 	g.Go(func() error {
 		start := time.Now()
@@ -372,7 +373,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch)
+		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch, lowerBoundDay)
 
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
@@ -385,7 +386,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			timings.Charts = time.Since(start)
 		}()
-		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency)
+		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency, lowerBoundDay)
 
 		if err != nil {
 			return fmt.Errorf("error calling getExecutionChartData: %v", err)
@@ -1965,6 +1966,11 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// last epoch containing the duties shown on this page
 		lastShownEpoch := moveAway(firstShownEpoch, epochsDiff)
+		// handle overflow on last page for validators that were part of the very first sync period starting during epoch 0
+		if !ascOrdering && lastShownEpoch > firstShownEpoch {
+			lastShownEpoch = 0
+			length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
+		}
 		// amount of epochs fetched by bigtable
 		limit := diffValue(firstShownEpoch, lastShownEpoch) + 1
 
@@ -1997,11 +2003,17 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
 		syncDutiesValidator := syncDuties[validatorIndex]
 		syncDutiesAllValidators := make([]uint64, limit*utils.Config.Chain.Config.SlotsPerEpoch)
 		for _, duties := range syncDuties {
-			for idx := range duties {
-				if duties[idx].Status == 1 {
+			for idx := range syncDutiesValidator {
+				slot := syncDutiesValidator[idx].Slot
+				index := slices.IndexFunc[*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
+					return duty.Slot == slot
+				})
+
+				if index >= 0 && duties[index].Status == 1 {
 					syncDutiesAllValidators[idx]++
 				}
 			}
@@ -2025,8 +2037,13 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			nextPeriodSyncDutiesValidator := nextPeriodSyncDuties[validatorIndex]
 			nextPeriodSyncDutiesAllValidators := make([]uint64, nextPeriodLimit*utils.Config.Chain.Config.SlotsPerEpoch)
 			for _, duties := range nextPeriodSyncDuties {
-				for idx := range duties {
-					if duties[idx].Status == 1 {
+				for idx := range nextPeriodSyncDutiesValidator {
+					slot := nextPeriodSyncDutiesValidator[idx].Slot
+					index := slices.IndexFunc[*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
+						return duty.Slot == slot
+					})
+
+					if index >= 0 && duties[index].Status == 1 {
 						nextPeriodSyncDutiesAllValidators[idx]++
 					}
 				}
@@ -2062,10 +2079,15 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// sanity check for right amount of slots in response
-		if uint64(len(syncDuties))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
+		if uint64(len(syncDutiesValidator))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
 			// extract correct slots
 			tableData = make([][]interface{}, length)
 			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
+				participation := uint64(0)
+				if uint64(len(syncDutiesAllValidators)) > slotIndex {
+					participation = syncDutiesAllValidators[slotIndex]
+				}
+
 				slot := syncDutiesValidator[slotIndex].Slot
 				epoch := utils.EpochOfSlot(slot)
 				status := syncDutiesValidator[slotIndex].Status
@@ -2078,7 +2100,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 					utils.FormatEpoch(epoch),
 					utils.FormatBlockSlot(slot),
 					utils.FormatSyncParticipationStatus(status, slot),
-					utils.FormatSyncParticipations(syncDutiesAllValidators[slotIndex]),
+					utils.FormatSyncParticipations(participation),
 				}
 			}
 		}

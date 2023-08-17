@@ -14,7 +14,6 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,8 +26,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
-
-var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
 
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()
@@ -50,10 +47,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, errors.New("no validators provided")
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return nil, nil, err
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
@@ -124,7 +118,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetValidatorPropsosals(validators, &proposals)
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -520,18 +514,26 @@ func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	return fmt.Sprintf("%s %s", symbol, utils.KFormatterEthPrice(price))
 }
 
-// GetValidatorIndexFrom gets the validator index from users input
-func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint64, err error) {
-	validatorIndex, err = strconv.ParseUint(userInput, 10, 32)
-	if err == nil {
-		pubKey, err = db.GetValidatorPublicKey(validatorIndex)
-		return
+// GetValidatorKeysFrom gets the validator keys from users input
+func GetValidatorKeysFrom(userInput []string) (pubKeys [][]byte, err error) {
+	indexList := []uint64{}
+	keyList := [][]byte{}
+	for _, input := range userInput {
+
+		validatorIndex, err := strconv.ParseUint(input, 10, 32)
+		if err == nil {
+			indexList = append(indexList, validatorIndex)
+		}
+
+		pubKey, err := hex.DecodeString(strings.Replace(input, "0x", "", -1))
+		if err == nil {
+			keyList = append(keyList, pubKey)
+		}
 	}
 
-	pubKey, err = hex.DecodeString(strings.Replace(userInput, "0x", "", -1))
-	if err == nil {
-		validatorIndex, err = db.GetValidatorIndex(pubKey)
-		return
+	pubKeys, err = db.GetValidatorPublicKeys(indexList, keyList)
+	if len(pubKeys) != len(userInput) {
+		err = fmt.Errorf("not all validators found in db")
 	}
 	return
 }

@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurrencyCl uint64) error {
+func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurrencyCl uint64, concurrencyFailedAttestations uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
@@ -48,6 +48,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		ElRewards           bool `db:"el_rewards_exported"`
 		TotalPerformance    bool `db:"total_performance_exported"`
 		BlockStats          bool `db:"block_stats_exported"`
+		TotalAccumulation   bool `db:"total_accumulation_exported"`
 	}
 	exported := Exported{}
 
@@ -61,71 +62,78 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 			cl_rewards_exported,
 			el_rewards_exported,
 			total_performance_exported,
-			block_stats_exported
+			block_stats_exported,
+			total_accumulation_exported
 		FROM validator_stats_status 
 		WHERE day = $1;
 		`, day)
 
 	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("error retrieving exported state: %v", err)
+		return fmt.Errorf("error retrieving exported state: %w", err)
 	}
 	logger.Infof("getting exported state took %v", time.Since(start))
 
-	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalPerformance && exported.BlockStats && exported.Status {
+	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalAccumulation && exported.TotalPerformance && exported.BlockStats && exported.Status {
 		logger.Infof("Skipping day %v as it is already exported", day)
 		return nil
 	}
 
 	if exported.FailedAttestations {
 		logger.Infof("Skipping failed attestations")
-	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(day); err != nil {
-		return err
+	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(day, concurrencyFailedAttestations); err != nil {
+		return fmt.Errorf("error in WriteValidatorFailedAttestationsStatisticsForDay: %w", err)
 	}
 
 	if exported.SyncDuties {
 		logger.Infof("Skipping sync duties")
 	} else if err := WriteValidatorSyncDutiesForDay(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorSyncDutiesForDay: %w", err)
 	}
 
 	if exported.WithdrawalsDeposits {
 		logger.Infof("Skipping withdrawals / deposits")
 	} else if err := WriteValidatorDepositWithdrawals(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorDepositWithdrawals: %w", err)
 	}
 
 	if exported.BlockStats {
 		logger.Infof("Skipping block stats")
 	} else if err := WriteValidatorBlockStats(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorBlockStats: %w", err)
 	}
 
 	if exported.Balance {
 		logger.Infof("Skipping balances")
 	} else if err := WriteValidatorBalances(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorBalances: %w", err)
 	}
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
 	} else if err := WriteValidatorClIcome(day, concurrencyCl); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorClIcome: %w", err)
 	}
 
 	if exported.ElRewards {
 		logger.Infof("Skipping el rewards")
 	} else if err := WriteValidatorElIcome(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorElIcome: %w", err)
+	}
+
+	if exported.TotalAccumulation {
+		logger.Infof("Skipping total accumulation")
+	} else if err := WriteValidatorTotalAccumulation(day, concurrencyTotal); err != nil {
+		return fmt.Errorf("error in WriteValidatorTotalAccumulation: %w", err)
 	}
 
 	if exported.TotalPerformance {
 		logger.Infof("Skipping total performance")
 	} else if err := WriteValidatorTotalPerformance(day, concurrencyTotal); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorTotalPerformance: %w", err)
 	}
 
 	if err := WriteValidatorStatsExported(day); err != nil {
-		return err
+		return fmt.Errorf("error in WriteValidatorStatsExported: %w", err)
 	}
 
 	logger.Infof("statistics export of day %v completed, took %v", day, time.Since(exportStart))
@@ -153,10 +161,11 @@ func WriteValidatorStatsExported(day uint64) error {
 		AND cl_rewards_exported = true
 		AND el_rewards_exported = true
 		AND total_performance_exported = true
-		AND block_stats_exported = true;
+		AND block_stats_exported = true
+		AND total_accumulation_exported = true;
 		`, day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marking day export as completed in the validator_stats_status table for day %v: %w", day, err)
 	}
 	logger.Infof("marking completed, took %v", time.Since(start))
 
@@ -167,12 +176,12 @@ func WriteValidatorStatsExported(day uint64) error {
 	return nil
 }
 
-func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
+func WriteValidatorTotalAccumulation(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.TaskDuration.WithLabelValues("db_update_validator_total_accumulation_stats").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	if err := checkIfDayIsFinalized(day); err != nil {
@@ -180,9 +189,9 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	}
 
 	start := time.Now()
-	logger.Infof("validating if required data has been exported for total performance")
+	logger.Infof("validating if required data has been exported for total accumulation")
 	type Exported struct {
-		LastTotalPerformance      bool `db:"last_total_performance_exported"`
+		LastTotalAccumulation     bool `db:"last_total_accumulation_exported"`
 		CurrentCLRewards          bool `db:"cur_cl_rewards_exported"`
 		CurrentElRewards          bool `db:"cur_el_rewards_exported"`
 		CurrentSyncDuties         bool `db:"cur_sync_duties_exported"`
@@ -191,7 +200,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	exported := Exported{}
 	err := ReaderDb.Get(&exported, `
 		SELECT 
-			last.total_performance_exported as last_total_performance_exported, 
+			last.total_accumulation_exported as last_total_accumulation_exported, 
 			cur.cl_rewards_exported as cur_cl_rewards_exported, 
 			cur.el_rewards_exported as cur_el_rewards_exported,
 			cur.sync_duties_exported as cur_sync_duties_exported,
@@ -203,16 +212,16 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 	`, day)
 
 	if err != nil {
-		return fmt.Errorf("error retrieving required data: %v", err)
-	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
-		return fmt.Errorf("missing required export: last total performance: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
-			!exported.LastTotalPerformance, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
+		return fmt.Errorf("error retrieving required data: %w", err)
+	} else if !(exported.LastTotalAccumulation || day == 0) || !exported.CurrentCLRewards || !exported.CurrentElRewards || !exported.CurrentSyncDuties || !exported.CurrentFailedAttestations {
+		return fmt.Errorf("missing required export: last total accumulation: %v, cur cl rewards: %v, cur el rewards: %v, cur sync duties: %v, cur failed attestations: %v",
+			!exported.LastTotalAccumulation, !exported.CurrentCLRewards, !exported.CurrentElRewards, !exported.CurrentSyncDuties, !exported.CurrentFailedAttestations)
 	}
 	logger.Infof("validating completed, took %v", time.Since(start))
 
 	start = time.Now()
 
-	logger.Infof("exporting total income stats")
+	logger.Infof("exporting total accumulation stats")
 	maxValidatorIndex, err := GetTotalValidatorsCount()
 	if err != nil {
 		return err
@@ -271,17 +280,90 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 					orphaned_sync_total = excluded.orphaned_sync_total;
 				`, day, start, end)
 			if err != nil {
-				return err
+				return fmt.Errorf("error inserting accumulated data into validator_stats for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
+			}
+
+			logger.Infof("populate total accumulation for validator stats table done for batch %v", start)
+			return nil
+		})
+	}
+	if err = g.Wait(); err != nil {
+		logrus.Error(err)
+		return err
+	}
+	logger.Infof("export completed, took %v", time.Since(start))
+
+	if err = markColumnExported(day, "total_accumulation_exported"); err != nil {
+		return err
+	}
+
+	logger.Infof("total accumulation for statistics export of day %v completed, took %v", day, time.Since(exportStart))
+	return nil
+}
+
+func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+	exportStart := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
+	}()
+
+	if err := checkIfDayIsFinalized(day); err != nil {
+		return err
+	}
+
+	start := time.Now()
+	logger.Infof("validating if required data has been exported for total performance")
+	type Exported struct {
+		LastTotalPerformance     bool `db:"last_total_performance_exported"`
+		CurrentTotalAccumulation bool `db:"cur_total_accumulation_exported"`
+	}
+	exported := Exported{}
+	err := ReaderDb.Get(&exported, `
+		SELECT 
+			last.total_performance_exported as last_total_performance_exported, 
+			cur.total_accumulation_exported as cur_total_accumulation_exported
+		FROM validator_stats_status cur
+		INNER JOIN validator_stats_status last 
+				ON last.day = GREATEST(cur.day - 1, 0)
+		WHERE cur.day = $1;
+	`, day)
+
+	if err != nil {
+		return fmt.Errorf("error retrieving required data: %w", err)
+	} else if !(exported.LastTotalPerformance || day == 0) || !exported.CurrentTotalAccumulation {
+		return fmt.Errorf("missing required export: last total performance: %v, cur total exported: %v",
+			!exported.LastTotalPerformance, !exported.CurrentTotalAccumulation)
+	}
+	logger.Infof("validating completed, took %v", time.Since(start))
+
+	start = time.Now()
+
+	logger.Infof("exporting total performance stats")
+	maxValidatorIndex, err := GetTotalValidatorsCount()
+	if err != nil {
+		return err
+	}
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
+	batchSize := 1000
+	for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+		start := b
+		end := b + batchSize
+		if int(maxValidatorIndex) < end {
+			end = int(maxValidatorIndex)
+		}
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
 			}
 
 			_, err = WriterDb.Exec(`insert into validator_performance (
 				validatorindex,
 				balance,
-				performance1d,
-				performance7d,
-				performance31d,
-				performance365d,
-
 				rank7d,
 
 				cl_performance_1d,
@@ -305,11 +387,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 				) (
 					select 
 					vs_now.validatorindex, 
-						COALESCE(vs_now.end_balance, 0) as balance, 
-						0 as performance1d, 
-						0 as performance7d, 
-						0 as performance31d, 
-						0 as performance365d, 
+						COALESCE(vs_now.end_balance, 0) as balance,
 						0 as rank7d,
 
 						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_1d.cl_rewards_gwei_total, 0) as cl_performance_1d, 
@@ -338,12 +416,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 					where vs_now.day = $1 AND vs_now.validatorindex >= $6 AND vs_now.validatorindex < $7
 				) 
 				on conflict (validatorindex) do update set 
-					balance = excluded.balance, 
-					performance1d=excluded.performance1d,
-					performance7d=excluded.performance7d,
-					performance31d=excluded.performance31d,
-					performance365d=excluded.performance365d,
-
+					balance = excluded.balance,
 					rank7d=excluded.rank7d,
 
 					cl_performance_1d=excluded.cl_performance_1d,
@@ -366,8 +439,12 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 					mev_performance_total=excluded.mev_performance_total
 			;`, day, int64(day)-1, int64(day)-7, int64(day)-31, int64(day)-365, start, end)
 
+			if err != nil {
+				return fmt.Errorf("error inserting performance into validator_performance for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
+			}
+
 			logger.Infof("populate validator_performance table done for batch %v", start)
-			return err
+			return nil
 		})
 	}
 	if err = g.Wait(); err != nil {
@@ -375,27 +452,24 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 		return err
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
+
 	start = time.Now()
 	logger.Infof("populate validator_performance rank7d")
 
 	_, err = WriterDb.Exec(`
-		insert into validator_performance (                                                                                                 
-			validatorindex,          
-			balance,             
-			performance1d,
-			performance7d,
-			performance31d,  
-			performance365d,                                                                                             
-			rank7d
-		) (
-			select validatorindex, 0, 0, 0, 0, 0, row_number() over(order by validator_performance.cl_performance_7d desc) as rank7d from validator_performance
-		) 
-			on conflict (validatorindex) do update set 
-				rank7d=excluded.rank7d
-		;
+		WITH ranked_performance AS (
+			SELECT
+				validatorindex, 
+				row_number() OVER (ORDER BY cl_performance_7d DESC) AS rank7d
+			FROM validator_performance
+		)
+		UPDATE validator_performance vp
+		SET rank7d = rp.rank7d
+		FROM ranked_performance rp
+		WHERE vp.validatorindex = rp.validatorindex
 		`)
 	if err != nil {
-		return err
+		return fmt.Errorf("error updating rank7d while exporting day [%v]: %w", day, err)
 	}
 
 	logger.Infof("export completed, took %v", time.Since(start))
@@ -440,7 +514,7 @@ func WriteValidatorBlockStats(day uint64) error {
 		on conflict (validatorindex, day) do update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`,
 		firstEpoch, lastEpoch, day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error inserting blocks into validator_stats for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
@@ -457,7 +531,7 @@ func WriteValidatorBlockStats(day uint64) error {
 		on conflict (validatorindex, day) do update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`,
 		firstEpoch, lastEpoch, day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error inserting slashings into validator_stats for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -508,7 +582,7 @@ func WriteValidatorElIcome(day uint64) error {
 
 	err = tx.Select(&blocks, "SELECT slot, exec_block_number, proposer FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND exec_block_number > 0 AND status = '1'", firstEpoch, lastEpoch)
 	if err != nil {
-		return fmt.Errorf("error retrieving blocks data: %v", err)
+		return fmt.Errorf("error retrieving blocks data for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 	}
 
 	numbers := make([]uint64, 0, len(blocks))
@@ -520,12 +594,12 @@ func WriteValidatorElIcome(day uint64) error {
 
 	blocksData, err := BigtableClient.GetBlocksIndexedMultiple(numbers, uint64(len(numbers)))
 	if err != nil {
-		return fmt.Errorf("error in GetBlocksIndexedMultiple: %v", err)
+		return fmt.Errorf("error in GetBlocksIndexedMultiple: %w", err)
 	}
 
 	relaysData, err := GetRelayDataForIndexedBlocks(blocksData)
 	if err != nil {
-		return fmt.Errorf("error in GetRelayDataForIndexedBlocks: %v", err)
+		return fmt.Errorf("error in GetRelayDataForIndexedBlocks: %w", err)
 	}
 
 	proposerRewards := make(map[uint64]*Container)
@@ -574,7 +648,7 @@ func WriteValidatorElIcome(day uint64) error {
 			strings.Join(valueStrings, ","))
 		_, err = tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return err
+			return fmt.Errorf("error inserting el_rewards into validator_stats for day [%v]: %w", day, err)
 		}
 	}
 
@@ -620,7 +694,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	`, day)
 
 	if err != nil {
-		return fmt.Errorf("error retrieving required data: %v", err)
+		return fmt.Errorf("error retrieving required data: %w", err)
 	} else if !exported.CurrentBalanceExported || !exported.CurrentWithdrawalsDepositsExported || !exported.LastBalanceExported {
 		return fmt.Errorf("missing required export: cur balance: %v, cur withdrwals/deposits: %v, last balance: %v", !exported.CurrentBalanceExported, !exported.CurrentWithdrawalsDepositsExported, !exported.LastBalanceExported)
 	}
@@ -632,7 +706,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	logger.Infof("exporting cl_rewards_wei statistics")
 	incomeStats, err := BigtableClient.GetAggregatedValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
 	if err != nil {
-		return err
+		return fmt.Errorf("error in GetAggregatedValidatorIncomeDetailsHistory for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 	}
 	logrus.Infof("getting cl income done in %v, now we export them to the db", time.Since(start))
 	start = time.Now()
@@ -686,7 +760,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 			}
 			_, err := WriterDb.Exec(stmt, valueArgs...)
 			if err != nil {
-				return err
+				return fmt.Errorf("error inserting cl_proposer_rewards_gwei into validator_stats for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
 			}
 			logrus.Infof("saving validator proposer rewards gwei batch %v completed", start)
 			stmt = `
@@ -713,7 +787,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 			}
 			_, err = WriterDb.Exec(stmt, day, start, end)
 			if err != nil {
-				return err
+				return fmt.Errorf("error inserting cl_rewards_gwei into validator_stats for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
 			}
 			logrus.Infof("saving validator cl rewards gwei batch %v completed", start)
 			return nil
@@ -755,7 +829,7 @@ func WriteValidatorBalances(day uint64) error {
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
 	if err != nil {
-		return err
+		return fmt.Errorf("error in GetValidatorBalanceStatistics for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 	}
 
 	balanceStatsArr := make([]*types.ValidatorBalanceStatistic, 0, len(balanceStatistics))
@@ -806,7 +880,11 @@ func WriteValidatorBalances(day uint64) error {
 				strings.Join(valueStrings, ","))
 			_, err := WriterDb.Exec(stmt, valueArgs...)
 
-			return err
+			if err != nil {
+				return fmt.Errorf("error inserting balances into validator_stats for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
+			}
+
+			return nil
 		})
 	}
 
@@ -846,12 +924,34 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 
 	tx, err := WriterDb.Beginx()
 	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
 		return err
 	}
 	defer tx.Rollback()
 
 	start := time.Now()
+	logrus.Infof("Resetting Withdrawals + Deposits for day [%v]", day)
+
+	firstDayExtraCondition := ""
+	if day == 0 {
+		// genesis-deposits will be added to day -1.
+		firstDayExtraCondition = " OR day = -1"
+	}
+
+	resetQry := fmt.Sprintf(`
+		UPDATE validator_stats SET 
+			deposits = NULL, 
+			deposits_amount = NULL,
+			withdrawals = NULL, 
+			withdrawals_amount = NULL
+		WHERE day = $1%s;`, firstDayExtraCondition)
+
+	_, err = tx.Exec(resetQry, day)
+	if err != nil {
+		return fmt.Errorf("error resetting validator_stats for day [%v]: %w", day, err)
+	}
+	logger.Infof("reset completed, took %v", time.Since(start))
+
+	start = time.Now()
 	logrus.Infof("Update Withdrawals + Deposits for day [%v] slot %v -> %v", day, firstSlot, lastSlot)
 
 	logger.Infof("exporting deposits and deposits_amount statistics")
@@ -889,7 +989,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 
 	_, err = tx.Exec(depositsQry, firstSlot, lastSlot, day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error inserting deposits into validator_stats for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 
@@ -909,7 +1009,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 			withdrawals_amount = excluded.withdrawals_amount;`
 	_, err = tx.Exec(withdrawalsQuery, firstSlot, lastSlot, day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error inserting withdrawals into validator_stats for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
 	}
 	if err = tx.Commit(); err != nil {
 		return err
@@ -942,7 +1042,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 
 	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, startEpoch, endEpoch)
 	if err != nil {
-		return err
+		return fmt.Errorf("error in GetValidatorSyncDutiesStatistics for startEpoch [%v] and endEpoch [%v]: %w", startEpoch, endEpoch, err)
 	}
 	logrus.Infof("getting sync duties done in %v, now we export them to the db", time.Since(start))
 	start = time.Now()
@@ -954,7 +1054,6 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 
 	tx, err := WriterDb.Beginx()
 	if err != nil {
-		logrus.Errorf("error WriterDb.Beginx %v", err)
 		return err
 	}
 	defer tx.Rollback()
@@ -985,7 +1084,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 			strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return err
+			return fmt.Errorf("error inserting sync information into validator_stats for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
 		}
 
 		logrus.Infof("saving sync statistics batch %v completed", b)
@@ -1005,7 +1104,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 	return nil
 }
 
-func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
+func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -1027,6 +1126,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 	failed := map[uint64]map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
 	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
 	for i := firstEpoch; i < lastEpoch; i += epochBatchSize {
 		fromEpoch := i
@@ -1044,8 +1144,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 			}
 			ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
 			if err != nil {
-				logrus.Errorf("error getting 'failed attestations' %v", err)
-				return err
+				return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", fromEpoch, toEpoch, err)
 			}
 			mux.Lock()
 			failed[fromEpoch] = ma
@@ -1095,12 +1194,17 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64) error {
 				return gCtx.Err()
 			default:
 			}
-			return saveFailedAttestationBatch(maArr[start:end], day)
+
+			err := saveFailedAttestationBatch(maArr[start:end], day)
+			if err != nil {
+				return fmt.Errorf("error in saveFailedAttestationBatch for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
+			}
+
+			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
-		logrus.Error(err)
 		return err
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
@@ -1133,8 +1237,7 @@ func saveFailedAttestationBatch(batch []*types.ValidatorMissedAttestationsStatis
 		strings.Join(valueStrings, ","))
 	_, err := WriterDb.Exec(stmt, valueArgs...)
 	if err != nil {
-		logrus.Errorf("Error inserting 'failed attestations' %v", err)
-		return err
+		return fmt.Errorf("error inserting failed attestations into validator_stats for day [%v]: %w", day, err)
 	}
 
 	return nil
@@ -1151,14 +1254,14 @@ func markColumnExported(day uint64, column string) error {
 			DO UPDATE SET %[1]v=EXCLUDED.%[1]v;
 			`, column), day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marking [%v] exported for day [%v] as completed in the status table: %w", column, day, err)
 	}
 	logrus.Infof("Marking complete in %v", time.Since(start))
 	return nil
 }
 
-func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64) ([]*types.ChartDataPoint, error) {
-	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, 0, 0, lastFinalizedEpoch)
+func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, lastFinalizedEpoch uint64, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
+	incomeHistory, err := GetValidatorIncomeHistory(validatorIndices, lowerBoundDay, 0, lastFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}

@@ -135,10 +135,15 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	filteredCount := epochsCount
+	if search > -1 {
+		filteredCount = uint64(len(epochs))
+	}
+
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    epochsCount,
-		RecordsFiltered: epochsCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 	}
 

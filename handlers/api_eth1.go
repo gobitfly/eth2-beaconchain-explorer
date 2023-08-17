@@ -80,6 +80,11 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		blockList = append(blockList, temp)
 	}
 
+	if len(blockList) > int(limit) {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
+		return
+	}
+
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
@@ -183,7 +188,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(indices) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false, 0)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -954,10 +959,7 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		}
 	}
 
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return nil, fmt.Errorf("error getting last statistic day: %w", err)
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 	firstEpochTime := utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
 
 	for _, block := range blocks {
@@ -1012,27 +1014,32 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	return maps.Values(resultPerProposer), nil
 }
 
-func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool, lowerBoundDay uint64) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
+
+	lowerBoundEpoch := lowerBoundDay * utils.EpochsPerDay()
 
 	order := "DESC"
 	if isSortAsc {
 		order = "ASC"
 	}
 
-	status := ""
+	status := "status != '3'"
 	if onlyFinalized {
-		status = `and status = '1'`
+		status = `status = '1'`
 	}
 
-	query := fmt.Sprintf(`SELECT 
+	query := fmt.Sprintf(`
+		SELECT 
 			exec_block_number,
 			proposer,
 			slot,
 			epoch  
 		FROM blocks 
 		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 AND status != '3' %s
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0
+			AND epoch >= $4
+			AND %s
 		ORDER BY exec_block_number %s
 		OFFSET $2 LIMIT $3`, status, order)
 
@@ -1041,6 +1048,7 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64,
 		pq.Array(indices),
 		offset,
 		limit,
+		lowerBoundEpoch,
 	)
 	if err != nil {
 		return nil, nil, err
