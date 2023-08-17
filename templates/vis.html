@@ -378,7 +378,8 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container mt-2">
-      <div class="d-md-flex page-title justify-content-md-between">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+      <div class="page-title">
         <h4 class="h4"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization</h4>
       </div>
       <small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>

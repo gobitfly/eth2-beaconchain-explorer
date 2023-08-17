@@ -139,14 +139,12 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container my-2">
-      <div class="d-md-flex page-title justify-content-md-between">
-        <div class="heading">
-          <h4 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i>Deposits</h4>
-        </div>
-      </div>
+    <div class="container">
       <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
-      <div class="row mb-1">
+      <div class="d-md-flex page-title justify-content-md-between">
+        <h4 class="h4"><i class="fas fa-file-signature mr-2"></i>Deposits</h4>
+      </div>
+      <div class="row">
         <div class="col-md-4 mb-d px-d">
           <div class="card h-100">
             <div class="card-body">

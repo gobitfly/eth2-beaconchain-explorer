@@ -168,6 +168,9 @@
   <div class="broadcast container">
     <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     {{ with .Data }}
+      <div class="page-title">
+        <h4 class="h4">Broadcast</h4>
+      </div>
       <div class="row">
         <div class="col-md-12">
           {{ if ne .FlashMessage "" }}
@@ -178,7 +181,9 @@
               </button>
             </div>
           {{ end }}
-          {{ template "withdrawalOverviewRow" .Stats }}
+          <div class="px-d">
+            {{ template "withdrawalOverviewRow" .Stats }}
+          </div>
           <section>
             <div class="row">
               <div class="col-md-12">

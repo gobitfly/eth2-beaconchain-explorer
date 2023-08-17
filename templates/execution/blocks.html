@@ -106,12 +106,12 @@
 {{ end }}
 {{ define "content" }}
   <div class="container">
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     <div class="page-title">
       <h4 class="h4">
-        <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Blocks<span style="color:grey; font-size: 70%; padding-left: 10px;" id="live-highest-block"></span></span>
+        <span class="mr-1"><i class="fas fa-cube mr-2"></i>Blocks<span style="color:grey; font-size: 70%; padding-left: 10px;" id="live-highest-block"></span></span>
       </h4>
     </div>
-    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     <div class="card">
       <div class="card-body px-0 py-3">
         <div class="table-responsive px-0 py-1">

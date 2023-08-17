@@ -458,10 +458,11 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container-fluid container-xl">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="page-title">
-        <a href="https://rocketpool.net/" class="h4"
-          >Rocket Pool
+        <a href="https://rocketpool.net/" class="h4">
           <i class="fas fa-rocket"></i>
+          Rocket Pool
         </a>
       </div>
       <div class="sub-page-title">Minipools</div>
@@ -552,7 +553,6 @@
           </table>
         </div>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

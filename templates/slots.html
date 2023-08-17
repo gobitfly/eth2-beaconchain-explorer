@@ -118,13 +118,13 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="page-title">
         <h4 class="h4"><i class="fas fa-cube mr-2"></i>Slots</h4>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="container" style="padding:0; text-align:right;">
         <input type="checkbox" id="showonlyemptygraffiti" name="showonlyemptygraffiti" />
-        <label for="showonlyemptygraffiti">Show only empty graffiti</label>
+        <label class="mr-1" for="showonlyemptygraffiti">Show only empty graffiti</label>
       </div>
       <div class="card mt-d">
         <div id="header-placeholder" style="height:39px;"></div>

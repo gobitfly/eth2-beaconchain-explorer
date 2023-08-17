@@ -285,7 +285,8 @@
 
 {{ define "content" }}
   {{ with .Data.ChartsPageDataCharts }}
-    <div class="container mt-2">
+    <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div style="display:none">
         <svg id="ab83d798-7d25-4111-a4e2-42875f6e6704" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1002 823.11858">
           <title>personal_goals</title>

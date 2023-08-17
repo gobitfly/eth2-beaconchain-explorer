@@ -32,7 +32,8 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container mt-2 validator-content">
+    <div class="container validator-content">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="page-title">
         <div class="d-md-flex justify-content-md-between">
           <div class="d-flex">

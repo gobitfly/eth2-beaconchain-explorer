@@ -28,12 +28,12 @@
 
 {{ define "content" }}
   <div class="container">
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     <div class="page-title">
       <h4 class="h4">
-        <span class="ml-1 mr-1"><i class="fas fa-credit-card mr-2"></i>Transaction Details</span>
+        <span class="mr-1"><i class="fas fa-credit-card mr-2"></i>Transaction Details</span>
       </h4>
     </div>
-    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     {{ with .Data }}
       <div class="card">
         <div class="card-header">

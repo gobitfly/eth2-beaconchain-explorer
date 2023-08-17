@@ -54,6 +54,7 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="page-title">
         <h4 class="h4"><i class="fas fa-user-slash"></i> Slashed Validators</h4>
       </div>
@@ -76,7 +77,6 @@
           </div>
         </div>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

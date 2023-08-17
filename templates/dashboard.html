@@ -24,8 +24,9 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container outer-container" style="min-width:300px;">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="dashboard-container">
-        <div class="dashboard-header my-d">
+        <div class="dashboard-header mt-d">
           <div class="dashboard-title">
             <style>
               .cube {
@@ -196,7 +197,6 @@
             </div>
           </div>
         </div>
-        <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
 
         <div class="row align-items-stretch">
           <div class="col-lg-8 px-d mb-d">

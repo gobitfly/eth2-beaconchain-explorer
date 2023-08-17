@@ -152,10 +152,10 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container">
-      <div class="page-title">
-        <h4 class="h4 mb-md-0"><i class="fas fa-money-bill mr-2"></i>Withdrawals</h4>
-      </div>
       <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+      <div class="page-title">
+        <h4 class="h4"><i class="fas fa-money-bill mr-2"></i>Withdrawals</h4>
+      </div>
       {{ template "withdrawalOverviewRow" .Stats }}
       <div class="sub-page-title">Processed Withdrawals</div>
       <div>

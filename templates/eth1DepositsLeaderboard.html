@@ -189,6 +189,7 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="page-title">
         <h4 class="h4"><i class="fas fa-file-signature mr-2"></i>Ethereum Validator Deposit Leaderboard</h4>
       </div>
@@ -377,7 +378,6 @@
           </div>
         </div>
       </div>
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
     </div>
   {{ end }}
 {{ end }}

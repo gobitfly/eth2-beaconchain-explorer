@@ -91,9 +91,10 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="page-title">
         <h4 class="h4">
-          <span class="ml-1 mr-1"><i class="fas fa-history mr-2"></i>Epoch Details</span>
+          <span class="mr-1"><i class="fas fa-history mr-2"></i>Epoch Details</span>
         </h4>
       </div>
       <div class="epoch__container card card-header mt-0 mb-d">

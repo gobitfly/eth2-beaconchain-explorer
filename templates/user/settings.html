@@ -291,7 +291,8 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container mt-2">
+    <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="page-title">
         <h4 class="h4"><i class="mr-2 fas fa-user-circle"></i>Account Settings</h4>
       </div>
@@ -459,7 +460,6 @@
                     ><br /><br />
 
                     {{ if .Subscription.ApiKey }}
-
                       <h4>Architecture</h4>
                       <div class="btn-group btn-group-toggle" role="group" aria-label="Architecture" data-toggle="buttons">
                         <label class="btn btn-light active"> <input type="radio" name="options" id="desktop" autocomplete="off" checked onclick="switchedArchitecture('desktop')" />Desktop </label>

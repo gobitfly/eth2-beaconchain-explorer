@@ -295,12 +295,12 @@
   </style>
 {{ end }}{{ define "content" }}
   <div class="container">
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     <div class="page-title">
       <h4 class="h4">
-        <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Transactions</span>
+        <span class="mr-1"><i class="fas fa-cube mr-2"></i>Transactions</span>
       </h4>
     </div>
-    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     <div class="card shadow-none flex-grow-1">
       <div class="card-body px-0 py-0">
         <div style="height: 800px;" class="tab-content" id="address-tab-content">
