@@ -525,11 +525,11 @@ func WriteValidatorBlockStats(day uint64) error {
 		(
 			select proposer, $3, sum(attesterslashingscount), sum(proposerslashingscount)
 			from blocks
-			where epoch >= $1 and epoch <= $2 and status = '1'
+			where epoch >= $1 and epoch <= $2 and status = '1' and proposer != $4
 			group by proposer
 		) 
 		on conflict (validatorindex, day) do update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`,
-		firstEpoch, lastEpoch, day)
+		firstEpoch, lastEpoch, day, MaxSqlInteger)
 	if err != nil {
 		return fmt.Errorf("error inserting slashings into validator_stats for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
 	}
