@@ -851,6 +851,16 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
+	slots := []uint64{}
+
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+		slots = append(slots, slot)
+	}
+	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
+	if err != nil {
+		return nil, err
+	}
+
 	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
 
@@ -881,7 +891,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			gcp_bigtable.LatestNFilter(1),
 		)
 	}
-	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
@@ -897,6 +907,8 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			if inclusionSlot == max_block_number {
 				inclusionSlot = 0
 				status = 0
+			} else if orphanedSlotsMap[inclusionSlot] {
+				status = 0
 			}
 
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, ATTESTATIONS_FAMILY+":"), 10, 64)
@@ -910,9 +922,12 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			}
 
 			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
-				res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
-				res[validator][len(res[validator])-1].Status = status
-				res[validator][len(res[validator])-1].Delay = int64(inclusionSlot - attesterSlot)
+				// don't override successful attestion, that was included in a different slot
+				if status == 1 || res[validator][len(res[validator])-1].Status != 1 {
+					res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
+					res[validator][len(res[validator])-1].Status = status
+					res[validator][len(res[validator])-1].Delay = int64(inclusionSlot - attesterSlot)
+				}
 			} else {
 				res[validator] = append(res[validator], &types.ValidatorAttestation{
 					Index:          validator,
@@ -997,9 +1012,20 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
 	defer cancel()
 
+	slots := []uint64{}
+
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+		slots = append(slots, slot)
+	}
+	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
+	if err != nil {
+		return nil, err
+	}
+
 	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 
 	res := make(map[uint64]map[uint64]bool)
+	foundValid := make(map[uint64]map[uint64]bool)
 
 	columnFilters := []gcp_bigtable.Filter{}
 	if valLen < 1000 {
@@ -1029,7 +1055,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 		)
 	}
 
-	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
 		attesterSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
@@ -1044,7 +1070,6 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 
 			status := uint64(1)
 			if inclusionSlot == max_block_number {
-				inclusionSlot = 0
 				status = 0
 			}
 
@@ -1054,13 +1079,20 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 				return false
 			}
 
-			if status == 0 {
+			// only if the attestation was not included in another slot we count it as missed
+			if (status == 0 || orphanedSlotsMap[inclusionSlot]) && (foundValid[validator] == nil || !foundValid[validator][attesterSlot]) {
 				if res[validator] == nil {
 					res[validator] = make(map[uint64]bool, 0)
 				}
 				res[validator][attesterSlot] = true
-			} else if res[validator] != nil && res[validator][attesterSlot] {
-				delete(res[validator], attesterSlot)
+			} else {
+				if res[validator] != nil && res[validator][attesterSlot] {
+					delete(res[validator], attesterSlot)
+				}
+				if foundValid[validator] == nil {
+					foundValid[validator] = make(map[uint64]bool, 0)
+				}
+				foundValid[validator][attesterSlot] = true
 			}
 		}
 		return true

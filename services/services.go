@@ -49,6 +49,9 @@ func Init() {
 	go latestBlockUpdater(ready)
 
 	ready.Add(1)
+	go headBlockRootHashUpdater(ready)
+
+	ready.Add(1)
 	go slotVizUpdater(ready)
 
 	ready.Add(1)
@@ -80,6 +83,9 @@ func Init() {
 
 	ready.Add(1)
 	go startMonitoringService(ready)
+
+	ready.Add(1)
+	go latestExportedStatisticDayUpdater(ready)
 
 	ready.Wait()
 }
@@ -1657,4 +1663,42 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	}
 	logger.Infof("epoch burn page export took: %v seconds", time.Since(start).Seconds())
 	return data, nil
+}
+
+func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+	for {
+		lastDay, err := db.GetLastExportedStatisticDay()
+		if err != nil {
+			logger.Errorf("error retrieving last exported statistics day: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.Config.DepositChainID)
+		err = cache.TieredCache.Set(cacheKey, lastDay, time.Hour*24)
+		if err != nil {
+			logger.Errorf("error caching last exported statistics day: %v", err)
+		}
+		if firstRun {
+			firstRun = false
+			wg.Done()
+			logger.Info("initialized last exported statistics day updater")
+		}
+		ReportStatus("lastExportedStatisticDay", "Running", nil)
+		time.Sleep(time.Second * 120)
+	}
+}
+
+// LatestExportedStatisticDay will return the last exported day in the validator_stats table
+func LatestExportedStatisticDay() uint64 {
+	cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.Config.DepositChainID)
+
+	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
+		return wanted
+	} else {
+		logger.Errorf("error retrieving last exported statistics day from cache: %v", err)
+	}
+	wanted, _ := db.GetLastExportedStatisticDay()
+	return wanted
 }

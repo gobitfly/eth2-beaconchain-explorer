@@ -2588,16 +2588,23 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 		return nil, err
 	}
 
+	names := make(map[string]string)
+	for _, t := range transactions {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+	}
+	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	tableData := make([][]interface{}, len(transactions))
 	for i, t := range transactions {
-		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
+		from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, fmt.Sprintf("%x", t.From) != address)
+		to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, fmt.Sprintf("%x", t.To) != address)
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
@@ -2675,15 +2682,23 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 	}
 
 	tableData := make([][]interface{}, len(transactions))
+
+	names := make(map[string]string)
+	for _, t := range transactions {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+	}
+	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	for i, t := range transactions {
-		from := utils.FormatAddressWithLimits(t.From, "", false, "", 13, 0, false)
-		if fmt.Sprintf("%x", t.From) != address {
-			from = utils.FormatAddressAsLink(t.From, "", false, false)
-		}
-		to := utils.FormatAddressWithLimits(t.To, "", false, "", 13, 0, false)
-		if fmt.Sprintf("%x", t.To) != address {
-			to = utils.FormatAddressAsLink(t.To, "", false, false)
-		}
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
+		from := utils.FormatAddress(t.From, t.TokenAddress, fromName, false, false, fmt.Sprintf("%x", t.From) != address)
+		to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, fmt.Sprintf("%x", t.To) != address)
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
@@ -2929,13 +2944,13 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
 
 		if err != nil {
-			logger.Errorf("error retrieving metadata for token %x: %v", address, err)
+			logger.Warnf("error retrieving metadata for token %x: %v", address, err)
 			metadata = &types.ERC20Metadata{
 				Decimals:    []byte{0x0},
 				Symbol:      "UNKNOWN",
 				TotalSupply: []byte{0x0}}
 
-			err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
+			err = cache.TieredCache.Set(cacheKey, metadata, time.Minute*10)
 			if err != nil {
 				return nil, err
 			}
@@ -3029,6 +3044,13 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
+	add := common.Address{}
+	add.SetBytes(address)
+	name, err := GetEnsNameForAddress(add)
+	if err == nil && name != nil && len(*name) > 0 {
+		return *name, nil
+	}
+
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := bigtable.chainId + ":NAME:" + rowKey
 
@@ -3052,13 +3074,22 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 }
 
 func (bigtable *Bigtable) GetAddressNames(addresses map[string]string) error {
+	if len(addresses) == 0 {
+		return nil
+	}
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
 	keys := make([]string, 0, len(addresses))
 
-	for address := range addresses {
-		keys = append(keys, fmt.Sprintf("%s:%x", bigtable.chainId, address))
+	if err := GetEnsNamesForAddress(addresses); err != nil {
+		return err
+	}
+
+	for address, label := range addresses {
+		if label == "" {
+			keys = append(keys, fmt.Sprintf("%s:%x", bigtable.chainId, address))
+		}
 	}
 
 	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY), gcp_bigtable.ColumnFilter(ACCOUNT_COLUMN_NAME))

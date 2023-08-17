@@ -282,6 +282,7 @@
             console.log(err)
         })
     }
+    activateTabbarSwitcher("dashTabContent", "dashChartTabs", "account")
 </script>
 {{ end }}
 
@@ -336,7 +337,7 @@
             </ul>
 
             <div class="tab-content h-100" id="dashTabContent">
-              <div id="account" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="account-tab">
+              <div id="accountTabPanel" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="account-tab">
                 <!-- Upgrade to premium -->
                 <div class="card my-3">
                   <div class="card-header justify-content-between d-flex align-items-center">
@@ -454,7 +455,7 @@
                 </div>
               </div>
 
-              <div id="app" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="app-tab">
+              <div id="appTabPanel" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="app-tab">
                 <!-- Monitoring Helper -->
                 <div class="card my-3">
                   <div class="card-header">
@@ -768,7 +769,7 @@
                 {{ end }}
               </div>
 
-              <div id="api" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="api-tab">
+              <div id="apiTabPanel" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="api-tab">
                 <!-- User Api Key -->
                 <div class="card my-3">
                   <div class="card-header justify-content-between d-flex align-items-center">

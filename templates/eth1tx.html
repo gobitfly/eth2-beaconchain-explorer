@@ -14,6 +14,8 @@
       $(content).tooltip("show")
       content.toggleAttribute("historic-price")
     }
+
+    activateTabbarSwitcher("eth1tx-tab-content", "eth1TxTabs", "overview")
   </script>
 {{ end }}
 
@@ -45,7 +47,7 @@
     {{ with .Data }}
       <div class="card">
         <div class="card-header">
-          <ul class="nav nav-tabs card-header-tabs border-bottom-0" role="tablist">
+          <ul class="nav nav-tabs card-header-tabs border-bottom-0" id="eth1TxTabs" role="tablist">
             <li class="nav-item">
               <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="fas fa-info-circle"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
             </li>
@@ -66,8 +68,8 @@
           </ul>
         </div>
         <div class="card-body px-0 py-1">
-          <div class="tab-content h-100">
-            <div id="overview" class="tab-pane fade show active" role="tabpanel" aria-labelledby="overview-tab">
+          <div class="tab-content h-100" id="eth1tx-tab-content">
+            <div id="overviewTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="overview-tab">
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3"><span class="align-middle">Transaction Hash:</span></div>
                 <div class="col-md-9">
@@ -128,7 +130,13 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-3">From:</div>
-                <div class="col-md-9">{{ formatEth1AddressFull .From }}</div>
+                <div class="col-md-9 d-flex flex-wrap">
+                  {{ formatEth1AddressFull .From }}
+                  {{ if ne .FromName "" }}
+                    <div class="ml-2 flex-shrink-1"><span class="badge badge-pill badge-ens align-middle">{{ .FromName }}</span></div>
+                  {{ end }}
+                  <i class="fa fa-copy text-muted p-1 ml-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .From }}"></i>
+                </div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                 <div class="col-md-3">{{ if .IsContractCreation }}Created{{ else if .TargetIsContract }}Interacted With{{ else }}To{{ end }}:</div>
@@ -148,8 +156,9 @@
                             {{ end }}
                           {{ end }}
                           {{ if ne .ToName "" }}
-                            <div class="flex-shrink-1"><span class="badge badge-dark align-middle text-white">Name: {{ .ToName }}</span></div>
+                            <div class="flex-shrink-1"><span class="badge badge-pill badge-ens align-middle">{{ .ToName }}</span></div>
                           {{ end }}
+                          <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ .To }}"></i>
                         </div>
                       </div>
                     </div>
@@ -287,7 +296,7 @@
               </div>
             </div>
             {{ if .Events }}
-              <div id="events" class="tab-pane fade" role="tabpanel" aria-labelledby="events-tab">
+              <div id="eventsTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="events-tab">
                 {{ range $index, $event := .Events }}
                   <div class="row p-3 mx-0 {{ if $index }}border-top{{ end }}" {{ if $index }}style="border-width:4px !important;"{{ end }}>
                     <div class="col-md-3">Address:</div>
@@ -367,7 +376,7 @@
               </div>
             {{ end }}
             {{ if .InternalTxns }}
-              <div id="internal-txns" class="tab-pane fade" role="tabpanel" aria-labelledby="internal-txns-tab">
+              <div id="internal-txnsTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="internal-txns-tab">
                 <div class="table-responsive">
                   <table class="table table-borderless text-monospace">
                     <thead>

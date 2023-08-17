@@ -5,6 +5,7 @@
       event.preventDefault()
       history.back()
     })
+    activateTabbarSwitcher("myTabContent", "chartTabs", "charts")
   </script>
   <script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}}, {{.ActivationEpoch}})</script>
@@ -163,48 +164,49 @@
               {{ end }}
             </ul>
             <div class="tab-content h-100" id="myTabContent">
-              <div id="charts" class="tab-pane fade w-100 h-100 show active" role="tabpanel" aria-labelledby="charts-tab">
+              <div id="chartsTabPanel" class="tab-pane fade w-100 h-100" role="tabpanel" aria-labelledby="charts-tab">
                 <div class="btn-group border rounded mt-2 ml-2 charts-btn-group" role="group" aria-label="Charts buttons group">
                   <button type="button" class="btn btn-link btn-sm border-right income-chart-btn nav-link">Income</button>
                   <button type="button" class="btn btn-link btn-sm proposed-chart-btn nav-link">Proposals</button>
                 </div>
                 <div id="incomeChart" class="w-100 mb-2" aria-labelledby="incomeChart-tab">
                   {{ template "validatorIncomeChart" $ }}
+                  <button type="button" id="load-income-btn" class="load-income-btn btn btn-primary btn-sm text-white d-none">Show all rewards</button>
                 </div>
                 <div id="proposedChart" class="w-100 mb-2 d-none" aria-labelledby="proposedChart-tab">
                   {{ template "validatorProposedChart" . }}
                 </div>
               </div>
               {{ if gt .BlocksCount 0 }}
-                <div class="tab-pane fade h-100" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
+                <div class="tab-pane fade h-100" id="blocksTabPanel" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
                   {{ template "validatorProposedTable"  . }}
                 </div>
               {{ end }}
               {{ if gt .AttestationsCount 0 }}
-                <div class="tab-pane fade h-100" id="attestations" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
+                <div class="tab-pane fade h-100" id="attestationsTabPanel" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
                   {{ template "validatorAttestationsTable" . }}
                 </div>
               {{ end }}
               {{ if gt .SyncCount 0 }}
-                <div class="tab-pane fade h-100" id="sync" role="tabpanel" aria-labelledby="sync-tab" aria-controls="sync">
+                <div class="tab-pane fade h-100" id="syncTabPanel" role="tabpanel" aria-labelledby="sync-tab" aria-controls="sync">
                   {{ template "validatorSyncTable" . }}
                 </div>
               {{ end }}
               {{ if gt .SlashingsCount 0 }}
-                <div class="tab-pane fade h-100" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
+                <div class="tab-pane fade h-100" id="slashingsTabPanel" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
                   {{ template "validatorSlashingsTable" . }}
                 </div>
               {{ end }}
-              <div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
+              <div class="tab-pane fade h-100" id="depositsTabPanel" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
                 <div class="px-3">{{ template "validatorDepositsTable" $ }}</div>
               </div>
               {{ if and (.CappellaHasHappened) (.IsWithdrawableAddress) }}
-                <div class="tab-pane fade h-100" id="withdrawals" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
+                <div class="tab-pane fade h-100" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
                   {{ template "validatorWithdrawalTable" . }}
                 </div>
               {{ end }}
               {{ if .IsRocketpool }}
-                <div class="tab-pane fade w-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
+                <div class="tab-pane fade w-100" id="rocketpoolTabPanel" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
                     <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
                     <div>
