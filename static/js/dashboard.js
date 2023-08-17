@@ -1398,39 +1398,40 @@ function createIncomeChart(income, executionIncomeHistory) {
       formatter: (tooltip) => {
         var text = ``
         var total = 0
-
         // date and epochs
         const startEpoch = timeToEpoch(tooltip.chart.hoverPoint.x)
-        const timeForOneDay = 24 * 60 * 60 * 1000
+        const timeForOneDay = 24 * 60* 60 * 1000
         const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
-        const startDate = luxon.DateTime.fromMillis(tooltip.chart.hoverPoints[0].x)
-        const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch + 1))
-        text += `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`
-
+        text += `${new Date(tooltip.chart.hoverPoints[0].x).toLocaleDateString()} (Epochs ${startEpoch} - ${endEpoch})`;
         // income
         for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
           const value = tooltip.chart.hoverPoints[i].y
-          text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, 1)}<br/>`
+          const series = tooltip.chart.hoverPoints[i].series
+          var iPrice = clPrice
+          var iCurrency = clCurrency
+          if (series.name == "Execution Income") {
+            iPrice = elPrice
+            iCurrency = elCurrency
+          }
+          // console.log(`sname: ${series.name} si: ${series.index} iprice: ${iPrice} iCurr: ${iCurrency} sCurr: ${selectedCurrency} value: ${value}`)
+          text += `<br/><span style="color:${series.color}">\u25CF</span> <b>${series.name}:</b> ${getIncomeChartValueString(value, iCurrency, selectedCurrency, iPrice)}`
           total += value
         }
-
-        // add total if hovered point contains rewards for both EL and CL
         if (tooltip.chart.hoverPoints.length > 1) {
-          text += `<b>Total:</b> ${getIncomeChartValueString(total, currency, 1)}`
+            text += `<br/><b>Total:</b> ${getIncomeChartValueString(total, selectedCurrency, selectedCurrency, clPrice)}`
         }
-
         return text
       },
     },
     yAxis: [
       {
         title: {
-          text: "Income [" + currency + "]",
+          text: "Income [" + selectedCurrency + "]",
         },
         opposite: false,
         labels: {
           formatter: function () {
-            if (currency !== "ETH") {
+            if (selectedCurrency !== "ETH") {
               return this.value.toFixed(2)
             }
             return this.value.toFixed(5)
