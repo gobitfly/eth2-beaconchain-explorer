@@ -58,34 +58,31 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 		}
 		defer stream.Close()
 
-		go func() {
-			for {
-				// It is important to register to Errors, otherwise the stream does not reconnect if the connection was lost
-				err := <-stream.Errors
-				utils.LogError(err, "Lighthouse connection error (will automaticaly retry to connect)", 0)
-			}
-		}()
-
 		for {
-			e := <-stream.Events
-			// logger.Infof("retrieved %v via event stream", e.Data())
-			var parsed StreamedBlockEventData
-			err = json.Unmarshal([]byte(e.Data()), &parsed)
-			if err != nil {
-				logger.Warnf("failed to decode block event: %v", err)
-				continue
-			}
+			select {
+			// It is important to register to Errors, otherwise the stream does not reconnect if the connection was lost
+			case err := <-stream.Errors:
+				utils.LogError(err, "Lighthouse connection error (will automatically retry to connect)", 0)
+			case e := <-stream.Events:
+				// logger.Infof("retrieved %v via event stream", e.Data())
+				var parsed StreamedBlockEventData
+				err = json.Unmarshal([]byte(e.Data()), &parsed)
+				if err != nil {
+					logger.Warnf("failed to decode block event: %v", err)
+					continue
+				}
 
-			logger.Infof("retrieving data for slot %v", parsed.Slot)
-			blks, err := lc.GetBlocksBySlot(uint64(parsed.Slot))
-			if err != nil {
-				logger.Warnf("failed to fetch block(s) for slot %d: %v", uint64(parsed.Slot), err)
-				continue
-			}
-			logger.Infof("retrieved %v blocks for slot %v", len(blks), parsed.Slot)
-			for _, blk := range blks {
-				// logger.Infof("pushing block %v", blk.Slot)
-				blkCh <- blk
+				logger.Infof("retrieving data for slot %v", parsed.Slot)
+				blks, err := lc.GetBlocksBySlot(uint64(parsed.Slot))
+				if err != nil {
+					logger.Warnf("failed to fetch block(s) for slot %d: %v", uint64(parsed.Slot), err)
+					continue
+				}
+				logger.Infof("retrieved %v blocks for slot %v", len(blks), parsed.Slot)
+				for _, blk := range blks {
+					// logger.Infof("pushing block %v", blk.Slot)
+					blkCh <- blk
+				}
 			}
 		}
 	}()
