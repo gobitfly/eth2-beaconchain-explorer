@@ -238,65 +238,6 @@ func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func UserNotifications(w http.ResponseWriter, r *http.Request) {
-	templateFiles := append(layoutTemplateFiles, "user/notifications.html")
-	var notificationTemplate = templates.GetTemplate(templateFiles...)
-
-	w.Header().Set("Content-Type", "text/html")
-	userNotificationsData := &types.UserNotificationsPageData{}
-
-	user := getUser(r)
-
-	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
-	userNotificationsData.CsrfField = csrf.TemplateField(r)
-
-	var watchlistIndices []uint64
-	err := db.WriterDb.Select(&watchlistIndices, `
-	SELECT validators.validatorindex as index
-	FROM users_validators_tags
-	INNER JOIN validators
-	ON
-	  users_validators_tags.validator_publickey = validators.pubkey
-	WHERE user_id = $1 and tag = $2
-	`, user.UserID, types.ValidatorTagsWatchlist)
-	if err != nil {
-		logger.Errorf("error retrieving watchlist validator count %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	var countSubscriptions int
-	err = db.FrontendWriterDB.Get(&countSubscriptions, `
-	SELECT count(*) as count
-	FROM users_subscriptions
-	WHERE user_id = $1
-	`, user.UserID)
-	if err != nil {
-		logger.Errorf("error retrieving subscription count %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	userNotificationsData.CountSubscriptions = countSubscriptions
-	userNotificationsData.WatchlistIndices = watchlistIndices
-	userNotificationsData.CountWatchlist = len(watchlistIndices)
-	link := "/dashboard?validators="
-	for _, i := range watchlistIndices {
-		link += strconv.FormatUint(i, 10) + ","
-	}
-
-	link = link[:len(link)-1]
-	userNotificationsData.DashboardLink = link
-
-	data := InitPageData(w, r, "user", "/user", "", templateFiles)
-	data.Data = userNotificationsData
-	data.User = user
-
-	if handleTemplateError(w, r, "user.go", "UserNotifications", "", notificationTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-		return // an error has occurred and was processed
-	}
-}
-
 // func getUserMetrics(userId uint64) (interface{}, error) {
 // 	metricsdb := struct {
 // 		Validators         uint64 `db:"validators"`
