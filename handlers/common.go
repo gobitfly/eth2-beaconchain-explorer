@@ -29,7 +29,7 @@ import (
 
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()
-	threshold := utils.Config.Chain.Config.SlotsPerEpoch * 2
+	threshold := utils.Config.Chain.ClConfig.SlotsPerEpoch * 2
 
 	var validatorOnlineThresholdSlot uint64
 	if latestProposedSlot < 1 || latestProposedSlot < threshold {
@@ -49,7 +49,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	lastStatsDay := services.LatestExportedStatisticDay()
 	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
-	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+	lastSlot := latestFinalizedEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
 	totalBalance := uint64(0)
@@ -130,7 +130,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	earnings31d := income.ClIncome31d + income.ElIncome31d
 
 	if totalDeposits == 0 {
-		totalDeposits = utils.Config.Chain.Config.MaxEffectiveBalance * uint64(len(validators))
+		totalDeposits = utils.Config.Chain.ClConfig.MaxEffectiveBalance * uint64(len(validators))
 	}
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
@@ -215,7 +215,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	validatorProposalData.ProposalLuck = getProposalLuck(slots, len(validators), firstActivationEpoch)
 	avgSlotInterval := uint64(getAvgSlotInterval(1))
-	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
+	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 	if len(slots) > 0 {
 		nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
@@ -392,7 +392,7 @@ func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, acti
 	if validatorCount == 0 || activeValidatorsCount == 0 {
 		return 0
 	}
-	slotsInTimeframe := timeframe.Seconds() / float64(utils.Config.Chain.Config.SecondsPerSlot)
+	slotsInTimeframe := timeframe.Seconds() / float64(utils.Config.Chain.ClConfig.SecondsPerSlot)
 	return (slotsInTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
 }
 
@@ -421,7 +421,7 @@ func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 		return 0
 	}
 
-	probability := (float64(utils.Config.Chain.Config.SyncCommitteeSize) / float64(activeValidatorsCount)) * float64(validatorsCount)
+	probability := (float64(utils.Config.Chain.ClConfig.SyncCommitteeSize) / float64(activeValidatorsCount)) * float64(validatorsCount)
 	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
 	// you can think of this as the average interval of sync committees until you expect to have been part of one
 	return 1 / probability
@@ -430,7 +430,7 @@ func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 // LatestState will return common information that about the current state of the eth2 chain
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.ClConfig.SecondsPerSlot)) // set local cache to the seconds per slot interval
 	currency := GetCurrency(r)
 	data := services.LatestState()
 	// data.Currency = currency

@@ -36,9 +36,9 @@ func main() {
 	logrus.WithFields(logrus.Fields{
 		"config":    *configPath,
 		"version":   version.Version,
-		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
+		"chainName": utils.Config.Chain.ClConfig.ConfigName}).Printf("starting")
 
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
@@ -98,7 +98,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 		if err != nil {
 			logrus.Fatalf("error connecting to bigtable: %v", err)
 		}
@@ -116,7 +116,7 @@ func main() {
 
 	wg.Wait()
 	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
-		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
 		logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 	}
 

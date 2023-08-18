@@ -36,7 +36,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 	}
 	currEpoch := services.LatestFinalizedEpoch() - 1
 	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
-	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
+	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
 	for p := firstPeriod; p <= lastPeriod; p++ {
 		_, exists := dbPeriodsMap[p]
 		if !exists {
@@ -59,16 +59,16 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 
 	stateID := uint64(0)
 	if p > 0 {
-		stateID = utils.FirstEpochOfSyncPeriod(p-1) * utils.Config.Chain.Config.SlotsPerEpoch
+		stateID = utils.FirstEpochOfSyncPeriod(p-1) * utils.Config.Chain.ClConfig.SlotsPerEpoch
 	}
 	epoch := utils.FirstEpochOfSyncPeriod(p)
-	if stateID/utils.Config.Chain.Config.SlotsPerEpoch <= utils.Config.Chain.Config.AltairForkEpoch {
-		stateID = utils.Config.Chain.Config.AltairForkEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-		epoch = utils.Config.Chain.Config.AltairForkEpoch
+	if stateID/utils.Config.Chain.ClConfig.SlotsPerEpoch <= utils.Config.Chain.ClConfig.AltairForkEpoch {
+		stateID = utils.Config.Chain.ClConfig.AltairForkEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+		epoch = utils.Config.Chain.ClConfig.AltairForkEpoch
 	}
 
 	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
-	lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
+	lastEpoch := firstEpoch + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
 
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v)", p, firstEpoch, lastEpoch)
 
@@ -87,8 +87,8 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	}
 
 	start := time.Now()
-	firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-	lastSlot := lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch + utils.Config.Chain.Config.SlotsPerEpoch - 1
+	firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+	lastSlot := lastEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch + utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v, slot %v to %v) to bigtable", p, firstEpoch, lastEpoch, firstSlot, lastSlot)
 
 	err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)

@@ -26,9 +26,9 @@ func Eth1BlockReward(blockNumber uint64, difficulty []byte) *big.Int {
 		return big.NewInt(0)
 	}
 
-	if blockNumber < Config.Chain.Config.ByzantiumForkBlock {
+	if blockNumber < Config.Chain.ElConfig.ByzantiumBlock.Uint64() {
 		return big.NewInt(5e+18)
-	} else if blockNumber < Config.Chain.Config.ConstantinopleForkBlock {
+	} else if blockNumber < Config.Chain.ElConfig.ConstantinopleBlock.Uint64() {
 		return big.NewInt(3e+18)
 	} else {
 		return big.NewInt(2e+18)

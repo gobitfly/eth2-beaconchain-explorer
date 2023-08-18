@@ -49,7 +49,7 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 	if utils.IsValidEnsDomain(search) {
 		data.Domain = search
 
-		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.Config.DepositChainID, search)
+		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.ClConfig.DepositChainID, search)
 
 		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err == nil && len(address) > 0 {
 			data.Address = address
@@ -68,7 +68,7 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 	} else if utils.IsValidEth1Address(search) {
 		data.Address = search
 
-		cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.Config.DepositChainID, search)
+		cacheKey := fmt.Sprintf("%d:ens:domain:%v", utils.Config.Chain.ClConfig.DepositChainID, search)
 
 		if domain, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err == nil && len(domain) > 0 {
 			data.Domain = domain

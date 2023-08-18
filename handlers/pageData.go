@@ -29,7 +29,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
 	}
 
-	isMainnet := utils.Config.Chain.Config.ConfigName == "mainnet"
+	isMainnet := utils.Config.Chain.ClConfig.ConfigName == "mainnet"
 	user := getUser(r)
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -45,8 +45,8 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		User:                  user,
 		Version:               version.Version,
 		Year:                  time.Now().UTC().Year(),
-		ChainSlotsPerEpoch:    utils.Config.Chain.Config.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.Config.SecondsPerSlot,
+		ChainSlotsPerEpoch:    utils.Config.Chain.ClConfig.SlotsPerEpoch,
+		ChainSecondsPerSlot:   utils.Config.Chain.ClConfig.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
 		LatestFinalizedEpoch:  services.LatestFinalizedEpoch(),
@@ -77,10 +77,10 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
 			CurrentSymbol:          GetCurrencySymbol(r),
 		},
-		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
-		DepositContract:     utils.Config.Chain.Config.DepositContractAddress,
+		Mainnet:             utils.Config.Chain.ClConfig.ConfigName == "mainnet",
+		DepositContract:     utils.Config.Chain.ClConfig.DepositContractAddress,
 		ClientsUpdated:      ethclients.ClientsUpdated(),
-		ChainConfig:         utils.Config.Chain.Config,
+		ChainConfig:         utils.Config.Chain.ClConfig,
 		Lang:                "en-US",
 		NoAds:               user.Authenticated && user.Subscription != "",
 		Debug:               utils.Config.Frontend.Debug,

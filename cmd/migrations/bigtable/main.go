@@ -42,13 +42,13 @@ func main() {
 	}
 	utils.Config = cfg
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
@@ -66,8 +66,8 @@ func main() {
 			utils.LogFatal(err, "deleting epoch error", 0)
 		}
 
-		firstSlot := i * utils.Config.Chain.Config.SlotsPerEpoch
-		lastSlot := (i+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+		firstSlot := i * utils.Config.Chain.ClConfig.SlotsPerEpoch
+		lastSlot := (i+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 
 		c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", firstSlot), i)
 		if err != nil {
@@ -140,13 +140,13 @@ func monitor(configPath string) {
 	}
 	utils.Config = cfg
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {

@@ -62,7 +62,7 @@ var ChartHandlers = map[string]chartHandler{
 // LatestChartsPageData returns the latest chart page data
 func LatestChartsPageData() []*types.ChartsPageDataChart {
 	wanted := &[]*types.ChartsPageDataChart{}
-	cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.Config.DepositChainID)
+	cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.ClConfig.DepositChainID)
 
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, wanted); err == nil {
 		return *wanted.(*[]*types.ChartsPageDataChart)
@@ -74,7 +74,7 @@ func LatestChartsPageData() []*types.ChartsPageDataChart {
 }
 
 func chartsPageDataUpdater(wg *sync.WaitGroup) {
-	sleepDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
+	sleepDuration := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
 	var prevEpoch uint64
 
 	firstun := true
@@ -101,7 +101,7 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 		metrics.TaskDuration.WithLabelValues("service_charts_updater").Observe(time.Since(start).Seconds())
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(start)).Info("chartPageData update completed")
 
-		cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.Config.DepositChainID)
+		cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.ClConfig.DepositChainID)
 		cache.TieredCache.Set(cacheKey, data, time.Hour*24)
 
 		prevEpoch = latestEpoch
@@ -126,7 +126,7 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 	}
 
 	// add charts if it is mainnet
-	if utils.Config.Chain.Config.DepositChainID == 1 {
+	if utils.Config.Chain.ClConfig.DepositChainID == 1 {
 		ChartHandlers["total_supply"] = chartHandler{20, TotalEmissionChartData}
 		ChartHandlers["market_cap_chart_data"] = chartHandler{21, MarketCapChartData}
 	}

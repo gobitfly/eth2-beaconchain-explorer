@@ -86,7 +86,7 @@ type additionalSlotData struct {
 func getSlotByTimestamp(t *timestamp.Timestamp) uint64 {
 	ts := uint64(t.AsTime().Unix())
 	if ts >= utils.Config.Chain.GenesisTimestamp {
-		return (ts - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
+		return (ts - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
 	}
 	return 0
 }
@@ -176,7 +176,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		if slotData != nil {
 			ts := uint64(b.GetTime().AsTime().Unix())
 			if ts >= utils.Config.Chain.GenesisTimestamp {
-				slot := (ts - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
+				slot := (ts - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
 				if val, ok := slotData[slot]; ok {
 					sData = val
 				} else {

@@ -443,7 +443,7 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 		}
 
 		if validatorsPerSlot[attesterslot] == nil {
-			validatorsPerSlot[attesterslot] = make([]uint64, 0, len(assignments)/int(utils.Config.Chain.Config.SlotsPerEpoch))
+			validatorsPerSlot[attesterslot] = make([]uint64, 0, len(assignments)/int(utils.Config.Chain.ClConfig.SlotsPerEpoch))
 		}
 		validatorsPerSlot[attesterslot] = append(validatorsPerSlot[attesterslot], validator)
 	}
@@ -504,7 +504,7 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 		}
 
 		muts = append(muts, mut)
-		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(i/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(i)))
+		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(i/utils.Config.Chain.ClConfig.SlotsPerEpoch), reversedPaddedSlot(i)))
 	}
 
 	logger.Infof("saving %v mutations for sync duties", len(muts))
@@ -595,7 +595,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		}
 		bigtable.lastAttestationCacheMux.Unlock()
 
-		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mutInclusionSlot)
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(attestedSlot/utils.Config.Chain.ClConfig.SlotsPerEpoch), reversedPaddedSlot(attestedSlot)), mutInclusionSlot)
 		if err != nil {
 			return err
 		}
@@ -650,7 +650,7 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 			}
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(PROPOSALS_FAMILY, fmt.Sprintf("%d", b.Proposer), gcp_bigtable.Timestamp((max_block_number-b.Slot)*1000), []byte{})
-			err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(b.Slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(b.Slot)), mut)
+			err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(b.Slot/utils.Config.Chain.ClConfig.SlotsPerEpoch), reversedPaddedSlot(b.Slot)), mut)
 			if err != nil {
 				return err
 			}
@@ -710,7 +710,7 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 				mut.Set(SYNC_COMMITTEES_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp(0), []byte{})
 			}
 		}
-		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot)), mut)
+		err := bigtable.tableBeaconchain.Apply(ctx, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.ClConfig.SlotsPerEpoch), reversedPaddedSlot(slot)), mut)
 
 		if err != nil {
 			return err
@@ -819,7 +819,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 	slots := []uint64{}
 
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+	for slot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
 		slots = append(slots, slot)
 	}
 	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
@@ -897,7 +897,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			} else {
 				res[validator] = append(res[validator], &types.ValidatorAttestation{
 					Index:          validator,
-					Epoch:          attesterSlot / utils.Config.Chain.Config.SlotsPerEpoch,
+					Epoch:          attesterSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch,
 					AttesterSlot:   attesterSlot,
 					CommitteeIndex: 0,
 					Status:         status,
@@ -980,7 +980,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 
 	slots := []uint64{}
 
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+	for slot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
 		slots = append(slots, slot)
 	}
 	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
@@ -1821,12 +1821,12 @@ func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 
 	// First receive all keys that were written by this block (entities & indices)
 	keys := make([]string, 0, 33)
-	startSlot := epoch * utils.Config.Chain.Config.SlotsPerEpoch
-	endSlot := (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+	startSlot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+	endSlot := (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 
 	logger.Infof("deleting epoch %v (slot %v to %v)", epoch, startSlot, endSlot)
 	for slot := startSlot; slot <= endSlot; slot++ {
-		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot)))
+		keys = append(keys, fmt.Sprintf("%s:e:%s:s:%s", bigtable.chainId, reversedPaddedEpoch(slot/utils.Config.Chain.ClConfig.SlotsPerEpoch), reversedPaddedSlot(slot)))
 	}
 	keys = append(keys, fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)))
 

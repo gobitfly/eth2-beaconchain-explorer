@@ -82,7 +82,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		// Post Merge PoS Block
 
 		// calculate PoS slot number based on block timestamp
-		blockSlot := (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.Config.SecondsPerSlot
+		blockSlot := (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
 
 		// retrieve consensus data
 		blockPageData, err := GetSlotPageData(blockSlot)

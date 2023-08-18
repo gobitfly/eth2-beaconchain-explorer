@@ -1286,8 +1286,8 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 	validatorIndicesPqArr := pq.Array(validatorIndices)
 
-	cacheDur := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch+10) // updates every epoch, keep 10sec longer
-	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.Config.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(validatorIndicesStr, ","))
+	cacheDur := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch+10) // updates every epoch, keep 10sec longer
+	cacheKey := fmt.Sprintf("%d:validatorIncomeHistory:%d:%d:%d:%s", utils.Config.Chain.ClConfig.DepositChainID, lowerBoundDay, upperBoundDay, lastFinalizedEpoch, strings.Join(validatorIndicesStr, ","))
 	cached := []types.ValidatorIncomeHistory{}
 	if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, cacheDur, &cached); err == nil {
 		return cached, nil
@@ -1322,7 +1322,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 		currentDay := lastDay + 1
 		firstSlot := utils.GetLastBalanceInfoSlotForDay(lastDay) + 1
-		lastSlot := lastFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+		lastSlot := lastFinalizedEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
 		totalBalance := uint64(0)
 
@@ -1443,17 +1443,17 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 	// inclusive slot
 	firstSlot := utils.TimeToFirstSlotOfEpoch(uint64(dateTrunc.Unix()))
 
-	epochOffset := firstSlot % utils.Config.Chain.Config.SlotsPerEpoch
+	epochOffset := firstSlot % utils.Config.Chain.ClConfig.SlotsPerEpoch
 	firstSlot = firstSlot - epochOffset
-	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
+	firstEpoch := firstSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
 	// exclusive slot
-	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.ClConfig.SlotsPerEpoch)
 	if firstSlot == 0 {
 		nextDateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+1, 0, 0, 0, 0, time.UTC)
 		lastSlot = int64(utils.TimeToFirstSlotOfEpoch(uint64(nextDateTrunc.Unix())))
 	}
-	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
-	lastSlot = lastEpoch * int64(utils.Config.Chain.Config.SlotsPerEpoch)
+	lastEpoch := lastSlot / int64(utils.Config.Chain.ClConfig.SlotsPerEpoch)
+	lastSlot = lastEpoch * int64(utils.Config.Chain.ClConfig.SlotsPerEpoch)
 
 	logrus.WithFields(logrus.Fields{"day": day, "firstSlot": firstSlot, "lastSlot": lastSlot, "firstEpoch": firstEpoch, "lastEpoch": lastEpoch, "startDate": startDate, "dateTrunc": dateTrunc}).Infof("exporting consensus chart_series")
 
@@ -1518,8 +1518,8 @@ func WriteConsensusChartSeriesForDay(day int64) error {
 }
 
 func WriteExecutionChartSeriesForDay(day int64) error {
-	if utils.Config.Chain.Config.DepositChainID != 1 {
-		// logger.Warnf("not writing chart_series for execution: chainId != 1: %v", utils.Config.Chain.Config.DepositChainID)
+	if utils.Config.Chain.ClConfig.DepositChainID != 1 {
+		// logger.Warnf("not writing chart_series for execution: chainId != 1: %v", utils.Config.Chain.ClConfig.DepositChainID)
 		return nil
 	}
 
@@ -1537,15 +1537,15 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 
 	// inclusive slot
 	firstSlot := utils.TimeToFirstSlotOfEpoch(uint64(dateTrunc.Unix()))
-	firstEpoch := firstSlot / utils.Config.Chain.Config.SlotsPerEpoch
+	firstEpoch := firstSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
 	// exclusive slot
-	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.Config.SlotsPerEpoch)
+	lastSlot := int64(firstSlot) + int64(epochsPerDay*utils.Config.Chain.ClConfig.SlotsPerEpoch)
 	// The first day is not a whole day, so we take the first slot from the next day as lastSlot
 	if firstSlot == 0 {
 		nextDateTrunc := time.Date(startDate.Year(), startDate.Month(), startDate.Day()+1, 0, 0, 0, 0, time.UTC)
 		lastSlot = int64(utils.TimeToFirstSlotOfEpoch(uint64(nextDateTrunc.Unix())))
 	}
-	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
+	lastEpoch := lastSlot / int64(utils.Config.Chain.ClConfig.SlotsPerEpoch)
 
 	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
 	if err != nil {
@@ -1789,7 +1789,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 		}
 	}
 
-	switch utils.Config.Chain.Config.DepositChainID {
+	switch utils.Config.Chain.ClConfig.DepositChainID {
 	case 1:
 		crowdSale := 72009990.50
 		logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
@@ -1834,8 +1834,8 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 	}
 
 	epochsPerDay := utils.EpochsPerDay()
-	firstSlot := uint64(day) * epochsPerDay * utils.Config.Chain.Config.SlotsPerEpoch
-	firstSlotOfNextDay := uint64(day+1) * epochsPerDay * utils.Config.Chain.Config.SlotsPerEpoch
+	firstSlot := uint64(day) * epochsPerDay * utils.Config.Chain.ClConfig.SlotsPerEpoch
+	firstSlotOfNextDay := uint64(day+1) * epochsPerDay * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
 	// \x are missed blocks
 	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities

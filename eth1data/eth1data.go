@@ -27,7 +27,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
+	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.ClConfig.DepositChainID, hash.String())
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
 		logger.Infof("retrieved data for tx %v from cache", hash)
 		logger.Trace(wanted)
@@ -246,7 +246,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 	// staking deposit information (only add complete events if any)
 	for _, v := range txPageData.Events {
-		if v.Address == common.HexToAddress(utils.Config.Chain.Config.DepositContractAddress) && strings.HasPrefix(v.Name, "DepositEvent") {
+		if v.Address == common.HexToAddress(utils.Config.Chain.ClConfig.DepositContractAddress) && strings.HasPrefix(v.Name, "DepositEvent") {
 			var d types.DepositContractInteraction
 
 			if pubkey, found := v.DecodedData["pubkey"]; found {
@@ -294,7 +294,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 }
 
 func IsContract(ctx context.Context, address common.Address) (bool, error) {
-	cacheKey := fmt.Sprintf("%d:isContract:%s", utils.Config.Chain.Config.DepositChainID, address.String())
+	cacheKey := fmt.Sprintf("%d:isContract:%s", utils.Config.Chain.ClConfig.DepositChainID, address.String())
 	if wanted, err := cache.TieredCache.GetBoolWithLocalTimeout(cacheKey, time.Hour); err == nil {
 		return wanted, nil
 	}
@@ -314,7 +314,7 @@ func IsContract(ctx context.Context, address common.Address) (bool, error) {
 }
 
 func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.Header, error) {
-	// cacheKey := fmt.Sprintf("%d:h:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
+	// cacheKey := fmt.Sprintf("%d:h:%s", utils.Config.Chain.ClConfig.DepositChainID, hash.String())
 
 	// if wanted, err := db.EkoCache.Get(ctx, cacheKey, new(geth_types.Header)); err == nil {
 	// 	logger.Infof("retrieved header data for block %v from cache", hash)
@@ -335,7 +335,7 @@ func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.He
 }
 
 func GetTransactionReceipt(ctx context.Context, hash common.Hash) (*geth_types.Receipt, error) {
-	cacheKey := fmt.Sprintf("%d:r:%s", utils.Config.Chain.Config.DepositChainID, hash.String())
+	cacheKey := fmt.Sprintf("%d:r:%s", utils.Config.Chain.ClConfig.DepositChainID, hash.String())
 
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(geth_types.Receipt)); err == nil {
 		logger.Infof("retrieved receipt data for tx %v from cache", hash)

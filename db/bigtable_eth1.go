@@ -1764,8 +1764,8 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
-	if len(block.Withdrawals) > int(utils.Config.Chain.Config.MaxWithdrawalsPerPayload) {
-		return nil, nil, fmt.Errorf("unexpected number of withdrawals in block expected at most %v but got: %v", utils.Config.Chain.Config.MaxWithdrawalsPerPayload, len(block.Withdrawals))
+	if len(block.Withdrawals) > int(utils.Config.Chain.ClConfig.MaxWithdrawalsPerPayload) {
+		return nil, nil, fmt.Errorf("unexpected number of withdrawals in block expected at most %v but got: %v", utils.Config.Chain.ClConfig.MaxWithdrawalsPerPayload, len(block.Withdrawals))
 	}
 
 	for _, withdrawal := range block.Withdrawals {

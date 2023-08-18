@@ -206,7 +206,7 @@ func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttesta
 
 func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	blockPageData := types.BlockPageData{}
-	blockPageData.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
+	blockPageData.Mainnet = utils.Config.Chain.ClConfig.ConfigName == "mainnet"
 	// for the first slot in an epoch the previous epoch defines the finalized state
 	err := db.ReaderDb.Get(&blockPageData, `
 		SELECT
@@ -258,7 +258,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			epoch_participation_rate
 		ORDER BY blocks.blockroot DESC, blocks.status ASC limit 1
 		`,
-		blockSlot, utils.Config.Chain.Config.SlotsPerEpoch)
+		blockSlot, utils.Config.Chain.ClConfig.SlotsPerEpoch)
 	if err != nil {
 		return nil, err
 	}

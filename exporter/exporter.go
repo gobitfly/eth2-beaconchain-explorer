@@ -485,8 +485,8 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		startSlot := epoch * utils.Config.Chain.Config.SlotsPerEpoch
-		endSlot := (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+		startSlot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+		endSlot := (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
 			blocks, err := client.GetBlocksBySlot(slot)
 			if err != nil {
@@ -627,8 +627,8 @@ func networkLivenessUpdater(client rpc.Client) {
 		utils.LogFatal(err, "getting previous head epoch from db error", 0)
 	}
 
-	epochDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch)
-	slotDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
+	epochDuration := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch)
+	slotDuration := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
 
 	for {
 		head, err := client.GetChainHead()

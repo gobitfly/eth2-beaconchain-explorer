@@ -74,9 +74,9 @@ func main() {
 	logrus.WithFields(logrus.Fields{
 		"config":    *configPath,
 		"version":   version.Version,
-		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
+		"chainName": utils.Config.Chain.ClConfig.ConfigName}).Printf("starting")
 
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
@@ -164,15 +164,15 @@ func main() {
 			logrus.Fatalf("error retrieving geth chain id: %v", err)
 		}
 
-		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID)) {
+			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 		if err != nil {
 			logrus.Fatalf("error connecting to bigtable: %v", err)
 		}
@@ -191,7 +191,7 @@ func main() {
 
 	wg.Wait()
 	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
-		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
 		logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 	}
 
@@ -231,7 +231,7 @@ func main() {
 	if utils.Config.Indexer.Enabled {
 		var rpcClient rpc.Client
 
-		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+		chainID := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
@@ -376,7 +376,7 @@ func main() {
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
 		logrus.Infof("initializing prices")
-		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
+		price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 		logrus.Infof("prices initialized")
 		if !utils.Config.Frontend.Debug {
 			logrus.Infof("initializing ethclients")

@@ -3,6 +3,8 @@ package types
 import (
 	"html/template"
 	"time"
+
+	"github.com/ethereum/go-ethereum/params"
 )
 
 // Config is a struct to hold the configuration data
@@ -35,8 +37,10 @@ type Config struct {
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
 		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
 		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
-		ConfigPath                 string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
-		Config                     ChainConfig
+		ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
+		ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
+		ClConfig                   ClChainConfig
+		ElConfig                   *params.ChainConfig
 	} `yaml:"chain"`
 	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`

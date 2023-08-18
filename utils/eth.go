@@ -24,7 +24,7 @@ func init() {
 func VerifyBlsToExecutionChangeSignature(op *capella.SignedBLSToExecutionChange) error {
 	genesisForkVersion := phase0.Version{}
 	genesisValidatorsRoot := phase0.Root{}
-	copy(genesisForkVersion[:], MustParseHex(Config.Chain.Config.GenesisForkVersion))
+	copy(genesisForkVersion[:], MustParseHex(Config.Chain.ClConfig.GenesisForkVersion))
 	copy(genesisValidatorsRoot[:], MustParseHex(Config.Chain.GenesisValidatorsRoot))
 
 	forkDataRoot, err := (&phase0.ForkData{

@@ -301,7 +301,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	dashboardData.ValidatorLimit = getUserPremium(r).MaxValidators
 
 	epoch := services.LatestEpoch()
-	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.ClConfig.CappellaForkEpoch)
 
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
@@ -370,7 +370,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		}
 
 		if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
-			(balance[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+			(balance[0].EffectiveBalance == utils.Config.Chain.ClConfig.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.ClConfig.MaxEffectiveBalance) {
 			// this validator is eligible for withdrawal, check if it is the next one
 			if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
 				nextValidator = v
@@ -423,10 +423,10 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		withdrawalAmount = nextValidator.Balance
 	} else {
 		// partial withdrawal
-		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.Config.MaxEffectiveBalance
+		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.ClConfig.MaxEffectiveBalance
 	}
 
-	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.Config.MaxEffectiveBalance {
+	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.ClConfig.MaxEffectiveBalance {
 		withdrawalAmount = 0
 	}
 
@@ -880,7 +880,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				// calculate dequeue epoch
 				estimatedActivationEpoch := latestEpoch + epochsToWait + 1
 				// add activation offset
-				estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
+				estimatedActivationEpoch += utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
 				estimatedActivationTs = utils.EpochToTime(estimatedActivationEpoch)
 			} else {
 				queueAhead = 0

@@ -81,14 +81,14 @@ func main() {
 	}
 	utils.Config = cfg
 
-	chainIdString := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
+	chainIdString := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
 
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "error initializing bigtable", 0)
 	}
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
@@ -178,7 +178,7 @@ func main() {
 				AND slot < (SELECT slot FROM last_exported_epoch)
 			GROUP BY epoch 
 			ORDER BY epoch;
-		`, utils.Config.Chain.Config.SlotsPerEpoch)
+		`, utils.Config.Chain.ClConfig.SlotsPerEpoch)
 		if err != nil {
 			utils.LogError(err, "Error getting epochs with missing slot status from db", 0)
 			return

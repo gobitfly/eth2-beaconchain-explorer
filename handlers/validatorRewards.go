@@ -236,7 +236,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.AddSubscription(user.UserID,
-		utils.Config.Chain.Config.ConfigName,
+		utils.Config.Chain.ClConfig.ConfigName,
 		types.TaxReportEventName,
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency), 0)
 

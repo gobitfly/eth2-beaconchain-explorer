@@ -80,7 +80,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData := types.ValidatorPageData{}
 
-	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.ClConfig.CappellaForkEpoch)
 	futureProposalEpoch := uint64(0)
 	futureSyncDutyEpoch := uint64(0)
 
@@ -102,7 +102,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.PendingCount = *pendingCount
-	validatorPageData.InclusionDelay = int64((utils.Config.Chain.Config.Eth1FollowDistance*utils.Config.Chain.Config.SecondsPerEth1Block+utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.EpochsPerEth1VotingPeriod)/3600) + 1
+	validatorPageData.InclusionDelay = int64((utils.Config.Chain.ClConfig.Eth1FollowDistance*utils.Config.Chain.ClConfig.SecondsPerEth1Block+utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.EpochsPerEth1VotingPeriod)/3600) + 1
 
 	data := InitPageData(w, r, "validators", "/validators", "", validatorTemplateFiles)
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
@@ -356,7 +356,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
 	avgSyncIntervalAsDuration := time.Duration(
-		utils.Config.Chain.Config.SecondsPerSlot*
+		utils.Config.Chain.ClConfig.SecondsPerSlot*
 			utils.SlotsPerSyncCommittee()*
 			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
@@ -458,7 +458,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			// only calculate the expected next withdrawal if the validator is eligible
 			isFullWithdrawal := validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch
-			isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.Config.MaxEffectiveBalance
+			isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.ClConfig.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.ClConfig.MaxEffectiveBalance
 			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (isFullWithdrawal || isPartialWithdrawal) {
 				distance, err := GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
 				if err != nil {
@@ -488,7 +488,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					if isFullWithdrawal {
 						withdrawalAmont = validatorPageData.CurrentBalance
 					} else {
-						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.Config.MaxEffectiveBalance
+						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.ClConfig.MaxEffectiveBalance
 					}
 
 					if latestEpoch == lastWithdrawalsEpoch {
@@ -563,7 +563,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// calculate dequeue epoch
 			estimatedActivationEpoch := validatorPageData.Epoch + epochsToWait + 1
 			// add activation offset
-			estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
+			estimatedActivationEpoch += utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
 			validatorPageData.EstimatedActivationEpoch = estimatedActivationEpoch
 			estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
 			validatorPageData.EstimatedActivationTs = estimatedDequeueTs
@@ -665,7 +665,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		SELECT period as period, (period*$1) as firstepoch, ((period+1)*$1)-1 as lastepoch
 		FROM sync_committees 
 		WHERE validatorindex = $2
-		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, index)
+		ORDER BY period desc`, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, index)
 		if err != nil {
 			return fmt.Errorf("error getting sync participation count data of sync-assignments: %v", err)
 		}
@@ -776,9 +776,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $1`, index)
 		if err == nil && (validatorPageData.Rocketpool.MinipoolAddress != nil || validatorPageData.Rocketpool.NodeAddress != nil) {
 			validatorPageData.IsRocketpool = true
-			if utils.Config.Chain.Config.DepositChainID == 1 {
+			if utils.Config.Chain.ClConfig.DepositChainID == 1 {
 				validatorPageData.Rocketpool.RocketscanUrl = "rocketscan.io"
-			} else if utils.Config.Chain.Config.DepositChainID == 5 {
+			} else if utils.Config.Chain.ClConfig.DepositChainID == 5 {
 				validatorPageData.Rocketpool.RocketscanUrl = "prater.rocketscan.io"
 			}
 		} else if err != nil && err != sql.ErrNoRows {
@@ -1697,7 +1697,7 @@ func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (m
 			Index:  withdrawals.ValidatorIndex,
 			Epoch:  withdrawals.Epoch,
 			Amount: withdrawals.Amount,
-			Slot:   withdrawals.Epoch * utils.Config.Chain.Config.SlotsPerEpoch,
+			Slot:   withdrawals.Epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch,
 		}
 	}
 	return withdrawalMap, incomeDetails, err
@@ -1873,7 +1873,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		SELECT period as period, (period*$1) as endepoch, ((period+1)*$1)-1 as startepoch
 		FROM sync_committees 
 		WHERE validatorindex = $2
-		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, validatorIndex)
+		ORDER BY period desc`, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, validatorIndex)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting sync tab count data of sync-assignments")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1898,7 +1898,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// total count of sync duties for this validator
-	totalCount := (uint64(len(syncPeriods))*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - diffToLatestEpoch) * utils.Config.Chain.Config.SlotsPerEpoch
+	totalCount := (uint64(len(syncPeriods))*utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - diffToLatestEpoch) * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
 	tableData := [][]interface{}{}
 
@@ -1949,9 +1949,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// amount of epochs moved away from start epoch
-		epochOffset := (start / utils.Config.Chain.Config.SlotsPerEpoch)
+		epochOffset := (start / utils.Config.Chain.ClConfig.SlotsPerEpoch)
 		// amount of distinct consecutive epochs shown on this page
-		epochsDiff := ((start + length) / utils.Config.Chain.Config.SlotsPerEpoch) - epochOffset
+		epochsDiff := ((start + length) / utils.Config.Chain.ClConfig.SlotsPerEpoch) - epochOffset
 
 		shownEpochIndex := 0
 		// first epoch containing the duties shown on this page
@@ -1969,7 +1969,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// handle overflow on last page for validators that were part of the very first sync period starting during epoch 0
 		if !ascOrdering && lastShownEpoch > firstShownEpoch {
 			lastShownEpoch = 0
-			length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
+			length = utils.Config.Chain.ClConfig.SlotsPerEpoch - (start % utils.Config.Chain.ClConfig.SlotsPerEpoch)
 		}
 		// amount of epochs fetched by bigtable
 		limit := diffValue(firstShownEpoch, lastShownEpoch) + 1
@@ -1978,7 +1978,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		if IsFurtherAway(lastShownEpoch, syncPeriods[shownEpochIndex].EndEpoch) {
 			if IsFurtherAway(lastShownEpoch, syncPeriods[len(syncPeriods)-1].EndEpoch) {
 				// handle showing the last page, which may hold less than 'length' amount of rows
-				length = utils.Config.Chain.Config.SlotsPerEpoch - (start % utils.Config.Chain.Config.SlotsPerEpoch)
+				length = utils.Config.Chain.ClConfig.SlotsPerEpoch - (start % utils.Config.Chain.ClConfig.SlotsPerEpoch)
 			} else {
 				// handle crossing sync periods on the same page (i.e. including the earliest and latest slot of two sync periods from this validator)
 				overshoot := diffValue(lastShownEpoch, syncPeriods[shownEpochIndex].EndEpoch)
@@ -2005,7 +2005,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		syncDutiesValidator := syncDuties[validatorIndex]
-		syncDutiesAllValidators := make([]uint64, limit*utils.Config.Chain.Config.SlotsPerEpoch)
+		syncDutiesAllValidators := make([]uint64, limit*utils.Config.Chain.ClConfig.SlotsPerEpoch)
 		for _, duties := range syncDuties {
 			for idx := range syncDutiesValidator {
 				slot := syncDutiesValidator[idx].Slot
@@ -2035,7 +2035,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			}
 
 			nextPeriodSyncDutiesValidator := nextPeriodSyncDuties[validatorIndex]
-			nextPeriodSyncDutiesAllValidators := make([]uint64, nextPeriodLimit*utils.Config.Chain.Config.SlotsPerEpoch)
+			nextPeriodSyncDutiesAllValidators := make([]uint64, nextPeriodLimit*utils.Config.Chain.ClConfig.SlotsPerEpoch)
 			for _, duties := range nextPeriodSyncDuties {
 				for idx := range nextPeriodSyncDutiesValidator {
 					slot := nextPeriodSyncDutiesValidator[idx].Slot
@@ -2079,10 +2079,10 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// sanity check for right amount of slots in response
-		if uint64(len(syncDutiesValidator))%utils.Config.Chain.Config.SlotsPerEpoch == 0 {
+		if uint64(len(syncDutiesValidator))%utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 {
 			// extract correct slots
 			tableData = make([][]interface{}, length)
-			for dataIndex, slotIndex := 0, start%utils.Config.Chain.Config.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.Config.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
+			for dataIndex, slotIndex := 0, start%utils.Config.Chain.ClConfig.SlotsPerEpoch; slotIndex < protomath.MinU64((start%utils.Config.Chain.ClConfig.SlotsPerEpoch)+length, uint64(len(syncDuties))); dataIndex, slotIndex = dataIndex+1, slotIndex+1 {
 				participation := uint64(0)
 				if uint64(len(syncDutiesAllValidators)) > slotIndex {
 					participation = syncDutiesAllValidators[slotIndex]
