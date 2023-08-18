@@ -27,7 +27,7 @@ type EthStoreExporter struct {
 }
 
 // start exporting of eth.store into db
-func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, errorInterval, sleepInterval time.Duration) {
+func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, errorInterval, sleepInterval time.Duration, startDayReexport, endDayReexport int64) {
 	logger.Info("starting eth.store exporter")
 	ese := &EthStoreExporter{
 		DB:             db.WriterDb,
@@ -48,11 +48,22 @@ func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, e
 		ese.Sleep = time.Minute
 	}
 
+	// Reexport days if specified
+	if startDayReexport != -1 && endDayReexport != -1 {
+		for day := startDayReexport; day <= endDayReexport; day++ {
+			err := ese.exportDay(strconv.FormatInt(day, 10), true)
+			if err != nil {
+				logger.WithError(err).Errorf("error reexporting eth.store day %d in database", day)
+				return
+			}
+		}
+	}
+
 	ese.Run()
 
 }
 
-func (ese *EthStoreExporter) ExportDay(day string) error {
+func (ese *EthStoreExporter) exportDay(day string, shouldClearDay bool) error {
 	ethStoreDay, validators, err := ese.getStoreDay(day)
 	if err != nil {
 		return err
@@ -63,6 +74,13 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 		return err
 	}
 	defer tx.Rollback()
+
+	if shouldClearDay {
+		_, err = tx.Exec(`DELETE FROM eth_store_stats WHERE day = $1`, ethStoreDay.Day)
+		if err != nil {
+			return err
+		}
+	}
 
 	numArgs := 10
 	batchSize := 65535 / numArgs // max 65535 params per batch, since postgres uses int16 for binding input params
@@ -230,7 +248,7 @@ DBCHECK:
 			})
 			// export missing days
 			for _, dayToExport := range daysToExportArray {
-				err = ese.ExportDay(strconv.FormatUint(dayToExport, 10))
+				err = ese.exportDay(strconv.FormatUint(dayToExport, 10), false)
 				if err != nil {
 					logger.WithError(err).Errorf("error exporting eth.store day %d into database", dayToExport)
 					time.Sleep(ese.ErrorInterval)
