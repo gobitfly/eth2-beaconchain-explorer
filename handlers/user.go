@@ -1183,10 +1183,9 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		Logout(w, r)
 		err = purgeAllSessionsForUser(r.Context(), user.UserID)
 		if err != nil {
-			logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
-			session.AddFlash(authInternalServerErrorFlashMsg)
-			session.Save(r, w)
-			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+			utils.LogError(err, fmt.Errorf("error purging sessions for user %v", user.UserID), 0)
+			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 	} else {
