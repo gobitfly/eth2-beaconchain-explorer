@@ -1130,9 +1130,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 	// first key is the batch start index and the second is the validator id
 	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	mux := sync.Mutex{}
-	g, gCtx := errgroup.WithContext(ctx)
-	batchSize := 100
-	g.SetLimit(10)
+	batchSize := 10000
 	for i := 0; i < len(validators); i += batchSize {
 
 		upperBound := i + batchSize
@@ -1142,27 +1140,16 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 		vals := validators[i:upperBound]
 
 		logrus.Infof("retrieving validator missed attestations stats for validators %v - %v", vals[0], vals[len(vals)-1])
-		g.Go(func() error {
-			select {
-			case <-gCtx.Done():
-				return gCtx.Err()
-			default:
-			}
-			ma, err := BigtableClient.GetValidatorMissedAttestationsCount(vals, firstEpoch, lastEpoch)
-			if err != nil {
-				return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", firstEpoch, lastEpoch, err)
-			}
-			mux.Lock()
-			for validator, stats := range ma {
-				validatorMap[validator] = stats
-			}
-			mux.Unlock()
-			return nil
-		})
-	}
 
-	if err := g.Wait(); err != nil {
-		return err
+		ma, err := BigtableClient.GetValidatorMissedAttestationsCount(vals, firstEpoch, lastEpoch)
+		if err != nil {
+			return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", firstEpoch, lastEpoch, err)
+		}
+		mux.Lock()
+		for validator, stats := range ma {
+			validatorMap[validator] = stats
+		}
+		mux.Unlock()
 	}
 
 	logrus.Infof("fetching 'failed attestations' done in %v, now we export them to the db", time.Since(start))
@@ -1173,8 +1160,8 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 		maArr = append(maArr, stat)
 	}
 
-	g, gCtx = errgroup.WithContext(ctx)
-
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(50)
 	dbBatchSize := 100 // max: 65535 / 4, but we are faster with smaller batches
 	for b := 0; b < len(maArr); b += dbBatchSize {
 
