@@ -1997,7 +1997,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			startEpoch = firstShownEpoch - (limit - 1)
 			endEpoch = firstShownEpoch
 		}
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered([]uint64{}, startEpoch, endEpoch, ascOrdering)
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered([]uint64{validatorIndex}, startEpoch, endEpoch, ascOrdering)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync duty data from bigtable: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -2027,7 +2027,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				startEpoch = lastShownEpoch
 				endEpoch = lastShownEpoch + nextPeriodLimit - 1
 			}
-			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered([]uint64{}, startEpoch, endEpoch, ascOrdering)
+			nextPeriodSyncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistoryOrdered([]uint64{validatorIndex}, startEpoch, endEpoch, ascOrdering)
 			if err != nil {
 				logger.Errorf("error retrieving second validator sync duty data from bigtable: %v", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)

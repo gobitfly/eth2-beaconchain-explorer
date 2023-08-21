@@ -73,6 +73,11 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	}
 	logger.Infof("getting exported state took %v", time.Since(start))
 
+	validators, err := GetValidatorIndices()
+	if err != nil {
+		return err
+	}
+
 	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalAccumulation && exported.TotalPerformance && exported.BlockStats && exported.Status {
 		logger.Infof("Skipping day %v as it is already exported", day)
 		return nil
@@ -80,13 +85,13 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 
 	if exported.FailedAttestations {
 		logger.Infof("Skipping failed attestations")
-	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(day, concurrencyFailedAttestations); err != nil {
+	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(validators, day, concurrencyFailedAttestations); err != nil {
 		return fmt.Errorf("error in WriteValidatorFailedAttestationsStatisticsForDay: %w", err)
 	}
 
 	if exported.SyncDuties {
 		logger.Infof("Skipping sync duties")
-	} else if err := WriteValidatorSyncDutiesForDay(day); err != nil {
+	} else if err := WriteValidatorSyncDutiesForDay(validators, day); err != nil {
 		return fmt.Errorf("error in WriteValidatorSyncDutiesForDay: %w", err)
 	}
 
@@ -104,13 +109,13 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 
 	if exported.Balance {
 		logger.Infof("Skipping balances")
-	} else if err := WriteValidatorBalances(day); err != nil {
+	} else if err := WriteValidatorBalances(validators, day); err != nil {
 		return fmt.Errorf("error in WriteValidatorBalances: %w", err)
 	}
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
-	} else if err := WriteValidatorClIcome(day, concurrencyCl); err != nil {
+	} else if err := WriteValidatorClIcome(validators, day, concurrencyCl); err != nil {
 		return fmt.Errorf("error in WriteValidatorClIcome: %w", err)
 	}
 
@@ -665,7 +670,7 @@ func WriteValidatorElIcome(day uint64) error {
 	return nil
 }
 
-func WriteValidatorClIcome(day uint64, concurrency uint64) error {
+func WriteValidatorClIcome(validators []uint64, day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -704,7 +709,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
 	logger.Infof("exporting cl_rewards_wei statistics")
-	incomeStats, err := BigtableClient.GetAggregatedValidatorIncomeDetailsHistory([]uint64{}, firstEpoch, lastEpoch)
+	incomeStats, err := BigtableClient.GetAggregatedValidatorIncomeDetailsHistory(validators, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error in GetAggregatedValidatorIncomeDetailsHistory for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 	}
@@ -809,7 +814,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	return nil
 }
 
-func WriteValidatorBalances(day uint64) error {
+func WriteValidatorBalances(validators []uint64, day uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
@@ -827,7 +832,7 @@ func WriteValidatorBalances(day uint64) error {
 	start := time.Now()
 
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
-	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
+	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(validators, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error in GetValidatorBalanceStatistics for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 	}
@@ -1025,7 +1030,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 	return nil
 }
 
-func WriteValidatorSyncDutiesForDay(day uint64) error {
+func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_sync_stats").Observe(time.Since(exportStart).Seconds())
@@ -1040,7 +1045,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 	start := time.Now()
 	logrus.Infof("Update Sync duties for day [%v] epoch %v -> %v", day, startEpoch, endEpoch)
 
-	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, startEpoch, endEpoch)
+	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics(validators, startEpoch, endEpoch)
 	if err != nil {
 		return fmt.Errorf("error in GetValidatorSyncDutiesStatistics for startEpoch [%v] and endEpoch [%v]: %w", startEpoch, endEpoch, err)
 	}
@@ -1104,7 +1109,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 	return nil
 }
 
-func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency uint64) error {
+func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -1123,31 +1128,34 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency ui
 	logrus.Infof("exporting 'failed attestations' statistics firstEpoch: %v lastEpoch: %v", firstEpoch, lastEpoch)
 
 	// first key is the batch start index and the second is the validator id
-	failed := map[uint64]map[uint64]*types.ValidatorMissedAttestationsStatistic{}
+	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
 	mux := sync.Mutex{}
 	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(int(concurrency))
-	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
-	for i := firstEpoch; i < lastEpoch; i += epochBatchSize {
-		fromEpoch := i
-		toEpoch := fromEpoch + epochBatchSize
-		if toEpoch >= lastEpoch {
-			toEpoch = lastEpoch
-		} else {
-			toEpoch--
+	batchSize := 100
+	g.SetLimit(10)
+	for i := 0; i < len(validators); i += batchSize {
+
+		upperBound := i + batchSize
+		if len(validators) < upperBound {
+			upperBound = len(validators)
 		}
+		vals := validators[i:upperBound]
+
+		logrus.Infof("retrieving validator missed attestations stats for validators %v - %v", vals[0], vals[len(vals)-1])
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
 				return gCtx.Err()
 			default:
 			}
-			ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
+			ma, err := BigtableClient.GetValidatorMissedAttestationsCount(vals, firstEpoch, lastEpoch)
 			if err != nil {
-				return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", fromEpoch, toEpoch, err)
+				return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 			}
 			mux.Lock()
-			failed[fromEpoch] = ma
+			for validator, stats := range ma {
+				validatorMap[validator] = stats
+			}
 			mux.Unlock()
 			return nil
 		})
@@ -1155,18 +1163,6 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency ui
 
 	if err := g.Wait(); err != nil {
 		return err
-	}
-
-	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
-	for _, f := range failed {
-
-		for key, val := range f {
-			if validatorMap[key] == nil {
-				validatorMap[key] = val
-			} else {
-				validatorMap[key].MissedAttestations += val.MissedAttestations
-			}
-		}
 	}
 
 	logrus.Infof("fetching 'failed attestations' done in %v, now we export them to the db", time.Since(start))
@@ -1179,11 +1175,11 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency ui
 
 	g, gCtx = errgroup.WithContext(ctx)
 
-	batchSize := 100 // max: 65535 / 4, but we are faster with smaller batches
-	for b := 0; b < len(maArr); b += batchSize {
+	dbBatchSize := 100 // max: 65535 / 4, but we are faster with smaller batches
+	for b := 0; b < len(maArr); b += dbBatchSize {
 
 		start := b
-		end := b + batchSize
+		end := b + dbBatchSize
 		if len(maArr) < end {
 			end = len(maArr)
 		}

@@ -599,7 +599,12 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{}, epoch, epoch)
+	validators, err := db.GetValidatorIndices()
+	if err != nil {
+		return nil, err
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, epoch, epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -649,7 +654,12 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{}, epoch, epoch)
+	validators, err := db.GetValidatorIndices()
+	if err != nil {
+		return nil, err
+	}
+
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, epoch, epoch)
 	if err != nil {
 		return nil, err
 	}

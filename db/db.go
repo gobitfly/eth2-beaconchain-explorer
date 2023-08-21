@@ -1772,6 +1772,13 @@ func UpdateEpochFinalization(finality_epoch uint64) error {
 }
 
 // GetTotalValidatorsCount will return the total-validator-count
+func GetValidatorIndices() ([]uint64, error) {
+	indices := []uint64{}
+	err := ReaderDb.Select(&indices, "select validatorindex from validators order by validatorindex;")
+	return indices, err
+}
+
+// GetTotalValidatorsCount will return the total-validator-count
 func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
 	err := ReaderDb.Get(&totalCount, "select coalesce(max(validatorindex) + 1, 0) from validators;")
