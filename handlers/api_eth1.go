@@ -105,6 +105,11 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(relaysData) == 0 {
+		sendErrorResponse(w, r.URL.String(), "data not available")
+		return
+	}
+
 	results := formatBlocksForApiResponse(blocks, relaysData, beaconDataMap, nil)
 
 	j := json.NewEncoder(w)

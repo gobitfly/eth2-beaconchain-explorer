@@ -3890,11 +3890,11 @@ func SendErrorResponse(w http.ResponseWriter, route, message string) {
 }
 
 func sendErrorResponse(w http.ResponseWriter, route, message string) {
-	sendErrorWithCodeResponse(w, route, message, 400)
+	sendErrorWithCodeResponse(w, route, message, http.StatusBadRequest)
 }
 
 func sendServerErrorResponse(w http.ResponseWriter, route, message string) {
-	sendErrorWithCodeResponse(w, route, message, 500)
+	sendErrorWithCodeResponse(w, route, message, http.StatusInternalServerError)
 }
 
 func sendErrorWithCodeResponse(w http.ResponseWriter, route, message string, errorcode int) {
