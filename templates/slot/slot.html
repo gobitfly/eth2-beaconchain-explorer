@@ -289,7 +289,13 @@
       var attestations_tab_loaded = false
       let atab = $('#attestations-tab')
       if(atab.length > 0) {
-        atab.on('shown.bs.tab', function (event) { if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true; });
+        var activateAttestations = ()=>{
+          if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true;
+        }
+        atab.on('shown.bs.tab', activateAttestations);
+        if (atab.hasClass("active")){
+          activateAttestations()
+        }
       } else {
         console.error('error getting #attestations-tab')
         const att = document.getElementById('attestationsTabPanel');
