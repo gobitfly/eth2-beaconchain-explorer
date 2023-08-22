@@ -1846,25 +1846,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 		return false
 	}
 
-	filterLen := len(filter)
-	isPkey := searchPubkeyExactRE.MatchString(filter)
-	isClient := false
-	if eventName == types.EthClientUpdateEventName &&
-		(filter == "geth" ||
-			filter == "nethermind" ||
-			filter == "besu" ||
-			filter == "erigon" ||
-			filter == "teku" ||
-			filter == "prysm" ||
-			filter == "nimbus" ||
-			filter == "lighthouse" ||
-			filter == "lodestar" ||
-			filter == "rocketpool" ||
-			filter == "mev-boost") {
-		isClient = true
-	}
-
-	if filterLen != 0 && !isPkey && !isClient {
+	if !isValidSubscriptionFilter(eventName, filter) {
 		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
 		errFields := map[string]interface{}{
 			"filter":     filter,
@@ -1896,6 +1878,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 		// rocketpool thresholds are free
 	}
 
+	filterLen := len(filter)
 	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && !strings.HasPrefix(string(eventName), "rocketpool_") { // no filter = add all my watched validators
 		myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 		if err2 != nil {
@@ -2040,25 +2023,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		return false
 	}
 
-	filterLen := len(filter)
-	isPkey := searchPubkeyExactRE.MatchString(filter)
-	isClient := false
-	if eventName == types.EthClientUpdateEventName &&
-		(filter == "geth" ||
-			filter == "nethermind" ||
-			filter == "besu" ||
-			filter == "erigon" ||
-			filter == "teku" ||
-			filter == "prysm" ||
-			filter == "nimbus" ||
-			filter == "lighthouse" ||
-			filter == "lodestar" ||
-			filter == "rocketpool" ||
-			filter == "mev-boost") {
-		isClient = true
-	}
-
-	if filterLen != 0 && !isPkey && !isClient {
+	if !isValidSubscriptionFilter(eventName, filter) {
 		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
 		errFields := map[string]interface{}{
 			"filter":     filter,
@@ -2076,6 +2041,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		Network:        utils.GetNetwork(),
 	}
 
+	filterLen := len(filter)
 	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && !strings.HasPrefix(string(eventName), "rocketpool_") { // no filter = add all my watched validators
 
 		myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
@@ -2143,25 +2109,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filterLen := len(filter)
-	isPkey := searchPubkeyExactRE.MatchString(filter)
-	isClient := false
-	if eventName == types.EthClientUpdateEventName &&
-		(filter == "geth" ||
-			filter == "nethermind" ||
-			filter == "besu" ||
-			filter == "erigon" ||
-			filter == "teku" ||
-			filter == "prysm" ||
-			filter == "nimbus" ||
-			filter == "lighthouse" ||
-			filter == "lodestar" ||
-			filter == "rocketpool" ||
-			filter == "mev-boost") {
-		isClient = true
-	}
-
-	if filterLen != 0 && !isPkey && !isClient {
+	if !isValidSubscriptionFilter(eventName, filter) {
 		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
 		errFields := map[string]interface{}{
 			"filter":     filter,
@@ -2172,6 +2120,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filterLen := len(filter)
 	if filterLen == 0 && !types.IsUserIndexed(eventName) { // no filter = add all my watched validators
 
 		filter := db.WatchlistFilter{
@@ -2218,6 +2167,27 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+func isValidSubscriptionFilter(eventName types.EventName, filter string) bool {
+	isPkey := searchPubkeyExactRE.MatchString(filter)
+	isClient := false
+	if eventName == types.EthClientUpdateEventName &&
+		(filter == "geth" ||
+			filter == "nethermind" ||
+			filter == "besu" ||
+			filter == "erigon" ||
+			filter == "teku" ||
+			filter == "prysm" ||
+			filter == "nimbus" ||
+			filter == "lighthouse" ||
+			filter == "lodestar" ||
+			filter == "rocketpool" ||
+			filter == "mev-boost") {
+		isClient = true
+	}
+
+	return len(filter) == 0 || isPkey || isClient
 }
 
 func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) {
