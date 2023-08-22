@@ -22,15 +22,15 @@
   {{ with .Data }}
     <div class="broadcast-status container">
       <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+      <div class="page-title">
+        <h4 class="h4">{{ .JobTitle }}</h4>
+      </div>
+      <div class="sub-page-title">{{ .Job.ID }}</div>
       <section>
         <div class="row">
           <div class="col-md-12">
             <div class="row justify-content-center">
               <div class="col-md-12 col-lg-8">
-                <div class="page-title">
-                  <h4 class="h4">{{ .JobTitle }}</h4>
-                </div>
-                <div class="sub-page-title">{{ .Job.ID }}</div>
                 <div class="card text-left">
                   <div class="card-body">
                     <div class="row flex-nowrap border-bottom p-3 mx-0">

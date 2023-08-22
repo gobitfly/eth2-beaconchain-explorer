@@ -48,7 +48,6 @@
 {{ define "content" }}
   {{ with .Data }}
     <div class="container">
-      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       {{ if .Flashes }}
         {{ range $i, $flash := .Flashes }}
           <div class="alert {{ if contains $flash "Error" }}alert-danger{{ else }}alert-success{{ end }} alert-dismissible fade show my-3 py-2" role="alert">
@@ -59,8 +58,9 @@
           </div>
         {{ end }}
       {{ end }}
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
       <div class="d-md-flex justify-content-md-between my-d">
-        <div class="page-title">
+        <div class="page-title my-0">
           <h4 class="h4 d-flex justify-content-center align-items-center">
             <svg class="mr-2" id="icon" viewBox="0 0 32 32" style="width: 1.5rem; height: 1.5rem; fill: var(--font-color);" xmlns="http://www.w3.org/2000/svg">
               <!-- credit https://www.iconfinder.com/carbon-design -->
