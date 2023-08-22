@@ -2956,7 +2956,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 	type dbResult struct {
 		Address     []byte
 		RPLStake    BigFloat `db:"rpl_stake"`
-		RPLStakeMin BigFloat `db:"min_rpl_stake"`
+		RPLStakeMax BigFloat `db:"max_rpl_stake"`
 	}
 
 	stakeInfoPerNode := make([]dbResult, 0)
@@ -2976,7 +2976,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		var partial []dbResult
 
 		err = db.WriterDb.Select(&partial, `
-		SELECT address, rpl_stake, min_rpl_stake
+		SELECT address, rpl_stake, max_rpl_stake
 		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
 		if err != nil {
 			return err
@@ -2984,9 +2984,9 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		stakeInfoPerNode = append(stakeInfoPerNode, partial...)
 	}
 
-	// factor in network-wide minimum collat ratio
+	// factor in network-wide maximum collat ratio (could also use minimum, but then we'd need to calculate supplied/borrowed eth etc...)
 	// this is dynamic and might be changed in the future; Should extend rocketpool_network_stats to include min/max collateral values!
-	minRPLCollatRatio := bigFloat(0.1) // bigFloat it to save some memory allocations later
+	maxRPLCollatRatio := bigFloat(1.5) // bigFloat it to save some memory allocations later
 	// temporary helper to not re-allocate each loop & not mess with values that will be used later
 	tempCollatHelper := bigFloat(0)
 
@@ -2995,7 +2995,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		if !ok {
 			continue
 		}
-		tempCollatHelper.Quo(r.RPLStakeMin.bigFloat(), minRPLCollatRatio)                             // 100% collateral amount
+		tempCollatHelper.Quo(r.RPLStakeMax.bigFloat(), maxRPLCollatRatio)                             // 100% collateral amount
 		nodeCollatRatio, _ := tempCollatHelper.Quo(r.RPLStake.bigFloat(), tempCollatHelper).Float64() // collaterization ratio of user's node
 		for _, sub := range subs {
 			var alertConditionMet bool = false
