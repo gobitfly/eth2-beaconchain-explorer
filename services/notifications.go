@@ -2957,10 +2957,9 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		Address     []byte
 		RPLStake    BigFloat `db:"rpl_stake"`
 		RPLStakeMin BigFloat `db:"min_rpl_stake"`
-		RPLStakeMax BigFloat `db:"max_rpl_stake"`
 	}
 
-	events := make([]dbResult, 0)
+	stakeInfoPerNode := make([]dbResult, 0)
 	batchSize := 5000
 	dataLen := len(pubkeys)
 	for i := 0; i < dataLen; i += batchSize {
@@ -2977,38 +2976,52 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		var partial []dbResult
 
 		err = db.WriterDb.Select(&partial, `
-		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake                    
+		SELECT address, rpl_stake, min_rpl_stake
 		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
-		events = append(events, partial...)
+		stakeInfoPerNode = append(stakeInfoPerNode, partial...)
 	}
 
-	for _, r := range events {
+	// factor in network-wide minimum collat ratio
+	// this is dynamic and might be changed in the future; Should extend rocketpool_network_stats to include min/max collateral values!
+	minRPLCollatRatio := bigFloat(0.1) // bigFloat it to save some memory allocations later
+	// temporary helper to not re-allocate each loop & not mess with values that will be used later
+	tempCollatHelper := bigFloat(0)
+
+	for _, r := range stakeInfoPerNode {
 		subs, ok := subMap[hex.EncodeToString(r.Address)]
 		if !ok {
 			continue
 		}
+		tempCollatHelper.Quo(r.RPLStakeMin.bigFloat(), minRPLCollatRatio)                             // 100% collateral amount
+		nodeCollatRatio, _ := tempCollatHelper.Quo(r.RPLStake.bigFloat(), tempCollatHelper).Float64() // collaterization ratio of user's node
 		for _, sub := range subs {
 			var alertConditionMet bool = false
 
-			if sub.EventThreshold >= 0 {
-				var threshold float64 = sub.EventThreshold
-				if threshold == 0 {
-					threshold = 1.0
-				}
-				if eventName == types.RocketpoolCollateralMaxReached {
-					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
+			// according to app logic, sub.EventThreshold can be +- [0.9 to 1.5] for CollateralMax after manually changed by the user
+			// this corresponds to a collateral range of 140% to 200% currently shown in the app UI; so +- 0.5 allows us to compare to the actual collat ratio
+			// for CollateralMin it  can be 1.0 to 4.0 if manually changed, to represent 10% to 40%
+			// 0 in both cases if not modified
+			var threshold float64 = sub.EventThreshold
+			if threshold == 0 {
+				threshold = 1.0 // default case
+			}
+			inverse := false
+			if eventName == types.RocketpoolCollateralMaxReached {
+				if threshold < 0 {
+					threshold *= -1
 				} else {
-					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
+					inverse = true
 				}
+				threshold += 0.5
 			} else {
-				if eventName == types.RocketpoolCollateralMaxReached {
-					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
-				} else {
-					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= 1
-				}
+				threshold /= 10.0
+			}
+			alertConditionMet = nodeCollatRatio <= threshold
+			if inverse {
+				alertConditionMet = !alertConditionMet
 			}
 
 			if !alertConditionMet {
