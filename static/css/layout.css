@@ -100,13 +100,16 @@ table {
   }
 }
 
-.navbar{
+.navbar {
   box-shadow: unset;
 }
 
-.main-navigation{
+.main-navigation {
   background-color: var(--bg-color);
   border-bottom: 1px solid var(--border-color);
+  z-index: 998;
+  position: sticky;
+  top: 0;
 }
 
 .main-navigation .navbar-toggler {
@@ -131,11 +134,9 @@ table {
     padding: 0;
     margin-bottom: var(--header-bar-height);
     position: fixed;
-    top: 0;
     left: 0;
     right: 0;
     max-height: 100%;
-    z-index: 999;
     overflow-y: auto;
   }
 
@@ -182,19 +183,18 @@ table {
   }
 }
 
-
 @media (min-width: 1140px) {
   .navbar {
     padding: 0;
     padding-top: var(--header-bar-height);
   }
-  
-  .navbar-brand{
+
+  .navbar-brand {
     padding: 0;
   }
 }
 
-.navbar-brand{
+.navbar-brand {
   padding: 0;
 }
 .icon-inside {
@@ -559,6 +559,15 @@ table {
   }
 }
 
+table.dataTable.table-sm tr.second-row .sorting:after,
+table.dataTable.table-sm tr.second-row .sorting:before,
+table.dataTable.table-sm tr.second-row .sorting_asc:after,
+table.dataTable.table-sm tr.second-row .sorting_asc:before,
+table.dataTable.table-sm tr.second-row .sorting_desc:after,
+table.dataTable.table-sm tr.second-row .sorting_desc:before {
+  top: unset;
+}
+
 @media (max-width: 768px) {
   div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     justify-content: center !important;
@@ -699,7 +708,7 @@ body main {
   font-weight: 300;
 }
 
-.style-nav2-text{
+.style-nav2-text {
   font-family: "Mukta", sans-serif;
   font-size: 1.375rem;
   line-height: 2.3125rem;
@@ -762,6 +771,27 @@ body main {
 .style-table-title {
   font-family: "Montserrat", sans-serif;
   font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.page-title {
+  margin-top: 0.625rem;
+  margin-bottom: 0.625rem;
+}
+
+.page-title .h4 {
+  font-family: "Montserrat", sans-serif;
+  font-size: 1.5rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+
+.sub-page-title {
+  font-family: "Montserrat", sans-serif;
+  margin-bottom: 0.625rem;
+  font-size: 1.125rem;
+  line-height: 1.125rem;
   font-weight: 500;
 }
 
@@ -1037,6 +1067,128 @@ body main {
   font-size: 0.9rem;
   font-weight: 400;
   line-height: 1.45rem !important;
+}
+
+.m-d {
+  margin: 0.625rem;
+}
+
+.my-d {
+  margin-top: 0.625rem;
+  margin-bottom: 0.625rem;
+}
+
+.mx-d {
+  margin-left: 0.625rem;
+  margin-right: 0.625rem;
+}
+
+.mt-d {
+  margin-top: 0.625rem;
+}
+
+.mb-d {
+  margin-bottom: 0.625rem;
+}
+
+.ml-d {
+  margin-left: 0.625rem;
+}
+
+.mr-d {
+  margin-right: 0.625rem;
+}
+
+.p-d {
+  padding: 0.625rem;
+}
+
+.py-d {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+}
+
+.px-d {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+
+.pt-d {
+  padding-top: 0.625rem;
+}
+
+.pb-d {
+  padding-bottom: 0.625rem;
+}
+
+.pl-d {
+  padding-left: 0.625rem;
+}
+
+.pr-d {
+  padding-right: 0.625rem;
+}
+
+@media (min-width: 640px) {
+  .m-sm-d {
+    margin: 0.625rem;
+  }
+
+  .my-sm-d {
+    margin-top: 0.625rem;
+    margin-bottom: 0.625rem;
+  }
+
+  .mx-sm-d {
+    margin-left: 0.625rem;
+    margin-right: 0.625rem;
+  }
+
+  .mt-sm-d {
+    margin-top: 0.625rem;
+  }
+
+  .mb-sm-d {
+    margin-bottom: 0.625rem;
+  }
+
+  .ml-sm-d {
+    margin-left: 0.625rem;
+  }
+
+  .mr-sm-d {
+    margin-right: 0.625rem;
+  }
+
+  .p-sm-d {
+    padding: 0.625rem;
+  }
+
+  .py-sm-d {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  .px-sm-d {
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+
+  .pt-sm-d {
+    padding-top: 0.625rem;
+  }
+
+  .pb-d {
+    padding-bottom: 0.625rem;
+  }
+
+  .pl-sm-d {
+    padding-left: 0.625rem;
+  }
+
+  .pr-sm-d {
+    padding-right: 0.625rem;
+  }
 }
 
 @media screen and (max-width: 450px) {

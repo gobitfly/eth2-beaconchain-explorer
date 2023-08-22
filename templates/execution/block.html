@@ -9,28 +9,19 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0">
-            {{ if gt .PreviousBlock 0 }}
-              <a href="/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
-            {{ end }}
-            <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
-            {{ if gt .NextBlock 0 }}
-              <a href="/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
-            {{ end }}
-          </h1>
-          <nav class="d-flex flex-wrap-reverse flex-md-nowrap justify-content-center align-items-center" aria-label="breadcrumb">
-            <ol style="white-space: nowrap;padding:0; background-color:transparent;" class="breadcrumb font-size-1 flex-nowrap mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Block details</li>
-            </ol>
-          </nav>
-        </div>
-      </div>
+    <div class="container">
       <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+      <div class="page-title">
+        <h4 class="h4">
+          {{ if gt .PreviousBlock 0 }}
+            <a href="/block/{{ .PreviousBlock }}"><i class="fa fa-chevron-left"></i></a>
+          {{ end }}
+          <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block {{ .Number }}</span>
+          {{ if gt .NextBlock 0 }}
+            <a href="/block/{{ .NextBlock }}"><i class="fa fa-chevron-right"></i></a>
+          {{ end }}
+        </h4>
+      </div>
       <ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="tab" role="tablist">
         <li class="nav-item">
           <a class="nav-link active" id="overview-tab" data-toggle="pill" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>

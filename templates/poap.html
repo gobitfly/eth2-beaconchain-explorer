@@ -235,29 +235,22 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-medal"></i> POAP - Proof of Attendance Protocol</h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item active" aria-current="page">POAP</li>
-            </ol>
-          </nav>
-        </div>
+    <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+      <div class="page-title">
+        <h4 class="h4"><i class="fas fa-medal"></i> POAP - Proof of Attendance Protocol</h4>
       </div>
       <div class="row">
         <div class="col-md-12">
-          <p>To celebrate the much anticipated launch of the <a href="https://launchpad.ethereum.org/">Ethereum beacon chain</a>, the <a href="https://invite.gg/ethstaker">ETHStakers community </a> with assistance of <a href="https://poap.xyz">Proof of Attendance Protocol</a> are issuing a set of special NFTs. There are 3 different tokens:</p>
-          <p>
+          <p class="mb-d">To celebrate the much anticipated launch of the <a href="https://launchpad.ethereum.org/">Ethereum beacon chain</a>, the <a href="https://invite.gg/ethstaker">ETHStakers community </a> with assistance of <a href="https://poap.xyz">Proof of Attendance Protocol</a> are issuing a set of special NFTs. There are 3 different tokens:</p>
+          <p class="mb-d">
             <b>There are 3 different tokens</b>
           </p>
-          <p><b>Genesis depositor:</b> Anyone who deposits 32 ETH on the deposit contract.</p>
-          <p><b>Block Proposer 1 - 1024:</b> Validators that propose one of the first 1024 blocks and have to have an encoded ETH address on the graffiti field</p>
-          <p><b>Block Proposer 1 - 32768:</b> Validators that propose one of the the first 32768 blocks and have to have an encoded ETH address on the graffiti field.</p>
+          <p class="mb-d"><b>Genesis depositor:</b> Anyone who deposits 32 ETH on the deposit contract.</p>
+          <p class="mb-d"><b>Block Proposer 1 - 1024:</b> Validators that propose one of the first 1024 blocks and have to have an encoded ETH address on the graffiti field</p>
+          <p class="mb-d"><b>Block Proposer 1 - 32768:</b> Validators that propose one of the the first 32768 blocks and have to have an encoded ETH address on the graffiti field.</p>
           <h2 class="h5">What is POAP?</h2>
-          <p>The Proof of Attendance Protocol is a dapp that distributes badges in the form of ERC-721 tokens to prove you participated in an event. More info on the dapp and the multiclient token can be found <a href="https://app.poap.xyz/scan/poap.eth">here</a>.</p>
+          <p class="mb-d">The Proof of Attendance Protocol is a dapp that distributes badges in the form of ERC-721 tokens to prove you participated in an event. More info on the dapp and the multiclient token can be found <a href="https://app.poap.xyz/scan/poap.eth">here</a>.</p>
           <h2 class="h5">How will it work?</h2>
 
           <ol class="poap-how-list">
@@ -335,7 +328,7 @@
               </svg>
             </div>
             <div class="col-lg-6">
-              <div class="form-group my-3">
+              <div class="form-group my-d">
                 <label for="client-input">Ethereum Address 1.0 (Mainnet)</label>
                 <input id="client-input" type="text" oninput="setAddress(this.value);" class="form-control" placeholder="e.g. 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B" aria-describedby="eth-input-help" />
                 <!-- <small id="eth-input-help" class="form-text text-muted">Enter the Eth 1 address for which you want to receive the poap tokens</small> -->
@@ -417,7 +410,7 @@
       </div>
       <h2 class="h5">Ethereum Mainnet Leaderboard</h2>
 
-      <div class="card" style="margin: 1rem 0;">
+      <div class="card my-d">
         <div class="card-body px-0 py-1">
           <div class="table-responsive p-0 py-1">
             <table style="width:fit-content" class="table" id="poap-table">

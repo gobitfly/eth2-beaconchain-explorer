@@ -68,83 +68,77 @@
 {{ end }}
 
 {{ define "content" }}
-  <div class="container mt-2">
-    <div class="d-md-flex py-2 my-3 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-sync mr-2"></i>Unit Converter</h1>
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-          <li class="breadcrumb-item">Tools</li>
-          <li class="breadcrumb-item active" aria-current="page">Unit Converter</li>
-        </ol>
-      </nav>
+  <div class="container">
+    <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+    <div class="d-md-flex page-title justify-content-md-between">
+      <h4 class="h4 mb-1 mb-md-0"><i class="fas fa-sync mr-2"></i>Unit Converter</h4>
     </div>
-    <div class="row mt-4">
+    <div class="row">
       <div class="col-md-12">
-        <p><span class="fas fa-lightbulb mr-1"></span> INFO: Ethereum uses a lot of different units like Wei, GWei, Shannon and Ether. You can use this tool to convert between them.</p>
+        <p class="mb-d"><span class="fas fa-lightbulb mr-1"></span> INFO: Ethereum uses a lot of different units like Wei, GWei, Shannon and Ether. You can use this tool to convert between them.</p>
       </div>
     </div>
-    <div class="input-group mb-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mr-sm-2">
       <input class="form-control" id="wei" type="text" value="1000000000000000000" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">Wei</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="kwei" type="text" value="1000000000000000" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">KWei</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="mwei" type="text" value="1000000000000" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">MWei</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="gwei" type="text" value="1000000000" />
       <div class="input-group-append">
         <div class="input-group-text bg-info text-white" style="width: 150px;">GWei (Shannon)</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="szabo" type="text" value="1000000" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">Szabo</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="finney" type="text" value="1000" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">Finney</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="ether" type="text" value="1" />
       <div class="input-group-append">
         <div class="input-group-text bg-primary text-white" style="width: 150px;">Ether</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="kether" type="text" value="0.001" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">KEther</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="mether" type="text" value="0.000001" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">MEther</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="gether" type="text" value="0.000000001" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">GEther</div>
       </div>
     </div>
-    <div class="input-group mt-2 mr-sm-2 mb-sm-0">
+    <div class="input-group mb-d mr-sm-2">
       <input class="form-control" id="tether" type="text" value="0.000000000001" />
       <div class="input-group-append">
         <div class="input-group-text" style="width: 150px;">TEther</div>

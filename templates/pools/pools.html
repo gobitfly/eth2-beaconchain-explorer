@@ -32,12 +32,16 @@
 {{ define "content" }}
   <section>
     <div class="container">
-      <div class="h-100 py-4">
+      <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+      <div class="page-title">
+        <h1 class="h4"><i class="fas fa-chart-pie mr-2"></i>Staking Pools</h1>
+      </div>
+      <div class="h-100 pb-d">
         <div id="charts-container" class="w-100">
-          <div id="distribution-chart" class="w-100 mb-2">
+          <div id="distribution-chart" class="w-100">
             {{ template "distribution_chart" .Data }}
           </div>
-          <div id="performance-chart" class="w-100 mb-2 d-none">
+          <div id="performance-chart" class="w-100 d-none">
             {{ template "performance_chart" .Data }}
           </div>
         </div>
@@ -50,12 +54,9 @@
           </a>
         </div>
       </div>
-
-      <br />
-      <div id="r-banner" info="{{ .Meta.Templates }}"></div>
-      <div>Staking pool deposit addresses are based on on-chain data. Please open an <a href="https://github.com/gobitfly/eth2-beaconchain-explorer/issues">issue</a> if you want to add an Ethereum staking pool.</div>
-      <div class="row mt-4">
-        <div class="col-md-12">
+      <div class="sub-page-title">Staking pool deposit addresses are based on on-chain data. Please open an <a href="https://github.com/gobitfly/eth2-beaconchain-explorer/issues">issue</a> if you want to add an Ethereum staking pool.</div>
+      <div>
+        <div class="col-md-12 px-0">
           <div id="poolTable" class="table-responsive card px-0 pb-1 mb-2">
             <table class="table" id="staking-pool-table">
               <thead>
@@ -80,7 +81,7 @@
               </tbody>
             </table>
           </div>
-          <div style="padding-top: 5vh; font-size: 12px; font-style: italic;">
+          <div class="my-d" style="font-size: 12px; font-style: italic;">
             <div style="display:flex;">
               <div style="padding-right: 5px;">
                 <sup>1</sup>

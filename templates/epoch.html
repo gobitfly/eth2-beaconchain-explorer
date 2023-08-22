@@ -91,28 +91,14 @@
 
 {{ define "content" }}
   {{ with .Data }}
-    <div class="container mt-2">
-      <div class="my-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-          <h1 class="h4 mb-1 mb-md-0">
-            <!-- {{ if or (gt .PreviousEpoch 0) (eq .Epoch 1) }}
-              <a href="/epoch/{{ .PreviousEpoch }}"><i class="fa fa-chevron-left"></i></a>
-            {{ end }} -->
-            <span class="ml-1 mr-1"><i class="fas fa-history mr-2"></i>Epoch Details</span>
-            <!-- {{ if gt .NextEpoch 0 }}
-              <a href="/epoch/{{ .NextEpoch }}"><i class="fa fa-chevron-right"></i></a>
-            {{ end }} -->
-          </h1>
-          <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
-              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-              <li class="breadcrumb-item"><a href="/epochs" title="Epochs">Epochs</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Epoch Details</li>
-            </ol>
-          </nav>
-        </div>
+    <div class="container">
+      <div id="r-banner" info="{{ $.Meta.Templates }}"></div>
+      <div class="page-title">
+        <h4 class="h4">
+          <span class="mr-1"><i class="fas fa-history mr-2"></i>Epoch Details</span>
+        </h1>
       </div>
-      <div class="epoch__container card card-header">
+      <div class="epoch__container card card-header my-0">
         {{ if or (gt .PreviousEpoch 0) (eq .Epoch 1) }}
           <a href="/epoch/{{ .PreviousEpoch }}">
             <div class="epoch__pervious">
@@ -151,7 +137,7 @@
           </a>
         {{ end }}
       </div>
-      <div class="card">
+      <div class="card mt-d mb-0">
         <div class="card-body px-0 py-1">
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Epoch:</div>

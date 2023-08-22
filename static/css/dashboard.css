@@ -163,14 +163,6 @@ ul.multiselect input:focus {
   }
 }
 
-.dashboard-container {
-  margin: 2rem 0;
-}
-
-.dashboard-container > div {
-  margin: 0.5rem auto;
-}
-
 .dashboard-header {
   display: flex;
   justify-content: space-between;

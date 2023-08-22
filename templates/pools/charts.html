@@ -20,11 +20,11 @@
             rangeSelector: { enabled: false },
             title: {
                 useHTML: true,
-                text: '<a class="text-dark" href="/pools">{{.PoolsDistribution.Data.Title}}</a>',
+                text: '<a style="font-size: inherit;color: inherit;" href="/pools">{{.PoolsDistribution.Data.Title}}</a>',
             },
             subtitle: {
                 useHTML: true,
-                text: '<span class="text-dark">{{.PoolsDistribution.Data.Subtitle}}</span>'{{ if .PoolsDistribution.Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light">hide gaps</button>'{{ end }}
+                text: '<span>{{.PoolsDistribution.Data.Subtitle}}</span>'{{ if .PoolsDistribution.Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light">hide gaps</button>'{{ end }}
             },
             plotOptions: {
                 column: { stacking: {{.PoolsDistribution.Data.StackingMode }} },

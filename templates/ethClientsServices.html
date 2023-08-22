@@ -57,11 +57,14 @@
         {{ end }}
       </div>
     </section>
-    <div class="container mt-2">
-      <section class="my-5">
+    <div class="container">
+      <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+      <section class="">
         <div class="row">
           <div class="col-md-12">
-            <h1 class="h2 mb-4 font-weight-bold text-primary text-center">Execution Clients</h1>
+            <div class="page-title">
+              <h4 class="h4">Execution Clients</h4>
+            </div>
 
             <div class="table-responsive">
               <table class="table" id="ethClientsServices">
@@ -141,10 +144,12 @@
         </div>
       </section>
 
-      <section class="my-5">
+      <section>
         <div class="row">
           <div class="col-md-12">
-            <h1 class="h2 mb-4 font-weight-bold text-primary text-center">Consensus Clients</h1>
+            <div class="page-title">
+              <h4 class="h4">Consensus Clients</h4>
+            </div>
 
             <div class="table-responsive">
               <table class="table" id="eth2ClientsServices">
@@ -234,10 +239,12 @@
         </div>
       </section>
 
-      <section class="my-5">
+      <section>
         <div class="row">
           <div class="col-md-12">
-            <h1 class="h2 mb-4 font-weight-bold text-primary text-center">Other</h1>
+            <div class="page-title">
+              <h4 class="h4">Other</h4>
+            </div>
 
             <div class="table-responsive">
               <table class="table" id="ethOtherServices">
@@ -286,30 +293,26 @@
         </div>
       </section>
 
-      <section class="my-5">
-        <div class="row">
+      <section>
+        <div class="row mt-d">
           <div class="col-md-12">
-            <div class="row justify-content-center">
-              <div class="col-md-12 col-lg-10 text-center">
-                <h1 class="h4 ">Request to add your Ethereum Client Service</h1>
-                <p class="text-muted col-md-8 px-0 mx-auto">
-                  If you have an Ethereum Client Service and want it to be listed above please create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/ethClientsServices.html">pull request <i class="fab fa-github"></i></a>
-                </p>
-              </div>
-            </div>
+            <div class="sub-page-title">Request to add your Ethereum Client Service</div>
+            <p class="text-muted col-md-8 px-0">
+              If you have an Ethereum Client Service and want it to be listed above please create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/ethClientsServices.html">pull request <i class="fab fa-github"></i></a>
+            </p>
           </div>
         </div>
       </section>
     </div>
   {{ end }}
   <script src="/js/jquery.min.js"></script>
-    <script>
-        {{if .User.Authenticated}}
-            if (window.location.pathname!="/user/ethClients"){
-                window.location.replace("/user/ethClients");
-            }
-        {{end}}
-    </script>
+  <script>
+    {{if .User.Authenticated}}
+      if (window.location.pathname!="/user/ethClients"){
+         window.location.replace("/user/ethClients");
+      }
+    {{end}}
+  </script>
   <script>
     function updateUserSubscription(checkboxID, event_name, event_filter) {
       let csrfToken = document.getElementsByName("CsrfField")[0].value

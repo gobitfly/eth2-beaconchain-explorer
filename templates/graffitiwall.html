@@ -54,27 +54,21 @@
 {{ end }}
 
 {{ define "content" }}
-  <div class="container mt-2">
-    <div class="my-3">
-      <div class="d-md-flex py-2 justify-content-md-between">
-        <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-paint-brush"></i> The Graffitiwall - Draw your stake!</h1>
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Graffitiwall</li>
-          </ol>
-        </nav>
+  <div class="container">
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+    <div class="page-title">
+      <div class="d-md-flex justify-content-md-between">
+        <h4 class="h4"><i class="fas fa-paint-brush"></i> The Graffitiwall - Draw your stake!</h4>
       </div>
     </div>
-    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
-    <div class="row">
+    <div class="row mb-d">
       <div class="col-md-12">
         <div class="accordion">
           <div class="card">
             <div class="card-header">
-              <h2 class="h6">
+              <h6 class="h6">
                 <a data-toggle="collapse" href="#collapse1">Want to participate?</a>
-              </h2>
+              </h6>
             </div>
             <div id="collapse1" class="collapse">
               <div class="card-body">
@@ -120,7 +114,6 @@
         </div>
       </div>
     </div>
-    <br />
     <div class="row">
       <div class="col-md-12 text-center" id="graffitiwallContainer">
         <canvas id="graffitiwall" width="1000" height="1050" style="image-rendering:pixelated;"></canvas>

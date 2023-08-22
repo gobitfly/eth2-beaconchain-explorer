@@ -356,26 +356,25 @@
   </script>
 {{ end }}
 {{ define "content" }}
-  <div class="container mt-2">
-    <div class="d-md-flex py-2 my-md-1 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0 header-address text-truncate">
-        <div class="my-md-3 font-weight-bold">
-          <span>
-            <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
-            <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-            <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
-          </span>
+  <div class="container">
+    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
+    <div class="d-md-flex justify-content-md-between">
+      <h1 class="h4 header-address text-truncate">
+        <div class="page-title d-flex">
+          <h4 class="h4 mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</h4>
+          <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
+          <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
         </div>
-        <span class="text-monospace mb-md-3 d-inline-block">
+        <div class="sub-page-title">
           {{ .Data.Address | formatAddressLong }}
-        </span>
+        </div>
       </h1>
       <div>
         {{ if .Data.Metadata.Name }}<span class="badge badge-secondary text-light my-2">{{ .Data.Metadata.Name }}</span>{{ end }}
       </div>
     </div>
 
-    <div class="mb-3 overview-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); grid-auto-flow: row; gap: 1rem;">
+    <div class="overview-grid mb-d" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); grid-auto-flow: row; gap: 1rem;">
       <div class="overview-content d-flex flex-column">
         <ul class="nav nav-tabs border-0 border-bottom-0 flex-grow-0" role="tablist">
           <li style="margin: 0;" class="nav-item" role="presentation">
@@ -440,7 +439,6 @@
         </div>
       </div>
     </div>
-    <div id="r-banner" info="{{ .Meta.Templates }}"></div>
     <div class="card shadow-none">
       <div class="card-header p-0">
         {{ template "AddressTabs" . }}
@@ -508,7 +506,7 @@
 {{ end }}
 
 {{ define "AddressTransactionsTableGrid" }}
-  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); overflow-x: auto;">
+  <div id="transactions-table" style="display: grid; grid-template-columns: repeat(5, minmax(max-content, 1fr)) max-content repeat(2, minmax(max-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Hash</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Method</span></div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"><span>Block</span></div>
@@ -548,7 +546,7 @@
 {{ end }}
 
 {{ define "AddressInternalTransactionsGrid" }}
-  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); overflow-x: auto;">
+  <div id="internalTxns-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -586,7 +584,7 @@
 {{ end }}
 
 {{ define "AddressBlocksMinedGrid" }}
-  <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); overflow-x: auto;">
+  <div id="blocksMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Number</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Gas Usage</div>
@@ -621,7 +619,7 @@
 {{ end }}
 
 {{ define "AddressUnclesMinedGrid" }}
-  <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); overflow-x: auto;">
+  <div id="unclesMined-table" style="display: grid; grid-template-columns: repeat(4, minmax(min-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Number</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Difficulty</div>
@@ -656,7 +654,7 @@
 {{ end }}
 
 {{ define "AddressErc20TransactionsGrid" }}
-  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); overflow-x: auto;">
+  <div id="erc20-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -694,7 +692,7 @@
 {{ end }}
 
 {{ define "AddressErc721Grid" }}
-  <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(min-content, 1fr)); overflow-x: auto;">
+  <div id="erc721-table" style="display: grid; grid-template-columns: repeat(6, minmax(min-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -731,7 +729,7 @@
 {{ end }}
 
 {{ define "AddressErc1155Grid" }}
-  <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); overflow-x: auto;">
+  <div id="erc1155-table" style="display: grid; grid-template-columns: repeat(7, minmax(min-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
@@ -769,7 +767,7 @@
 {{ end }}
 
 {{ define "AddressWithdrawalsGrid" }}
-  <div id="withdrawals-table" style="display: grid; grid-template-columns: repeat(5, minmax(min-content, 1fr)); overflow-x: auto;">
+  <div id="withdrawals-table" style="display: grid; grid-template-columns: repeat(5, minmax(min-content, 1fr)); max-height: 800px; overflow-x: auto;">
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Epoch</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Slot</div>
     <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Time</div>
