@@ -195,7 +195,7 @@ function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
 
   if (window.navigation) {
     window.navigation.addEventListener("navigate", (event) => {
-      if (!event.destination?.url) {
+      if (!event.destination?.url || event.destination.url.split("#")[0] != event.srcElement?.currentEntry?.url?.split("#")[0]) {
         return
       }
       handleTabChange(event.destination?.url)
