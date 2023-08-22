@@ -2990,54 +2990,55 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		if !ok {
 			continue
 		}
-		sub := subs[0]
-		var alertConditionMet bool = false
+		for _, sub := range subs {
+			var alertConditionMet bool = false
 
-		if sub.EventThreshold >= 0 {
-			var threshold float64 = sub.EventThreshold
-			if threshold == 0 {
-				threshold = 1.0
-			}
-			if eventName == types.RocketpoolCollateralMaxReached {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
+			if sub.EventThreshold >= 0 {
+				var threshold float64 = sub.EventThreshold
+				if threshold == 0 {
+					threshold = 1.0
+				}
+				if eventName == types.RocketpoolCollateralMaxReached {
+					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
+				} else {
+					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
+				}
 			} else {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
+				if eventName == types.RocketpoolCollateralMaxReached {
+					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
+				} else {
+					alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= 1
+				}
 			}
-		} else {
-			if eventName == types.RocketpoolCollateralMaxReached {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
-			} else {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= -1
-			}
-		}
 
-		if !alertConditionMet {
-			continue
-		}
-
-		if sub.LastEpoch != nil {
-			lastSentEpoch := *sub.LastEpoch
-			if lastSentEpoch >= epoch-80 || epoch < sub.CreatedEpoch {
+			if !alertConditionMet {
 				continue
 			}
-		}
 
-		n := &rocketpoolNotification{
-			SubscriptionID:  *sub.ID,
-			UserID:          *sub.UserID,
-			Epoch:           epoch,
-			EventFilter:     sub.EventFilter,
-			EventName:       eventName,
-			UnsubscribeHash: sub.UnsubscribeHash,
+			if sub.LastEpoch != nil {
+				lastSentEpoch := *sub.LastEpoch
+				if lastSentEpoch >= epoch-80 || epoch < sub.CreatedEpoch {
+					continue
+				}
+			}
+
+			n := &rocketpoolNotification{
+				SubscriptionID:  *sub.ID,
+				UserID:          *sub.UserID,
+				Epoch:           epoch,
+				EventFilter:     sub.EventFilter,
+				EventName:       eventName,
+				UnsubscribeHash: sub.UnsubscribeHash,
+			}
+			if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+				notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
-		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
-			notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
-		}
-		if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
-			notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
-		}
-		notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
-		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
