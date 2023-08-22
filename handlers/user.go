@@ -1846,11 +1846,26 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 		return false
 	}
 
-	isPkey := searchPubkeyExactRE.MatchString(filter)
 	filterLen := len(filter)
+	isPkey := searchPubkeyExactRE.MatchString(filter)
+	isClient := false
+	if eventName == types.EthClientUpdateEventName &&
+		(filter == "geth" ||
+			filter == "nethermind" ||
+			filter == "besu" ||
+			filter == "erigon" ||
+			filter == "teku" ||
+			filter == "prysm" ||
+			filter == "nimbus" ||
+			filter == "lighthouse" ||
+			filter == "lodestar" ||
+			filter == "rocketpool" ||
+			filter == "mev-boost") {
+		isClient = true
+	}
 
-	if filterLen != 0 && !isPkey {
-		errMsg := fmt.Errorf("error invalid pubkey characters or length")
+	if filterLen != 0 && !isPkey && !isClient {
+		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
 		errFields := map[string]interface{}{
 			"filter":     filter,
 			"filter_len": len(filter)}
@@ -2025,11 +2040,26 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		return false
 	}
 
-	isPkey := searchPubkeyExactRE.MatchString(filter)
 	filterLen := len(filter)
+	isPkey := searchPubkeyExactRE.MatchString(filter)
+	isClient := false
+	if eventName == types.EthClientUpdateEventName &&
+		(filter == "geth" ||
+			filter == "nethermind" ||
+			filter == "besu" ||
+			filter == "erigon" ||
+			filter == "teku" ||
+			filter == "prysm" ||
+			filter == "nimbus" ||
+			filter == "lighthouse" ||
+			filter == "lodestar" ||
+			filter == "rocketpool" ||
+			filter == "mev-boost") {
+		isClient = true
+	}
 
-	if filterLen != 0 && !isPkey {
-		errMsg := fmt.Errorf("error invalid pubkey characters or length")
+	if filterLen != 0 && !isPkey && !isClient {
+		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
 		errFields := map[string]interface{}{
 			"filter":     filter,
 			"filter_len": len(filter)}
@@ -2113,11 +2143,26 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isPkey := searchPubkeyExactRE.MatchString(filter)
 	filterLen := len(filter)
+	isPkey := searchPubkeyExactRE.MatchString(filter)
+	isClient := false
+	if eventName == types.EthClientUpdateEventName &&
+		(filter == "geth" ||
+			filter == "nethermind" ||
+			filter == "besu" ||
+			filter == "erigon" ||
+			filter == "teku" ||
+			filter == "prysm" ||
+			filter == "nimbus" ||
+			filter == "lighthouse" ||
+			filter == "lodestar" ||
+			filter == "rocketpool" ||
+			filter == "mev-boost") {
+		isClient = true
+	}
 
-	if filterLen != 0 && !isPkey {
-		errMsg := fmt.Errorf("error invalid pubkey characters or length")
+	if filterLen != 0 && !isPkey && !isClient {
+		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
 		errFields := map[string]interface{}{
 			"filter":     filter,
 			"filter_len": len(filter)}
