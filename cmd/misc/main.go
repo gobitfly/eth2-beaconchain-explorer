@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -164,12 +165,16 @@ func main() {
 		}
 	case "export-epoch-missed-slots":
 		logrus.Infof("exporting epochs with missed slots")
+		latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
+		if err != nil {
+			logrus.Errorf("error getting latest finalized epoch from db %w", err)
+		}
 		epochs := []uint64{}
 		err = db.ReaderDb.Select(&epochs, `
 			WITH last_exported_epoch AS (
 				SELECT (MAX(epoch)*$1) AS slot 
 				FROM epochs 
-				WHERE finalized 
+				WHERE epoch <= $2 
 				AND rewards_exported
 			)
 			SELECT epoch 
@@ -178,7 +183,7 @@ func main() {
 				AND slot < (SELECT slot FROM last_exported_epoch)
 			GROUP BY epoch 
 			ORDER BY epoch;
-		`, utils.Config.Chain.Config.SlotsPerEpoch)
+		`, utils.Config.Chain.Config.SlotsPerEpoch, latestFinalizedEpoch)
 		if err != nil {
 			utils.LogError(err, "Error getting epochs with missing slot status from db", 0)
 			return
@@ -209,6 +214,25 @@ func main() {
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
+	case "test":
+
+		var latestFinalized uint64
+		err = db.WriterDb.Get(&latestFinalized, "SELECT finalized_epoch FROM chain_head")
+		if err != nil && err != sql.ErrNoRows {
+			logrus.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
+		} else {
+			logrus.Infof("latestFinalized: %v", latestFinalized)
+		}
+
+		head, err := rpcClient.GetChainHead()
+		if err != nil {
+			utils.LogFatal(err, "getting chain head from client for full blocks check error", 0)
+		}
+		err = db.UpdateChainHead(head)
+		if err != nil {
+			utils.LogFatal(err, "error updating chain head", 0)
+		}
+		logrus.Infof("Chain head update complete")
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}

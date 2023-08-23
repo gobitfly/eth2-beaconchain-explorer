@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -34,9 +35,14 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 		data := wanted.(*types.Eth1TxData)
 		if data.BlockNumber != 0 {
-			err := db.ReaderDb.Get(&data.Epoch,
-				`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
-				data.BlockNumber)
+			latestFinalizedEpoch := services.LatestFinalizedEpoch()
+			err := db.ReaderDb.Get(&data.Epoch, `
+				SELECT (epochs.epoch <= $2) AS finalized, epochs.globalparticipationrate 
+				FROM blocks 
+				LEFT JOIN epochs ON blocks.epoch = epochs.epoch 
+				WHERE blocks.exec_block_number = $1 
+				AND blocks.status='1';`,
+				data.BlockNumber, latestFinalizedEpoch)
 			if err != nil {
 				logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
 				data.Epoch.Finalized = false
@@ -228,9 +234,18 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	if txPageData.BlockNumber != 0 {
-		err := db.ReaderDb.Get(&txPageData.Epoch,
-			`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
-			&txPageData.BlockNumber)
+		latestFinalizedEpoch := services.LatestFinalizedEpoch()
+		err := db.ReaderDb.Get(&txPageData.Epoch, `
+			SELECT 
+				(epochs.epoch <= $2) as finalized, 
+				epochs.globalparticipationrate 
+			FROM blocks 
+			LEFT JOIN epochs 
+				ON blocks.epoch = epochs.epoch 
+			WHERE 
+				blocks.exec_block_number = $1 
+				AND blocks.status='1'
+		`, &txPageData.BlockNumber, latestFinalizedEpoch)
 		if err != nil {
 			logger.Warningf("failed to get finalization stats for block %v: %v", txPageData.BlockNumber, err)
 			txPageData.Epoch.Finalized = false

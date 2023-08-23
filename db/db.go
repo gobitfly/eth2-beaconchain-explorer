@@ -512,16 +512,15 @@ func GetAllEpochs() ([]uint64, error) {
 	return epochs, nil
 }
 
-// Count finalized epochs in range (including start and end epoch)
-func CountFinalizedEpochs(startEpoch uint64, endEpoch uint64) (uint64, error) {
-	var count uint64
-	err := WriterDb.Get(&count, "SELECT COUNT(*) FROM epochs WHERE epoch >= $1 AND epoch <= $2 AND finalized", startEpoch, endEpoch)
-
-	if err != nil {
-		return 0, fmt.Errorf("error counting finalized epochs [%v -> %v] from DB: %w", startEpoch, endEpoch, err)
+// Get latest finalized epoch
+func GetLatestFinalizedEpoch() (uint64, error) {
+	var latestFinalized uint64
+	err := WriterDb.Get(&latestFinalized, "SELECT finalized_epoch FROM chain_head")
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
 	}
 
-	return count, nil
+	return latestFinalized, nil
 }
 
 // GetLastPendingAndProposedBlocks will return all proposed and pending blocks (ignores missed slots) from the database
@@ -734,6 +733,67 @@ func SaveBlock(block *types.Block) error {
 	return nil
 }
 
+func UpdateChainHead(head *types.ChainHead) error {
+	count := 0
+	err := ReaderDb.Get(&count, "select count(*) from chain_head")
+	if err != nil {
+		return fmt.Errorf("error getting count from chain_head: %w", err)
+	}
+
+	query := `
+		INSERT INTO chain_head (
+			finalized_block_root,
+			finalized_epoch,
+			finalized_slot,
+			head_block_root,
+			head_epoch,
+			head_slot,
+			justified_block_root,
+			justified_epoch,
+			justified_slot,
+			previous_justified_block_root,
+			previous_justified_epoch,
+			previous_justified_slot
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	`
+	if count > 0 {
+		query = `
+			UPDATE chain_head SET 
+				finalized_block_root = $1,
+				finalized_epoch = $2,
+				finalized_slot = $3,
+				head_block_root = $4,
+				head_epoch = $5,
+				head_slot = $6,
+				justified_block_root = $7,
+				justified_epoch = $8,
+				justified_slot = $9,
+				previous_justified_block_root = $10,
+				previous_justified_epoch = $11,
+				previous_justified_slot = $12
+		`
+	}
+	_, err = WriterDb.Exec(query,
+		head.FinalizedBlockRoot,
+		head.FinalizedEpoch,
+		head.FinalizedSlot,
+		head.HeadBlockRoot,
+		head.HeadEpoch,
+		head.HeadSlot,
+		head.JustifiedBlockRoot,
+		head.JustifiedEpoch,
+		head.JustifiedSlot,
+		head.PreviousJustifiedBlockRoot,
+		head.PreviousJustifiedEpoch,
+		head.PreviousJustifiedSlot)
+	if err != nil {
+		return fmt.Errorf("error updating chain_head: %w", err)
+	}
+
+	return nil
+}
+
 // SaveEpoch will save the epoch data into the database
 func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
@@ -862,11 +922,6 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 
 	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(validatorsCount)))
 
-	finalized := false
-	if data.Epoch == 0 {
-		finalized = true
-	}
-
 	_, err = tx.Exec(`
 		INSERT INTO epochs (
 			epoch, 
@@ -880,12 +935,11 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 			validatorscount, 
 			averagevalidatorbalance, 
 			totalvalidatorbalance,
-			finalized, 
 			eligibleether, 
 			globalparticipationrate, 
 			votedether
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
 		ON CONFLICT (epoch) DO UPDATE SET 
 			blockscount             = excluded.blockscount, 
 			proposerslashingscount  = excluded.proposerslashingscount,
@@ -911,7 +965,6 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		validatorsCount,
 		validatorBalanceAverage.Uint64(),
 		validatorBalanceSum.Uint64(),
-		finalized,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,
 		data.EpochParticipationStats.VotedEther)
@@ -1754,23 +1807,6 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 	return err
 }
 
-// UpdateEpochFinalization will update finalized-flag of unfinalized epochs
-func UpdateEpochFinalization(finality_epoch uint64) error {
-	// to prevent a full table scan, the query is constrained to update only between the last epoch that was tagged finalized and the passed finality_epoch
-	// will not fill gaps in the db in finalization this way, but makes the query much faster.
-	_, err := WriterDb.Exec(`
-	UPDATE epochs
-	SET finalized = true
-	WHERE epoch BETWEEN COALESCE((
-			SELECT epoch
-			FROM   epochs
-			WHERE  finalized = true
-			ORDER  BY epoch DESC
-			LIMIT  1
-		),0) AND $1`, finality_epoch)
-	return err
-}
-
 // GetTotalValidatorsCount will return the total-validator-count
 func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
@@ -2069,7 +2105,11 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 		latestEpoch = 0
 	}
 
-	err := ReaderDb.Select(&blks, `
+	latestFinalizedEpoch, err := GetLatestFinalizedEpoch()
+	if err != nil {
+		return nil, err
+	}
+	err = ReaderDb.Select(&blks, `
 	SELECT
 		b.slot,
 		b.blockroot,
@@ -2082,12 +2122,12 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 		END AS status,
 		b.epoch,
 		COALESCE(e.globalparticipationrate, 0) AS globalparticipationrate,
-		COALESCE(e.finalized, false) AS finalized
+		(b.epoch <= $2) AS finalized
 	FROM blocks b
 		LEFT JOIN epochs e ON e.epoch = b.epoch
 	WHERE b.epoch >= $1
 	ORDER BY slot DESC;
-`, latestEpoch)
+`, latestEpoch, latestFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}
