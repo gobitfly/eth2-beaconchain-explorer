@@ -2790,9 +2790,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolNewClaimRoundStartedEventName:
 		return `A new reward round has started. You can now claim your rewards from the previous round.`
 	case types.RocketpoolCollateralMaxReached:
-		return `Your RPL collateral has reached your configured threshold at 150%.`
+		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.RocketpoolCollateralMinReached:
-		return `Your RPL collateral has reached your configured threshold at 10%.`
+		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.SyncCommitteeSoon:
 		extras := strings.Split(n.ExtraData, "|")
 		if len(extras) != 3 {
@@ -3051,6 +3051,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			Epoch:           epoch,
 			EventFilter:     sub.EventFilter,
 			EventName:       eventName,
+			ExtraData:       fmt.Sprintf("%v", threshold * 100),
 			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
