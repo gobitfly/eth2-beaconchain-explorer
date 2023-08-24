@@ -478,6 +478,19 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Chain.ElConfig = params.GoerliChainConfig
 	case "sepolia":
 		cfg.Chain.ElConfig = params.SepoliaChainConfig
+	case "gnosis":
+		// #TODO.patrick
+		cfg.Chain.ElConfig = &params.ChainConfig{}
+	case "dencun-devnet-8":
+		// https://raw.githubusercontent.com/ethpandaops/dencun-testnet/master/network-configs/devnet-8/genesis.json
+		// #TODO.patrick
+		cfg.Chain.ElConfig = &params.ChainConfig{}
+		cfg.Chain.ElConfig.ChainID = new(big.Int).SetInt64(7011893058)
+		cfg.Chain.ElConfig.TerminalTotalDifficultyPassed = true
+		shanghaiTime := uint64(1692184320)
+		cfg.Chain.ElConfig.ShanghaiTime = &shanghaiTime
+		cancunTime := uint64(1692186240)
+		cfg.Chain.ElConfig.CancunTime = &cancunTime
 	default:
 		cfg.Chain.ElConfig = &params.ChainConfig{}
 	}
@@ -521,6 +534,20 @@ func ReadConfig(cfg *types.Config, path string) error {
 	}
 	if cfg.Chain.DomainVoluntaryExit == "" {
 		cfg.Chain.DomainVoluntaryExit = "0x04000000"
+	}
+
+	if cfg.Chain.ClConfig.DepositChainID != cfg.Chain.ElConfig.ChainID.Uint64() {
+		logrus.Fatalf("cfg.Chain.ClConfig.DepositChainID != cfg.Chain.ElConfig.ChainID.Uint64(): %v != %v", cfg.Chain.ClConfig.DepositChainID, cfg.Chain.ElConfig.ChainID.Uint64())
+	}
+
+	// #TODO.patrick
+	if cfg.Chain.ClConfig.ConfigName == "dencun-devnet-8" {
+		if cfg.Chain.ClConfig.MinSlashingPenaltyQuotientAltair != 64 {
+			logrus.Fatal("cfg.Chain.ClConfig.MinSlashingPenaltyQuotientAltair != 64: %v", cfg.Chain.ClConfig.MinSlashingPenaltyQuotientAltair)
+		}
+		if cfg.Chain.ClConfig.GenesisForkVersion != "0x10109396" {
+			logrus.Fatal("cfg.Chain.ClConfig.GenesisForkVersion != 0x10109396: %v", cfg.Chain.ClConfig.GenesisForkVersion)
+		}
 	}
 
 	logrus.WithFields(logrus.Fields{

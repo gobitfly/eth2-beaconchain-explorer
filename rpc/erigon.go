@@ -226,6 +226,10 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 				if trace.Type == "CREATE" {
 				} else if trace.Type == "SUICIDE" {
 				} else if trace.Type == "CALL" || trace.Type == "DELEGATECALL" || trace.Type == "STATICCALL" {
+				} else if trace.Type == "" {
+					logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": block.Number(), "block.Hash": block.Hash()}).Errorf("geth style trace without type")
+					spew.Dump(trace)
+					continue
 				} else {
 					spew.Dump(trace)
 					logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)

@@ -27,7 +27,7 @@ var SepoliaChainYml string // https://github.com/eth-clients/sepolia/blob/main/b
 var GnosisChainYml string // https://github.com/gnosischain/configs/blob/main/mainnet/config.yaml
 
 //go:embed dencun-devnet-8.chain.yml
-var DencunDevnet8ChainYml string
+var DencunDevnet8ChainYml string // https://github.com/ethpandaops/dencun-testnet/blob/83e4547/network-configs/devnet-8/config.yaml
 
 //go:embed default.config.yml
 var DefaultConfigYml string
