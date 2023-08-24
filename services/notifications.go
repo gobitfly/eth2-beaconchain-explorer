@@ -2956,6 +2956,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 	type dbResult struct {
 		Address     []byte
 		RPLStake    BigFloat `db:"rpl_stake"`
+		RPLStakeMin BigFloat `db:"min_rpl_stake"`
 		RPLStakeMax BigFloat `db:"max_rpl_stake"`
 	}
 
@@ -2976,7 +2977,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		var partial []dbResult
 
 		err = db.WriterDb.Select(&partial, `
-		SELECT address, rpl_stake, max_rpl_stake
+		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake
 		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
 		if err != nil {
 			return err
@@ -2984,74 +2985,82 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		stakeInfoPerNode = append(stakeInfoPerNode, partial...)
 	}
 
-	// factor in network-wide maximum collat ratio (could also use minimum, but then we'd need to calculate supplied/borrowed eth etc...)
-	// this is dynamic and might be changed in the future; Should extend rocketpool_network_stats to include min/max collateral values!
-	maxRPLCollatRatio := bigFloat(1.5) // bigFloat it to save some memory allocations later
-	// temporary helper to not re-allocate each loop & not mess with values that will be used later
-	tempCollatHelper := bigFloat(0)
+	// factor in network-wide min/max collat ratio. Since LEB8 they are not directly correlated anymore (ratio of bonded to borrowed ETH), so we need either min or max
+	// however this is dynamic and might be changed in the future; Should extend rocketpool_network_stats to include min/max collateral values!
+	minRPLCollatRatio := bigFloat(0.1)	// bigFloat it to save some memory re-allocations
+	maxRPLCollatRatio := bigFloat(1.5)
+	// temporary helper (modifying values in dbResult directly would be bad style)
+	nodeCollatRatioHelper := bigFloat(0)
 
 	for _, r := range stakeInfoPerNode {
 		subs, ok := subMap[hex.EncodeToString(r.Address)]
 		if !ok {
 			continue
 		}
-		tempCollatHelper.Quo(r.RPLStakeMax.bigFloat(), maxRPLCollatRatio)                             // 100% collateral amount
-		nodeCollatRatio, _ := tempCollatHelper.Quo(r.RPLStake.bigFloat(), tempCollatHelper).Float64() // collaterization ratio of user's node
-		for _, sub := range subs {
-			var alertConditionMet bool = false
+		sub := subs[0] // RPL min/max collateral notifications are always unique per user
+		var alertConditionMet bool = false
 
-			// according to app logic, sub.EventThreshold can be +- [0.9 to 1.5] for CollateralMax after manually changed by the user
-			// this corresponds to a collateral range of 140% to 200% currently shown in the app UI; so +- 0.5 allows us to compare to the actual collat ratio
-			// for CollateralMin it  can be 1.0 to 4.0 if manually changed, to represent 10% to 40%
-			// 0 in both cases if not modified
-			var threshold float64 = sub.EventThreshold
-			if threshold == 0 {
-				threshold = 1.0 // default case
-			}
-			inverse := false
-			if eventName == types.RocketpoolCollateralMaxReached {
-				if threshold < 0 {
-					threshold *= -1
-				} else {
-					inverse = true
-				}
-				threshold += 0.5
+		// according to app logic, sub.EventThreshold can be +- [0.9 to 1.5] for CollateralMax after manually changed by the user
+		// this corresponds to a collateral range of 140% to 200% currently shown in the app UI; so +- 0.5 allows us to compare to the actual collat ratio
+		// for CollateralMin it  can be 1.0 to 4.0 if manually changed, to represent 10% to 40%
+		// 0 in both cases if not modified
+		var threshold float64 = sub.EventThreshold
+		if threshold == 0 {
+			threshold = 1.0 // default case
+		}
+		inverse := false
+		if eventName == types.RocketpoolCollateralMaxReached {
+			if threshold < 0 {
+				threshold *= -1
 			} else {
-				threshold /= 10.0
+				inverse = true
 			}
-			alertConditionMet = nodeCollatRatio <= threshold
-			if inverse {
-				alertConditionMet = !alertConditionMet
-			}
+			threshold += 0.5
 
-			if !alertConditionMet {
+			// 100% (of bonded eth)
+			nodeCollatRatioHelper.Quo(r.RPLStakeMax.bigFloat(), maxRPLCollatRatio)
+		} else {
+			threshold /= 10.0
+
+			// 100% (of borrowed eth)
+			nodeCollatRatioHelper.Quo(r.RPLStakeMin.bigFloat(), minRPLCollatRatio)
+		}
+
+		nodeCollatRatio, _ := nodeCollatRatioHelper.Quo(r.RPLStake.bigFloat(), nodeCollatRatioHelper).Float64()
+
+		alertConditionMet = nodeCollatRatio <= threshold
+		if inverse {
+			// handle special case for max collateral: notify if *above* selected amount
+			alertConditionMet = !alertConditionMet
+		}
+
+		if !alertConditionMet {
+			continue
+		}
+
+		if sub.LastEpoch != nil {
+			lastSentEpoch := *sub.LastEpoch
+			if lastSentEpoch >= epoch-80 || epoch < sub.CreatedEpoch {
 				continue
 			}
-
-			if sub.LastEpoch != nil {
-				lastSentEpoch := *sub.LastEpoch
-				if lastSentEpoch >= epoch-80 || epoch < sub.CreatedEpoch {
-					continue
-				}
-			}
-
-			n := &rocketpoolNotification{
-				SubscriptionID:  *sub.ID,
-				UserID:          *sub.UserID,
-				Epoch:           epoch,
-				EventFilter:     sub.EventFilter,
-				EventName:       eventName,
-				UnsubscribeHash: sub.UnsubscribeHash,
-			}
-			if _, exists := notificationsByUserID[*sub.UserID]; !exists {
-				notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
-				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
-			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
+
+		n := &rocketpoolNotification{
+			SubscriptionID:  *sub.ID,
+			UserID:          *sub.UserID,
+			Epoch:           epoch,
+			EventFilter:     sub.EventFilter,
+			EventName:       eventName,
+			UnsubscribeHash: sub.UnsubscribeHash,
+		}
+		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+			notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+		metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 	}
 
 	return nil
