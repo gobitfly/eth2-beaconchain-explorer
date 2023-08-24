@@ -1876,7 +1876,7 @@ func checkIfDayIsFinalized(day uint64) error {
 	}
 
 	if lastEpoch > latestFinalizedEpoch {
-		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. last epoch of the day [%v] last finalized epoch [%v]", day, lastEpoch, latestFinalizedEpoch)
+		return fmt.Errorf("delaying statistics export as not all epochs for day %v are finalized. Last epoch of the day [%v] last finalized epoch [%v]", day, lastEpoch, latestFinalizedEpoch)
 	}
 
 	return nil
