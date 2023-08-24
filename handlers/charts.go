@@ -100,7 +100,7 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if chartData == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
+		NotFound(w, r)
 		return
 	}
 
