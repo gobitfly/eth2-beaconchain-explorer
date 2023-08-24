@@ -69,12 +69,17 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	searchType := vars["type"]
 	search := vars["search"]
-	if !utils.IsValidEnsDomain(search) {
-		search = strings.Replace(search, "0x", "", -1)
-	}
 	var err error
 	logger := logger.WithField("searchType", searchType)
 	var result interface{}
+
+	strippedSearch := strings.Replace(search, "0x", "", -1)
+	lowerStrippedSearch := strings.ToLower(strippedSearch)
+
+	if len(strippedSearch) == 0 {
+		_ = json.NewEncoder(w).Encode(result)
+		return
+	}
 
 	switch searchType {
 	case "slots":
@@ -90,7 +95,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ORDER BY slot LIMIT 10`, search)
 		} else if len(search) == 64 {
 			var blockHash []byte
-			blockHash, err = hex.DecodeString(search)
+			blockHash, err = hex.DecodeString(strippedSearch)
 			if err != nil {
 				err = fmt.Errorf("error parsing blockHash to int: %v", err)
 				break
@@ -135,13 +140,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		result = graffiti
 	case "transactions":
-		search = strings.ToLower(strings.Replace(search, "0x", "", -1))
-		if !transactionLikeRE.MatchString(search) {
+		if !transactionLikeRE.MatchString(lowerStrippedSearch) {
 			break
 		}
 		result = &types.SearchAheadTransactionsResult{}
 		var txHash []byte
-		txHash, err = hex.DecodeString(search)
+		txHash, err = hex.DecodeString(lowerStrippedSearch)
 		if err != nil {
 			err = fmt.Errorf("error parsing txHash %v: %v", search, err)
 			break
@@ -166,7 +170,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if parseErr == nil { // search the validator by its index
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
 		} else if thresholdHexLikeRE.MatchString(search) {
-			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE LOWER($1 || '%')`, search)
+			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE ($1 || '%')`, lowerStrippedSearch)
 		} else {
 			err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
@@ -187,13 +191,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		if !searchLikeRE.MatchString(search) {
+		if !searchLikeRE.MatchString(strippedSearch) {
 			break
 		}
-		if len(search)%2 != 0 { // pad with 0 if uneven
-			search = search + "0"
+		if len(strippedSearch)%2 != 0 { // pad with 0 if uneven
+			strippedSearch = strippedSearch + "0"
 		}
-		eth1AddressHash, decodeErr := hex.DecodeString(search)
+		eth1AddressHash, decodeErr := hex.DecodeString(strippedSearch)
 		if decodeErr != nil {
 			break
 		}
@@ -202,13 +206,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			err = fmt.Errorf("error searching for eth1AddressHash: %v", err)
 		}
 	case "indexed_validators":
+
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
 		indexNumeric, errParse := strconv.ParseInt(search, 10, 32)
 		if errParse == nil { // search the validator by its index
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
-		} else if thresholdHexLikeRE.MatchString(search) {
-			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE LOWER($1 || '%')`, search)
+		} else if thresholdHexLikeRE.MatchString(lowerStrippedSearch) {
+			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE ($1 || '%')`, lowerStrippedSearch)
 		} else {
 			err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
@@ -228,7 +233,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ENCODE(eth1_deposits.publickey, 'hex') AS pubkey
 			FROM eth1_deposits
 			LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey
-			WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, search)
+			WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, lowerStrippedSearch)
 	case "indexed_validators_by_eth1_addresses":
 		if !utils.IsValidEnsDomain(search) && !utils.IsEth1Address(search) {
 			break
@@ -239,22 +244,18 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if utils.IsValidEnsDomain(search) {
 			ensData, _ = GetEnsDomain(search)
 			if len(ensData.Address) > 0 {
-				search = strings.Replace(ensData.Address, "0x", "", -1)
+				lowerStrippedSearch = strings.Replace(ensData.Address, "0x", "", -1)
 			}
 		}
 		if !searchLikeRE.MatchString(search) {
 			break
-		}
-		if len(search)%2 != 0 { // pad with 0 if uneven
-			search = search + "0"
 		}
 		// find validators per eth1-address (limit result by N addresses and M validators per address)
 		result = &[]struct {
 			Eth1Address string `db:"from_address_text" json:"eth1_address"`
 			Count       uint64 `db:"count" json:"count"`
 		}{}
-		if searchLikeRE.MatchString(search) {
-			trimmed := strings.ToLower(strings.TrimPrefix(search, "0x"))
+		if searchLikeRE.MatchString(lowerStrippedSearch) {
 
 			err = db.ReaderDb.Select(result, `
 			SELECT from_address_text, COUNT(*) FROM (
@@ -265,7 +266,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
 				WHERE from_address_text LIKE $1 || '%'
 			) a 
-			GROUP BY from_address_text`, trimmed)
+			GROUP BY from_address_text`, lowerStrippedSearch)
 		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
@@ -360,7 +361,7 @@ func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByE
 		Count            uint64        `db:"count" json:"-"`
 	}{}
 
-	search = strings.Replace(ReplaceEnsNameWithAddress(search), "0x", "", -1)
+	search = strings.ToLower(strings.Replace(ReplaceEnsNameWithAddress(search), "0x", "", -1))
 	if len(search)%2 != 0 {
 		search = search[:len(search)-1]
 	}
