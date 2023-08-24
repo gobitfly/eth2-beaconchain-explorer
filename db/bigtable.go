@@ -1637,6 +1637,323 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 	return nil
 }
 
+func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
+	funcStart := time.Now()
+
+	defer func() {
+		logger.Infof("migration of epoch %v completed in %v", epoch, time.Since(funcStart))
+	}()
+
+	// start := time.Now()
+
+	type validatorEpochData struct {
+		ValidatorIndex           uint64
+		Proposals                map[uint64]uint64
+		AttestationTargetSlot    uint64
+		AttestationInclusionSlot uint64
+		SyncParticipation        map[uint64]uint64
+		EffectiveBalance         uint64
+		Balance                  uint64
+		IncomeDetails            *itypes.ValidatorEpochIncome
+	}
+
+	epochData := make(map[uint64]*validatorEpochData)
+	filter := gcp_bigtable.LatestNFilter(1)
+	ctx := context.Background()
+
+	prefixEpochRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)))
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, prefixEpochRange, func(r gcp_bigtable.Row) bool {
+		// logger.Infof("processing row %v", r.Key())
+
+		keySplit := strings.Split(r.Key(), ":")
+
+		rowKeyEpoch, err := strconv.ParseUint(keySplit[3], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+			return false
+		}
+
+		rowKeyEpoch = max_epoch - rowKeyEpoch
+
+		if epoch != rowKeyEpoch {
+			logger.Errorf("retrieved different epoch than requested, requested: %d, retrieved: %d", epoch, rowKeyEpoch)
+		}
+
+		logger.Infof("epoch is %d", rowKeyEpoch)
+
+		for columnFamily, readItems := range r {
+
+			for _, ri := range readItems {
+
+				if ri.Column == "stats:sum" { // skip migrating the total epoch income stats
+					continue
+				}
+
+				validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, columnFamily+":"), 10, 64)
+				if err != nil {
+					logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+					return false
+				}
+
+				// logger.Infof("retrieved field %s from column family %s for validator %d", ri.Column, columnFamily, validator)
+
+				if epochData[validator] == nil {
+					epochData[validator] = &validatorEpochData{
+						ValidatorIndex:    validator,
+						Proposals:         make(map[uint64]uint64),
+						SyncParticipation: make(map[uint64]uint64),
+					}
+				}
+
+				if columnFamily == VALIDATOR_BALANCES_FAMILY {
+					// logger.Infof("processing balance data for validator %d", validator)
+					balances := ri.Value
+					balanceBytes := balances[0:8]
+					effectiveBalanceBytes := balances[8:16]
+					epochData[validator].Balance = binary.LittleEndian.Uint64(balanceBytes)
+					epochData[validator].EffectiveBalance = binary.LittleEndian.Uint64(effectiveBalanceBytes)
+				} else if columnFamily == INCOME_DETAILS_COLUMN_FAMILY {
+					// logger.Infof("processing income details data for validator %d", validator)
+					incomeDetails := &itypes.ValidatorEpochIncome{}
+					err = proto.Unmarshal(ri.Value, incomeDetails)
+					if err != nil {
+						logger.Errorf("error decoding validator income data for row %v: %v", r.Key(), err)
+						return false
+					}
+
+					epochData[validator].IncomeDetails = incomeDetails
+				} else {
+					logger.Errorf("retrieved unexpected column family %s", columnFamily)
+				}
+			}
+		}
+
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+
+	if err != nil {
+		return err
+	}
+
+	// logger.Infof("retrieved epoch data for %d validators in %v", len(epochData), time.Since(start))
+	// start = time.Now()
+
+	prefixEpochSlotRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(epoch)))
+
+	err = bigtable.tableBeaconchain.ReadRows(ctx, prefixEpochSlotRange, func(r gcp_bigtable.Row) bool {
+		// logger.Infof("processing row %v", r.Key())
+
+		keySplit := strings.Split(r.Key(), ":")
+
+		rowKeyEpoch, err := strconv.ParseUint(keySplit[2], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+			return false
+		}
+
+		rowKeyEpoch = max_epoch - rowKeyEpoch
+
+		if epoch != rowKeyEpoch {
+			logger.Errorf("retrieved different epoch than requested, requested: %d, retrieved: %d", epoch, rowKeyEpoch)
+		}
+
+		slot, err := strconv.ParseUint(keySplit[4], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+			return false
+		}
+		slot = max_block_number - slot
+
+		// logger.Infof("epoch is %d, slot is %d", rowKeyEpoch, slot)
+
+		for columnFamily, readItems := range r {
+
+			for _, ri := range readItems {
+
+				validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, columnFamily+":"), 10, 64)
+				if err != nil {
+					logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+					return false
+				}
+
+				inclusionSlot := uint64(0)
+
+				if ri.Timestamp > 0 {
+					inclusionSlot = max_block_number - uint64(ri.Timestamp)/1000
+				}
+
+				// logger.Infof("retrieved field %s from column family %s for validator %d", ri.Column, columnFamily, validator)
+
+				if epochData[validator] == nil {
+					epochData[validator] = &validatorEpochData{
+						ValidatorIndex: validator,
+					}
+				}
+
+				if columnFamily == ATTESTATIONS_FAMILY {
+					// logger.Infof("processing balance data for validator %d", validator)
+					epochData[validator].AttestationTargetSlot = slot
+					epochData[validator].AttestationInclusionSlot = inclusionSlot
+					// logger.Infof("processing attestation data for validator %d, target slot %d, inclusion slot %d", validator, slot, inclusionSlot)
+				} else if columnFamily == PROPOSALS_FAMILY {
+					epochData[validator].Proposals[slot] = inclusionSlot
+					// logger.Infof("processing proposer data for validator %d, proposal slot %d, inclusion slot %d", validator, slot, inclusionSlot)
+				} else if columnFamily == SYNC_COMMITTEES_FAMILY {
+					epochData[validator].SyncParticipation[slot] = inclusionSlot
+					//logger.Infof("processing sync data for validator %d, proposal slot %d, inclusion slot %d", validator, slot, inclusionSlot)
+				} else {
+					logger.Errorf("retrieved unexpected column family %s", columnFamily)
+				}
+			}
+		}
+
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+
+	if err != nil {
+		return err
+	}
+
+	// logger.Infof("retrieved slot data for %d validators in %v", len(epochData), time.Since(start))
+	// start = time.Now()
+
+	// save validator balance data
+	validators := make([]*types.Validator, 0, len(epochData))
+
+	for _, validator := range epochData {
+		validators = append(validators, &types.Validator{
+			Index:            validator.ValidatorIndex,
+			EffectiveBalance: validator.EffectiveBalance,
+			Balance:          validator.Balance,
+		})
+	}
+
+	err = bigtable.SaveValidatorBalances(epoch, validators)
+	if err != nil {
+		return err
+	}
+	// logger.Infof("migrated balance data in %v", time.Since(start))
+	// start = time.Now()
+
+	i := 0
+	mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, 100000)
+	keysInclusionSlot := make([]string, 0, 100000)
+
+	for _, validator := range epochData {
+		mutInclusionSlot := gcp_bigtable.NewMutation()
+		mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator.AttestationTargetSlot), gcp_bigtable.Timestamp((max_block_number-validator.AttestationInclusionSlot)*1000), []byte{})
+		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), reversedPaddedEpoch(epoch))
+
+		mutsInclusionSlot = append(mutsInclusionSlot, mutInclusionSlot)
+		keysInclusionSlot = append(keysInclusionSlot, key)
+
+		if i%100000 == 0 {
+			errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
+			if err != nil {
+				return err
+			}
+			for _, err := range errs {
+				return err
+			}
+			mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, 100000)
+			keysInclusionSlot = make([]string, 0, 100000)
+		}
+		i++
+	}
+
+	if len(mutsInclusionSlot) > 0 {
+		errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
+
+		if err != nil {
+			return err
+		}
+
+		for _, err := range errs {
+			return err
+		}
+	}
+	// logger.Infof("migrated attestation data in %v", time.Since(start))
+	// start = time.Now()
+
+	mutsProposals := make([]*gcp_bigtable.Mutation, 0, 100000)
+	keysProposals := make([]string, 0, 100000)
+
+	for _, validator := range epochData {
+		if len(validator.Proposals) == 0 {
+			continue
+		}
+		for slot, inclusionSlot := range validator.Proposals {
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
+			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), reversedPaddedEpoch(epoch), reversedPaddedSlot(slot))
+
+			mutsProposals = append(mutsProposals, mut)
+			keysProposals = append(keysProposals, key)
+		}
+	}
+	errs, err := bigtable.tableValidatorProposals.ApplyBulk(ctx, keysProposals, mutsProposals)
+
+	if err != nil {
+		return err
+	}
+
+	for _, err := range errs {
+		return err
+	}
+	// logger.Infof("migrated proposal data in %v", time.Since(start))
+	// start = time.Now()
+
+	mutsSync := make([]*gcp_bigtable.Mutation, 0, 100000)
+	keysSync := make([]string, 0, 100000)
+
+	for _, validator := range epochData {
+
+		if len(validator.SyncParticipation) == 0 {
+			continue
+		}
+		for slot, inclusionSlot := range validator.SyncParticipation {
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
+
+			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), reversedPaddedEpoch(epoch), reversedPaddedSlot(slot))
+			mutsSync = append(mutsSync, mut)
+			keysSync = append(keysSync, key)
+		}
+	}
+
+	errs, err = bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keysSync, mutsSync)
+
+	if err != nil {
+		return err
+	}
+
+	for _, err := range errs {
+		return err
+	}
+	// logger.Infof("migrated sync data in %v", time.Since(start))
+	// start = time.Now()
+
+	incomeData := make(map[uint64]*itypes.ValidatorEpochIncome)
+	for _, validator := range epochData {
+		if validator.IncomeDetails == nil {
+			continue
+		}
+		incomeData[validator.ValidatorIndex] = validator.IncomeDetails
+	}
+
+	err = bigtable.SaveValidatorIncomeDetails(epoch, incomeData)
+	if err != nil {
+		return err
+	}
+
+	// logger.Infof("migrated income data in %v", time.Since(start))
+	// start = time.Now()
+
+	return nil
+
+}
+
 // GetValidatorIncomeDetailsHistory returns the validator income details
 // startEpoch & endEpoch are inclusive
 func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
