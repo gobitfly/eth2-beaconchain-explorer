@@ -1131,8 +1131,10 @@ $(document).ready(function () {
 
     if (state.validators.length) {
       var qryStr = "?validators=" + state.validators.join(",")
-      var newUrl = window.location.pathname + qryStr
-      window.history.replaceState(null, "Dashboard", newUrl)
+      if (window.location.search != qryStr) {
+        var newUrl = window.location.pathname + qryStr + window.location.hash
+        window.history.replaceState(null, "Dashboard", newUrl)
+      }
     }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
@@ -1480,7 +1482,7 @@ function createProposedChart(data) {
   proposedChart = Highcharts.stockChart("proposed-chart", {
     chart: {
       type: "column",
-      height: "250px",
+      height: "630px",
     },
     title: {
       text: "Proposal History for all Validators",
