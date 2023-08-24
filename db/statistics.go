@@ -1404,7 +1404,7 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 		err := WriteExecutionChartSeriesForDay(day)
 		if err != nil {
-			return err
+			return fmt.Errorf("error writing exec chart-series for day %v: %w", day, err)
 		}
 		return nil
 	})
@@ -1417,7 +1417,7 @@ func WriteChartSeriesForDay(day int64) error {
 		}
 		err := WriteConsensusChartSeriesForDay(day)
 		if err != nil {
-			return err
+			return fmt.Errorf("error writing cons chart-series for day %v: %w", day, err)
 		}
 		return nil
 	})
@@ -1428,9 +1428,9 @@ func WriteChartSeriesForDay(day int64) error {
 	}
 
 	logger.Infof("marking day export as completed in the chart_series_status table for day %v", day)
-	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true)", day)
+	_, err = WriterDb.Exec("insert into chart_series_status (day, status) values ($1, true) on conflict (day) do update set status = excluded.status", day)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marking day as exported in chart_series_status for day %v: %w", day, err)
 	}
 
 	logger.Infof("chart_series export completed: took %v", time.Since(startTs))
@@ -1556,6 +1556,10 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
+	if utils.Config.Chain.Config.DepositChainID == 1 && firstSlot < 4700013 {
+		return nil
+	}
+
 	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
 	if err != nil {
 		return err
@@ -1565,16 +1569,16 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
 	}
 
-	firstBlock, err := GetBlockNumber(uint64(firstSlot))
+	firstBlock, err := GetNextBlockNumber(uint64(firstSlot))
 	if err != nil {
 		return fmt.Errorf("error getting block number for slot: %v err: %w", firstSlot, err)
 	}
 
-	if firstBlock <= 15537394 {
-		return fmt.Errorf("this function does not yet handle pre merge statistics")
+	if utils.Config.Chain.Config.DepositChainID == 1 && firstBlock < 15537394 {
+		return fmt.Errorf("this function does not yet handle pre merge statistics (slot=%v, block=%v)", firstSlot, firstBlock)
 	}
 
-	lastBlock, err := GetBlockNumber(uint64(lastSlot))
+	lastBlock, err := GetLastBlockNumber(uint64(lastSlot))
 	if err != nil {
 		return fmt.Errorf("error getting block number for slot: %v err: %w", lastSlot, err)
 	}
