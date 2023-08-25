@@ -57,6 +57,7 @@ func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, e
 				return
 			}
 		}
+		return
 	}
 
 	ese.Run()
@@ -203,10 +204,8 @@ func (ese *EthStoreExporter) prepareExportDayTx(tx *sqlx.Tx, day string) error {
 			total_rewards_wei           = excluded.total_rewards_wei,
 			apr                         = excluded.apr`,
 		ethStoreDay.Day)
-	if err != nil {
-		return err
-	}
-	return tx.Commit()
+
+	return err
 }
 
 func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, map[uint64]*ethstore.Day, error) {
