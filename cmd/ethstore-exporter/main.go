@@ -66,7 +66,7 @@ func main() {
 	if *daysToReexport != "" {
 		s := strings.Split(*daysToReexport, "-")
 		if len(s) < 2 {
-			logrus.Fatalf("invalid arg")
+			utils.LogFatal(nil, fmt.Sprintf("invalid 'days' flag: %s, expected something of the form 'startDay-endDay'", *daysToReexport), 0)
 		}
 		startDayReexport, err = strconv.ParseInt(s[0], 10, 64)
 		if err != nil {

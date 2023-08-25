@@ -51,35 +51,65 @@ func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, e
 	// Reexport days if specified
 	if startDayReexport != -1 && endDayReexport != -1 {
 		for day := startDayReexport; day <= endDayReexport; day++ {
-			err := ese.exportDay(strconv.FormatInt(day, 10), true)
+			err := ese.reexportDay(strconv.FormatInt(day, 10))
 			if err != nil {
-				logger.WithError(err).Errorf("error reexporting eth.store day %d in database", day)
+				utils.LogError(err, fmt.Sprintf("error reexporting eth.store day %d in database", day), 0)
 				return
 			}
 		}
 	}
 
 	ese.Run()
-
 }
 
-func (ese *EthStoreExporter) exportDay(day string, shouldClearDay bool) error {
-	ethStoreDay, validators, err := ese.getStoreDay(day)
-	if err != nil {
-		return err
-	}
-
+func (ese *EthStoreExporter) reexportDay(day string) error {
 	tx, err := ese.DB.Beginx()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	if shouldClearDay {
-		_, err = tx.Exec(`DELETE FROM eth_store_stats WHERE day = $1`, ethStoreDay.Day)
-		if err != nil {
-			return err
-		}
+	ese.prepareClearDayTx(tx, day)
+	if err != nil {
+		return err
+	}
+
+	ese.prepareExportDayTx(tx, day)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (ese *EthStoreExporter) exportDay(day string) error {
+	tx, err := ese.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	ese.prepareExportDayTx(tx, day)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (ese *EthStoreExporter) prepareClearDayTx(tx *sqlx.Tx, day string) error {
+	dayInt, err := strconv.ParseInt(day, 10, 64)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`DELETE FROM eth_store_stats WHERE day = $1`, dayInt)
+	return err
+}
+
+func (ese *EthStoreExporter) prepareExportDayTx(tx *sqlx.Tx, day string) error {
+	ethStoreDay, validators, err := ese.getStoreDay(day)
+	if err != nil {
+		return err
 	}
 
 	numArgs := 10
@@ -193,7 +223,7 @@ DBCHECK:
 		var latestFinalizedEpoch uint64
 		err := db.WriterDb.Get(&latestFinalizedEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
 		if err != nil {
-			logger.WithError(err).Error("error retrieving latest finalized epoch from db")
+			utils.LogError(err, "error retrieving latest finalized epoch from db", 0)
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -206,7 +236,7 @@ DBCHECK:
 				SELECT COUNT(*)
 				FROM eth_store_stats WHERE validator = -1`)
 		if err != nil {
-			logger.WithError(err).Error("error retrieving eth.store days count from db")
+			utils.LogError(err, "error retrieving eth.store days count from db", 0)
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -228,7 +258,7 @@ DBCHECK:
 						SELECT day 
 						FROM eth_store_stats WHERE validator = -1`)
 				if err != nil {
-					logger.WithError(err).Error("error retrieving eth.store days from db")
+					utils.LogError(err, "error retrieving eth.store days from db", 0)
 					time.Sleep(ese.ErrorInterval)
 					continue
 				}
@@ -248,9 +278,9 @@ DBCHECK:
 			})
 			// export missing days
 			for _, dayToExport := range daysToExportArray {
-				err = ese.exportDay(strconv.FormatUint(dayToExport, 10), false)
+				err = ese.exportDay(strconv.FormatUint(dayToExport, 10))
 				if err != nil {
-					logger.WithError(err).Errorf("error exporting eth.store day %d into database", dayToExport)
+					utils.LogError(err, fmt.Sprintf("error exporting eth.store day %d into database", dayToExport), 0)
 					time.Sleep(ese.ErrorInterval)
 					continue DBCHECK
 				}
