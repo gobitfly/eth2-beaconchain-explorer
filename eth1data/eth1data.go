@@ -94,7 +94,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	// 	return nil, fmt.Errorf("error converting tx %v to message: %v", hash, err)
 	// }
 
-	sender, err := geth_types.Sender(geth_types.NewLondonSigner(tx.ChainId()), tx)
+	sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting sender of tx %v: %w", hash, err)
 	}

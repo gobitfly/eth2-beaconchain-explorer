@@ -37,7 +37,7 @@ type LighthouseClient struct {
 
 // NewLighthouseClient is used to create a new Lighthouse client
 func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, error) {
-	signer := gtypes.NewLondonSigner(chainID)
+	signer := gtypes.NewCancunSigner(chainID)
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
@@ -488,17 +488,17 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	if err != nil && slot == 0 {
 		headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers", lc.endpoint))
 		if err != nil {
-			return nil, fmt.Errorf("error retrieving chain head: %v", err)
+			return nil, fmt.Errorf("error retrieving chain head for slot %v: %w", slot, err)
 		}
 
 		var parsedHeader StandardBeaconHeadersResponse
 		err = json.Unmarshal(headResp, &parsedHeader)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing chain head: %v", err)
+			return nil, fmt.Errorf("error parsing chain head for slot %v: %w", slot, err)
 		}
 
 		if len(parsedHeader.Data) == 0 {
-			return nil, fmt.Errorf("error no headers available")
+			return nil, fmt.Errorf("error no headers available for slot %v", slot)
 		}
 
 		parsedHeaders = &StandardBeaconHeaderResponse{
@@ -602,7 +602,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 				tx.GasLimit = decTx.Gas()
 				sender, err := lc.signer.Sender(&decTx)
 				if err != nil {
-					return nil, fmt.Errorf("transaction with invalid sender (tx hash: %x): %v", h, err)
+					return nil, fmt.Errorf("transaction with invalid sender (slot: %v, tx-hash: %x): %v", slot, h, err)
 				}
 				tx.Sender = sender.Bytes()
 				if v := decTx.To(); v != nil {
