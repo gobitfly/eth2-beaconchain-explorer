@@ -295,20 +295,42 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					utils.LogError(err, fmt.Errorf("error getting Slot [%v] status", block.Slot), 0)
 					return
 				}
+				importWholeBlock := false
 
 				if status != block.Status {
 					logrus.Infof("Slot[%v] has the wrong status [%v], but should be [%v]", block.Slot, status, block.Status)
 					if block.Status == 1 {
-						err := db.SaveBlock(block)
-						if err != nil {
-							utils.LogError(err, fmt.Errorf("error saving Slot [%v]", block.Slot), 0)
-							return
-						}
-						continue
+						importWholeBlock = true
 					} else {
 						utils.LogError(err, fmt.Errorf("error on Slot [%v] - no update process for status [%v]", block.Slot, block.Status), 0)
 						return
 					}
+				} else if len(block.Attestations) > 0 {
+					count := 0
+					err := db.ReaderDb.Get(&count, `
+						SELECT COUNT(*)
+						FROM 
+							blocks_attestations 
+						WHERE 
+							block_slot=$1`, block.Slot)
+					if err != nil {
+						utils.LogError(err, fmt.Errorf("error getting Slot [%v] status", block.Slot), 0)
+						return
+					}
+					// We only know about cases where we have no attestations in the db but the node has one.
+					// So we don't handle cases (for now) where there are attestations with different sizes - that would require a different handling
+					if count == 0 {
+						importWholeBlock = true
+					}
+				}
+
+				if importWholeBlock {
+					err := db.SaveBlock(block, true)
+					if err != nil {
+						utils.LogError(err, fmt.Errorf("error saving Slot [%v]", block.Slot), 0)
+						return
+					}
+					continue
 				}
 
 				for i, a := range block.Attestations {

@@ -267,7 +267,7 @@ func Start(client rpc.Client) error {
 			logrus.Errorf("error exporting sync committee duties to bigtable for block %v: %v", block.Slot, err)
 		}
 
-		err = db.SaveBlock(block)
+		err = db.SaveBlock(block, false)
 		if err != nil {
 			logger.Errorf("error saving block: %v", err)
 		}
