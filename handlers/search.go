@@ -83,7 +83,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	switch searchType {
 	case "slots":
-		if len(search) <= 1 || !searchLikeRE.MatchString(search) {
+		if len(search) <= 1 || !searchLikeRE.MatchString(strippedSearch) {
 			break
 		}
 		result = &types.SearchAheadSlotsResult{}
@@ -93,7 +93,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			FROM blocks 
 			WHERE slot = $1
 			ORDER BY slot LIMIT 10`, search)
-		} else if len(search) == 64 {
+		} else if len(strippedSearch) == 64 {
 			var blockHash []byte
 			blockHash, err = hex.DecodeString(strippedSearch)
 			if err != nil {
@@ -169,7 +169,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		indexNumeric, parseErr := strconv.ParseInt(search, 10, 32)
 		if parseErr == nil { // search the validator by its index
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE validatorindex = $1`, indexNumeric)
-		} else if thresholdHexLikeRE.MatchString(search) {
+		} else if thresholdHexLikeRE.MatchString(lowerStrippedSearch) {
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE ($1 || '%')`, lowerStrippedSearch)
 		} else {
 			err = db.ReaderDb.Select(result, `
@@ -223,7 +223,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ORDER BY index LIMIT 10`, search+"%")
 		}
 	case "validators_by_pubkey":
-		if !thresholdHexLikeRE.MatchString(search) {
+		if !thresholdHexLikeRE.MatchString(lowerStrippedSearch) {
 			break
 		}
 		result = &types.SearchAheadPubkeyResult{}
@@ -244,10 +244,10 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if utils.IsValidEnsDomain(search) {
 			ensData, _ = GetEnsDomain(search)
 			if len(ensData.Address) > 0 {
-				lowerStrippedSearch = strings.Replace(ensData.Address, "0x", "", -1)
+				lowerStrippedSearch = strings.ToLower(strings.Replace(ensData.Address, "0x", "", -1))
 			}
 		}
-		if !searchLikeRE.MatchString(search) {
+		if !searchLikeRE.MatchString(lowerStrippedSearch) {
 			break
 		}
 		// find validators per eth1-address (limit result by N addresses and M validators per address)
@@ -255,9 +255,8 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			Eth1Address string `db:"from_address_text" json:"eth1_address"`
 			Count       uint64 `db:"count" json:"count"`
 		}{}
-		if searchLikeRE.MatchString(lowerStrippedSearch) {
 
-			err = db.ReaderDb.Select(result, `
+		err = db.ReaderDb.Select(result, `
 			SELECT from_address_text, COUNT(*) FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,					
@@ -267,7 +266,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				WHERE from_address_text LIKE $1 || '%'
 			) a 
 			GROUP BY from_address_text`, lowerStrippedSearch)
-		}
+
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
