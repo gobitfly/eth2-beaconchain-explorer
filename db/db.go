@@ -706,7 +706,7 @@ func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 	return err
 }
 
-func SaveBlock(block *types.Block) error {
+func SaveBlock(block *types.Block, forceSlotUpdate bool) error {
 
 	blocksMap := make(map[uint64]map[string]*types.Block)
 	if blocksMap[block.Slot] == nil {
@@ -721,7 +721,7 @@ func SaveBlock(block *types.Block) error {
 	defer tx.Rollback()
 
 	logger.Infof("exporting block data")
-	err = saveBlocks(blocksMap, tx)
+	err = saveBlocks(blocksMap, tx, forceSlotUpdate)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)
 		return fmt.Errorf("error saving blocks to db: %w", err)
@@ -776,7 +776,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	logger.WithFields(logrus.Fields{"chainEpoch": utils.TimeToEpoch(time.Now()), "exportEpoch": data.Epoch}).Infof("starting export of epoch %v", data.Epoch)
 
 	logger.Infof("exporting block data")
-	err = saveBlocks(data.Blocks, tx)
+	err = saveBlocks(data.Blocks, tx, false)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)
 		return fmt.Errorf("error saving blocks to db: %w", err)
@@ -1411,7 +1411,7 @@ func GetRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.
 	return relaysDataMap, nil
 }
 
-func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
+func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlotUpdate bool) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_blocks").Observe(time.Since(start).Seconds())
@@ -1525,13 +1525,15 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			start := time.Now()
 			blockLog := logger.WithFields(logrus.Fields{"slot": b.Slot, "blockRoot": fmt.Sprintf("%x", b.BlockRoot)})
 
-			var dbBlockRootHash []byte
-			err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
-			if err == nil && bytes.Equal(dbBlockRootHash, b.BlockRoot) {
-				blockLog.Infof("skipping export of block as it is already present in the db")
-				continue
-			} else if err != nil && err != sql.ErrNoRows {
-				return fmt.Errorf("error checking for block in db: %w", err)
+			if !forceSlotUpdate {
+				var dbBlockRootHash []byte
+				err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
+				if err == nil && bytes.Equal(dbBlockRootHash, b.BlockRoot) {
+					blockLog.Infof("skipping export of block as it is already present in the db")
+					continue
+				} else if err != nil && err != sql.ErrNoRows {
+					return fmt.Errorf("error checking for block in db: %w", err)
+				}
 			}
 
 			blockLog.WithField("duration", time.Since(start)).Tracef("check if exists")
