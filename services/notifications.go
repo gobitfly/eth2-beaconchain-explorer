@@ -2987,7 +2987,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 	// factor in network-wide min/max collat ratio. Since LEB8 they are not directly correlated anymore (ratio of bonded to borrowed ETH), so we need either min or max
 	// however this is dynamic and might be changed in the future; Should extend rocketpool_network_stats to include min/max collateral values!
-	minRPLCollatRatio := bigFloat(0.1)	// bigFloat it to save some memory re-allocations
+	minRPLCollatRatio := bigFloat(0.1) // bigFloat it to save some memory re-allocations
 	maxRPLCollatRatio := bigFloat(1.5)
 	// temporary helper (modifying values in dbResult directly would be bad style)
 	nodeCollatRatioHelper := bigFloat(0)
@@ -3051,7 +3051,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			Epoch:           epoch,
 			EventFilter:     sub.EventFilter,
 			EventName:       eventName,
-			ExtraData:       fmt.Sprintf("%v", threshold * 100),
+			ExtraData:       fmt.Sprintf("%v", threshold*100),
 			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
