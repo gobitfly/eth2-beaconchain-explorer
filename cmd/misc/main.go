@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -12,6 +13,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"math/big"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -27,22 +29,23 @@ import (
 )
 
 var opts = struct {
-	Command         string
-	User            uint64
-	TargetVersion   int64
-	StartEpoch      uint64
-	EndEpoch        uint64
-	StartDay        uint64
-	EndDay          uint64
-	Validator       uint64
-	StartBlock      uint64
-	EndBlock        uint64
-	BatchSize       uint64
-	DataConcurrency uint64
-	Transformers    string
-	Family          string
-	Key             string
-	DryRun          bool
+	Command             string
+	User                uint64
+	TargetVersion       int64
+	StartEpoch          uint64
+	EndEpoch            uint64
+	StartDay            uint64
+	EndDay              uint64
+	Validator           uint64
+	StartBlock          uint64
+	EndBlock            uint64
+	BatchSize           uint64
+	DataConcurrency     uint64
+	Transformers        string
+	Family              string
+	Key                 string
+	ValidatorNameRanges string
+	DryRun              bool
 }{}
 
 func main() {
@@ -62,6 +65,7 @@ func main() {
 	flag.Uint64Var(&opts.DataConcurrency, "data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
+	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -139,6 +143,11 @@ func main() {
 	defer db.FrontendWriterDB.Close()
 
 	switch opts.Command {
+	case "nameValidatorsByRanges":
+		err := NameValidatorsByRanges(opts.ValidatorNameRanges)
+		if err != nil {
+			logrus.WithError(err).Fatal("error naming validators by ranges")
+		}
 	case "updateAPIKey":
 		err := UpdateAPIKey(opts.User)
 		if err != nil {
@@ -212,6 +221,53 @@ func main() {
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
+}
+
+func NameValidatorsByRanges(rangesUrl string) error {
+	ranges := struct {
+		Ranges map[string]string `json:"ranges"`
+	}{}
+
+	if strings.HasPrefix(rangesUrl, "http") {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		err := utils.HttpReq(ctx, http.MethodGet, rangesUrl, nil, &ranges)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := json.Unmarshal([]byte(rangesUrl), &ranges)
+		if err != nil {
+			return err
+		}
+	}
+
+	stmt := `do $$
+begin
+`
+	for r, n := range ranges.Ranges {
+		rs := strings.Split(r, "-")
+		if len(rs) != 2 {
+			return fmt.Errorf("invalid format, range must be X-Y")
+		}
+		rFrom, err := strconv.ParseUint(rs[0], 10, 64)
+		if err != nil {
+			return err
+		}
+		rTo, err := strconv.ParseUint(rs[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		if rTo < rFrom {
+			return fmt.Errorf("invalid format, range must be X-Y where X <= Y")
+		}
+		stmt += fmt.Sprintf("for r in %d..%d loop insert into validator_names(publickey, name) values((select pubkey from validators where validatorindex = r),'%s'); end loop;\n", rFrom, rTo, n)
+	}
+	stmt += "end; $$;"
+	fmt.Println(stmt)
+	_, err := db.WriterDb.Exec(stmt)
+
+	return err
 }
 
 // one time migration of the last attestation slot values from postgres to bigtable

@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"context"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -1457,4 +1458,42 @@ func SortedUniqueUint64(arr []uint64) []uint64 {
 	}
 
 	return result
+}
+
+func HttpReq(ctx context.Context, method, url string, params, result interface{}) error {
+	var err error
+	var req *http.Request
+	if params != nil {
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			return fmt.Errorf("error marhsaling params for request: %w, url: %v", err, url)
+		}
+		req, err = http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(paramsJSON))
+		if err != nil {
+			return fmt.Errorf("error creating request with params: %w, url: %v", err, url)
+		}
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, url, nil)
+		if err != nil {
+			return fmt.Errorf("error creating request: %w, url: %v", err, url)
+		}
+	}
+	req.Header.Set("Content-Type", "application/json")
+	httpClient := &http.Client{Timeout: time.Minute}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("statusCode: %v, url: %v, body: %s", res.StatusCode, url, body)
+	}
+	if result != nil {
+		err = json.NewDecoder(res.Body).Decode(result)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling response: %w, url: %v", err, url)
+		}
+	}
+	return nil
 }
