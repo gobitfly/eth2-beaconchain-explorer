@@ -155,11 +155,15 @@
     </div>
     {{ if .IncomeHistoryChartData }}
       <script>
-
         var incomeHistory = {{.IncomeHistoryChartData}}
         var executionIncomeHistory = {{ .ExecutionIncomeHistoryData }}
         var currency = {{$.Rates.Currency}}
         var ethPrice = {{$.Rates.EthPrice}}
+        function sumDataYByX(x, data) {
+          return data.reduce((prev, val, index) => {
+            return data[index].x === x ? prev + data[index].y : prev
+          }, 0)
+        }
 
         var incomeChart;
 
@@ -252,7 +256,8 @@
 
                 // income
                 for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
-                  const value = tooltip.chart.hoverPoints[i].y;
+                  const ts = tooltip.chart.hoverPoints[i].x
+                  const value = tooltip.chart.hoverPoints[i].series.name.startsWith("Ex") ? sumDataYByX(ts, executionIncomeHistory) : sumDataYByX(ts, incomeHistory)
                   text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, ethPrice)}<br/>`
                   total += value
                 }

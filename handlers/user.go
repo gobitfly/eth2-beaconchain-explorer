@@ -564,7 +564,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	watchlist := []watchlistValidators{}
 	err = db.WriterDb.Select(&watchlist, `
-	SELECT 
+	SELECT DISTINCT ON (index)
 		validators.validatorindex as index,
 		ENCODE(validators.pubkey, 'hex') as pubkey,
 		eth1_deposits.from_address

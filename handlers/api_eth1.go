@@ -1152,7 +1152,7 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string, max int) ([][]
 			resultAddresses = append(resultAddresses, addInPub.Address)
 		} else if len(addInPub.Pubkey) > 0 {
 			pubkeys = append(pubkeys, addInPub.Pubkey)
-		} else if addInPub.Index > 0 {
+		} else if addInPub.Index > 0 && addInPub.Index < db.MaxSqlInteger {
 			indices = append(indices, addInPub.Index)
 		}
 	}
