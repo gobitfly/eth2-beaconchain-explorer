@@ -2009,7 +2009,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		for _, duties := range syncDuties {
 			for idx := range syncDutiesValidator {
 				slot := syncDutiesValidator[idx].Slot
-				index := slices.IndexFunc[*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
+				index := slices.IndexFunc[[]*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
 					return duty.Slot == slot
 				})
 
@@ -2039,7 +2039,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			for _, duties := range nextPeriodSyncDuties {
 				for idx := range nextPeriodSyncDutiesValidator {
 					slot := nextPeriodSyncDutiesValidator[idx].Slot
-					index := slices.IndexFunc[*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
+					index := slices.IndexFunc[[]*types.ValidatorSyncParticipation](duties, func(duty *types.ValidatorSyncParticipation) bool {
 						return duty.Slot == slot
 					})
 
