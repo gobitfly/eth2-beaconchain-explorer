@@ -3046,7 +3046,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 		if sub.LastEpoch != nil {
 			lastSentEpoch := *sub.LastEpoch
-			if lastSentEpoch >= epoch-80 || epoch < sub.CreatedEpoch {
+			if lastSentEpoch >= epoch-225 || epoch < sub.CreatedEpoch {
 				continue
 			}
 		}
