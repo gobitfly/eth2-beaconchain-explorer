@@ -92,6 +92,11 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(blocks) == 0 {
+		sendErrorWithCodeResponse(w, r.URL.String(), "data not available", http.StatusNotFound)
+		return
+	}
+
 	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, limit)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "can not retrieve proposer information")
@@ -102,11 +107,6 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("can not load mev data %v", err)
 		sendErrorResponse(w, r.URL.String(), "can not retrieve mev data")
-		return
-	}
-
-	if len(relaysData) == 0 {
-		sendErrorWithCodeResponse(w, r.URL.String(), "data not available", http.StatusServiceUnavailable)
 		return
 	}
 
