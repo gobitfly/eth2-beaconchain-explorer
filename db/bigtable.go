@@ -884,9 +884,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.ChainFilters(
-			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
-		)
+		filter = gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY)
 	}
 	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
@@ -1044,9 +1042,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.ChainFilters(
-			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
-		)
+		filter = gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY)
 	}
 
 	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
