@@ -3026,6 +3026,12 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			nodeCollatRatioHelper.Quo(r.RPLStakeMin.bigFloat(), minRPLCollatRatio)
 		}
 
+		if nodeCollatRatioHelper.Cmp(bigFloat(0)) == 0 {
+			// catch nodes with no minipools (anymore) because they have min/max stake of 0
+			// TODO properly remove notification entry from db
+			continue
+		}
+
 		nodeCollatRatio, _ := nodeCollatRatioHelper.Quo(r.RPLStake.bigFloat(), nodeCollatRatioHelper).Float64()
 
 		alertConditionMet = nodeCollatRatio <= threshold
