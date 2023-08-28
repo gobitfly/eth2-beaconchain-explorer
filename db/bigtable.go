@@ -399,10 +399,10 @@ func machineMetricRowParts(r string) (bool, uint64, string, string) {
 
 func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*types.Validator) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	start := time.Now()
+	// start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
 	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
@@ -450,7 +450,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 		}
 	}
 
-	logger.Infof("exported validator balances to bigtable in %v", time.Since(start))
+	// logger.Infof("exported validator balances to bigtable in %v", time.Since(start))
 	return nil
 }
 
@@ -1128,7 +1128,8 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 				}
 
 				for _, ri := range r[ATTESTATIONS_FAMILY] {
-					attesterSlot, err := strconv.ParseUint(ri.Column, 10, 64)
+					attesterSlotString := strings.Replace(ri.Column, ATTESTATIONS_FAMILY+":", "", 1)
+					attesterSlot, err := strconv.ParseUint(attesterSlotString, 10, 64)
 					if err != nil {
 						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 						return false
@@ -1563,7 +1564,7 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 }
 
 func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[uint64]*itypes.ValidatorEpochIncome) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	start := time.Now()
@@ -1680,7 +1681,7 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 			logger.Errorf("retrieved different epoch than requested, requested: %d, retrieved: %d", epoch, rowKeyEpoch)
 		}
 
-		logger.Infof("epoch is %d", rowKeyEpoch)
+		// logger.Infof("epoch is %d", rowKeyEpoch)
 
 		for columnFamily, readItems := range r {
 
