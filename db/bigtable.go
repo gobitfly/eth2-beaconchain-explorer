@@ -908,8 +908,6 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				status = 0
 			}
 
-			logger.Infof("Row: %v, Col: %v, inclusionSlot: %v, ts: %v", ri.Row, ri.Column, inclusionSlot, ri.Timestamp)
-
 			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, ATTESTATIONS_FAMILY+":"), 10, 64)
 			if err != nil {
 				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
