@@ -35,15 +35,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 		data := wanted.(*types.Eth1TxData)
 		if data.BlockNumber != 0 {
-			latestFinalizedEpoch := services.LatestFinalizedEpoch()
-			err := db.ReaderDb.Get(&data.Epoch, `
-				SELECT (epochs.epoch <= $2) AS finalized, epochs.globalparticipationrate 
-				FROM blocks 
-				LEFT JOIN epochs ON blocks.epoch = epochs.epoch 
-				WHERE blocks.exec_block_number = $1 
-				AND blocks.status='1';`,
-				data.BlockNumber, latestFinalizedEpoch)
-			if err != nil {
+			if err := db.GetBlockStatus(data.BlockNumber, services.LatestFinalizedEpoch(), &data.Epoch); err != nil {
 				logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
 				data.Epoch.Finalized = false
 				data.Epoch.Participation = -1
@@ -234,19 +226,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	if txPageData.BlockNumber != 0 {
-		latestFinalizedEpoch := services.LatestFinalizedEpoch()
-		err := db.ReaderDb.Get(&txPageData.Epoch, `
-			SELECT 
-				(epochs.epoch <= $2) as finalized, 
-				epochs.globalparticipationrate 
-			FROM blocks 
-			LEFT JOIN epochs 
-				ON blocks.epoch = epochs.epoch 
-			WHERE 
-				blocks.exec_block_number = $1 
-				AND blocks.status='1'
-		`, &txPageData.BlockNumber, latestFinalizedEpoch)
-		if err != nil {
+		if err := db.GetBlockStatus(txPageData.BlockNumber, services.LatestFinalizedEpoch(), &txPageData.Epoch); err != nil {
 			logger.Warningf("failed to get finalization stats for block %v: %v", txPageData.BlockNumber, err)
 			txPageData.Epoch.Finalized = false
 			txPageData.Epoch.Participation = -1

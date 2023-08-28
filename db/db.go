@@ -517,7 +517,7 @@ func GetLatestFinalizedEpoch() (uint64, error) {
 	var latestFinalized uint64
 	err := WriterDb.Get(&latestFinalized, "SELECT finalized_epoch FROM chain_head")
 	if err != nil && err != sql.ErrNoRows {
-		logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
+		utils.LogError(err, "error retrieving latest exported finalized epoch from the database: %v", 0)
 	}
 
 	return latestFinalized, nil
@@ -735,7 +735,7 @@ func SaveBlock(block *types.Block) error {
 
 func UpdateChainHead(head *types.ChainHead) error {
 	count := 0
-	err := ReaderDb.Get(&count, "select count(*) from chain_head")
+	err := ReaderDb.Get(&count, "SELECT COUNT(*) FROM chain_head")
 	if err != nil {
 		return fmt.Errorf("error getting count from chain_head: %w", err)
 	}
@@ -3334,4 +3334,14 @@ func GetOrphanedSlotsMap(slots []uint64) (map[uint64]bool, error) {
 		orphanedSlotsMap[slot] = true
 	}
 	return orphanedSlotsMap, nil
+}
+
+func GetBlockStatus(block int64, latestFinalizedEpoch uint64, epochInfo *types.EpochInfo) error {
+	return ReaderDb.Get(epochInfo, `
+				SELECT (epochs.epoch <= $2) AS finalized, epochs.globalparticipationrate 
+				FROM blocks 
+				LEFT JOIN epochs ON blocks.epoch = epochs.epoch 
+				WHERE blocks.exec_block_number = $1 
+				AND blocks.status='1'`,
+		block, latestFinalizedEpoch)
 }
