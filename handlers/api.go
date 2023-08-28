@@ -847,6 +847,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var currentSyncCommittee []interface{}
 	var nextSyncCommittee []interface{}
 	var syncCommitteeStats *SyncCommitteesInfo
+	var proposalLuckStats *types.ApiProposalLuckResponse
 
 	if getValidators {
 		queryIndices, err := parseApiValidatorParamToIndices(parsedBody.IndicesOrPubKey, maxValidators)
@@ -929,6 +930,16 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				}
 				return err
 			})
+
+			g.Go(func() error {
+				start := time.Now()
+				proposalLuckStats, err = getProposalLuckStats(queryIndices)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("getProposalLuck(%v, %v) took longer than 10 sec", queryIndices, epoch)
+				}
+				return err
+			})
 		}
 	}
 
@@ -979,7 +990,8 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		ExecutionPerformance: executionPerformance,
 		CurrentSyncCommittee: currentSyncCommittee,
 		NextSyncCommittee:    nextSyncCommittee,
-		SyncCommitteesStats:  *syncCommitteeStats,
+		SyncCommitteesStats:  syncCommitteeStats,
+		ProposalLuckStats:    proposalLuckStats,
 	}
 
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
@@ -1421,7 +1433,8 @@ type DashboardResponse struct {
 	ExecutionPerformance []types.ExecutionPerformanceResponse `json:"execution_performance"`
 	CurrentSyncCommittee interface{}                          `json:"current_sync_committee"`
 	NextSyncCommittee    interface{}                          `json:"next_sync_committee"`
-	SyncCommitteesStats  SyncCommitteesInfo                   `json:"sync_committees_stats"`
+	SyncCommitteesStats  *SyncCommitteesInfo                  `json:"sync_committees_stats"`
+	ProposalLuckStats    *types.ApiProposalLuckResponse       `json:"proposal_luck_stats"`
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
@@ -3703,10 +3716,19 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
+// ApiProposalLuck godoc
+// @Summary Get the proposal luck of a validator or a list of validators
+// @Tags Validator
+// @Description Returns the proposal luck of a validator or a list of validators
+// @Produce json
+// @Param validators query string true "Provide a comma separated list of validator indices or pubkeys"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiProposalLuckResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Router /api/v1/validators/proposaLuck [get]
 func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
-	data := types.ApiProposalLuckResponse{}
 	response := &types.ApiResponse{}
 	response.Status = "OK"
 
@@ -3739,7 +3761,22 @@ func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	indices = list
+	data, err := getProposalLuckStats(indices)
+	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "error processing request, please try again later")
+		utils.LogError(err, "error retrieving data from db for proposal luck", 0, map[string]interface{}{"request": r.Method + " " + r.URL.String()})
+	}
 
+	response.Data = data
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		utils.LogError(err, "error serializing json data for API", 0, map[string]interface{}{"request": r.Method + " " + r.URL.String()})
+	}
+}
+
+func getProposalLuckStats(indices []uint64) (*types.ApiProposalLuckResponse, error) {
+
+	data := types.ApiProposalLuckResponse{}
 	g := errgroup.Group{}
 
 	var firstActivationEpoch uint64
@@ -3758,11 +3795,9 @@ func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
 			ORDER BY slot ASC`, pq.Array(indices))
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
-		sendServerErrorResponse(w, r.URL.String(), "error processing request, please try again later")
-		logger.WithError(err).Error("error retrieving data from db for proposal luck")
-		return
+		return nil, err
 	}
 
 	proposalLuck, proposalTimeFrame := getProposalLuck(slots, len(indices), firstActivationEpoch)
@@ -3787,12 +3822,7 @@ func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
 		nextProposalEstimate := utils.SlotToTime(*estimateLowerBoundSlot + uint64(avgProposalInterval)).Unix()
 		data.NextProposalEstimateTs = &nextProposalEstimate
 	}
-
-	response.Data = data
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
-	}
+	return &data, nil
 }
 
 func DecodeMapStructure(input interface{}, output interface{}) error {
