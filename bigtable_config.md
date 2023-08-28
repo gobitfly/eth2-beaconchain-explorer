@@ -81,6 +81,8 @@ Column families:
 
 ```
 cbt -project $PROJECT -instance $INSTANCE createfamily at
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy beaconchain_validators at maxversions=1
 ```
 ----
 Table name: `blocks`
@@ -94,6 +96,8 @@ Column families:
 
 ```
 cbt -project $PROJECT -instance $INSTANCE createfamily default
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy blocks default maxversions=1
 ```
 ----
 Table name: `cache`
@@ -111,6 +115,10 @@ Column families:
 cbt -project $PROJECT -instance $INSTANCE createfamily 10_min
 cbt -project $PROJECT -instance $INSTANCE createfamily 1_day
 cbt -project $PROJECT -instance $INSTANCE createfamily 1_hour
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy cache 10_min maxage=10m and maxversions=1
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy cache 1_day maxage=1d and maxversions=1
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy cache 1_hour maxage=1h and maxversions=1
 ```
 ----
 Table name: `data`
@@ -126,6 +134,8 @@ Column families:
 ```
 cbt -project $PROJECT -instance $INSTANCE createfamily c
 cbt -project $PROJECT -instance $INSTANCE createfamily f
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy data c maxage=1d
 ```
 ----
 Table name: `machine_metrics`
@@ -162,6 +172,8 @@ cbt -project $PROJECT -instance $INSTANCE createfamily erc1155
 cbt -project $PROJECT -instance $INSTANCE createfamily erc20
 cbt -project $PROJECT -instance $INSTANCE createfamily erc721
 cbt -project $PROJECT -instance $INSTANCE createfamily series
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy metadata series maxversions=1
 ```
 ----
 Table name: `metadata_updates`
@@ -177,4 +189,6 @@ Column families:
 ```
 cbt -project $PROJECT -instance $INSTANCE createfamily blocks
 cbt -project $PROJECT -instance $INSTANCE createfamily f
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy metadata_updates blocks maxage=1d
 ```
