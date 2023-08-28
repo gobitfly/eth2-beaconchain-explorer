@@ -106,7 +106,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(relaysData) == 0 {
-		sendErrorResponse(w, r.URL.String(), "data not available")
+		sendErrorWithCodeResponse(w, r.URL.String(), "data not available", http.StatusServiceUnavailable)
 		return
 	}
 
