@@ -720,6 +720,40 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 	return nil
 }
 
+// GetMaxValidatorindexForEpoch returns the higest validatorindex with a balance at that epoch
+func (bigtable *Bigtable) GetMaxValidatorindexForEpoch(epoch uint64) (uint64, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	defer cancel()
+
+	ranges := bigtable.getEpochRanges(epoch, epoch)
+
+	filter := gcp_bigtable.ChainFilters(
+		gcp_bigtable.FamilyFilter(VALIDATOR_BALANCES_FAMILY),
+		gcp_bigtable.LatestNFilter(1),
+	)
+	validator := uint64(0)
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+		for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
+			val, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, VALIDATOR_BALANCES_FAMILY+":"), 10, 64)
+			if err != nil {
+				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+				return false
+			}
+			if val > validator && val < uint64(2147483647) {
+				validator = val
+			}
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter), gcp_bigtable.LimitRows(1))
+	if err != nil {
+		return 0, err
+	}
+
+	return validator, nil
+}
+
 func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorBalance, error) {
 
 	valLen := len(validators)
@@ -1941,12 +1975,11 @@ func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]s
 	return deleteKeys, err
 }
 
-func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[uint64]int64, error) {
+func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error) {
 	dayIncome := make(map[uint64]int64)
-	dayProposerIncome := make(map[uint64]int64)
 	lastDay, err := GetLastExportedStatisticDay()
 	if err != nil {
-		return dayIncome, dayProposerIncome, err
+		return dayIncome, err
 	}
 
 	currentDay := uint64(lastDay + 1)
@@ -1954,7 +1987,7 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[ui
 	endEpoch := startEpoch + utils.EpochsPerDay() - 1
 	income, err := BigtableClient.GetValidatorIncomeDetailsHistory(validator_indices, startEpoch, endEpoch)
 	if err != nil {
-		return dayIncome, dayProposerIncome, err
+		return dayIncome, err
 	}
 
 	// agregate all epoch income data to total day income for each validator
@@ -1964,27 +1997,10 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, map[ui
 		}
 		for _, validatorEpochIncome := range validatorIncome {
 			dayIncome[validatorIndex] += validatorEpochIncome.TotalClRewards()
-			dayProposerIncome[validatorIndex] += int64(validatorEpochIncome.ProposerAttestationInclusionReward) + int64(validatorEpochIncome.ProposerSlashingInclusionReward) + int64(validatorEpochIncome.ProposerSyncInclusionReward)
 		}
 	}
 
-	return dayIncome, dayProposerIncome, nil
-}
-
-func GetCurrentDayProposerIncomeTotal(validator_indices []uint64) (int64, error) {
-	_, proposerIncome, err := GetCurrentDayClIncome(validator_indices)
-
-	if err != nil {
-		return 0, err
-	}
-
-	proposerTotal := int64(0)
-
-	for _, i := range proposerIncome {
-		proposerTotal += i
-	}
-
-	return proposerTotal, nil
+	return dayIncome, nil
 }
 
 func reversePaddedUserID(userID uint64) string {
