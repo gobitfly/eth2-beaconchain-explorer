@@ -1910,7 +1910,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		length = uint64(len(pageSlots)) // Last page might be shorter
 		epochs := []uint64{}
 		last := uint64(0)
-		// we gether all epochs for that page (the table currently displays 10 items per page, so it displays max 2 epoches. But we want to be future proof, so we support bigger page sizes)
+		// we gather all epochs for that page (the table currently displays 10 items per page, so it displays max 2 epoches. But we want to be future proof, so we support bigger page sizes)
 		for _, slot := range pageSlots {
 			epoch := slot / utils.Config.Chain.Config.SlotsPerEpoch
 			if len(epochs) == 0 || epoch != last {
@@ -1963,7 +1963,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 							pageSlot.Participation++
 						}
 
-						// Get the status if the dutiy belongs to our validator
+						// Get the status if the duty belongs to our validator
 						if validator == validatorIndex {
 							slotTime := utils.SlotToTime(duty.Slot)
 							if duty.Status == 0 && time.Since(slotTime) <= time.Minute {
