@@ -875,20 +875,17 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
 		gcp_bigtable.InterleaveFilters(columnFilters...),
-		gcp_bigtable.LatestNFilter(1),
 	)
 
 	if len(columnFilters) == 1 { // special case to retrieve data for one validators
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
 			columnFilters[0],
-			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
-			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
@@ -1038,20 +1035,17 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
 		gcp_bigtable.InterleaveFilters(columnFilters...),
-		gcp_bigtable.LatestNFilter(1),
 	)
 
 	if len(columnFilters) == 1 { // special case to retrieve data for one validators
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
 			columnFilters[0],
-			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
 		filter = gcp_bigtable.ChainFilters(
 			gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY),
-			gcp_bigtable.LatestNFilter(1),
 		)
 	}
 
