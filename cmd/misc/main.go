@@ -164,12 +164,16 @@ func main() {
 		}
 	case "export-epoch-missed-slots":
 		logrus.Infof("exporting epochs with missed slots")
+		latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
+		if err != nil {
+			utils.LogError(err, "error getting latest finalized epoch from db", 0)
+		}
 		epochs := []uint64{}
 		err = db.ReaderDb.Select(&epochs, `
 			WITH last_exported_epoch AS (
 				SELECT (MAX(epoch)*$1) AS slot 
 				FROM epochs 
-				WHERE finalized 
+				WHERE epoch <= $2 
 				AND rewards_exported
 			)
 			SELECT epoch 
@@ -178,7 +182,7 @@ func main() {
 				AND slot < (SELECT slot FROM last_exported_epoch)
 			GROUP BY epoch 
 			ORDER BY epoch;
-		`, utils.Config.Chain.Config.SlotsPerEpoch)
+		`, utils.Config.Chain.Config.SlotsPerEpoch, latestFinalizedEpoch)
 		if err != nil {
 			utils.LogError(err, "Error getting epochs with missing slot status from db", 0)
 			return

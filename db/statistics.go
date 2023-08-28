@@ -1556,13 +1556,13 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
-	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
+	latestFinalizedEpoch, err := GetLatestFinalizedEpoch()
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting latest finalized epoch from db %w", err)
 	}
 
-	if finalizedCount < epochsPerDay {
-		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
+	if lastEpoch > int64(latestFinalizedEpoch) {
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. last epoch of the day [%v] last finalized epoch [%v]", day, lastEpoch, latestFinalizedEpoch)
 	}
 
 	firstBlock, err := GetBlockNumber(uint64(firstSlot))
@@ -1868,16 +1868,16 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 }
 
 func checkIfDayIsFinalized(day uint64) error {
-	epochsPerDay := utils.EpochsPerDay()
-	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
+	_, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
-	finalizedCount, err := CountFinalizedEpochs(firstEpoch, lastEpoch)
+	latestFinalizedEpoch, err := GetLatestFinalizedEpoch()
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting latest finalized epoch from db %w", err)
 	}
 
-	if finalizedCount < epochsPerDay {
-		return fmt.Errorf("delaying export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
+	if lastEpoch > latestFinalizedEpoch {
+		return fmt.Errorf("delaying statistics export as not all epochs for day %v are finalized. Last epoch of the day [%v] last finalized epoch [%v]", day, lastEpoch, latestFinalizedEpoch)
 	}
+
 	return nil
 }

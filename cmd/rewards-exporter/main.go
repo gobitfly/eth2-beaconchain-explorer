@@ -74,13 +74,18 @@ func main() {
 	defer bt.Close()
 
 	if *epochEnd != 0 {
+		latestFinalizedEpoch := services.LatestFinalizedEpoch()
+		if *epochEnd > latestFinalizedEpoch {
+			logrus.Errorf("error epochEnd [%v] is greater then latestFinalizedEpoch [%v]", epochEnd, latestFinalizedEpoch)
+			return
+		}
 		g := errgroup.Group{}
 		g.SetLimit(*batchConcurrency)
 
 		start := time.Now()
 		epochsCompleted := int64(0)
 		notExportedEpochs := []uint64{}
-		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
+		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -142,8 +147,9 @@ func main() {
 	if *epoch == -1 {
 		lastExportedEpoch := uint64(0)
 		for {
+			latestFinalizedEpoch := services.LatestFinalizedEpoch()
 			notExportedEpochs := []uint64{}
-			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch > $1 ORDER BY epoch desc LIMIT 10", lastExportedEpoch)
+			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch > $1 AND epoch <= $2 ORDER BY epoch desc LIMIT 10", lastExportedEpoch, latestFinalizedEpoch)
 			if err != nil {
 				utils.LogFatal(err, "getting chain head from lighthouse error", 0)
 			}
@@ -173,6 +179,11 @@ func main() {
 		}
 	}
 
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
+	if *epoch > int64(latestFinalizedEpoch) {
+		logrus.Errorf("error epoch [%v] is greater then latestFinalizedEpoch [%v]", epoch, latestFinalizedEpoch)
+		return
+	}
 	err = export(uint64(*epoch), bt, client, enAddress)
 	if err != nil {
 		logrus.Fatal(err)

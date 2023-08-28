@@ -172,8 +172,7 @@ func (ese *EthStoreExporter) Run() {
 DBCHECK:
 	for {
 		// get latest eth.store day
-		var latestFinalizedEpoch uint64
-		err := db.WriterDb.Get(&latestFinalizedEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
 		if err != nil {
 			logger.WithError(err).Error("error retrieving latest finalized epoch from db")
 			time.Sleep(ese.ErrorInterval)

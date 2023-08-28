@@ -1675,6 +1675,11 @@ type DepositContractInteraction struct {
 	Amount          []byte
 }
 
+type EpochInfo struct {
+	Finalized     bool    `db:"finalized"`
+	Participation float64 `db:"globalparticipationrate"`
+}
+
 type Eth1TxData struct {
 	From         common.Address
 	To           *common.Address
@@ -1691,10 +1696,7 @@ type Eth1TxData struct {
 		TxFee          []byte
 		EffectiveFee   []byte
 	}
-	Epoch struct {
-		Finalized     bool    `db:"finalized"`
-		Participation float64 `db:"globalparticipationrate"`
-	}
+	Epoch                       EpochInfo
 	TypeFormatted               string
 	Type                        uint8
 	Nonce                       uint64

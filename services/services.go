@@ -377,14 +377,14 @@ func epochUpdater(wg *sync.WaitGroup) {
 			}
 		}
 
-		// latest exportered finalized epoch
-		var latestFinalized uint64
-		err = db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		// latest exported finalized epoch
+
+		latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
 		if err != nil {
 			logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.Config.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, latestFinalized, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, latestFinalizedEpoch, time.Hour*24)
 			if err != nil {
 				logger.Errorf("error caching latestFinalizedEpoch: %v", err)
 			}
@@ -785,8 +785,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	data.ScheduledCount = scheduledCount
 
+	latestFinalizedEpoch := LatestFinalizedEpoch()
 	var epochs []*types.IndexPageDataEpochs
-	err = db.ReaderDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	err = db.ReaderDb.Select(&epochs, `SELECT epoch, (epoch <= $1) AS finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`, latestFinalizedEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
@@ -905,7 +906,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		epochLowerBound = epoch - 1600
 	}
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, (epoch <= $3) AS finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound, latestFinalizedEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}

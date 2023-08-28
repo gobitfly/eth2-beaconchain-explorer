@@ -289,6 +289,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		epoch = int64(services.LatestEpoch())
 	}
 
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	if vars["epoch"] == "finalized" {
 		epoch = int64(services.LatestFinalizedEpoch())
 	}
@@ -303,12 +304,12 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance, blockscount, depositscount, eligibleether, epoch, finalized, globalparticipationrate, proposerslashingscount, rewards_exported, totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether, withdrawalcount, 
+	rows, err := db.ReaderDb.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance, blockscount, depositscount, eligibleether, epoch, (epoch <= $2) AS finalized, globalparticipationrate, proposerslashingscount, rewards_exported, totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether, withdrawalcount, 
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '0') as scheduledblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '1') as proposedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '2') as missedblocks,
 		(SELECT COUNT(*) FROM blocks WHERE epoch = $1 AND status = '3') as orphanedblocks
-		FROM epochs WHERE epoch = $1`, epoch)
+		FROM epochs WHERE epoch = $1`, epoch, latestFinalizedEpoch)
 	if err != nil {
 		logger.WithError(err).Error("error retrieving epoch data")
 		sendServerErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -1436,10 +1437,11 @@ type DashboardResponse struct {
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	rows, err := db.ReaderDb.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance,
-	blockscount, depositscount, eligibleether, epoch, finalized, TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
+	blockscount, depositscount, eligibleether, epoch, (epoch <= $2) AS finalized, TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
 	totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether
-	FROM epochs WHERE epoch = $1`, epoch)
+	FROM epochs WHERE epoch = $1`, epoch, latestFinalizedEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error querying epoch: %w", err)
 	}
