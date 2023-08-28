@@ -2103,8 +2103,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 
 // Deletes all block data from bigtable
 func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
-	logger.Fatal("NOT IMPLEMENTED")
-	return nil
+	return fmt.Errorf("NOT IMPLEMENTED")
 }
 
 func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
