@@ -2,15 +2,35 @@
 This document summarized the bigtable configuration options and table definitions required to run the beaconcha.in explorer. All settings can be applied either by using the GCP bigtable web interface or the `cbt` tool.
 
 ----
-Table name: `beaconchain`
+Table name: `beaconchain_validator_balances`
 
 Column families:
-* Name: `at` | GC Policy: Version based policy with a maximum of 1 versions
-* Name: `id` | GC Policy: None
-* Name: `pr` | GC Policy: Version based policy with a maximum of 1 versions
-* Name: `sc` | GC Policy: Version based policy with a maximum of 1 versions
-* Name: `stats` | GC Policy: None
 * Name: `vb` | GC Policy: None
+
+----
+Table name: `beaconchain_validator_attestations`
+
+Column families:
+* Name: `at` | GC Policy: None
+
+----
+Table name: `beaconchain_validator_proposals`
+
+Column families:
+* Name: `pr` | GC Policy: None
+
+----
+Table name: `beaconchain_validator_sync`
+
+Column families:
+* Name: `sc` | GC Policy: None
+
+----
+Table name: `beaconchain_validator_income`
+
+Column families:
+* Name: `id` | GC Policy: None
+* Name: `stats` | GC Policy: None
 
 ----
 Table name: `beaconchain_validators`
