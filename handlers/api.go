@@ -1328,6 +1328,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 }
 
 func validators(queryIndices []uint64) ([]interface{}, error) {
+	// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
 	rows, err := db.ReaderDb.Query(`
 	SELECT 
 		validators.validatorindex,
@@ -1345,7 +1346,8 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d,
 		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d,
 		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal,
-		rank7d,
+		COALESCE(validator_performance.rank7d, 0) AS rank7d,
+		COALESCE(validator_performance_count.total_count, 0) AS rankcount,
 		w.total as total_withdrawals
 	FROM validators
 	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
@@ -1357,6 +1359,7 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		WHERE validatorindex = ANY($1)
 		GROUP BY validatorindex
 	) as w ON w.index = validators.validatorindex
+	LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex >= 0 AND validatorindex < 2147483647) validator_performance_count(total_count) ON true
 	WHERE validators.validatorindex = ANY($1)
 	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
 	if err != nil {
@@ -1369,20 +1372,53 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		return nil, fmt.Errorf("error converting validators to json: %w", err)
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), services.LatestEpoch())
-	if err != nil {
-		return nil, fmt.Errorf("error getting validator balances from bigtable: %w", err)
+	// get rankCount once so it can be reused later (part of query above to reduce db connections)
+	rankCount := int64(0)
+	if len(data) > 0 {
+		eMap, ok := data[0].(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("error converting validator data to map[string]interface{}")
+		}
+		rankCount, ok = eMap["rankcount"].(int64)
+		if !ok {
+			return nil, fmt.Errorf("error converting rankcount to int64")
+		}
 	}
 
-	currentDayIncome, err := db.GetCurrentDayClIncome(queryIndices)
+	g := new(errgroup.Group)
+
+	var balances map[uint64][]*types.ValidatorBalance
+	g.Go(func() error {
+		balances, err = db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), services.LatestEpoch())
+		if err != nil {
+			return fmt.Errorf("error in GetValidatorBalanceHistory: %w", err)
+		}
+		return nil
+	})
+
+	var currentDayIncome map[uint64]int64
+	g.Go(func() error {
+		currentDayIncome, err = db.GetCurrentDayClIncome(queryIndices)
+		if err != nil {
+			return fmt.Errorf("error in GetCurrentDayClIncome: %w", err)
+		}
+		return nil
+	})
+
+	var lastAttestationSlots map[uint64]uint64
+	g.Go(func() error {
+		lastAttestationSlots, err = db.BigtableClient.GetLastAttestationSlots(queryIndices)
+		if err != nil {
+			return fmt.Errorf("error in GetLastAttestationSlots: %w", err)
+		}
+		return nil
+	})
+
+	err = g.Wait()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error in validator errgroup: %w", err)
 	}
 
-	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(queryIndices)
-	if err != nil {
-		return nil, fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
-	}
 	for _, entry := range data {
 		eMap, ok := entry.(map[string]interface{})
 		if !ok {
@@ -1411,6 +1447,17 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 				eMap["effectivebalance"] = balance[0].EffectiveBalance
 				eMap["performance1d"] = currentDayIncome[uint64(validatorIndex)]
 				eMap["performancetotal"] = eMap["performancetotal"].(int64) + currentDayIncome[uint64(validatorIndex)]
+			}
+		}
+
+		if rankCount > 0 {
+			rank7d, ok := eMap["rank7d"].(int64)
+			if !ok {
+				logger.Errorf("error converting rank7d to int64")
+				continue
+			}
+			if rank7d > 0 {
+				eMap["rankPercentage"] = (float64(rank7d) / float64(rankCount)) * 100
 			}
 		}
 	}
