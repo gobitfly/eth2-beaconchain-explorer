@@ -1580,6 +1580,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL, err)
 	}
 }
@@ -1853,7 +1854,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -1956,7 +1957,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2015,7 +2016,7 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2094,7 +2095,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2312,7 +2313,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2354,7 +2355,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2506,7 +2507,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -3770,12 +3771,12 @@ func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
 	response.Data = data
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		utils.LogError(err, "error serializing json data for API", 0, map[string]interface{}{"request": r.Method + " " + r.URL.String()})
 	}
 }
 
 func getProposalLuckStats(indices []uint64) (*types.ApiProposalLuckResponse, error) {
-
 	data := types.ApiProposalLuckResponse{}
 	g := errgroup.Group{}
 
@@ -3914,7 +3915,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -3975,6 +3976,7 @@ func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Re
 	err = json.NewEncoder(w).Encode(response)
 
 	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
 	}
 }
