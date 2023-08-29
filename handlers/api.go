@@ -859,6 +859,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var currentSyncCommittee []interface{}
 	var nextSyncCommittee []interface{}
 	var syncCommitteeStats *SyncCommitteesInfo
+	var proposalLuckStats *types.ApiProposalLuckResponse
 
 	if getValidators {
 		queryIndices, err := parseApiValidatorParamToIndices(parsedBody.IndicesOrPubKey, maxValidators)
@@ -941,6 +942,16 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				}
 				return err
 			})
+
+			g.Go(func() error {
+				start := time.Now()
+				proposalLuckStats, err = getProposalLuckStats(queryIndices)
+				elapsed := time.Since(start)
+				if elapsed > 10*time.Second {
+					logger.Warnf("getProposalLuck(%v, %v) took longer than 10 sec", queryIndices, epoch)
+				}
+				return err
+			})
 		}
 	}
 
@@ -991,7 +1002,8 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		ExecutionPerformance: executionPerformance,
 		CurrentSyncCommittee: currentSyncCommittee,
 		NextSyncCommittee:    nextSyncCommittee,
-		SyncCommitteesStats:  *syncCommitteeStats,
+		SyncCommitteesStats:  syncCommitteeStats,
+		ProposalLuckStats:    proposalLuckStats,
 	}
 
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
@@ -1433,7 +1445,8 @@ type DashboardResponse struct {
 	ExecutionPerformance []types.ExecutionPerformanceResponse `json:"execution_performance"`
 	CurrentSyncCommittee interface{}                          `json:"current_sync_committee"`
 	NextSyncCommittee    interface{}                          `json:"next_sync_committee"`
-	SyncCommitteesStats  SyncCommitteesInfo                   `json:"sync_committees_stats"`
+	SyncCommitteesStats  *SyncCommitteesInfo                  `json:"sync_committees_stats"`
+	ProposalLuckStats    *types.ApiProposalLuckResponse       `json:"proposal_luck_stats"`
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
@@ -1580,6 +1593,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL, err)
 	}
 }
@@ -1853,7 +1867,7 @@ func ApiValidatorIncomeDetailsHistory(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -1956,7 +1970,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2015,7 +2029,7 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2094,7 +2108,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2312,7 +2326,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2354,7 +2368,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -2506,7 +2520,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	err = j.Encode(response)
 
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not serialize data results")
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -3716,6 +3730,115 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
+// ApiProposalLuck godoc
+// @Summary Get the proposal luck of a validator or a list of validators
+// @Tags Validator
+// @Description Returns the proposal luck of a validator or a list of validators
+// @Produce json
+// @Param validators query string true "Provide a comma separated list of validator indices or pubkeys"
+// @Success 200 {object} types.ApiResponse{data=[]types.ApiProposalLuckResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Router /api/v1/validators/proposalLuck [get]
+func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	q := r.URL.Query()
+	response := &types.ApiResponse{}
+	response.Status = "OK"
+
+	indices, pubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not parse validators")
+		return
+	}
+	if len(pubkeys) > 0 {
+		indicesFromPubkeys, err := resolveIndices(pubkeys)
+		if err != nil {
+			sendErrorResponse(w, r.URL.String(), "could not resolve pubkeys to indices")
+			return
+		}
+		indices = append(indices, indicesFromPubkeys...)
+	}
+
+	if len(indices) == 0 {
+		sendErrorResponse(w, r.URL.String(), "no validators provided")
+		return
+	}
+
+	// dedup indices
+	allKeys := make(map[uint64]bool)
+	list := []uint64{}
+	for _, item := range indices {
+		if _, ok := allKeys[item]; !ok {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	indices = list
+	data, err := getProposalLuckStats(indices)
+	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "error processing request, please try again later")
+		utils.LogError(err, "error retrieving data from db for proposal luck", 0, map[string]interface{}{"request": r.Method + " " + r.URL.String()})
+	}
+
+	response.Data = data
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
+		utils.LogError(err, "error serializing json data for API", 0, map[string]interface{}{"request": r.Method + " " + r.URL.String()})
+	}
+}
+
+func getProposalLuckStats(indices []uint64) (*types.ApiProposalLuckResponse, error) {
+	data := types.ApiProposalLuckResponse{}
+	g := errgroup.Group{}
+
+	var firstActivationEpoch uint64
+	g.Go(func() error {
+		return db.GetFirstActivationEpoch(indices, &firstActivationEpoch)
+	})
+
+	var slots []uint64
+	g.Go(func() error {
+		return db.ReaderDb.Select(&slots, `
+			SELECT
+				slot
+			FROM blocks
+			WHERE proposer = ANY($1)
+			AND exec_block_number IS NOT NULL
+			ORDER BY slot ASC`, pq.Array(indices))
+	})
+
+	err := g.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	proposalLuck, proposalTimeFrame := getProposalLuck(slots, len(indices), firstActivationEpoch)
+	if proposalLuck > 0 {
+		data.ProposalLuck = &proposalLuck
+		timeframeName := getProposalTimeframeName(proposalTimeFrame)
+		data.TimeFrameName = &timeframeName
+	}
+
+	avgProposalInterval := getAvgSlotInterval(len(indices))
+	data.AverageProposalInterval = avgProposalInterval
+
+	var estimateLowerBoundSlot *uint64
+	if len(slots) > 0 {
+		estimateLowerBoundSlot = &slots[len(slots)-1]
+	} else if len(indices) == 1 {
+		activationSlot := firstActivationEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+		estimateLowerBoundSlot = &activationSlot
+	}
+
+	if estimateLowerBoundSlot != nil {
+		nextProposalEstimate := utils.SlotToTime(*estimateLowerBoundSlot + uint64(avgProposalInterval)).Unix()
+		data.NextProposalEstimateTs = &nextProposalEstimate
+	}
+	return &data, nil
+}
+
 func DecodeMapStructure(input interface{}, output interface{}) error {
 	config := &mapstructure.DecoderConfig{
 		Metadata: nil,
@@ -3805,7 +3928,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		return
 	}
 }
@@ -3866,6 +3989,7 @@ func returnQueryResultsAsArray(rows *sql.Rows, w http.ResponseWriter, r *http.Re
 	err = json.NewEncoder(w).Encode(response)
 
 	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
 	}
 }
