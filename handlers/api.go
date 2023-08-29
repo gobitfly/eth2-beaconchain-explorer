@@ -3725,7 +3725,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiProposalLuckResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Failure 500 {object} types.ApiResponse
-// @Router /api/v1/validators/proposaLuck [get]
+// @Router /api/v1/validators/proposalLuck [get]
 func ApiProposalLuck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
