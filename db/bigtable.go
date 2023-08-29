@@ -918,10 +918,9 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
 				// don't override successful attestion, that was included in a different slot
-				if status == 1 || res[validator][len(res[validator])-1].Status != 1 {
+				if status == 1 && res[validator][len(res[validator])-1].Status != 1 {
 					res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
 					res[validator][len(res[validator])-1].Status = status
-					res[validator][len(res[validator])-1].Delay = int64(inclusionSlot - attesterSlot)
 				}
 			} else {
 				res[validator] = append(res[validator], &types.ValidatorAttestation{
