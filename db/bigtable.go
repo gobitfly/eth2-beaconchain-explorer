@@ -399,7 +399,7 @@ func machineMetricRowParts(r string) (bool, uint64, string, string) {
 
 func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*types.Validator) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
 	defer cancel()
 
 	// start := time.Now()
@@ -456,7 +456,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 
 func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments map[string]uint64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
 	defer cancel()
 
 	start := time.Now()
@@ -477,9 +477,10 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 		validatorsPerSlot[attesterslot] = append(validatorsPerSlot[attesterslot], validator)
 	}
 
+	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
+	keys := make([]string, 0, 100000)
+
 	for slot, validators := range validatorsPerSlot {
-		muts := make([]*gcp_bigtable.Mutation, 0, 100000)
-		keys := make([]string, 0, 100000)
 
 		for _, validator := range validators {
 			mut := gcp_bigtable.NewMutation()
@@ -489,6 +490,23 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 			muts = append(muts, mut)
 			keys = append(keys, key)
 		}
+
+		if len(muts)%100000 == 0 {
+			errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keys, muts)
+
+			if err != nil {
+				return err
+			}
+
+			for _, err := range errs {
+				return err
+			}
+			muts = make([]*gcp_bigtable.Mutation, 0, 100000)
+			keys = make([]string, 0, 100000)
+		}
+	}
+
+	if len(muts) > 0 {
 		errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keys, muts)
 
 		if err != nil {
@@ -540,7 +558,9 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 
 func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint64, validators []uint64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+	return nil //disabled as not needed
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
 	start := time.Now()
@@ -558,21 +578,40 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 
 			muts = append(muts, mut)
 			keys = append(keys, key)
+
+			if len(muts)%100000 == 0 {
+				logger.Infof("saving %v mutations for sync duties", len(muts))
+				errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
+
+				if err != nil {
+					return err
+				}
+
+				for _, err := range errs {
+					if err != nil {
+						return err
+					}
+				}
+
+				muts = make([]*gcp_bigtable.Mutation, 0, 100000)
+				keys = make([]string, 0, 100000)
+			}
 		}
 
 	}
 
-	logger.Infof("saving %v mutations for sync duties", len(muts))
+	if len(muts) > 0 {
+		logger.Infof("saving %v mutations for sync duties", len(muts))
+		errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
 
-	errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
-
-	if err != nil {
-		return err
-	}
-
-	for _, err := range errs {
 		if err != nil {
 			return err
+		}
+
+		for _, err := range errs {
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -598,7 +637,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 	}
 	bigtable.lastAttestationCacheMux.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
 	defer cancel()
 
 	start := time.Now()
@@ -632,9 +671,10 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		}
 	}
 
+	mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, 100000)
+	keysInclusionSlot := make([]string, 0, 100000)
+
 	for attestedSlot, inclusions := range attestationsBySlot {
-		mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, 100000)
-		keysInclusionSlot := make([]string, 0, 100000)
 		mutLastAttestationSlot := gcp_bigtable.NewMutation()
 		mutLastAttestationSlotSet := false
 
@@ -653,9 +693,34 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 				bigtable.lastAttestationCache[validator] = attestedSlot
 				mutLastAttestationSlotSet = true
 			}
+
 		}
 		bigtable.lastAttestationCacheMux.Unlock()
 
+		attstart := time.Now()
+
+		if len(mutsInclusionSlot)%100000 == 0 {
+			errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
+			if err != nil {
+				return err
+			}
+			for _, err := range errs {
+				return err
+			}
+			logger.Infof("applied attestation mutations in %v", time.Since(attstart))
+			mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, 100000)
+			keysInclusionSlot = make([]string, 0, 100000)
+		}
+		if mutLastAttestationSlotSet {
+			err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(mutsInclusionSlot) > 0 {
+		attstart := time.Now()
 		errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 		if err != nil {
 			return err
@@ -663,13 +728,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		for _, err := range errs {
 			return err
 		}
-
-		if mutLastAttestationSlotSet {
-			err = bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
-			if err != nil {
-				return err
-			}
-		}
+		logger.Infof("applied attestation mutations in %v", time.Since(attstart))
 	}
 
 	logger.Infof("exported attestations (new) to bigtable in %v", time.Since(start))
@@ -738,7 +797,7 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 
 func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*types.Block) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
 	defer cancel()
 
 	start := time.Now()
