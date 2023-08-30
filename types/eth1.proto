@@ -27,6 +27,10 @@ message Eth1Block {
     repeated Eth1Block uncles = 20;
     repeated Eth1Transaction transactions = 21;
     repeated Eth1Withdrawal withdrawals = 22;
+
+    // EIP 4844
+    uint64 blob_gas_used = 23;
+    uint64 excess_blob_gas = 24;
 }
 
 message Eth1Withdrawal {
@@ -65,6 +69,10 @@ message Eth1Transaction {
 
     // Internal transactions
     repeated Eth1InternalTransaction itx = 24;
+
+    // EIP 4844
+    bytes max_fee_per_blob_gas = 25;
+    repeated bytes blob_versioned_hashes = 26;
 }
 
 message AccessList {
