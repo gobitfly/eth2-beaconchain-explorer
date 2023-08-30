@@ -1,6 +1,6 @@
 chain:
   name: local-testnet
-  configPath: '~/'
+  configPath: './testnet/chain.yml'
 readerDatabase:
   name: db
   host: 127.0.0.1
@@ -36,7 +36,7 @@ frontend:
     password: "pass"
   writerDatabase:
     name: db
-    host: 27.0.0.1
+    host: 127.0.0.1
     port: "15432"
     user: postgres
     password: "pass"
