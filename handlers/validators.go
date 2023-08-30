@@ -192,6 +192,10 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		return nil, err
 	}
+	if start > 10000 {
+		// limit offset to 10000, otherwise the query will be too slow
+		start = 10000
+	}
 
 	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
 	if err != nil {
@@ -362,6 +366,13 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		countFiltered = countTotal
+	}
+
+	if countTotal > 10000 {
+		countTotal = 10000
+	}
+	if countFiltered > 10000 {
+		countFiltered = 10000
 	}
 
 	data := &types.DataTableResponse{

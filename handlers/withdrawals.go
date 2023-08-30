@@ -70,6 +70,9 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+	if start > 10000 {
+		start = 10000
+	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
@@ -194,6 +197,13 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		}
 	}
 
+	if filteredCount > 10000 {
+		filteredCount = 10000
+	}
+	if withdrawalCount > 10000 {
+		withdrawalCount = 10000
+	}
+
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    withdrawalCount,
@@ -223,6 +233,10 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
+	}
+	if start > 10000 {
+		// limit offset to 10000, otherwise the query will be too slow
+		start = 10000
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
@@ -336,6 +350,13 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(bls.BlsPubkey))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(bls.Address, nil, "", false, false, true))),
 		}
+	}
+
+	if totalCount > 10000 {
+		totalCount = 10000
+	}
+	if filteredCount > 10000 {
+		filteredCount = 10000
 	}
 
 	data := &types.DataTableResponse{
