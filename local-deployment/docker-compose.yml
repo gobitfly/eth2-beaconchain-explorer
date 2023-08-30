@@ -1,0 +1,24 @@
+version: '3'
+services:
+  ################ dbs
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - ./docker-volumes/redis:/data
+    ports:
+      - 6379:6379
+  postgres:
+    image: postgres:14
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=db
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - ./docker-volumes/postgres:/var/lib/postgresql/data
+      - ./tables.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - 5432:5432
+
