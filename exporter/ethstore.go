@@ -225,6 +225,12 @@ DBCHECK:
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
+
+		if latestFinalizedEpoch == 0 {
+			utils.LogError(err, "error retrieved 0 as latest finalized epoch from the db", 0)
+			time.Sleep(ese.ErrorInterval)
+			continue
+		}
 		latestDay := utils.DayOfSlot(latestFinalizedEpoch*utils.Config.Chain.Config.SlotsPerEpoch) - 1
 
 		logger.Infof("latest day is %v", latestDay)
