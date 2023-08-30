@@ -1319,7 +1319,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 
 	err = client.Call(&raw, "txpool_content")
 	if err != nil {
-		utils.LogFatal(err, "error getting raw json data from txpool_content", 0)
+		return nil, fmt.Errorf("error getting raw json data from txpool_content: %w", err)
 	}
 
 	txPoolContent := &TxPoolContent{}
