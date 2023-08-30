@@ -16,8 +16,8 @@ writerDatabase:
 bigtable:
   project: explorer
   instance: explorer
-eth1ErigonEndpoint: 'http://127.0.0.1:8545'
-eth1GethEndpoint: 'http://127.0.0.1:8545'
+eth1ErigonEndpoint: 'http://127.0.0.1:5001'
+eth1GethEndpoint: 'http://127.0.0.1:5001'
 redisCacheEndpoint: '127.0.0.1:6379'
 tieredCacheProvider: 'redis'
 #tieredCacheProvider: 'bigtable'
@@ -57,8 +57,8 @@ indexer:
   # indexMissingEpochsOnStartup: true # Check for missing epochs and export them after startup
   node:
     host: 127.0.0.1
-    port: '4000'
+    port: '8001'
     type: lighthouse
-  eth1Endpoint: "http://127.0.0.1:8545"
+  eth1Endpoint: "http://127.0.0.1:5001"
   eth1DepositContractAddress: '0x4242424242424242424242424242424242424242'
   eth1DepositContractFirstBlock: 0

@@ -116,3 +116,7 @@ cd testnet/lighthouse/scripts/local_testnet/
 ```
 BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema
 ```
+# Start the indexer
+```
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+```
