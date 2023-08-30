@@ -37,7 +37,7 @@ frontend:
   writerDatabase:
     name: db
     host: 127.0.0.1
-    port: "15432"
+    port: "5432"
     user: postgres
     password: "pass"
   sessionSecret: "11111111111111111111111111111111"
