@@ -1,0 +1,64 @@
+chain:
+  name: local-testnet
+  configPath: '~/'
+readerDatabase:
+  name: db
+  host: 127.0.0.1
+  port: "5432"
+  user: postgres
+  password: "pass"
+writerDatabase:
+  name: db
+  host: 127.0.0.1
+  port: "5432"
+  user: postgres
+  password: "pass"
+bigtable:
+  project: explorer
+  instance: explorer
+eth1ErigonEndpoint: 'http://127.0.0.1:8545'
+eth1GethEndpoint: 'http://127.0.0.1:8545'
+redisCacheEndpoint: '127.0.0.1:6379'
+tieredCacheProvider: 'redis'
+#tieredCacheProvider: 'bigtable'
+frontend:
+  siteDomain: "local-testnet.beaconcha.in"
+  siteName: 'Open Source Ethereum (ETH) Testnet Explorer' # Name of the site, displayed in the title tag
+  siteSubtitle: "Showing a local testnet."
+  server:
+    host: '0.0.0.0' # Address to listen on
+    port: '8080' # Port to listen on
+  readerDatabase:
+    name: db
+    host: 127.0.0.1
+    port: "5432"
+    user: postgres
+    password: "pass"
+  writerDatabase:
+    name: db
+    host: 27.0.0.1
+    port: "15432"
+    user: postgres
+    password: "pass"
+  sessionSecret: "11111111111111111111111111111111"
+  jwtSigningSecret: "1111111111111111111111111111111111111111111111111111111111111111"
+  jwtIssuer: "localhost"
+  jwtValidityInMinutes: 30
+  maxMailsPerEmailPerDay: 10
+  mail:
+    mailgun:
+      sender: no-reply@localhost
+      domain: mg.localhost
+      privateKey: "key-11111111111111111111111111111111"
+  csrfAuthKey: '1111111111111111111111111111111111111111111111111111111111111111'
+indexer:
+  enabled: true
+  # fullIndexOnStartup: false # Perform a one time full db index on startup
+  # indexMissingEpochsOnStartup: true # Check for missing epochs and export them after startup
+  node:
+    host: 127.0.0.1
+    port: '4000'
+    type: lighthouse
+  eth1Endpoint: "http://127.0.0.1:8545"
+  eth1DepositContractAddress: '0x4242424242424242424242424242424242424242'
+  eth1DepositContractFirstBlock: 0

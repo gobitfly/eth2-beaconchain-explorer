@@ -19,12 +19,21 @@ sudo usermod -aG docker $USER
 ```
 wget https://go.dev/dl/go1.20.7.linux-amd64.tar.gz
 sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.20.7.linux-amd64.tar.gz
-# Add export PATH=$PATH:/usr/local/go/bin to $HOME/.profile
+```
+Add the golang binaries to the path by adding the following lines to your ~/.profile file and then logout & login again
+```
+export PATH=$PATH:/usr/local/go/bin
+export PATH=$PATH:$HOME/go/bin
 ```
 Create the testnet directory
 ```
 mkdir testnet
 cd testnet
+```
+# Install the cbt tool
+```
+sudo apt remove google-cloud-cli
+sudo apt install google-cloud-sdk-cbt
 ```
 # Clone the lh repo
 ```
