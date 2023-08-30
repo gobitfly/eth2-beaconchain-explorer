@@ -518,6 +518,7 @@ func GetLatestFinalizedEpoch() (uint64, error) {
 	err := WriterDb.Get(&latestFinalized, "SELECT finalized_epoch FROM chain_head")
 	if err != nil {
 		utils.LogError(err, "error retrieving latest exported finalized epoch from the database: %v", 0)
+		return 0, err
 	}
 
 	return latestFinalized, nil
