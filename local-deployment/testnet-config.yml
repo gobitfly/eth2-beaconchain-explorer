@@ -16,8 +16,8 @@ writerDatabase:
 bigtable:
   project: explorer
   instance: explorer
-eth1ErigonEndpoint: 'http://127.0.0.1:5001'
-eth1GethEndpoint: 'http://127.0.0.1:5001'
+eth1ErigonEndpoint: 'http://127.0.0.1:6001'
+eth1GethEndpoint: 'http://127.0.0.1:6001'
 redisCacheEndpoint: '127.0.0.1:6379'
 tieredCacheProvider: 'redis'
 #tieredCacheProvider: 'bigtable'
@@ -59,6 +59,6 @@ indexer:
     host: 127.0.0.1
     port: '8001'
     type: lighthouse
-  eth1Endpoint: "http://127.0.0.1:5001"
+  eth1Endpoint: "http://127.0.0.1:6001"
   eth1DepositContractAddress: '0x4242424242424242424242424242424242424242'
   eth1DepositContractFirstBlock: 0
