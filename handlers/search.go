@@ -238,6 +238,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if !utils.IsValidEnsDomain(search) && !utils.IsEth1Address(search) {
 			break
 		}
+		search = ReplaceEnsNameWithAddress(search)
+		if utils.IsValidEnsDomain(search) {
+			// unregistered ENS name
+			break
+		}
 		result, err = FindValidatorIndicesByEth1Address(strings.ToLower(search))
 	case "count_indexed_validators_by_eth1_address":
 		var ensData *types.EnsDomainResponse
