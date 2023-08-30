@@ -1,6 +1,6 @@
 chain:
   name: local-testnet
-  configPath: './testnet/chain.yml'
+  configPath: './.lighthouse/local-testnet/testnet/config.yaml'
 readerDatabase:
   name: db
   host: 127.0.0.1

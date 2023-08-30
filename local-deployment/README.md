@@ -47,7 +47,7 @@ source "$HOME/.cargo/env"
 ```
 # Install lh build deps
 ```
-sudo apt install -y git gcc g++ make cmake pkg-config llvm-dev libclang-dev clang protobuf-compiler
+sudo apt install -y git gcc g++ make cmake pkg-config llvm-dev libclang-dev clang protobuf-compiler jq
 ```
 # Build & install lighthouse
 ```
@@ -102,7 +102,17 @@ lbt will be available on http://127.0.0.1:9000
 ```
 bash ~/eth2-beaconchain-explorer/local-deployment/init-bigtable.sh
 ```
+# Start up the local testnet nodes
+## Switch to the lighthous scripts directory
+```
+cd testnet/lighthouse/scripts/local_testnet/
+```
+## Start the local testnet
+```
+cd testnet/lighthouse/scripts/local_testnet/
+./start_local_testnet.sh -v 2 genesis.json
+```
 # Initialize the db schema
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/config.yml -command applyDbSchema
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema
 ```
