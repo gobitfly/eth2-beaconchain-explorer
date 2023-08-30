@@ -1,6 +1,7 @@
 package main
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -72,6 +73,9 @@ func main() {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
+
+	cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 
 	if *epochEnd != 0 {
 		latestFinalizedEpoch := services.LatestFinalizedEpoch()
