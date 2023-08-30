@@ -112,15 +112,23 @@ cd testnet/lighthouse/scripts/local_testnet/
 cd testnet/lighthouse/scripts/local_testnet/
 ./start_local_testnet.sh -v 2 genesis.json
 ```
+## Generate the explorer config from the lh testnet config stub
+```
+eth2-beaconchain-explorer/bin/misc -command generate-config-from-testnet-stub -config .lighthouse/local-testnet/testnet/config.yaml -output-path .lighthouse/local-testnet/testnet/config.full.yaml
+```
 # Initialize the db schema
 ```
 BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema
 ```
 # Start the indexer
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+CHAIN_GENESIS_TIMESTAMP=<GENESIS_TS> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
 ```
 # Start the fdu
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+CHAIN_GENESIS_TIMESTAMP=<GENESIS_TS> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+```
+# Start the frontend
+```
+CHAIN_GENESIS_TIMESTAMP=<GENESIS_TS> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config-frontend.yml
 ```
