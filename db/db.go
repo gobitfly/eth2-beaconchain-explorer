@@ -2349,24 +2349,15 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 
 	withdrawalsQuery := `
 		SELECT 
-			a.block_slot as slot, 
-			a.withdrawalindex as index, 
-			a.validatorindex,
-			a.address,
-			a.amount
-		FROM (
-			SELECT 
-				w.block_root,
-				w.block_slot,
-				w.withdrawalindex,
-				w.validatorindex,
-				w.address,
-				w.amount
-			FROM blocks_withdrawals w
-			%s 
-			ORDER BY %s %s
-		) a
-		INNER JOIN blocks b ON a.block_root = b.blockroot AND b.status = '1'
+			w.block_slot as slot,
+			w.withdrawalindex as index,
+			w.validatorindex,
+			w.address,
+			w.amount
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+		%s 
+		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`
 
