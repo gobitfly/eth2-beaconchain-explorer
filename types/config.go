@@ -216,3 +216,37 @@ type ServiceMonitoringConfiguration struct {
 	Name     string        `yaml:"name" envconfig:"NAME"`
 	Duration time.Duration `yaml:"duration" envconfig:"DURATION"`
 }
+
+type LocalTestnetConfigStub struct {
+	CONFIGNAME                       string `yaml:"CONFIG_NAME"`
+	PRESETBASE                       string `yaml:"PRESET_BASE"`
+	TERMINALTOTALDIFFICULTY          string `yaml:"TERMINAL_TOTAL_DIFFICULTY"`
+	TERMINALBLOCKHASH                string `yaml:"TERMINAL_BLOCK_HASH"`
+	TERMINALBLOCKHASHACTIVATIONEPOCH string `yaml:"TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"`
+	SAFESLOTSTOIMPORTOPTIMISTICALLY  string `yaml:"SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY"`
+	MINGENESISACTIVEVALIDATORCOUNT   string `yaml:"MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
+	MINGENESISTIME                   string `yaml:"MIN_GENESIS_TIME"`
+	GENESISFORKVERSION               string `yaml:"GENESIS_FORK_VERSION"`
+	GENESISDELAY                     string `yaml:"GENESIS_DELAY"`
+	ALTAIRFORKVERSION                string `yaml:"ALTAIR_FORK_VERSION"`
+	ALTAIRFORKEPOCH                  string `yaml:"ALTAIR_FORK_EPOCH"`
+	BELLATRIXFORKVERSION             string `yaml:"BELLATRIX_FORK_VERSION"`
+	BELLATRIXFORKEPOCH               string `yaml:"BELLATRIX_FORK_EPOCH"`
+	CAPELLAFORKVERSION               string `yaml:"CAPELLA_FORK_VERSION"`
+	CAPELLAFORKEPOCH                 string `yaml:"CAPELLA_FORK_EPOCH"`
+	SECONDSPERSLOT                   string `yaml:"SECONDS_PER_SLOT"`
+	SECONDSPERETH1BLOCK              string `yaml:"SECONDS_PER_ETH1_BLOCK"`
+	MINVALIDATORWITHDRAWABILITYDELAY string `yaml:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`
+	SHARDCOMMITTEEPERIOD             string `yaml:"SHARD_COMMITTEE_PERIOD"`
+	ETH1FOLLOWDISTANCE               string `yaml:"ETH1_FOLLOW_DISTANCE"`
+	SUBNETSPERNODE                   string `yaml:"SUBNETS_PER_NODE"`
+	INACTIVITYSCOREBIAS              string `yaml:"INACTIVITY_SCORE_BIAS"`
+	INACTIVITYSCORERECOVERYRATE      string `yaml:"INACTIVITY_SCORE_RECOVERY_RATE"`
+	EJECTIONBALANCE                  string `yaml:"EJECTION_BALANCE"`
+	MINPEREPOCHCHURNLIMIT            string `yaml:"MIN_PER_EPOCH_CHURN_LIMIT"`
+	CHURNLIMITQUOTIENT               string `yaml:"CHURN_LIMIT_QUOTIENT"`
+	PROPOSERSCOREBOOST               string `yaml:"PROPOSER_SCORE_BOOST"`
+	DEPOSITCHAINID                   string `yaml:"DEPOSIT_CHAIN_ID"`
+	DEPOSITNETWORKID                 string `yaml:"DEPOSIT_NETWORK_ID"`
+	DEPOSITCONTRACTADDRESS           string `yaml:"DEPOSIT_CONTRACT_ADDRESS"`
+}

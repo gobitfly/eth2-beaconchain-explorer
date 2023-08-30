@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"eth2-exporter/config"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -12,6 +13,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v3"
 
 	"flag"
 
@@ -27,27 +30,28 @@ import (
 )
 
 var opts = struct {
-	Command         string
-	User            uint64
-	TargetVersion   int64
-	StartEpoch      uint64
-	EndEpoch        uint64
-	StartDay        uint64
-	EndDay          uint64
-	Validator       uint64
-	StartBlock      uint64
-	EndBlock        uint64
-	BatchSize       uint64
-	DataConcurrency uint64
-	Transformers    string
-	Family          string
-	Key             string
-	DryRun          bool
+	Command              string
+	User                 uint64
+	TargetVersion        int64
+	StartEpoch           uint64
+	EndEpoch             uint64
+	StartDay             uint64
+	EndDay               uint64
+	Validator            uint64
+	StartBlock           uint64
+	EndBlock             uint64
+	BatchSize            uint64
+	DataConcurrency      uint64
+	Transformers         string
+	Family               string
+	Key                  string
+	DryRun               bool
+	FullConfigOutputPath string
 }{}
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, generate-config-from-testnet-stub")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -62,12 +66,18 @@ func main() {
 	flag.Uint64Var(&opts.DataConcurrency, "data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
+	flag.StringVar(&opts.FullConfigOutputPath, "output-path", "", "Path to write the full config to (for generate-config-from-testnet-stub command)")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
 
 	if *versionFlag {
 		fmt.Println(version.Version)
+		return
+	}
+
+	if opts.Command == "generate-config-from-testnet-stub" {
+		generateConfigFromTestnetStub(*configPath, opts.FullConfigOutputPath)
 		return
 	}
 
@@ -648,4 +658,129 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 	}
 
 	logrus.Info("historic price update run completed")
+}
+
+func generateConfigFromTestnetStub(configPath string, fullConfigOutputPath string) {
+
+	data, err := os.ReadFile(configPath)
+
+	if err != nil {
+		logrus.Fatalf("error reading config file: %v", err)
+	}
+
+	stub := &types.LocalTestnetConfigStub{}
+
+	err = yaml.Unmarshal(data, &stub)
+	if err != nil {
+		logrus.Fatalf("error parsing config stub: %v", err)
+	}
+
+	if stub.PRESETBASE == "mainnet" {
+		cfg := &types.ChainConfig{}
+
+		err := yaml.Unmarshal([]byte(config.MainnetChainYml), cfg)
+
+		if err != nil {
+			logrus.Fatalf("error initializing full config: %v", err)
+		}
+
+		cfg.TerminalTotalDifficulty = stub.TERMINALTOTALDIFFICULTY
+		cfg.TerminalBlockHash = stub.TERMINALBLOCKHASH
+		cfg.TerminalBlockHashActivationEpoch, err = strconv.ParseUint(stub.TERMINALBLOCKHASHACTIVATIONEPOCH, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.MinGenesisActiveValidatorCount, err = strconv.ParseUint(stub.MINGENESISACTIVEVALIDATORCOUNT, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.MinGenesisTime, err = strconv.ParseInt(stub.MINGENESISTIME, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.GenesisForkVersion = stub.GENESISFORKVERSION
+		cfg.GenesisDelay, err = strconv.ParseUint(stub.GENESISDELAY, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.AltairForkVersion = stub.ALTAIRFORKVERSION
+		cfg.AltairForkEpoch, err = strconv.ParseUint(stub.ALTAIRFORKEPOCH, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.BellatrixForkVersion = stub.BELLATRIXFORKEPOCH
+		cfg.BellatrixForkEpoch, err = strconv.ParseUint(stub.BELLATRIXFORKEPOCH, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.CappellaForkVersion = stub.CAPELLAFORKVERSION
+		cfg.CappellaForkEpoch, err = strconv.ParseUint(stub.CAPELLAFORKEPOCH, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.SecondsPerSlot, err = strconv.ParseUint(stub.SECONDSPERSLOT, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.SecondsPerEth1Block, err = strconv.ParseUint(stub.SECONDSPERETH1BLOCK, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.MinValidatorWithdrawabilityDelay, err = strconv.ParseUint(stub.MINVALIDATORWITHDRAWABILITYDELAY, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.ShardCommitteePeriod, err = strconv.ParseUint(stub.SHARDCOMMITTEEPERIOD, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.Eth1FollowDistance, err = strconv.ParseUint(stub.ETH1FOLLOWDISTANCE, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.InactivityScoreBias, err = strconv.ParseUint(stub.INACTIVITYSCOREBIAS, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.InactivityScoreRecoveryRate, err = strconv.ParseUint(stub.INACTIVITYSCORERECOVERYRATE, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.EjectionBalance, err = strconv.ParseUint(stub.EJECTIONBALANCE, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.MinPerEpochChurnLimit, err = strconv.ParseUint(stub.MINPEREPOCHCHURNLIMIT, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.ChurnLimitQuotient, err = strconv.ParseUint(stub.CHURNLIMITQUOTIENT, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.ProposerScoreBoost, err = strconv.ParseUint(stub.PROPOSERSCOREBOOST, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.DepositChainID, err = strconv.ParseUint(stub.DEPOSITCHAINID, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.DepositNetworkID, err = strconv.ParseUint(stub.DEPOSITNETWORKID, 10, 64)
+		if err != nil {
+			logrus.Fatalf("error overwriting ALTAIRFORKEPOCH: %v", err)
+		}
+		cfg.DepositContractAddress = stub.DEPOSITCONTRACTADDRESS
+
+		encodedConfig, err := yaml.Marshal(cfg)
+		if err != nil {
+			logrus.Fatalf("error encoding new chain config: %v", err)
+		}
+
+		err = os.WriteFile(fullConfigOutputPath, encodedConfig, 0664)
+		if err != nil {
+			logrus.Fatalf("error writing new chain config: %v", err)
+		}
+	}
+
 }
