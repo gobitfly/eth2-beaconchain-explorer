@@ -184,6 +184,16 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		formatCurrency = "Ether"
 	}
 
+	var err error
+	names := make(map[string]string)
+	for _, v := range withdrawals {
+		names[string(v.Address)] = ""
+	}
+	names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	tableData := make([][]interface{}, len(withdrawals))
 	for i, w := range withdrawals {
 		tableData[i] = []interface{}{
@@ -192,7 +202,7 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddressWithLimits(w.Address, names[string(w.Address)], false, "address", visibleDigitsForHash+5, 18, true))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6))),
 		}
 	}
@@ -340,6 +350,16 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 		filteredCount = totalCount
 	}
 
+	var err error
+	names := make(map[string]string)
+	for _, v := range blsChange {
+		names[string(v.Address)] = ""
+	}
+	names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	tableData := make([][]interface{}, len(blsChange))
 	for i, bls := range blsChange {
 		tableData[i] = []interface{}{
@@ -348,7 +368,7 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(bls.Validatorindex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(bls.Signature))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(bls.BlsPubkey))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(bls.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddressWithLimits(bls.Address, names[string(bls.Address)], false, "address", visibleDigitsForHash+5, 18, true))),
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"embed"
+	"encoding/hex"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -51,7 +52,9 @@ var maxSqlNumber = uint64(9223372036854775807)
 const MaxSqlInteger = 2147483647
 
 var addressLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{0,40}$`)
+var addressRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{40}$`)
 var blsLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{0,96}$`)
+var blsRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{96}$`)
 
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	// The golang sql driver does not properly implement PingContext
@@ -2281,6 +2284,10 @@ func GetTotalWithdrawals() (total uint64, err error) {
 }
 
 func GetWithdrawalsCountForQuery(query string) (uint64, error) {
+	t0 := time.Now()
+	defer func() {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("finished GetWithdrawalsCountForQuery")
+	}()
 	count := uint64(0)
 
 	withdrawalsQuery := `
@@ -2295,16 +2302,20 @@ func GetWithdrawalsCountForQuery(query string) (uint64, error) {
 	// Check whether the query can be used for a validator, slot or epoch search
 	if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
 		searchQuery := `
-				WHERE w.validatorindex = $1
-					OR block_slot = $1
-					OR (block_slot / $3) = $1
-					OR address_text LIKE ($2 || '%')`
+			WHERE w.validatorindex = $1
+				OR block_slot = $1
+				OR block_slot BETWEEN $1*$2 AND ($1+1)*$2-1`
 		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
-			uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
-	} else if addressLikeRE.MatchString(query) {
-		searchQuery := `WHERE address_text LIKE ($1 || '%')`
+			uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+
+	} else if addressRE.MatchString(query) {
+		searchQuery := `WHERE address = $1`
+		addr, err := hex.DecodeString(trimmedQuery)
+		if err != nil {
+			return 0, err
+		}
 		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
-			trimmedQuery)
+			addr)
 	}
 
 	if err != nil {
@@ -2315,6 +2326,10 @@ func GetWithdrawalsCountForQuery(query string) (uint64, error) {
 }
 
 func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string) ([]*types.Withdrawals, error) {
+	t0 := time.Now()
+	defer func() {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("finished GetWithdrawals")
+	}()
 	withdrawals := []*types.Withdrawals{}
 
 	if orderDir != "desc" && orderDir != "asc" {
@@ -2334,15 +2349,24 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 
 	withdrawalsQuery := `
 		SELECT 
-			w.block_slot as slot,
-			w.withdrawalindex as index,
-			w.validatorindex,
-			w.address,
-			w.amount
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
-		%s
-		ORDER BY %s %s
+			a.block_slot as slot, 
+			a.withdrawalindex as index, 
+			a.validatorindex,
+			a.address,
+			a.amount
+		FROM (
+			SELECT 
+				w.block_root,
+				w.block_slot,
+				w.withdrawalindex,
+				w.validatorindex,
+				w.address,
+				w.amount
+			FROM blocks_withdrawals w
+			%s 
+			ORDER BY %s %s
+		) a
+		INNER JOIN blocks b ON a.block_root = b.blockroot AND b.status = '1'
 		LIMIT $1
 		OFFSET $2`
 
@@ -2354,17 +2378,18 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 		if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
 			searchQuery := `
 				WHERE w.validatorindex = $3
-					OR block_slot = $3
-					OR (block_slot / $5) = $3
-					OR address_text LIKE ($4 || '%')`
-
+					OR w.block_slot = $3
+					OR w.block_slot BETWEEN $3*$4 AND ($3+1)*$4-1`
 			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
-				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
-		} else if addressLikeRE.MatchString(query) {
-			searchQuery := `WHERE address_text LIKE ($3 || '%')`
-
+				length, start, uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+		} else if addressRE.MatchString(query) {
+			searchQuery := `WHERE address = $3`
+			addr, err := hex.DecodeString(trimmedQuery)
+			if err != nil {
+				return nil, err
+			}
 			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
-				length, start, trimmedQuery)
+				length, start, addr)
 		}
 	} else {
 		err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, "", orderBy, orderDir), length, start)
@@ -2939,37 +2964,27 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 		FROM blocks_bls_change bls
 		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
 		%s
-		%s`
+		`
 
 	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
 	var err error = nil
-
-	joinQuery := `
-		LEFT JOIN (
-			SELECT 
-				validators.validatorindex as validatorindex,
-				eth1_deposits.from_address_text as deposit_address_text
-			FROM validators 
-			INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
-		) AS val ON val.validatorindex = bls.validatorindex`
 
 	// Check whether the query can be used for a validator, slot or epoch search
 	if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
 		searchQuery := `
 			WHERE bls.validatorindex = $1			
 				OR block_slot = $1
-				OR (block_slot / $3) = $1
-				OR pubkey_text LIKE ($2 || '%')
-				OR deposit_address_text LIKE ($2 || '%')`
-
-		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
-			uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
-	} else if blsLikeRE.MatchString(query) {
-		searchQuery := `
-				WHERE pubkey_text LIKE ($1 || '%')
-				OR deposit_address_text LIKE ($1 || '%')`
-		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, joinQuery, searchQuery),
-			trimmedQuery)
+				OR block_slot BETWEEN $1*$2 AND ($1+1)*$2-1`
+		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, searchQuery),
+			uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+	} else if blsRE.MatchString(query) {
+		searchQuery := `WHERE pubkey = $1`
+		pubkey, err := hex.DecodeString(trimmedQuery)
+		if err != nil {
+			return 0, err
+		}
+		err = ReaderDb.Select(&count, fmt.Sprintf(blsQuery, searchQuery),
+			pubkey)
 	}
 	if err != nil {
 		return 0, err
@@ -3006,7 +3021,6 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 		FROM blocks_bls_change bls
 		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
 		%s
-		%s
 		ORDER BY bls.%s %s
 		LIMIT $1
 		OFFSET $2`
@@ -3015,40 +3029,28 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 	var err error = nil
 
 	if trimmedQuery != "" {
-		joinQuery := `
-			LEFT JOIN (
-				SELECT 
-					validators.validatorindex as validatorindex,
-					eth1_deposits.from_address_text as deposit_address_text
-				FROM validators 
-				INNER JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey
-			) AS val ON val.validatorindex = bls.validatorindex`
-
 		// Check whether the query can be used for a validator, slot or epoch search
 		if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
 			searchQuery := `
 				WHERE bls.validatorindex = $3			
 					OR block_slot = $3
-					OR (block_slot / $5) = $3
-					OR pubkey_text LIKE ($4 || '%')
-					OR deposit_address_text LIKE ($4 || '%')`
-
-			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
-				length, start, uiQuery, trimmedQuery, utils.Config.Chain.Config.SlotsPerEpoch)
-		} else if blsLikeRE.MatchString(query) {
-			searchQuery := `
-				WHERE pubkey_text LIKE ($3 || '%')
-				OR deposit_address_text LIKE ($3 || '%')`
-
-			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, joinQuery, searchQuery, orderBy, orderDir),
-				length, start, trimmedQuery)
+					OR block_slot BETWEEN $3*$4 AND ($3+1)*$4-1`
+			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+				length, start, uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
+		} else if blsRE.MatchString(query) {
+			searchQuery := `WHERE pubkey = $3`
+			pubkey, err := hex.DecodeString(trimmedQuery)
+			if err != nil {
+				return nil, err
+			}
+			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
+				length, start, pubkey)
 		}
 		if err != nil {
 			return nil, err
 		}
-
 	} else {
-		err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, "", "", orderBy, orderDir), length, start)
+		err := ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, "", orderBy, orderDir), length, start)
 		if err != nil {
 			return nil, err
 		}
