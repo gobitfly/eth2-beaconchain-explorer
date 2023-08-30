@@ -1,6 +1,7 @@
 chain:
   name: local-testnet
   configPath: './.lighthouse/local-testnet/testnet/config.yaml'
+  genesisTimestamp: 1693397704
 readerDatabase:
   name: db
   host: 127.0.0.1
