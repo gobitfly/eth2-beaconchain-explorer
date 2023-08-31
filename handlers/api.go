@@ -871,20 +871,20 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		if len(queryIndices) > 0 {
 			g.Go(func() error {
 				start := time.Now()
-				validatorsData, err = validators(queryIndices)
+				validatorsData, err = getGeneralValidatorInforForAppDashboard(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
-					logger.Warnf("validators(%v) took longer than 10 sec", queryIndices)
+					logger.Warnf("getGeneralValidatorInforForAppDashboard(%v) took longer than 10 sec", queryIndices)
 				}
 				return err
 			})
 
 			g.Go(func() error {
 				start := time.Now()
-				validatorEffectivenessData, err = validatorEffectiveness(epoch-1, queryIndices)
+				validatorEffectivenessData, err = getValidatorEffectiveness(epoch-1, queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
-					logger.Warnf("validatorEffectiveness(%v, %v) took longer than 10 sec", epoch-1, queryIndices)
+					logger.Warnf("getValidatorEffectiveness(%v, %v) took longer than 10 sec", epoch-1, queryIndices)
 				}
 				return err
 			})
@@ -1327,9 +1327,14 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 	return utils.SqlRowsToJSON(rows)
 }
 
-func validators(queryIndices []uint64) ([]interface{}, error) {
+func getGeneralValidatorInforForAppDashboard(queryIndices []uint64) ([]interface{}, error) {
 	// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
 	rows, err := db.ReaderDb.Query(`
+	WITH maxValidatorIndex AS (
+		SELECT MAX(validatorindex)+1 as total_count
+		FROM validator_performance
+		WHERE validatorindex >= 0 AND validatorindex < 2147483647
+	)
 	SELECT 
 		validators.validatorindex,
 		pubkey,
@@ -1347,7 +1352,7 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d,
 		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal,
 		COALESCE(validator_performance.rank7d, 0) AS rank7d,
-		COALESCE(validator_performance_count.total_count, 0) AS rankcount,
+		((rank7d::float * 100) / COALESCE((SELECT total_count FROM maxValidatorIndex), 1)) as rankpercentage,
 		w.total as total_withdrawals
 	FROM validators
 	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
@@ -1359,7 +1364,6 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 		WHERE validatorindex = ANY($1)
 		GROUP BY validatorindex
 	) as w ON w.index = validators.validatorindex
-	LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex >= 0 AND validatorindex < 2147483647) validator_performance_count(total_count) ON true
 	WHERE validators.validatorindex = ANY($1)
 	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
 	if err != nil {
@@ -1370,19 +1374,6 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 	data, err := utils.SqlRowsToJSON(rows)
 	if err != nil {
 		return nil, fmt.Errorf("error converting validators to json: %w", err)
-	}
-
-	// get rankCount once so it can be reused later (part of query above to reduce db connections)
-	rankCount := int64(0)
-	if len(data) > 0 {
-		eMap, ok := data[0].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("error converting validator data to map[string]interface{}")
-		}
-		rankCount, ok = eMap["rankcount"].(int64)
-		if !ok {
-			return nil, fmt.Errorf("error converting rankcount to int64")
-		}
 	}
 
 	g := new(errgroup.Group)
@@ -1449,23 +1440,12 @@ func validators(queryIndices []uint64) ([]interface{}, error) {
 				eMap["performancetotal"] = eMap["performancetotal"].(int64) + currentDayIncome[uint64(validatorIndex)]
 			}
 		}
-
-		if rankCount > 0 {
-			rank7d, ok := eMap["rank7d"].(int64)
-			if !ok {
-				logger.Errorf("error converting rank7d to int64")
-				continue
-			}
-			if rank7d > 0 {
-				eMap["rankPercentage"] = (float64(rank7d) / float64(rankCount)) * 100
-			}
-		}
 	}
 
 	return data, nil
 }
 
-func validatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
+func getValidatorEffectiveness(epoch uint64, indices []uint64) ([]*types.ValidatorEffectiveness, error) {
 	data, err := db.BigtableClient.GetValidatorEffectiveness(indices, epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error getting validator effectiveness from bigtable: %w", err)
@@ -2359,7 +2339,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
+	data, err := getValidatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -2401,7 +2381,7 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
+	data, err := getValidatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -3311,7 +3291,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 		}
 	}
 
-	efficiencyData, err := validatorEffectiveness(services.LatestEpoch()-1, queryIndices)
+	efficiencyData, err := getValidatorEffectiveness(services.LatestEpoch()-1, queryIndices)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not parse db results")
 		return
