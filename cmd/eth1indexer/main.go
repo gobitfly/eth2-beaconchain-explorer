@@ -112,7 +112,15 @@ func main() {
 	defer db.WriterDb.Close()
 
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
-		utils.LogFatal(nil, "no erigon node url provided", 0)
+
+		if utils.Config.Eth1ErigonEndpoint == "" {
+
+			utils.LogFatal(nil, "no erigon node url provided", 0)
+		} else {
+			logrus.Info("applying erigon endpoint from config")
+			*erigonEndpoint = utils.Config.Eth1ErigonEndpoint
+		}
+
 	}
 
 	logrus.Infof("using erigon node at %v", *erigonEndpoint)
