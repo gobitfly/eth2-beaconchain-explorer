@@ -64,19 +64,9 @@ bash provision-explorer-config.sh
 ```
 This will generate a config.yml to be used by the explorer and then create the bigtable & postgres schema
 
-# Start the indexer
+# Start the explorer modules
 ```
-INDEXER_ENABLED=true ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
+cd ~/eth2-beaconchain-explorer/local-deployment/
+docker-compose up -d
 ```
-# Start the frontend-data-updater
-```
-~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
-```
-# Start the eth1indexer
-```
-~/eth2-beaconchain-explorer/bin/eth1indexer --config ~/eth2-beaconchain-explorer/local-deployment/config.yml -blocks.concurrency 1 --balances.enabled
-```
-# Start the frontend
-```
-FRONTEND_ENABLED=true ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
-```
+You can then start / stop the exporter submodules using `docker-compose`
