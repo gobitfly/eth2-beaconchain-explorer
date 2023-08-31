@@ -53,38 +53,27 @@ sudo apt install build-essential
 make all
 make misc
 ```
-# Start postgres, redis & little_bigtable
+# Start postgres, redis, little_bigtable & the eth test network
 ```
 cd ~/eth2-beaconchain-explorer/local-deployment/
-docker compose up -d
+kurtosis clean -a && kurtosis run --enclave my-testnet . "$(cat network-params.json)"
 ```
-Redis will be available on port 6379, little_bigtable on port 9000 and postgres on port 5432 (username `postgres`, password `pass`, db `db`)
-# Initialize the bigtable schema
+# Generate the explorer config file for the deployed testnet
 ```
-bash ~/eth2-beaconchain-explorer/local-deployment/init-bigtable.sh
+cd ~/eth2-beaconchain-explorer/local-deployment/
+bash provision-explorer-config.sh
 ```
-# Start up the local testnet nodes
-```
-kurtosis run --enclave my-testnet github.com/kurtosis-tech/eth-network-package "$(cat ~/eth2-beaconchain-explorer/local-deployment/network-params.json)"
-```
-Take note of the http API ports of the el & cl clients.
-# Copy the example config file and add the el & cl client ports
-```
-cp ~/eth2-beaconchain-explorer/local-deployment/testnet-config-example.yml ~/testnet/explorer-config.yml
-```
-# Initialize the db schema
-```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/testnet/explorer-config.yml -command applyDbSchema
-```
+This will generate a config.yml to be used by the explorer and then create the bigtable & postgres schema
+
 # Start the indexer
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/testnet/explorer-config.yml
+INDEXER_ENABLED=true  ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
 ```
 # Start the frontend-data-updater
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/testnet/explorer-config.yml
+~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
 ```
 # Start the frontend
 ```
-INDEXER_ENABLED=false FRONTEND_ENABLED=true BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/testnet/explorer-config.yml
+FRONTEND_ENABLED=true ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
 ```

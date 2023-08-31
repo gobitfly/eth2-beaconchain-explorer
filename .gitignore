@@ -29,3 +29,4 @@ lastAttestationCache
 cmd/forkwatch
 **/.DS_Store
 _gitignore/
+local-deployment/config.yml

@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -67,6 +68,15 @@ type Bigtable struct {
 }
 
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
+
+	if utils.Config.Bigtable.Emulator {
+		logger.Infof("using emulated local bigtable environment, setting BIGTABLE_EMULATOR_HOST env variable to 127.0.0.1:%d", utils.Config.Bigtable.EmulatorPort)
+		err := os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("127.0.0.1:%d", utils.Config.Bigtable.EmulatorPort))
+
+		if err != nil {
+			logger.Fatalf("unable to set bigtable emulator environment variable: %v", err)
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 

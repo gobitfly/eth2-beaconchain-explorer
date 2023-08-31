@@ -26,8 +26,10 @@ type Config struct {
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 	} `yaml:"writerDatabase"`
 	Bigtable struct {
-		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
-		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+		Project      string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+		Instance     string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+		Emulator     bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
+		EmulatorPort int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
 	} `yaml:"bigtable"`
 	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
