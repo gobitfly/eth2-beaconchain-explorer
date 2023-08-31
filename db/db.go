@@ -1022,7 +1022,13 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	if data.Epoch == 0 {
 		var err error
-		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory([]uint64{}, 0, 0)
+
+		indices := make([]uint64, 0, len(data.Validators))
+
+		for _, validator := range data.Validators {
+			indices = append(indices, validator.Index)
+		}
+		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory(indices, 0, 0)
 		if err != nil {
 			return err
 		}
