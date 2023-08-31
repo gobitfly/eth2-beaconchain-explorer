@@ -87,6 +87,7 @@ HOST="127.0.0.1:$LBT_PORT"
 
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createtable beaconchain_validator_balances
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_balances vb
+BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_balances ha
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createtable beaconchain_validator_attestations
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_attestations at
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createtable beaconchain_validator_proposals

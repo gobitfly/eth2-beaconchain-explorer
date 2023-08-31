@@ -1,7 +1,10 @@
 version: '3'
 services:
   indexer:
-    build: ../
+    build:
+      context: ../
+      args:
+        - target=explorer
     command: ./explorer -config /app/config.yml
     volumes:
       - ./config.yml:/app/config.yml
@@ -9,31 +12,46 @@ services:
       - INDEXER_ENABLED=true
     network_mode: "host"
   eth1indexer:
-    build: ../
-    command: ./eth1indexer -config /app/config.yml -blocks.concurrency 1 -data.concurrency 1 --balances.enabled
+    build: 
+      context: ../
+      args:
+        - target=eth1indexer
+    command: ./eth1indexer -config /app/config.yml -blocks.concurrency 1 -blocks.tracemode 'geth' -data.concurrency 1 --balances.enabled
     volumes:
       - ./config.yml:/app/config.yml
     network_mode: "host"
   rewards-exporter:
-    build: ../
+    build: 
+      context: ../
+      args:
+        - target=rewards-exporter
     command: ./rewards-exporter -config /app/config.yml
     volumes:
       - ./config.yml:/app/config.yml
     network_mode: "host"
   statistics:
-    build: ../
+    build: 
+      context: ../
+      args:
+        - target=stats
     command: ./statistics -config /app/config.yml --charts.enabled --graffiti.enabled -validators.enabled
     volumes:
       - ./config.yml:/app/config.yml
     network_mode: "host"
   frontend-data-updater:
-    build: ../
+    build: 
+      context: ../
+      args:
+        - target=frontend-data-updater
     command: ./frontend-data-updater -config /app/config.yml
     volumes:
       - ./config.yml:/app/config.yml
     network_mode: "host"
   frontend:
-    build: ../
+    build: 
+      context: ../
+      args:
+        - target=explorer
     command: ./explorer -config /app/config.yml
     volumes:
       - ./config.yml:/app/config.yml

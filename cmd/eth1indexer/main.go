@@ -46,6 +46,7 @@ func main() {
 	offsetBlocks := flag.Int64("blocks.offset", 100, "Blocks offset")
 	checkBlocksGaps := flag.Bool("blocks.gaps", false, "Check for gaps in the blocks table")
 	checkBlocksGapsLookback := flag.Int("blocks.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
+	traceMode := flag.String("blocks.tracemode", "parity/geth", "Trace mode to use, can bei either 'parity', 'geth' or 'parity/geth' for both")
 
 	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	startData := flag.Int64("data.start", 0, "Block to start indexing")
@@ -216,7 +217,7 @@ func main() {
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
 	if *block != 0 {
-		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks)
+		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks, *traceMode)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *block, *block, *concurrencyBlocks)
 		}
@@ -241,7 +242,7 @@ func main() {
 	}
 
 	if *endBlocks != 0 && *startBlocks < *endBlocks {
-		err = IndexFromNode(bt, client, *startBlocks, *endBlocks, *concurrencyBlocks)
+		err = IndexFromNode(bt, client, *startBlocks, *endBlocks, *concurrencyBlocks, *traceMode)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *startBlocks, *endBlocks, *concurrencyBlocks)
 		}
@@ -311,7 +312,7 @@ func main() {
 						endBlock = int64(lastBlockFromNode)
 					}
 
-					err = IndexFromNode(bt, client, startBlock, endBlock, *concurrencyBlocks)
+					err = IndexFromNode(bt, client, startBlock, endBlock, *concurrencyBlocks, *traceMode)
 					if err != nil {
 						errMsg := "error indexing from node"
 						errFields := map[string]interface{}{
@@ -723,7 +724,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 	// }
 }
 
-func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concurrency int64) error {
+func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concurrency int64, traceMode string) error {
 	ctx := context.Background()
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(int(concurrency))
@@ -744,7 +745,7 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 			}
 
 			blockStartTs := time.Now()
-			bc, timings, err := client.GetBlock(i)
+			bc, timings, err := client.GetBlock(i, traceMode)
 			if err != nil {
 				return fmt.Errorf("error getting block: %v from ethereum node err: %w", i, err)
 			}
