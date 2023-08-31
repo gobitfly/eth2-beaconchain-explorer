@@ -86,5 +86,5 @@ BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend
 ```
 # Start the frontend
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/testnet/explorer-config.yml
+INDEXER_ENABLED=false FRONTEND_ENABLED=true BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/testnet/explorer-config.yml
 ```
