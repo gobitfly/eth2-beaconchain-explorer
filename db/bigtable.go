@@ -37,8 +37,10 @@ const (
 
 	SUM_COLUMN = "sum"
 
-	max_block_number = 1000000000
-	max_epoch        = 1000000000
+	MAX_BLOCK_NUMBER = 1000000000 - 1
+	MAX_EPOCH        = 1000000000 - 1
+
+	MAX_BATCH_MUTATIONS = 100000
 )
 
 type Bigtable struct {
@@ -132,7 +134,7 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	rowKeyData := fmt.Sprintf("u:%s:p:%s:m:%v", reversePaddedUserID(userID), process, machine)
+	rowKeyData := fmt.Sprintf("u:%s:p:%s:m:%v", bigtable.reversePaddedUserID(userID), process, machine)
 
 	ts := gcp_bigtable.Now()
 	rateLimitKey := fmt.Sprintf("%s:%d", rowKeyData, ts.Time().Minute())
@@ -146,7 +148,7 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 
 	// for limiting machines per user, add the machine field to a redis set
 	// bucket period is 15mins
-	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), ts.Time().Minute()%15)
+	machineLimitKey := fmt.Sprintf("%s:%d", bigtable.reversePaddedUserID(userID), ts.Time().Minute()%15)
 	pipe := bigtable.redisCache.Pipeline()
 	pipe.SAdd(ctx, machineLimitKey, machine)
 	pipe.Expire(ctx, machineLimitKey, time.Minute*15)
@@ -174,7 +176,7 @@ func (bigtable Bigtable) getMachineMetricNamesMap(userID uint64, searchDepth int
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	rangePrefix := fmt.Sprintf("u:%s:p:", reversePaddedUserID(userID))
+	rangePrefix := fmt.Sprintf("u:%s:p:", bigtable.reversePaddedUserID(userID))
 
 	filter := gcp_bigtable.ChainFilters(
 		gcp_bigtable.FamilyFilter(MACHINE_METRICS_COLUMN_FAMILY),
@@ -219,7 +221,7 @@ func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, e
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	machineLimitKey := fmt.Sprintf("%s:%d", reversePaddedUserID(userID), time.Now().Minute()%15)
+	machineLimitKey := fmt.Sprintf("%s:%d", bigtable.reversePaddedUserID(userID), time.Now().Minute()%15)
 
 	card, err := bigtable.redisCache.SCard(ctx, machineLimitKey).Result()
 	if err != nil {
@@ -274,7 +276,7 @@ func getMachineMetrics[T types.MachineMetricSystem | types.MachineMetricNode | t
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", reversePaddedUserID(userID), process)
+	rangePrefix := fmt.Sprintf("u:%s:p:%s:m:", bigtable.reversePaddedUserID(userID), process)
 	res := make([]*T, 0)
 	if offset <= 0 {
 		offset = 1
@@ -314,8 +316,8 @@ func getMachineMetrics[T types.MachineMetricSystem | types.MachineMetricNode | t
 	return res, nil
 }
 
-func GetMachineRowKey(userID uint64, process string, machine string) string {
-	return fmt.Sprintf("u:%s:p:%s:m:%s", reversePaddedUserID(userID), process, machine)
+func (bigtable Bigtable) GetMachineRowKey(userID uint64, process string, machine string) string {
+	return fmt.Sprintf("u:%s:p:%s:m:%s", bigtable.reversePaddedUserID(userID), process, machine)
 }
 
 // Returns a map[userID]map[machineName]machineData
@@ -415,10 +417,11 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	// start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
-	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keys := make([]string, 0, 100000)
+	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
-	for i, validator := range validators {
+	epochKey := bigtable.reversedPaddedEpoch(epoch)
+	for _, validator := range validators {
 		balanceEncoded := make([]byte, 8)
 		binary.LittleEndian.PutUint64(balanceEncoded, validator.Balance)
 
@@ -428,12 +431,12 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 		combined := append(balanceEncoded, effectiveBalanceEncoded...)
 		mut := &gcp_bigtable.Mutation{}
 		mut.Set(VALIDATOR_BALANCES_FAMILY, "b", ts, combined)
-		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.Index), reversedPaddedEpoch(epoch))
+		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.Index), epochKey)
 
 		muts = append(muts, mut)
 		keys = append(keys, key)
 
-		if i%100000 == 0 {
+		if len(muts) == MAX_BATCH_MUTATIONS {
 			errs, err := bigtable.tableValidatorBalances.ApplyBulk(ctx, keys, muts)
 
 			if err != nil {
@@ -443,8 +446,8 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 			for _, err := range errs {
 				return err
 			}
-			muts = make([]*gcp_bigtable.Mutation, 0, 100000)
-			keys = make([]string, 0, 100000)
+			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+			keys = make([]string, 0, MAX_BATCH_MUTATIONS)
 		}
 	}
 
@@ -487,21 +490,21 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 		validatorsPerSlot[attesterslot] = append(validatorsPerSlot[attesterslot], validator)
 	}
 
-	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keys := make([]string, 0, 100000)
+	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for slot, validators := range validatorsPerSlot {
 
 		for _, validator := range validators {
 			mut := gcp_bigtable.NewMutation()
-			key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), reversedPaddedEpoch(epoch))
+			key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), bigtable.reversedPaddedEpoch(epoch))
 			mut.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", slot), ts, []byte{})
 
 			muts = append(muts, mut)
 			keys = append(keys, key)
 		}
 
-		if len(muts)%100000 == 0 {
+		if len(muts) == MAX_BATCH_MUTATIONS {
 			errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keys, muts)
 
 			if err != nil {
@@ -511,8 +514,8 @@ func (bigtable *Bigtable) SaveAttestationAssignments(epoch uint64, assignments m
 			for _, err := range errs {
 				return err
 			}
-			muts = make([]*gcp_bigtable.Mutation, 0, 100000)
-			keys = make([]string, 0, 100000)
+			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+			keys = make([]string, 0, MAX_BATCH_MUTATIONS)
 		}
 	}
 
@@ -539,14 +542,14 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
-	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keys := make([]string, 0, 100000)
+	muts := make([]*gcp_bigtable.Mutation, 0, len(assignments))
+	keys := make([]string, 0, len(assignments))
 
 	for slot, validator := range assignments {
 		mut := gcp_bigtable.NewMutation()
 		mut.Set(PROPOSALS_FAMILY, "p", ts, []byte{})
 
-		key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), reversedPaddedEpoch(epoch), reversedPaddedSlot(slot))
+		key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), bigtable.reversedPaddedEpoch(epoch), bigtable.reversedPaddedSlot(slot))
 
 		muts = append(muts, mut)
 		keys = append(keys, key)
@@ -576,20 +579,20 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
-	var muts []*gcp_bigtable.Mutation
-	var keys []string
+	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for i := startSlot; i <= endSlot; i++ {
 		for _, validator := range validators {
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(SYNC_COMMITTEES_FAMILY, "s", ts, []byte{})
 
-			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), reversedPaddedEpoch(i/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(i))
+			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), bigtable.reversedPaddedEpoch(utils.EpochOfSlot(i)), bigtable.reversedPaddedSlot(i))
 
 			muts = append(muts, mut)
 			keys = append(keys, key)
 
-			if len(muts)%100000 == 0 {
+			if len(muts) == MAX_BATCH_MUTATIONS {
 				logger.Infof("saving %v mutations for sync duties", len(muts))
 				errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
 
@@ -603,8 +606,8 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 					}
 				}
 
-				muts = make([]*gcp_bigtable.Mutation, 0, 100000)
-				keys = make([]string, 0, 100000)
+				muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+				keys = make([]string, 0, MAX_BATCH_MUTATIONS)
 			}
 		}
 
@@ -681,20 +684,20 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 		}
 	}
 
-	mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keysInclusionSlot := make([]string, 0, 100000)
+	mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keysInclusionSlot := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for attestedSlot, inclusions := range attestationsBySlot {
 		mutLastAttestationSlot := gcp_bigtable.NewMutation()
 		mutLastAttestationSlotSet := false
 
-		epoch := attestedSlot / utils.Config.Chain.Config.SlotsPerEpoch
+		epoch := utils.EpochOfSlot(attestedSlot)
 		bigtable.lastAttestationCacheMux.Lock()
 		for validator, inclusionSlot := range inclusions {
 
 			mutInclusionSlot := gcp_bigtable.NewMutation()
-			mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", attestedSlot), gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
-			key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), reversedPaddedEpoch(epoch))
+			mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", attestedSlot), gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-inclusionSlot)*1000), []byte{})
+			key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), bigtable.reversedPaddedEpoch(epoch))
 
 			mutsInclusionSlot = append(mutsInclusionSlot, mutInclusionSlot)
 			keysInclusionSlot = append(keysInclusionSlot, key)
@@ -709,7 +712,7 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 
 		attstart := time.Now()
 
-		if len(mutsInclusionSlot)%100000 == 0 {
+		if len(mutsInclusionSlot) == MAX_BATCH_MUTATIONS {
 			errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 			if err != nil {
 				return err
@@ -718,8 +721,8 @@ func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.B
 				return err
 			}
 			logger.Infof("applied attestation mutations in %v", time.Since(attstart))
-			mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, 100000)
-			keysInclusionSlot = make([]string, 0, 100000)
+			mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+			keysInclusionSlot = make([]string, 0, MAX_BATCH_MUTATIONS)
 		}
 		if mutLastAttestationSlotSet {
 			err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
@@ -775,8 +778,8 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 		return slots[i] < slots[j]
 	})
 
-	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keys := make([]string, 0, 100000)
+	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for _, slot := range slots {
 		for _, b := range blocks[slot] {
@@ -785,8 +788,8 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 				continue
 			}
 			mut := gcp_bigtable.NewMutation()
-			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((max_block_number-b.Slot)*1000), []byte{})
-			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(b.Proposer), reversedPaddedEpoch(b.Slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(b.Slot))
+			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-b.Slot)*1000), []byte{})
+			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(b.Proposer), bigtable.reversedPaddedEpoch(utils.EpochOfSlot(b.Slot)), bigtable.reversedPaddedSlot(b.Slot))
 
 			muts = append(muts, mut)
 			keys = append(keys, key)
@@ -847,18 +850,18 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 		return nil
 	}
 
-	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keys := make([]string, 0, 100000)
+	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for slot, validators := range dutiesBySlot {
 		for validator, participated := range validators {
 			mut := gcp_bigtable.NewMutation()
 			if participated {
-				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((max_block_number-slot)*1000), []byte{})
+				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-slot)*1000), []byte{})
 			} else {
 				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp(0), []byte{})
 			}
-			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), reversedPaddedEpoch(slot/utils.Config.Chain.Config.SlotsPerEpoch), reversedPaddedSlot(slot))
+			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), bigtable.reversedPaddedEpoch(utils.EpochOfSlot(slot)), bigtable.reversedPaddedSlot(slot))
 			muts = append(muts, mut)
 			keys = append(keys, key)
 		}
@@ -953,7 +956,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 
 					resMux.Lock()
 					res[validator] = append(res[validator], &types.ValidatorBalance{
-						Epoch:            max_epoch - epoch,
+						Epoch:            MAX_EPOCH - epoch,
 						Balance:          balance,
 						EffectiveBalance: effectiveBalance,
 						Index:            validator,
@@ -1042,10 +1045,10 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 						return false
 					}
-					inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
+					inclusionSlot := MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 
 					status := uint64(1)
-					if inclusionSlot == max_block_number {
+					if inclusionSlot == MAX_BLOCK_NUMBER {
 						inclusionSlot = 0
 						status = 0
 					} else if orphanedSlotsMap[inclusionSlot] {
@@ -1067,7 +1070,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 					} else {
 						res[validator] = append(res[validator], &types.ValidatorAttestation{
 							Index:          validator,
-							Epoch:          attesterSlot / utils.Config.Chain.Config.SlotsPerEpoch,
+							Epoch:          utils.EpochOfSlot(attesterSlot),
 							AttesterSlot:   attesterSlot,
 							CommitteeIndex: 0,
 							Status:         status,
@@ -1212,10 +1215,10 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 						return false
 					}
 
-					inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
+					inclusionSlot := MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 
 					status := uint64(1)
-					if inclusionSlot == max_block_number {
+					if inclusionSlot == MAX_BLOCK_NUMBER {
 						status = 0
 					}
 
@@ -1302,11 +1305,11 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 						return false
 					}
-					slot = max_block_number - slot
-					inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
+					slot = MAX_BLOCK_NUMBER - slot
+					inclusionSlot := MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 
 					status := uint64(1) // 1: participated
-					if inclusionSlot == max_block_number {
+					if inclusionSlot == MAX_BLOCK_NUMBER {
 						inclusionSlot = 0
 						status = 0 // 0: missed
 					}
@@ -1580,11 +1583,11 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 						return false
 					}
-					proposalSlot = max_block_number - proposalSlot
-					inclusionSlot := max_block_number - uint64(r[PROPOSALS_FAMILY][0].Timestamp)/1000
+					proposalSlot = MAX_BLOCK_NUMBER - proposalSlot
+					inclusionSlot := MAX_BLOCK_NUMBER - uint64(r[PROPOSALS_FAMILY][0].Timestamp)/1000
 
 					status := uint64(1)
-					if inclusionSlot == max_block_number {
+					if inclusionSlot == MAX_BLOCK_NUMBER {
 						inclusionSlot = 0
 						status = 2
 					}
@@ -1636,8 +1639,8 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 
 	total := &itypes.ValidatorEpochIncome{}
 
-	muts := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keys := make([]string, 0, 100000)
+	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	mutsCount := 0
 	for i, rewardDetails := range rewards {
@@ -1650,13 +1653,13 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 
 		mut := &gcp_bigtable.Mutation{}
 		mut.Set(INCOME_DETAILS_COLUMN_FAMILY, "i", ts, data)
-		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(i), reversedPaddedEpoch(epoch))
+		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(i), bigtable.reversedPaddedEpoch(epoch))
 
 		muts = append(muts, mut)
 		keys = append(keys, key)
 		mutsCount++
 
-		if mutsCount%100000 == 0 {
+		if len(muts) == MAX_BATCH_MUTATIONS {
 			errs, err := bigtable.tableValidatorIncomeDetails.ApplyBulk(ctx, keys, muts)
 
 			if err != nil {
@@ -1665,8 +1668,8 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 			for _, err := range errs {
 				return err
 			}
-			muts = make([]*gcp_bigtable.Mutation, 0, 100000)
-			keys = make([]string, 0, 100000)
+			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+			keys = make([]string, 0, MAX_BATCH_MUTATIONS)
 		}
 
 		total.AttestationHeadReward += rewardDetails.AttestationHeadReward
@@ -1685,6 +1688,17 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 		total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, rewardDetails.TxFeeRewardWei)
 	}
 
+	if len(muts) > 0 {
+		errs, err := bigtable.tableValidatorIncomeDetails.ApplyBulk(ctx, keys, muts)
+
+		if err != nil {
+			return err
+		}
+		for _, err := range errs {
+			return err
+		}
+	}
+
 	sum, err := proto.Marshal(total)
 	if err != nil {
 		return err
@@ -1693,7 +1707,7 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 	mut := &gcp_bigtable.Mutation{}
 	mut.Set(STATS_COLUMN_FAMILY, SUM_COLUMN, ts, sum)
 
-	err = bigtable.tableValidatorIncomeDetails.Apply(ctx, fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, reversedPaddedEpoch(epoch)), mut)
+	err = bigtable.tableValidatorIncomeDetails.Apply(ctx, fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(epoch)), mut)
 	if err != nil {
 		return err
 	}
@@ -1726,7 +1740,7 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 	filter := gcp_bigtable.LatestNFilter(1)
 	ctx := context.Background()
 
-	prefixEpochRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:b:%s", bigtable.chainId, reversedPaddedEpoch(epoch)))
+	prefixEpochRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:b:%s", bigtable.chainId, bigtable.reversedPaddedEpoch(epoch)))
 
 	err := bigtable.tableBeaconchain.ReadRows(ctx, prefixEpochRange, func(r gcp_bigtable.Row) bool {
 		// logger.Infof("processing row %v", r.Key())
@@ -1739,7 +1753,7 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 			return false
 		}
 
-		rowKeyEpoch = max_epoch - rowKeyEpoch
+		rowKeyEpoch = MAX_EPOCH - rowKeyEpoch
 
 		if epoch != rowKeyEpoch {
 			logger.Errorf("retrieved different epoch than requested, requested: %d, retrieved: %d", epoch, rowKeyEpoch)
@@ -1804,7 +1818,7 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 	// logger.Infof("retrieved epoch data for %d validators in %v", len(epochData), time.Since(start))
 	// start = time.Now()
 
-	prefixEpochSlotRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, reversedPaddedEpoch(epoch)))
+	prefixEpochSlotRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:%s:s:", bigtable.chainId, bigtable.reversedPaddedEpoch(epoch)))
 
 	err = bigtable.tableBeaconchain.ReadRows(ctx, prefixEpochSlotRange, func(r gcp_bigtable.Row) bool {
 		// logger.Infof("processing row %v", r.Key())
@@ -1817,7 +1831,7 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 			return false
 		}
 
-		rowKeyEpoch = max_epoch - rowKeyEpoch
+		rowKeyEpoch = MAX_EPOCH - rowKeyEpoch
 
 		if epoch != rowKeyEpoch {
 			logger.Errorf("retrieved different epoch than requested, requested: %d, retrieved: %d", epoch, rowKeyEpoch)
@@ -1828,7 +1842,7 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 			logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 			return false
 		}
-		slot = max_block_number - slot
+		slot = MAX_BLOCK_NUMBER - slot
 
 		// logger.Infof("epoch is %d, slot is %d", rowKeyEpoch, slot)
 
@@ -1845,14 +1859,16 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 				inclusionSlot := uint64(0)
 
 				if ri.Timestamp > 0 {
-					inclusionSlot = max_block_number - uint64(ri.Timestamp)/1000
+					inclusionSlot = MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 				}
 
 				// logger.Infof("retrieved field %s from column family %s for validator %d", ri.Column, columnFamily, validator)
 
 				if epochData[validator] == nil {
 					epochData[validator] = &validatorEpochData{
-						ValidatorIndex: validator,
+						ValidatorIndex:    validator,
+						Proposals:         make(map[uint64]uint64),
+						SyncParticipation: make(map[uint64]uint64),
 					}
 				}
 
@@ -1902,18 +1918,18 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 	// start = time.Now()
 
 	i := 0
-	mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keysInclusionSlot := make([]string, 0, 100000)
+	mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keysInclusionSlot := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for _, validator := range epochData {
 		mutInclusionSlot := gcp_bigtable.NewMutation()
-		mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator.AttestationTargetSlot), gcp_bigtable.Timestamp((max_block_number-validator.AttestationInclusionSlot)*1000), []byte{})
-		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), reversedPaddedEpoch(epoch))
+		mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator.AttestationTargetSlot), gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-validator.AttestationInclusionSlot)*1000), []byte{})
+		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), bigtable.reversedPaddedEpoch(epoch))
 
 		mutsInclusionSlot = append(mutsInclusionSlot, mutInclusionSlot)
 		keysInclusionSlot = append(keysInclusionSlot, key)
 
-		if i%100000 == 0 {
+		if len(mutsInclusionSlot) == MAX_BATCH_MUTATIONS {
 			errs, err := bigtable.tableValidatorAttestations.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 			if err != nil {
 				return err
@@ -1921,8 +1937,8 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 			for _, err := range errs {
 				return err
 			}
-			mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, 100000)
-			keysInclusionSlot = make([]string, 0, 100000)
+			mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+			keysInclusionSlot = make([]string, 0, MAX_BATCH_MUTATIONS)
 		}
 		i++
 	}
@@ -1941,8 +1957,8 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 	// logger.Infof("migrated attestation data in %v", time.Since(start))
 	// start = time.Now()
 
-	mutsProposals := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keysProposals := make([]string, 0, 100000)
+	mutsProposals := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keysProposals := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for _, validator := range epochData {
 		if len(validator.Proposals) == 0 {
@@ -1950,8 +1966,8 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 		}
 		for slot, inclusionSlot := range validator.Proposals {
 			mut := gcp_bigtable.NewMutation()
-			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
-			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), reversedPaddedEpoch(epoch), reversedPaddedSlot(slot))
+			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-inclusionSlot)*1000), []byte{})
+			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), bigtable.reversedPaddedEpoch(epoch), bigtable.reversedPaddedSlot(slot))
 
 			mutsProposals = append(mutsProposals, mut)
 			keysProposals = append(keysProposals, key)
@@ -1969,8 +1985,8 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 	// logger.Infof("migrated proposal data in %v", time.Since(start))
 	// start = time.Now()
 
-	mutsSync := make([]*gcp_bigtable.Mutation, 0, 100000)
-	keysSync := make([]string, 0, 100000)
+	mutsSync := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	keysSync := make([]string, 0, MAX_BATCH_MUTATIONS)
 
 	for _, validator := range epochData {
 
@@ -1979,9 +1995,9 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 		}
 		for slot, inclusionSlot := range validator.SyncParticipation {
 			mut := gcp_bigtable.NewMutation()
-			mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((max_block_number-inclusionSlot)*1000), []byte{})
+			mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-inclusionSlot)*1000), []byte{})
 
-			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), reversedPaddedEpoch(epoch), reversedPaddedSlot(slot))
+			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.ValidatorIndex), bigtable.reversedPaddedEpoch(epoch), bigtable.reversedPaddedSlot(slot))
 			mutsSync = append(mutsSync, mut)
 			keysSync = append(keysSync, key)
 		}
@@ -2088,7 +2104,7 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 						res[validator] = make(map[uint64]*itypes.ValidatorEpochIncome)
 					}
 
-					res[validator][max_epoch-epoch] = incomeDetails
+					res[validator][MAX_EPOCH-epoch] = incomeDetails
 					resMux.Unlock()
 				}
 				return true
@@ -2105,7 +2121,7 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	return res, nil
 }
 
-// GetValidatorIncomeDetailsHistory returns the validator income details
+// GetAggregatedValidatorIncomeDetailsHistory returns aggregated validator income details
 // startEpoch & endEpoch are inclusive
 func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*itypes.ValidatorEpochIncome, error) {
 	if startEpoch > endEpoch {
@@ -2167,6 +2183,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 
 // Deletes all block data from bigtable
 func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
+	// TOTO: Implement
 	return fmt.Errorf("NOT IMPLEMENTED")
 }
 
@@ -2179,25 +2196,14 @@ func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, st
 	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch))*len(validatorIndices))
 
 	for _, validatorIndex := range validatorIndices {
-		if startEpoch == 0 { // special case when the 0 epoch is included
-			rangeEnd := fmt.Sprintf("%s:%s:%s%s", bigtable.chainId, bigtable.validatorIndexToKey(validatorIndex), reversedPaddedEpoch(0), "\x00")
-			rangeStart := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validatorIndex), reversedPaddedEpoch(0))
-			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+		validatorKey := bigtable.validatorIndexToKey(validatorIndex)
 
-			// epochs are sorted descending, so start with the largest epoch and end with the smallest
-			// add \x00 to make the range inclusive
-			if startEpoch < endEpoch {
-				rangeEnd = fmt.Sprintf("%s:%s:%s%s", bigtable.chainId, bigtable.validatorIndexToKey(validatorIndex), reversedPaddedEpoch(startEpoch+1), "\x00")
-				rangeStart = fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validatorIndex), reversedPaddedEpoch(endEpoch))
-				ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
-			}
-		} else {
-			// epochs are sorted descending, so start with the largest epoch and end with the smallest
-			// add \x00 to make the range inclusive
-			rangeEnd := fmt.Sprintf("%s:%s:%s%s", bigtable.chainId, bigtable.validatorIndexToKey(validatorIndex), reversedPaddedEpoch(startEpoch), "\x00")
-			rangeStart := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validatorIndex), reversedPaddedEpoch(endEpoch))
-			ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
-		}
+		// epochs are sorted descending, so start with the largest epoch and end with the smallest
+		// add \x00 to make the range inclusive
+		rangeEnd := fmt.Sprintf("%s:%s:%s%s", bigtable.chainId, validatorKey, bigtable.reversedPaddedEpoch(startEpoch), "\x00")
+		rangeStart := fmt.Sprintf("%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validatorIndex), bigtable.reversedPaddedEpoch(endEpoch))
+		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
+
 	}
 	return ranges
 }
@@ -2286,14 +2292,14 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error)
 	return dayIncome, nil
 }
 
-func reversePaddedUserID(userID uint64) string {
+func (bigtable *Bigtable) reversePaddedUserID(userID uint64) string {
 	return fmt.Sprintf("%09d", ^uint64(0)-userID)
 }
 
-func reversedPaddedEpoch(epoch uint64) string {
-	return fmt.Sprintf("%09d", max_block_number-epoch)
+func (bigtable *Bigtable) reversedPaddedEpoch(epoch uint64) string {
+	return fmt.Sprintf("%09d", MAX_BLOCK_NUMBER-epoch)
 }
 
-func reversedPaddedSlot(slot uint64) string {
-	return fmt.Sprintf("%09d", max_block_number-slot)
+func (bigtable *Bigtable) reversedPaddedSlot(slot uint64) string {
+	return fmt.Sprintf("%09d", MAX_BLOCK_NUMBER-slot)
 }

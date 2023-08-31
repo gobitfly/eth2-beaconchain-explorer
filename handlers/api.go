@@ -15,7 +15,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"math/big"
 	"net/http"
@@ -829,7 +829,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		utils.LogError(err, "reading body", 0)
 		sendErrorResponse(w, r.URL.String(), "could not read body")
@@ -3508,7 +3508,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		logger.Warnf("error reading body | err: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not read body")

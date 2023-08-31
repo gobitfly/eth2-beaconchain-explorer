@@ -6,7 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -311,7 +311,7 @@ func SubmitBLSToExecutionChangesNodeJob(job *types.NodeJob) error {
 	}
 	jobStatus := types.SubmittedToNodeNodeJobStatus
 	if resp.StatusCode != 200 {
-		d, _ := ioutil.ReadAll(resp.Body)
+		d, _ := io.ReadAll(resp.Body)
 		if len(d) > 1000 {
 			d = d[:1000]
 		}
@@ -447,7 +447,7 @@ func SubmitVoluntaryExitNodeJob(job *types.NodeJob) error {
 	}
 	jobStatus := types.SubmittedToNodeNodeJobStatus
 	if resp.StatusCode != 200 {
-		d, _ := ioutil.ReadAll(resp.Body)
+		d, _ := io.ReadAll(resp.Body)
 		if len(d) > 1000 {
 			d = d[:1000]
 		}

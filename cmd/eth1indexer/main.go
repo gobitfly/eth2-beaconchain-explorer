@@ -14,9 +14,10 @@ import (
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -391,7 +392,7 @@ func main() {
 
 func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath string) error {
 
-	tokenListContent, err := ioutil.ReadFile(tokenListPath)
+	tokenListContent, err := os.ReadFile(tokenListPath)
 	if err != nil {
 		return err
 	}
@@ -431,7 +432,7 @@ func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath 
 		return fmt.Errorf("error querying defillama api: %v", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -804,7 +805,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 		utils.LogFatal(err, "getting client error", 0)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		utils.LogFatal(err, "reading body for ERC20 tokens error", 0)
@@ -857,7 +858,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 			resp, err := client.Get(token.LogoURI)
 
 			if err == nil && resp.StatusCode == 200 {
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 
 				if err != nil {
 					utils.LogFatal(err, "reading body for ERC20 token logo URI error", 0)
@@ -887,7 +888,7 @@ func ImportNameLabels(bt *db.Bigtable) {
 
 	res := make(map[string]*NameEntry)
 
-	data, err := ioutil.ReadFile("")
+	data, err := os.ReadFile("")
 
 	if err != nil {
 		utils.LogFatal(err, "reading file error", 0)

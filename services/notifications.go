@@ -2336,7 +2336,7 @@ func collectMonitoringMachine(
 
 	rowKeys := gcp_bigtable.RowList{}
 	for _, data := range allSubscribed {
-		rowKeys = append(rowKeys, db.GetMachineRowKey(data.UserID, "system", data.MachineName))
+		rowKeys = append(rowKeys, db.BigtableClient.GetMachineRowKey(data.UserID, "system", data.MachineName))
 	}
 
 	machineDataOfSubscribed, err := db.BigtableClient.GetMachineMetricsForNotifications(rowKeys)

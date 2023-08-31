@@ -176,7 +176,7 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = MAX_BLOCK_NUMBER - c
 
 		if c%10000 == 0 {
 			logger.Infof("scanning, currently at block %v", c)
@@ -251,7 +251,7 @@ func (bigtable *Bigtable) CheckForGapsInDataTable(lookback int) error {
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = MAX_BLOCK_NUMBER - c
 
 		if c%10000 == 0 {
 			logger.Infof("scanning, currently at block %v", c)
@@ -316,7 +316,7 @@ func (bigtable *Bigtable) getLastBlockInDataTableFromBigtable() (int, error) {
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = MAX_BLOCK_NUMBER - c
 
 		lastBlock = c
 		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
@@ -343,7 +343,7 @@ func (bigtable *Bigtable) getLastBlockInBlocksTableFromBigtable() (int, error) {
 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
 			return false
 		}
-		c = max_block_number - c
+		c = MAX_BLOCK_NUMBER - c
 
 		lastBlock = c
 		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
@@ -382,7 +382,7 @@ func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockInd
 			return false
 		}
 
-		c = max_block_number - c
+		c = MAX_BLOCK_NUMBER - c
 
 		err = proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
 		if err != nil {
@@ -539,7 +539,7 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 }
 
 func reversedPaddedBlockNumber(blockNumber uint64) string {
-	return fmt.Sprintf("%09d", max_block_number-blockNumber)
+	return fmt.Sprintf("%09d", MAX_BLOCK_NUMBER-blockNumber)
 }
 
 func reversePaddedBigtableTimestamp(timestamp *timestamppb.Timestamp) string {
