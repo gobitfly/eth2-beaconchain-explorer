@@ -25,15 +25,16 @@ import (
 var BigtableClient *Bigtable
 
 const (
-	DEFAULT_FAMILY                = "f"
-	VALIDATOR_BALANCES_FAMILY     = "vb"
-	ATTESTATIONS_FAMILY           = "at"
-	PROPOSALS_FAMILY              = "pr"
-	SYNC_COMMITTEES_FAMILY        = "sc"
-	INCOME_DETAILS_COLUMN_FAMILY  = "id"
-	STATS_COLUMN_FAMILY           = "stats"
-	MACHINE_METRICS_COLUMN_FAMILY = "mm"
-	SERIES_FAMILY                 = "series"
+	DEFAULT_FAMILY                       = "f"
+	VALIDATOR_BALANCES_FAMILY            = "vb"
+	ATTESTATIONS_FAMILY                  = "at"
+	PROPOSALS_FAMILY                     = "pr"
+	SYNC_COMMITTEES_FAMILY               = "sc"
+	SYNC_COMMITTEES_PARTICIPATION_FAMILY = "sp"
+	INCOME_DETAILS_COLUMN_FAMILY         = "id"
+	STATS_COLUMN_FAMILY                  = "stats"
+	MACHINE_METRICS_COLUMN_FAMILY        = "mm"
+	SERIES_FAMILY                        = "series"
 
 	SUM_COLUMN = "sum"
 
@@ -850,14 +851,16 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 		return nil
 	}
 
-	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
+	muts := make([]*gcp_bigtable.Mutation, 0, utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SyncCommitteeSize+1)
+	keys := make([]string, 0, utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SyncCommitteeSize+1)
 
 	for slot, validators := range dutiesBySlot {
+		participation := uint64(0)
 		for validator, participated := range validators {
 			mut := gcp_bigtable.NewMutation()
 			if participated {
 				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-slot)*1000), []byte{})
+				participation++
 			} else {
 				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp(0), []byte{})
 			}
@@ -865,7 +868,13 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 			muts = append(muts, mut)
 			keys = append(keys, key)
 		}
-
+		mut := gcp_bigtable.NewMutation()
+		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SYNC_COMMITTEES_PARTICIPATION_FAMILY, bigtable.reversedPaddedSlot(slot))
+		participationEncoded := make([]byte, 8)
+		binary.LittleEndian.PutUint64(participationEncoded, uint64(participation))
+		mut.Set(SYNC_COMMITTEES_PARTICIPATION_FAMILY, "s", gcp_bigtable.Timestamp(0), participationEncoded)
+		muts = append(muts, mut)
+		keys = append(keys, key)
 	}
 
 	errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
@@ -1149,6 +1158,25 @@ func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint
 	}
 
 	return res, nil
+}
+
+func (bigtable *Bigtable) GetSyncParticipationBySlot(slot uint64) (uint64, error) {
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
+	defer cancel()
+
+	key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SYNC_COMMITTEES_PARTICIPATION_FAMILY, bigtable.reversedPaddedSlot(slot))
+
+	row, err := bigtable.tableValidatorSyncCommittees.ReadRow(ctx, key)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, ri := range row[SYNC_COMMITTEES_PARTICIPATION_FAMILY] {
+		return binary.LittleEndian.Uint64(ri.Value), nil
+	}
+
+	return 0, nil
 }
 
 func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {

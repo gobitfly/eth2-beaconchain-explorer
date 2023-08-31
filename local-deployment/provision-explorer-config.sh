@@ -93,6 +93,7 @@ BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createt
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_proposals pr
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createtable beaconchain_validator_sync
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_sync sc
+BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_sync sp
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createtable beaconchain_validator_income
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_income id
 BIGTABLE_EMULATOR_HOST=$HOST cbt --project $PROJECT --instance $INSTANCE createfamily beaconchain_validator_income stats

@@ -1577,7 +1577,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tableData := make([][]interface{}, 0)
-
 	if postExitEpochs > 0 {
 		startEpoch := currentEpoch + 1
 		endEpoch := startEpoch + postExitEpochs
@@ -1588,6 +1587,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 		// if there are additional epochs with duties we have to go through all of them as there can be gaps (after the exit before the duty)
 		for i := endEpoch; i >= startEpoch; i-- {
+			if i > endEpoch {
+				break
+			}
+
 			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
 				continue
 			}
@@ -1618,6 +1621,11 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for epoch := endEpoch; epoch >= startEpoch && len(tableData) < pageLength; epoch-- {
+
+			if epoch > endEpoch {
+				break
+			}
+
 			if incomeDetails[index] == nil || incomeDetails[index][epoch] == nil {
 				if epoch <= endEpoch {
 					rewardsStr := "pending..."
@@ -1636,6 +1644,11 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
+
+			if epoch == 0 {
+				break
+			}
+			logger.Info(epoch)
 		}
 	}
 
@@ -1938,14 +1951,14 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				default:
 				}
 
-				syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{}, epoch, epoch)
+				syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, epoch, epoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator [%v] sync duty data from bigtable for epoch [%v]: %w", validatorIndex, epoch, err)
 				} else if uint64(len(syncDuties[validatorIndex]))%utils.Config.Chain.Config.SlotsPerEpoch > 0 {
 					return fmt.Errorf("wrong number [%v] of syncDuties for validator [%v] received from from bigtable for epoch [%v]", len(syncDuties[validatorIndex]), validatorIndex, epoch)
 				}
 
-				for validator, duties := range syncDuties {
+				for _, duties := range syncDuties {
 					for _, duty := range duties {
 						mux.Lock()
 						pageSlot, ok := pageSlotsMap[duty.Slot]
@@ -1954,23 +1967,21 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 							continue // this is not the slot we are looking for
 						}
 
-						// We want to know how many validators successfully participated in this duty
-						if duty.Status == 1 {
-							pageSlot.Participation++
+						participation, err := db.BigtableClient.GetSyncParticipationBySlot(duty.Slot)
+						if err != nil {
+							return fmt.Errorf("error retrieving sync participation for slot %v", duty.Slot)
+						}
+						pageSlot.Participation = participation
+
+						slotTime := utils.SlotToTime(duty.Slot)
+						if duty.Status == 0 && time.Since(slotTime) <= time.Minute {
+							duty.Status = 2 // scheduled
 						}
 
-						// Get the status if the duty belongs to our validator
-						if validator == validatorIndex {
-							slotTime := utils.SlotToTime(duty.Slot)
-							if duty.Status == 0 && time.Since(slotTime) <= time.Minute {
-								duty.Status = 2 // scheduled
-							}
-
-							if duty.Status == 0 {
-								missedSyncSlots = append(missedSyncSlots, duty.Slot)
-							}
-							pageSlot.Status = duty.Status
+						if duty.Status == 0 {
+							missedSyncSlots = append(missedSyncSlots, duty.Slot)
 						}
+						pageSlot.Status = duty.Status
 						pageSlotsMap[duty.Slot] = pageSlot
 						mux.Unlock()
 					}
