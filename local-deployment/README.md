@@ -74,17 +74,17 @@ cp ~/eth2-beaconchain-explorer/local-deployment/testnet-config-example.yml ~/tes
 ```
 # Initialize the db schema
 ```
-INDEXER_NODE_PORT=<CL_NODE_PORT> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/testnet/explorer-config.yml -command applyDbSchema
 ```
 # Start the indexer
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/testnet/explorer-config.yml
 ```
 # Start the frontend-data-updater
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/testnet/explorer-config.yml
 ```
 # Start the frontend
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config-frontend.yml
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/testnet/explorer-config.yml
 ```
