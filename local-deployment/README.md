@@ -65,7 +65,7 @@ bash ~/eth2-beaconchain-explorer/local-deployment/init-bigtable.sh
 ```
 # Start up the local testnet nodes
 ```
-kurtosis run --enclave my-testnet github.com/kurtosis-tech/eth-network-package
+kurtosis run --enclave my-testnet github.com/kurtosis-tech/eth-network-package "$(cat ~/eth2-beaconchain-explorer/local-deployment/network-params.json)"
 ```
 Take note of the http API ports of the el & cl clients.
 # Copy the example config file and add the el & cl client ports

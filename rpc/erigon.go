@@ -191,6 +191,9 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	g := new(errgroup.Group)
 
 	g.Go(func() error {
+		if block.NumberU64() == 0 { // genesis block is not traceable
+			return nil
+		}
 		traces, err := client.TraceParity(block.NumberU64())
 
 		if err != nil {
