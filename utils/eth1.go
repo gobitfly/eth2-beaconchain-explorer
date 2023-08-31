@@ -256,9 +256,9 @@ func FormatAddressLong(address string) template.HTML {
 	}
 	address = FixAddressCasing(address)
 	test := `
-	<span class="text-monospace mw-100"><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
+	<span class="text-monospace mw-100"><span class="text-truncate">%s</span><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(test, address[:6], address[6:len(address)-4], address[len(address)-4:]))
+		return template.HTML(fmt.Sprintf(test, address[:2], address[2:6], address[6:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)
