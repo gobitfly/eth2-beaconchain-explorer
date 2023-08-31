@@ -69,4 +69,4 @@ This will generate a config.yml to be used by the explorer and then create the b
 cd ~/eth2-beaconchain-explorer/local-deployment/
 docker-compose up -d
 ```
-You can then start / stop the exporter submodules using `docker-compose`
+You can start / stop the exporter submodules using `docker-compose`
