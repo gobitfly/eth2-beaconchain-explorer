@@ -7,6 +7,25 @@ var subsTable = null
 // let validators = []
 
 function create_typeahead(input_container) {
+  var timeWait = 0
+  var debounce = function (context, func) {
+    var timeout, result
+
+    return function () {
+      var args = arguments,
+        later = function () {
+          timeout = null
+          result = func.apply(context, args)
+        }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, timeWait)
+      if (!timeout) {
+        result = func.apply(context, args)
+      }
+      return result
+    }
+  }
+
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -15,9 +34,19 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators/%QUERY",
-      wildcard: "%QUERY",
+      // use prepare hook to modify the rateLimitWait parameter on input changes
+      // NOTE: we only need to do this for the first function because testing showed that queries are executed/queued in order
+      // No need to update `timeWait` multiple times.
+      prepare: function (_, settings) {
+        var cur_query = $(input_container).val()
+        timeWait = 4000 - Math.min(cur_query.length, 5) * 500
+        // "wildcard" can't be used anymore, need to set query wildcard ourselves now
+        settings.url = settings.url.replace("%QUERY", encodeURIComponent(cur_query))
+        return settings
+      },
     },
   })
+  bhValidators.remote.transport._get = debounce(bhValidators.remote.transport, bhValidators.remote.transport._get)
   var bhEth1Addresses = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -29,6 +58,7 @@ function create_typeahead(input_container) {
       wildcard: "%QUERY",
     },
   })
+  bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
   var bhName = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -40,6 +70,7 @@ function create_typeahead(input_container) {
       wildcard: "%QUERY",
     },
   })
+  bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
   var bhGraffiti = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -51,6 +82,7 @@ function create_typeahead(input_container) {
       wildcard: "%QUERY",
     },
   })
+  bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
 
   $(input_container).typeahead(
     {
