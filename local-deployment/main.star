@@ -1,5 +1,7 @@
 parse_input = import_module("github.com/kurtosis-tech/eth2-package/src/package_io/parse_input.star")
 eth_network_module = import_module("github.com/kurtosis-tech/eth-network-package/main.star")
+transaction_spammer = import_module("github.com/kurtosis-tech/eth2-package/src/transaction_spammer/transaction_spammer.star")
+genesis_constants = import_module("github.com/kurtosis-tech/eth-network-package/src/prelaunch_data_generator/genesis_constants/genesis_constants.star")
 
 POSTGRES_PORT_ID = "postgres"
 POSTGRES_DB = "db"
@@ -47,5 +49,15 @@ def run(plan, args):
         ),
     )
 
-    eth_network_participants, cl_genesis_timestamp, cl_genesis_root_hash = eth_network_module.run(plan, args)
+    all_participants, cl_genesis_timestamp, genesis_validators_root = eth_network_module.run(plan, args)
+
+    all_el_client_contexts = []
+    all_cl_client_contexts = []
+    for participant in all_participants:
+        all_el_client_contexts.append(participant.el_client_context)
+        all_cl_client_contexts.append(participant.cl_client_context)
+
+    plan.print("Launching transaction spammer")
+    transaction_spammer.launch_transaction_spammer(plan, genesis_constants.PRE_FUNDED_ACCOUNTS, all_el_client_contexts[0])
+    plan.print("Succesfully launched transaction spammer")
 
