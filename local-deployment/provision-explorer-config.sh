@@ -69,7 +69,6 @@ frontend:
       privateKey: "key-11111111111111111111111111111111"
   csrfAuthKey: '1111111111111111111111111111111111111111111111111111111111111111'
 indexer:
-  enabled: true
   # fullIndexOnStartup: false # Perform a one time full db index on startup
   # indexMissingEpochsOnStartup: true # Check for missing epochs and export them after startup
   node:

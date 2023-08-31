@@ -51,7 +51,6 @@ cd eth2-beaconchain-explorer
 ```
 sudo apt install build-essential
 make all
-make misc
 ```
 # Start postgres, redis, little_bigtable & the eth test network
 ```
@@ -67,7 +66,7 @@ This will generate a config.yml to be used by the explorer and then create the b
 
 # Start the indexer
 ```
-INDEXER_ENABLED=true  ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
+INDEXER_ENABLED=true ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
 ```
 # Start the frontend-data-updater
 ```
