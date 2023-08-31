@@ -540,7 +540,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 
 		cfg.Chain.GenesisTimestamp = mustParseUint(gtr.Data.GenesisTime)
 
-		logger.Infof("loaded chain config from node")
+		logger.Infof("loaded chain config from node with genesis time %d", gtr.Data.GenesisTime)
 
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)

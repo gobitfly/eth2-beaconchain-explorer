@@ -70,7 +70,7 @@ kurtosis run --enclave my-testnet github.com/kurtosis-tech/eth-network-package
 Take note of the http API ports of the el & cl clients.
 # Initialize the db schema
 ```
-BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema
+INDEXER_NODE_PORT=<CL_NODE_PORT> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema
 ```
 # Start the indexer
 ```
