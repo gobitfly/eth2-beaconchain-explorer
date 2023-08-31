@@ -72,6 +72,10 @@ INDEXER_ENABLED=true ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-bea
 ```
 ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
 ```
+# Start the eth1indexer
+```
+~/eth2-beaconchain-explorer/bin/eth1indexer --config ~/eth2-beaconchain-explorer/local-deployment/config.yml -blocks.concurrency 1 --balances.enabled
+```
 # Start the frontend
 ```
 FRONTEND_ENABLED=true ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
