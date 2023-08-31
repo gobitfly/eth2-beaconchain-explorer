@@ -573,63 +573,63 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 
 	return nil //disabled as not needed
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	// defer cancel()
 
-	start := time.Now()
-	ts := gcp_bigtable.Timestamp(0)
+	// start := time.Now()
+	// ts := gcp_bigtable.Timestamp(0)
 
-	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
+	// muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	// keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
-	for i := startSlot; i <= endSlot; i++ {
-		for _, validator := range validators {
-			mut := gcp_bigtable.NewMutation()
-			mut.Set(SYNC_COMMITTEES_FAMILY, "s", ts, []byte{})
+	// for i := startSlot; i <= endSlot; i++ {
+	// 	for _, validator := range validators {
+	// 		mut := gcp_bigtable.NewMutation()
+	// 		mut.Set(SYNC_COMMITTEES_FAMILY, "s", ts, []byte{})
 
-			key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), bigtable.reversedPaddedEpoch(utils.EpochOfSlot(i)), bigtable.reversedPaddedSlot(i))
+	// 		key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), bigtable.reversedPaddedEpoch(utils.EpochOfSlot(i)), bigtable.reversedPaddedSlot(i))
 
-			muts = append(muts, mut)
-			keys = append(keys, key)
+	// 		muts = append(muts, mut)
+	// 		keys = append(keys, key)
 
-			if len(muts) == MAX_BATCH_MUTATIONS {
-				logger.Infof("saving %v mutations for sync duties", len(muts))
-				errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
+	// 		if len(muts) == MAX_BATCH_MUTATIONS {
+	// 			logger.Infof("saving %v mutations for sync duties", len(muts))
+	// 			errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
 
-				if err != nil {
-					return err
-				}
+	// 			if err != nil {
+	// 				return err
+	// 			}
 
-				for _, err := range errs {
-					if err != nil {
-						return err
-					}
-				}
+	// 			for _, err := range errs {
+	// 				if err != nil {
+	// 					return err
+	// 				}
+	// 			}
 
-				muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-				keys = make([]string, 0, MAX_BATCH_MUTATIONS)
-			}
-		}
+	// 			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
+	// 			keys = make([]string, 0, MAX_BATCH_MUTATIONS)
+	// 		}
+	// 	}
 
-	}
+	// }
 
-	if len(muts) > 0 {
-		logger.Infof("saving %v mutations for sync duties", len(muts))
-		errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
+	// if len(muts) > 0 {
+	// 	logger.Infof("saving %v mutations for sync duties", len(muts))
+	// 	errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
 
-		if err != nil {
-			return err
-		}
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		for _, err := range errs {
-			if err != nil {
-				return err
-			}
-		}
-	}
+	// 	for _, err := range errs {
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
 
-	logger.Infof("exported sync committee assignments to bigtable in %v", time.Since(start))
-	return nil
+	// logger.Infof("exported sync committee assignments to bigtable in %v", time.Since(start))
+	// return nil
 }
 
 func (bigtable *Bigtable) SaveAttestations(blocks map[uint64]map[string]*types.Block) error {
