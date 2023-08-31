@@ -1648,7 +1648,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			if epoch == 0 {
 				break
 			}
-			logger.Info(epoch)
 		}
 	}
 
