@@ -68,6 +68,10 @@ bash ~/eth2-beaconchain-explorer/local-deployment/init-bigtable.sh
 kurtosis run --enclave my-testnet github.com/kurtosis-tech/eth-network-package
 ```
 Take note of the http API ports of the el & cl clients.
+# Copy the example config file and add the el & cl client ports
+```
+cp ~/eth2-beaconchain-explorer/local-deployment/testnet-config-example.yml ~/testnet/explorer-config.yml
+```
 # Initialize the db schema
 ```
 INDEXER_NODE_PORT=<CL_NODE_PORT> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema
