@@ -2308,9 +2308,9 @@ func GetWithdrawalsCountForQuery(query string) (uint64, error) {
 
 	} else if addressRE.MatchString(query) {
 		searchQuery := `WHERE address = $1`
-		addr, err := hex.DecodeString(trimmedQuery)
+		addr, decErr := hex.DecodeString(trimmedQuery)
 		if err != nil {
-			return 0, err
+			return 0, decErr
 		}
 		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
 			addr)
@@ -2373,9 +2373,9 @@ func GetWithdrawals(query string, length, start uint64, orderBy, orderDir string
 				length, start, uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if addressRE.MatchString(query) {
 			searchQuery := `WHERE address = $3`
-			addr, err := hex.DecodeString(trimmedQuery)
-			if err != nil {
-				return nil, err
+			addr, decErr := hex.DecodeString(trimmedQuery)
+			if decErr != nil {
+				return nil, decErr
 			}
 			err = ReaderDb.Select(&withdrawals, fmt.Sprintf(withdrawalsQuery, searchQuery, orderBy, orderDir),
 				length, start, addr)
@@ -2968,9 +2968,9 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 			uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 	} else if blsRE.MatchString(query) {
 		searchQuery := `WHERE pubkey = $1`
-		pubkey, err := hex.DecodeString(trimmedQuery)
-		if err != nil {
-			return 0, err
+		pubkey, decErr := hex.DecodeString(trimmedQuery)
+		if decErr != nil {
+			return 0, decErr
 		}
 		err = ReaderDb.Select(&count, fmt.Sprintf(blsQuery, searchQuery),
 			pubkey)
@@ -3028,9 +3028,9 @@ func GetBLSChanges(query string, length, start uint64, orderBy, orderDir string)
 				length, start, uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 		} else if blsRE.MatchString(query) {
 			searchQuery := `WHERE pubkey = $3`
-			pubkey, err := hex.DecodeString(trimmedQuery)
-			if err != nil {
-				return nil, err
+			pubkey, decErr := hex.DecodeString(trimmedQuery)
+			if decErr != nil {
+				return nil, decErr
 			}
 			err = ReaderDb.Select(&blsChange, fmt.Sprintf(blsQuery, searchQuery, orderBy, orderDir),
 				length, start, pubkey)
