@@ -20,6 +20,12 @@ services:
     volumes:
       - ./config.yml:/app/config.yml
     network_mode: "host"
+  statistics:
+    build: ../
+    command: ./statistics -config /app/config.yml --charts.enabled --graffiti.enabled -validators.enabled
+    volumes:
+      - ./config.yml:/app/config.yml
+    network_mode: "host"
   frontend-data-updater:
     build: ../
     command: ./frontend-data-updater -config /app/config.yml
