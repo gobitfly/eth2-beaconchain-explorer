@@ -49,31 +49,16 @@ cd eth2-beaconchain-explorer
 ```
 # Build the explorer binaries
 ```
+sudo apt install build-essential
 make all
 make misc
 ```
-# Clone the little_bigtable repository
-```
-cd ~/
-git clone https://github.com/gobitfly/little_bigtable.git
-cd little_bigtable
-```
-# Build the little_bigtable binary
-```
-make
-```
-# Start postgres & redis
+# Start postgres, redis & little_bigtable
 ```
 cd ~/eth2-beaconchain-explorer/local-deployment/
 docker compose up -d
 ```
-Redis will be available on port 6379 and postgres on port 5432 (username `postgres`, password `pass`, db `db`)
-# Start little_bigtable
-```
-# in a new terminal
-~/little_bigtable/build/little_bigtable -db-file ~/testnet/bigtable.db
-```
-lbt will be available on http://127.0.0.1:9000
+Redis will be available on port 6379, little_bigtable on port 9000 and postgres on port 5432 (username `postgres`, password `pass`, db `db`)
 # Initialize the bigtable schema
 ```
 bash ~/eth2-beaconchain-explorer/local-deployment/init-bigtable.sh
@@ -82,6 +67,7 @@ bash ~/eth2-beaconchain-explorer/local-deployment/init-bigtable.sh
 ```
 kurtosis run --enclave my-testnet github.com/kurtosis-tech/eth-network-package
 ```
+Take note of the http API ports of the el & cl clients.
 # Initialize the db schema
 ```
 BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml -command applyDbSchema

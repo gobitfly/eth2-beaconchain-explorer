@@ -615,9 +615,14 @@ func ReadConfig(cfg *types.Config, path string) error {
 }
 
 func mustParseUint(str string) uint64 {
+
+	if str == "" {
+		return 0
+	}
+
 	nbr, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
-		logrus.Fatalf("fatal error parsind uint %s: %v", str, err)
+		logrus.Fatalf("fatal error parsing uint %s: %v", str, err)
 	}
 
 	return nbr
