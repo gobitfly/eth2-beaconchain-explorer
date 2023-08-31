@@ -531,7 +531,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 
 		err = requests.
 			URL(nodeEndpoint + "/eth/v1/beacon/genesis").
-			ToJSON(jr).
+			ToJSON(gtr).
 			Fetch(context.Background())
 
 		if err != nil {
