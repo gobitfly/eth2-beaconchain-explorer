@@ -539,6 +539,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 		}
 
 		cfg.Chain.GenesisTimestamp = mustParseUint(gtr.Data.GenesisTime)
+		cfg.Chain.GenesisValidatorsRoot = gtr.Data.GenesisValidatorsRoot
 
 		logger.Infof("loaded chain config from node with genesis time %s", gtr.Data.GenesisTime)
 
