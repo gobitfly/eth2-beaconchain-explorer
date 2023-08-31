@@ -78,5 +78,5 @@ INDEXER_ENABLED=true ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-bea
 ```
 # Start the frontend
 ```
-FRONTEND_ENABLED=true ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
+FRONTEND_ENABLED=true ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/config.yml
 ```
