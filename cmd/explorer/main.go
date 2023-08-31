@@ -318,6 +318,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}", handlers.ApiWithdrawalCredentialsValidators).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validators/queue", handlers.ApiValidatorQueue).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validators/proposalLuck", handlers.ApiProposalLuck).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/graffitiwall", handlers.ApiGraffitiwall).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
@@ -524,7 +525,6 @@ func main() {
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 
-			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")

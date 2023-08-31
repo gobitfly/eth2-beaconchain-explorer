@@ -27,7 +27,7 @@ type EthStoreExporter struct {
 }
 
 // start exporting of eth.store into db
-func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, errorInterval, sleepInterval time.Duration) {
+func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, errorInterval, sleepInterval time.Duration, startDayReexport, endDayReexport int64) {
 	logger.Info("starting eth.store exporter")
 	ese := &EthStoreExporter{
 		DB:             db.WriterDb,
@@ -48,21 +48,70 @@ func StartEthStoreExporter(bnAddress string, enAddress string, updateInterval, e
 		ese.Sleep = time.Minute
 	}
 
-	ese.Run()
-
-}
-
-func (ese *EthStoreExporter) ExportDay(day string) error {
-	ethStoreDay, validators, err := ese.getStoreDay(day)
-	if err != nil {
-		return err
+	// Reexport days if specified
+	if startDayReexport != -1 && endDayReexport != -1 {
+		for day := startDayReexport; day <= endDayReexport; day++ {
+			err := ese.reexportDay(strconv.FormatInt(day, 10))
+			if err != nil {
+				utils.LogError(err, fmt.Sprintf("error reexporting eth.store day %d in database", day), 0)
+				return
+			}
+		}
+		return
 	}
 
+	ese.Run()
+}
+
+func (ese *EthStoreExporter) reexportDay(day string) error {
 	tx, err := ese.DB.Beginx()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+
+	ese.prepareClearDayTx(tx, day)
+	if err != nil {
+		return err
+	}
+
+	ese.prepareExportDayTx(tx, day)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (ese *EthStoreExporter) exportDay(day string) error {
+	tx, err := ese.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	ese.prepareExportDayTx(tx, day)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (ese *EthStoreExporter) prepareClearDayTx(tx *sqlx.Tx, day string) error {
+	dayInt, err := strconv.ParseInt(day, 10, 64)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`DELETE FROM eth_store_stats WHERE day = $1`, dayInt)
+	return err
+}
+
+func (ese *EthStoreExporter) prepareExportDayTx(tx *sqlx.Tx, day string) error {
+	ethStoreDay, validators, err := ese.getStoreDay(day)
+	if err != nil {
+		return err
+	}
 
 	numArgs := 10
 	batchSize := 65535 / numArgs // max 65535 params per batch, since postgres uses int16 for binding input params
@@ -155,10 +204,8 @@ func (ese *EthStoreExporter) ExportDay(day string) error {
 			total_rewards_wei           = excluded.total_rewards_wei,
 			apr                         = excluded.apr`,
 		ethStoreDay.Day)
-	if err != nil {
-		return err
-	}
-	return tx.Commit()
+
+	return err
 }
 
 func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, map[uint64]*ethstore.Day, error) {
@@ -172,10 +219,15 @@ func (ese *EthStoreExporter) Run() {
 DBCHECK:
 	for {
 		// get latest eth.store day
-		var latestFinalizedEpoch uint64
-		err := db.WriterDb.Get(&latestFinalizedEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
 		if err != nil {
-			logger.WithError(err).Error("error retrieving latest finalized epoch from db")
+			utils.LogError(err, "error retrieving latest finalized epoch from db", 0)
+			time.Sleep(ese.ErrorInterval)
+			continue
+		}
+
+		if latestFinalizedEpoch == 0 {
+			utils.LogError(err, "error retrieved 0 as latest finalized epoch from the db", 0)
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -188,7 +240,7 @@ DBCHECK:
 				SELECT COUNT(*)
 				FROM eth_store_stats WHERE validator = -1`)
 		if err != nil {
-			logger.WithError(err).Error("error retrieving eth.store days count from db")
+			utils.LogError(err, "error retrieving eth.store days count from db", 0)
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
@@ -210,7 +262,7 @@ DBCHECK:
 						SELECT day 
 						FROM eth_store_stats WHERE validator = -1`)
 				if err != nil {
-					logger.WithError(err).Error("error retrieving eth.store days from db")
+					utils.LogError(err, "error retrieving eth.store days from db", 0)
 					time.Sleep(ese.ErrorInterval)
 					continue
 				}
@@ -230,9 +282,9 @@ DBCHECK:
 			})
 			// export missing days
 			for _, dayToExport := range daysToExportArray {
-				err = ese.ExportDay(strconv.FormatUint(dayToExport, 10))
+				err = ese.exportDay(strconv.FormatUint(dayToExport, 10))
 				if err != nil {
-					logger.WithError(err).Errorf("error exporting eth.store day %d into database", dayToExport)
+					utils.LogError(err, fmt.Sprintf("error exporting eth.store day %d into database", dayToExport), 0)
 					time.Sleep(ese.ErrorInterval)
 					continue DBCHECK
 				}

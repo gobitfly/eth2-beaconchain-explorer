@@ -195,7 +195,7 @@ function activateTabbarSwitcher(tabContainerId, tabBar, defaultTab) {
 
   if (window.navigation) {
     window.navigation.addEventListener("navigate", (event) => {
-      if (!event.destination?.url) {
+      if (!event.destination?.url || event.destination.url.split("#")[0] != event.srcElement?.currentEntry?.url?.split("#")[0]) {
         return
       }
       handleTabChange(event.destination?.url)
@@ -224,6 +224,29 @@ $(document).ready(function () {
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
   let requestNum = 9
+  var timeWait = 0
+
+  // used to overwrite Bloodhounds "transport._get" function which handles the rateLimitWait parameter
+  // since we can't access the closure variable anymore (?)
+  // copied and adapted from typeahead.js source code (https://github.com/twitter/typeahead.js/blob/master/dist/typeahead.bundle.js#L106)
+  // -> so we have control via `timeWait` now
+  var debounce = function (context, func) {
+    var timeout, result
+
+    return function () {
+      var args = arguments,
+        later = function () {
+          timeout = null
+          result = func.apply(context, args)
+        }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, timeWait)
+      if (!timeout) {
+        result = func.apply(context, args)
+      }
+      return result
+    }
+  }
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -233,10 +256,20 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/validators/%QUERY",
-      wildcard: "%QUERY",
+      // use prepare hook to modify the rateLimitWait parameter on input changes
+      // NOTE: we only need to do this for the first function because testing showed that queries are executed/queued in order
+      // No need to update `timeWait` multiple times.
+      prepare: function (_, settings) {
+        var cur_query = $("input.typeahead.tt-input").val()
+        timeWait = 4000 - Math.min(cur_query.length, 5) * 500
+        // "wildcard" can't be used anymore, need to set query wildcard ourselves now
+        settings.url = settings.url.replace("%QUERY", encodeURIComponent(cur_query))
+        return settings
+      },
       maxPendingRequests: requestNum,
     },
   })
+  bhValidators.remote.transport._get = debounce(bhValidators.remote.transport, bhValidators.remote.transport._get)
 
   var bhEns = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -253,6 +286,7 @@ $(document).ready(function () {
       },
     },
   })
+  bhEns.remote.transport._get = debounce(bhEns.remote.transport, bhEns.remote.transport._get)
 
   var bhSlots = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -266,6 +300,7 @@ $(document).ready(function () {
       maxPendingRequests: requestNum,
     },
   })
+  bhSlots.remote.transport._get = debounce(bhSlots.remote.transport, bhSlots.remote.transport._get)
 
   var bhBlocks = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -279,6 +314,7 @@ $(document).ready(function () {
       maxPendingRequests: requestNum,
     },
   })
+  bhBlocks.remote.transport._get = debounce(bhBlocks.remote.transport, bhBlocks.remote.transport._get)
 
   var bhTransactions = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -292,6 +328,7 @@ $(document).ready(function () {
       maxPendingRequests: requestNum,
     },
   })
+  bhTransactions.remote.transport._get = debounce(bhTransactions.remote.transport, bhTransactions.remote.transport._get)
 
   var bhGraffiti = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -305,6 +342,7 @@ $(document).ready(function () {
       maxPendingRequests: requestNum,
     },
   })
+  bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
 
   var bhEpochs = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -318,6 +356,7 @@ $(document).ready(function () {
       maxPendingRequests: requestNum,
     },
   })
+  bhEpochs.remote.transport._get = debounce(bhEpochs.remote.transport, bhEpochs.remote.transport._get)
 
   var bhEth1Accounts = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -331,6 +370,7 @@ $(document).ready(function () {
       maxPendingRequests: requestNum,
     },
   })
+  bhEth1Accounts.remote.transport._get = debounce(bhEth1Accounts.remote.transport, bhEth1Accounts.remote.transport._get)
 
   var bhValidatorsByAddress = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -344,6 +384,7 @@ $(document).ready(function () {
       maxPendingRequests: requestNum,
     },
   })
+  bhValidatorsByAddress.remote.transport._get = debounce(bhValidatorsByAddress.remote.transport, bhValidatorsByAddress.remote.transport._get)
 
   // before adding datasets make sure requestNum is set to the correct value
   $(".typeahead").typeahead(

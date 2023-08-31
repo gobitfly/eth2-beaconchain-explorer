@@ -251,7 +251,6 @@ func WriteValidatorTotalAccumulation(day uint64, concurrency uint64) error {
 				day,
 
 				cl_rewards_gwei_total,
-				cl_proposer_rewards_gwei_total,
 				el_rewards_wei_total,
 				mev_rewards_wei_total,
 
@@ -265,7 +264,6 @@ func WriteValidatorTotalAccumulation(day uint64, concurrency uint64) error {
 						vs1.validatorindex, 
 						vs1.day, 
 						COALESCE(vs1.cl_rewards_gwei, 0) + COALESCE(vs2.cl_rewards_gwei_total, 0),
-						COALESCE(vs1.cl_proposer_rewards_gwei, 0) + COALESCE(vs2.cl_proposer_rewards_gwei_total, 0),
 						COALESCE(vs1.el_rewards_wei, 0) + COALESCE(vs2.el_rewards_wei_total, 0),
 						COALESCE(vs1.mev_rewards_wei, 0) + COALESCE(vs2.mev_rewards_wei_total, 0),
 						COALESCE(vs1.missed_attestations, 0) + COALESCE(vs2.missed_attestations_total, 0),
@@ -276,7 +274,6 @@ func WriteValidatorTotalAccumulation(day uint64, concurrency uint64) error {
 				) 
 				ON CONFLICT (validatorindex, day) DO UPDATE SET 
 					cl_rewards_gwei_total = excluded.cl_rewards_gwei_total,
-					cl_proposer_rewards_gwei_total = excluded.cl_proposer_rewards_gwei_total,
 					el_rewards_wei_total = excluded.el_rewards_wei_total,
 					mev_rewards_wei_total = excluded.mev_rewards_wei_total,
 					missed_attestations_total = excluded.missed_attestations_total,
@@ -376,7 +373,6 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 				cl_performance_31d,
 				cl_performance_365d,
 				cl_performance_total,
-				cl_proposer_performance_total,
 
 				el_performance_1d,
 				el_performance_7d,
@@ -400,7 +396,6 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_31d.cl_rewards_gwei_total, 0) as cl_performance_31d, 
 						coalesce(vs_now.cl_rewards_gwei_total, 0) - coalesce(vs_365d.cl_rewards_gwei_total, 0) as cl_performance_365d,
 						coalesce(vs_now.cl_rewards_gwei_total, 0) as cl_performance_total, 
-						coalesce(vs_now.cl_proposer_rewards_gwei_total, 0) as cl_proposer_performance_total, 
 						
 						coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_1d.el_rewards_wei_total, 0) as el_performance_1d, 
 						coalesce(vs_now.el_rewards_wei_total, 0) - coalesce(vs_7d.el_rewards_wei_total, 0) as el_performance_7d, 
@@ -429,7 +424,6 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64) error {
 					cl_performance_31d=excluded.cl_performance_31d,
 					cl_performance_365d=excluded.cl_performance_365d,
 					cl_performance_total=excluded.cl_performance_total,
-					cl_proposer_performance_total=excluded.cl_proposer_performance_total,
 
 					el_performance_1d=excluded.el_performance_1d,
 					el_performance_7d=excluded.el_performance_7d,
@@ -706,29 +700,22 @@ func WriteValidatorClIcome(validators []uint64, day uint64, concurrency uint64) 
 	logger.Infof("validating took %v", time.Since(start))
 
 	start = time.Now()
-	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
+	_, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
 	logger.Infof("exporting cl_rewards_wei statistics")
-	incomeStats, err := BigtableClient.GetAggregatedValidatorIncomeDetailsHistory(validators, firstEpoch, lastEpoch)
+
+	maxValidatorIndex, err := BigtableClient.GetMaxValidatorindexForEpoch(lastEpoch)
 	if err != nil {
-		return fmt.Errorf("error in GetAggregatedValidatorIncomeDetailsHistory for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
+		return fmt.Errorf("error in GetAggregatedValidatorIncomeDetailsHistory: could not get max validator index from validator income history for last epoch [%v] of day [%v]: %v", lastEpoch, day, err)
+	} else if maxValidatorIndex == uint64(0) {
+		return fmt.Errorf("error in GetAggregatedValidatorIncomeDetailsHistory: no validator found for last epoch [%v] of day [%v]: %v", lastEpoch, day, err)
 	}
-	logrus.Infof("getting cl income done in %v, now we export them to the db", time.Since(start))
-	start = time.Now()
 
-	maxValidatorIndex := uint64(0)
-
-	for validator := range incomeStats {
-		if validator > maxValidatorIndex {
-			maxValidatorIndex = validator
-		}
-	}
 	maxValidatorIndex++
 
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(int(concurrency))
 
-	numArgs := 3
 	batchSize := 100 // max parameters: 65535 / 3, but it's faster in smaller batches
 	for b := 0; b < int(maxValidatorIndex); b += batchSize {
 		start := b
@@ -738,24 +725,6 @@ func WriteValidatorClIcome(validators []uint64, day uint64, concurrency uint64) 
 		}
 
 		logrus.Info(start, end)
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*numArgs)
-		for i := start; i < end; i++ {
-			clProposerRewards := uint64(0)
-
-			if incomeStats[uint64(i)] != nil {
-				clProposerRewards = incomeStats[uint64(i)].ProposerAttestationInclusionReward + incomeStats[uint64(i)].ProposerSlashingInclusionReward + incomeStats[uint64(i)].ProposerSyncInclusionReward
-			}
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", (i-start)*numArgs+1, (i-start)*numArgs+2, (i-start)*numArgs+3))
-			valueArgs = append(valueArgs, i)
-			valueArgs = append(valueArgs, day)
-			valueArgs = append(valueArgs, clProposerRewards)
-		}
-		stmt := fmt.Sprintf(`
-		insert into validator_stats (validatorindex, day, cl_proposer_rewards_gwei) VALUES
-		%s
-		on conflict (validatorindex, day) do update set cl_proposer_rewards_gwei = excluded.cl_proposer_rewards_gwei;`,
-			strings.Join(valueStrings, ","))
 
 		g.Go(func() error {
 			select {
@@ -763,12 +732,7 @@ func WriteValidatorClIcome(validators []uint64, day uint64, concurrency uint64) 
 				return gCtx.Err()
 			default:
 			}
-			_, err := WriterDb.Exec(stmt, valueArgs...)
-			if err != nil {
-				return fmt.Errorf("error inserting cl_proposer_rewards_gwei into validator_stats for day [%v], start [%v] and end [%v]: %w", day, start, end, err)
-			}
-			logrus.Infof("saving validator proposer rewards gwei batch %v completed", start)
-			stmt = `
+			stmt := `
 				INSERT INTO validator_stats (validatorindex, day, cl_rewards_gwei) 
 				(
 					SELECT cur.validatorindex, cur.day, COALESCE(cur.end_balance, 0) - COALESCE(last.end_balance, 0) + COALESCE(cur.withdrawals_amount, 0) - COALESCE(cur.deposits_amount, 0) AS cl_rewards_gwei
@@ -1539,13 +1503,13 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	}
 	lastEpoch := lastSlot / int64(utils.Config.Chain.Config.SlotsPerEpoch)
 
-	finalizedCount, err := CountFinalizedEpochs(firstEpoch, uint64(lastEpoch))
+	latestFinalizedEpoch, err := GetLatestFinalizedEpoch()
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting latest finalized epoch from db %w", err)
 	}
 
-	if finalizedCount < epochsPerDay {
-		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
+	if lastEpoch > int64(latestFinalizedEpoch) {
+		return fmt.Errorf("delaying chart series export as not all epochs for day %v finalized. last epoch of the day [%v] last finalized epoch [%v]", day, lastEpoch, latestFinalizedEpoch)
 	}
 
 	firstBlock, err := GetBlockNumber(uint64(firstSlot))
@@ -1851,16 +1815,16 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 }
 
 func checkIfDayIsFinalized(day uint64) error {
-	epochsPerDay := utils.EpochsPerDay()
-	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
+	_, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
-	finalizedCount, err := CountFinalizedEpochs(firstEpoch, lastEpoch)
+	latestFinalizedEpoch, err := GetLatestFinalizedEpoch()
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting latest finalized epoch from db %w", err)
 	}
 
-	if finalizedCount < epochsPerDay {
-		return fmt.Errorf("delaying export as not all epochs for day %v finalized. %v of %v", day, finalizedCount, epochsPerDay)
+	if lastEpoch > latestFinalizedEpoch {
+		return fmt.Errorf("delaying statistics export as not all epochs for day %v are finalized. Last epoch of the day [%v] last finalized epoch [%v]", day, lastEpoch, latestFinalizedEpoch)
 	}
+
 	return nil
 }

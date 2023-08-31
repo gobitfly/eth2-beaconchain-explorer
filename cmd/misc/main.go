@@ -164,12 +164,16 @@ func main() {
 		}
 	case "export-epoch-missed-slots":
 		logrus.Infof("exporting epochs with missed slots")
+		latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
+		if err != nil {
+			utils.LogError(err, "error getting latest finalized epoch from db", 0)
+		}
 		epochs := []uint64{}
 		err = db.ReaderDb.Select(&epochs, `
 			WITH last_exported_epoch AS (
 				SELECT (MAX(epoch)*$1) AS slot 
 				FROM epochs 
-				WHERE finalized 
+				WHERE epoch <= $2 
 				AND rewards_exported
 			)
 			SELECT epoch 
@@ -178,7 +182,7 @@ func main() {
 				AND slot < (SELECT slot FROM last_exported_epoch)
 			GROUP BY epoch 
 			ORDER BY epoch;
-		`, utils.Config.Chain.Config.SlotsPerEpoch)
+		`, utils.Config.Chain.Config.SlotsPerEpoch, latestFinalizedEpoch)
 		if err != nil {
 			utils.LogError(err, "Error getting epochs with missing slot status from db", 0)
 			return
@@ -295,20 +299,42 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					utils.LogError(err, fmt.Errorf("error getting Slot [%v] status", block.Slot), 0)
 					return
 				}
+				importWholeBlock := false
 
 				if status != block.Status {
 					logrus.Infof("Slot[%v] has the wrong status [%v], but should be [%v]", block.Slot, status, block.Status)
 					if block.Status == 1 {
-						err := db.SaveBlock(block)
-						if err != nil {
-							utils.LogError(err, fmt.Errorf("error saving Slot [%v]", block.Slot), 0)
-							return
-						}
-						continue
+						importWholeBlock = true
 					} else {
 						utils.LogError(err, fmt.Errorf("error on Slot [%v] - no update process for status [%v]", block.Slot, block.Status), 0)
 						return
 					}
+				} else if len(block.Attestations) > 0 {
+					count := 0
+					err := db.ReaderDb.Get(&count, `
+						SELECT COUNT(*)
+						FROM 
+							blocks_attestations 
+						WHERE 
+							block_slot=$1`, block.Slot)
+					if err != nil {
+						utils.LogError(err, fmt.Errorf("error getting Slot [%v] status", block.Slot), 0)
+						return
+					}
+					// We only know about cases where we have no attestations in the db but the node has one.
+					// So we don't handle cases (for now) where there are attestations with different sizes - that would require a different handling
+					if count == 0 {
+						importWholeBlock = true
+					}
+				}
+
+				if importWholeBlock {
+					err := db.SaveBlock(block, true)
+					if err != nil {
+						utils.LogError(err, fmt.Errorf("error saving Slot [%v]", block.Slot), 0)
+						return
+					}
+					continue
 				}
 
 				for i, a := range block.Attestations {

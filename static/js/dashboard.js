@@ -269,7 +269,15 @@ function renderProposedHistoryTable(data) {
         targets: 1,
         data: "1",
         render: function (data, type, row, meta) {
-          return "<span>" + getRelativeTime(luxon.DateTime.fromMillis(data * 1000)) + "</span>"
+          // date and epochs
+          const startEpoch = timeToEpoch(data * 1000)
+          const startDate = luxon.DateTime.fromMillis(data * 1000)
+          const timeForOneDay = 24 * 60 * 60 * 1000
+          const endEpoch = timeToEpoch(data * 1000 + timeForOneDay) - 1
+          const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch + 1))
+          const tooltip = `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`
+
+          return `<span data-html="true" data-toggle="tooltip" data-placement="top" title="${tooltip}">${startDate.toFormat("yyyy-MM-dd")}</span>`
         },
       },
       {
@@ -684,6 +692,24 @@ $(document).ready(function () {
   }
   create_validators_typeahead("input[aria-controls='validators']", "#validators")
 
+  var timeWait = 0
+  var debounce = function (context, func) {
+    var timeout, result
+
+    return function () {
+      var args = arguments,
+        later = function () {
+          timeout = null
+          result = func.apply(context, args)
+        }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, timeWait)
+      if (!timeout) {
+        result = func.apply(context, args)
+      }
+      return result
+    }
+  }
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -692,9 +718,19 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators/%QUERY",
-      wildcard: "%QUERY",
+      // use prepare hook to modify the rateLimitWait parameter on input changes
+      // NOTE: we only need to do this for the first function because testing showed that queries are executed/queued in order
+      // No need to update `timeWait` multiple times.
+      prepare: function (_, settings) {
+        var cur_query = $(".typeahead-dashboard").val()
+        timeWait = 4000 - Math.min(cur_query.length, 5) * 500
+        // "wildcard" can't be used anymore, need to set query wildcard ourselves now
+        settings.url = settings.url.replace("%QUERY", encodeURIComponent(cur_query))
+        return settings
+      },
     },
   })
+  bhValidators.remote.transport._get = debounce(bhValidators.remote.transport, bhValidators.remote.transport._get)
   var bhPubkey = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -706,6 +742,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)
   var bhEth1Addresses = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -717,6 +754,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
   var bhName = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -728,6 +766,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
   var bhGraffiti = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -739,6 +778,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
 
   $(".typeahead-dashboard").typeahead(
     {
@@ -1131,8 +1171,10 @@ $(document).ready(function () {
 
     if (state.validators.length) {
       var qryStr = "?validators=" + state.validators.join(",")
-      var newUrl = window.location.pathname + qryStr
-      window.history.replaceState(null, "Dashboard", newUrl)
+      if (window.location.search != qryStr) {
+        var newUrl = window.location.pathname + qryStr + window.location.hash
+        window.history.replaceState(null, "Dashboard", newUrl)
+      }
     }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
@@ -1480,7 +1522,7 @@ function createProposedChart(data) {
   proposedChart = Highcharts.stockChart("proposed-chart", {
     chart: {
       type: "column",
-      height: "250px",
+      height: "630px",
     },
     title: {
       text: "Proposal History for all Validators",

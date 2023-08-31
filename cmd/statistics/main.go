@@ -62,6 +62,13 @@ func main() {
 	}
 	utils.Config = cfg
 
+	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+		utils.LogFatal(fmt.Errorf("error ether SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot), "", 0)
+		return
+	} else {
+		logrus.Infof("Writing statistic with: SlotsPerEpoch [%v] or SecondsPerSlot [%v]", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot)
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
 		Password:     cfg.WriterDatabase.Password,
@@ -141,7 +148,7 @@ func main() {
 
 				err = db.WriteValidatorStatisticsForDay(uint64(d), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 				if err != nil {
-					logrus.Errorf("error exporting stats for day %v: %v", d, err)
+					utils.LogError(err, fmt.Errorf("error exporting stats for day %v", d), 0)
 					break
 				}
 			}
@@ -181,7 +188,7 @@ func main() {
 
 			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 			if err != nil {
-				logrus.Errorf("error exporting stats for day %v: %v", opt.statisticsDayToExport, err)
+				utils.LogError(err, fmt.Errorf("error exporting stats for day %v", opt.statisticsDayToExport), 0)
 			}
 		}
 
@@ -250,7 +257,7 @@ func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64, concurrencyFa
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
 					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl, concurrencyFailedAttestations)
 					if err != nil {
-						logrus.Errorf("error exporting stats for day %v: %v", day, err)
+						utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
 						break
 					}
 				}

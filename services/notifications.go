@@ -254,6 +254,13 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	}
 	logger.Infof("collecting block proposal missed notifications took: %v", time.Since(start))
 
+	err = collectBlockProposalNotifications(notificationsByUserID, 3, types.ValidatorMissedProposalEventName, epoch)
+	if err != nil {
+		metrics.Errors.WithLabelValues("notifications_collect_missed_orphaned_block_proposal").Inc()
+		return nil, fmt.Errorf("error collecting validator_proposal_missed notifications for orphaned slots: %w", err)
+	}
+	logger.Infof("collecting block proposal missed notifications for orphaned slots took: %v", time.Since(start))
+
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID, epoch)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_validator_got_slashed").Inc()
@@ -1180,7 +1187,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 	_, subMap, err := db.GetSubsForEventFilter(eventName)
 	if err != nil {
-		return fmt.Errorf("error getting subscriptions for missted attestations %w", err)
+		return fmt.Errorf("error getting subscriptions for (missed) block proposals %w", err)
 	}
 
 	events := make([]dbResult, 0)
@@ -1231,43 +1238,43 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 	for _, event := range events {
 		pubkey, err := GetGetPubkeyForIndex(event.Proposer)
-		if err == nil {
-			subscribers, ok := subMap[hex.EncodeToString(pubkey)]
-			if ok {
-				for _, sub := range subscribers {
-					if sub.UserID == nil || sub.ID == nil {
-						return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
-					}
-					if sub.LastEpoch != nil {
-						lastSentEpoch := *sub.LastEpoch
-						if lastSentEpoch >= epoch || epoch < sub.CreatedEpoch {
-							continue
-						}
-					}
-					logger.Infof("creating %v notification for validator %v in epoch %v", eventName, event.Proposer, epoch)
-					n := &validatorProposalNotification{
-						SubscriptionID: *sub.ID,
-						ValidatorIndex: event.Proposer,
-						Epoch:          epoch,
-						Status:         event.Status,
-						EventName:      eventName,
-						Reward:         event.ExecRewardETH,
-						EventFilter:    hex.EncodeToString(pubkey),
-					}
-					if _, exists := notificationsByUserID[*sub.UserID]; !exists {
-						notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
-					}
-					if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
-						notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
-					}
-					notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
-					metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+		if err != nil {
+			utils.LogError(err, "error retrieving pubkey for validator", 0, map[string]interface{}{"validator": event.Proposer})
+			continue
+		}
+		subscribers, ok := subMap[hex.EncodeToString(pubkey)]
+		if !ok {
+			continue
+		}
+		for _, sub := range subscribers {
+			if sub.UserID == nil || sub.ID == nil {
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+			}
+			if sub.LastEpoch != nil {
+				lastSentEpoch := *sub.LastEpoch
+				if lastSentEpoch >= epoch || epoch < sub.CreatedEpoch {
+					continue
 				}
 			}
-		} else {
-			logger.Errorf("error retrieving pubkey for validator %v: %v", event.Proposer, err)
+			logger.Infof("creating %v notification for validator %v in epoch %v", eventName, event.Proposer, epoch)
+			n := &validatorProposalNotification{
+				SubscriptionID: *sub.ID,
+				ValidatorIndex: event.Proposer,
+				Epoch:          epoch,
+				Status:         event.Status,
+				EventName:      eventName,
+				Reward:         event.ExecRewardETH,
+				EventFilter:    hex.EncodeToString(pubkey),
+			}
+			if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+				notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
-
 	}
 
 	return nil
@@ -1437,7 +1444,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		}
 		for _, sub := range subscribers {
 			if sub.UserID == nil || sub.ID == nil {
-				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
 			if sub.LastEpoch != nil {
 				lastSentEpoch := *sub.LastEpoch
@@ -1564,7 +1571,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		subs := subMap[t]
 		for _, sub := range subs {
 			if sub.UserID == nil || sub.ID == nil {
-				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
 			logger.Infof("new event: validator %v detected as offline since epoch %v", validator.Index, epoch)
 
@@ -1621,7 +1628,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 			}
 
 			if sub.UserID == nil || sub.ID == nil {
-				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
 
 			logger.Infof("new event: validator %v detected as online again at epoch %v", validator.Index, epoch)
@@ -2025,7 +2032,7 @@ func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.E
 		if ok {
 			for _, sub := range subscribers {
 				if sub.UserID == nil || sub.ID == nil {
-					return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+					return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 				}
 				if sub.LastEpoch != nil {
 					lastSentEpoch := *sub.LastEpoch

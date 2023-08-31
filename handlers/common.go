@@ -162,12 +162,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		elApr365d = float64(-1)
 	}
 
-	// retrieve cl income not yet in stats
-	currentDayProposerIncome, err := db.GetCurrentDayProposerIncomeTotal(validators)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	incomeToday := types.ClElInt64{
 		El:    0,
 		Cl:    currentDayClIncome,
@@ -213,8 +207,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 	}
 
-	validatorProposalData.ProposalLuck = getProposalLuck(slots, len(validators), firstActivationEpoch)
-	avgSlotInterval := uint64(getAvgSlotInterval(1))
+	validatorProposalData.ProposalLuck, _ = getProposalLuck(slots, len(validators), firstActivationEpoch)
+	avgSlotInterval := uint64(getAvgSlotInterval(len(validators)))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 	if len(slots) > 0 {
@@ -259,12 +253,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Total: income.ClIncomeTotal + income.ElIncomeTotal + incomeToday.Total,
 	}
 
-	incomeTotalProposer := types.ClElInt64{
-		El:    income.ElIncomeTotal,
-		Cl:    income.ClProposerIncomeTotal + currentDayProposerIncome,
-		Total: income.ClProposerIncomeTotal + income.ElIncomeTotal + currentDayProposerIncome,
-	}
-
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
 			El:    income.ElIncome1d,
@@ -298,45 +286,45 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		TotalDeposits:          int64(totalDeposits),
-		LastDayFormatted:       utils.FormatIncome(earnings1d, currency),
-		LastWeekFormatted:      utils.FormatIncome(earnings7d, currency),
-		LastMonthFormatted:     utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:         utils.FormatIncomeClElInt64(incomeTotal, currency),
-		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
-		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency),
-		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
-		ProposalData:           validatorProposalData,
+		TotalDeposits:        int64(totalDeposits),
+		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
+		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
+		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
+		ProposalData:         validatorProposalData,
 	}, balancesMap, nil
 }
+
+// Timeframe constants
+const fiveDays = utils.Day * 5
+const oneWeek = utils.Week
+const oneMonth = utils.Month
+const sixWeeks = utils.Day * 45
+const twoMonths = utils.Month * 2
+const threeMonths = utils.Month * 3
+const fourMonths = utils.Month * 4
+const fiveMonths = utils.Month * 5
+const sixMonths = utils.Month * 6
+const year = utils.Year
 
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
 // given the blocks proposed by the validators and the number of validators
 //
 // precondition: slots is sorted by ascending block number
-func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) float64 {
+func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) (float64, time.Duration) {
 	// Return 0 if there are no proposed blocks or no validators
 	if len(slots) == 0 || validatorsCount == 0 {
-		return 0
+		return 0, 0
 	}
-	// Timeframe constants
-	fiveDays := utils.Day * 5
-	oneWeek := utils.Week
-	oneMonth := utils.Month
-	sixWeeks := utils.Day * 45
-	twoMonths := utils.Month * 2
-	threeMonths := utils.Month * 3
-	fourMonths := utils.Month * 4
-	fiveMonths := utils.Month * 5
-	sixMonths := utils.Month * 6
-	year := utils.Year
 
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	// Calculate the expected number of slot proposals for 30 days
 	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorsCount, activeValidatorsCount)
 
 	// Get the timeframe for which we should consider qualified proposals
-	var proposalTimeframe time.Duration
+	var proposalTimeFrame time.Duration
 	// Time since the first epoch of the related validators
 	timeSinceFirstEpoch := time.Since(utils.EpochToTime(fromEpoch))
 
@@ -345,36 +333,36 @@ func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) floa
 	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
 	switch {
 	case timeSinceFirstEpoch < fiveDays:
-		proposalTimeframe = fiveDays
+		proposalTimeFrame = fiveDays
 	case timeSinceFirstEpoch < oneWeek:
-		proposalTimeframe = oneWeek
+		proposalTimeFrame = oneWeek
 	case timeSinceFirstEpoch < oneMonth:
-		proposalTimeframe = oneMonth
+		proposalTimeFrame = oneMonth
 	case timeSinceFirstEpoch > year && expectedSlotProposals <= targetBlocks/12:
-		proposalTimeframe = year
+		proposalTimeFrame = year
 	case timeSinceFirstEpoch > sixMonths && expectedSlotProposals <= targetBlocks/6:
-		proposalTimeframe = sixMonths
+		proposalTimeFrame = sixMonths
 	case timeSinceFirstEpoch > fiveMonths && expectedSlotProposals <= targetBlocks/5:
-		proposalTimeframe = fiveMonths
+		proposalTimeFrame = fiveMonths
 	case timeSinceFirstEpoch > fourMonths && expectedSlotProposals <= targetBlocks/4:
-		proposalTimeframe = fourMonths
+		proposalTimeFrame = fourMonths
 	case timeSinceFirstEpoch > threeMonths && expectedSlotProposals <= targetBlocks/3:
-		proposalTimeframe = threeMonths
+		proposalTimeFrame = threeMonths
 	case timeSinceFirstEpoch > twoMonths && expectedSlotProposals <= targetBlocks/2:
-		proposalTimeframe = twoMonths
+		proposalTimeFrame = twoMonths
 	case timeSinceFirstEpoch > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
-		proposalTimeframe = sixWeeks
+		proposalTimeFrame = sixWeeks
 	default:
-		proposalTimeframe = oneMonth
+		proposalTimeFrame = oneMonth
 	}
 
 	// Recalculate expected slot proposals for the new timeframe
-	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeframe, validatorsCount, activeValidatorsCount)
+	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeFrame, validatorsCount, activeValidatorsCount)
 	if expectedSlotProposals == 0 {
-		return 0
+		return 0, 0
 	}
 	// Cutoff time for proposals to be considered qualified
-	blockProposalCutoffTime := time.Now().Add(-proposalTimeframe)
+	blockProposalCutoffTime := time.Now().Add(-proposalTimeFrame)
 
 	// Count the number of qualified proposals
 	qualifiedProposalCount := 0
@@ -384,7 +372,34 @@ func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) floa
 		}
 	}
 	// Return the luck as the ratio of qualified proposals to expected slot proposals
-	return float64(qualifiedProposalCount) / expectedSlotProposals
+	return float64(qualifiedProposalCount) / expectedSlotProposals, proposalTimeFrame
+}
+
+func getProposalTimeframeName(proposalTimeframe time.Duration) string {
+	switch {
+	case proposalTimeframe == fiveDays:
+		return "5 days"
+	case proposalTimeframe == oneWeek:
+		return "week"
+	case proposalTimeframe == oneMonth:
+		return "month"
+	case proposalTimeframe == sixWeeks:
+		return "6 weeks"
+	case proposalTimeframe == twoMonths:
+		return "2 months"
+	case proposalTimeframe == threeMonths:
+		return "3 months"
+	case proposalTimeframe == fourMonths:
+		return "4 months"
+	case proposalTimeframe == fiveMonths:
+		return "5 months"
+	case proposalTimeframe == sixMonths:
+		return "6 months"
+	case proposalTimeframe == year:
+		return "year"
+	default:
+		return "month"
+	}
 }
 
 // calcExpectedSlotProposals calculates the expected number of slot proposals for a certain time frame and validator count

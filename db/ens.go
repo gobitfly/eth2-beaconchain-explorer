@@ -106,7 +106,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 			for _, lTopic := range log.GetTopics() {
 				if isRegistarContract {
-					if bytes.Equal(lTopic, ens.NameRegisteredTopic) {
+					if bytes.Equal(lTopic, ens.NameRegisteredTopic) || bytes.Equal(lTopic, ens.NameRegisteredV2Topic) {
 						foundNameIndex = j
 					} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
 						foundResolverIndex = j
@@ -163,13 +163,24 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				Removed:     log.GetRemoved(),
 			}
 
+			var owner common.Address
+			var name string
+
 			nameRegistered, err := filterer.ParseNameRegistered(nameLog)
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse register event at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number), 0)
-				continue
+				nameRegisteredV2, err := filterer.ParseNameRegisteredV2(nameLog)
+				if err != nil {
+					utils.LogError(err, fmt.Sprintf("indexing of register event failed parse register event at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number), 0)
+					continue
+				}
+				owner = nameRegisteredV2.Owner
+				name = nameRegisteredV2.Name
+			} else {
+				owner = nameRegistered.Owner
+				name = nameRegistered.Name
 			}
 
-			if err = verifyName(nameRegistered.Name); err != nil {
+			if err = verifyName(name); err != nil {
 				logger.Warnf("indexing of register event failed because of invalid name at tx [%v] index [%v] on block [%v]: %v", i, foundNameIndex, blk.Number, err)
 				continue
 			}
@@ -181,9 +192,9 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 
 			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, resolver.Node, tx.GetHash())] = true
-			keys[fmt.Sprintf("%s:ENS:I:A:%x:%x", bigtable.chainId, nameRegistered.Owner, tx.GetHash())] = true
-			keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, nameRegistered.Owner)] = true
-			keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, nameRegistered.Name)] = true
+			keys[fmt.Sprintf("%s:ENS:I:A:%x:%x", bigtable.chainId, owner, tx.GetHash())] = true
+			keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, owner)] = true
+			keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, name)] = true
 
 		} else if foundNameRenewedIndex > -1 { // We found a renew name event
 			log := logs[foundNameRenewedIndex]
