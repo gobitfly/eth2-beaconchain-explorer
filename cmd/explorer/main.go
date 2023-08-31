@@ -525,7 +525,6 @@ func main() {
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 
-			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")
