@@ -13,6 +13,7 @@ Column families:
 
 ```
 cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_balances vb
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_balances ha
 ```
 
 ----
@@ -53,6 +54,7 @@ Column families:
 
 ```
 cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_sync sc
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_sync sp
 ```
 ----
 Table name: `beaconchain_validator_income`
