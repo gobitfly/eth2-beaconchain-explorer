@@ -393,6 +393,10 @@ func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 	return latestBlock.NumberU64(), nil
 }
 
+type GethTraceCallResultWrapper struct {
+	Result *GethTraceCallResult
+}
+
 type GethTraceCallResult struct {
 	TransactionPosition int
 	Time                string
@@ -406,15 +410,6 @@ type GethTraceCallResult struct {
 	Error               string
 	Type                string
 	Calls               []*GethTraceCallResult
-}
-
-type GethTraceCallData struct {
-	From     common.Address
-	To       common.Address
-	Gas      hexutil.Uint64
-	GasPrice hexutil.Big
-	Value    hexutil.Big
-	Data     hexutil.Bytes
 }
 
 var gethTracerArg = map[string]string{
@@ -437,7 +432,7 @@ func extractCalls(r *GethTraceCallResult, d *[]*GethTraceCallResult) {
 }
 
 func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallResult, error) {
-	var res []*GethTraceCallResult
+	var res []*GethTraceCallResultWrapper
 
 	err := client.rpcClient.Call(&res, "debug_traceBlockByHash", blockHash, gethTracerArg)
 	if err != nil {
@@ -446,8 +441,8 @@ func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallRe
 
 	data := make([]*GethTraceCallResult, 0, 20)
 	for i, r := range res {
-		r.TransactionPosition = i
-		extractCalls(r, &data)
+		r.Result.TransactionPosition = i
+		extractCalls(r.Result, &data)
 	}
 
 	return data, nil
