@@ -851,16 +851,6 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
-	slots := []uint64{}
-
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
-		slots = append(slots, slot)
-	}
-	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
-	if err != nil {
-		return nil, err
-	}
-
 	ranges := bigtable.getSlotRanges(startEpoch, endEpoch)
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
 
@@ -886,6 +876,38 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	if len(columnFilters) == 0 { // special case to retrieve data for all validators
 		filter = gcp_bigtable.FamilyFilter(ATTESTATIONS_FAMILY)
 	}
+
+	maxSlot := (endEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch
+	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+		for _, ri := range r[ATTESTATIONS_FAMILY] {
+			inclusionSlot := max_block_number - uint64(ri.Timestamp)/1000
+			if inclusionSlot == max_block_number {
+				inclusionSlot = 0
+			}
+
+			if inclusionSlot > maxSlot {
+				maxSlot = inclusionSlot
+			}
+		}
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+	if err != nil {
+		return nil, err
+	}
+
+	slots := []uint64{}
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < maxSlot; slot++ {
+		slots = append(slots, slot)
+	}
+	missedSlotsMap, err := GetMissedSlotsMap(slots)
+	if err != nil {
+		return nil, err
+	}
+	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
+	if err != nil {
+		return nil, err
+	}
+
 	err = bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 		keySplit := strings.Split(r.Key(), ":")
 
@@ -916,11 +938,19 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				res[validator] = make([]*types.ValidatorAttestation, 0)
 			}
 
+			missedSlotsCount := uint64(0)
+			for slot := attesterSlot + 1; slot < inclusionSlot; slot++ {
+				if missedSlotsMap[slot] || orphanedSlotsMap[slot] {
+					missedSlotsCount++
+				}
+			}
+
 			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
 				// don't override successful attestion, that was included in a different slot
 				if status == 1 && res[validator][len(res[validator])-1].Status != 1 {
-					res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
 					res[validator][len(res[validator])-1].Status = status
+					res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
+					res[validator][len(res[validator])-1].Delay = int64(inclusionSlot - attesterSlot - missedSlotsCount - 1)
 				}
 			} else {
 				res[validator] = append(res[validator], &types.ValidatorAttestation{
@@ -930,10 +960,9 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 					CommitteeIndex: 0,
 					Status:         status,
 					InclusionSlot:  inclusionSlot,
-					Delay:          int64(inclusionSlot) - int64(attesterSlot) - 1,
+					Delay:          int64(inclusionSlot - attesterSlot - missedSlotsCount - 1),
 				})
 			}
-
 		}
 		return true
 	}, gcp_bigtable.RowFilter(filter))

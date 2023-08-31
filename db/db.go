@@ -3312,6 +3312,32 @@ func GetValidatorPropsosals(validators []uint64, proposals *[]types.ValidatorPro
 		`, validatorsPQArray)
 }
 
+func GetMissedSlots(slots []uint64) ([]uint64, error) {
+	slotsPQArray := pq.Array(slots)
+	missed := []uint64{}
+
+	err := ReaderDb.Select(&missed, `
+		SELECT
+			slot
+		FROM blocks
+		WHERE slot = ANY($1) AND status = '2'
+		`, slotsPQArray)
+
+	return missed, err
+}
+
+func GetMissedSlotsMap(slots []uint64) (map[uint64]bool, error) {
+	missedSlots, err := GetMissedSlots(slots)
+	if err != nil {
+		return nil, err
+	}
+	missedSlotsMap := make(map[uint64]bool, len(missedSlots))
+	for _, slot := range missedSlots {
+		missedSlotsMap[slot] = true
+	}
+	return missedSlotsMap, nil
+}
+
 func GetOrphanedSlots(slots []uint64) ([]uint64, error) {
 	slotsPQArray := pq.Array(slots)
 	orphaned := []uint64{}
@@ -3331,7 +3357,7 @@ func GetOrphanedSlotsMap(slots []uint64) (map[uint64]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	orphanedSlotsMap := make(map[uint64]bool)
+	orphanedSlotsMap := make(map[uint64]bool, len(orphanedSlots))
 	for _, slot := range orphanedSlots {
 		orphanedSlotsMap[slot] = true
 	}
