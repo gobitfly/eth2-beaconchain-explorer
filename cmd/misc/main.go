@@ -539,7 +539,7 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 					logrus.Infof("block [%v] not found so we need to index it", j)
 					if _, err := db.BigtableClient.GetBlockFromBlocksTable(j); err != nil {
 						logrus.Infof("could not load [%v] from blocks table so we need to fetch it from the node and save it", j)
-						bc, _, err := client.GetBlock(int64(j))
+						bc, _, err := client.GetBlock(int64(j), "parity/geth")
 						if err != nil {
 							utils.LogError(err, fmt.Sprintf("error getting block: %v from ethereum node", j), 0)
 						}

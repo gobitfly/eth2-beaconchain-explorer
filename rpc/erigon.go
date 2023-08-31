@@ -200,7 +200,12 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			traces, err := client.TraceParity(block.NumberU64())
 
 			if err != nil {
-				logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+				if traceMode == "parity" {
+					return fmt.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+				} else {
+					logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+
+				}
 				traceError = err
 			} else {
 				for _, trace := range traces {
