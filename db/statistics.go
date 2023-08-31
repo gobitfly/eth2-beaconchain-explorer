@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -1091,9 +1090,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 
 	logrus.Infof("exporting 'failed attestations' statistics firstEpoch: %v lastEpoch: %v", firstEpoch, lastEpoch)
 
-	// first key is the batch start index and the second is the validator id
 	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
-	mux := sync.Mutex{}
 	batchSize := 10000
 	for i := 0; i < len(validators); i += batchSize {
 
@@ -1109,11 +1106,9 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 		if err != nil {
 			return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 		}
-		mux.Lock()
 		for validator, stats := range ma {
 			validatorMap[validator] = stats
 		}
-		mux.Unlock()
 	}
 
 	logrus.Infof("fetching 'failed attestations' done in %v, now we export them to the db", time.Since(start))
@@ -1126,7 +1121,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(50)
-	dbBatchSize := 100 // max: 65535 / 4, but we are faster with smaller batches
+	dbBatchSize := 100
 	for b := 0; b < len(maArr); b += dbBatchSize {
 
 		start := b
