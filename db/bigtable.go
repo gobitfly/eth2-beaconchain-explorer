@@ -25,16 +25,17 @@ import (
 var BigtableClient *Bigtable
 
 const (
-	DEFAULT_FAMILY                       = "f"
-	VALIDATOR_BALANCES_FAMILY            = "vb"
-	ATTESTATIONS_FAMILY                  = "at"
-	PROPOSALS_FAMILY                     = "pr"
-	SYNC_COMMITTEES_FAMILY               = "sc"
-	SYNC_COMMITTEES_PARTICIPATION_FAMILY = "sp"
-	INCOME_DETAILS_COLUMN_FAMILY         = "id"
-	STATS_COLUMN_FAMILY                  = "stats"
-	MACHINE_METRICS_COLUMN_FAMILY        = "mm"
-	SERIES_FAMILY                        = "series"
+	DEFAULT_FAMILY                        = "f"
+	VALIDATOR_BALANCES_FAMILY             = "vb"
+	VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY = "ha"
+	ATTESTATIONS_FAMILY                   = "at"
+	PROPOSALS_FAMILY                      = "pr"
+	SYNC_COMMITTEES_FAMILY                = "sc"
+	SYNC_COMMITTEES_PARTICIPATION_FAMILY  = "sp"
+	INCOME_DETAILS_COLUMN_FAMILY          = "id"
+	STATS_COLUMN_FAMILY                   = "stats"
+	MACHINE_METRICS_COLUMN_FAMILY         = "mm"
+	SERIES_FAMILY                         = "series"
 
 	SUM_COLUMN = "sum"
 
@@ -421,8 +422,14 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
 	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
+	highestActiveIndex := uint64(0)
 	epochKey := bigtable.reversedPaddedEpoch(epoch)
 	for _, validator := range validators {
+
+		if validator.Balance > 0 && validator.Index > highestActiveIndex {
+			highestActiveIndex = validator.Index
+		}
+
 		balanceEncoded := make([]byte, 8)
 		binary.LittleEndian.PutUint64(balanceEncoded, validator.Balance)
 
@@ -452,6 +459,12 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 		}
 	}
 
+	highestActiveIndexEncoded := make([]byte, 8)
+	binary.LittleEndian.PutUint64(highestActiveIndexEncoded, highestActiveIndex)
+
+	mut := &gcp_bigtable.Mutation{}
+	mut.Set(VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, ts, highestActiveIndexEncoded)
+
 	if len(muts) > 0 {
 		errs, err := bigtable.tableValidatorBalances.ApplyBulk(ctx, keys, muts)
 
@@ -462,6 +475,12 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 		for _, err := range errs {
 			return err
 		}
+	}
+
+	key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, epochKey)
+	err := bigtable.tableValidatorBalances.Apply(ctx, key, mut)
+	if err != nil {
+		return err
 	}
 
 	// logger.Infof("exported validator balances to bigtable in %v", time.Since(start))
@@ -894,7 +913,19 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(blocks map[uint64]map[string]*t
 // GetMaxValidatorindexForEpoch returns the higest validatorindex with a balance at that epoch
 func (bigtable *Bigtable) GetMaxValidatorindexForEpoch(epoch uint64) (uint64, error) {
 
-	// TODO: Implement
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
+	defer cancel()
+
+	key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, bigtable.reversedPaddedEpoch(epoch))
+
+	row, err := bigtable.tableValidatorBalances.ReadRow(ctx, key)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, ri := range row[VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY] {
+		return binary.LittleEndian.Uint64(ri.Value), nil
+	}
 
 	return 0, nil
 }
