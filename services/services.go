@@ -1512,7 +1512,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 
 	// Check db to have at least one entry (will error otherwise anyway)
 	burnedFeesCount := 0
-	if err := db.ReaderDb.Get(&burnedFeesCount, "SELECT COUNT(*) FROM chart_series WHERE indicator = 'BURNED_FEES';"); err != nil {
+	if err := db.ReaderDb.Get(&burnedFeesCount, "SELECT COUNT(*) FROM chart_series WHERE indicator = 'BURNED_FEES'"); err != nil {
 		return nil, fmt.Errorf("error get BURNED_FEES count from chart_series: %w", err)
 	}
 	if burnedFeesCount <= 0 {
@@ -1520,12 +1520,12 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	}
 
 	// Retrieve the total amount of burned Ether
-	if err := db.ReaderDb.Get(&data.TotalBurned, "SELECT SUM(value) FROM chart_series WHERE indicator = 'BURNED_FEES';"); err != nil {
+	if err := db.ReaderDb.Get(&data.TotalBurned, "SELECT SUM(value) FROM chart_series WHERE indicator = 'BURNED_FEES'"); err != nil {
 		return nil, fmt.Errorf("error retrieving total burned amount from chart_series table: %w", err)
 	}
 
 	cutOff := time.Time{}
-	if err := db.ReaderDb.Get(&cutOff, "SELECT ( SELECT MAX(time) FROM chart_series WHERE indicator = 'BURNED_FEES' ) + interval '24 hours';"); err != nil {
+	if err := db.ReaderDb.Get(&cutOff, "SELECT ( SELECT MAX(time) FROM chart_series WHERE indicator = 'BURNED_FEES' ) + interval '24 hours'"); err != nil {
 		return nil, fmt.Errorf("error retrieving cutoff date from chart_series table: %w", err)
 	}
 
@@ -1538,14 +1538,14 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// db.ReaderDb.Get(&blockLastDay)
 
 	additionalBurned := float64(0)
-	err := db.ReaderDb.Get(&additionalBurned, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) as burnedfees from blocks where epoch > $1", cutOffEpoch)
+	err := db.ReaderDb.Get(&additionalBurned, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) AS burnedfees FROM blocks WHERE epoch > $1", cutOffEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
 	}
 	// logger.Infof("additonal burn: %v", additionalBurned)
 	data.TotalBurned += additionalBurned
 
-	err = db.ReaderDb.Get(&data.BurnRate1h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) as burnedfees from blocks where epoch > $1", latestEpoch-10)
+	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", latestEpoch-10)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
 	}
