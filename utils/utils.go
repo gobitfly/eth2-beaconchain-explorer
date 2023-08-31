@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"context"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -28,6 +29,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -38,6 +40,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/carlmjohnson/requests"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
@@ -419,6 +422,126 @@ func ReadConfig(cfg *types.Config, path string) error {
 		// if err != nil {
 		// 	return fmt.Errorf("error setting chainConfig (%v) for prysmParams: %w", cfg.Chain.Name, err)
 		// }
+	} else if cfg.Chain.ConfigPath == "node" {
+		nodeEndpoint := fmt.Sprintf("http://%s:%s", cfg.Indexer.Node.Host, cfg.Indexer.Node.Port)
+
+		jr := &types.ConfigJsonResponse{}
+
+		err := requests.
+			URL(nodeEndpoint + "/eth/v1/config/spec").
+			ToJSON(jr).
+			Fetch(context.Background())
+
+		if err != nil {
+			return err
+		}
+
+		chainCfg := types.ChainConfig{
+			PresetBase:                              jr.Data.PresetBase,
+			ConfigName:                              jr.Data.ConfigName,
+			TerminalTotalDifficulty:                 jr.Data.TerminalTotalDifficulty,
+			TerminalBlockHash:                       jr.Data.TerminalBlockHash,
+			TerminalBlockHashActivationEpoch:        mustParseUint(jr.Data.TerminalBlockHashActivationEpoch),
+			MinGenesisActiveValidatorCount:          mustParseUint(jr.Data.MinGenesisActiveValidatorCount),
+			MinGenesisTime:                          int64(mustParseUint(jr.Data.MinGenesisTime)),
+			GenesisForkVersion:                      jr.Data.GenesisForkVersion,
+			GenesisDelay:                            mustParseUint(jr.Data.GenesisDelay),
+			AltairForkVersion:                       jr.Data.AltairForkVersion,
+			AltairForkEpoch:                         mustParseUint(jr.Data.AltairForkEpoch),
+			BellatrixForkVersion:                    jr.Data.BellatrixForkVersion,
+			BellatrixForkEpoch:                      mustParseUint(jr.Data.BellatrixForkEpoch),
+			CappellaForkVersion:                     jr.Data.CapellaForkVersion,
+			CappellaForkEpoch:                       mustParseUint(jr.Data.CapellaForkEpoch),
+			SecondsPerSlot:                          mustParseUint(jr.Data.SecondsPerSlot),
+			SecondsPerEth1Block:                     mustParseUint(jr.Data.SecondsPerEth1Block),
+			MinValidatorWithdrawabilityDelay:        mustParseUint(jr.Data.MinValidatorWithdrawabilityDelay),
+			ShardCommitteePeriod:                    mustParseUint(jr.Data.ShardCommitteePeriod),
+			Eth1FollowDistance:                      mustParseUint(jr.Data.Eth1FollowDistance),
+			InactivityScoreBias:                     mustParseUint(jr.Data.InactivityScoreBias),
+			InactivityScoreRecoveryRate:             mustParseUint(jr.Data.InactivityScoreRecoveryRate),
+			EjectionBalance:                         mustParseUint(jr.Data.EjectionBalance),
+			MinPerEpochChurnLimit:                   mustParseUint(jr.Data.MinPerEpochChurnLimit),
+			ChurnLimitQuotient:                      mustParseUint(jr.Data.ChurnLimitQuotient),
+			ProposerScoreBoost:                      mustParseUint(jr.Data.ProposerScoreBoost),
+			DepositChainID:                          mustParseUint(jr.Data.DepositChainID),
+			DepositNetworkID:                        mustParseUint(jr.Data.DepositNetworkID),
+			DepositContractAddress:                  jr.Data.DepositContractAddress,
+			MaxCommitteesPerSlot:                    mustParseUint(jr.Data.MaxCommitteesPerSlot),
+			TargetCommitteeSize:                     mustParseUint(jr.Data.TargetCommitteeSize),
+			MaxValidatorsPerCommittee:               mustParseUint(jr.Data.TargetCommitteeSize),
+			ShuffleRoundCount:                       mustParseUint(jr.Data.ShuffleRoundCount),
+			HysteresisQuotient:                      mustParseUint(jr.Data.HysteresisQuotient),
+			HysteresisDownwardMultiplier:            mustParseUint(jr.Data.HysteresisDownwardMultiplier),
+			HysteresisUpwardMultiplier:              mustParseUint(jr.Data.HysteresisUpwardMultiplier),
+			SafeSlotsToUpdateJustified:              mustParseUint(jr.Data.SafeSlotsToUpdateJustified),
+			MinDepositAmount:                        mustParseUint(jr.Data.MinDepositAmount),
+			MaxEffectiveBalance:                     mustParseUint(jr.Data.MaxEffectiveBalance),
+			EffectiveBalanceIncrement:               mustParseUint(jr.Data.EffectiveBalanceIncrement),
+			MinAttestationInclusionDelay:            mustParseUint(jr.Data.MinAttestationInclusionDelay),
+			SlotsPerEpoch:                           mustParseUint(jr.Data.SlotsPerEpoch),
+			MinSeedLookahead:                        mustParseUint(jr.Data.MinSeedLookahead),
+			MaxSeedLookahead:                        mustParseUint(jr.Data.MaxSeedLookahead),
+			EpochsPerEth1VotingPeriod:               mustParseUint(jr.Data.EpochsPerEth1VotingPeriod),
+			SlotsPerHistoricalRoot:                  mustParseUint(jr.Data.SlotsPerHistoricalRoot),
+			MinEpochsToInactivityPenalty:            mustParseUint(jr.Data.MinEpochsToInactivityPenalty),
+			EpochsPerHistoricalVector:               mustParseUint(jr.Data.EpochsPerHistoricalVector),
+			EpochsPerSlashingsVector:                mustParseUint(jr.Data.EpochsPerSlashingsVector),
+			HistoricalRootsLimit:                    mustParseUint(jr.Data.HistoricalRootsLimit),
+			ValidatorRegistryLimit:                  mustParseUint(jr.Data.ValidatorRegistryLimit),
+			BaseRewardFactor:                        mustParseUint(jr.Data.BaseRewardFactor),
+			WhistleblowerRewardQuotient:             mustParseUint(jr.Data.WhistleblowerRewardQuotient),
+			ProposerRewardQuotient:                  mustParseUint(jr.Data.ProposerRewardQuotient),
+			InactivityPenaltyQuotient:               mustParseUint(jr.Data.InactivityPenaltyQuotient),
+			MinSlashingPenaltyQuotient:              mustParseUint(jr.Data.MinSlashingPenaltyQuotient),
+			ProportionalSlashingMultiplier:          mustParseUint(jr.Data.ProportionalSlashingMultiplier),
+			MaxProposerSlashings:                    mustParseUint(jr.Data.MaxProposerSlashings),
+			MaxAttesterSlashings:                    mustParseUint(jr.Data.MaxAttesterSlashings),
+			MaxAttestations:                         mustParseUint(jr.Data.MaxAttestations),
+			MaxDeposits:                             mustParseUint(jr.Data.MaxDeposits),
+			MaxVoluntaryExits:                       mustParseUint(jr.Data.MaxVoluntaryExits),
+			InvactivityPenaltyQuotientAltair:        mustParseUint(jr.Data.InactivityPenaltyQuotientAltair),
+			MinSlashingPenaltyQuotientAltair:        mustParseUint(jr.Data.MinSlashingPenaltyQuotientAltair),
+			ProportionalSlashingMultiplierAltair:    mustParseUint(jr.Data.ProportionalSlashingMultiplierAltair),
+			SyncCommitteeSize:                       mustParseUint(jr.Data.SyncCommitteeSize),
+			EpochsPerSyncCommitteePeriod:            mustParseUint(jr.Data.EpochsPerSyncCommitteePeriod),
+			MinSyncCommitteeParticipants:            mustParseUint(jr.Data.MinSyncCommitteeParticipants),
+			InvactivityPenaltyQuotientBellatrix:     mustParseUint(jr.Data.InactivityPenaltyQuotientBellatrix),
+			MinSlashingPenaltyQuotientBellatrix:     mustParseUint(jr.Data.MinSlashingPenaltyQuotientBellatrix),
+			ProportionalSlashingMultiplierBellatrix: mustParseUint(jr.Data.ProportionalSlashingMultiplierBellatrix),
+			MaxBytesPerTransaction:                  mustParseUint(jr.Data.MaxBytesPerTransaction),
+			MaxTransactionsPerPayload:               mustParseUint(jr.Data.MaxTransactionsPerPayload),
+			BytesPerLogsBloom:                       mustParseUint(jr.Data.BytesPerLogsBloom),
+			MaxExtraDataBytes:                       mustParseUint(jr.Data.MaxExtraDataBytes),
+			MaxWithdrawalsPerPayload:                mustParseUint(jr.Data.MaxWithdrawalsPerPayload),
+			MaxValidatorsPerWithdrawalSweep:         mustParseUint(jr.Data.MaxValidatorsPerWithdrawalsSweep),
+			MaxBlsToExecutionChange:                 mustParseUint(jr.Data.MaxBlsToExecutionChanges),
+		}
+
+		cfg.Chain.Config = chainCfg
+
+		type GenesisResponse struct {
+			Data struct {
+				GenesisTime           string `json:"genesis_time"`
+				GenesisValidatorsRoot string `json:"genesis_validators_root"`
+				GenesisForkVersion    string `json:"genesis_fork_version"`
+			} `json:"data"`
+		}
+
+		gtr := &GenesisResponse{}
+
+		err = requests.
+			URL(nodeEndpoint + "/eth/v1/beacon/genesis").
+			ToJSON(jr).
+			Fetch(context.Background())
+
+		if err != nil {
+			return err
+		}
+
+		cfg.Chain.GenesisTimestamp = mustParseUint(gtr.Data.GenesisTime)
+
+		logger.Infof("loaded chain config from node")
+
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
@@ -489,6 +612,15 @@ func ReadConfig(cfg *types.Config, path string) error {
 	}).Infof("did init config")
 
 	return nil
+}
+
+func mustParseUint(str string) uint64 {
+	nbr, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		logrus.Fatalf("fatal error parsind uint %s: %v", str, err)
+	}
+
+	return nbr
 }
 
 func readConfigFile(cfg *types.Config, path string) error {

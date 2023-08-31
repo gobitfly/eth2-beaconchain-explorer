@@ -5,15 +5,21 @@ This guide outlines how to deploy the explorer using a local lh-geth testnet. Ut
 sudo apt update
 sudo apt-get install ca-certificates curl gnupg
 sudo install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 echo \
-  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
   "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo usermod -aG docker $USER
+```
+# Install kurtosis-cli
+```
+echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+sudo apt update
+sudo apt install kurtosis-cli
 ```
 # Install golang
 ```
@@ -34,36 +40,6 @@ cd testnet
 ```
 sudo apt remove google-cloud-cli
 sudo apt install google-cloud-sdk-cbt
-```
-# Clone the lh repo
-```
-git clone https://github.com/sigp/lighthouse.git 
-cd lighthouse
-```
-```
-# setup rust dev environment
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh 
-source "$HOME/.cargo/env"
-```
-# Install lh build deps
-```
-sudo apt install -y git gcc g++ make cmake pkg-config llvm-dev libclang-dev clang protobuf-compiler jq
-```
-# Build & install lighthouse
-```
-make
-```
-# Build & install lcli
-```
-make install-lcli
-```
-# Download and install geth & bootnode binary
-```
-cd ~
-wget https://gethstore.blob.core.windows.net/builds/geth-alltools-linux-amd64-1.12.2-bed84606.tar.gz
-tar -xf geth-alltools-linux-amd64-1.12.2-bed84606.tar.gz
-sudo cp geth-alltools-linux-amd64-1.12.2-bed84606/geth /usr/bin/
-sudo cp geth-alltools-linux-amd64-1.12.2-bed84606/bootnode /usr/bin/
 ```
 # Clone the explorer repository
 ```
@@ -103,18 +79,8 @@ lbt will be available on http://127.0.0.1:9000
 bash ~/eth2-beaconchain-explorer/local-deployment/init-bigtable.sh
 ```
 # Start up the local testnet nodes
-## Switch to the lighthous scripts directory
 ```
-cd testnet/lighthouse/scripts/local_testnet/
-```
-## Start the local testnet
-```
-cd testnet/lighthouse/scripts/local_testnet/
-./start_local_testnet.sh -v 2 genesis.json
-```
-## Generate the explorer config from the lh testnet config stub
-```
-eth2-beaconchain-explorer/bin/misc -command generate-config-from-testnet-stub -config .lighthouse/local-testnet/testnet/config.yaml -output-path .lighthouse/local-testnet/testnet/config.full.yaml
+kurtosis run --enclave my-testnet github.com/kurtosis-tech/eth-network-package
 ```
 # Initialize the db schema
 ```
@@ -122,13 +88,13 @@ BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/misc -co
 ```
 # Start the indexer
 ```
-CHAIN_GENESIS_TIMESTAMP=<GENESIS_TS> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/explorer -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
 ```
-# Start the fdu
+# Start the frontend-data-updater
 ```
-CHAIN_GENESIS_TIMESTAMP=<GENESIS_TS> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config.yml
 ```
 # Start the frontend
 ```
-CHAIN_GENESIS_TIMESTAMP=<GENESIS_TS> BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config-frontend.yml
+BIGTABLE_EMULATOR_HOST="127.0.0.1:9000" ~/eth2-beaconchain-explorer/bin/frontend-data-updater -config ~/eth2-beaconchain-explorer/local-deployment/testnet-config-frontend.yml
 ```

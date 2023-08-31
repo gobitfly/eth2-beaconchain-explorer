@@ -106,6 +106,8 @@ github.com/btcsuite/btcd/btcec/v2 v2.3.2 h1:5n0X6hX0Zk+6omWcihdYvdAlGf2DfasC0GMf
 github.com/btcsuite/btcd/btcec/v2 v2.3.2/go.mod h1:zYzJ8etWJQIv1Ogk7OzpWjowwOdXY1W/17j2MW85J04=
 github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 h1:q0rUy8C/TYNBQS1+CGKw68tLOFYSNEs0TFnxxnS9+4U=
 github.com/bufbuild/buf v0.37.0/go.mod h1:lQ1m2HkIaGOFba6w/aC3KYBHhKEOESP3gaAEpS3dAFM=
+github.com/carlmjohnson/requests v0.23.4 h1:AxcvapfB9RPXLSyvAHk9YJoodQ43ZjzNHj6Ft3tQGdg=
+github.com/carlmjohnson/requests v0.23.4/go.mod h1:Qzp6tW4DQyainPP+tGwiJTzwxvElTIKm0B191TgTtOA=
 github.com/census-instrumentation/opencensus-proto v0.2.1 h1:glEXhBS5PSLLv4IXzLA5yPRVX4bilULVyxxbrfOtDAk=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/cp v1.1.1 h1:nCb6ZLdB7NRaqsm91JtQTAme2SKJzXVsdPIPkyJr1MU=

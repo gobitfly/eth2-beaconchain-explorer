@@ -80,6 +80,7 @@ require (
 	cloud.google.com/go/iam v0.7.0 // indirect
 	cloud.google.com/go/longrunning v0.3.0 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
+	github.com/carlmjohnson/requests v0.23.4 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.1 // indirect
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4 // indirect
 	github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1 // indirect
