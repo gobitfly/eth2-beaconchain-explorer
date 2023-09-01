@@ -57,7 +57,7 @@ def run(plan, args):
         all_el_client_contexts.append(participant.el_client_context)
         all_cl_client_contexts.append(participant.cl_client_context)
 
-    plan.print("Launching transaction spammer")
-    transaction_spammer.launch_transaction_spammer(plan, genesis_constants.PRE_FUNDED_ACCOUNTS, all_el_client_contexts[0])
-    plan.print("Succesfully launched transaction spammer")
+    # plan.print("Launching transaction spammer")
+    # transaction_spammer.launch_transaction_spammer(plan, genesis_constants.PRE_FUNDED_ACCOUNTS, all_el_client_contexts[0])
+    # plan.print("Succesfully launched transaction spammer")
 

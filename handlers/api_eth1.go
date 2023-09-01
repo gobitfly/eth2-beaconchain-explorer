@@ -959,8 +959,11 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		}
 	}
 
-	lastStatsDay := services.LatestExportedStatisticDay()
-	firstEpochTime := utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
+	lastStatsDay, err := services.LatestExportedStatisticDay()
+	firstEpochTime := utils.EpochToTime(0)
+	if err == nil {
+		firstEpochTime = utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
+	}
 
 	for _, block := range blocks {
 		proposer := blockToProposerMap[block.Number].Proposer

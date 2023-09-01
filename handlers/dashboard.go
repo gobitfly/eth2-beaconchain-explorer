@@ -454,8 +454,8 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Error: invalid days parameter", http.StatusBadRequest)
 			return
 		}
-		lastStatsDay := services.LatestExportedStatisticDay()
-		if days < lastStatsDay {
+		lastStatsDay, err := services.LatestExportedStatisticDay()
+		if days < lastStatsDay && err == nil {
 			lowerBoundDay = lastStatsDay - days + 1
 		}
 	}

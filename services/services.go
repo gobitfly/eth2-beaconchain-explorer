@@ -1674,6 +1674,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 
 func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 	firstRun := true
+	cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.Config.DepositChainID)
 	for {
 		lastDay, err := db.GetLastExportedStatisticDay()
 		if err != nil {
@@ -1682,7 +1683,6 @@ func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 			continue
 		}
 
-		cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, lastDay, time.Hour*24)
 		if err != nil {
 			logger.Errorf("error caching last exported statistics day: %v", err)
@@ -1698,14 +1698,16 @@ func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 }
 
 // LatestExportedStatisticDay will return the last exported day in the validator_stats table
-func LatestExportedStatisticDay() uint64 {
+func LatestExportedStatisticDay() (uint64, error) {
 	cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.Config.DepositChainID)
 
 	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
-		return wanted
-	} else {
-		logger.Errorf("error retrieving last exported statistics day from cache: %v", err)
+		return wanted, nil
 	}
-	wanted, _ := db.GetLastExportedStatisticDay()
-	return wanted
+	wanted, err := db.GetLastExportedStatisticDay()
+
+	if err != nil {
+		return 0, err
+	}
+	return wanted, nil
 }

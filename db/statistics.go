@@ -1261,18 +1261,25 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 	// retrieve rewards for epochs not yet in stats
 	if upperBoundDay == 65536 {
-		lastDay := uint64(0)
+		lastDay := int64(0)
 		if len(result) > 0 {
-			lastDay = uint64(result[len(result)-1].Day)
+			lastDay = int64(result[len(result)-1].Day)
 		} else {
-			lastDay, err = GetLastExportedStatisticDay()
-			if err != nil {
+			lastDayDb, err := GetLastExportedStatisticDay()
+			if err == nil {
+				lastDay = int64(lastDayDb)
+			} else if err == ErrNoStats {
+				lastDay = -1
+			} else {
 				return nil, err
 			}
 		}
 
 		currentDay := lastDay + 1
-		firstSlot := utils.GetLastBalanceInfoSlotForDay(lastDay) + 1
+		firstSlot := uint64(0)
+		if lastDay > -1 {
+			firstSlot = utils.GetLastBalanceInfoSlotForDay(uint64(lastDay)) + 1
+		}
 		lastSlot := lastFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 		totalBalance := uint64(0)
@@ -1297,7 +1304,12 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 		var lastBalance uint64
 		g.Go(func() error {
-			return GetValidatorBalanceForDay(validatorIndices, lastDay, &lastBalance)
+
+			if lastDay < 0 {
+				return GetValidatorActivationBalance(validatorIndices, &lastBalance)
+			} else {
+				return GetValidatorBalanceForDay(validatorIndices, uint64(lastDay), &lastBalance)
+			}
 		})
 
 		var lastDeposits uint64

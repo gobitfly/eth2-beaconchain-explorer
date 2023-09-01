@@ -299,7 +299,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
 
-	lastStatsDay := services.LatestExportedStatisticDay()
+	lastStatsDay, _ := services.LatestExportedStatisticDay()
 
 	timings.BasicInfo = time.Since(timings.Start)
 

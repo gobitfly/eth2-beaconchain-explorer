@@ -1177,9 +1177,12 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
-	lastExportedDay := services.LatestExportedStatisticDay()
 	epochsPerDay := utils.EpochsPerDay()
-	lastExportedEpoch := ((lastExportedDay + 1) * epochsPerDay) - 1
+	lastExportedDay, err := services.LatestExportedStatisticDay()
+	lastExportedEpoch := uint64(0)
+	if err == nil {
+		lastExportedEpoch = ((lastExportedDay + 1) * epochsPerDay) - 1
+	}
 
 	// if epoch is not yet exported, we may need to collect the data from bigtable
 	if lastExportedEpoch < epoch {

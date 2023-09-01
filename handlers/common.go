@@ -47,8 +47,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, errors.New("no validators provided")
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	lastStatsDay := services.LatestExportedStatisticDay()
-	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
+
+	firstSlot := uint64(0)
+	lastStatsDay, lastExportedStatsErr := services.LatestExportedStatisticDay()
+	if lastExportedStatsErr == nil {
+		firstSlot = utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
+	}
+
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
@@ -80,7 +85,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	income := types.ValidatorIncomePerformance{}
 	g.Go(func() error {
-		return db.GetValidatorIncomePerforamance(validators, &income)
+		return db.GetValidatorIncomePerformance(validators, &income)
 	})
 
 	var totalDeposits uint64
@@ -99,18 +104,25 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	})
 
 	var lastDeposits uint64
-	g.Go(func() error {
-		return db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
-	})
-
 	var lastWithdrawals uint64
-	g.Go(func() error {
-		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
-	})
-
 	var lastBalance uint64
 	g.Go(func() error {
-		return db.GetValidatorBalanceForDay(validators, lastStatsDay, &lastBalance)
+		if lastExportedStatsErr == db.ErrNoStats {
+			err := db.GetValidatorActivationBalance(validators, &lastBalance)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := db.GetValidatorBalanceForDay(validators, lastStatsDay, &lastBalance)
+			if err != nil {
+				return err
+			}
+		}
+		err := db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
+		if err != nil {
+			return err
+		}
+		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
 	})
 
 	proposals := []types.ValidatorProposalInfo{}
@@ -169,7 +181,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	proposedToday := []uint64{}
-	todayStartEpoch := uint64(lastStatsDay+1) * utils.EpochsPerDay()
+	todayStartEpoch := uint64(0)
+	if lastExportedStatsErr == nil {
+		todayStartEpoch = uint64(lastStatsDay+1) * utils.EpochsPerDay()
+	}
 	validatorProposalData := types.ValidatorProposalData{}
 	validatorProposalData.Proposals = make([][]uint64, len(proposals))
 	for i, b := range proposals {

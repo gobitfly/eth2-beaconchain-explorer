@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/hex"
+	"errors"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -53,6 +54,8 @@ const MaxSqlInteger = 2147483647
 
 var addressRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{40}$`)
 var blsRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{96}$`)
+
+var ErrNoStats = errors.New("no stats available")
 
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	// The golang sql driver does not properly implement PingContext
@@ -3209,16 +3212,20 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetLastExportedStatisticDay() (uint64, error) {
-	var lastStatsDay uint64
-	err := ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
+	var lastStatsDay sql.NullInt64
+	err := ReaderDb.Get(&lastStatsDay, "SELECT MAX(day) FROM validator_stats_status WHERE status")
 
 	if err != nil {
 		return 0, fmt.Errorf("error getting lastStatsDay %v", err)
 	}
-	return lastStatsDay, nil
+
+	if !lastStatsDay.Valid {
+		return 0, ErrNoStats
+	}
+	return uint64(lastStatsDay.Int64), nil
 }
 
-func GetValidatorIncomePerforamance(validators []uint64, incomePerformance *types.ValidatorIncomePerformance) error {
+func GetValidatorIncomePerformance(validators []uint64, incomePerformance *types.ValidatorIncomePerformance) error {
 	validatorsPQArray := pq.Array(validators)
 	// el rewards are converted from wei to gwei
 	return ReaderDb.Get(incomePerformance, `
@@ -3299,6 +3306,16 @@ func GetValidatorBalanceForDay(validators []uint64, day uint64, balance *uint64)
 		FROM validator_stats     
 		WHERE day=$2 AND validatorindex = ANY($1)
 	`, validatorsPQArray, day)
+}
+
+func GetValidatorActivationBalance(validators []uint64, balance *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(balance, `
+		SELECT 
+			SUM(balanceactivation)
+		FROM validators     
+		WHERE validatorindex = ANY($1)
+	`, validatorsPQArray)
 }
 
 func GetValidatorPropsosals(validators []uint64, proposals *[]types.ValidatorProposalInfo) error {
