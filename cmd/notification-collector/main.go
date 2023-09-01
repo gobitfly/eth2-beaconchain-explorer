@@ -105,6 +105,9 @@ func main() {
 		db.BigtableClient = bt
 	}()
 
+	if utils.Config.TieredCacheProvider != "redis" {
+		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (redis)")
+	}
 	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
 		wg.Add(1)
 		go func() {
@@ -115,14 +118,6 @@ func main() {
 	}
 
 	wg.Wait()
-	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
-		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
-		logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
-	}
-
-	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (example redis, bigtable)")
-	}
 
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
