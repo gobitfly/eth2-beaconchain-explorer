@@ -354,57 +354,32 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 // search can ether be a valid ETH address or an ENS name mapping to one
 func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByEth1Result, error) {
+	search = strings.ToLower(strings.Replace(ReplaceEnsNameWithAddress(search), "0x", "", -1))
+	if !utils.IsValidEth1Address(search) {
+		return nil, fmt.Errorf("not a valid Eth1 address: %v", search)
+	}
+	// find validators per eth1-address (limit result by N addresses and M validators per address)
+
 	result := &[]struct {
 		Eth1Address      string        `db:"from_address_text" json:"eth1_address"`
 		ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 		Count            uint64        `db:"count" json:"-"`
 	}{}
-
-	search = strings.ToLower(strings.Replace(ReplaceEnsNameWithAddress(search), "0x", "", -1))
-	if len(search)%2 != 0 {
-		search = search[:len(search)-1]
-	}
-	if len(search) <= 1 || len(search) > 40 {
-		return nil, fmt.Errorf("not a valid Eth1 address: %v", search)
-	}
-	// find validators per eth1-address (limit result by N addresses and M validators per address)
-
-	eth1AddressHash, err := hex.DecodeString(search)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing eth1AddressHash to hex: %v", err)
-	}
-	if len(eth1AddressHash) == 20 {
-		// if it is an eth1-address just search for exact match
-		err = db.ReaderDb.Select(result, `
-			SELECT from_address_text, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
-				SELECT 
-					DISTINCT ON(validatorindex) validatorindex,
-					from_address_text,
-					DENSE_RANK() OVER (PARTITION BY from_address_text ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address_text) AS addressrow
-				FROM eth1_deposits
-				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address_text = $1
-			) a 
-			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address_text
-			ORDER BY count DESC`, search, searchValidatorsResultLimit)
-	} else {
-		err = db.ReaderDb.Select(result, `
-			SELECT from_address_text, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
-				SELECT 
-					DISTINCT ON(validatorindex) validatorindex,
-					from_address_text,
-					DENSE_RANK() OVER (PARTITION BY from_address_text ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address_text) AS addressrow
-				FROM eth1_deposits
-				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address_text LIKE $1 || '%'
-			) a 
-			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address_text
-			ORDER BY count DESC`, search, searchValidatorsResultLimit)
-	}
+	// just search for exact match (substring matches turned out to be too heavy for the db!)
+	err := db.ReaderDb.Select(result, `
+		SELECT from_address_text, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+			SELECT 
+				DISTINCT ON(validatorindex) validatorindex,
+				from_address_text,
+				DENSE_RANK() OVER (PARTITION BY from_address_text ORDER BY validatorindex) AS validatorrow,
+				DENSE_RANK() OVER (ORDER BY from_address_text) AS addressrow
+			FROM eth1_deposits
+			INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+			WHERE from_address_text = $1
+		) a 
+		WHERE validatorrow <= $2 AND addressrow <= 10
+		GROUP BY from_address_text
+		ORDER BY count DESC`, search, searchValidatorsResultLimit)
 	if err != nil {
 		utils.LogError(err, "error getting validators for eth1 address from db", 0)
 		return nil, fmt.Errorf("error reading result data: %v", err)
