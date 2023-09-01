@@ -116,14 +116,12 @@ func main() {
 
 	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 
-	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
-		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
-	} else if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
-		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+	if utils.Config.TieredCacheProvider != "redis" {
+		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis)")
 	}
 
-	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
+		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
 	}
 
 	if opt.statisticsDaysToExport != "" {
