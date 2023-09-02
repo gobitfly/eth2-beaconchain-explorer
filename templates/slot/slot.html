@@ -4,20 +4,6 @@
   <script type="text/javascript" src="/js/datatable_input.js"></script>
 
   <script>
-    {
-      var attestations_tab_loaded = false
-      let atab = $('#attestations-tab')
-      if(atab.length > 0) {
-        atab.on('shown.bs.tab', function (event) { if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true; });
-      } else {
-        console.error('error getting #attestations-tab')
-        const att = document.getElementById('attestations');
-        if(att) {
-          att.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
-        }
-      }
-    }
-
     function getInfoElementAttestations (text, color) {
       const att_card = document.createElement('div'); {
         att_card.classList.add('card', 'my-2');
@@ -135,7 +121,7 @@
     }
 
     async function setupInfiniteScrollAttestations() {
-      const infLoading = document.getElementById('attestations');
+      const infLoading = document.getElementById('attestationsTabPanel');
       if(infLoading) {
         try {
           const slot = {{ .Slot }} || 0;
@@ -298,6 +284,27 @@
 
         $("#block_blsChange").DataTable(blsChangeOpts)
     })
+
+    {
+      var attestations_tab_loaded = false
+      let atab = $('#attestations-tab')
+      if(atab.length > 0) {
+        var activateAttestations = ()=>{
+          if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true;
+        }
+        atab.on('shown.bs.tab', activateAttestations);
+        if (atab.hasClass("active")){
+          activateAttestations()
+        }
+      } else {
+        console.error('error getting #attestations-tab')
+        const att = document.getElementById('attestationsTabPanel');
+        if(att) {
+          att.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
+        }
+      }
+    }
+    activateTabbarSwitcher("tabContent", "tab", "overview")
   </script>
 
   <script>
@@ -417,19 +424,19 @@
         }
       </style>
       <div class="tab-content" id="tabContent">
-        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+        <div class="tab-pane fade" id="overviewTabPanel" role="tabpanel" aria-labelledby="overview-tab">
           <div class="card block-card">
             {{ template "block_overview" $ }}
           </div>
         </div>
         {{ if gt .VotesCount 0 }}
-          <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
+          <div class="tab-pane fade" id="votesTabPanel" role="tabpanel" aria-labelledby="votes-tab">
             <div class="card block-card">
               {{ template "block_votes" . }}
             </div>
           </div>
         {{ end }}
-        <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab">
+        <div class="tab-pane fade" id="attestationsTabPanel" role="tabpanel" aria-labelledby="attestations-tab">
           <div class="card block-card">
             <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
               <div class="row p-1 mx-0">
@@ -440,35 +447,35 @@
           {{ template "block_attestations" . }}
         </div>
         {{ if .ExecutionData }}
-          <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+          <div class="tab-pane fade" id="transactionsTabPanel" role="tabpanel" aria-labelledby="transactions-tab">
             <div class="card block-card py-1">
               {{ template "execution_transactions" .ExecutionData }}
             </div>
           </div>
         {{ end }}
         {{ if gt .WithdrawalCount 0 }}
-          <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+          <div class="tab-pane fade" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawals-tab">
             <div class="card block-card py-1">
               {{ template "block_withdrawals" . }}
             </div>
           </div>
         {{ end }}
         {{ if gt .BLSChangeCount 0 }}
-          <div class="tab-pane fade" id="blsChange" role="tabpanel" aria-labelledby="blsChange-tab">
+          <div class="tab-pane fade" id="blsChangeTabPanel" role="tabpanel" aria-labelledby="blsChange-tab">
             <div class="card block-card py-1">
               {{ template "block_blsChange" . }}
             </div>
           </div>
         {{ end }}
         {{ if gt .DepositsCount 0 }}
-          <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
+          <div class="tab-pane fade" id="depositsTabPanel" role="tabpanel" aria-labelledby="deposits-tab">
             <div class="card block-card">
               {{ template "block_deposits" . }}
             </div>
           </div>
         {{ end }}
         {{ if gt .VoluntaryExitscount 0 }}
-          <div class="tab-pane fade" id="voluntary-exits" role="tabpanel" aria-labelledby="voluntary-exits-tab">
+          <div class="tab-pane fade" id="voluntary-exitsTabPanel" role="tabpanel" aria-labelledby="voluntary-exits-tab">
             <div class="card block-card">
               {{ template "block_exits" . }}
             </div>
@@ -476,7 +483,7 @@
         {{ end }}
         {{ if gt .AttesterSlashingsCount 0 }}
           <!-- Nav tabs -->
-          <div class="tab-pane fade" id="attester-slashings" role="tabpanel" aria-labelledby="attester-slashings-tab">
+          <div class="tab-pane fade" id="attester-slashingsTabPanel" role="tabpanel" aria-labelledby="attester-slashings-tab">
             <div class="card block-card">
               <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
                 <div class="row p-1 mx-0">
@@ -488,7 +495,7 @@
           </div>
         {{ end }}
         {{ if gt .ProposerSlashingsCount 0 }}
-          <div class="tab-pane fade" id="proposer-slashings" role="tabpanel" aria-labelledby="proposer-slashings-tab">
+          <div class="tab-pane fade" id="proposer-slashingsTabPanel" role="tabpanel" aria-labelledby="proposer-slashings-tab">
             <div class="card block-card">
               <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
                 <div class="row p-1 mx-0">

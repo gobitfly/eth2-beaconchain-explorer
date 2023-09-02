@@ -14,20 +14,18 @@ import (
 	"html/template"
 	"math/big"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/mux"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
-
-var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
 
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()
@@ -49,11 +47,9 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, errors.New("no validators provided")
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return nil, nil, err
-	}
-	firstEpoch := (lastStatsDay + 1) * utils.EpochsPerDay()
+	lastStatsDay := services.LatestExportedStatisticDay()
+	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
+	lastSlot := latestFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
 	totalBalance := uint64(0)
@@ -92,6 +88,11 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetTotalValidatorDeposits(validators, &totalDeposits)
 	})
 
+	var firstActivationEpoch uint64
+	g.Go(func() error {
+		return db.GetFirstActivationEpoch(validators, &firstActivationEpoch)
+	})
+
 	var totalWithdrawals uint64
 	g.Go(func() error {
 		return db.GetTotalValidatorWithdrawals(validators, &totalWithdrawals)
@@ -99,12 +100,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	var lastDeposits uint64
 	g.Go(func() error {
-		return db.GetValidatorDepositsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastDeposits)
+		return db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
 	})
 
 	var lastWithdrawals uint64
 	g.Go(func() error {
-		return db.GetValidatorWithdrawalsForEpochs(validators, firstEpoch, latestFinalizedEpoch, &lastWithdrawals)
+		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
 	})
 
 	var lastBalance uint64
@@ -117,7 +118,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetValidatorPropsosals(validators, &proposals)
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -159,12 +160,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
 	if elApr365d < float64(-1) {
 		elApr365d = float64(-1)
-	}
-
-	// retrieve cl income not yet in stats
-	currentDayProposerIncome, err := db.GetCurrentDayProposerIncomeTotal(validators)
-	if err != nil {
-		return nil, nil, err
 	}
 
 	incomeToday := types.ClElInt64{
@@ -212,14 +207,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 	}
 
-	lookbackAmount := getProposalLuckBlockLookbackAmount(1)
-	startPeriod := len(slots) - lookbackAmount
-	if startPeriod < 0 {
-		startPeriod = 0
-	}
-
-	validatorProposalData.ProposalLuck = getProposalLuck(slots[startPeriod:], 1)
-	avgSlotInterval := uint64(getAvgSlotInterval(1))
+	validatorProposalData.ProposalLuck, _ = getProposalLuck(slots, len(validators), firstActivationEpoch)
+	avgSlotInterval := uint64(getAvgSlotInterval(len(validators)))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.Config.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 	if len(slots) > 0 {
@@ -264,12 +253,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Total: income.ClIncomeTotal + income.ElIncomeTotal + incomeToday.Total,
 	}
 
-	incomeTotalProposer := types.ClElInt64{
-		El:    income.ElIncomeTotal,
-		Cl:    income.ClProposerIncomeTotal + currentDayProposerIncome,
-		Total: income.ClProposerIncomeTotal + income.ElIncomeTotal + currentDayProposerIncome,
-	}
-
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
 			El:    income.ElIncome1d,
@@ -303,102 +286,83 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		TotalDeposits:          int64(totalDeposits),
-		LastDayFormatted:       utils.FormatIncome(earnings1d, currency),
-		LastWeekFormatted:      utils.FormatIncome(earnings7d, currency),
-		LastMonthFormatted:     utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:         utils.FormatIncomeClElInt64(incomeTotal, currency),
-		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
-		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency),
-		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
-		ProposalData:           validatorProposalData,
+		TotalDeposits:        int64(totalDeposits),
+		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
+		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
+		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
+		ProposalData:         validatorProposalData,
 	}, balancesMap, nil
 }
 
-func getProposalLuckBlockLookbackAmount(validatorCount int) int {
-	switch {
-	case validatorCount <= 4:
-		return 10
-	case validatorCount <= 10:
-		return 15
-	case validatorCount <= 20:
-		return 20
-	case validatorCount <= 50:
-		return 30
-	case validatorCount <= 100:
-		return 50
-	case validatorCount <= 200:
-		return 65
-	default:
-		return 75
-	}
-}
+// Timeframe constants
+const fiveDays = utils.Day * 5
+const oneWeek = utils.Week
+const oneMonth = utils.Month
+const sixWeeks = utils.Day * 45
+const twoMonths = utils.Month * 2
+const threeMonths = utils.Month * 3
+const fourMonths = utils.Month * 4
+const fiveMonths = utils.Month * 5
+const sixMonths = utils.Month * 6
+const year = utils.Year
 
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
 // given the blocks proposed by the validators and the number of validators
 //
 // precondition: slots is sorted by ascending block number
-func getProposalLuck(slots []uint64, validatorsCount int) float64 {
+func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) (float64, time.Duration) {
 	// Return 0 if there are no proposed blocks or no validators
 	if len(slots) == 0 || validatorsCount == 0 {
-		return 0
+		return 0, 0
 	}
-	// Timeframe constants
-	fiveDays := utils.Day * 5
-	oneWeek := utils.Week
-	oneMonth := utils.Month
-	sixWeeks := utils.Day * 45
-	twoMonths := utils.Month * 2
-	threeMonths := utils.Month * 3
-	fourMonths := utils.Month * 4
-	fiveMonths := utils.Month * 5
-	sixMonths := utils.Month * 6
-	year := utils.Year
 
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	// Calculate the expected number of slot proposals for 30 days
 	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorsCount, activeValidatorsCount)
 
 	// Get the timeframe for which we should consider qualified proposals
-	var proposalTimeframe time.Duration
-	// Time since the first block in the proposed block slice
-	timeSinceFirstBlock := time.Since(utils.SlotToTime(slots[0]))
+	var proposalTimeFrame time.Duration
+	// Time since the first epoch of the related validators
+	timeSinceFirstEpoch := time.Since(utils.EpochToTime(fromEpoch))
 
 	targetBlocks := 8.0
 
 	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
 	switch {
-	case timeSinceFirstBlock < fiveDays:
-		proposalTimeframe = fiveDays
-	case timeSinceFirstBlock < oneWeek:
-		proposalTimeframe = oneWeek
-	case timeSinceFirstBlock < oneMonth:
-		proposalTimeframe = oneMonth
-	case timeSinceFirstBlock > year && expectedSlotProposals <= targetBlocks/12:
-		proposalTimeframe = year
-	case timeSinceFirstBlock > sixMonths && expectedSlotProposals <= targetBlocks/6:
-		proposalTimeframe = sixMonths
-	case timeSinceFirstBlock > fiveMonths && expectedSlotProposals <= targetBlocks/5:
-		proposalTimeframe = fiveMonths
-	case timeSinceFirstBlock > fourMonths && expectedSlotProposals <= targetBlocks/4:
-		proposalTimeframe = fourMonths
-	case timeSinceFirstBlock > threeMonths && expectedSlotProposals <= targetBlocks/3:
-		proposalTimeframe = threeMonths
-	case timeSinceFirstBlock > twoMonths && expectedSlotProposals <= targetBlocks/2:
-		proposalTimeframe = twoMonths
-	case timeSinceFirstBlock > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
-		proposalTimeframe = sixWeeks
+	case timeSinceFirstEpoch < fiveDays:
+		proposalTimeFrame = fiveDays
+	case timeSinceFirstEpoch < oneWeek:
+		proposalTimeFrame = oneWeek
+	case timeSinceFirstEpoch < oneMonth:
+		proposalTimeFrame = oneMonth
+	case timeSinceFirstEpoch > year && expectedSlotProposals <= targetBlocks/12:
+		proposalTimeFrame = year
+	case timeSinceFirstEpoch > sixMonths && expectedSlotProposals <= targetBlocks/6:
+		proposalTimeFrame = sixMonths
+	case timeSinceFirstEpoch > fiveMonths && expectedSlotProposals <= targetBlocks/5:
+		proposalTimeFrame = fiveMonths
+	case timeSinceFirstEpoch > fourMonths && expectedSlotProposals <= targetBlocks/4:
+		proposalTimeFrame = fourMonths
+	case timeSinceFirstEpoch > threeMonths && expectedSlotProposals <= targetBlocks/3:
+		proposalTimeFrame = threeMonths
+	case timeSinceFirstEpoch > twoMonths && expectedSlotProposals <= targetBlocks/2:
+		proposalTimeFrame = twoMonths
+	case timeSinceFirstEpoch > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
+		proposalTimeFrame = sixWeeks
 	default:
-		proposalTimeframe = oneMonth
+		proposalTimeFrame = oneMonth
 	}
 
 	// Recalculate expected slot proposals for the new timeframe
-	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeframe, validatorsCount, activeValidatorsCount)
+	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeFrame, validatorsCount, activeValidatorsCount)
 	if expectedSlotProposals == 0 {
-		return 0
+		return 0, 0
 	}
 	// Cutoff time for proposals to be considered qualified
-	blockProposalCutoffTime := time.Now().Add(-proposalTimeframe)
+	blockProposalCutoffTime := time.Now().Add(-proposalTimeFrame)
 
 	// Count the number of qualified proposals
 	qualifiedProposalCount := 0
@@ -408,7 +372,34 @@ func getProposalLuck(slots []uint64, validatorsCount int) float64 {
 		}
 	}
 	// Return the luck as the ratio of qualified proposals to expected slot proposals
-	return float64(qualifiedProposalCount) / expectedSlotProposals
+	return float64(qualifiedProposalCount) / expectedSlotProposals, proposalTimeFrame
+}
+
+func getProposalTimeframeName(proposalTimeframe time.Duration) string {
+	switch {
+	case proposalTimeframe == fiveDays:
+		return "5 days"
+	case proposalTimeframe == oneWeek:
+		return "week"
+	case proposalTimeframe == oneMonth:
+		return "month"
+	case proposalTimeframe == sixWeeks:
+		return "6 weeks"
+	case proposalTimeframe == twoMonths:
+		return "2 months"
+	case proposalTimeframe == threeMonths:
+		return "3 months"
+	case proposalTimeframe == fourMonths:
+		return "4 months"
+	case proposalTimeframe == fiveMonths:
+		return "5 months"
+	case proposalTimeframe == sixMonths:
+		return "6 months"
+	case proposalTimeframe == year:
+		return "year"
+	default:
+		return "month"
+	}
 }
 
 // calcExpectedSlotProposals calculates the expected number of slot proposals for a certain time frame and validator count
@@ -538,114 +529,120 @@ func GetTruncCurrentPriceFormatted(r *http.Request) string {
 	return fmt.Sprintf("%s %s", symbol, utils.KFormatterEthPrice(price))
 }
 
-// GetValidatorIndexFrom gets the validator index from users input
-func GetValidatorIndexFrom(userInput string) (pubKey []byte, validatorIndex uint64, err error) {
-	validatorIndex, err = strconv.ParseUint(userInput, 10, 64)
-	if err == nil {
-		pubKey, err = db.GetValidatorPublicKey(validatorIndex)
-		return
+// GetValidatorKeysFrom gets the validator keys from users input
+func GetValidatorKeysFrom(userInput []string) (pubKeys [][]byte, err error) {
+	indexList := []uint64{}
+	keyList := [][]byte{}
+	for _, input := range userInput {
+
+		validatorIndex, err := strconv.ParseUint(input, 10, 32)
+		if err == nil {
+			indexList = append(indexList, validatorIndex)
+		}
+
+		pubKey, err := hex.DecodeString(strings.Replace(input, "0x", "", -1))
+		if err == nil {
+			keyList = append(keyList, pubKey)
+		}
 	}
 
-	pubKey, err = hex.DecodeString(strings.Replace(userInput, "0x", "", -1))
-	if err == nil {
-		validatorIndex, err = db.GetValidatorIndex(pubKey)
-		return
+	pubKeys, err = db.GetValidatorPublicKeys(indexList, keyList)
+	if len(pubKeys) != len(userInput) {
+		err = fmt.Errorf("not all validators found in db")
 	}
 	return
 }
 
-func DataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+func GetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	user, session, err := getUserSession(r)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	vars := mux.Vars(r)
+	tableKey := vars["tableId"]
+
+	errMsgPrefix := "error loading data table state"
+	errFields := map[string]interface{}{
+		"tableKey": tableKey}
 
 	response := &types.ApiResponse{}
-	response.Status = "ERROR"
+	response.Status = errMsgPrefix
+	response.Data = ""
 
 	defer json.NewEncoder(w).Encode(response)
 
-	settings := types.DataTableSaveState{}
-	err = json.NewDecoder(r.Body).Decode(&settings)
+	user, _, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error saving data table state could not parse body: %v", err)
-		response.Status = "error saving table state"
+		utils.LogError(err, errMsgPrefix+", could not retrieve user session", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// never store the page number
-	settings.Start = 0
-
-	key := settings.Key
-	if len(key) == 0 {
-		logger.Errorf("no key provided")
-		response.Status = "error saving table state"
-		return
-	}
-
-	if !user.Authenticated {
-		dataTableStatePrefix := "table:state:" + utils.GetNetwork() + ":"
-		key = dataTableStatePrefix + key
-		count := 0
-		for k := range session.Values() {
-			k, ok := k.(string)
-			if ok && strings.HasPrefix(k, dataTableStatePrefix) {
-				count += 1
-			}
-		}
-		if count > 50 {
-			_, ok := session.Values()[key]
-			if !ok {
-				logger.Errorf("error maximum number of datatable states stored in session")
+	if user.Authenticated {
+		state, err := db.GetDataTablesState(user.UserID, tableKey)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				utils.LogError(err, errMsgPrefix+", could not load values from db", 0, errFields)
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-		}
-		session.Values()[key] = settings
+		} else {
+			// the time for the state load of a data table must not be older than 2 hours so set it to the current time
+			state.Time = uint64(time.Now().Unix() * 1000)
 
-		err := session.Save(r, w)
-		if err != nil {
-			logger.WithError(err).Errorf("error updating session with key: %v and value: %v", key, settings)
-		}
-
-	} else {
-		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
-		if err != nil {
-			logger.Errorf("error saving data table state could save values to db: %v", err)
-			response.Status = "error saving table state"
-			return
+			response.Data = state
 		}
 	}
 
 	response.Status = "OK"
-	response.Data = ""
 }
 
-func GetDataTableState(user *types.User, session *utils.CustomSession, tableKey string) *types.DataTableSaveState {
-	state := types.DataTableSaveState{
-		Start: 0,
+func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	tableKey := vars["tableId"]
+
+	errMsgPrefix := "error saving data table state"
+	errFields := map[string]interface{}{
+		"tableKey": tableKey}
+
+	response := &types.ApiResponse{}
+	response.Status = errMsgPrefix
+	response.Data = ""
+
+	defer json.NewEncoder(w).Encode(response)
+
+	user, _, err := getUserSession(r)
+	if err != nil {
+		utils.LogError(err, errMsgPrefix+", could not retrieve user session", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	settings := types.DataTableSaveState{}
+	err = json.NewDecoder(r.Body).Decode(&settings)
+	if err != nil {
+		utils.LogError(err, errMsgPrefix+", could not parse body", 0, errFields)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	settings.Key = tableKey
+
+	// never store the page number
+	settings.Start = 0
+
 	if user.Authenticated {
-		state, err := db.GetDataTablesState(user.UserID, tableKey)
-		if err != nil && err != sql.ErrNoRows {
-			logger.Errorf("error getting data table state from db: %v", err)
-			return state
+		err = db.SaveDataTableState(user.UserID, settings.Key, settings)
+		if err != nil {
+			utils.LogError(err, errMsgPrefix+", could no save values to db", 0, errFields)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-		return state
+	} else {
+		response.Data = settings
 	}
-	stateRaw, exists := session.Values()["table:state:"+utils.GetNetwork()+":"+tableKey]
-	if !exists {
-		return &state
-	}
-	state, ok := stateRaw.(types.DataTableSaveState)
-	if !ok {
-		logger.Errorf("error getting state from session: %+v", stateRaw)
-		return &state
-	}
-	return &state
+
+	response.Status = "OK"
 }
 
 // used to handle errors constructed by Template.ExecuteTemplate correctly

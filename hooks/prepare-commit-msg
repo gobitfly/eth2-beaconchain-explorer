@@ -17,7 +17,11 @@ else:
 print "prepare-commit-msg: File: %s\nType: %s\nHash: %s" % (commit_msg_filepath, commit_type, commit_hash)
 
 # Figure out which branch we're on
-branch = check_output(['git', 'symbolic-ref', '--short', 'HEAD']).strip()
+try:
+    branch = check_output(['git', 'symbolic-ref', '--short', 'HEAD']).strip()
+except:
+    print "prepare-commit-msg: No head found, exiting."
+    sys.exit(0)
 print "prepare-commit-msg: On branch '%s'" % branch
 
 # Populate the commit message with the issue #, if there is one

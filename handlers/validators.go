@@ -169,7 +169,6 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		"4": "activationepoch",
 		"5": "exitepoch",
 		"6": "withdrawableepoch",
-		"7": "lastattestationslot",
 		"8": "slashed",
 	}
 	orderBy, exists := orderByMap[orderColumn]
@@ -192,6 +191,10 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		return nil, err
+	}
+	if start > 10000 {
+		// limit offset to 10000, otherwise the query will be too slow
+		start = 10000
 	}
 
 	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
@@ -235,24 +238,24 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var validators []*types.ValidatorsPageDataValidators
+	var validators []*types.ValidatorsData
 	qry := ""
 	// if dataQuery.Search == "" && dataQuery.StateFilter == "" {
 	qry = fmt.Sprintf(`
-			SELECT
-				validators.validatorindex,
-				validators.pubkey,
-				validators.withdrawableepoch,
-				validators.slashed,
-				validators.activationepoch,
-				validators.exitepoch,
-				validators.lastattestationslot,
-				COALESCE(validator_names.name, '') AS name,
-				validators.status AS state
-			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			ORDER BY %s %s
-			LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
+		SELECT  
+		validators.validatorindex,  
+		validators.pubkey,  
+		validators.withdrawableepoch,  
+		validators.slashed,  
+		validators.activationepoch,  
+		validators.exitepoch,  
+		COALESCE(validator_names.name, '') AS name,  
+		validators.status AS state  
+		FROM validators  
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey  
+		%s
+		ORDER BY %s %s  
+		LIMIT $1 OFFSET $2`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
 
 	err = db.ReaderDb.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 	if err != nil {
@@ -282,6 +285,16 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 				validator.EffectiveBalance = balance[0].EffectiveBalance
 			}
 		}
+	}
+
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(indices)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator last attestation slot data")
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+	for _, validator := range validators {
+		validator.LastAttestationSlot = int64(lastAttestationSlots[validator.ValidatorIndex])
 	}
 
 	isAll := true
@@ -320,10 +333,10 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			tableData[i] = append(tableData[i], nil)
 		}
 
-		if v.LastAttestationSlot != nil && *v.LastAttestationSlot > 0 {
+		if v.LastAttestationSlot > 0 {
 			tableData[i] = append(tableData[i], []interface{}{
-				*v.LastAttestationSlot,
-				utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
+				v.LastAttestationSlot,
+				utils.SlotToTime(uint64(v.LastAttestationSlot)).Unix(),
 			})
 		} else {
 			tableData[i] = append(tableData[i], nil)
@@ -342,11 +355,30 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
+	countFiltered := uint64(0)
+	if dataQuery.StateFilter != "" {
+		qry = fmt.Sprintf(`SELECT COUNT(*) FROM validators %s`, dataQuery.StateFilter)
+		err = db.ReaderDb.Get(&countFiltered, qry)
+		if err != nil {
+			logger.Errorf("error retrieving validators total count: %v", err)
+			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			return
+		}
+	} else {
+		countFiltered = countTotal
+	}
+
+	if countTotal > 10000 {
+		countTotal = 10000
+	}
+	if countFiltered > 10000 {
+		countFiltered = 10000
+	}
 
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
 		RecordsTotal:    countTotal,
-		RecordsFiltered: countTotal,
+		RecordsFiltered: countFiltered,
 		Data:            tableData,
 	}
 

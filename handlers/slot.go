@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -39,9 +40,12 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/attesterSlashing.html",
 		"slot/proposerSlashing.html",
 		"slot/exits.html",
+		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html")
-	slotFutureTemplateFiles := append(layoutTemplateFiles, "slot/slotFuture.html")
+	slotFutureTemplateFiles := append(layoutTemplateFiles,
+		"slot/slotFuture.html",
+		"components/timestamp.html")
 	blockNotFoundTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
 	var slotTemplate = templates.GetTemplate(slotTemplateFiles...)
 	var slotFutureTemplate = templates.GetTemplate(slotFutureTemplateFiles...)
@@ -202,12 +206,15 @@ func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttesta
 }
 
 func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	blockPageData := types.BlockPageData{}
 	blockPageData.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
+	// for the first slot in an epoch the previous epoch defines the finalized state
 	err := db.ReaderDb.Get(&blockPageData, `
 		SELECT
 			blocks.epoch,
-			COALESCE(epochs.finalized, false) AS epoch_finalized,
+			(COALESCE(epochs.epoch, 0) <= $3) AS epoch_finalized,
+			(GREATEST((blocks.slot-1)/$2-1,0) <= $3) AS prev_epoch_finalized,
 			COALESCE(epochs.globalparticipationrate, 0) AS epoch_participation_rate,
 			blocks.slot,
 			blocks.blockroot,
@@ -240,7 +247,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN blocks_tags ON blocks.slot = blocks_tags.slot and blocks.blockroot = blocks_tags.blockroot
 		LEFT JOIN tags ON blocks_tags.tag_id = tags.id
-		LEFT JOIN epochs ON blocks.epoch = epochs.epoch
+		LEFT JOIN epochs ON GREATEST((blocks.slot-1)/$2,0) = epochs.epoch
 		WHERE blocks.slot = $1 
 		group by
 			blocks.epoch,
@@ -251,7 +258,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			epoch_participation_rate
 		ORDER BY blocks.blockroot DESC, blocks.status ASC limit 1
 		`,
-		blockSlot)
+		blockSlot, utils.Config.Chain.Config.SlotsPerEpoch, latestFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}

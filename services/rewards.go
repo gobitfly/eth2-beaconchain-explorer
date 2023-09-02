@@ -44,7 +44,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		lowerBound++
 	}
 
-	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound, upperBound)
+	income, err := db.GetValidatorIncomeHistory(validatorArr, lowerBound, upperBound, LatestFinalizedEpoch())
 	if err != nil {
 		logger.Errorf("error getting income history for validator hist: %v", err)
 	}
@@ -229,15 +229,19 @@ func GeneratePdfReport(hist rewardHistory, currency string) []byte {
 	pdf.Ln(10)
 	pdf.SetFont("Times", "", 9)
 
-	header = [colCount]string{"Index", "Activation Balance", "Balance", "Income", "Last Attestation"}
+	const (
+		vColCount = 4
+		vColWd    = 50.0
+	)
+	vHeader := [vColCount]string{"Index", "Activation Balance", "Balance", "Last Attestation"}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	// pdf.Ln(10)
 	pdf.SetTextColor(224, 224, 224)
 	pdf.SetFillColor(64, 64, 64)
 	pdf.Cell(-5, 0, "")
-	for col := 0; col < colCount; col++ {
-		pdf.CellFormat(colWd, maxHt, header[col], "1", 0, "CM", true, 0, "")
+	for col := 0; col < vColCount; col++ {
+		pdf.CellFormat(vColWd, maxHt, vHeader[col], "1", 0, "CM", true, 0, "")
 	}
 	pdf.Ln(-1)
 	pdf.SetTextColor(24, 24, 24)
@@ -255,17 +259,17 @@ func GeneratePdfReport(hist rewardHistory, currency string) []byte {
 			y = pdf.GetY()
 		}
 
-		for col := 0; col < colCount; col++ {
+		for col := 0; col < vColCount; col++ {
 			if i%2 != 0 {
 				pdf.SetFillColor(191, 191, 191)
 			}
-			pdf.Rect(x, y, colWd, maxHt, "D")
+			pdf.Rect(x, y, vColWd, maxHt, "D")
 			cellY := y
 			pdf.SetXY(x, cellY)
-			pdf.CellFormat(colWd, maxHt, row[col], "", 0,
+			pdf.CellFormat(vColWd, maxHt, row[col], "", 0,
 				"LM", true, 0, "")
 			cellY += lineHt
-			x += colWd
+			x += vColWd
 		}
 		y += maxHt
 	}
@@ -295,22 +299,36 @@ func getValidatorDetails(validators []uint64) [][]string {
 	validatorFilter := pq.Array(validators)
 	var data []types.ValidatorPageData
 	err := db.WriterDb.Select(&data,
-		`select validatorindex, balanceactivation, lastattestationslot
-		 from validators 
-		 where validatorindex=ANY($1)
-		 order by validatorindex asc`, validatorFilter)
+		`SELECT validatorindex, balanceactivation
+		 FROM validators 
+		 WHERE validatorindex = ANY($1)
+		 ORDER BY validatorindex ASC`, validatorFilter)
 	if err != nil {
-		logger.Errorf("error getting validators Data: %v", err)
+		utils.LogError(err, "error getting validators data", 0, map[string]interface{}{"validators": validators})
 		return [][]string{}
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, LatestEpoch(), LatestEpoch())
+	latestEpoch := LatestEpoch()
+	balances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestEpoch, latestEpoch)
 	if err != nil {
-		logger.Errorf("error getting validator balance data for getValidatorDetails function: %v", err)
+		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{
+			"validators":  validators,
+			"latestEpoch": latestEpoch,
+		})
 		return [][]string{}
 	}
 
-	for _, validator := range data {
+	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(validators)
+	if err != nil {
+		utils.LogError(err, "error getting validator balance history", 0, map[string]interface{}{
+			"validators":  validators,
+			"latestEpoch": latestEpoch,
+		})
+		return [][]string{}
+	}
+
+	for i, validator := range data {
+		validator.LastAttestationSlot = lastAttestationSlots[validator.ValidatorIndex]
 		for balanceIndex, balance := range balances {
 			if len(balance) == 0 {
 				continue
@@ -320,21 +338,20 @@ func getValidatorDetails(validators []uint64) [][]string {
 				validator.EffectiveBalance = balance[0].EffectiveBalance
 			}
 		}
+		data[i] = validator
 	}
 
 	result := [][]string{}
 	for _, item := range data {
-		// row := []string{}
 		la_date := "N/a"
-		if item.LastAttestationSlot != nil {
-			la_time := utils.SlotToTime(*item.LastAttestationSlot)
+		if item.LastAttestationSlot > 0 {
+			la_time := utils.SlotToTime(item.LastAttestationSlot)
 			la_date = la_time.Format(time.RFC822)
 		}
 		result = append(result, []string{
 			fmt.Sprintf("%d", item.ValidatorIndex),
 			addCommas(float64(item.BalanceActivation)/float64(1e9), "%.5f"),
 			addCommas(float64(item.CurrentBalance)/float64(1e9), "%.5f"),
-			addCommas(float64(item.CurrentBalance)/float64(1e9)-float64(item.BalanceActivation)/float64(1e9), "%.5f"),
 			la_date,
 		})
 	}

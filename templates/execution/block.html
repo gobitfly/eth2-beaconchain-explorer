@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script>
     viewHexDataAs("extra-data", "utf-8")
+    activateTabbarSwitcher("tabContent", "tab", "overview")
   </script>
 {{ end }}
 
@@ -55,7 +56,7 @@
       <div class="card block-card">
         <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
           <div class="tab-content" id="tabContent">
-            <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <div class="tab-pane fade" id="overviewTabPanel" role="tabpanel" aria-labelledby="overview-tab">
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Miner:</div>
                 <div class="col-md-10">{{ .MinerFormatted }}</div>
@@ -90,14 +91,8 @@
               {{ end }}
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Time:</div>
-                <div class="col-md-7"><span aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="FROMNOW">{{ .Ts }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Ts.Unix }}" aria-ethereum-date-format="LOCAL">{{ .Ts }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
-                <div class="col-md-3 text-right">
-                  <div id="unixTs" hidden>{{ .Ts.Unix }}</div>
-                  <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                    <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="options" id="optionTs" autocomplete="off" /> Timestamp </label>
-                    <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setUtc()"> <input type="radio" name="options" id="optionUtc" autocomplete="off" /> UTC </label>
-                    <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setLocal()"> <input type="radio" name="options" id="optionLocal" autocomplete="off" checked /> Local </label>
-                  </div>
+                <div class="col-md-10 d-flex justify-between flex-wrap">
+                  {{ template "timestamp" .Ts }}
                 </div>
               </div>
               <div class="row border-bottom p-3 mx-0">
@@ -131,10 +126,10 @@
                 <div class="col-md-10 text-monospace"><a href="/block/{{ .ParentHash }}">{{ .ParentHash }}</a></div>
               </div>
             </div>
-            <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+            <div class="tab-pane fade" id="transactionsTabPanel" role="tabpanel" aria-labelledby="transactions-tab">
               {{ template "execution_transactions" . }}
             </div>
-            <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">
+            <div class="tab-pane fade" id="unclesTabPanel" role="tabpanel" aria-labelledby="uncles-tab">
               <div class="row border-bottom p-1 mx-0">
                 <div class="col-md-12 text-center"><b>Showing {{ .UncleCount }} Uncle{{ if gt .UncleCount 1 }}s{{ end }} </b></div>
               </div>

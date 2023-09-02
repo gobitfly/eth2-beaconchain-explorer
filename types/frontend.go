@@ -503,6 +503,12 @@ func (a ErrorResponse) Value() (driver.Value, error) {
 	return json.Marshal(a)
 }
 
+type EnsSearchPageData = struct {
+	Error  string
+	Search string
+	Result *EnsDomainResponse
+}
+
 type GasNowPageData struct {
 	Code int `json:"code"`
 	Data struct {
@@ -581,4 +587,10 @@ type Signature struct {
 	Text      string `json:"text_signature"`
 	Hex       string `json:"hex_signature"`
 	Bytes     string `json:"bytes_signature"`
+}
+
+type SearchValidatorsByEth1Result []struct {
+	Eth1Address      string        `db:"from_address_text" json:"eth1_address"`
+	ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+	Count            uint64        `db:"count" json:"-"`
 }

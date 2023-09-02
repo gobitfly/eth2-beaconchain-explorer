@@ -63,6 +63,22 @@
         })
         {{else}}
         Highcharts.stockChart('chart', {
+            responsive: {
+            rules: [{
+                condition: {
+                    maxWidth: 400,
+                },
+                chartOptions: {
+                    rangeSelector: {
+                        /*
+                        we use that rule, so when the screen becomes too small, the buttons can still be visible
+                        on the screen and do not clip.
+                        */
+                        x: -20,
+                    },
+                },
+            }],
+            },
             chart: {
                 type: {{.Type}},
                 height: 600,

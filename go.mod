@@ -54,6 +54,7 @@ require (
 	github.com/stripe/stripe-go/v72 v72.50.0
 	github.com/swaggo/http-swagger v1.3.0
 	github.com/urfave/negroni v1.0.0
+	github.com/wealdtech/go-ens/v3 v3.5.5
 	github.com/wealdtech/go-eth2-types/v2 v2.8.1
 	github.com/wealdtech/go-eth2-util v1.8.1
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
@@ -90,20 +91,32 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/ipfs/go-cid v0.3.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/multiformats/go-base32 v0.1.0 // indirect
+	github.com/multiformats/go-base36 v0.2.0 // indirect
+	github.com/multiformats/go-multibase v0.1.1 // indirect
+	github.com/multiformats/go-multihash v0.2.1 // indirect
+	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/protolambda/zssz v0.1.5 // indirect
 	github.com/prysmaticlabs/fastssz v0.0.0-20221107182844-78142813af44 // indirect
 	github.com/prysmaticlabs/gohashtree v0.0.2-alpha // indirect
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+< master
 	github.com/swaggo/swag v1.8.3 // indirect
+=
+	github.com/spaolacci/murmur3 v1.1.0 // indirect
+> master
 	github.com/urfave/cli v1.22.12 // indirect
 	github.com/wealdtech/go-bytesutil v1.2.1 // indirect
 	github.com/wealdtech/go-merkletree v1.0.1-0.20190605192610-2bb163c2ea2a // indirect
+	github.com/wealdtech/go-multicodec v1.4.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
 	google.golang.org/grpc v1.52.3 // indirect
+	lukechampine.com/blake3 v1.1.7 // indirect
 )
 
 require (

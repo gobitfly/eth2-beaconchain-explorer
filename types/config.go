@@ -8,25 +8,28 @@ import (
 // Config is a struct to hold the configuration data
 type Config struct {
 	ReaderDatabase struct {
-		Username string `yaml:"user" envconfig:"READER_DB_USERNAME"`
-		Password string `yaml:"password" envconfig:"READER_DB_PASSWORD"`
-		Name     string `yaml:"name" envconfig:"READER_DB_NAME"`
-		Host     string `yaml:"host" envconfig:"READER_DB_HOST"`
-		Port     string `yaml:"port" envconfig:"READER_DB_PORT"`
+		Username     string `yaml:"user" envconfig:"READER_DB_USERNAME"`
+		Password     string `yaml:"password" envconfig:"READER_DB_PASSWORD"`
+		Name         string `yaml:"name" envconfig:"READER_DB_NAME"`
+		Host         string `yaml:"host" envconfig:"READER_DB_HOST"`
+		Port         string `yaml:"port" envconfig:"READER_DB_PORT"`
+		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"READER_DB_MAX_OPEN_CONNS"`
+		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"READER_DB_MAX_IDLE_CONNS"`
 	} `yaml:"readerDatabase"`
 	WriterDatabase struct {
-		Username string `yaml:"user" envconfig:"WRITER_DB_USERNAME"`
-		Password string `yaml:"password" envconfig:"WRITER_DB_PASSWORD"`
-		Name     string `yaml:"name" envconfig:"WRITER_DB_NAME"`
-		Host     string `yaml:"host" envconfig:"WRITER_DB_HOST"`
-		Port     string `yaml:"port" envconfig:"WRITER_DB_PORT"`
+		Username     string `yaml:"user" envconfig:"WRITER_DB_USERNAME"`
+		Password     string `yaml:"password" envconfig:"WRITER_DB_PASSWORD"`
+		Name         string `yaml:"name" envconfig:"WRITER_DB_NAME"`
+		Host         string `yaml:"host" envconfig:"WRITER_DB_HOST"`
+		Port         string `yaml:"port" envconfig:"WRITER_DB_PORT"`
+		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"WRITER_DB_MAX_OPEN_CONNS"`
+		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 	} `yaml:"writerDatabase"`
 	Bigtable struct {
 		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
 		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
 	} `yaml:"bigtable"`
-	LastAttestationCachePath string `yaml:"lastAttestationCachePath" envconfig:"LAST_ATTESTATION_CACHE_PATH"`
-	Chain                    struct {
+	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
@@ -65,6 +68,9 @@ type Config struct {
 		PubKeyTagsExporter struct {
 			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
 		} `yaml:"pubkeyTagsExporter"`
+		EnsTransformer struct {
+			ValidRegistrarContracts []string `yaml:"validRegistrarContracts" envconfig:"ENS_VALID_REGISTRAR_CONTRACTS"`
+		} `yaml:"ensTransformer"`
 	} `yaml:"indexer"`
 	Frontend struct {
 		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
@@ -88,18 +94,22 @@ type Config struct {
 			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`
 		ReaderDatabase struct {
-			Username string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
-			Password string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
-			Name     string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
-			Host     string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
-			Port     string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
+			Username     string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
+			Password     string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
+			Name         string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
+			Host         string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
+			Port         string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
+			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_READER_DB_MAX_OPEN_CONNS"`
+			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_READER_DB_MAX_IDLE_CONNS"`
 		} `yaml:"readerDatabase"`
 		WriterDatabase struct {
-			Username string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
-			Password string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
-			Name     string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
-			Host     string `yaml:"host" envconfig:"FRONTEND_WRITER_DB_HOST"`
-			Port     string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
+			Username     string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
+			Password     string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
+			Name         string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
+			Host         string `yaml:"host" envconfig:"FRONTEND_WRITER_DB_HOST"`
+			Port         string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
+			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_WRITER_DB_MAX_OPEN_CONNS"`
+			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
 		} `yaml:"writerDatabase"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
@@ -145,9 +155,6 @@ type Config struct {
 			Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
 			Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
 		} `yaml:"countdown"`
-		Validator struct {
-			ShowProposerRewards bool `yaml:"showProposerRewards" envconfig:"FRONTEND_SHOW_PROPOSER_REWARDS"`
-		} `yaml:"validator"`
 		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
 		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
 		HttpIdleTimeout  time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
@@ -158,12 +165,15 @@ type Config struct {
 		Pprof   bool   `yaml:"pprof" envconfig:"METRICS_PPROF"`
 	} `yaml:"metrics"`
 	Notifications struct {
-		Enabled                                       bool   `yaml:"enabled" envconfig:"NOTIFICATIONS_ENABLED"`
-		Sender                                        bool   `yaml:"sender" envconfig:"NOTIFICATIONS_SENDER"`
-		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
-		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
-		PubkeyCachePath                               string `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
+		UserDBNotifications                           bool    `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath                       string  `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool    `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
+		PubkeyCachePath                               string  `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
+		OnlineDetectionLimit                          int     `yaml:"onlineDetectionLimit" envconfig:"ONLINE_DETECTION_LIMIT"`
+		OfflineDetectionLimit                         int     `yaml:"offlineDetectionLimit" envconfig:"OFFLINE_DETECTION_LIMIT"`
+		MachineEventThreshold                         uint64  `yaml:"machineEventThreshold" envconfig:"MACHINE_EVENT_THRESHOLD"`
+		MachineEventFirstRatioThreshold               float64 `yaml:"machineEventFirstRatioThreshold" envconfig:"MACHINE_EVENT_FIRST_RATIO_THRESHOLD"`
+		MachineEventSecondRatioThreshold              float64 `yaml:"machineEventSecondRatioThreshold" envconfig:"MACHINE_EVENT_SECOND_RATIO_THRESHOLD"`
 	} `yaml:"notifications"`
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
@@ -183,12 +193,23 @@ type Config struct {
 		ElEndpoint string `yaml:"elEndpoint" envconfig:"NODE_JOBS_PROCESSOR_EL_ENDPOINT"`
 		ClEndpoint string `yaml:"clEndpoint" envconfig:"NODE_JOBS_PROCESSOR_CL_ENDPOINT"`
 	} `yaml:"nodeJobsProcessor"`
+	Monitoring struct {
+		ApiKey                          string                           `yaml:"apiKey" envconfig:"MONITORING_API_KEY"`
+		ServiceMonitoringConfigurations []ServiceMonitoringConfiguration `yaml:"serviceMonitoringConfigurations" envconfig:"SERVICE_MONITORING_CONFIGURATIONS"`
+	} `yaml:"monitoring"`
 }
 
 type DatabaseConfig struct {
-	Username string
-	Password string
-	Name     string
-	Host     string
-	Port     string
+	Username     string
+	Password     string
+	Name         string
+	Host         string
+	Port         string
+	MaxOpenConns int
+	MaxIdleConns int
+}
+
+type ServiceMonitoringConfiguration struct {
+	Name     string        `yaml:"name" envconfig:"NAME"`
+	Duration time.Duration `yaml:"duration" envconfig:"DURATION"`
 }

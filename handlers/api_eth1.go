@@ -66,6 +66,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	limit := uint64(100)
 	vars := mux.Vars(r)
 
 	var blockList []uint64
@@ -79,14 +80,19 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 		blockList = append(blockList, temp)
 	}
 
-	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, uint64(100))
+	if len(blockList) > int(limit) {
+		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
+		return
+	}
+
+	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
 		sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from bigtable")
 		return
 	}
 
-	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, 100)
+	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, limit)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "can not retrieve proposer information")
 		return
@@ -111,9 +117,9 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey.
 // @Description Mixed use of recipient addresses and proposer indexes or proposer pubkeys with an offset is discouraged as it can lead to skipped entries.
 // @Produce json
-// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20."
+// @Param addressIndexOrPubkey path string true "Either the fee recipient address, the proposer index or proposer pubkey. You can provide multiple by separating them with ','. Max allowed index or pubkeys are 100, max allowed user addresses are 20.". You can also use valid ENS names.
 // @Param offset query int false "Offset" default(0)
-// @Param limit query int false "Limit, amount of entries you wish to receive" default(10)
+// @Param limit query int false "Limit the amount of entries you wish to receive (Maximum: 100)" default(10) maximum(100)
 // @Param sort query string false "Sort via the block number either by 'asc' or 'desc'" default(desc)
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
@@ -182,7 +188,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(indices) > 0 {
-		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false)
+		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false, 0)
 		if err != nil {
 			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
@@ -276,7 +282,7 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 // @Tags Execution
 // @Description Returns the ether balance and any token balances for a given ethereum address.
 // @Produce json
-// @Param address path string true "provide an ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters"
+// @Param address path string true "provide an ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
 // @Param token query string false "filter for a specific token by providing a ethereum token contract address"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
@@ -286,7 +292,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -316,7 +322,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.Ether = decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.EthBalance.Balance), 0).DivRound(decimal.NewFromInt(1e18), 18).String()
+	response.Ether = utils.WeiBytesToEther(metadata.EthBalance.Balance).String()
 	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
 	response.Tokens = []struct {
 		Address  string  `json:"address"`
@@ -327,16 +333,6 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		Currency string  `json:"currency,omitempty"`
 	}{}
 	for _, m := range metadata.Balances {
-		// var price float64
-		// if len(m.Metadata.Price) > 0 {
-		// 	price, err = strconv.ParseFloat(string(m.Metadata.Price), 64)
-		// 	if err != nil {
-		// 		logger.Errorf("error parsing price to float for address: %v route: %v err: %v", address, r.URL.String(), err)
-		// 		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
-		// 		return
-		// 	}
-		// }
-
 		// if there is a token filter and we are currently not on the right value, skip to the next loop iteration
 		if len(token) > 0 && token != fmt.Sprintf("%x", m.Token) {
 			continue
@@ -353,9 +349,6 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 			Address: fmt.Sprintf("0x%x", m.Token),
 			Balance: decimal.NewFromBigInt(new(big.Int).SetBytes(m.Balance), 0).Div(decimal.NewFromBigInt(big.NewInt(1), int32(new(big.Int).SetBytes(m.Metadata.Decimals).Int64()))).String(),
 			Symbol:  m.Metadata.Symbol,
-			// Decimals: decimals.String(),
-			// Price:   price,
-			// Currency: "USD",
 		})
 	}
 
@@ -367,7 +360,7 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -429,8 +422,8 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			From:               utils.FixAddressCasing(fmt.Sprintf("%x", tx.From)),
 			To:                 utils.FixAddressCasing(fmt.Sprintf("%x", tx.To)),
 			MethodId:           fmt.Sprintf("0x%x", tx.MethodId),
-			Value:              new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.Value)), big.NewFloat(1e18)).String(),   //new(big.Int).Div(new(big.Int).SetBytes(tx.Value), big.NewInt(1e18)).String(),
-			GasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(tx.GasPrice)), big.NewFloat(1e9)).String(), //new(big.Int).Div(new(big.Int).SetBytes(tx.GasPrice), new(big.Int).SetInt64(1e18)).String(),
+			Value:              utils.WeiBytesToEther(tx.Value).String(),
+			GasPrice:           utils.GWeiBytesToEther(tx.GasPrice).String(),
 			IsContractCreation: tx.IsContractCreation,
 			InvokesContract:    tx.InvokesContract,
 		})
@@ -446,7 +439,7 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -510,7 +503,7 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 			Type:        itx.Type,
 			From:        utils.FixAddressCasing(fmt.Sprintf("%x", itx.From)),
 			To:          utils.FixAddressCasing(fmt.Sprintf("%x", itx.To)),
-			Value:       new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(itx.Value)), big.NewFloat(1e18)).String(),
+			Value:       utils.WeiBytesToEther(itx.Value).String(),
 		})
 	}
 
@@ -523,7 +516,7 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -564,47 +557,39 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 	blocksParsed := make([]types.Eth1BlockParsed, 0, len(producedBlocks))
 
 	for _, blk := range producedBlocks {
-		txReward := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.TxReward)), big.NewFloat(1e18)).String()
+		txReward := utils.WeiBytesToEther(blk.TxReward).String()
 		if txReward == "0" {
 			txReward = ""
 		}
 
 		uncleHash := fmt.Sprintf("0x%x", blk.UncleHash)
-		uncleReward := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.UncleReward)), big.NewFloat(1e18)).String()
+		uncleReward := utils.WeiBytesToEther(blk.UncleReward).String()
 		if uncleReward == "0" {
 			uncleReward = ""
 			uncleHash = ""
 		}
-		// mev := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.Mev)), big.NewFloat(1e18)).String()
-		// if mev == "0" {
-		// 	mev = ""
-		// }
+
 		difficulty := new(big.Int).SetBytes(blk.Difficulty).String()
 		if difficulty == "0" {
 			difficulty = ""
 		}
 
-		// blkReward := utils.Eth1BlockReward(blk.Number, blk.Difficulty)
-
 		blocksParsed = append(blocksParsed, types.Eth1BlockParsed{
 			Hash:                     fmt.Sprintf("0x%x", blk.Hash),
 			ParentHash:               fmt.Sprintf("0x%x", blk.ParentHash),
 			UncleHash:                uncleHash,
-			Coinbase:                 fmt.Sprintf("0x%x", blk.Coinbase), //new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.Coinbase)), big.NewFloat(1e18)).String(),
+			Coinbase:                 fmt.Sprintf("0x%x", blk.Coinbase),
 			Difficulty:               difficulty,
 			Number:                   blk.Number,
 			GasLimit:                 blk.GasLimit,
 			GasUsed:                  blk.GasUsed,
 			Time:                     blk.Time.AsTime(),
-			BaseFee:                  new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.BaseFee)), big.NewFloat(1e9)).String(),
+			BaseFee:                  decimal.NewFromBigInt(new(big.Int).SetBytes(blk.BaseFee), 0).Div(decimal.NewFromInt(1e9)).String(),
 			UncleCount:               blk.UncleCount,
 			TransactionCount:         blk.TransactionCount,
 			InternalTransactionCount: blk.InternalTransactionCount,
 			TxReward:                 txReward,
 			UncleReward:              uncleReward,
-			// Mev:                      mev,
-			// LowestGasPrice:           new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.LowestGasPrice)), big.NewFloat(1e9)).String(),
-			// HighestGasPrice:          new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(blk.HighestGasPrice)), big.NewFloat(1e9)).String(),
 		})
 	}
 
@@ -617,7 +602,7 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -664,10 +649,10 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 			Number:      uncl.Number,
 			GasLimit:    uncl.GasLimit,
 			GasUsed:     uncl.GasUsed,
-			BaseFee:     new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(uncl.BaseFee)), big.NewFloat(1e9)).String(),
+			BaseFee:     decimal.NewFromBigInt(new(big.Int).SetBytes(uncl.BaseFee), 0).Div(decimal.NewFromInt(1e18)).String(),
 			Difficulty:  new(big.Int).SetBytes(uncl.Difficulty).String(),
 			Time:        uncl.Time.AsTime(),
-			Reward:      new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(uncl.Reward)), big.NewFloat(1e18)).String(),
+			Reward:      utils.WeiBytesToEther(uncl.Reward).String(),
 		})
 	}
 
@@ -680,7 +665,7 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	vars := mux.Vars(r)
-	address := vars["address"]
+	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
 	address = strings.Replace(address, "0x", "", -1)
@@ -945,8 +930,8 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	}
 
 	type LongPerformanceResponse struct {
-		Performance365d  int64  `db:"el_performance_365d" json:"performance365d"`
-		PerformanceTotal int64  `db:"el_performance_total" json:"performanceTotal"`
+		Performance365d  string `db:"el_performance_365d" json:"performance365d"`
+		PerformanceTotal string `db:"el_performance_total" json:"performanceTotal"`
 		ValidatorIndex   uint64 `db:"validatorindex" json:"validatorindex"`
 	}
 
@@ -955,27 +940,26 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	err = db.ReaderDb.Select(&performanceList, `
 		SELECT 
 		validatorindex,
-		CAST(COALESCE(mev_performance_365d, 0) AS bigint) AS el_performance_365d,
-		CAST(COALESCE(mev_performance_total, 0) AS bigint) AS el_performance_total
+		CAST(COALESCE(mev_performance_365d, 0) AS text) AS el_performance_365d,
+		CAST(COALESCE(mev_performance_total, 0) AS text) AS el_performance_total
 		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		return nil, fmt.Errorf("error can cl performance from db: %w", err)
 	}
 	for _, val := range performanceList {
+		performance365d, _ := new(big.Int).SetString(val.Performance365d, 10)
+		performanceTotal, _ := new(big.Int).SetString(val.PerformanceTotal, 10)
 		resultPerProposer[val.ValidatorIndex] = types.ExecutionPerformanceResponse{
 			Performance1d:    big.NewInt(0),
 			Performance7d:    big.NewInt(0),
 			Performance31d:   big.NewInt(0),
-			Performance365d:  big.NewInt(val.Performance365d),
-			PerformanceTotal: big.NewInt(val.PerformanceTotal),
+			Performance365d:  performance365d,
+			PerformanceTotal: performanceTotal,
 			ValidatorIndex:   val.ValidatorIndex,
 		}
 	}
 
-	lastStatsDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
-		return nil, fmt.Errorf("error getting last statistic day: %w", err)
-	}
+	lastStatsDay := services.LatestExportedStatisticDay()
 	firstEpochTime := utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
 
 	for _, block := range blocks {
@@ -993,7 +977,8 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		}
 
 		txFees := big.NewInt(0).SetBytes(block.TxReward)
-		mev := big.NewInt(0).SetBytes(block.Mev)
+		//mev := big.NewInt(0).SetBytes(block.Mev) // this handling has been deprecated
+		mev := big.NewInt(0)
 		income := big.NewInt(0).Add(txFees, mev)
 
 		var mevBribe *big.Int = big.NewInt(0)
@@ -1029,27 +1014,32 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	return maps.Values(resultPerProposer), nil
 }
 
-func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
+func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64, isSortAsc bool, onlyFinalized bool, lowerBoundDay uint64) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
+
+	lowerBoundEpoch := lowerBoundDay * utils.EpochsPerDay()
 
 	order := "DESC"
 	if isSortAsc {
 		order = "ASC"
 	}
 
-	status := ""
+	status := "status != '3'"
 	if onlyFinalized {
-		status = `and status = '1'`
+		status = `status = '1'`
 	}
 
-	query := fmt.Sprintf(`SELECT 
+	query := fmt.Sprintf(`
+		SELECT 
 			exec_block_number,
 			proposer,
 			slot,
 			epoch  
 		FROM blocks 
 		WHERE proposer = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 %s
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0
+			AND epoch >= $4
+			AND %s
 		ORDER BY exec_block_number %s
 		OFFSET $2 LIMIT $3`, status, order)
 
@@ -1058,6 +1048,7 @@ func findExecBlockNumbersByProposerIndex(indices []uint64, offset, limit uint64,
 		pq.Array(indices),
 		offset,
 		limit,
+		lowerBoundEpoch,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -1082,7 +1073,7 @@ func findExecBlockNumbersByFeeRecipient(addresses [][]byte, offset, limit uint64
 			epoch  
 		FROM blocks 
 		WHERE exec_fee_recipient = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+		AND exec_block_number IS NOT NULL AND exec_block_number > 0  AND status != '3'
 		ORDER BY exec_block_number %s
 		OFFSET $2 LIMIT $3`, order)
 
@@ -1109,7 +1100,8 @@ func findExecBlockNumbersByExecBlockNumber(execBlocks []uint64, offset, limit ui
 			epoch  
 		FROM blocks 
 		WHERE exec_block_number = ANY($1)
-		AND exec_block_number IS NOT NULL AND exec_block_number > 0 
+			AND exec_block_number IS NOT NULL AND exec_block_number > 0
+			AND status = '1'
 		ORDER BY exec_block_number DESC
 		OFFSET $2 LIMIT $3`,
 		pq.Array(execBlocks),
@@ -1160,7 +1152,7 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string, max int) ([][]
 			resultAddresses = append(resultAddresses, addInPub.Address)
 		} else if len(addInPub.Pubkey) > 0 {
 			pubkeys = append(pubkeys, addInPub.Pubkey)
-		} else if addInPub.Index > 0 {
+		} else if addInPub.Index > 0 && addInPub.Index < db.MaxSqlInteger {
 			indices = append(indices, addInPub.Index)
 		}
 	}
@@ -1182,6 +1174,7 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string, max int) ([][]
 }
 
 func parseFromAddressIndexOrPubkey(search string) (types.AddressIndexOrPubkey, error) {
+	search = ReplaceEnsNameWithAddress(search)
 	if strings.Contains(search, "0x") && len(search) == 42 {
 		address, err := hex.DecodeString(search[2:])
 		if err != nil {

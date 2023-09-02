@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -26,9 +26,9 @@ func Eth1BlockReward(blockNumber uint64, difficulty []byte) *big.Int {
 		return big.NewInt(0)
 	}
 
-	if blockNumber < 4370000 {
+	if blockNumber < Config.Chain.Config.ByzantiumForkBlock {
 		return big.NewInt(5e+18)
-	} else if blockNumber < 7280000 {
+	} else if blockNumber < Config.Chain.Config.ConstantinopleForkBlock {
 		return big.NewInt(3e+18)
 	} else {
 		return big.NewInt(2e+18)
@@ -49,8 +49,7 @@ func StripPrefix(hexStr string) string {
 }
 
 func EthBytesToFloat(b []byte) float64 {
-	f, _ := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(b)), new(big.Float).SetInt(big.NewInt(params.Ether))).Float64()
-	return f
+	return WeiBytesToEther(b).InexactFloat64()
 }
 
 func FormatBlockNumber(number uint64) template.HTML {
@@ -159,6 +158,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		}
 		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
 	} else { // name set
+		addCopyToClipboard = true
 		tooltip = fmt.Sprintf("%s\n%s", name, addressString) // set tool tip first, as we will change name
 		// limit name if necessary
 		if nameLimit > 0 && len(name) > nameLimit {
@@ -251,6 +251,9 @@ func FormatHashLong(hash common.Hash) template.HTML {
 }
 
 func FormatAddressLong(address string) template.HTML {
+	if IsValidEnsDomain(address) {
+		return template.HTML(address)
+	}
 	address = FixAddressCasing(address)
 	test := `
 	<span class="text-monospace mw-100"><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
@@ -401,10 +404,7 @@ func FormatNumber(number interface{}) string {
 }
 
 func FormatDifficulty(number *big.Int) string {
-	f := new(big.Float).SetInt(number)
-	f.Quo(f, big.NewFloat(1e12))
-	r, _ := f.Float64()
-	return fmt.Sprintf("%.1f T", r)
+	return fmt.Sprintf("%.1f T", decimal.NewFromBigInt(number, -12).InexactFloat64())
 }
 
 func FormatHashrate(h float64) template.HTML {

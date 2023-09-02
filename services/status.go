@@ -30,6 +30,6 @@ func ReportStatus(name, status string, metadata *json.RawMessage) {
 	`, name, execName, version, pid, status, metadata)
 
 	if err != nil {
-		logger.Errorf("error reporting service status: %v", err)
+		utils.LogError(err, "error reporting service status", 0, map[string]interface{}{"name": name, "status": status})
 	}
 }

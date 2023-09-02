@@ -55,7 +55,10 @@ func Start(client rpc.Client) error {
 		head, err := client.GetChainHead()
 		if err == nil {
 			logger.Infof("Beacon node is available with head slot: %v", head.HeadSlot)
-
+			err = db.UpdateChainHead(head)
+			if err != nil {
+				utils.LogError(err, "error updating chain head", 0)
+			}
 			// if we are still waiting for genesis, export epoch 0 with genesis data
 			// epoch 0 will only contain genesis data at this point
 			if head.HeadSlot == 0 {
@@ -77,6 +80,10 @@ func Start(client rpc.Client) error {
 		if err != nil {
 			utils.LogFatal(err, "getting chain head from client for full db reindex error", 0)
 		}
+		err = db.UpdateChainHead(head)
+		if err != nil {
+			utils.LogError(err, "error updating chain head", 0)
+		}
 
 		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
 			err := ExportEpoch(epoch, client)
@@ -92,6 +99,10 @@ func Start(client rpc.Client) error {
 		head, err := client.GetChainHead()
 		if err != nil {
 			utils.LogFatal(err, "getting chain head from client for full canon check error", 0)
+		}
+		err = db.UpdateChainHead(head)
+		if err != nil {
+			utils.LogError(err, "error updating chain head", 0)
 		}
 
 		for epoch := int64(head.HeadEpoch) - 1; epoch >= 0; epoch-- {
@@ -144,6 +155,10 @@ func Start(client rpc.Client) error {
 		head, err := client.GetChainHead()
 		if err != nil {
 			utils.LogFatal(err, "getting chain head from client for full blocks check error", 0)
+		}
+		err = db.UpdateChainHead(head)
+		if err != nil {
+			utils.LogError(err, "error updating chain head", 0)
 		}
 
 		dbBlocks, err := db.GetLastPendingAndProposedBlocks(1, head.HeadEpoch)
@@ -222,6 +237,10 @@ func Start(client rpc.Client) error {
 		if err != nil {
 			utils.LogFatal(err, "getting chain head from client for updating epoch statistics error", 0)
 		}
+		err = db.UpdateChainHead(head)
+		if err != nil {
+			utils.LogError(err, "error updating chain head", 0)
+		}
 		startEpoch := uint64(0)
 		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 		if err != nil {
@@ -267,7 +286,7 @@ func Start(client rpc.Client) error {
 			logrus.Errorf("error exporting sync committee duties to bigtable for block %v: %v", block.Slot, err)
 		}
 
-		err = db.SaveBlock(block)
+		err = db.SaveBlock(block, false)
 		if err != nil {
 			logger.Errorf("error saving block: %v", err)
 		}
@@ -290,6 +309,10 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 	if err != nil {
 		logger.Errorf("error retrieving chain head: %v", err)
 		return
+	}
+	err = db.UpdateChainHead(head)
+	if err != nil {
+		utils.LogError(err, "error updating chain head", 0)
 	}
 
 	startEpoch := uint64(0)
@@ -455,11 +478,6 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 	if err != nil {
 		logger.Errorf("error updating epoch stratus: %v", err)
 	}
-	// set all finalized epochs to finalized
-	err = db.UpdateEpochFinalization(head.FinalizedEpoch)
-	if err != nil {
-		logger.Errorf("error updating finalization of epochs: %v", err)
-	}
 
 	logger.Infof("exporting validation queue")
 	err = exportValidatorQueue(client)
@@ -578,26 +596,6 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		}
 		return nil
 	})
-	g.Go(func() error {
-		attestedSlots := make(map[uint64]uint64)
-		for _, blockkv := range data.Blocks {
-			for _, block := range blockkv {
-				for _, attestation := range block.Attestations {
-					for _, validator := range attestation.Attesters {
-						if block.Slot > attestedSlots[validator] {
-							attestedSlots[validator] = block.Slot
-						}
-					}
-				}
-			}
-		}
-
-		err = services.SetLastAttestationSlots(attestedSlots)
-		if err != nil {
-			return fmt.Errorf("error settings last attestation slots for epoch %v: %v", data.Epoch, err)
-		}
-		return nil
-	})
 
 	err = g.Wait()
 	if err != nil {
@@ -661,6 +659,10 @@ func networkLivenessUpdater(client rpc.Client) {
 		if prevHeadEpoch == head.HeadEpoch {
 			time.Sleep(slotDuration)
 			continue
+		}
+		err = db.UpdateChainHead(head)
+		if err != nil {
+			utils.LogError(err, "error updating chain head", 0)
 		}
 
 		// wait for node to be synced

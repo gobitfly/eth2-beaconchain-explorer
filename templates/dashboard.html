@@ -13,6 +13,8 @@
       if(!isNaN(temp)) {
             VALLIMIT = parseInt(temp);
       }
+
+    activateTabbarSwitcher("dashTabContent", "dashChartTabs", "validators-table")
 </script>
 {{ end }}
 
@@ -204,9 +206,17 @@
                   <button data-toggle="tooltip" title="Open in reward history" style="visibility:hidden;" id="rewards-button" class="btn btn-primary btn-sm m-1">
                     <i class="far fa-money-bill-alt text-white" style="width:18px;"></i>
                   </button>
-                  <button data-toggle="tooltip" title="Save all to Watchlist" style="visibility:hidden;" id="bookmark-button" type="button" class="btn btn-primary btn-sm m-1">
-                    <i class="far fa-bookmark text-white" style="width:18px;"></i>
-                  </button>
+                  {{ if $.User.Authenticated }}
+                    <button data-toggle="tooltip" title="Save all to Watchlist" style="visibility:hidden;" id="bookmark-button" type="button" class="btn btn-primary btn-sm m-1">
+                      <i class="far fa-bookmark text-white" style="width:18px;"></i>
+                    </button>
+                  {{ else }}
+                    <span class="" data-toggle="tooltip" title="You need to login to follow a validator">
+                      <button style="visibility:hidden;" id="bookmark-button" disabled type="button" class="btn btn-primary btn-sm m-1 disabled">
+                        <i class="far fa-bookmark text-white" style="width:18px;"></i>
+                      </button>
+                    </span>
+                  {{ end }}
                   <button data-toggle="tooltip" data-original-title="Copy Link to Dashboard" style="visibility:hidden;" id="copy-button" data-clipboard-text="https://beaconcha.in/dashboard" type="button" class="btn btn-primary btn-sm m-1">
                     <i class="fa fa-copy text-white" style="width:18px;"></i>
                   </button>
@@ -216,7 +226,7 @@
                 </span>
                 <span class="multiselect-border" style="margin:1rem 0;">
                   <ul id="selected-validators-input" class="multiselect">
-                    <li class="input"><input class="typeahead-dashboard" type="text" placeholder="Add a validator via their index, name, graffiti or ETH address" aria-label="Search" style="font-size:.9rem;" /></li>
+                    <li class="input"><input class="typeahead-dashboard" type="text" placeholder="Add a validator via their index, public key, name, graffiti, ENS name or ETH address" aria-label="Search" style="font-size:.9rem;" /></li>
                   </ul>
                   <div id="selected-validators-overview" class="d-none dropdown-selected-validators" style="position:absolute;overflow-y:auto;left:.5rem;right:calc(92px + .5rem);top:100%;margin-top:.3rem;max-height:280px;min-width:240px;border-radius:5px;box-shadow:0 .5rem 1rem rgba(0,0,0,.175);">
                     <!-- class="dropdown-selected-validators" -->
@@ -323,7 +333,7 @@
                 {{ end }}
               </ul>
               <div class="tab-content h-100" id="dashTabContent">
-                <div id="validators-table" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="validators-tab">
+                <div id="validators-tableTabPanel" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="validators-tab">
                   <div id="validator-art" class="d-flex align-items-center justify-content-center p-5">
                     <svg style="width:60%;height:auto;" id="5e1838a0-6e06-4e3f-aa75-de6d8e6cdfa0" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1007.04 858">
                       <defs>
@@ -391,7 +401,7 @@
                     </svg>
                   </div>
                   <div class="dashboard-table px-0 mx-0" id="validators-table-holder" style="height:100%;">
-                    <div class="table-responsive proposals-table py-2" style="height:100%;">
+                    <div class="table-responsive proposals-table py-2 typeahead-container" style="height:100%;">
                       <table class="table" id="validators" width="100%" style="margin-top:.5rem !important;">
                         <thead>
                           <tr>
@@ -412,7 +422,7 @@
                     </div>
                   </div>
                 </div>
-                <div id="balances" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="balances-tab">
+                <div id="balancesTabPanel" class="tab-pane fade h-100 pb-2" role="tabpanel" aria-labelledby="balances-tab">
                   <div id="balance-chart">
                     <div class="d-flex align-items-center justify-content-center p-5">
                       <svg style="width:60%;height:auto;" id="e9a400c3-14c4-48e9-ac4d-1e6d0c39fdb5" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 893.61704 736.75">
@@ -477,13 +487,14 @@
                       </svg>
                     </div>
                   </div>
+                  <button type="button" id="load-income-btn" class="load-income-btn btn btn-primary btn-sm text-white d-none">Show all rewards</button>
                 </div>
-                <div id="proposals" class="tab-pane fade h-100" style="position:relative;" role="tabpanel" aria-labelledby="proposals-tab">
+                <div id="proposalsTabPanel" class="tab-pane fade h-100" style="position:relative;" role="tabpanel" aria-labelledby="proposals-tab">
                   <div class="proposal-switch m-2">
                     <i class="fas fa-chart-line fa-sm switch-chart p-2 proposal-switch-selected"></i>
                     <i class="fas fa-table fa-sm switch-table p-2"></i>
                   </div>
-                  <div id="proposed-chart">
+                  <div id="proposed-chart" class="h-100">
                     <div class="d-flex align-items-center justify-content-center p-5">
                       <svg style="width:60%;height:auto;" id="b8be6891-8c6c-471d-9cef-5646484caaf2" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1044.13 832.56">
                         <defs>
@@ -609,7 +620,7 @@
                   </div>
                 </div>
                 {{ if .CappellaHasHappened }}
-                  <div class="tab-pane fade h-100" id="withdrawals" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
+                  <div class="tab-pane fade h-100" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
                     {{ template "dashboardWithdrawalTable" . }}
                   </div>
                 {{ end }}

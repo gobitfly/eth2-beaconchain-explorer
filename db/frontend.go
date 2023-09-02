@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"eth2-exporter/cache"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"golang.org/x/sync/errgroup"
 )
 
 // FrontendWriterDB is a pointer to the auth-database
@@ -64,10 +66,23 @@ func GetUserApiKeyById(id uint64) (string, error) {
 }
 
 func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
+	cacheKey := fmt.Sprintf("userIdByApiKey:%s", apiKey)
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute*10, new(types.UserWithPremium)); err == nil {
+		return cached.(*types.UserWithPremium), nil
+	}
 	data := &types.UserWithPremium{}
 	row := FrontendWriterDB.QueryRow("SELECT id, (SELECT product_id from users_app_subscriptions WHERE user_id = users.id AND active = true order by id desc limit 1) FROM users WHERE api_key = $1", apiKey)
 	err := row.Scan(&data.ID, &data.Product)
-	return data, err
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		err := cache.TieredCache.Set(cacheKey, data, time.Minute*10)
+		if err != nil {
+			utils.LogError(err, fmt.Errorf("error setting tieredCache for GetUserIdByApiKey with key %v", cacheKey), 0)
+		}
+	}()
+	return data, nil
 }
 
 // DeleteUserById deletes a user.
@@ -274,6 +289,66 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	return err
 }
 
+// AddSubscription adds a new subscription to the database.
+func AddSubscriptionBatch(userID uint64, network string, eventName types.EventName, eventFilter []string, eventThreshold float64) error {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+	now := time.Now()
+	nowTs := now.Unix()
+	nowEpoch := utils.TimeToEpoch(now)
+
+	var onConflictDo string = "NOTHING"
+	if strings.HasPrefix(string(eventName), "monitoring_") || eventName == types.RocketpoolCollateralMaxReached || eventName == types.RocketpoolCollateralMinReached || eventName == types.ValidatorIsOfflineEventName {
+		onConflictDo = "UPDATE SET event_threshold = $6"
+	}
+
+	name := string(eventName)
+	if network != "" {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	numArgs := 6
+	g, gCtx := errgroup.WithContext(ctx)
+
+	batchSize := 65535 / numArgs
+	max := len(eventFilter)
+	for b := 0; b <= max; b += batchSize {
+		fromIndex := b
+		toIndex := b + batchSize
+		if toIndex >= max {
+			toIndex = max
+		}
+		part := eventFilter[fromIndex:toIndex]
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
+			}
+			valueStrings := make([]string, 0, len(part))
+			valueArgs := make([]interface{}, 0, len(part)*numArgs)
+
+			for i, filter := range part {
+				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, TO_TIMESTAMP($%d), $%d, $%d)", i*numArgs+1, i*numArgs+2, i*numArgs+3, i*numArgs+4, i*numArgs+5, i*numArgs+6))
+				valueArgs = append(valueArgs, userID)
+				valueArgs = append(valueArgs, name)
+				valueArgs = append(valueArgs, filter)
+				valueArgs = append(valueArgs, nowTs)
+				valueArgs = append(valueArgs, nowEpoch)
+				valueArgs = append(valueArgs, eventThreshold)
+			}
+			stmt := fmt.Sprintf(`
+		INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES
+		%s
+		ON CONFLICT (user_id, event_name, event_filter) DO %s`,
+				strings.Join(valueStrings, ","), onConflictDo)
+			_, err := FrontendWriterDB.Exec(stmt, valueArgs...)
+			return err
+		})
+	}
+	return g.Wait()
+}
+
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, network string, eventName types.EventName, eventFilter string) error {
 	name := string(eventName)
@@ -281,7 +356,17 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
-	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, name, eventFilter)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_name = $2 AND event_filter = $3", userID, name, eventFilter)
+	return err
+}
+
+func DeleteSubscriptionBatch(userID uint64, network string, eventName types.EventName, eventFilter []string) error {
+	name := string(eventName)
+	if network != "" && !types.IsUserIndexed(eventName) {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_name = $2 AND event_filter = ANY($3)", userID, name, pq.Array(eventFilter))
 	return err
 }
 
@@ -291,7 +376,7 @@ func DeleteAllSubscription(userID uint64, network string, eventName types.EventN
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
-	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2", userID, name)
+	_, err := FrontendWriterDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 AND event_name = $2", userID, name)
 	return err
 }
 
@@ -520,7 +605,11 @@ func getMachineStatsGap(resultCount uint64) int {
 	return 1
 }
 
-func GetHistoricPrice(currency string, day uint64) (float64, error) {
+func GetHistoricalPrice(chainId uint64, currency string, day uint64) (float64, error) {
+	if chainId != 1 {
+		// Don't show a historical price for testnets
+		return 0.0, nil
+	}
 	if currency == "ETH" {
 		currency = "USD"
 	}

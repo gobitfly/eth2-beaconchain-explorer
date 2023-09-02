@@ -1,6 +1,5 @@
 function createBlock(x, y) {
   use = document.createElementNS("http://www.w3.org/2000/svg", "use")
-  // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
   use.setAttributeNS(null, "href", "#cube")
   use.setAttributeNS(null, "x", x)
   use.setAttributeNS(null, "y", y)
@@ -24,7 +23,6 @@ function appendBlocks(blocks) {
   for (let i = 0; i < cubes.length; i++) {
     let cube = cubes[i]
     var use = document.createElementNS("http://www.w3.org/2000/svg", "use")
-    // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
     use.setAttributeNS(null, "href", "#cube-small")
     use.setAttributeNS(null, "x", 129)
     use.setAttributeNS(null, "y", 56)
@@ -33,7 +31,27 @@ function appendBlocks(blocks) {
 }
 
 var selectedBTNindex = null
+var incomeChart = null
+var incomeChartDefault = document.getElementById("balance-chart").innerHTML
+var proposedChart = null
+var proposedChartDefault = document.getElementById("proposed-chart").innerHTML
+var summaryDefaultValue = "0.000"
+var countdownIntervals = new Map()
 var VALLIMIT = 280
+var allIncomeLoaded = false
+
+function hideValidatorHist() {
+  if ($.fn.dataTable.isDataTable("#dash-validator-history-table")) {
+    $("#dash-validator-history-table").DataTable().destroy()
+  }
+
+  $("#dash-validator-history-table").addClass("d-none")
+  $("#dash-validator-history-art").removeClass("d-none")
+  $("#dash-validator-history-art").addClass("d-flex")
+  $("#dash-validator-history-index").text("")
+  selectedBTNindex = null
+}
+
 function showValidatorHist(index) {
   if ($.fn.dataTable.isDataTable("#dash-validator-history-table")) {
     $("#dash-validator-history-table").DataTable().destroy()
@@ -46,7 +64,6 @@ function showValidatorHist(index) {
     ordering: false,
     searching: false,
     details: false,
-    //pagingType: 'input', //not working
     pagingType: "simple",
     pageLength: 10,
     ajax: "/validator/" + index + "/history",
@@ -82,7 +99,8 @@ function showValidatorHist(index) {
   $("#validator-history-table_paginate").attr("style", "padding-right: 0 !important")
   $("#validator-history-table_info").attr("style", "padding-top: 0;")
   $("#dash-validator-history-table").removeClass("d-none")
-  $("#dash-validator-history-art").attr("class", "d-none")
+  $("#dash-validator-history-art").removeClass("d-flex")
+  $("#dash-validator-history-art").addClass("d-none")
   $("#dash-validator-history-index").text(index)
   selectedBTNindex = index
   showSelectedValidator()
@@ -155,11 +173,6 @@ window.addEventListener("load", function () {
     }
   })
 
-  // searchInput.addEventListener('blur', function(ev) {
-  //   var overview = document.getElementById('selected-validators-overview')
-  //   // overview.classList.add('d-none')
-  // })
-
   document.addEventListener("click", function (event) {
     var overview = document.getElementById("selected-validators-overview")
     var trgt = event.target
@@ -179,39 +192,6 @@ window.addEventListener("load", function () {
     }
   })
 })
-
-function addValidatorUpdateUI() {
-  $("#validators-tab").removeClass("disabled")
-  $("#validator-art").attr("class", "d-none")
-  $("#dash-validator-history-info").removeClass("d-none")
-  $("#dash-validator-history-index-div").removeClass("d-none")
-  $("#dash-validator-history-index-div").addClass("d-flex")
-  // $('#selected-validators-input-button-val').removeClass('d-none')
-  let anim = "goinboxanim"
-  if (boxAnimationDirection === "out") anim = "gooutboxanim"
-
-  $("#selected-validators-input-button-box").addClass("zoomanim")
-  $("#selected-validators-input-button-val").addClass(anim)
-  setTimeout(() => {
-    // $('#selected-validators-input-button-val').addClass('d-none')
-    $("#selected-validators-input-button-box").removeClass("zoomanim")
-    $("#selected-validators-input-button-val").removeClass(anim)
-  }, 1100)
-
-  fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
-    method: "GET",
-  }).then((res) => {
-    res.json().then((data) => {
-      let sum = 0.0
-      for (let eff of data) {
-        sum += eff
-      }
-      sum = sum / data.length
-      setValidatorEffectiveness("validator-eff-total", sum)
-    })
-  })
-  showProposedHistoryTable()
-}
 
 function showSelectedValidator() {
   setTimeout(function () {
@@ -289,7 +269,15 @@ function renderProposedHistoryTable(data) {
         targets: 1,
         data: "1",
         render: function (data, type, row, meta) {
-          return "<span>" + getRelativeTime(luxon.DateTime.fromMillis(data * 1000)) + "</span>"
+          // date and epochs
+          const startEpoch = timeToEpoch(data * 1000)
+          const startDate = luxon.DateTime.fromMillis(data * 1000)
+          const timeForOneDay = 24 * 60 * 60 * 1000
+          const endEpoch = timeToEpoch(data * 1000 + timeForOneDay) - 1
+          const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch + 1))
+          const tooltip = `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`
+
+          return `<span data-html="true" data-toggle="tooltip" data-placement="top" title="${tooltip}">${startDate.toFormat("yyyy-MM-dd")}</span>`
         },
       },
       {
@@ -303,9 +291,7 @@ function renderProposedHistoryTable(data) {
   })
 }
 
-// var proposedHistTableData = []
 function showProposedHistoryTable() {
-  // if (proposedHistTableData.length===0){
   fetch("/dashboard/data/proposalshistory" + getValidatorQueryString(), {
     method: "GET",
   }).then((res) => {
@@ -317,9 +303,6 @@ function showProposedHistoryTable() {
       renderProposedHistoryTable(proposedHistTableData)
     })
   })
-  // }else{
-  //   renderProposedHistoryTable(proposedHistTableData)
-  // }
 }
 
 function switchFrom(el1, el2, el3, el4) {
@@ -330,6 +313,71 @@ function switchFrom(el1, el2, el3, el4) {
 }
 
 var firstSwitch = true
+
+function initValidatorCountdown(validatorIndex, queueId, ts) {
+  var now = Math.round(new Date().getTime() / 1000)
+  var secondsLeft = ts - now
+  setValidatorCountdown(validatorIndex, queueId, secondsLeft)
+
+  if (!countdownIntervals.has(validatorIndex)) {
+    countdownIntervals.set(
+      validatorIndex,
+      setInterval(function () {
+        if (secondsLeft <= 0) {
+          clearInterval(countdownIntervals.get(validatorIndex))
+          return
+        }
+
+        secondsLeft -= 1
+        setValidatorCountdown(validatorIndex, queueId, secondsLeft)
+      }, 1000)
+    )
+  }
+}
+
+function setValidatorCountdown(validatorIndex, queueId, secondsLeft) {
+  let [seconds, minutes, hours, days] = [0, 0, 0, 0]
+  if (secondsLeft > 0) {
+    const duration = luxon.Duration.fromMillis(secondsLeft * 1000).shiftTo("days", "hours", "minutes", "seconds")
+
+    seconds = duration.seconds
+    minutes = duration.minutes
+    hours = duration.hours
+    days = duration.days
+  }
+
+  if (seconds < 10) {
+    seconds = "0" + seconds
+  }
+  if (minutes < 10) {
+    minutes = "0" + minutes
+  }
+  if (hours < 10) {
+    hours = "0" + hours
+  }
+  if (days < 10) {
+    days = "0" + days
+  }
+
+  var $element = $("#queue-" + validatorIndex)
+
+  var tooltip = `
+    <div>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined">#${queueId}</span> in Queue.</div>
+    <strong>${days} days ${hours} hr ${minutes} min ${seconds} sec</strong>`
+
+  $element.attr("data-original-title", tooltip)
+
+  if ($element.data("hover")) {
+    $element.tooltip("show")
+  }
+}
+
+function removeValidatorCountdown(validatorIndex) {
+  if (countdownIntervals.has(validatorIndex)) {
+    clearInterval(countdownIntervals.get(validatorIndex))
+    countdownIntervals.delete(validatorIndex)
+  }
+}
 
 $(document).ready(function () {
   $("#rewards-button").on("click", () => {
@@ -355,17 +403,17 @@ $(document).ready(function () {
   //bookmark button adds all validators in the dashboard to the watchlist
   $("#bookmark-button").on("click", function (event) {
     var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
-    // var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
     var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
     var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
+    var validatorIndices = state.validators.filter((v) => {
+      return !isValidatorPubkey(v)
+    })
     fetch("/dashboard/save", {
       method: "POST",
-      // credentials: 'include',
       headers: {
         "Content-Type": "application/json",
-        // 'X-CSRF-Token': $("#bookmark-button").attr("csrf"),
       },
-      body: JSON.stringify(state.validators),
+      body: JSON.stringify(validatorIndices),
     })
       .then(function (res) {
         console.log("response", res)
@@ -403,10 +451,16 @@ $(document).ready(function () {
       })
   })
 
+  $(document).on("mouseenter", ".hoverCheck[data-track=hover]", function () {
+    $(this).data("hover", true)
+  })
+
+  $(document).on("mouseleave", ".hoverCheck[data-track=hover]", function () {
+    $(this).data("hover", false)
+  })
+
   var clearSearch = $("#clear-search")
-  //'<i class="fa fa-copy"></i>'
   var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
-  //'<i class="fas fa-check"></i>'
   var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
 
   clearSearch.on("click", function () {
@@ -419,11 +473,18 @@ $(document).ready(function () {
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
     processing: true,
     serverSide: false,
-    ordering: true,
-    lengthChange: false,
     searching: true,
+    stateSave: true,
+    stateSaveCallback: function (settings, data) {
+      data.start = 0
+      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+    },
+    stateLoadCallback: function (settings) {
+      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+    },
+    pageLength: 10,
     pagingType: "full_numbers",
-    lengthMenu: [10, 25, 50],
+    scrollY: "503px",
     info: false,
     language: {
       search: "",
@@ -433,6 +494,7 @@ $(document).ready(function () {
         next: '<i class="fas fa-chevron-right"></i>',
       },
     },
+    dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
     preDrawCallback: function () {
       // this does not always work.. not sure how to solve the staying tooltip
       try {
@@ -442,10 +504,12 @@ $(document).ready(function () {
       }
     },
     drawCallback: function (settings) {
+      formatTimestamps()
       $("#validators").find('[data-toggle="tooltip"]').tooltip()
     },
     order: [[1, "asc"]],
     columnDefs: [
+      // Pubkey
       {
         targets: 0,
         data: "0",
@@ -458,22 +522,23 @@ $(document).ready(function () {
           if (type == "sort" || type == "type") {
             return data
           }
-          // return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
           return `<a href="/validator/${data}">0x${data.substr(0, 8)}...</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
         },
       },
+      // Index
       {
         targets: 1,
         data: "1",
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data
-          // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
-                      ${data}
-                  </span>
-                 `
+          if (isNaN(parseInt(data))) {
+            return `<span class="m-0 p-2">${data}</span>`
+          } else {
+            return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">${data}</span>`
+          }
         },
       },
+      // Current balance / Effective balance
       {
         targets: 2,
         data: "2",
@@ -482,18 +547,25 @@ $(document).ready(function () {
           return `${data[0]}`
         },
       },
+      // Index / State / Queue ahead / Estimated activation ts
       {
         targets: 3,
         data: "3",
         render: function (data, type, row, meta) {
           if (type == "sort" || type == "type") return data ? data[0] : -1
-          var d = data.split("_")
+          var d = data[1].split("_")
           var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
+
+          if (d[0] === "pending" && d[1] !== "deposited") {
+            initValidatorCountdown(data[0], data[2], data[3])
+            return `<span class="hoverCheck" data-track='hover' id="queue-${data[0]}" data-html="true" data-toggle="tooltip" data-placement="top">${s} (#<span>${data[2]}</span>)</span>`
+          }
           if (d[1] === "offline") return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
           if (d[1] === "online") return `<span style="display:none">${d[1]}</span><span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
           return `<span>${s}</span>`
         },
       },
+      // Activation epoch / Activation ts
       {
         targets: 4,
         visible: false,
@@ -504,6 +576,7 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         },
       },
+      // Exit epoch / Exit ts
       {
         targets: 5,
         visible: false,
@@ -514,6 +587,7 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         },
       },
+      // Withdrawable epoch / Withdrawable ts
       {
         targets: 6,
         data: "6",
@@ -523,6 +597,7 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))}">${getRelativeTime(luxon.DateTime.fromMillis(data[1] * 1000))} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         },
       },
+      // Last attestation / Last attestation ts
       {
         targets: 7,
         data: "7",
@@ -532,6 +607,7 @@ $(document).ready(function () {
           return `${data[1]}`
         },
       },
+      // Executed proposals / Missed proposals
       {
         targets: 8,
         data: "8",
@@ -540,9 +616,100 @@ $(document).ready(function () {
           return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
         },
       },
+      // Performance last 7d
+      {
+        targets: 9,
+        data: "9",
+        render: function (data, type, row, meta) {
+          return data
+        },
+      },
+      // Deposit address
+      {
+        targets: 10,
+        orderable: false,
+        data: function (data) {
+          return data[10]
+        },
+        visible: false, // hidden column for filtering only
+        render: function (data, type) {
+          if (type == "filter") return data
+          return null
+        },
+      },
     ],
   }))
 
+  function create_validators_typeahead(input_container_selector, table_selector) {
+    var bhEth1Addresses = new Bloodhound({
+      datumTokenizer: Bloodhound.tokenizers.whitespace,
+      queryTokenizer: Bloodhound.tokenizers.whitespace,
+      identify: function (obj) {
+        return obj.eth1_address
+      },
+      remote: {
+        url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
+        wildcard: "%QUERY",
+      },
+    })
+    $(input_container_selector).typeahead(
+      {
+        minLength: 1,
+        highlight: true,
+        hint: false,
+        autoselect: false,
+      },
+      {
+        limit: 5,
+        name: "addresses",
+        source: bhEth1Addresses,
+        display: function (data) {
+          return data?.eth1_address || ""
+        },
+        templates: {
+          header: '<h5 class="font-weight-bold ml-3">ETH Address</h5>',
+          suggestion: function (data) {
+            var len = data.validator_indices.length > 10 ? 10 + "+" : data.validator_indices.length
+            return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">0x${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+          },
+        },
+      }
+    )
+    $(input_container_selector).on("focus", function (e) {
+      if (e.target.value !== "") {
+        $(this).trigger($.Event("keydown", { keyCode: 40 }))
+      }
+    })
+    $(input_container_selector).on("input", function () {
+      $(".tt-suggestion").first().addClass("tt-cursor")
+    })
+    $(input_container_selector).bind("typeahead:select", function (ev, suggestion) {
+      if (suggestion?.eth1_address) {
+        $(table_selector).DataTable().search(suggestion.eth1_address)
+        $(table_selector).DataTable().draw()
+      }
+    })
+  }
+  create_validators_typeahead("input[aria-controls='validators']", "#validators")
+
+  var timeWait = 0
+  var debounce = function (context, func) {
+    var timeout, result
+
+    return function () {
+      var args = arguments,
+        later = function () {
+          timeout = null
+          result = func.apply(context, args)
+        }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, timeWait)
+      if (!timeout) {
+        result = func.apply(context, args)
+      }
+      return result
+    }
+  }
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -551,9 +718,31 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators/%QUERY",
+      // use prepare hook to modify the rateLimitWait parameter on input changes
+      // NOTE: we only need to do this for the first function because testing showed that queries are executed/queued in order
+      // No need to update `timeWait` multiple times.
+      prepare: function (_, settings) {
+        var cur_query = $(".typeahead-dashboard").val()
+        timeWait = 4000 - Math.min(cur_query.length, 5) * 500
+        // "wildcard" can't be used anymore, need to set query wildcard ourselves now
+        settings.url = settings.url.replace("%QUERY", encodeURIComponent(cur_query))
+        return settings
+      },
+    },
+  })
+  bhValidators.remote.transport._get = debounce(bhValidators.remote.transport, bhValidators.remote.transport._get)
+  var bhPubkey = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.index
+    },
+    remote: {
+      url: "/search/validators_by_pubkey/%QUERY",
       wildcard: "%QUERY",
     },
   })
+  bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)
   var bhEth1Addresses = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -565,6 +754,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
   var bhName = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -576,6 +766,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
   var bhGraffiti = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -587,6 +778,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
 
   $(".typeahead-dashboard").typeahead(
     {
@@ -604,6 +796,18 @@ $(document).ready(function () {
         header: "<h3>Validators</h3>",
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate high-contrast">${data.index}: ${data.pubkey}</div>`
+        },
+      },
+    },
+    {
+      limit: 5,
+      name: "pubkeys",
+      source: bhPubkey,
+      display: "pubkey",
+      templates: {
+        header: "<h3>Validators by Public Key</h3>",
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate high-contrast">${data.pubkey}</div>`
         },
       },
     },
@@ -662,11 +866,12 @@ $(document).ready(function () {
   $(".typeahead-dashboard").on("typeahead:select", function (ev, sug) {
     if (sug.validator_indices) {
       addValidators(sug.validator_indices)
-    } else {
+    } else if (sug.index != null) {
       addValidator(sug.index)
+    } else {
+      addValidator("0x" + sug.pubkey)
     }
     boxAnimationDirection = "in"
-    // addValidatorUpdateUI()
     $(".typeahead-dashboard").typeahead("val", "")
   })
 
@@ -703,7 +908,6 @@ $(document).ready(function () {
       window.location = "/dashboard"
       selectedBTNindex = null
     }
-    // window.location = "/dashboard"
   })
 
   function setInitialState() {
@@ -724,6 +928,14 @@ $(document).ready(function () {
   renderSelectedValidators()
   updateState()
 
+  function isValidatorPubkey(identifier) {
+    return identifier.startsWith("0x") && identifier.length === 98
+  }
+
+  function firstValidatorWithIndex() {
+    return state.validators.find((v) => !isValidatorPubkey(v))
+  }
+
   function renderSelectedValidators() {
     if (state.validators.length > VALLIMIT) return
     var elHolder = document.getElementById("selected-validators")
@@ -741,10 +953,57 @@ $(document).ready(function () {
       var elItem = document.createElement("li")
       elItem.classList = "item"
       elItem.dataset.validatorIndex = v
-      elItem.innerHTML = '<i class="fas fa-times-circle remove-validator"></i> <span>' + v + "</span>"
+      var validatorDisplay = v
+      if (isValidatorPubkey(v)) {
+        validatorDisplay = v.slice(0, 6) + "..." + v.slice(-4)
+      }
+      elItem.innerHTML = '<i class="fas fa-times-circle remove-validator"></i> <span>' + validatorDisplay + "</span>"
       elsItems.push(elItem)
     }
     elHolder.prepend(...elsItems)
+  }
+
+  function addValidatorUpdateUI() {
+    $("#validators-tab").removeClass("disabled")
+    $("#validator-art").attr("class", "d-none")
+
+    if (firstValidatorWithIndex() !== undefined) {
+      $("#dash-validator-history-info").removeClass("d-none")
+      $("#dash-validator-history-index-div").removeClass("d-none")
+      $("#dash-validator-history-index-div").addClass("d-flex")
+
+      fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
+        method: "GET",
+      }).then((res) => {
+        res.json().then((data) => {
+          let sum = 0.0
+          for (let eff of data) {
+            sum += eff
+          }
+          sum = sum / data.length
+          setValidatorEffectiveness("validator-eff-total", sum)
+        })
+      })
+
+      showProposedHistoryTable()
+    } else {
+      $("#dash-validator-history-info").addClass("d-none")
+      $("#dash-validator-history-index-div").removeClass("d-flex")
+      $("#dash-validator-history-index-div").addClass("d-none")
+
+      $("#validator-eff-total").html(summaryDefaultValue)
+      renderProposedHistoryTable([])
+    }
+
+    let anim = "goinboxanim"
+    if (boxAnimationDirection === "out") anim = "gooutboxanim"
+
+    $("#selected-validators-input-button-box").addClass("zoomanim")
+    $("#selected-validators-input-button-val").addClass(anim)
+    setTimeout(() => {
+      $("#selected-validators-input-button-box").removeClass("zoomanim")
+      $("#selected-validators-input-button-val").removeClass(anim)
+    }, 1100)
   }
 
   function renderDashboardInfo() {
@@ -762,11 +1021,14 @@ $(document).ready(function () {
     if (state.validators.length > 0) {
       showSelectedValidator()
       addValidatorUpdateUI()
-      if (selectedBTNindex != state.validators[0]) {
-        // don't query if not necessary
-        showValidatorHist(state.validators[0])
+
+      firstValidatorWithHistory = firstValidatorWithIndex()
+      if (firstValidatorWithHistory === undefined) {
+        hideValidatorHist()
+      } else if (selectedBTNindex !== firstValidatorWithHistory) {
+        // don't query if not necessary)
+        showValidatorHist(firstValidatorWithHistory)
       }
-      // showValidatorsInSearch(3)
     } else {
       $("#validatorModal").modal("hide")
     }
@@ -782,10 +1044,6 @@ $(document).ready(function () {
   }
 
   function setValidatorsFromURL() {
-    // if (state.validators.length >= VALLIMIT) {
-    //   alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
-    //   return
-    // }
     var usp = new URLSearchParams(window.location.search)
     var validatorsStr = usp.get("validators")
     if (!validatorsStr) {
@@ -888,6 +1146,7 @@ $(document).ready(function () {
           window.location = "/dashboard"
           return
         } else {
+          removeValidatorCountdown(parseInt(index))
           renderSelectedValidators()
           updateState()
         }
@@ -899,81 +1158,29 @@ $(document).ready(function () {
   function sortValidators(a, b) {
     var ai = parseInt(a)
     var bi = parseInt(b)
+
     return ai - bi
   }
 
-  // function addChange(selector, value) {
-  //   if(selector !== undefined || selector !== null) {
-  //     var element = document.querySelector(selector)
-  //     if(element !== undefined) {
-  //       // remove old
-  //       element.classList.remove('decreased')
-  //       element.classList.remove('increased')
-  //       if(value < 0) {
-  //         element.classList.add("decreased")
-  //       }
-  //       if (value > 0) {
-  //         element.classList.add("increased")
-  //       }
-  //     } else {
-  //       console.error("Could not find element with selector", selector)
-  //     }
-  //   } else {
-  //     console.error("selector is not defined", selector)
-  //   }
-  // }
-
   function updateState() {
-    // if(_range < xBlocks.length + 3 && _range !== -1) {
-
-    //   appendBlocks(xBlocks.slice(_range, _range+3))
-    //   _range = _range + 3;
-    // } else if(_range !== -1) {
-    //   _range = -1;
-    // }
     if (state.validators.length > VALLIMIT) {
-      // alert(`Too many validators, you can not add more than ${VALLIMIT} validators to your dashboard!`)
       return
     }
     localStorage.setItem("dashboard_validators", JSON.stringify(state.validators))
     window.dispatchEvent(new CustomEvent("dashboard_validators_set"))
 
     if (state.validators.length) {
-      // console.log('length', state.validators)
       var qryStr = "?validators=" + state.validators.join(",")
-      var newUrl = window.location.pathname + qryStr
-      window.history.replaceState(null, "Dashboard", newUrl)
+      if (window.location.search != qryStr) {
+        var newUrl = window.location.pathname + qryStr + window.location.hash
+        window.history.replaceState(null, "Dashboard", newUrl)
+      }
     }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
-      // if(state.validators.length >= 9) {
-      //   appendBlocks(xBlocks)
-      // } else {
-      //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
-      // }
-      document.querySelector("#rewards-button").style.visibility = "visible"
-      document.querySelector("#bookmark-button").style.visibility = "visible"
       document.querySelector("#copy-button").style.visibility = "visible"
       document.querySelector("#clear-search").style.visibility = "visible"
 
-      $.ajax({
-        url: "/dashboard/data/earnings" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
-          if (!result) return
-
-          document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || "0.000"
-          document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || "0.000"
-          document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || "0.000"
-          document.querySelector("#earnings-total").innerHTML = result.totalFormatted || "0.000"
-          $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
-          document.querySelector("#balance-total").innerHTML = result.totalBalance || "0.000"
-          $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
-          $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
-          // addChange("#earnings-total-change", result.total)
-        },
-      })
       $.ajax({
         url: "/dashboard/data/validators" + qryStr,
         success: function (result) {
@@ -985,8 +1192,6 @@ $(document).ready(function () {
           }
           // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
           // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
-          // console.log(`latestEpoch: ${result.latestEpoch}`)
-          // var latestEpoch = result.latestEpoch
           state.validatorsCount.deposited = 0
           state.validatorsCount.pending = 0
           state.validatorsCount.active_online = 0
@@ -1001,7 +1206,7 @@ $(document).ready(function () {
           for (var i = 0; i < result.data.length; i++) {
             var v = result.data[i]
             var vIndex = v[1]
-            var vState = v[3]
+            var vState = v[3][1]
             if (!state.validatorsCount[vState]) state.validatorsCount[vState] = 0
             state.validatorsCount[vState]++
             var el = document.querySelector(`#selected-validators .item[data-validator-index="${vIndex}"]`)
@@ -1022,17 +1227,52 @@ $(document).ready(function () {
           renderDashboardInfo()
         },
       })
+
+      if (firstValidatorWithIndex() !== undefined) {
+        document.querySelector("#rewards-button").style.visibility = "visible"
+        document.querySelector("#bookmark-button").style.visibility = "visible"
+
+        $.ajax({
+          url: "/dashboard/data/earnings" + qryStr,
+          success: function (result) {
+            var t1 = Date.now()
+            console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
+            if (!result) return
+
+            document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || summaryDefaultValue
+            document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || summaryDefaultValue
+            document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || summaryDefaultValue
+            document.querySelector("#earnings-total").innerHTML = result.totalFormatted || summaryDefaultValue
+            $("#earnings-total").find('[data-toggle="tooltip"]').tooltip()
+            document.querySelector("#balance-total").innerHTML = result.totalBalance || summaryDefaultValue
+            $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
+            $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
+          },
+        })
+      } else {
+        document.querySelector("#rewards-button").style.visibility = "hidden"
+        document.querySelector("#bookmark-button").style.visibility = "hidden"
+
+        document.querySelector("#earnings-day").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-week").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-month").innerHTML = summaryDefaultValue
+        document.querySelector("#earnings-total").innerHTML = summaryDefaultValue
+        document.querySelector("#balance-total").innerHTML = summaryDefaultValue
+      }
     } else {
       document.querySelector("#copy-button").style.visibility = "hidden"
       document.querySelector("#rewards-button").style.visibility = "hidden"
       document.querySelector("#bookmark-button").style.visibility = "hidden"
       document.querySelector("#clear-search").style.visibility = "hidden"
-      // window.location = "/dashboard"
     }
 
     $("#copy-button").attr("data-clipboard-text", window.location.href)
 
-    renderCharts()
+    if (state.validators && firstValidatorWithIndex() !== undefined) {
+      renderCharts()
+    } else {
+      hideCharts()
+    }
   }
 
   window.onpopstate = function (event) {
@@ -1056,64 +1296,93 @@ $(document).ready(function () {
     updateState()
   })
 
+  function hideCharts() {
+    hideIncomeChart()
+    hideProposedChart()
+  }
+
+  function hideIncomeChart() {
+    if (incomeChart) {
+      incomeChart.destroy()
+      incomeChart = null
+    }
+    document.getElementById("balance-chart").innerHTML = incomeChartDefault
+  }
+
+  function hideProposedChart() {
+    if (proposedChart) {
+      proposedChart.destroy()
+      proposedChart = null
+    }
+    document.getElementById("proposed-chart").innerHTML = proposedChartDefault
+  }
+
   function renderCharts() {
     var t0 = Date.now()
-    // if (state.validators.length === 0) {
-    //   document.getElementById('chart-holder').style.display = 'none'
-    //   return
-    // }
-    // document.getElementById('chart-holder').style.display = 'flex'
-    if (state.validators && state.validators.length) {
-      var qryStr = "?validators=" + state.validators.join(",")
-      $.ajax({
-        url: "/dashboard/data/allbalances" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          // let prevDayIncome = 0
-          // let prevDay = null
-          // let prevIncome = 0
-          // for (var i = 0; i < result.length; i++) {
-          //   var res = result[i]
-
-          //   let day = new Date(res[0])
-          //   if (prevDay===null) prevDay=day
-          //   // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
-          //   prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
-          //   prevIncome = res[2]
-          //   // console.log(day!==prevDay, day, prevDay, res[0])
-          //   if (day.getDay()!==prevDay.getDay()){
-          //     income.push([day.getTime(), prevDayIncome])
-          //     prevDayIncome = 0
-          //     prevDay=day
-          //   }
-          // }
-
-          var t2 = Date.now()
-          createBalanceChart(result.consensusChartData, result.executionChartData)
-          var t3 = Date.now()
-          console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
-        },
-      })
-      $.ajax({
-        url: "/dashboard/data/proposals" + qryStr,
-        success: function (result) {
-          var t1 = Date.now()
-          var t2 = Date.now()
-          if (result && result.length) {
-            createProposedChart(result)
+    var qryStr = "?validators=" + state.validators.join(",")
+    $.ajax({
+      url: "/dashboard/data/allbalances" + qryStr + "&days=31",
+      success: function (result) {
+        var t1 = Date.now()
+        createIncomeChart(result.consensusChartData, result.executionChartData)
+        var t2 = Date.now()
+        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
+        allIncomeLoaded = false
+        $("#load-income-btn").removeClass("d-none")
+      },
+    })
+    $.ajax({
+      url: "/dashboard/data/proposals" + qryStr,
+      success: function (result) {
+        var t1 = Date.now()
+        if (result && result.length) {
+          createProposedChart(result)
+        } else {
+          var chart = $("#proposed-chart").highcharts()
+          if (chart !== undefined) {
+            hideProposedChart()
           }
-          var t3 = Date.now()
-          console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
-        },
-      })
-    }
+        }
+        var t2 = Date.now()
+        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
+      },
+    })
   }
+
+  $("#load-income-btn").on("click", () => {
+    if (allIncomeLoaded || incomeChart == null) {
+      return
+    }
+    allIncomeLoaded = true
+
+    const url = "/dashboard/data/allbalances?validators=" + state.validators.join(",")
+    $("#load-income-btn").text("Loading...")
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok.")
+        }
+        return response.json()
+      })
+      .then((data) => {
+        createIncomeChart(data.consensusChartData, data.executionChartData)
+        $("#load-income-btn").addClass("d-none")
+      })
+      .catch((error) => {
+        console.error(error)
+        alert("Error loading income data. Please try again.")
+        allIncomeLoaded = false
+      })
+      .finally(() => {
+        $("#load-income-btn").text("Show all rewards")
+      })
+  })
 })
 
-function createBalanceChart(income, executionIncomeHistory) {
+function createIncomeChart(income, executionIncomeHistory) {
   executionIncomeHistory = executionIncomeHistory || []
-  // console.log("u", utilization)
-  Highcharts.stockChart("balance-chart", {
+  incomeChart = Highcharts.stockChart("balance-chart", {
+    colors: ["#90ed7d", "#7cb5ec"],
     exporting: {
       scale: 1,
     },
@@ -1122,8 +1391,16 @@ function createBalanceChart(income, executionIncomeHistory) {
     },
     chart: {
       type: "column",
-      height: "500px",
+      height: "627px",
       pointInterval: 24 * 3600 * 1000,
+      events: {
+        load: function () {
+          $("#load-income-btn").removeClass("d-none")
+        },
+      },
+    },
+    credits: {
+      enabled: false,
     },
     legend: {
       enabled: true,
@@ -1144,11 +1421,6 @@ function createBalanceChart(income, executionIncomeHistory) {
           enabled: false,
         },
         pointInterval: 24 * 3600 * 1000,
-        // pointIntervalUnit: 'day',
-        dataGrouping: {
-          forced: true,
-          units: [["day", [1]]],
-        },
       },
     },
     xAxis: {
@@ -1163,19 +1435,33 @@ function createBalanceChart(income, executionIncomeHistory) {
       },
     },
     tooltip: {
-      formatter: function (tooltip) {
-        var orig = tooltip.defaultFormatter.call(this, tooltip)
-        var epoch = timeToEpoch(this.x)
-        orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
-        if (currency !== "ETH") {
-          orig[1] = `<span style="color:${this.points[0].color}">●</span> Daily Income: <b>${this.y.toFixed(2)}</b><br/>`
+      split: false,
+      shared: true,
+      formatter: (tooltip) => {
+        var text = ``
+        var total = 0
+
+        // date and epochs
+        const startEpoch = timeToEpoch(tooltip.chart.hoverPoint.x)
+        const timeForOneDay = 24 * 60 * 60 * 1000
+        const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
+        const startDate = luxon.DateTime.fromMillis(tooltip.chart.hoverPoints[0].x)
+        const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch + 1))
+        text += `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`
+
+        // income
+        for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
+          const value = tooltip.chart.hoverPoints[i].y
+          text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, 1)}<br/>`
+          total += value
         }
-        return orig
-      },
-      dateTimeLabelFormats: {
-        day: "%A, %b %e, %Y",
-        minute: "%A, %b %e",
-        hour: "%A, %b %e",
+
+        // add total if hovered point contains rewards for both EL and CL
+        if (tooltip.chart.hoverPoints.length > 1) {
+          text += `<b>Total:</b> ${getIncomeChartValueString(total, currency, 1)}`
+        }
+
+        return text
       },
     },
     yAxis: [
@@ -1196,16 +1482,31 @@ function createBalanceChart(income, executionIncomeHistory) {
     ],
     series: [
       {
-        name: "Daily Consensus Income",
-        data: income,
-        index: 2,
-      },
-      {
         name: "Daily Execution Income",
         data: executionIncomeHistory,
-        index: 1,
+      },
+      {
+        name: "Daily Consensus Income",
+        data: income,
       },
     ],
+    responsive: {
+      rules: [
+        {
+          condition: {
+            callback: function () {
+              return window.innerWidth >= 820
+            },
+          },
+          chartOptions: {
+            legend: {
+              itemMarginTop: 7,
+              itemMarginBottom: -7,
+            },
+          },
+        },
+      ],
+    },
   })
 }
 
@@ -1218,9 +1519,10 @@ function createProposedChart(data) {
     else if (d[1] == 2) missed.push([d[0] * 1000, 1])
     else if (d[1] == 3) orphaned.push([d[0] * 1000, 1])
   })
-  Highcharts.stockChart("proposed-chart", {
+  proposedChart = Highcharts.stockChart("proposed-chart", {
     chart: {
       type: "column",
+      height: "630px",
     },
     title: {
       text: "Proposal History for all Validators",
@@ -1272,4 +1574,5 @@ function createProposedChart(data) {
       enabled: false,
     },
   })
+  $(".proposal-switch").show()
 }

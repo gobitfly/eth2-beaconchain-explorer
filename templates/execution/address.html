@@ -123,6 +123,21 @@
         font-size: 1.2rem;
       }
     }
+    @media screen and (max-width: 360px) {
+      .header-address .text-monospace {
+        font-size: 0.7rem;
+      }
+    }
+    @media screen and (max-width: 320px) {
+      .header-address .text-monospace {
+        font-size: 0.65rem;
+      }
+    }
+    @media screen and (max-width: 294px) {
+      .header-address .text-monospace {
+        font-size: 0.6rem;
+      }
+    }
 
     [data-theme="dark"] .qrcode-light {
       display: none;
@@ -194,16 +209,15 @@
 
 {{ define "js" }}
   <script>
-
-    window.addEventListener('resize', function(ev) {
-      if(window.innerWidth >= 820) {
-        $("#overview-tab").tab('show')
+    window.addEventListener("resize", function (ev) {
+      if (window.innerWidth >= 820) {
+        $("#overview-tab").tab("show")
       }
     })
 
-    window.addEventListener('load', function(ev) {
+    window.addEventListener("load", function (ev) {
       if (window.innerWidth >= 820) {
-        $("#overview-tab").tab('show')
+        $("#overview-tab").tab("show")
       }
     })
 
@@ -230,7 +244,6 @@
     //   rootMargin: '0px',
     //   threshold: 0
     // }
-
 
     // let observerRow = new IntersectionObserver(handleIntersection, optionsRow);
     // const row = document.querySelectorAll('#transactions-table tbody tr')
@@ -275,7 +288,6 @@
       setupInfiniteScroll({{.WithdrawalsTable.PagingToken}},'withdrawals-table', 'withdrawals-table-inf-scroll', 'withdrawals')
     {{ end }}
 
-
     function setupInfiniteScroll(pageToken, tableID, loadingID, urlPart) {
       var previousToken = ""
       var isLoading = false
@@ -286,24 +298,24 @@
       }
       const getTransactions = async (token) => {
         try {
-           const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}`)
-           const data = await res.json()
+          const res = await fetch(`${window.location.pathname}/${urlPart}?pageToken=${encodeURI(token)}`)
+          const data = await res.json()
 
           //  console.log('got data: ', data)
 
-           if (data && data.data && data.pagingToken && data.pagingToken.length) {
-             previousToken = pageToken
-             pageToken = data.pagingToken
+          if (data && data.data && data.pagingToken && data.pagingToken.length) {
+            previousToken = pageToken
+            pageToken = data.pagingToken
             //  console.log('setting new pagetoken:\n',"new:", pageToken,'\n',"pre:", previousToken)
 
-             // udpate the table
-             for (let i = 0; i < data.data.length; i++) {
-              const row = data.data[i];
+            // udpate the table
+            for (let i = 0; i < data.data.length; i++) {
+              const row = data.data[i]
               for (let j = 0; j < data.data[i].length; j++) {
                 const col = data.data[i][j]
-                const el = document.createElement('div')
-                const content = document.createElement('div')
-                content.classList.add('tbl-col-content')
+                const el = document.createElement("div")
+                const content = document.createElement("div")
+                content.classList.add("tbl-col-content")
                 // el.classList.add(tableID+"-col")
                 el.classList.add("tbl-col")
                 content.innerHTML = col
@@ -311,33 +323,32 @@
                 infLoading.insertAdjacentElement("beforebegin", el)
                 drawCallback()
               }
-             }
-           } else if (data.pagingToken === "") {
-             infLoading.remove()
-           } else if (data && data.data && data.data.length == 0) {
-              infLoading.querySelector('span').innerText = 'No entries found.'
-           }
-           isLoading = false
+            }
+          } else if (data.pagingToken === "") {
+            infLoading.remove()
+          } else if (data && data.data && data.data.length == 0) {
+            infLoading.querySelector("span").innerText = "No entries found."
+          }
+          isLoading = false
         } catch (err) {
           console.error("error getting transactions: ", err)
-          infLoading.querySelector('span').innerText = 'Something went wrong fetching please try again another time.'
+          infLoading.querySelector("span").innerText = "Something went wrong fetching please try again another time."
           isLoading = false
         }
       }
 
       let optionsScroll = {
         root: null,
-        rootMargin: '300px',
-        threshold: 0
+        rootMargin: "300px",
+        threshold: 0,
       }
-
 
       const handleTableEnd = (entries, observer) => {
         for (let i = 0; i < entries.length; i++) {
-          const entry = entries[i];
+          const entry = entries[i]
           if (entry.isIntersecting) {
             // console.log('intersecting');
-            if(!isLoading) {
+            if (!isLoading) {
               // console.log(tableID,'token:', pageToken)
               isLoading = true
               getTransactions(pageToken)
@@ -352,24 +363,32 @@
       observerScroll.observe(transactionsLastElement)
     }
 
-
+    activateTabbarSwitcher("address-tab-content", "addressTabs", "transactions")
   </script>
 {{ end }}
 {{ define "content" }}
   <div class="container mt-2">
-    <div class="d-md-flex py-2 my-md-1 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0 header-address text-truncate">
-        <div class="my-md-3 font-weight-bold">
-          <span>
-            <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
-            <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
-            <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
-          </span>
+    <div class="py-2 my-md-1">
+      <div class="mb-1 mb-md-0 mt-md-3 d-flex justify-content-between">
+        <h1 class="font-weight-bold header-address">
+          <span class="mr-1">{{ if .Data.IsContract }}Contract{{ else }}Address{{ end }}</span>
+          {{ if len .Data.EnsName }}<span class="badge badge-pill badge-ens">{{ .Data.EnsName }}</span>{{ end }}
+        </h1>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-primary text-white dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">More</button>
+          <div class="dropdown-menu dropdown-menu-right">
+            <a class="dropdown-item" href="https://www.chainabuse.com/report?source=bitfly">
+              <i class="fas fa-flag"></i>
+              Report as scam
+            </a>
+          </div>
         </div>
-        <span class="text-monospace mb-md-3 d-inline-block">
-          {{ .Data.Address | formatAddressLong }}
-        </span>
-      </h1>
+      </div>
+      <h4 class="h4 text-monospace mb-md-3 header-address text-truncate">
+        {{ .Data.Address | formatAddressLong }}
+        <span data-toggle="tooltip" title="View address QR Code" class="mx-1">{{ template "QRCode" . }}</span>
+        <i class="fa fa-copy text-muted text-white p-1 mx-1" style="vertical-align: text-bottom; font-size: .95rem; border-radius: 35%; background-color: var(--shadow-light);" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ fixAddressCasing .Data.Address }}"></i>
+      </h4>
       <div>
         {{ if .Data.Metadata.Name }}<span class="badge badge-secondary text-light my-2">{{ .Data.Metadata.Name }}</span>{{ end }}
       </div>
@@ -447,41 +466,41 @@
       </div>
       <div class="card-body px-0 py-0">
         <div class="tab-content" id="address-tab-content">
-          <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transaction-tab">
+          <div class="tab-pane fade" id="transactionsTabPanel" role="tabpanel" aria-labelledby="transaction-tab">
             {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
           </div>
           {{ if len .Data.InternalTxnsTable.Data }}
-            <div class="tab-pane fade" id="internalTxns" role="tabpanel" aria-labelledby="internalTxns-tab">
+            <div class="tab-pane fade" id="internalTxnsTabPanel" role="tabpanel" aria-labelledby="internalTxns-tab">
               {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
             </div>
           {{ end }}
           {{ if len .Data.BlocksMinedTable.Data }}
-            <div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab">
+            <div class="tab-pane fade" id="blocksTabPanel" role="tabpanel" aria-labelledby="blocks-tab">
               {{ template "AddressBlocksMinedGrid" .Data.BlocksMinedTable }}
             </div>
           {{ end }}
           {{ if len .Data.UnclesMinedTable.Data }}
-            <div class="tab-pane fade" id="uncles" role="tabpanel" aria-labelledby="uncles-tab">
+            <div class="tab-pane fade" id="unclesTabPanel" role="tabpanel" aria-labelledby="uncles-tab">
               {{ template "AddressUnclesMinedGrid" .Data.UnclesMinedTable }}
             </div>
           {{ end }}
           {{ if len .Data.Erc20Table.Data }}
-            <div class="tab-pane fade" id="erc20Txns" role="tabpanel" aria-labelledby="erc20Txns-tab">
+            <div class="tab-pane fade" id="erc20TxnsTabPanel" role="tabpanel" aria-labelledby="erc20Txns-tab">
               {{ template "AddressErc20TransactionsGrid" .Data.Erc20Table }}
             </div>
           {{ end }}
           {{ if len .Data.Erc721Table.Data }}
-            <div class="tab-pane fade" id="erc721Txns" role="tabpanel" aria-labelledby="erc721Txns-tab">
+            <div class="tab-pane fade" id="erc721TxnsTabPanel" role="tabpanel" aria-labelledby="erc721Txns-tab">
               {{ template "AddressErc721Grid" .Data.Erc721Table }}
             </div>
           {{ end }}
           {{ if len .Data.Erc1155Table.Data }}
-            <div class="tab-pane fade" id="erc1155Txns" role="tabpanel" aria-labelledby="erc1155Txns-tab">
+            <div class="tab-pane fade" id="erc1155TxnsTabPanel" role="tabpanel" aria-labelledby="erc1155Txns-tab">
               {{ template "AddressErc1155Grid" .Data.Erc1155Table }}
             </div>
           {{ end }}
           {{ if len .Data.WithdrawalsTable.Data }}
-            <div class="tab-pane fade" id="withdrawals" role="tabpanel" aria-labelledby="withdrawals-tab">
+            <div class="tab-pane fade" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawals-tab">
               {{ template "AddressWithdrawalsGrid" .Data.WithdrawalsTable }}
             </div>
           {{ end }}
@@ -495,7 +514,7 @@
 {{ end }}
 
 {{ define "AddressTabs" }}
-  <ul class="nav nav-pills border-0 border-bottom-0 address-tabs" role="tablist">
+  <ul class="nav nav-pills border-0 border-bottom-0 address-tabs" role="tablist" id="addressTabs">
     <li style="margin: 0;" class="nav-item" role="presentation">
       <a class="nav-link border-bottom-radius-0 active" href="#transactions" id="transaction-tab" data-toggle="tab" role="tab" aria-controls="transactions" aria-selected="true">Transactions</a>
     </li>

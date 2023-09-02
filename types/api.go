@@ -568,16 +568,30 @@ type ApiValidatorEth1Response struct {
 }
 
 type ApiValidatorIncomeHistoryResponse struct {
-	Income struct {
-		AttestationSourceReward uint64 `json:"attestation_source_reward"`
-		AttestationTargetReward uint64 `json:"attestation_target_reward"`
-		AttestationHeadReward   uint64 `json:"attestation_head_reward"`
-	} `json:"income"`
-	Epoch          uint64    `json:"epoch"`
-	ValidatorIndex uint64    `json:"validatorindex"`
-	Week           uint64    `json:"week"`
-	WeekStart      time.Time `json:"week_start"`
-	WeekEnd        time.Time `json:"week_end"`
+	Income         *ApiValidatorIncomeHistory `json:"income"`
+	Epoch          uint64                     `json:"epoch"`
+	ValidatorIndex uint64                     `json:"validatorindex"`
+	Week           uint64                     `json:"week"`
+	WeekStart      time.Time                  `json:"week_start"`
+	WeekEnd        time.Time                  `json:"week_end"`
+}
+
+type ApiValidatorIncomeHistory struct {
+	AttestationSourceReward            uint64 `json:"attestation_source_reward,omitempty"`
+	AttestationSourcePenalty           uint64 `json:"attestation_source_penalty,omitempty"`
+	AttestationTargetReward            uint64 `json:"attestation_target_reward,omitempty"`
+	AttestationTargetPenalty           uint64 `json:"attestation_target_penalty,omitempty"`
+	AttestationHeadReward              uint64 `json:"attestation_head_reward,omitempty"`
+	FinalityDelayPenalty               uint64 `json:"finality_delay_penalty,omitempty"`
+	ProposerSlashingInclusionReward    uint64 `json:"proposer_slashing_inclusion_reward,omitempty"`
+	ProposerAttestationInclusionReward uint64 `json:"proposer_attestation_inclusion_reward,omitempty"`
+	ProposerSyncInclusionReward        uint64 `json:"proposer_sync_inclusion_reward,omitempty"`
+	SyncCommitteeReward                uint64 `json:"sync_committee_reward,omitempty"`
+	SyncCommitteePenalty               uint64 `json:"sync_committee_penalty,omitempty"`
+	SlashingReward                     uint64 `json:"slashing_reward,omitempty"`
+	SlashingPenalty                    uint64 `json:"slashing_penalty,omitempty"`
+	TxFeeRewardWei                     string `json:"tx_fee_reward_wei,omitempty"`
+	ProposalsMissed                    uint64 `json:"proposals_missed,omitempty"`
 }
 
 type ApiValidatorBalanceHistoryResponse struct {
@@ -695,4 +709,16 @@ type ApiValidatorProposalsResponse struct {
 	SyncaggregateParticipation float64 `db:"syncaggregate_participation" json:"syncaggregate_participation"`
 	SyncaggregateSignature     string  `db:"syncaggregate_signature" json:"syncaggregate_signature"`
 	Voluntaryexitscount        uint64  `db:"voluntaryexitscount" json:"voluntaryexitscount"`
+}
+
+type EnsDomainResponse struct {
+	Address string `json:"address"`
+	Domain  string `json:"domain"`
+}
+
+type ApiProposalLuckResponse struct {
+	ProposalLuck            *float64 `json:"proposal_luck"`             // The proposal luck for the given set of validators as a percentage
+	AverageProposalInterval float64  `json:"average_proposal_interval"` // The average slot interval between proposals for the given set of validators
+	NextProposalEstimateTs  *int64   `json:"next_proposal_estimate_ts"` // The estimated timestamp of the next proposal
+	TimeFrameName           *string  `json:"time_frame_name"`           // The timeframe for which the luck is calculated
 }

@@ -259,6 +259,7 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 			block_number,
 			block_ts,
 			from_address,
+			from_address_text,
 			publickey,
 			withdrawal_credentials,
 			amount,
@@ -267,13 +268,14 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 			removed,
 			valid_signature
 		)
-		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, ENCODE($7, 'hex'), $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (tx_hash, merkletree_index) DO UPDATE SET
 			tx_input               = EXCLUDED.tx_input,
 			tx_index               = EXCLUDED.tx_index,
 			block_number           = EXCLUDED.block_number,
 			block_ts               = EXCLUDED.block_ts,
 			from_address           = EXCLUDED.from_address,
+			from_address_text      = EXCLUDED.from_address_text,
 			publickey              = EXCLUDED.publickey,
 			withdrawal_credentials = EXCLUDED.withdrawal_credentials,
 			amount                 = EXCLUDED.amount,
@@ -287,7 +289,7 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 	defer insertDepositStmt.Close()
 
 	for _, d := range depositsToSave {
-		_, err := insertDepositStmt.Exec(d.TxHash, d.TxInput, d.TxIndex, d.BlockNumber, d.BlockTs, d.FromAddress, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, d.MerkletreeIndex, d.Removed, d.ValidSignature)
+		_, err := insertDepositStmt.Exec(d.TxHash, d.TxInput, d.TxIndex, d.BlockNumber, d.BlockTs, d.FromAddress, d.FromAddress, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, d.MerkletreeIndex, d.Removed, d.ValidSignature)
 		if err != nil {
 			return fmt.Errorf("error saving eth1-deposit to db: %v: %w", fmt.Sprintf("%x", d.TxHash), err)
 		}

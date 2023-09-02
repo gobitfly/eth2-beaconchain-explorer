@@ -41,6 +41,7 @@ func main() {
 	concurrencyBlocks := flag.Int64("blocks.concurrency", 30, "Concurrency to use when indexing blocks from erigon")
 	startBlocks := flag.Int64("blocks.start", 0, "Block to start indexing")
 	endBlocks := flag.Int64("blocks.end", 0, "Block to finish indexing")
+	bulkBlocks := flag.Int64("blocks.bulk", 8000, "Maximum number of blocks to be processed before saving")
 	offsetBlocks := flag.Int64("blocks.offset", 100, "Blocks offset")
 	checkBlocksGaps := flag.Bool("blocks.gaps", false, "Check for gaps in the blocks table")
 	checkBlocksGapsLookback := flag.Int("blocks.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
@@ -48,6 +49,7 @@ func main() {
 	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	startData := flag.Int64("data.start", 0, "Block to start indexing")
 	endData := flag.Int64("data.end", 0, "Block to finish indexing")
+	bulkData := flag.Int64("data.bulk", 8000, "Maximum number of blocks to be processed before saving")
 	offsetData := flag.Int64("data.offset", 1000, "Data offset")
 	checkDataGaps := flag.Bool("data.gaps", false, "Check for gaps in the data table")
 	checkDataGapsLookback := flag.Int("data.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
@@ -60,12 +62,11 @@ func main() {
 	tokenPriceExportList := flag.String("token.price.list", "", "Tokenlist path to use for the token price export")
 	tokenPriceExportFrequency := flag.Duration("token.price.frequency", time.Hour, "Token price export interval")
 
-	bigtableProject := flag.String("bigtable.project", "", "Bigtable project")
-	bigtableInstance := flag.String("bigtable.instance", "", "Bigtable instance")
-
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
+
+	enableEnsUpdater := flag.Bool("ens.enabled", false, "Enable ens update process")
 
 	flag.Parse()
 
@@ -91,17 +92,21 @@ func main() {
 	}
 
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
@@ -129,7 +134,7 @@ func main() {
 		logrus.Fatalf("node chain id mismatch, wanted %v got %v", chainId, nodeChainId.String())
 	}
 
-	bt, err := db.InitBigtable(*bigtableProject, *bigtableInstance, chainId, utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainId, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
@@ -196,7 +201,8 @@ func main() {
 		bt.TransformERC721,
 		bt.TransformERC1155,
 		bt.TransformUncle,
-		bt.TransformWithdrawals)
+		bt.TransformWithdrawals,
+		bt.TransformEnsNameRegistered)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
@@ -205,7 +211,7 @@ func main() {
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *block, *block, *concurrencyBlocks)
 		}
-		err = IndexFromBigtable(bt, *block, *block, transforms, *concurrencyData, cache)
+		err = bt.IndexEventsWithTransformers(*block, *block, transforms, *concurrencyData, cache)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
@@ -234,7 +240,7 @@ func main() {
 	}
 
 	if *endData != 0 && *startData < *endData {
-		err = IndexFromBigtable(bt, int64(*startData), int64(*endData), transforms, *concurrencyData, cache)
+		err = bt.IndexEventsWithTransformers(int64(*startData), int64(*endData), transforms, *concurrencyData, cache)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from bigtable")
 		}
@@ -276,42 +282,96 @@ func main() {
 			},
 		).Infof("last blocks")
 
-		if lastBlockFromBlocksTable < int(lastBlockFromNode) {
-			logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
+		continueAfterError := false
+		if lastBlockFromNode > 0 {
+			if lastBlockFromBlocksTable < int(lastBlockFromNode) {
+				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
 
-			err = IndexFromNode(bt, client, int64(lastBlockFromBlocksTable)-*offsetBlocks, int64(lastBlockFromNode), *concurrencyBlocks)
-			if err != nil {
-				errMsg := "error indexing from node"
-				errFields := map[string]interface{}{
-					"start":       int64(lastBlockFromBlocksTable) - *offsetBlocks,
-					"end":         int64(lastBlockFromNode),
-					"concurrency": *concurrencyBlocks}
-				if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
-					utils.LogFatal(err, errMsg, 0, errFields)
-				} else {
-					utils.LogError(err, errMsg, 0, errFields)
+				startBlock := int64(lastBlockFromBlocksTable) - *offsetBlocks
+				if startBlock < 0 {
+					startBlock = 0
 				}
-				continue
-			} else {
-				lastSuccessulBlockIndexingTs = time.Now()
-			}
-		}
 
-		if lastBlockFromDataTable < int(lastBlockFromNode) {
-			// transforms = append(transforms, bt.TransformTx)
+				if *bulkBlocks <= 0 || *bulkBlocks > int64(lastBlockFromNode)-startBlock+1 {
+					*bulkBlocks = int64(lastBlockFromNode) - startBlock + 1
+				}
 
-			logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
-			err = IndexFromBigtable(bt, int64(lastBlockFromDataTable)-*offsetData, int64(lastBlockFromNode), transforms, *concurrencyData, cache)
-			if err != nil {
-				logrus.WithError(err).Errorf("error indexing from bigtable")
-				cache.Clear()
-				continue
+				for startBlock <= int64(lastBlockFromNode) && !continueAfterError {
+					endBlock := startBlock + *bulkBlocks - 1
+					if endBlock > int64(lastBlockFromNode) {
+						endBlock = int64(lastBlockFromNode)
+					}
+
+					err = IndexFromNode(bt, client, startBlock, endBlock, *concurrencyBlocks)
+					if err != nil {
+						errMsg := "error indexing from node"
+						errFields := map[string]interface{}{
+							"start":       startBlock,
+							"end":         endBlock,
+							"concurrency": *concurrencyBlocks}
+						if time.Since(lastSuccessulBlockIndexingTs) > time.Minute*30 {
+							utils.LogFatal(err, errMsg, 0, errFields)
+						} else {
+							utils.LogError(err, errMsg, 0, errFields)
+						}
+						continueAfterError = true
+						continue
+					} else {
+						lastSuccessulBlockIndexingTs = time.Now()
+					}
+
+					startBlock = endBlock + 1
+				}
+				if continueAfterError {
+					continue
+				}
 			}
-			cache.Clear()
+
+			if lastBlockFromDataTable < int(lastBlockFromNode) {
+				logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
+
+				startBlock := int64(lastBlockFromDataTable) - *offsetData
+				if startBlock < 0 {
+					startBlock = 0
+				}
+
+				if *bulkData <= 0 || *bulkData > int64(lastBlockFromNode)-startBlock+1 {
+					*bulkData = int64(lastBlockFromNode) - startBlock + 1
+				}
+
+				for startBlock <= int64(lastBlockFromNode) && !continueAfterError {
+					endBlock := startBlock + *bulkData - 1
+					if endBlock > int64(lastBlockFromNode) {
+						endBlock = int64(lastBlockFromNode)
+					}
+
+					err = bt.IndexEventsWithTransformers(startBlock, endBlock, transforms, *concurrencyData, cache)
+					if err != nil {
+						utils.LogError(err, "error indexing from bigtable", 0, map[string]interface{}{"start": startBlock, "end": endBlock, "concurrency": *concurrencyData})
+						cache.Clear()
+						continueAfterError = true
+						continue
+					}
+					cache.Clear()
+
+					startBlock = endBlock + 1
+				}
+				if continueAfterError {
+					continue
+				}
+			}
 		}
 
 		if *enableBalanceUpdater {
 			ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
+		}
+
+		if *enableEnsUpdater {
+			err := bt.ImportEnsUpdates(client.GetNativeClient())
+			if err != nil {
+				logrus.WithError(err).Errorf("error updating ens")
+				continue
+			}
 		}
 
 		logrus.Infof("index run completed")
@@ -655,8 +715,8 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 }
 
 func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concurrency int64) error {
-
-	g := new(errgroup.Group)
+	ctx := context.Background()
+	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(int(concurrency))
 
 	startTs := time.Now()
@@ -668,6 +728,12 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 
 		i := i
 		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
+			}
+
 			blockStartTs := time.Now()
 			bc, timings, err := client.GetBlock(i)
 			if err != nil {
@@ -699,87 +765,24 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 
 	}
 
-	return g.Wait()
-}
+	err := g.Wait()
 
-func IndexFromBigtable(bt *db.Bigtable, start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
-	g := new(errgroup.Group)
-	g.SetLimit(int(concurrency))
-
-	startTs := time.Now()
-	lastTickTs := time.Now()
-
-	processedBlocks := int64(0)
-
-	logrus.Infof("fetching blocks from %d to %d", start, end)
-	for i := start; i <= end; i++ {
-		i := i
-		g.Go(func() error {
-
-			block, err := bt.GetBlockFromBlocksTable(uint64(i))
-			if err != nil {
-				return fmt.Errorf("error getting block: %v from bigtable blocks table err: %w", block, err)
-			}
-
-			bulkMutsData := types.BulkMutations{}
-			bulkMutsMetadataUpdate := types.BulkMutations{}
-			for _, transform := range transforms {
-				mutsData, mutsMetadataUpdate, err := transform(block, cache)
-				if err != nil {
-					logrus.WithError(err).Error("error transforming block")
-				}
-				bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
-				bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
-
-				if mutsMetadataUpdate != nil {
-					bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
-					bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
-				}
-			}
-
-			if len(bulkMutsData.Keys) > 0 {
-				metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
-				err = bt.SaveBlockKeys(block.Number, block.Hash, metaKeys)
-				if err != nil {
-					return fmt.Errorf("error saving block keys to bigtable metadata updates table: %w", err)
-				}
-
-				err = bt.WriteBulk(&bulkMutsData, bt.GetDataTable())
-				if err != nil {
-					return fmt.Errorf("error writing to bigtable data table: %w", err)
-				}
-			}
-
-			if len(bulkMutsMetadataUpdate.Keys) > 0 {
-				err = bt.WriteBulk(&bulkMutsMetadataUpdate, bt.GetMetadataUpdatesTable())
-				if err != nil {
-					return fmt.Errorf("error writing to bigtable metadata updates table: %w", err)
-				}
-			}
-
-			current := atomic.AddInt64(&processedBlocks, 1)
-			if current%500 == 0 {
-				r := end - start
-				if r == 0 {
-					r = 1
-				}
-				perc := float64(i-start) * 100 / float64(r)
-				logrus.Infof("currently processing block: %v; processed %v blocks in %v (%.1f blocks / sec); sync is %.1f%% complete", block.GetNumber(), current, time.Since(startTs), float64((current))/time.Since(lastTickTs).Seconds(), perc)
-				lastTickTs = time.Now()
-				atomic.StoreInt64(&processedBlocks, 0)
-			}
-			return nil
-		})
-
-	}
-
-	if err := g.Wait(); err == nil {
-		logrus.Info("data table indexing completed")
-	} else {
-		utils.LogError(err, "wait group error", 0)
+	if err != nil {
 		return err
 	}
 
+	lastBlockInCache, err := bt.GetLastBlockInBlocksTable()
+	if err != nil {
+		return err
+	}
+
+	if end > int64(lastBlockInCache) {
+		err := bt.SetLastBlockInBlocksTable(end)
+
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

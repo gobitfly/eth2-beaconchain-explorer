@@ -58,63 +58,31 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 		}
 		defer stream.Close()
 
-		// for {
-		// 	select {
-		// 	case e := <-stream.Events:
-		// 		var parsed StreamedBlockEventData
-		// 		err = json.Unmarshal([]byte(e.Data()), &parsed)
-		// 		if err != nil {
-		// 			logger.Warnf("failed to decode block event: %v", err)
-		// 		} else {
-		// 			slot := uint64(parsed.Slot)
-		// 			blks, err := lc.GetBlocksBySlot(parsed.Slot)
-		// 			if err != nil {
-		// 				logger.Warnf("failed to fetch block(s) for slot %d: %v", slot, err)
-		// 				continue
-		// 			}
-		// 			for _, blk := range blks {
-		// 				blkCh <- blk
-		// 			}
-		// 		}
-		// 	}
-		// }
-		// poll sync status 2 times per slot
-		// t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot) / 2)
-
-		// lastHeadSlot := uint64(0)
-		// headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
-		// if err == nil {
-		// 	var parsedHead StandardBeaconHeaderResponse
-		// 	err = json.Unmarshal(headResp, &parsedHead)
-		// 	if err != nil {
-		// 		logger.Warnf("failed to decode head, starting blocks channel at slot 0")
-		// 	} else {
-		// 		lastHeadSlot = uint64(parsedHead.Data.Header.Message.Slot)
-		// 	}
-		// } else {
-		// 	logger.Warnf("failed to fetch head, starting blocks channel at slot 0")
-		// }
-
 		for {
-			e := <-stream.Events
-			// logger.Infof("retrieved %v via event stream", e.Data())
-			var parsed StreamedBlockEventData
-			err = json.Unmarshal([]byte(e.Data()), &parsed)
-			if err != nil {
-				logger.Warnf("failed to decode block event: %v", err)
-				continue
-			}
+			select {
+			// It is important to register to Errors, otherwise the stream does not reconnect if the connection was lost
+			case err := <-stream.Errors:
+				utils.LogError(err, "Lighthouse connection error (will automatically retry to connect)", 0)
+			case e := <-stream.Events:
+				// logger.Infof("retrieved %v via event stream", e.Data())
+				var parsed StreamedBlockEventData
+				err = json.Unmarshal([]byte(e.Data()), &parsed)
+				if err != nil {
+					logger.Warnf("failed to decode block event: %v", err)
+					continue
+				}
 
-			logger.Infof("retrieving data for slot %v", parsed.Slot)
-			blks, err := lc.GetBlocksBySlot(uint64(parsed.Slot))
-			if err != nil {
-				logger.Warnf("failed to fetch block(s) for slot %d: %v", uint64(parsed.Slot), err)
-				continue
-			}
-			logger.Infof("retrieved %v blocks for slot %v", len(blks), parsed.Slot)
-			for _, blk := range blks {
-				// logger.Infof("pushing block %v", blk.Slot)
-				blkCh <- blk
+				logger.Infof("retrieving data for slot %v", parsed.Slot)
+				blks, err := lc.GetBlocksBySlot(uint64(parsed.Slot))
+				if err != nil {
+					logger.Warnf("failed to fetch block(s) for slot %d: %v", uint64(parsed.Slot), err)
+					continue
+				}
+				logger.Infof("retrieved %v blocks for slot %v", len(blks), parsed.Slot)
+				for _, blk := range blks {
+					// logger.Infof("pushing block %v", blk.Slot)
+					blkCh <- blk
+				}
 			}
 		}
 	}()
@@ -149,12 +117,18 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 		return nil, fmt.Errorf("error parsing finality checkpoints of head: %v", err)
 	}
 
+	// The epoch in the Finalized Object is not the finalized epoch, but the epoch for the checkpoint - the 'real' finalized epoch is the one before
+	var finalizedEpoch = uint64(parsedFinality.Data.Finalized.Epoch)
+	if finalizedEpoch > 0 {
+		finalizedEpoch--
+	}
+
 	return &types.ChainHead{
 		HeadSlot:                   uint64(parsedHead.Data.Header.Message.Slot),
 		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.Config.SlotsPerEpoch,
 		HeadBlockRoot:              utils.MustParseHex(parsedHead.Data.Root),
-		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
-		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
+		FinalizedSlot:              (finalizedEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch, // The first Slot of the next epoch is finalized.
+		FinalizedEpoch:             finalizedEpoch,
 		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
 		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.Config.SlotsPerEpoch,
 		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),

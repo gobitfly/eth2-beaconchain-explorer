@@ -1,6 +1,7 @@
 package main
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -29,7 +30,13 @@ func main() {
 	epochEnd := flag.Uint64("epoch-end", 0, "end epoch to export")
 	sleepDuration := flag.Duration("sleep", time.Minute, "duration to sleep between export runs")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
+	}
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -40,17 +47,21 @@ func main() {
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
 
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
@@ -63,14 +74,22 @@ func main() {
 	}
 	defer bt.Close()
 
+	cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
+
 	if *epochEnd != 0 {
+		latestFinalizedEpoch := services.LatestFinalizedEpoch()
+		if *epochEnd > latestFinalizedEpoch {
+			logrus.Errorf("error epochEnd [%v] is greater then latestFinalizedEpoch [%v]", epochEnd, latestFinalizedEpoch)
+			return
+		}
 		g := errgroup.Group{}
 		g.SetLimit(*batchConcurrency)
 
 		start := time.Now()
 		epochsCompleted := int64(0)
 		notExportedEpochs := []uint64{}
-		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
+		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -132,8 +151,9 @@ func main() {
 	if *epoch == -1 {
 		lastExportedEpoch := uint64(0)
 		for {
+			latestFinalizedEpoch := services.LatestFinalizedEpoch()
 			notExportedEpochs := []uint64{}
-			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch > $1 ORDER BY epoch desc LIMIT 10", lastExportedEpoch)
+			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch > $1 AND epoch <= $2 ORDER BY epoch desc LIMIT 10", lastExportedEpoch, latestFinalizedEpoch)
 			if err != nil {
 				utils.LogFatal(err, "getting chain head from lighthouse error", 0)
 			}
@@ -163,6 +183,11 @@ func main() {
 		}
 	}
 
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
+	if *epoch > int64(latestFinalizedEpoch) {
+		logrus.Errorf("error epoch [%v] is greater then latestFinalizedEpoch [%v]", epoch, latestFinalizedEpoch)
+		return
+	}
 	err = export(uint64(*epoch), bt, client, enAddress)
 	if err != nil {
 		logrus.Fatal(err)

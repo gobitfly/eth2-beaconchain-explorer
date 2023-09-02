@@ -19,73 +19,92 @@ import (
 )
 
 type options struct {
-	configPath                string
-	statisticsDayToExport     int64
-	statisticsDaysToExport    string
-	statisticsValidatorToggle bool
-	statisticsChartToggle     bool
+	configPath                    string
+	statisticsDayToExport         int64
+	statisticsDaysToExport        string
+	statisticsValidatorToggle     bool
+	statisticsResetColumns        string
+	statisticsChartToggle         bool
+	statisticsGraffitiToggle      bool
+	concurrencyTotal              uint64
+	concurrencyCl                 uint64
+	concurrencyFailedAttestations uint64
 }
 
-var opt *options
+var opt = &options{}
 
 func main() {
-	configPath := flag.String("config", "", "Path to the config file")
-	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
-	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
-	statisticsValidatorToggle := flag.Bool("validators.enabled", false, "Toggle exporting validator statistics")
-	statisticsChartToggle := flag.Bool("charts.enabled", false, "Toggle exporting chart series")
+	flag.StringVar(&opt.configPath, "config", "", "Path to the config file")
+	flag.Int64Var(&opt.statisticsDayToExport, "statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
+	flag.StringVar(&opt.statisticsDaysToExport, "statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
+	flag.BoolVar(&opt.statisticsValidatorToggle, "validators.enabled", false, "Toggle exporting validator statistics")
+	flag.StringVar(&opt.statisticsResetColumns, "validators.reset", "", "validator_stats_status columns to reset. Comma separated. Use 'all' for complete resync.")
+	flag.BoolVar(&opt.statisticsChartToggle, "charts.enabled", false, "Toggle exporting chart series")
+	flag.BoolVar(&opt.statisticsGraffitiToggle, "graffiti.enabled", false, "Toggle exporting graffiti statistics")
+	flag.Uint64Var(&opt.concurrencyTotal, "concurrency.total", 10, "Concurrency to use when writing total rewards/performance postgres queries")
+	flag.Uint64Var(&opt.concurrencyCl, "concurrency.cl", 50, "Concurrency to use when writing cl postgres queries")
+	flag.Uint64Var(&opt.concurrencyFailedAttestations, "concurrency.fa", 10, "Concurrency to use when fetching failed attestaations from bt")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
 
-	opt = &options{
-		configPath:                *configPath,
-		statisticsDayToExport:     *statisticsDayToExport,
-		statisticsDaysToExport:    *statisticsDaysToExport,
-		statisticsChartToggle:     *statisticsChartToggle,
-		statisticsValidatorToggle: *statisticsValidatorToggle,
+	if *versionFlag {
+		fmt.Println(version.Version)
+		return
 	}
 
-	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
+	logrus.Printf("version: %v, config file path: %v", version.Version, opt.configPath)
 	cfg := &types.Config{}
-	err := utils.ReadConfig(cfg, *configPath)
+	err := utils.ReadConfig(cfg, opt.configPath)
 
 	if err != nil {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
 
-	if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID != 1 {
-		logrus.Infof("Execution charts are currently only available for mainnet")
+	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+		utils.LogFatal(fmt.Errorf("error ether SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot), "", 0)
+		return
+	} else {
+		logrus.Infof("Writing statistic with: SlotsPerEpoch [%v] or SecondsPerSlot [%v]", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot)
 	}
 
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
 	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username: cfg.Frontend.WriterDatabase.Username,
-		Password: cfg.Frontend.WriterDatabase.Password,
-		Name:     cfg.Frontend.WriterDatabase.Name,
-		Host:     cfg.Frontend.WriterDatabase.Host,
-		Port:     cfg.Frontend.WriterDatabase.Port,
+		Username:     cfg.Frontend.WriterDatabase.Username,
+		Password:     cfg.Frontend.WriterDatabase.Password,
+		Name:         cfg.Frontend.WriterDatabase.Name,
+		Host:         cfg.Frontend.WriterDatabase.Host,
+		Port:         cfg.Frontend.WriterDatabase.Port,
+		MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.Frontend.ReaderDatabase.Username,
-		Password: cfg.Frontend.ReaderDatabase.Password,
-		Name:     cfg.Frontend.ReaderDatabase.Name,
-		Host:     cfg.Frontend.ReaderDatabase.Host,
-		Port:     cfg.Frontend.ReaderDatabase.Port,
+		Username:     cfg.Frontend.ReaderDatabase.Username,
+		Password:     cfg.Frontend.ReaderDatabase.Password,
+		Name:         cfg.Frontend.ReaderDatabase.Name,
+		Host:         cfg.Frontend.ReaderDatabase.Host,
+		Port:         cfg.Frontend.ReaderDatabase.Port,
+		MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
@@ -107,8 +126,8 @@ func main() {
 		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
 	}
 
-	if *statisticsDaysToExport != "" {
-		s := strings.Split(*statisticsDaysToExport, "-")
+	if opt.statisticsDaysToExport != "" {
+		s := strings.Split(opt.statisticsDaysToExport, "-")
 		if len(s) < 2 {
 			logrus.Fatalf("invalid arg")
 		}
@@ -121,23 +140,21 @@ func main() {
 			utils.LogFatal(err, "error parsing last day of statisticsDaysToExport flag to uint", 0)
 		}
 
-		if *statisticsValidatorToggle {
+		if opt.statisticsValidatorToggle {
 			logrus.Infof("exporting validator statistics for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
-				_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", d)
-				if err != nil {
-					logrus.Fatalf("error resetting status for day %v: %v", d, err)
-				}
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d))
+				clearStatsStatusTable(d, opt.statisticsResetColumns)
+
+				err = db.WriteValidatorStatisticsForDay(uint64(d), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 				if err != nil {
-					logrus.Errorf("error exporting stats for day %v: %v", d, err)
+					utils.LogError(err, fmt.Errorf("error exporting stats for day %v", d), 0)
 					break
 				}
 			}
 		}
 
-		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
+		if opt.statisticsChartToggle {
 			logrus.Infof("exporting chart series for days %v-%v", firstDay, lastDay)
 			for d := firstDay; d <= lastDay; d++ {
 				_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
@@ -153,43 +170,57 @@ func main() {
 			}
 		}
 
-		return
-	} else if *statisticsDayToExport >= 0 {
-
-		if *statisticsValidatorToggle {
-			_, err := db.WriterDb.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
-			if err != nil {
-				logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
-			}
-
-			err = db.WriteValidatorStatisticsForDay(uint64(*statisticsDayToExport))
-			if err != nil {
-				logrus.Errorf("error exporting stats for day %v: %v", *statisticsDayToExport, err)
+		if opt.statisticsGraffitiToggle {
+			for d := firstDay; d <= lastDay; d++ {
+				err = db.WriteGraffitiStatisticsForDay(int64(d))
+				if err != nil {
+					logrus.Errorf("error exporting graffiti-stats from day %v: %v", opt.statisticsDayToExport, err)
+					break
+				}
 			}
 		}
 
-		if *statisticsChartToggle && utils.Config.Chain.Config.DepositChainID == 1 {
-			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", *statisticsDayToExport)
+		return
+	} else if opt.statisticsDayToExport >= 0 {
+
+		if opt.statisticsValidatorToggle {
+			clearStatsStatusTable(uint64(opt.statisticsDayToExport), opt.statisticsResetColumns)
+
+			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 			if err != nil {
-				logrus.Fatalf("error resetting status for chart series status for day %v: %v", *statisticsDayToExport, err)
+				utils.LogError(err, fmt.Errorf("error exporting stats for day %v", opt.statisticsDayToExport), 0)
+			}
+		}
+
+		if opt.statisticsChartToggle {
+			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", opt.statisticsDayToExport)
+			if err != nil {
+				logrus.Fatalf("error resetting status for chart series status for day %v: %v", opt.statisticsDayToExport, err)
 			}
 
-			err = db.WriteChartSeriesForDay(int64(*statisticsDayToExport))
+			err = db.WriteChartSeriesForDay(int64(opt.statisticsDayToExport))
 			if err != nil {
-				logrus.Errorf("error exporting chart series from day %v: %v", *statisticsDayToExport, err)
+				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
+			}
+		}
+
+		if opt.statisticsGraffitiToggle {
+			err = db.WriteGraffitiStatisticsForDay(int64(opt.statisticsDayToExport))
+			if err != nil {
+				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
 			}
 		}
 		return
 	}
 
-	go statisticsLoop()
+	go statisticsLoop(opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
 }
 
-func statisticsLoop() {
+func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64, concurrencyFailedAttestations uint64) {
 	for {
 
 		latestEpoch := services.LatestFinalizedEpoch()
@@ -217,16 +248,16 @@ func statisticsLoop() {
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}
+
+			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
 			if lastExportedDayValidator != 0 {
 				lastExportedDayValidator++
 			}
-
-			logrus.Infof("Validator Statistics: Latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayValidator)
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
-					err := db.WriteValidatorStatisticsForDay(day)
+					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl, concurrencyFailedAttestations)
 					if err != nil {
-						logrus.Errorf("error exporting stats for day %v: %v", day, err)
+						utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
 						break
 					}
 				}
@@ -240,24 +271,58 @@ func statisticsLoop() {
 			if err != nil {
 				logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 			}
+
+			logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
 			if lastExportedDayChart != 0 {
 				lastExportedDayChart++
 			}
-			if utils.Config.Chain.Config.DepositChainID == 1 {
-				logrus.Infof("Chart statistics: latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDayChart)
-				if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
-					for day := lastExportedDayChart; day <= previousDay; day++ {
-						err = db.WriteChartSeriesForDay(int64(day))
-						if err != nil {
-							logrus.Errorf("error exporting chart series from day %v: %v", day, err)
-							break
-						}
+			if lastExportedDayChart <= previousDay || lastExportedDayChart == 0 {
+				for day := lastExportedDayChart; day <= previousDay; day++ {
+					err = db.WriteChartSeriesForDay(int64(day))
+					if err != nil {
+						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+						break
 					}
+				}
+			}
+		}
+
+		if opt.statisticsGraffitiToggle {
+			var lastDay int64
+			err := db.WriterDb.Get(&lastDay, "select COALESCE(max(day), 0) from graffiti_stats")
+			if err != nil {
+				logrus.Errorf("error retreiving latest exported day from graffiti_stats: %v", err)
+			} else {
+				nextDay := lastDay + 1
+				err = db.WriteGraffitiStatisticsForDay(nextDay)
+				if err != nil {
+					logrus.Errorf("error exporting graffiti-stats for day %v: %v", nextDay, err)
 				}
 			}
 		}
 
 		services.ReportStatus("statistics", "Running", nil)
 		time.Sleep(time.Minute)
+	}
+}
+
+func clearStatsStatusTable(day uint64, columns string) {
+	if columns == "all" {
+		logrus.Infof("Delete validator_stats_status for day %v", day)
+		_, err := db.WriterDb.Exec("DELETE FROM validator_stats_status WHERE day = $1", day)
+		if err != nil {
+			logrus.Fatalf("error resetting status for day %v: %v", day, err)
+		}
+	} else if len(columns) > 0 {
+		logrus.Infof("Resetting columns %v of validator_stats_status for day %v ", columns, day)
+		cols := strings.Join(strings.Split(columns, ","), " = false,")
+		_, err := db.WriterDb.Exec(fmt.Sprintf(`
+			UPDATE validator_stats_status
+			SET %v = false
+			WHERE day = $1
+		`, cols), day)
+		if err != nil {
+			logrus.Fatalf("error resetting status for day %v: %v", day, err)
+		}
 	}
 }

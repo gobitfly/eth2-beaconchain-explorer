@@ -266,6 +266,10 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 				Path: fmt.Sprint(trace.TraceAddress),
 			}
 
+			if tracePb.Type == "call" {
+				tracePb.Type = trace.Action.CallType
+			}
+
 			if trace.Type == "create" {
 				tracePb.From = common.FromHex(trace.Action.From)
 				tracePb.To = common.FromHex(trace.Result.Address)
@@ -274,7 +278,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 				tracePb.From = common.FromHex(trace.Action.Address)
 				tracePb.To = common.FromHex(trace.Action.RefundAddress)
 				tracePb.Value = common.FromHex(trace.Action.Balance)
-			} else if trace.Type == "call" || trace.Type == "delegatecall" {
+			} else if trace.Type == "call" {
 				tracePb.From = common.FromHex(trace.Action.From)
 				tracePb.To = common.FromHex(trace.Action.To)
 				tracePb.Value = common.FromHex(trace.Action.Value)
@@ -642,6 +646,14 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 		return nil
 	})
 	err = g.Wait()
+
+	if err == nil && len(ret.Decimals) == 0 && ret.Symbol == "" && len(ret.TotalSupply) == 0 {
+		// it's possible that a token contract implements the ERC20 interfaces but does not return any values; we use a backup in this case
+		ret = &types.ERC20Metadata{
+			Decimals:    []byte{0x0},
+			Symbol:      "UNKNOWN",
+			TotalSupply: []byte{0x0}}
+	}
 
 	return ret, err
 }
