@@ -919,12 +919,9 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			}
 
 			attestationsMap[validator][attesterSlot] = append(attestationsMap[validator][attesterSlot], &types.ValidatorAttestation{
-				Index:          validator,
-				Epoch:          attesterSlot / utils.Config.Chain.Config.SlotsPerEpoch,
-				AttesterSlot:   attesterSlot,
-				CommitteeIndex: 0,
-				Status:         status,
-				InclusionSlot:  inclusionSlot,
+				AttesterSlot:  attesterSlot,
+				InclusionSlot: inclusionSlot,
+				Status:        status,
 			})
 		}
 		return true
@@ -967,6 +964,10 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 		for _, att := range attestations {
 			currentAttInfo := att[0]
 			for _, attInfo := range att {
+				if orphanedSlotsMap[attInfo.InclusionSlot] {
+					attInfo.Status = 0
+				}
+
 				if currentAttInfo.Status != 1 && attInfo.Status == 1 {
 					currentAttInfo.Status = attInfo.Status
 					currentAttInfo.InclusionSlot = attInfo.InclusionSlot
@@ -979,6 +980,9 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 					missedSlotsCount++
 				}
 			}
+			currentAttInfo.Index = validator
+			currentAttInfo.Epoch = currentAttInfo.AttesterSlot / utils.Config.Chain.Config.SlotsPerEpoch
+			currentAttInfo.CommitteeIndex = 0
 			currentAttInfo.Delay = int64(currentAttInfo.InclusionSlot - currentAttInfo.AttesterSlot - missedSlotsCount - 1)
 
 			res[validator] = append(res[validator], currentAttInfo)
