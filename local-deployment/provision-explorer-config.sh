@@ -14,6 +14,8 @@ echo "Postgres port is $POSTGRES_PORT"
 LBT_PORT=$(kurtosis enclave inspect my-testnet | grep 9000/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/tcp\:\/\/127.0.0.1\://' | grep "\S")
 echo "Little bigtable port is $LBT_PORT"
 
+touch config.yml
+
 cat >config.yml <<EOL
 chain:
   configPath: 'node'
