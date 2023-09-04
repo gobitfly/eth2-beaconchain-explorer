@@ -52,6 +52,7 @@ def run(plan, args):
         ),
     )
 
+    # Spin up a local ethereum testnet
     all_participants, cl_genesis_timestamp, genesis_validators_root = eth_network_module.run(plan, args)
 
     all_el_client_contexts = []
