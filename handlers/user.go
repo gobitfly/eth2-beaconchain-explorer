@@ -1181,6 +1181,13 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		Logout(w, r)
+		err = purgeAllSessionsForUser(r.Context(), user.UserID)
+		if err != nil {
+			utils.LogError(err, "error purging sessions for user", 0, map[string]interface{}{"userID": user.UserID})
+			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
 	} else {
 		utils.LogError(nil, "Trying to delete an unauthenticated user", 0)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
