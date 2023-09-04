@@ -1352,7 +1352,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d,
 		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal,
 		COALESCE(validator_performance.rank7d, 0) AS rank7d,
-		((rank7d::float * 100) / COALESCE((SELECT total_count FROM maxValidatorIndex), 1)) as rankpercentage,
+		((validator_performance.rank7d::float * 100) / COALESCE((SELECT total_count FROM maxValidatorIndex), 1)) as rankpercentage,
 		w.total as total_withdrawals
 	FROM validators
 	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
