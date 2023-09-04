@@ -3284,7 +3284,7 @@ func GetValidatorBalanceForDay(validators []uint64, day uint64, balance *uint64)
 		SELECT 
 			COALESCE(SUM(end_balance), 0) 
 		FROM validator_stats     
-		WHERE day=$2 AND validatorindex = ANY($1)
+		WHERE validatorindex = ANY($1) AND day = $2
 	`, validatorsPQArray, day)
 }
 

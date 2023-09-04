@@ -466,7 +466,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 		err = db.ReaderDb.Get(&dbRewards, `
 		SELECT 
 		COALESCE(cl_rewards_gwei, 0) AS cl_rewards_gwei
-		FROM validator_stats WHERE day = $1 and validatorindex = $2`, day, validator)
+		FROM validator_stats WHERE validatorindex = $2 AND day = $1`, day, validator)
 		if err != nil {
 			logrus.Fatalf("error getting cl_rewards_gwei from db: %v", err)
 			return
