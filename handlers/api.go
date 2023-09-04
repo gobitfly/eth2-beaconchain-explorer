@@ -871,10 +871,10 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		if len(queryIndices) > 0 {
 			g.Go(func() error {
 				start := time.Now()
-				validatorsData, err = getGeneralValidatorInforForAppDashboard(queryIndices)
+				validatorsData, err = getGeneralValidatorInfoForAppDashboard(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
-					logger.Warnf("getGeneralValidatorInforForAppDashboard(%v) took longer than 10 sec", queryIndices)
+					logger.Warnf("getGeneralValidatorInfoForAppDashboard(%v) took longer than 10 sec", queryIndices)
 				}
 				return err
 			})
@@ -1327,7 +1327,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 	return utils.SqlRowsToJSON(rows)
 }
 
-func getGeneralValidatorInforForAppDashboard(queryIndices []uint64) ([]interface{}, error) {
+func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{}, error) {
 	// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
 	rows, err := db.ReaderDb.Query(`
 	WITH maxValidatorIndex AS (
