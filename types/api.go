@@ -722,3 +722,7 @@ type ApiProposalLuckResponse struct {
 	NextProposalEstimateTs  *int64   `json:"next_proposal_estimate_ts"` // The estimated timestamp of the next proposal
 	TimeFrameName           *string  `json:"time_frame_name"`           // The timeframe for which the luck is calculated
 }
+
+type SupplyResponse struct {
+	TotalSupply string `json:"total_supply"`
+}

@@ -33,6 +33,7 @@ type Config struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
+		GenesisTotalSupply         uint64 `yaml:"genesisTotalSupply" envconfig:"CHAIN_GENESIS_TOTAL_SUPPLY"`
 		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
 		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
 		ConfigPath                 string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
