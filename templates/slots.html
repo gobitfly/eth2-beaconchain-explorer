@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
 
   <script>
     $(document).ready(function () {
@@ -9,7 +10,7 @@
         serverSide: true,
         ordering: false,
         searching: true,
-        ajax: "/slots/data",
+        ajax: dataTableLoader("/slots/data"),
         stateSave: true,
         stateSaveCallback: function (settings, data) {
           data.order = []
@@ -105,9 +106,9 @@
       if (emptygraffiticheckbox) {
         emptygraffiticheckbox.checked = !!usp.get("g") && !usp.get("q")
         if (emptygraffiticheckbox.checked) {
-          var t = $("#slots").DataTable()
-          if (t) {
-            t.search("").columns(11).search("#showonlyemptygraffiti").draw()
+          var dataTable = $("#slots").DataTable()
+          if (dataTable) {
+            dataTable.search("").columns(11).search("#showonlyemptygraffiti").draw()
           }
         }
 
