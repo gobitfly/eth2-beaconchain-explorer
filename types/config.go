@@ -30,6 +30,7 @@ type Config struct {
 		Instance     string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
 		Emulator     bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
 		EmulatorPort int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
+		EmulatorHost string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
 	} `yaml:"bigtable"`
 	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`

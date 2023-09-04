@@ -74,8 +74,12 @@ type Bigtable struct {
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
 
 	if utils.Config.Bigtable.Emulator {
-		logger.Infof("using emulated local bigtable environment, setting BIGTABLE_EMULATOR_HOST env variable to 127.0.0.1:%d", utils.Config.Bigtable.EmulatorPort)
-		err := os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("127.0.0.1:%d", utils.Config.Bigtable.EmulatorPort))
+
+		if utils.Config.Bigtable.EmulatorHost == "" {
+			utils.Config.Bigtable.EmulatorHost = "127.0.0.1"
+		}
+		logger.Infof("using emulated local bigtable environment, setting BIGTABLE_EMULATOR_HOST env variable to %s:%d", utils.Config.Bigtable.EmulatorHost, utils.Config.Bigtable.EmulatorPort)
+		err := os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("%s:%d", utils.Config.Bigtable.EmulatorHost, utils.Config.Bigtable.EmulatorPort))
 
 		if err != nil {
 			logger.Fatalf("unable to set bigtable emulator environment variable: %v", err)

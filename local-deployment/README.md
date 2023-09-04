@@ -31,16 +31,6 @@ Add the golang binaries to the path by adding the following lines to your ~/.pro
 export PATH=$PATH:/usr/local/go/bin
 export PATH=$PATH:$HOME/go/bin
 ```
-Create the testnet directory
-```
-mkdir testnet
-cd testnet
-```
-# Install the cbt tool
-```
-sudo apt remove google-cloud-cli
-sudo apt install google-cloud-sdk-cbt
-```
 # Clone the explorer repository
 ```
 cd ~/
