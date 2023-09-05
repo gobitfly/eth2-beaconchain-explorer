@@ -2296,7 +2296,6 @@ func GetWithdrawalsCountForQuery(query string) (uint64, error) {
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
 			%s
-			ORDER BY w.block_slot DESC
 			LIMIT %d
 		) a`
 
@@ -2959,7 +2958,6 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 			FROM blocks_bls_change bls
 			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
 			%s
-			ORDER BY b.slot DESC
 			LIMIT %d
 		) a
 		`
