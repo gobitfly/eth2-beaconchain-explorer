@@ -49,6 +49,8 @@ var saveValidatorsMux = &sync.Mutex{}
 var farFutureEpoch = uint64(18446744073709551615)
 var maxSqlNumber = uint64(9223372036854775807)
 
+const WithdrawalsQueryLimit = 10000
+const BlsChangeQueryLimit = 10000
 const MaxSqlInteger = 2147483647
 
 var addressRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{40}$`)
@@ -2289,10 +2291,14 @@ func GetWithdrawalsCountForQuery(query string) (uint64, error) {
 	count := uint64(0)
 
 	withdrawalsQuery := `
-		SELECT count(*)
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
-		%s`
+		SELECT COUNT(*) FROM (
+			SELECT b.slot
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON w.block_root = b.blockroot AND b.status = '1'
+			%s
+			ORDER BY b.block_slot DESC
+			LIMIT %d
+		) a`
 
 	var err error = nil
 
@@ -2303,7 +2309,7 @@ func GetWithdrawalsCountForQuery(query string) (uint64, error) {
 		if err != nil {
 			return 0, decErr
 		}
-		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
+		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery, WithdrawalsQueryLimit),
 			addr)
 	} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
 		// Check whether the query can be used for a validator, slot or epoch search
@@ -2311,7 +2317,7 @@ func GetWithdrawalsCountForQuery(query string) (uint64, error) {
 			WHERE w.validatorindex = $1
 				OR w.block_slot = $1
 				OR w.block_slot BETWEEN $1*$2 AND ($1+1)*$2-1`
-		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery),
+		err = ReaderDb.Get(&count, fmt.Sprintf(withdrawalsQuery, searchQuery, WithdrawalsQueryLimit),
 			uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 	}
 
@@ -2948,10 +2954,12 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 	count := uint64(0)
 
 	blsQuery := `
-		SELECT COUNT(*)
-		FROM blocks_bls_change bls
-		INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
-		%s
+		SELECT COUNT(*) FROM (
+			FROM blocks_bls_change bls
+			INNER JOIN blocks b ON bls.block_root = b.blockroot AND b.status = '1'
+			%s
+			LIMIT %d
+		) a
 		`
 
 	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
@@ -2963,7 +2971,7 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 		if decErr != nil {
 			return 0, decErr
 		}
-		err = ReaderDb.Select(&count, fmt.Sprintf(blsQuery, searchQuery),
+		err = ReaderDb.Select(&count, fmt.Sprintf(blsQuery, searchQuery, BlsChangeQueryLimit),
 			pubkey)
 	} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
 		// Check whether the query can be used for a validator, slot or epoch search
@@ -2971,7 +2979,7 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 			WHERE bls.validatorindex = $1			
 				OR bls.block_slot = $1
 				OR bls.block_slot BETWEEN $1*$2 AND ($1+1)*$2-1`
-		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, searchQuery),
+		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, searchQuery, BlsChangeQueryLimit),
 			uiQuery, utils.Config.Chain.Config.SlotsPerEpoch)
 	}
 	if err != nil {

@@ -70,8 +70,8 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	if start > 10000 {
-		start = 10000
+	if start > db.WithdrawalsQueryLimit {
+		start = db.WithdrawalsQueryLimit
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
@@ -207,11 +207,11 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		}
 	}
 
-	if filteredCount > 10000 {
-		filteredCount = 10000
+	if filteredCount > db.WithdrawalsQueryLimit {
+		filteredCount = db.WithdrawalsQueryLimit
 	}
-	if withdrawalCount > 10000 {
-		withdrawalCount = 10000
+	if withdrawalCount > db.WithdrawalsQueryLimit {
+		withdrawalCount = db.WithdrawalsQueryLimit
 	}
 
 	data := &types.DataTableResponse{
@@ -244,9 +244,9 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-	if start > 10000 {
+	if start > db.BlsChangeQueryLimit {
 		// limit offset to 10000, otherwise the query will be too slow
-		start = 10000
+		start = db.BlsChangeQueryLimit
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
@@ -372,11 +372,11 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 		}
 	}
 
-	if totalCount > 10000 {
-		totalCount = 10000
+	if totalCount > db.BlsChangeQueryLimit {
+		totalCount = db.BlsChangeQueryLimit
 	}
-	if filteredCount > 10000 {
-		filteredCount = 10000
+	if filteredCount > db.BlsChangeQueryLimit {
+		filteredCount = db.BlsChangeQueryLimit
 	}
 
 	data := &types.DataTableResponse{
