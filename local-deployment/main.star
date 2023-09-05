@@ -56,9 +56,11 @@ def run(plan, args):
         all_el_client_contexts.append(participant.el_client_context)
         all_cl_client_contexts.append(participant.cl_client_context)
 
-    # plan.print("Launching transaction spammer")
-    # transaction_spammer.launch_transaction_spammer(plan, genesis_constants.PRE_FUNDED_ACCOUNTS, all_el_client_contexts[0])
-    # plan.print("Succesfully launched transaction spammer")
+
+    if args["start_tx_spammer"]:
+		plan.print("Launching transaction spammer")
+		transaction_spammer.launch_transaction_spammer(plan, genesis_constants.PRE_FUNDED_ACCOUNTS, all_el_client_contexts[0])
+		plan.print("Succesfully launched transaction spammer")
 
 
 def new_config_template_data(cl_node_info, el_uri, lbt_host, lbt_port, db_host, db_port, redis_uri):
