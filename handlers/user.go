@@ -2170,20 +2170,20 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func isValidSubscriptionFilter(eventName types.EventName, filter string) bool {
+	ethClients := []string{"geth", "nethermind", "besu", "erigon", "teku", "prysm", "nimbus", "lighthouse", "lodestar", "rocketpool", "mev-boost"}
+
 	isPkey := searchPubkeyExactRE.MatchString(filter)
+
+	isClientName := false
+	for _, str := range ethClients {
+		if str == filter {
+			isClientName = true
+			break
+		}
+	}
+
 	isClient := false
-	if eventName == types.EthClientUpdateEventName &&
-		(filter == "geth" ||
-			filter == "nethermind" ||
-			filter == "besu" ||
-			filter == "erigon" ||
-			filter == "teku" ||
-			filter == "prysm" ||
-			filter == "nimbus" ||
-			filter == "lighthouse" ||
-			filter == "lodestar" ||
-			filter == "rocketpool" ||
-			filter == "mev-boost") {
+	if eventName == types.EthClientUpdateEventName && isClientName {
 		isClient = true
 	}
 
