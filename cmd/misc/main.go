@@ -206,6 +206,8 @@ func main() {
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
+	case "debug-blocks":
+		err = DebugBlocks()
 	case "clear-bigtable":
 		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
@@ -221,6 +223,24 @@ func main() {
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}
+
+	if err != nil {
+		utils.LogFatal(err, "command returned error", 0)
+	} else {
+		logrus.Infof("command executed successfully")
+	}
+}
+
+func DebugBlocks() error {
+	for i := opts.StartBlock; i <= opts.EndBlock; i++ {
+		b, err := db.BigtableClient.GetBlockFromBlocksTable(i)
+		if err != nil {
+			return err
+		}
+		// logrus.WithFields(logrus.Fields{"block": i, "data": fmt.Sprintf("%+v", b)}).Infof("block from bt")
+		logrus.WithFields(logrus.Fields{"block": i, "ExcessBlobGas": b.ExcessBlobGas}).Infof("block from bt")
+	}
+	return nil
 }
 
 func NameValidatorsByRanges(rangesUrl string) error {
