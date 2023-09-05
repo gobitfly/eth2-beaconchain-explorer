@@ -604,6 +604,9 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
 	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
 
+	totalMutations := (endSlot - startSlot) * uint64(len(validators))
+	processedMutations := 0
+	period := startSlot / utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod / utils.Config.Chain.Config.SlotsPerEpoch
 	for i := startSlot; i <= endSlot; i++ {
 		for _, validator := range validators {
 			mut := gcp_bigtable.NewMutation()
@@ -613,9 +616,10 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 
 			muts = append(muts, mut)
 			keys = append(keys, key)
+			processedMutations++
 
 			if len(muts) == MAX_BATCH_MUTATIONS {
-				logger.Infof("saving %v mutations for sync duties", len(muts))
+				logger.Infof("saving %v mutations for sync duties (%d / %d, period: %d)", len(muts), processedMutations, totalMutations, period)
 				errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
 
 				if err != nil {
@@ -636,7 +640,7 @@ func (bigtable *Bigtable) SaveSyncCommitteesAssignments(startSlot, endSlot uint6
 	}
 
 	if len(muts) > 0 {
-		logger.Infof("saving %v mutations for sync duties", len(muts))
+		logger.Infof("saving %v mutations for sync duties (%d / %d, period: %v)", len(muts), processedMutations, totalMutations, period)
 		errs, err := bigtable.tableValidatorSyncCommittees.ApplyBulk(ctx, keys, muts)
 
 		if err != nil {

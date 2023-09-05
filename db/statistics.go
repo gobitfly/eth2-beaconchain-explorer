@@ -72,15 +72,22 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	}
 	logger.Infof("getting exported state took %v", time.Since(start))
 
-	validators, err := GetValidatorIndices()
+	maxValidatorIndex, err := BigtableClient.GetMaxValidatorindexForEpoch(lastEpoch)
 	if err != nil {
 		return err
+	}
+	validators := make([]uint64, 0, maxValidatorIndex)
+
+	logger.Info(maxValidatorIndex)
+	for i := uint64(0); i <= maxValidatorIndex; i++ {
+		validators = append(validators, i)
 	}
 
 	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalAccumulation && exported.TotalPerformance && exported.BlockStats && exported.Status {
 		logger.Infof("Skipping day %v as it is already exported", day)
 		return nil
 	}
+	logger.Info("OK")
 
 	if exported.FailedAttestations {
 		logger.Infof("Skipping failed attestations")

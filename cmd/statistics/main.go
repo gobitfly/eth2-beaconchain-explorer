@@ -237,6 +237,8 @@ func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64, concurrencyFa
 		currentDay := latestEpoch / epochsPerDay
 		previousDay := currentDay - 1
 
+		logrus.Info(currentDay)
+		logrus.Info(previousDay)
 		if previousDay > currentDay {
 			previousDay = currentDay
 		}

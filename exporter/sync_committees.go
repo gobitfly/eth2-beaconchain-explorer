@@ -86,13 +86,13 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		validatorsU64[i] = idxU64
 	}
 
-	dedupMap := make(map[uint64]bool, len(validatorsU64))
+	dedupMap := make(map[uint64]bool)
 
 	for _, validator := range validatorsU64 {
 		dedupMap[validator] = true
 	}
 
-	validatorsU64 = make([]uint64, len(dedupMap))
+	validatorsU64 = make([]uint64, 0, len(dedupMap))
 	for validator := range dedupMap {
 		validatorsU64 = append(validatorsU64, validator)
 	}
