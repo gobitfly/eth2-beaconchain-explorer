@@ -878,6 +878,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	}
 
 	maxSlot := (endEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch
+	// map with structure attestationsMap[validator][attesterSlot]
 	attestationsMap := make(map[uint64]map[uint64][]*types.ValidatorAttestation)
 
 	// Save info for all inclusionSlot for attestations in attestationsMap
@@ -919,7 +920,6 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			}
 
 			attestationsMap[validator][attesterSlot] = append(attestationsMap[validator][attesterSlot], &types.ValidatorAttestation{
-				AttesterSlot:  attesterSlot,
 				InclusionSlot: inclusionSlot,
 				Status:        status,
 			})
@@ -961,7 +961,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 		if res[validator] == nil {
 			res[validator] = make([]*types.ValidatorAttestation, 0)
 		}
-		for _, att := range attestations {
+		for attesterSlot, att := range attestations {
 			currentAttInfo := att[0]
 			for _, attInfo := range att {
 				if orphanedSlotsMap[attInfo.InclusionSlot] {
@@ -981,9 +981,10 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				}
 			}
 			currentAttInfo.Index = validator
-			currentAttInfo.Epoch = currentAttInfo.AttesterSlot / utils.Config.Chain.Config.SlotsPerEpoch
+			currentAttInfo.Epoch = attesterSlot / utils.Config.Chain.Config.SlotsPerEpoch
 			currentAttInfo.CommitteeIndex = 0
-			currentAttInfo.Delay = int64(currentAttInfo.InclusionSlot - currentAttInfo.AttesterSlot - missedSlotsCount - 1)
+			currentAttInfo.AttesterSlot = attesterSlot
+			currentAttInfo.Delay = int64(currentAttInfo.InclusionSlot - attesterSlot - missedSlotsCount - 1)
 
 			res[validator] = append(res[validator], currentAttInfo)
 		}
