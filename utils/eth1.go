@@ -240,9 +240,9 @@ func FormatHashLong(hash common.Hash) template.HTML {
 	if len(address) > 4 {
 		htmlFormat := `
 		<div class="d-flex text-monospace">
-			<span class="">%s</span>
+			%s
 			<span class="flex-shrink-1 text-truncate">%s</span>
-			<span class="">%s</span>
+			%s
 		</div>`
 
 		return template.HTML(fmt.Sprintf(htmlFormat, address[:4], address[4:len(address)-4], address[len(address)-4:]))
