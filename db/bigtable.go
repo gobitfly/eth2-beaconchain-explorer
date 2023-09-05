@@ -975,7 +975,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			}
 
 			missedSlotsCount := uint64(0)
-			for slot := currentAttInfo.AttesterSlot + 1; slot < currentAttInfo.InclusionSlot; slot++ {
+			for slot := attesterSlot + 1; slot < currentAttInfo.InclusionSlot; slot++ {
 				if missedSlotsMap[slot] || orphanedSlotsMap[slot] {
 					missedSlotsCount++
 				}
