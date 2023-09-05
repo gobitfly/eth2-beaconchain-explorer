@@ -373,6 +373,9 @@ func main() {
 		apiV1AuthRouter.Use(utils.CORSMiddleware)
 		apiV1AuthRouter.Use(utils.AuthorizedAPIMiddleware)
 
+		apiV2Router := router.PathPrefix("/api/v2").Subrouter()
+		apiV2Router.HandleFunc("/totalsupply", handlers.Supply).Methods("GET")
+
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
