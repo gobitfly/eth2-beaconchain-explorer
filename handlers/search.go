@@ -235,7 +235,8 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey
 			WHERE validators.pubkey IS NULL AND ENCODE(eth1_deposits.publickey, 'hex') LIKE ($1 || '%')`, lowerStrippedSearch)
 	case "indexed_validators_by_eth1_addresses":
-		if !utils.IsValidEnsDomain(search) && !utils.IsEth1Address(search) {
+		search = ReplaceEnsNameWithAddress(search)
+		if !utils.IsEth1Address(search) {
 			break
 		}
 		result, err = FindValidatorIndicesByEth1Address(strings.ToLower(search))
