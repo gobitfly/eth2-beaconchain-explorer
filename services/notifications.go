@@ -3057,7 +3057,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			Epoch:           epoch,
 			EventFilter:     sub.EventFilter,
 			EventName:       eventName,
-			ExtraData:       fmt.Sprintf("%v", threshold*100),
+			ExtraData:       strconv.FormatFloat(threshold*100, 'f', -1, 64),
 			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
