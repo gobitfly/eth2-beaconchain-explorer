@@ -2976,9 +2976,12 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 		var partial []dbResult
 
+		// filter nodes with no minipools (anymore) because they have min/max stake of 0
+		// TODO properly remove notification entry from db
 		err = db.WriterDb.Select(&partial, `
 		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake
-		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
+		FROM rocketpool_nodes
+		WHERE address = ANY($1) AND min_rpl_stake != 0 AND max_rpl_stake != 0`, pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
@@ -3024,12 +3027,6 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 			// 100% (of borrowed eth)
 			nodeCollatRatioHelper.Quo(r.RPLStakeMin.bigFloat(), minRPLCollatRatio)
-		}
-
-		if nodeCollatRatioHelper.Cmp(bigFloat(0)) == 0 {
-			// catch nodes with no minipools (anymore) because they have min/max stake of 0
-			// TODO properly remove notification entry from db
-			continue
 		}
 
 		nodeCollatRatio, _ := nodeCollatRatioHelper.Quo(r.RPLStake.bigFloat(), nodeCollatRatioHelper).Float64()
