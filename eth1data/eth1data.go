@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	geth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 )
@@ -87,37 +88,37 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	txPageData.BlockNumber = header.Number.Int64()
 	txPageData.Timestamp = time.Unix(int64(header.Time), 0)
 
-	msg, err := tx.AsMessage(geth_types.NewLondonSigner(tx.ChainId()), header.BaseFee)
+	msg, err := core.TransactionToMessage(tx, geth_types.NewLondonSigner(tx.ChainId()), header.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("error converting tx %v to message: %v", hash, err)
 	}
-	txPageData.From = msg.From()
-	txPageData.Nonce = msg.Nonce()
+	txPageData.From = msg.From
+	txPageData.Nonce = msg.Nonce
 	txPageData.Type = receipt.Type
 	txPageData.TypeFormatted = utils.FormatTransactionType(receipt.Type)
 	txPageData.TxnPosition = receipt.TransactionIndex
 
-	txPageData.Gas.MaxPriorityFee = msg.GasTipCap().Bytes()
-	txPageData.Gas.MaxFee = msg.GasFeeCap().Bytes()
+	txPageData.Gas.MaxPriorityFee = msg.GasTipCap.Bytes()
+	txPageData.Gas.MaxFee = msg.GasFeeCap.Bytes()
 	if header.BaseFee != nil {
 		txPageData.Gas.BlockBaseFee = header.BaseFee.Bytes()
 	}
 	txPageData.Gas.Used = receipt.GasUsed
-	txPageData.Gas.Limit = msg.Gas()
-	txPageData.Gas.UsedPerc = float64(receipt.GasUsed) / float64(msg.Gas())
+	txPageData.Gas.Limit = msg.GasLimit
+	txPageData.Gas.UsedPerc = float64(receipt.GasUsed) / float64(msg.GasLimit)
 	if receipt.Type >= 2 {
 		tmp := new(big.Int)
 		tmp.Add(tmp, header.BaseFee)
-		if t := *new(big.Int).Sub(msg.GasFeeCap(), tmp); t.Cmp(msg.GasTipCap()) == -1 {
+		if t := *new(big.Int).Sub(msg.GasFeeCap, tmp); t.Cmp(msg.GasTipCap) == -1 {
 			tmp.Add(tmp, &t)
 		} else {
-			tmp.Add(tmp, msg.GasTipCap())
+			tmp.Add(tmp, msg.GasTipCap)
 		}
 		txPageData.Gas.EffectiveFee = tmp.Bytes()
 		txPageData.Gas.TxFee = tmp.Mul(tmp, big.NewInt(int64(receipt.GasUsed))).Bytes()
 	} else {
-		txPageData.Gas.EffectiveFee = msg.GasFeeCap().Bytes()
-		txPageData.Gas.TxFee = msg.GasFeeCap().Mul(msg.GasFeeCap(), big.NewInt(int64(receipt.GasUsed))).Bytes()
+		txPageData.Gas.EffectiveFee = msg.GasFeeCap.Bytes()
+		txPageData.Gas.TxFee = msg.GasFeeCap.Mul(msg.GasFeeCap, big.NewInt(int64(receipt.GasUsed))).Bytes()
 	}
 
 	if receipt.Status != 1 {
@@ -135,17 +136,17 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error loading token transfers from tx %v: %v", hash, err)
 		}
-		txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From().Bytes())
+		txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("error loading internal transfers from tx %v: %v", hash, err)
 		}
 	}
-	txPageData.FromName, err = db.BigtableClient.GetAddressName(msg.From().Bytes())
+	txPageData.FromName, err = db.BigtableClient.GetAddressName(msg.From.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieveing from name for tx %v: %v", hash, err)
 	}
-	if msg.To() != nil {
-		txPageData.ToName, err = db.BigtableClient.GetAddressName(msg.To().Bytes())
+	if msg.To != nil {
+		txPageData.ToName, err = db.BigtableClient.GetAddressName(msg.To.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("error retrieveing to name for tx %v: %v", hash, err)
 		}
