@@ -60,3 +60,9 @@ cd ~/eth2-beaconchain-explorer/local-deployment/
 docker-compose up -d
 ```
 You can start / stop the exporter submodules using `docker-compose`
+
+# Exit validators
+Exiting individual validators can be done using the provided `exit_validator.sh` script. Requires [https://github.com/wealdtech/ethdo](ethdo) to be available on the path.
+```
+bash exit_validators.sh -i validator_index -m "memonic" -b "http://bn_api_host:bn_api_port"
+```

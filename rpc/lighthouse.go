@@ -177,7 +177,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 
 	proposerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/validator/duties/proposer/%d", lc.endpoint, epoch))
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving proposer duties: %v", err)
+		return nil, fmt.Errorf("error retrieving proposer duties for epoch %v: %v", epoch, err)
 	}
 	var parsedProposerResponse StandardProposerDutiesResponse
 	err = json.Unmarshal(proposerResp, &parsedProposerResponse)
