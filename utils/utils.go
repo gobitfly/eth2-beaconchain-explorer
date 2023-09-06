@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"html/template"
 	"image/color"
-	"io/ioutil"
+	"io"
 	"log"
 	"math"
 	"math/big"
@@ -241,7 +241,7 @@ func GetTemplateFuncs() template.FuncMap {
 
 // IncludeHTML adds html to the page
 func IncludeHTML(path string) template.HTML {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		log.Printf("includeHTML - error reading file: %v", err)
 		return ""
@@ -793,7 +793,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return false, err
 	}
 	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body) // Read the response from Google
+	body, err := io.ReadAll(req.Body) // Read the response from Google
 	if err != nil {
 		return false, err
 	}
@@ -854,7 +854,7 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 // 	}
 
 // 	if resp.StatusCode == 200 {
-// 		body, err := ioutil.ReadAll(resp.Body)
+// 		body, err := io.ReadAll(resp.Body)
 // 		if err != nil {
 // 			return nil, err
 // 		}
@@ -929,7 +929,7 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 		return nil, fmt.Errorf("StatusCode: '%d', Status: '%s'", resp.StatusCode, resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
