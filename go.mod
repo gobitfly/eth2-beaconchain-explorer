@@ -1,6 +1,6 @@
 module eth2-exporter
 
-go 1.18
+go 1.19
 
 require (
 	cloud.google.com/go/bigtable v1.16.0
