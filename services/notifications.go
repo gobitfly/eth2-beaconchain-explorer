@@ -2790,9 +2790,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolNewClaimRoundStartedEventName:
 		return `A new reward round has started. You can now claim your rewards from the previous round.`
 	case types.RocketpoolCollateralMaxReached:
-		return `Your RPL collateral has reached your configured threshold at 150%.`
+		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.RocketpoolCollateralMinReached:
-		return `Your RPL collateral has reached your configured threshold at 10%.`
+		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.SyncCommitteeSoon:
 		extras := strings.Split(n.ExtraData, "|")
 		if len(extras) != 3 {
@@ -2960,7 +2960,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		RPLStakeMax BigFloat `db:"max_rpl_stake"`
 	}
 
-	events := make([]dbResult, 0)
+	stakeInfoPerNode := make([]dbResult, 0)
 	batchSize := 5000
 	dataLen := len(pubkeys)
 	for i := 0; i < dataLen; i += batchSize {
@@ -2976,39 +2976,65 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 		var partial []dbResult
 
+		// filter nodes with no minipools (anymore) because they have min/max stake of 0
+		// TODO properly remove notification entry from db
 		err = db.WriterDb.Select(&partial, `
-		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake                    
-		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
+		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake
+		FROM rocketpool_nodes
+		WHERE address = ANY($1) AND min_rpl_stake != 0 AND max_rpl_stake != 0`, pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
-		events = append(events, partial...)
+		stakeInfoPerNode = append(stakeInfoPerNode, partial...)
 	}
 
-	for _, r := range events {
+	// factor in network-wide min/max collat ratio. Since LEB8 they are not directly correlated anymore (ratio of bonded to borrowed ETH), so we need either min or max
+	// however this is dynamic and might be changed in the future; Should extend rocketpool_network_stats to include min/max collateral values!
+	minRPLCollatRatio := bigFloat(0.1) // bigFloat it to save some memory re-allocations
+	maxRPLCollatRatio := bigFloat(1.5)
+	// temporary helper (modifying values in dbResult directly would be bad style)
+	nodeCollatRatioHelper := bigFloat(0)
+
+	for _, r := range stakeInfoPerNode {
 		subs, ok := subMap[hex.EncodeToString(r.Address)]
 		if !ok {
 			continue
 		}
-		sub := subs[0]
+		sub := subs[0] // RPL min/max collateral notifications are always unique per user
 		var alertConditionMet bool = false
 
-		if sub.EventThreshold >= 0 {
-			var threshold float64 = sub.EventThreshold
-			if threshold == 0 {
-				threshold = 1.0
-			}
-			if eventName == types.RocketpoolCollateralMaxReached {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
+		// according to app logic, sub.EventThreshold can be +- [0.9 to 1.5] for CollateralMax after manually changed by the user
+		// this corresponds to a collateral range of 140% to 200% currently shown in the app UI; so +- 0.5 allows us to compare to the actual collat ratio
+		// for CollateralMin it  can be 1.0 to 4.0 if manually changed, to represent 10% to 40%
+		// 0 in both cases if not modified
+		var threshold float64 = sub.EventThreshold
+		if threshold == 0 {
+			threshold = 1.0 // default case
+		}
+		inverse := false
+		if eventName == types.RocketpoolCollateralMaxReached {
+			if threshold < 0 {
+				threshold *= -1
 			} else {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
+				inverse = true
 			}
+			threshold += 0.5
+
+			// 100% (of bonded eth)
+			nodeCollatRatioHelper.Quo(r.RPLStakeMax.bigFloat(), maxRPLCollatRatio)
 		} else {
-			if eventName == types.RocketpoolCollateralMaxReached {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
-			} else {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= -1
-			}
+			threshold /= 10.0
+
+			// 100% (of borrowed eth)
+			nodeCollatRatioHelper.Quo(r.RPLStakeMin.bigFloat(), minRPLCollatRatio)
+		}
+
+		nodeCollatRatio, _ := nodeCollatRatioHelper.Quo(r.RPLStake.bigFloat(), nodeCollatRatioHelper).Float64()
+
+		alertConditionMet = nodeCollatRatio <= threshold
+		if inverse {
+			// handle special case for max collateral: notify if *above* selected amount
+			alertConditionMet = !alertConditionMet
 		}
 
 		if !alertConditionMet {
@@ -3017,7 +3043,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 		if sub.LastEpoch != nil {
 			lastSentEpoch := *sub.LastEpoch
-			if lastSentEpoch >= epoch-80 || epoch < sub.CreatedEpoch {
+			if lastSentEpoch >= epoch-225 || epoch < sub.CreatedEpoch {
 				continue
 			}
 		}
@@ -3028,6 +3054,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			Epoch:           epoch,
 			EventFilter:     sub.EventFilter,
 			EventName:       eventName,
+			ExtraData:       strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", threshold*100), "0"), "."),
 			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
