@@ -621,8 +621,8 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	settings := types.DataTableSaveState{}
 	err = json.NewDecoder(r.Body).Decode(&settings)
 	if err != nil {
-		utils.LogError(err, errMsgPrefix+", could not parse body", 0, errFields)
-		w.WriteHeader(http.StatusInternalServerError)
+		logger.Warnf(errMsgPrefix+", could not parse body for tableKey %v: %v", tableKey, err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 

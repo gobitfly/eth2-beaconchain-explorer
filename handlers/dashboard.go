@@ -648,14 +648,14 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 

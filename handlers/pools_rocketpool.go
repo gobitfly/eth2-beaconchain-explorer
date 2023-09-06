@@ -32,20 +32,20 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -54,6 +54,13 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
 		search = search[:128]
+	}
+
+	// Search for invalid postgres strings
+	if utils.HasProblematicUtfCharacters(search) || strings.HasSuffix(search, "\\") {
+		logger.Warnf("error converting search %v to valid UTF-8): %v", search, err)
+		http.Error(w, "Error: Invalid parameter search.", http.StatusBadRequest)
+		return
 	}
 
 	orderColumn := q.Get("order[0][column]")
@@ -188,20 +195,20 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -210,6 +217,13 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
 		search = search[:128]
+	}
+
+	// Search for invalid postgres strings
+	if utils.HasProblematicUtfCharacters(search) || strings.HasSuffix(search, "\\") {
+		logger.Warnf("error converting search %v to valid UTF-8): %v", search, err)
+		http.Error(w, "Error: Invalid parameter search.", http.StatusBadRequest)
+		return
 	}
 
 	orderColumn := q.Get("order[0][column]")
@@ -332,20 +346,20 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -354,6 +368,13 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
 		search = search[:128]
+	}
+
+	// Search for invalid postgres strings
+	if utils.HasProblematicUtfCharacters(search) || strings.HasSuffix(search, "\\") {
+		logger.Warnf("error converting search %v to valid UTF-8): %v", search, err)
+		http.Error(w, "Error: Invalid parameter search.", http.StatusBadRequest)
+		return
 	}
 
 	orderColumn := q.Get("order[0][column]")
@@ -545,20 +566,20 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -567,6 +588,13 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
 		search = search[:128]
+	}
+
+	// Search for invalid postgres strings
+	if utils.HasProblematicUtfCharacters(search) || strings.HasSuffix(search, "\\") {
+		logger.Warnf("error converting search %v to valid UTF-8): %v", search, err)
+		http.Error(w, "Error: Invalid parameter search.", http.StatusBadRequest)
+		return
 	}
 
 	orderColumn := q.Get("order[0][column]")

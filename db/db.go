@@ -1662,7 +1662,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 				b.Signature,
 				b.RandaoReveal,
 				b.Graffiti,
-				utils.GraffitiToSring(b.Graffiti),
+				utils.GraffitiToString(b.Graffiti),
 				b.Eth1Data.DepositRoot,
 				b.Eth1Data.DepositCount,
 				b.Eth1Data.BlockHash,

@@ -249,9 +249,9 @@ func IncludeHTML(path string) template.HTML {
 	return template.HTML(string(b))
 }
 
-func GraffitiToSring(graffiti []byte) string {
+func GraffitiToString(graffiti []byte) string {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
-	s = strings.Replace(s, "\u0000", "", -1) // rempove 0x00 bytes as it is not supported in postgres
+	s = strings.Replace(s, "\u0000", "", -1) // remove 0x00 bytes as it is not supported in postgres
 
 	if !utf8.ValidString(s) {
 		return "INVALID_UTF8_STRING"
@@ -263,6 +263,22 @@ func GraffitiToSring(graffiti []byte) string {
 // FormatGraffitiString formats (and escapes) the graffiti
 func FormatGraffitiString(graffiti string) string {
 	return strings.Map(fixUtf, template.HTMLEscapeString(graffiti))
+}
+
+func HasProblematicUtfCharacters(s string) bool {
+	// Check for null character ('\x00')
+	if utf8.ValidString(s) && utf8.Valid([]byte(s)) {
+		// Check for control characters ('\x01' to '\x1F' and '\x7F')
+		for _, r := range s {
+			if r <= 0x1F || r == 0x7F {
+				return true
+			}
+		}
+	} else {
+		return true // Invalid UTF-8 sequence
+	}
+
+	return false
 }
 
 func fixUtf(r rune) rune {

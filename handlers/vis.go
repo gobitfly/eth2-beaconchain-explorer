@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,6 +41,13 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sinceSlot := utils.TimeToSlot(uint64(since - 120))
+
+	// slot in postgres is limited to int
+	if sinceSlot > math.MaxInt32 {
+		logger.Warnf("error retrieving block tree data, slot too big: %v", err)
+		http.Error(w, "Error: Invalid parameter since.", http.StatusBadRequest)
+		return
+	}
 
 	var chartData []*types.VisChartData
 

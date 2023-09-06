@@ -42,7 +42,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	txHash, err := hex.DecodeString(strings.ReplaceAll(txHashString, "0x", ""))
 	if err != nil {
-		logger.Errorf("error parsing tx hash %v: %v", txHashString, err)
+		logger.Warnf("error parsing tx hash %v: %v", txHashString, err)
 		data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 		txTemplate = txNotFoundTemplate
 	} else {
