@@ -467,7 +467,7 @@ func main() {
 			router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 			router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
 			router.HandleFunc("/validator/{index}/effectiveness", handlers.ValidatorAttestationInclusionEffectiveness).Methods("GET")
-			router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")
+			router.HandleFunc("/validator/save", handlers.ValidatorSave).Methods("POST")
 			router.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
 			router.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST")
 			router.HandleFunc("/validator/{index}/stats", handlers.ValidatorStatsTable).Methods("GET")

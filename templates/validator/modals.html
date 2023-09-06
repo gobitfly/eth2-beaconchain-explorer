@@ -50,7 +50,7 @@
 
 {{ define "validatorEditModal" }}
   <div class="modal fade" id="edit-validator-modal" tabindex="-1" role="dialog" aria-labelledby="edit-validator-modal-label" aria-hidden="true">
-    <form action="0x{{ printf "%x" .PublicKey }}/save" method="post">
+    <form action="save" method="post">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">

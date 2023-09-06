@@ -849,8 +849,8 @@ func ValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 
 	pubkey, err := hex.DecodeString(strings.Replace(vars["pubkey"], "0x", "", -1))
 	if err != nil {
-		logger.Errorf("error parsing validator public key %v: %v", vars["pubkey"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error parsing validator public key %v: %v", vars["pubkey"], err)
+		http.Error(w, "Error: Invalid parameter public key.", http.StatusBadRequest)
 		return
 	}
 
@@ -1745,18 +1745,16 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "validators", "/validators", "", templateFiles)
 
 	// Request came with a hash
-	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
-		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
+	if utils.IsHash(vars["index"]) {
+		pubKey, err := hex.DecodeString(strings.TrimPrefix(vars["index"], "0x"))
 		if err != nil {
 			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-
 			validatorNotFound(data, w, r, vars, "/stats")
-
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
-			logger.Errorf("error parsing validator pubkey: %v", err)
+			logger.Warnf("error parsing validator pubkey: %v", err)
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
@@ -1839,20 +1837,20 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data draw-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start start-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length length-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {

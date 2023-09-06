@@ -2186,8 +2186,8 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 
 	hashes, ok := q["hash"]
 	if !ok {
-		logger.Errorf("no query params given")
-		http.Error(w, "invalid request", 400)
+		logger.Warn("error no query params given")
+		http.Error(w, "Error: Missing parameter hash.", http.StatusBadRequest)
 		return
 	}
 
@@ -2195,7 +2195,7 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		//  return fmt.Errorf("error beginning transaction")
 		logger.WithError(err).Errorf("error committing transacton")
-		http.Error(w, "error processing request", 500)
+		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
@@ -2204,8 +2204,8 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	for _, hash := range hashes {
 		hash = strings.Replace(hash, "0x", "", -1)
 		if !utils.HashLikeRegex.MatchString(hash) {
-			logger.Errorf("error validating unsubscribe digest hashes")
-			http.Error(w, "error processing request", 500)
+			logger.Warn("error validating unsubscribe digest hashes")
+			http.Error(w, "Error: Invalid parameter hash entry.", http.StatusBadRequest)
 		}
 		b, _ := hex.DecodeString(hash)
 		bHashes = append(bHashes, b)
@@ -2214,14 +2214,14 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	_, err = tx.ExecContext(ctx, `DELETE from users_subscriptions where unsubscribe_hash = ANY($1)`, pq.ByteaArray(bHashes))
 	if err != nil {
 		logger.Errorf("error deleting from users_subscriptions %v", err)
-		http.Error(w, "error processing request", 500)
+		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		logger.WithError(err).Errorf("error committing transacton")
-		http.Error(w, "error processing request", 500)
+		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
 

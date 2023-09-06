@@ -450,8 +450,8 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	if len(param) != 0 {
 		days, err := strconv.ParseUint(param, 10, 32)
 		if err != nil {
-			logger.Error(err)
-			http.Error(w, "Error: invalid days parameter", http.StatusBadRequest)
+			logger.Warnf("error parsing days: %v", err)
+			http.Error(w, "Error: invalid parameter days", http.StatusBadRequest)
 			return
 		}
 		lastStatsDay := services.LatestExportedStatisticDay()
