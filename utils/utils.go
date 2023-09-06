@@ -843,49 +843,6 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 	return getABIFromEtherscan(address)
 }
 
-// func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
-// 	httpClient := http.Client{
-// 		Timeout: time.Second * 5,
-// 	}
-
-// 	resp, err := httpClient.Get(fmt.Sprintf("https://sourcify.dev/server/repository/contracts/full_match/%d/0x%x/metadata.json", 1, address))
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if resp.StatusCode == 200 {
-// 		body, err := io.ReadAll(resp.Body)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		data := &types.SourcifyContractMetadata{}
-// 		err = json.Unmarshal(body, data)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		abiString, err := json.Marshal(data.Output.Abi)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		contractAbi, err := abi.JSON(bytes.NewReader(abiString))
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		meta := &types.ContractMetadata{}
-// 		meta.ABIJson = abiString
-// 		meta.ABI = &contractAbi
-// 		meta.Name = ""
-
-// 		return meta, nil
-// 	} else {
-// 		return nil, fmt.Errorf("sourcify contract code not found")
-// 	}
-// }
-
 func GetEtherscanAPIBaseUrl(provideDefault bool) string {
 	const mainnetBaseUrl = "api.etherscan.io"
 	const goerliBaseUrl = "api-goerli.etherscan.io"
