@@ -400,6 +400,25 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				// Block is in the past, set status to missed
 				data.Blocks[slot]["0x0"].Status = 2
 				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x1}
+
+				logger.Infof("backfilling data for missed slot %v", slot)
+				// Fill sync & attestation assignments
+				data.Blocks[slot]["0x0"].EmptySlotSyncAssignments = data.ValidatorAssignmentes.SyncAssignments
+				data.Blocks[slot]["0x0"].EmptySlotAttestationAssignments = make([]uint64, 0, len(data.Validators)/int(utils.Config.Chain.Config.SlotsPerEpoch))
+				for key, validator := range data.ValidatorAssignmentes.AttestorAssignments {
+					keySplit := strings.Split(key, "-")
+					if len(keySplit) != 3 {
+						return nil, fmt.Errorf("error parsing slot from validator attestation assignment key %s: invalid format", key)
+					}
+					attestedSlot, err := strconv.ParseUint(keySplit[0], 10, 64)
+					if err != nil {
+						return nil, fmt.Errorf("error parsing slot from validator attestation assignment key %s: %w", key, err)
+					}
+
+					if slot == attestedSlot {
+						data.Blocks[slot]["0x0"].EmptySlotAttestationAssignments = append(data.Blocks[slot]["0x0"].EmptySlotAttestationAssignments, validator)
+					}
+				}
 			}
 		}
 	}

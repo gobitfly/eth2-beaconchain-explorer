@@ -97,17 +97,17 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		validatorsU64 = append(validatorsU64, validator)
 	}
 
-	start := time.Now()
-	firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-	lastSlot := lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch + utils.Config.Chain.Config.SlotsPerEpoch - 1
-	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v, slot %v to %v) to bigtable", p, firstEpoch, lastEpoch, firstSlot, lastSlot)
+	// start := time.Now()
+	//
+	// firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+	// lastSlot := lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch + utils.Config.Chain.Config.SlotsPerEpoch - 1
+	// logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v, slot %v to %v) to bigtable", p, firstEpoch, lastEpoch, firstSlot, lastSlot)
 
-	err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
-	if err != nil {
-		return fmt.Errorf("error saving sync committee assignments: %v", err)
-	}
-	logger.Infof("exported sync committee assignments for period %v to bigtable in %v", p, time.Since(start))
-
+	// err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
+	// if err != nil {
+	// 	return fmt.Errorf("error saving sync committee assignments: %v", err)
+	// }
+	// logger.Infof("exported sync committee assignments for period %v to bigtable in %v", p, time.Since(start))
 	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err

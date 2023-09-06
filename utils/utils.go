@@ -1408,7 +1408,7 @@ func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesSta
 //   - `validators` : the validators to add the stats for
 //   - `syncDutiesHistory` : the sync duties history of all queried validators
 //   - `stats` : the stats object to add the stats to, if nil a new stats object is created
-func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
+func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64]map[uint64]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
 	if stats == nil {
 		stats = &types.SyncCommitteesStats{}
 	}

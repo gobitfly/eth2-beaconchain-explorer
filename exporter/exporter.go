@@ -553,7 +553,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	// export epoch data to bigtable
 	g := new(errgroup.Group)
-	g.SetLimit(7)
+	g.SetLimit(5)
 	g.Go(func() error {
 		err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 		if err != nil {
@@ -561,13 +561,13 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		}
 		return nil
 	})
-	g.Go(func() error {
-		err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
-		if err != nil {
-			return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
-		}
-		return nil
-	})
+	// g.Go(func() error {
+	// 	err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
+	// 	if err != nil {
+	// 		return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
+	// 	}
+	// 	return nil
+	// })
 	g.Go(func() error {
 		err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
 		if err != nil {

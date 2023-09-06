@@ -103,26 +103,28 @@ type SyncAggregate struct {
 
 // Block is a struct to hold block data
 type Block struct {
-	Status                     uint64
-	Proposer                   uint64
-	BlockRoot                  []byte
-	Slot                       uint64
-	ParentRoot                 []byte
-	StateRoot                  []byte
-	Signature                  []byte
-	RandaoReveal               []byte
-	Graffiti                   []byte
-	Eth1Data                   *Eth1Data
-	BodyRoot                   []byte
-	ProposerSlashings          []*ProposerSlashing
-	AttesterSlashings          []*AttesterSlashing
-	Attestations               []*Attestation
-	Deposits                   []*Deposit
-	VoluntaryExits             []*VoluntaryExit
-	SyncAggregate              *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
-	ExecutionPayload           *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
-	Canonical                  bool
-	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
+	Status                          uint64
+	Proposer                        uint64
+	BlockRoot                       []byte
+	Slot                            uint64
+	ParentRoot                      []byte
+	StateRoot                       []byte
+	Signature                       []byte
+	RandaoReveal                    []byte
+	Graffiti                        []byte
+	Eth1Data                        *Eth1Data
+	BodyRoot                        []byte
+	ProposerSlashings               []*ProposerSlashing
+	AttesterSlashings               []*AttesterSlashing
+	Attestations                    []*Attestation
+	Deposits                        []*Deposit
+	VoluntaryExits                  []*VoluntaryExit
+	SyncAggregate                   *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
+	ExecutionPayload                *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
+	Canonical                       bool
+	SignedBLSToExecutionChange      []*SignedBLSToExecutionChange
+	EmptySlotAttestationAssignments []uint64
+	EmptySlotSyncAssignments        []uint64
 }
 
 type SignedBLSToExecutionChange struct {
