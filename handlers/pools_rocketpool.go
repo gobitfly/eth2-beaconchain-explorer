@@ -32,20 +32,20 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool minipools data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool minipools data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool minipools data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -188,20 +188,20 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool nodes data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool nodes data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool nodes data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -332,20 +332,20 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool dao proposals data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool dao proposals data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool dao proposals data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -545,20 +545,20 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool dao members data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool dao members data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("rocketpool dao members data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {

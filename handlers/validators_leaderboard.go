@@ -38,38 +38,23 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	if len(search) > 128 {
 		search = search[:128]
 	}
-	// var searchIndex *uint64
-	// index, err := strconv.ParseUint(search, 10, 64)
-	// if err == nil {
-	// searchIndex = &index
-	// }
-
-	// var searchPubkeyExact *string
-	// var searchPubkeyLike *string
-	// if searchPubkeyExactRE.MatchString(search) {
-	// 	pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
-	// 	searchPubkeyExact = &pubkey
-	// } else if searchPubkeyLikeRE.MatchString(search) {
-	// 	pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
-	// 	searchPubkeyLike = &pubkey
-	// }
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validators leaderboard data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validators leaderboard data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validators leaderboard data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {

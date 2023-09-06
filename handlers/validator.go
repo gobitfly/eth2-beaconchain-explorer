@@ -929,20 +929,20 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator proposed blocks data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator proposed blocks data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator proposed blocks data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -1041,8 +1041,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
 	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("index", index).Warn("validator attestations data: error converting index parameter from string to int")
+		http.Error(w, "Error: Invalid index parameter", http.StatusBadRequest)
 		return
 	}
 
@@ -1050,14 +1050,14 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator attestations data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseInt(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator attestations data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 
@@ -1147,14 +1147,14 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator withdrawals data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator withdrawals data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 
@@ -1234,8 +1234,8 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator slashings data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 
@@ -1506,15 +1506,15 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator history data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator history data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 
@@ -1838,20 +1838,20 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data draw-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator sync data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start start-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator sync data: error converting start parameter from string to int")
+		http.Error(w, "Error: Invalid start parameter", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length length-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("validator sync data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {

@@ -907,25 +907,10 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("user notifications data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
-	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
-	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
-	// if length > 100 {
-	// 	length = 100
-	// }
 
 	user := getUser(r)
 
@@ -1020,20 +1005,14 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("user subscriptions data: error converting draw parameter from string to int")
+		http.Error(w, "Error: Invalid draw parameter", http.StatusBadRequest)
 		return
 	}
-	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.WithError(err).WithField("route", r.URL.String()).Warn("user subscriptions data: error converting length parameter from string to int")
+		http.Error(w, "Error: Invalid length parameter", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
