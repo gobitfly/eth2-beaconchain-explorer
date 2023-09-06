@@ -66,3 +66,11 @@ Exiting individual validators can be done using the provided `exit_validator.sh`
 ```
 bash exit_validators.sh -i validator_index -m "memonic" -b "http://bn_api_host:bn_api_port"
 ```
+
+# Enabling withdrawals
+The script `add_withdrawal_address.sh` allows you to create & submit a bls to execution layer address change message in order to enable withdrawals for specific validators.. Requires [/github.com/protolambda/eth2-val-tools](eth2-val-tools) to be available on the path.
+```
+go get github.com/protolambda/eth2-val-tools@master
+go install github.com/protolambda/eth2-val-tools@master
+bash add_withdrawal_address.sh -a "EL address (0x1234...)" -i validator_index -m "memonic" -b "http://bn_api_host:bn_api_port"
+```

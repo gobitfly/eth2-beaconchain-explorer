@@ -11,7 +11,7 @@
         "el_extra_params": ["--http.api='admin,eth,net,debug,txpool' --syncmode full --gcmode archive"],
         "validator_extra_params": [],
         "builder_network_params": null,
-        "count": 1
+        "count": 3
       }
     ],
     "network_params": {
@@ -21,7 +21,7 @@
       "deposit_contract_address": "0x4242424242424242424242424242424242424242",
       "seconds_per_slot": 4,
       "genesis_delay": 10,
-      "capella_fork_epoch": 5,
+      "capella_fork_epoch": 3,
       "deneb_fork_epoch": 500
     },
     "global_client_log_level": "info",

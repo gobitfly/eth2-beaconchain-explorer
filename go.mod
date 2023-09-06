@@ -42,7 +42,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pressly/goose/v3 v3.10.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/protolambda/zrnt v0.12.4
+	github.com/protolambda/zrnt v0.30.0
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20210809151128-385d8c5e3fb7
 	github.com/prysmaticlabs/go-ssz v0.0.0-20210121151755-f6208871c388
 	github.com/prysmaticlabs/prysm/v3 v3.2.0
@@ -79,7 +79,13 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.1 // indirect
 	cloud.google.com/go/iam v0.7.0 // indirect
 	cloud.google.com/go/longrunning v0.3.0 // indirect
+	github.com/FactomProject/basen v0.0.0-20150613233007-fe3947df716e // indirect
+	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec // indirect
+	github.com/FactomProject/go-bip32 v0.3.5 // indirect
+	github.com/FactomProject/go-bip39 v0.3.5 // indirect
+	github.com/FactomProject/go-bip44 v0.0.0-20190306062959-b541a96d8da9 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
+	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20210716071054-a231a1a7f1cc // indirect
 	github.com/carlmjohnson/requests v0.23.4 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.1 // indirect
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4 // indirect
@@ -92,8 +98,15 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v0.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ipfs/go-cid v0.3.2 // indirect
+	github.com/karalabe/usb v0.0.2 // indirect
+	github.com/kilic/bls12-381 v0.1.0 // indirect
+	github.com/magiconair/properties v1.8.5 // indirect
+	github.com/miekg/dns v1.1.50 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
@@ -101,17 +114,35 @@ require (
 	github.com/multiformats/go-multihash v0.2.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
+	github.com/pborman/uuid v1.2.1 // indirect
+	github.com/pelletier/go-toml v1.9.3 // indirect
+	github.com/protolambda/bls12-381-util v0.0.0-20210720105258-a772f2aac13e // indirect
+	github.com/protolambda/eth2-val-tools v0.1.2-0.20230223182759-4bf01453537a // indirect
+	github.com/protolambda/go-keystorev4 v0.0.0-20211007151826-f20444f6d564 // indirect
 	github.com/protolambda/zssz v0.1.5 // indirect
+	github.com/protolambda/ztyp v0.2.2 // indirect
 	github.com/prysmaticlabs/fastssz v0.0.0-20221107182844-78142813af44 // indirect
 	github.com/prysmaticlabs/gohashtree v0.0.2-alpha // indirect
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
+	github.com/spf13/afero v1.6.0 // indirect
+	github.com/spf13/cast v1.4.0 // indirect
+	github.com/spf13/cobra v1.2.1 // indirect
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/viper v1.8.1 // indirect
+	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/urfave/cli v1.22.12 // indirect
+	github.com/wealdtech/ethereal v0.0.0-20211110093529-ed2beb2b4a38 // indirect
 	github.com/wealdtech/go-bytesutil v1.2.1 // indirect
+	github.com/wealdtech/go-erc1820 v1.2.3 // indirect
 	github.com/wealdtech/go-merkletree v1.0.1-0.20190605192610-2bb163c2ea2a // indirect
 	github.com/wealdtech/go-multicodec v1.4.0 // indirect
+	github.com/wealdtech/go-string2eth v1.1.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	golang.org/x/mod v0.9.0 // indirect
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
 	google.golang.org/grpc v1.52.3 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
