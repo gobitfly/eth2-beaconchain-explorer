@@ -614,8 +614,12 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 				tx.Payload = decTx.Data()
 				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
 				tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
+
+				tx.MaxFeePerBlobGas = decTx.BlobGasFeeCap().Uint64()
+				for _, h := range decTx.BlobHashes() {
+					tx.BlobVersionedHashes = append(tx.BlobVersionedHashes, h.Bytes())
+				}
 			}
-			txs = append(txs, tx)
 		}
 		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
 		for _, w := range payload.Withdrawals {
@@ -643,6 +647,8 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			BlockHash:     payload.BlockHash,
 			Transactions:  txs,
 			Withdrawals:   withdrawals,
+			BlobGasUsed:   uint64(payload.BlobGasUsed),
+			ExcessBlobGas: uint64(payload.ExcessBlobGas),
 		}
 	}
 
@@ -1169,6 +1175,9 @@ type ExecutionPayload struct {
 	Transactions  []bytesHexStr `json:"transactions"`
 	// present only after capella
 	Withdrawals []WithdrawalPayload `json:"withdrawals"`
+	// present only after deneb
+	BlobGasUsed   uint64Str `json:"blob_gas_used"`
+	ExcessBlobGas uint64Str `json:"excess_blob_gas"`
 }
 
 type WithdrawalPayload struct {
@@ -1211,14 +1220,19 @@ type AnySignedBlock struct {
 
 			// present only after capella
 			SignedBLSToExecutionChange []*SignedBLSToExecutionChange `json:"bls_to_execution_changes"`
+
+			// present only after deneb
+			BlobKZGCommitments []bytesHexStr `json:"blob_kzg_commitments"`
 		} `json:"body"`
 	} `json:"message"`
 	Signature bytesHexStr `json:"signature"`
 }
 
 type StandardV2BlockResponse struct {
-	Version string         `json:"version"`
-	Data    AnySignedBlock `json:"data"`
+	Version             string         `json:"version"`
+	ExecutionOptimistic bool           `json:"execution_optimistic"`
+	Finalized           bool           `json:"finalized"`
+	Data                AnySignedBlock `json:"data"`
 }
 
 type StandardV1BlockRootResponse struct {

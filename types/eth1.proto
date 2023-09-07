@@ -70,9 +70,12 @@ message Eth1Transaction {
     // Internal transactions
     repeated Eth1InternalTransaction itx = 24;
 
-    // EIP 4844
+    // EIP 4844 transaction
     bytes max_fee_per_blob_gas = 25;
     repeated bytes blob_versioned_hashes = 26;
+    // EIP 4844 receipt
+    bytes blob_gas_price = 27;
+    uint64 blob_gas_used = 28;
 }
 
 message AccessList {

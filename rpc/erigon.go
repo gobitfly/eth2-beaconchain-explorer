@@ -108,6 +108,14 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 		Transactions: []*types.Eth1Transaction{},
 		Withdrawals:  []*types.Eth1Withdrawal{},
 	}
+	blobGasUsed := block.BlobGasUsed()
+	if blobGasUsed != nil {
+		c.BlobGasUsed = *blobGasUsed
+	}
+	excessBlobGas := block.ExcessBlobGas()
+	if excessBlobGas != nil {
+		c.ExcessBlobGas = *excessBlobGas
+	}
 
 	if block.BaseFee() != nil {
 		c.BaseFee = block.BaseFee().Bytes()
@@ -178,6 +186,13 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 			AccessList:           []*types.AccessList{},
 			Hash:                 tx.Hash().Bytes(),
 			Itx:                  []*types.Eth1InternalTransaction{},
+		}
+
+		if tx.BlobGasFeeCap() != nil {
+			pbTx.MaxFeePerBlobGas = tx.BlobGasFeeCap().Bytes()
+		}
+		for _, h := range tx.BlobHashes() {
+			pbTx.BlobVersionedHashes = append(pbTx.BlobVersionedHashes, h.Bytes())
 		}
 
 		if tx.To() != nil {
@@ -325,6 +340,11 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 		c.Transactions[i].GasUsed = r.GasUsed
 		c.Transactions[i].LogsBloom = r.Bloom[:]
 		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
+
+		if r.BlobGasPrice != nil {
+			c.Transactions[i].BlobGasPrice = r.BlobGasPrice.Bytes()
+		}
+		c.Transactions[i].BlobGasUsed = r.BlobGasUsed
 
 		for _, l := range r.Logs {
 			pbLog := &types.Eth1Log{

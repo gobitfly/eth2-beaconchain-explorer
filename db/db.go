@@ -1423,22 +1423,24 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	}
 
 	stmtBlock, err := tx.Prepare(`
-		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parent_hash, exec_fee_recipient, exec_state_root, exec_receipts_root, exec_logs_bloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_block_hash, exec_transactions_count)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parent_hash, exec_fee_recipient, exec_state_root, exec_receipts_root, exec_logs_bloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_block_hash, exec_transactions_count, exec_blob_gas_used, exec_excess_blob_gas, exec_blob_transactions_count)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40)
 		ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtBlock.Close()
 
-	stmtTransaction, err := tx.Prepare(`
-		INSERT INTO blocks_transactions (block_slot, block_index, block_root, raw, txhash, nonce, gas_price, gas_limit, sender, recipient, amount, payload, max_priority_fee_per_gas, max_fee_per_gas)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-		ON CONFLICT (block_slot, block_index) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtTransaction.Close()
+	/*
+		stmtTransaction, err := tx.Prepare(`
+			INSERT INTO blocks_transactions (block_slot, block_index, block_root, raw, txhash, nonce, gas_price, gas_limit, sender, recipient, amount, payload, max_priority_fee_per_gas, max_fee_per_gas)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			ON CONFLICT (block_slot, block_index) DO NOTHING`)
+		if err != nil {
+			return err
+		}
+		defer stmtTransaction.Close()
+	*/
 
 	stmtWithdrawals, err := tx.Prepare(`
 	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, address_text, amount)
@@ -1577,6 +1579,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			blockHash := []byte{}
 			txCount := 0
 			withdrawalCount := 0
+			blobGasUsed := uint64(0)
+			excessBlobGas := uint64(0)
+			blobTxCount := 0
 			if b.ExecutionPayload != nil {
 				parentHash = b.ExecutionPayload.ParentHash
 				feeRecipient = b.ExecutionPayload.FeeRecipient
@@ -1593,6 +1598,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 				blockHash = b.ExecutionPayload.BlockHash
 				txCount = len(b.ExecutionPayload.Transactions)
 				withdrawalCount = len(b.ExecutionPayload.Withdrawals)
+				blobGasUsed = b.ExecutionPayload.BlobGasUsed
+				excessBlobGas = b.ExecutionPayload.ExcessBlobGas
+				blobTxCount = len(b.BlobKZGCommitments)
 			}
 			_, err = stmtBlock.Exec(
 				b.Slot/utils.Config.Chain.ClConfig.SlotsPerEpoch,
@@ -1632,6 +1640,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 				baseFeePerGas,
 				blockHash,
 				txCount,
+				blobGasUsed,
+				excessBlobGas,
+				blobTxCount,
 			)
 			if err != nil {
 				return fmt.Errorf("error executing stmtBlocks for block %v: %w", b.Slot, err)
@@ -1642,13 +1653,15 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			logger.Tracef("done, took %v", time.Since(n))
 			logger.Tracef("writing transactions and withdrawal data")
 			if payload := b.ExecutionPayload; payload != nil {
-				for i, tx := range payload.Transactions {
-					_, err := stmtTransaction.Exec(b.Slot, i, b.BlockRoot,
-						tx.Raw, tx.TxHash, tx.AccountNonce, tx.Price, tx.GasLimit, tx.Sender, tx.Recipient, tx.Amount, tx.Payload, tx.MaxPriorityFeePerGas, tx.MaxFeePerGas)
-					if err != nil {
-						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
+				/*
+					for i, tx := range payload.Transactions {
+						_, err := stmtTransaction.Exec(b.Slot, i, b.BlockRoot,
+							tx.Raw, tx.TxHash, tx.AccountNonce, tx.Price, tx.GasLimit, tx.Sender, tx.Recipient, tx.Amount, tx.Payload, tx.MaxPriorityFeePerGas, tx.MaxFeePerGas)
+						if err != nil {
+							return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
+						}
 					}
-				}
+				*/
 				for _, w := range payload.Withdrawals {
 					_, err := stmtWithdrawals.Exec(b.Slot, b.BlockRoot, w.Index, w.ValidatorIndex, w.Address, fmt.Sprintf("%x", w.Address), w.Amount)
 					if err != nil {

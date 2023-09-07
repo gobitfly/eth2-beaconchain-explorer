@@ -232,13 +232,51 @@ func main() {
 }
 
 func DebugBlocks() error {
+
+	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	if err != nil {
+		return err
+	}
+
 	for i := opts.StartBlock; i <= opts.EndBlock; i++ {
 		b, err := db.BigtableClient.GetBlockFromBlocksTable(i)
 		if err != nil {
 			return err
 		}
 		// logrus.WithFields(logrus.Fields{"block": i, "data": fmt.Sprintf("%+v", b)}).Infof("block from bt")
-		logrus.WithFields(logrus.Fields{"block": i, "ExcessBlobGas": b.ExcessBlobGas}).Infof("block from bt")
+
+		cb, _, err := client.GetBlock(int64(i))
+		if err != nil {
+			return err
+		}
+
+		logrus.WithFields(logrus.Fields{"block": i, "bt.hash": fmt.Sprintf("%#x", b.Hash), "bt.BlobGasUsed": b.BlobGasUsed, "bt.ExcessBlobGas": b.ExcessBlobGas, "bt.txs": len(b.Transactions), "c.BlobGasUsed": cb.BlobGasUsed, "c.hash": fmt.Sprintf("%#x", cb.Hash), "c.ExcessBlobGas": cb.ExcessBlobGas, "c.txs": len(cb.Transactions)}).Infof("debug block")
+
+		for i := range b.Transactions {
+			btx := b.Transactions[i]
+			ctx := cb.Transactions[i]
+			btxH := []string{}
+			ctxH := []string{}
+			for _, h := range btx.BlobVersionedHashes {
+				btxH = append(btxH, fmt.Sprintf("%#x", h))
+			}
+			for _, h := range ctx.BlobVersionedHashes {
+				ctxH = append(ctxH, fmt.Sprintf("%#x", h))
+			}
+
+			logrus.WithFields(logrus.Fields{
+				"b.hash":                fmt.Sprintf("%#x", btx.Hash),
+				"c.hash":                fmt.Sprintf("%#x", ctx.Hash),
+				"b.BlobVersionedHashes": fmt.Sprintf("%+v", btxH),
+				"c.BlobVersionedHashes": fmt.Sprintf("%+v", ctxH),
+				"b.maxFeePerBlobGas":    btx.MaxFeePerBlobGas,
+				"c.maxFeePerBlobGas":    ctx.MaxFeePerBlobGas,
+				"b.BlobGasPrice":        btx.BlobGasPrice,
+				"c.BlobGasPrice":        ctx.BlobGasPrice,
+				"b.BlobGasUsed":         btx.BlobGasUsed,
+				"c.BlobGasUsed":         ctx.BlobGasUsed,
+			}).Infof("debug tx")
+		}
 	}
 	return nil
 }
