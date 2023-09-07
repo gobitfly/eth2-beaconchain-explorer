@@ -386,6 +386,20 @@ $(document).ready(function () {
   })
   bhValidatorsByAddress.remote.transport._get = debounce(bhValidatorsByAddress.remote.transport, bhValidatorsByAddress.remote.transport._get)
 
+  var bhPubkey = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.index
+    },
+    remote: {
+      url: "/search/validators_by_pubkey/%QUERY",
+      wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
+    },
+  })
+  bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)
+
   // before adding datasets make sure requestNum is set to the correct value
   $(".typeahead").typeahead(
     {
@@ -403,6 +417,18 @@ $(document).ready(function () {
         header: '<h3 class="h5">Validators</h3>',
         suggestion: function (data) {
           return `<div class="text-monospace text-truncate">${data.index}: ${data.pubkey}</div>`
+        },
+      },
+    },
+    {
+      limit: 5,
+      name: "pubkeys",
+      source: bhPubkey,
+      display: "pubkey",
+      templates: {
+        header: '<h3 class="h5">Validators by Public Key</h3>',
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate high-contrast">${data.pubkey}</div>`
         },
       },
     },
