@@ -1110,6 +1110,10 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 	return timeToWithdrawal
 }
 
+func SlotsPerDay() uint64 {
+	return EpochsPerDay() * Config.Chain.Config.SlotsPerEpoch
+}
+
 func EpochsPerDay() uint64 {
 	day := time.Hour * 24
 	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot

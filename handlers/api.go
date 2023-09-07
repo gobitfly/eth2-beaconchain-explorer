@@ -1551,9 +1551,26 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 
 	data := make([]*ApiValidatorResponse, 0)
 
-	err = db.ReaderDb.Select(&data, `
+	tx, err := db.ReaderDb.Beginx()
+	if err != nil {
+		utils.LogError(err, "error starting db-tx for apiValidator", 0)
+		sendErrorResponse(w, r.URL.String(), "sorry something went wrong")
+		return
+	}
+	defer tx.Rollback()
+	var lastStatsSlot uint64
+	err = tx.Get(&lastStatsSlot, `select (coalesce(max(day),-1)+1)*$1 from validator_stats`, utils.SlotsPerDay())
+	if err != nil {
+		utils.LogError(err, "error getting lastStatsSlot for apiValidator", 0)
+		sendErrorResponse(w, r.URL.String(), "sorry something went wrong")
+		return
+	}
+
+	err = tx.Select(&data, `
 		SELECT
-			validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+			v.validatorindex, 
+			'0x' || encode(pubkey, 'hex') as  pubkey, 
+			withdrawableepoch,
 			'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
 			slashed,
 			activationeligibilityepoch,
@@ -1561,21 +1578,29 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			exitepoch,
 			status,
 			COALESCE(n.name, '') AS name,
-			COALESCE(w.total, 0) as total_withdrawals
+			COALESCE(w.total, 0)+COALESCE(vst.withdrawals_amount) as total_withdrawals
 		FROM validators v
 		LEFT JOIN validator_names n ON n.publickey = v.pubkey
+		LEFT JOIN validator_stats_totals vst ON vst.validatorindex = v.validatorindex
 		LEFT JOIN (
 			SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
-			WHERE validatorindex = ANY($1)
+			WHERE w.block_slot >= $2 AND validatorindex = ANY($1)
 			GROUP BY validatorindex
 		) as w ON w.index = v.validatorindex
-		WHERE validatorindex = ANY($1)
+		WHERE v.validatorindex = ANY($1)
 		ORDER BY validatorindex;
-	`, pq.Array(queryIndices))
+	`, pq.Array(queryIndices), lastStatsSlot)
 	if err != nil {
-		logger.Warnf("error retrieving validator data from db: %v", err)
+		utils.LogError(err, "error getting data for apiValidator", 0)
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		utils.LogError(err, "error commiting tx for apiValidator", 0)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
