@@ -311,7 +311,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 func verifyName(name string) error {
 	// limited by max capacity of db (caused by btrees of indexes); tests showed maximum of 2684 (added buffer)
 	if len(name) > 2048 {
-		return fmt.Errorf("name too long")
+		return fmt.Errorf("name too long: %v", name)
 	}
 	return nil
 }
