@@ -11,7 +11,7 @@
         "el_extra_params": ["--http.api='admin,eth,net,debug,txpool' --syncmode full --gcmode archive"],
         "validator_extra_params": [],
         "builder_network_params": null,
-        "count": 3
+        "count": 1
       }
     ],
     "network_params": {
