@@ -157,7 +157,7 @@ type Transaction struct {
 	MaxFeePerGas         uint64
 
 	MaxFeePerBlobGas    uint64
-	BlobVersionedHashes []byte
+	BlobVersionedHashes [][]byte
 }
 
 type ExecutionPayload struct {
