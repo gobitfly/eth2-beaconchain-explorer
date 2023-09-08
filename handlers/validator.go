@@ -374,6 +374,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
+		var err error
 		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch, lowerBoundDay)
 
 		if err != nil {
@@ -387,6 +388,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			timings.Charts = time.Since(start)
 		}()
+
+		var err error
 		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency, lowerBoundDay)
 
 		if err != nil {
@@ -575,9 +578,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				MissedAttestations uint64 `db:"missed_attestations"`
 			}{}
 			if lastStatsDay > 0 {
-				err = db.ReaderDb.Get(&attestationStats, "SELECT missed_attestations_total AS missed_attestations FROM validator_stats WHERE validatorindex = $1 AND day = $2", index, lastStatsDay)
-				if err != nil {
-					return fmt.Errorf("error retrieving validator attestationStats: %w", err)
+				err := db.ReaderDb.Get(&attestationStats, "SELECT missed_attestations_total AS missed_attestations FROM validator_stats WHERE validatorindex = $1 AND day = $2", index, lastStatsDay)
+				if err == sql.ErrNoRows {
+					logger.Warningf("no entry in validator_stats for validator index %v while lastStatsDay = %v", index, lastStatsDay)
+				} else if err != nil {
+					return fmt.Errorf("error retrieving validator attestationStats for index %v while lastStatsDay = %v: %w", index, lastStatsDay, err)
 				}
 			}
 
@@ -600,6 +605,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		var err error
 		if validatorPageData.Slashed {
 			var slashingInfo struct {
 				Slot    uint64
@@ -658,7 +664,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		allSyncPeriods := actualSyncPeriods
 
-		err = db.ReaderDb.Select(&allSyncPeriods, `
+		err := db.ReaderDb.Select(&allSyncPeriods, `
 		SELECT period as period, (period*$1) as firstepoch, ((period+1)*$1)-1 as lastepoch
 		FROM sync_committees 
 		WHERE validatorindex = $2
@@ -742,7 +748,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	g.Go(func() error {
 		// add rocketpool-data if available
 		validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
-		err = db.ReaderDb.Get(validatorPageData.Rocketpool, `
+		err := db.ReaderDb.Get(validatorPageData.Rocketpool, `
 		SELECT
 			rplm.node_address      AS node_address,
 			rplm.address           AS minipool_address,
