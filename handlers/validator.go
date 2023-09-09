@@ -1871,7 +1871,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
-	descOrdering := q.Get("order[0][dir]") == "desc"
+	// descOrdering := q.Get("order[0][dir]") == "desc"
 
 	// retrieve all sync periods for this validator
 	var syncPeriods []uint64 = []uint64{}
@@ -1914,9 +1914,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// if ordering is desc, reverse sync slots
-		if descOrdering {
-			utils.ReverseSlice(slots)
-		}
 		totalCount = uint64(len(slots))
 
 		startIndex := start + length - 1
@@ -1925,14 +1922,10 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 		endIndex := start
 
-		startSlot := slots[startIndex]
+		endSlot := slots[startIndex]
+		startSlot := slots[endIndex]
 
-		endSlot := slots[endIndex]
-
-		if startSlot > endSlot { // guard against overflow
-			startSlot = 0
-		}
-
+		logger.Infof("retrieving sync duty history for validator %v and slots %v-%v (%v-%v)", validatorIndex, startSlot, endSlot, startIndex, endIndex)
 		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startSlot, endSlot)
 
 		if err != nil {

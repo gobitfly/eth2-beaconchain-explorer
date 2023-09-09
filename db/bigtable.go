@@ -1215,21 +1215,21 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 
+				keySplit := strings.Split(r.Key(), ":")
+
+				validator, err := bigtable.validatorKeyToIndex(keySplit[1])
+				if err != nil {
+					logger.Errorf("error parsing validator from row key %v: %v", r.Key(), err)
+					return false
+				}
+				slot, err := strconv.ParseUint(keySplit[4], 10, 64)
+				if err != nil {
+					logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
+					return false
+				}
+				slot = MAX_BLOCK_NUMBER - slot
 				for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
-					keySplit := strings.Split(r.Key(), ":")
 
-					validator, err := bigtable.validatorKeyToIndex(keySplit[1])
-					if err != nil {
-						logger.Errorf("error parsing validator from row key %v: %v", r.Key(), err)
-						return false
-					}
-
-					slot, err := strconv.ParseUint(keySplit[3], 10, 64)
-					if err != nil {
-						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
-						return false
-					}
-					slot = MAX_BLOCK_NUMBER - slot
 					inclusionSlot := MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 
 					status := uint64(1) // 1: participated
