@@ -1925,7 +1925,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		endSlot := slots[startIndex]
 		startSlot := slots[endIndex]
 
-		logger.Infof("retrieving sync duty history for validator %v and slots %v-%v (%v-%v)", validatorIndex, startSlot, endSlot, startIndex, endIndex)
 		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startSlot, endSlot)
 
 		if err != nil {
