@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/utils"
 	"fmt"
 	"time"
@@ -26,8 +27,7 @@ func exportSyncCommitteesCount() error {
 		return err
 	}
 
-	currEpoch := utils.TimeToEpoch(time.Now())
-	currentPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch))
+	currentPeriod := utils.SyncPeriodOfEpoch(services.LatestFinalizedEpoch())
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
 
 	dbPeriod := uint64(0)
