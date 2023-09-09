@@ -1134,8 +1134,6 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	if err != nil {
 		return 0, err
 	}
-	logger.Info(countStatistics)
-	logger.Info(periodSlice)
 	if len(countStatistics) != len(periodSlice) {
 		return 0, fmt.Errorf("unable to retrieve all sync committee count statistics, required %v entries but got %v entries (epoch: %v)", len(periodSlice), len(countStatistics), epoch)
 	}
