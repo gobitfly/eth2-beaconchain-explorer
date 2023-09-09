@@ -78,7 +78,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	}
 	validators := make([]uint64, 0, maxValidatorIndex)
 
-	logger.Info(maxValidatorIndex)
+	logger.Infof("processing statistics for validators 0-%d", maxValidatorIndex)
 	for i := uint64(0); i <= maxValidatorIndex; i++ {
 		validators = append(validators, i)
 	}
@@ -87,7 +87,6 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		logger.Infof("Skipping day %v as it is already exported", day)
 		return nil
 	}
-	logger.Info("OK")
 
 	if exported.FailedAttestations {
 		logger.Infof("Skipping failed attestations")
@@ -1127,7 +1126,7 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(50)
+	g.SetLimit(int(concurrency))
 	dbBatchSize := 100
 	for b := 0; b < len(maArr); b += dbBatchSize {
 

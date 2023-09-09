@@ -1652,9 +1652,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			}
 			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
 
-			if epoch == 0 {
-				break
-			}
 		}
 	}
 
@@ -1910,7 +1907,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 			for slot := firstSlot; slot <= lastSlot; slot++ {
 				if slot > latestProposedSlot {
-					continue
+					break
 				}
 				slots = append(slots, slot)
 			}

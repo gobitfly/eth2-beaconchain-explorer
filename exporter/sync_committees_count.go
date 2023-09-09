@@ -73,7 +73,7 @@ func exportSyncCommitteesCountAtPeriod(period uint64, countSoFar float64) (float
 		totalValidatorsCount := uint64(0)
 		err := db.WriterDb.Get(&totalValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch = $1", e)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("error retrieving validatorscount for epoch %v: %v", e, err)
 		}
 		count = countSoFar + (float64(utils.Config.Chain.Config.SyncCommitteeSize) / float64(totalValidatorsCount))
 	}

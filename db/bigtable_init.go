@@ -13,26 +13,18 @@ func InitBigtableSchema() error {
 
 	tables := make(map[string]map[string]gcp_bigtable.GCPolicy)
 
-	tables["beaconchain_validator_balances"] = map[string]gcp_bigtable.GCPolicy{
-		VALIDATOR_BALANCES_FAMILY:             nil,
-		VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY: nil,
-	}
-	tables["beaconchain_validator_attestations"] = map[string]gcp_bigtable.GCPolicy{
-		ATTESTATIONS_FAMILY: nil,
-	}
-	tables["beaconchain_validator_proposals"] = map[string]gcp_bigtable.GCPolicy{
-		PROPOSALS_FAMILY: nil,
-	}
-	tables["beaconchain_validator_sync"] = map[string]gcp_bigtable.GCPolicy{
-		SYNC_COMMITTEES_FAMILY:               nil,
-		SYNC_COMMITTEES_PARTICIPATION_FAMILY: nil,
-	}
-	tables["beaconchain_validator_income"] = map[string]gcp_bigtable.GCPolicy{
-		INCOME_DETAILS_COLUMN_FAMILY: nil,
-		STATS_COLUMN_FAMILY:          nil,
-	}
 	tables["beaconchain_validators"] = map[string]gcp_bigtable.GCPolicy{
 		ATTESTATIONS_FAMILY: gcp_bigtable.MaxVersionsGCPolicy(1),
+	}
+	tables["beaconchain_validators_history"] = map[string]gcp_bigtable.GCPolicy{
+		VALIDATOR_BALANCES_FAMILY:             nil,
+		VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY: nil,
+		ATTESTATIONS_FAMILY:                   nil,
+		PROPOSALS_FAMILY:                      nil,
+		SYNC_COMMITTEES_FAMILY:                nil,
+		SYNC_COMMITTEES_PARTICIPATION_FAMILY:  nil,
+		INCOME_DETAILS_COLUMN_FAMILY:          nil,
+		STATS_COLUMN_FAMILY:                   nil,
 	}
 	tables["blocks"] = map[string]gcp_bigtable.GCPolicy{
 		DEFAULT_FAMILY_BLOCKS: gcp_bigtable.MaxVersionsGCPolicy(1),

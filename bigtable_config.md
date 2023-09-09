@@ -2,74 +2,31 @@
 This document summarized the bigtable configuration options and table definitions required to run the beaconcha.in explorer. All settings can be applied either by using the GCP bigtable web interface or the `cbt` tool.
 
 ----
-Table name: `beaconchain_validator_balances`
+Table name: `beaconchain_validator_history`
 
 ```
-cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_balances
+cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_history
 ```
 
 Column families:
 * Name: `vb` | GC Policy: None
-
-```
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_balances vb
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_balances ha
-```
-
-----
-Table name: `beaconchain_validator_attestations`
-
-```
-cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_attestations
-```
-
-Column families:
+* Name: `ha` | GC Policy: None
 * Name: `at` | GC Policy: None
-
-```
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_attestations at
-```
-----
-Table name: `beaconchain_validator_proposals`
-
-```
-cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_proposals
-```
-
-Column families:
 * Name: `pr` | GC Policy: None
-
-```
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_proposals pr
-```
-----
-Table name: `beaconchain_validator_sync`
-
-```
-cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_sync
-```
-
-Column families:
 * Name: `sc` | GC Policy: None
-
-```
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_sync sc
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_sync sp
-```
-----
-Table name: `beaconchain_validator_income`
-
-```
-cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_income
-```
-
-Column families:
+* Name: `sp` | GC Policy: None
 * Name: `id` | GC Policy: None
 * Name: `stats` | GC Policy: None
 
 ```
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_income id
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_income stats
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history vb
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history ha
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history at
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history pr
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history sc
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history sp
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history id
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history stats
 ```
 ----
 Table name: `beaconchain_validators`
@@ -100,27 +57,6 @@ Column families:
 cbt -project $PROJECT -instance $INSTANCE createfamily blocks default
 
 cbt -project $PROJECT -instance $INSTANCE setgcpolicy blocks default maxversions=1
-```
-----
-Table name: `cache`
-
-```
-cbt -project $PROJECT -instance $INSTANCE createtable cache
-```
-
-Column families:
-* Name: `10_min` | GC Policy: Version based policy with a maximum of 1 versions and a maximum age of 10 minutes
-* Name: `1_day` | GC Policy: Version based policy with a maximum of 1 versions and a maximum age of 1 day
-* Name: `1_hour` | GC Policy: Version based policy with a maximum of 1 versions and a maximum age of 1 hour
-
-```
-cbt -project $PROJECT -instance $INSTANCE createfamily cache 10_min
-cbt -project $PROJECT -instance $INSTANCE createfamily cache 1_day
-cbt -project $PROJECT -instance $INSTANCE createfamily cache 1_hour
-
-cbt -project $PROJECT -instance $INSTANCE setgcpolicy cache 10_min maxage=10m and maxversions=1
-cbt -project $PROJECT -instance $INSTANCE setgcpolicy cache 1_day maxage=1d and maxversions=1
-cbt -project $PROJECT -instance $INSTANCE setgcpolicy cache 1_hour maxage=1h and maxversions=1
 ```
 ----
 Table name: `data`

@@ -1134,6 +1134,8 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	if err != nil {
 		return 0, err
 	}
+	logger.Info(countStatistics)
+	logger.Info(periodSlice)
 	if len(countStatistics) != len(periodSlice) {
 		return 0, fmt.Errorf("unable to retrieve all sync committee count statistics, required %v entries but got %v entries (epoch: %v)", len(periodSlice), len(countStatistics), epoch)
 	}
@@ -1178,9 +1180,11 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
 	epochsPerDay := utils.EpochsPerDay()
-	lastExportedDay, err := services.LatestExportedStatisticDay()
 	lastExportedEpoch := uint64(0)
-	if err == nil {
+	lastExportedDay, err := services.LatestExportedStatisticDay()
+	if err != nil && err != db.ErrNoStats {
+		return types.SyncCommitteesStats{}, fmt.Errorf("error retrieving latest exported statistics day: %v", err)
+	} else if err == nil {
 		lastExportedEpoch = ((lastExportedDay + 1) * epochsPerDay) - 1
 	}
 

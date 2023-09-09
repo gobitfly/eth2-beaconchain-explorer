@@ -959,9 +959,11 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 		}
 	}
 
-	lastStatsDay, err := services.LatestExportedStatisticDay()
 	firstEpochTime := utils.EpochToTime(0)
-	if err == nil {
+	lastStatsDay, err := services.LatestExportedStatisticDay()
+	if err != nil && err != db.ErrNoStats {
+		return nil, fmt.Errorf("error retrieving latest exported statistics day: %v", err)
+	} else if err == nil {
 		firstEpochTime = utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
 	}
 
