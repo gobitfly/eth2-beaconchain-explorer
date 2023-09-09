@@ -1861,7 +1861,6 @@ func (bigtable *Bigtable) MigrateEpochSchemaV1ToV2(epoch uint64) error {
 			mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
 			keysInclusionSlot = make([]string, 0, MAX_BATCH_MUTATIONS)
 		}
-		i++
 	}
 
 	if len(mutsInclusionSlot) > 0 {
