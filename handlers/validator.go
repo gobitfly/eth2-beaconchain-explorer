@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
@@ -702,7 +701,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			lastSyncPeriod := actualSyncPeriods[0]
 			if lastSyncPeriod.LastEpoch > lastExportedEpoch {
-				spew.Dump(lastExportedEpoch, []uint64{index}, (lastExportedEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, latestProposedSlot)
 				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, (lastExportedEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, latestProposedSlot)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
