@@ -2162,7 +2162,7 @@ func (bigtable *Bigtable) reversePaddedUserID(userID uint64) string {
 }
 
 func (bigtable *Bigtable) reversedPaddedEpoch(epoch uint64) string {
-	return fmt.Sprintf("%09d", MAX_BLOCK_NUMBER-epoch)
+	return fmt.Sprintf("%09d", MAX_EPOCH-epoch)
 }
 
 func (bigtable *Bigtable) reversedPaddedSlot(slot uint64) string {
