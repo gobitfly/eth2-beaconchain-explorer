@@ -564,13 +564,6 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		}
 		return nil
 	})
-	// g.Go(func() error {
-	// 	err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
-	// 	if err != nil {
-	// 		return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
-	// 	}
-	// 	return nil
-	// })
 	g.Go(func() error {
 		err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
 		if err != nil {

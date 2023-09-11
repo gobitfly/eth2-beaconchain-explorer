@@ -2,6 +2,7 @@ package main
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -58,60 +58,12 @@ func main() {
 		i := i
 
 		logrus.Infof("exporting epoch %v", i)
-
-		logrus.Infof("deleting existing epoch data")
-		err := bt.DeleteEpoch(i)
-		if err != nil {
-			utils.LogFatal(err, "deleting epoch error", 0)
-		}
-
-		data, err := rpcClient.GetEpochData(uint64(i), true)
-		if err != nil {
-			utils.LogFatal(err, "getting epoch data error", 0)
-		}
-
-		g := new(errgroup.Group)
-
-		g.Go(func() error {
-			err = db.BigtableClient.SaveProposalAssignments(i, data.ValidatorAssignmentes.ProposerAssignments)
-			if err != nil {
-				return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
-			if err != nil {
-				return fmt.Errorf("error exporting attestations to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveProposals(data.Blocks)
-			if err != nil {
-				return fmt.Errorf("error exporting proposals to bigtable: %v", err)
-			}
-			return nil
-		})
-		g.Go(func() error {
-			err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
-			if err != nil {
-				return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
-			}
-			return nil
-		})
-
-		err = g.Wait()
-
-		if err != nil {
-			utils.LogFatal(err, "wait group error", 0)
-		}
+		exporter.ExportEpoch(i, rpcClient)
 	}
 
 }
 
 func monitor(configPath string) {
-
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, configPath)
 	if err != nil {
@@ -148,47 +100,7 @@ func monitor(configPath string) {
 
 		for i := head.FinalizedEpoch; i <= head.HeadEpoch; i++ {
 			logrus.Infof("exporting epoch %v", i)
-			data, err := rpcClient.GetEpochData(i, true)
-			if err != nil {
-				utils.LogFatal(err, "getting epoch data error", 0)
-			}
-
-			g := new(errgroup.Group)
-
-			g.Go(func() error {
-				err = db.BigtableClient.SaveProposalAssignments(i, data.ValidatorAssignmentes.ProposerAssignments)
-				if err != nil {
-					return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
-				}
-				return nil
-			})
-			g.Go(func() error {
-				err = db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
-				if err != nil {
-					return fmt.Errorf("error exporting attestations to bigtable: %v", err)
-				}
-				return nil
-			})
-			g.Go(func() error {
-				err = db.BigtableClient.SaveProposals(data.Blocks)
-				if err != nil {
-					return fmt.Errorf("error exporting proposals to bigtable: %v", err)
-				}
-				return nil
-			})
-			g.Go(func() error {
-				err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
-				if err != nil {
-					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
-				}
-				return nil
-			})
-
-			err = g.Wait()
-
-			if err != nil {
-				utils.LogFatal(err, "wait group error", 0)
-			}
+			exporter.ExportEpoch(i, rpcClient)
 		}
 		current = head.HeadEpoch
 	}
