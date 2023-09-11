@@ -1538,3 +1538,8 @@ func ReverseString(s string) string {
 	}
 	return string(runes)
 }
+
+func GetCurrentFuncName() string {
+	pc, _, _, _ := runtime.Caller(1)
+	return fmt.Sprintf("%s", runtime.FuncForPC(pc).Name())
+}
