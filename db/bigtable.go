@@ -1713,7 +1713,7 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 				for _, ri := range r[PROPOSALS_FAMILY] {
 					keySplit := strings.Split(r.Key(), ":")
 
-					proposalSlot, err := strconv.ParseUint(keySplit[3], 10, 64)
+					proposalSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
 					if err != nil {
 						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 						return false
