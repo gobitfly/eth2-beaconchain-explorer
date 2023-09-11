@@ -374,12 +374,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		var err error
-		validatorPageData.IncomeHistoryChartData, err = db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch, lowerBoundDay)
-
+		incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch, lowerBoundDay)
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %v", err)
 		}
+
+		validatorPageData.IncomeHistoryChartData = incomeHistoryChartData
 		return nil
 	})
 
@@ -389,12 +389,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			timings.Charts = time.Since(start)
 		}()
 
-		var err error
-		validatorPageData.ExecutionIncomeHistoryData, err = getExecutionChartData([]uint64{index}, currency, lowerBoundDay)
-
+		executionIncomeHistoryData, err := getExecutionChartData([]uint64{index}, currency, lowerBoundDay)
 		if err != nil {
 			return fmt.Errorf("error calling getExecutionChartData: %v", err)
 		}
+
+		validatorPageData.ExecutionIncomeHistoryData = executionIncomeHistoryData
 		return nil
 	})
 
