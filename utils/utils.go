@@ -374,6 +374,11 @@ func WaitForCtrlC() {
 // ReadConfig will process a configuration
 func ReadConfig(cfg *types.Config, path string) error {
 
+	configPathFromEnv := os.Getenv("BEACONCHAIN_CONFIG")
+
+	if configPathFromEnv != "" { // allow the location of the config file to be passed via env args
+		path = configPathFromEnv
+	}
 	if strings.HasPrefix(path, "projects/") {
 		x, err := AccessSecretVersion(path)
 		if err != nil {
