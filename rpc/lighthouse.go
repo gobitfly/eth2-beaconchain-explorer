@@ -913,13 +913,15 @@ func syncCommitteeParticipation(bits []byte) float64 {
 
 // GetValidatorParticipation will get the validator participation from the Lighthouse RPC api
 func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error) {
+
+	head, err := lc.GetChainHead()
+	if err != nil {
+		return nil, err
+	}
+
 	if LighthouseLatestHeadEpoch == 0 || epoch >= LighthouseLatestHeadEpoch-1 {
 		// update LighthouseLatestHeadEpoch to make sure we are continuing with the latest data
 		// we need to check when epoch = head and epoch head - 1 so our following logic acts correctly when we are close to the head
-		head, err := lc.GetChainHead()
-		if err != nil {
-			return nil, err
-		}
 		logger.Infof("Updating LighthouseLatestHeadEpoch to %v", head.HeadEpoch)
 		LighthouseLatestHeadEpoch = head.HeadEpoch
 	}
@@ -962,6 +964,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 			GlobalParticipationRate: float32(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / float32(parsedResponse.Data.PreviousEpochActiveGwei),
 			VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei),
 			EligibleEther:           uint64(parsedResponse.Data.PreviousEpochActiveGwei),
+			Finalized:               epoch <= head.FinalizedEpoch,
 		}
 	} else {
 		res = &types.ValidatorParticipation{
@@ -969,6 +972,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 			GlobalParticipationRate: float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei) / float32(parsedResponse.Data.CurrentEpochActiveGwei),
 			VotedEther:              uint64(parsedResponse.Data.CurrentEpochTargetAttestingGwei),
 			EligibleEther:           uint64(parsedResponse.Data.CurrentEpochActiveGwei),
+			Finalized:               epoch <= head.FinalizedEpoch,
 		}
 	}
 	return res, nil

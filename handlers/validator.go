@@ -1903,11 +1903,12 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
 
 			firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
-			lastSlot := lastEpoch*utils.Config.Chain.Config.SlotsPerEpoch - 1
+			lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
 
-			for slot := firstSlot; slot <= lastSlot; slot++ {
-				if slot > latestProposedSlot {
-					break
+			// logger.Infof("processing sync period %v epoch (%v/%v) slots (%v/%v)", period, firstEpoch, lastEpoch, firstSlot, lastSlot)
+			for slot := lastSlot; slot >= firstSlot && (slot <= lastSlot /* guards against underflows */); slot-- {
+				if slot > latestProposedSlot || utils.EpochOfSlot(slot) < utils.Config.Chain.Config.AltairForkEpoch {
+					continue
 				}
 				slots = append(slots, slot)
 			}
@@ -1922,9 +1923,10 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 		endIndex := start
 
-		endSlot := slots[startIndex]
-		startSlot := slots[endIndex]
+		endSlot := slots[endIndex]
+		startSlot := slots[startIndex]
 
+		// logger.Infof("retrieving sync duty history for validator %v and slots %v-%v (%v-%v)", validatorIndex, startSlot, endSlot, startIndex, endIndex)
 		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startSlot, endSlot)
 
 		if err != nil {

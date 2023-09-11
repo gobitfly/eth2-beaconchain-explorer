@@ -1758,9 +1758,10 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 		UPDATE epochs SET
 			eligibleether = $1,
 			globalparticipationrate = $2,
-			votedether = $3
-		WHERE epoch = $4`,
-		stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
+			votedether = $3,
+			finalized = $4
+		WHERE epoch = $5`,
+		stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Finalized, stats.Epoch)
 
 	return err
 }

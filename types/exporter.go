@@ -67,6 +67,7 @@ type ValidatorParticipation struct {
 	GlobalParticipationRate float32
 	VotedEther              uint64
 	EligibleEther           uint64
+	Finalized               bool
 }
 
 // BeaconCommitteItem is a struct to hold beacon committee data
