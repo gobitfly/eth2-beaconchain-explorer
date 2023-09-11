@@ -984,7 +984,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
-	attestationsMap := make(map[uint64]map[uint64][]*types.ValidatorAttestation)
+	attestationsMap := make(map[types.ValidatorIndex]map[types.Slot][]*types.ValidatorAttestation)
 
 	for i := 0; i < len(validators); i += batchSize {
 
@@ -1026,15 +1026,15 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 					}
 
 					resMux.Lock()
-					if attestationsMap[validator] == nil {
-						attestationsMap[validator] = make(map[uint64][]*types.ValidatorAttestation)
+					if attestationsMap[types.ValidatorIndex(validator)] == nil {
+						attestationsMap[types.ValidatorIndex(validator)] = make(map[types.Slot][]*types.ValidatorAttestation)
 					}
 
-					if attestationsMap[validator][attesterSlot] == nil {
-						attestationsMap[validator][attesterSlot] = make([]*types.ValidatorAttestation, 0)
+					if attestationsMap[types.ValidatorIndex(validator)][types.Slot(attesterSlot)] == nil {
+						attestationsMap[types.ValidatorIndex(validator)][types.Slot(attesterSlot)] = make([]*types.ValidatorAttestation, 0)
 					}
 
-					attestationsMap[validator][attesterSlot] = append(attestationsMap[validator][attesterSlot], &types.ValidatorAttestation{
+					attestationsMap[types.ValidatorIndex(validator)][types.Slot(attesterSlot)] = append(attestationsMap[types.ValidatorIndex(validator)][types.Slot(attesterSlot)], &types.ValidatorAttestation{
 						InclusionSlot: inclusionSlot,
 						Status:        status,
 					})
@@ -1083,8 +1083,8 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	// Convert the attestationsMap info to the return format
 	// Set the delay of the inclusionSlot
 	for validator, attestations := range attestationsMap {
-		if res[validator] == nil {
-			res[validator] = make([]*types.ValidatorAttestation, 0)
+		if res[uint64(validator)] == nil {
+			res[uint64(validator)] = make([]*types.ValidatorAttestation, 0)
 		}
 		for attesterSlot, att := range attestations {
 			currentAttInfo := att[0]
@@ -1100,18 +1100,18 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			}
 
 			missedSlotsCount := uint64(0)
-			for slot := attesterSlot + 1; slot < currentAttInfo.InclusionSlot; slot++ {
+			for slot := uint64(attesterSlot) + 1; slot < currentAttInfo.InclusionSlot; slot++ {
 				if missedSlotsMap[slot] || orphanedSlotsMap[slot] {
 					missedSlotsCount++
 				}
 			}
-			currentAttInfo.Index = validator
-			currentAttInfo.Epoch = attesterSlot / utils.Config.Chain.Config.SlotsPerEpoch
+			currentAttInfo.Index = uint64(validator)
+			currentAttInfo.Epoch = uint64(attesterSlot) / utils.Config.Chain.Config.SlotsPerEpoch
 			currentAttInfo.CommitteeIndex = 0
-			currentAttInfo.AttesterSlot = attesterSlot
-			currentAttInfo.Delay = int64(currentAttInfo.InclusionSlot - attesterSlot - missedSlotsCount - 1)
+			currentAttInfo.AttesterSlot = uint64(attesterSlot)
+			currentAttInfo.Delay = int64(currentAttInfo.InclusionSlot - uint64(attesterSlot) - missedSlotsCount - 1)
 
-			res[validator] = append(res[validator], currentAttInfo)
+			res[uint64(validator)] = append(res[uint64(validator)], currentAttInfo)
 		}
 	}
 
