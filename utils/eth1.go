@@ -237,14 +237,15 @@ func FormatAddressAsTokenLink(token, address []byte, name string, verified bool,
 
 func FormatHashLong(hash common.Hash) template.HTML {
 	address := hash.String()
-	test := `
-	<div class="d-flex text-monospace">
-		<span class="">%s</span>
-		<span class="flex-shrink-1 text-truncate">%s</span>
-		<span class="">%s</span>
-	</div>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
+		htmlFormat := `
+		<div class="d-flex text-monospace">
+			%s
+			<span class="flex-shrink-1 text-truncate">%s</span>
+			%s
+		</div>`
+
+		return template.HTML(fmt.Sprintf(htmlFormat, address[:4], address[4:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)
@@ -255,10 +256,11 @@ func FormatAddressLong(address string) template.HTML {
 		return template.HTML(address)
 	}
 	address = FixAddressCasing(address)
-	test := `
-	<span class="text-monospace mw-100"><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(test, address[:6], address[6:len(address)-4], address[len(address)-4:]))
+		htmlFormat := `
+		<span class="text-monospace mw-100">%s<span class="text-primary">%s</span>%s<span class="text-primary">%s</span></span>`
+
+		return template.HTML(fmt.Sprintf(htmlFormat, address[:2], address[2:6], address[6:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)

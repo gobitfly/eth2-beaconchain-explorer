@@ -886,16 +886,6 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
-	slots := []uint64{}
-
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
-		slots = append(slots, slot)
-	}
-	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
-	if err != nil {
-		return nil, err
-	}
-
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
 	resMux := &sync.Mutex{}
 
@@ -903,6 +893,8 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
+
+	attestationsMap := make(map[uint64]map[uint64][]*types.ValidatorAttestation)
 
 	for i := 0; i < len(validators); i += batchSize {
 
@@ -919,7 +911,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			default:
 			}
 			ranges := bigtable.getValidatorsEpochRanges(vals, ATTESTATIONS_FAMILY, startEpoch, endEpoch)
-			err = bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
+			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
 				validator, err := bigtable.validatorKeyToIndex(keySplit[1])
@@ -941,33 +933,21 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 					if inclusionSlot == MAX_BLOCK_NUMBER {
 						inclusionSlot = 0
 						status = 0
-					} else if orphanedSlotsMap[inclusionSlot] {
-						status = 0
 					}
 
 					resMux.Lock()
-					if res[validator] == nil {
-						res[validator] = make([]*types.ValidatorAttestation, 0)
+					if attestationsMap[validator] == nil {
+						attestationsMap[validator] = make(map[uint64][]*types.ValidatorAttestation)
 					}
 
-					if len(res[validator]) > 0 && res[validator][len(res[validator])-1].AttesterSlot == attesterSlot {
-						// don't override successful attestion, that was included in a different slot
-						if status == 1 || res[validator][len(res[validator])-1].Status != 1 {
-							res[validator][len(res[validator])-1].InclusionSlot = inclusionSlot
-							res[validator][len(res[validator])-1].Status = status
-							res[validator][len(res[validator])-1].Delay = int64(inclusionSlot - attesterSlot)
-						}
-					} else {
-						res[validator] = append(res[validator], &types.ValidatorAttestation{
-							Index:          validator,
-							Epoch:          utils.EpochOfSlot(attesterSlot),
-							AttesterSlot:   attesterSlot,
-							CommitteeIndex: 0,
-							Status:         status,
-							InclusionSlot:  inclusionSlot,
-							Delay:          int64(inclusionSlot) - int64(attesterSlot) - 1,
-						})
+					if attestationsMap[validator][attesterSlot] == nil {
+						attestationsMap[validator][attesterSlot] = make([]*types.ValidatorAttestation, 0)
 					}
+
+					attestationsMap[validator][attesterSlot] = append(attestationsMap[validator][attesterSlot], &types.ValidatorAttestation{
+						InclusionSlot: inclusionSlot,
+						Status:        status,
+					})
 					resMux.Unlock()
 
 				}
@@ -980,6 +960,77 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 	if err := g.Wait(); err != nil {
 		return nil, err
+	}
+
+	// Find all missed and orphaned slots
+	slots := []uint64{}
+	maxSlot := (endEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch
+	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= maxSlot; slot++ {
+		slots = append(slots, slot)
+	}
+
+	var missedSlotsMap map[uint64]bool
+	var orphanedSlotsMap map[uint64]bool
+
+	g = new(errgroup.Group)
+
+	g.Go(func() error {
+		var err error
+		missedSlotsMap, err = GetMissedSlotsMap(slots)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		orphanedSlotsMap, err = GetOrphanedSlotsMap(slots)
+		return err
+	})
+	err := g.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the attestationsMap info to the return format
+	// Set the delay of the inclusionSlot
+	for validator, attestations := range attestationsMap {
+		if res[validator] == nil {
+			res[validator] = make([]*types.ValidatorAttestation, 0)
+		}
+		for attesterSlot, att := range attestations {
+			currentAttInfo := att[0]
+			for _, attInfo := range att {
+				if orphanedSlotsMap[attInfo.InclusionSlot] {
+					attInfo.Status = 0
+				}
+
+				if currentAttInfo.Status != 1 && attInfo.Status == 1 {
+					currentAttInfo.Status = attInfo.Status
+					currentAttInfo.InclusionSlot = attInfo.InclusionSlot
+				}
+			}
+
+			missedSlotsCount := uint64(0)
+			for slot := attesterSlot + 1; slot < currentAttInfo.InclusionSlot; slot++ {
+				if missedSlotsMap[slot] || orphanedSlotsMap[slot] {
+					missedSlotsCount++
+				}
+			}
+			currentAttInfo.Index = validator
+			currentAttInfo.Epoch = attesterSlot / utils.Config.Chain.Config.SlotsPerEpoch
+			currentAttInfo.CommitteeIndex = 0
+			currentAttInfo.AttesterSlot = attesterSlot
+			currentAttInfo.Delay = int64(currentAttInfo.InclusionSlot - attesterSlot - missedSlotsCount - 1)
+
+			res[validator] = append(res[validator], currentAttInfo)
+		}
+	}
+
+	// Sort the result by attesterSlot desc
+	for validator, att := range res {
+		sort.Slice(att, func(i, j int) bool {
+			return att[i].AttesterSlot > att[j].AttesterSlot
+		})
+		res[validator] = att
 	}
 
 	return res, nil

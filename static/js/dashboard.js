@@ -1422,6 +1422,9 @@ function createIncomeChart(income, executionIncomeHistory) {
         },
         pointInterval: 24 * 3600 * 1000,
       },
+      series: {
+        turboThreshold: 10000,
+      },
     },
     xAxis: {
       type: "datetime",

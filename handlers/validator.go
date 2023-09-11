@@ -574,9 +574,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				MissedAttestations uint64 `db:"missed_attestations"`
 			}{}
 			if lastStatsDay > 0 {
-				err = db.ReaderDb.Get(&attestationStats, "select coalesce(sum(missed_attestations), 0) as missed_attestations from validator_stats where validatorindex = $1", index)
+				err = db.ReaderDb.Get(&attestationStats, "SELECT missed_attestations_total AS missed_attestations FROM validator_stats WHERE validatorindex = $1 AND day = $2", index, lastStatsDay)
 				if err != nil {
-					return fmt.Errorf("error retrieving validator attestationStats: %v", err)
+					return fmt.Errorf("error retrieving validator attestationStats: %w", err)
 				}
 			}
 
