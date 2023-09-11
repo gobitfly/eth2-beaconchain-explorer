@@ -2,7 +2,6 @@ package exporter
 
 import (
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/utils"
 	"fmt"
 	"time"
@@ -27,7 +26,12 @@ func exportSyncCommitteesCount() error {
 		return err
 	}
 
-	currentPeriod := utils.SyncPeriodOfEpoch(services.LatestFinalizedEpoch())
+	latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
+	if err != nil {
+		logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
+	}
+
+	currentPeriod := utils.SyncPeriodOfEpoch(latestFinalizedEpoch)
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
 
 	dbPeriod := uint64(0)
