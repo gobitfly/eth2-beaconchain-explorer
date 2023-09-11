@@ -183,7 +183,11 @@
                 <span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
                   <a href="/validators/deposit-leaderboard" class="text-primary text-truncate">
                     <i class="fas fa-medal"></i>
-                    {{ if gt (len .Stats.TopDepositors) 1 }}0x{{ (index .Stats.TopDepositors 1).Address }}{{ else }}N/A{{ end }}
+                    {{ if gt (len .Stats.TopDepositors) 1 }}
+                      0x{{ (index .Stats.TopDepositors 1).Address }}
+                    {{ else }}
+                      N/A
+                    {{ end }}
                   </a>
                 </span>
               </div>
