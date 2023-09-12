@@ -775,6 +775,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 				close(stream)
 			}(blocksChan)
 			subG := new(errgroup.Group)
+			subG.SetLimit(int(concurrency))
 			for b := range blocksChan {
 				block := b
 				subG.Go(func() error {

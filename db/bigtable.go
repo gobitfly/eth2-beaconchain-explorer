@@ -2018,7 +2018,7 @@ func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, pr
 		startEpoch = 0
 	}
 
-	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch))*len(validatorIndices))
+	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch+1))*len(validatorIndices))
 
 	for _, validatorIndex := range validatorIndices {
 		validatorKey := bigtable.validatorIndexToKey(validatorIndex)
@@ -2038,7 +2038,7 @@ func (bigtable *Bigtable) getValidatorsEpochSlotRanges(validatorIndices []uint64
 		startEpoch = 0
 	}
 
-	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch))*len(validatorIndices))
+	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch+1))*len(validatorIndices))
 
 	for _, validatorIndex := range validatorIndices {
 		validatorKey := bigtable.validatorIndexToKey(validatorIndex)
