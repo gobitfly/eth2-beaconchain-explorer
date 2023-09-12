@@ -39,8 +39,9 @@ const (
 
 	SUM_COLUMN = "sum"
 
-	MAX_BLOCK_NUMBER = 1000000000 - 1
-	MAX_EPOCH        = 1000000000 - 1
+	MAX_CL_BLOCK_NUMBER = 1000000000 - 1
+	MAX_EL_BLOCK_NUMBER = 1000000000
+	MAX_EPOCH           = 1000000000 - 1
 
 	MAX_BATCH_MUTATIONS = 100000
 
@@ -633,11 +634,11 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 			epoch := utils.EpochOfSlot(uint64(attestedSlot))
 			bigtable.lastAttestationCacheMux.Lock()
 			if len(inclusions) == 0 { // for missed attestations we write the max block number which will yield a cell ts of 0
-				inclusions = append(inclusions, MAX_BLOCK_NUMBER)
+				inclusions = append(inclusions, MAX_CL_BLOCK_NUMBER)
 			}
 			for _, inclusionSlot := range inclusions {
 				mutInclusionSlot := gcp_bigtable.NewMutation()
-				mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", attestedSlot), gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-inclusionSlot)*1000), []byte{})
+				mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", attestedSlot), gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-inclusionSlot)*1000), []byte{})
 				key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(uint64(validator)), ATTESTATIONS_FAMILY, bigtable.reversedPaddedEpoch(epoch))
 
 				mutsInclusionSlot = append(mutsInclusionSlot, mutInclusionSlot)
@@ -732,7 +733,7 @@ func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Bloc
 				continue
 			}
 			mut := gcp_bigtable.NewMutation()
-			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-b.Slot)*1000), []byte{})
+			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-b.Slot)*1000), []byte{})
 			key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(b.Proposer), PROPOSALS_FAMILY, bigtable.reversedPaddedEpoch(utils.EpochOfSlot(b.Slot)), bigtable.reversedPaddedSlot(b.Slot))
 
 			muts = append(muts, mut)
@@ -789,7 +790,7 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 		for validator, participated := range validators {
 			mut := gcp_bigtable.NewMutation()
 			if participated {
-				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((MAX_BLOCK_NUMBER-slot)*1000), []byte{})
+				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-slot)*1000), []byte{})
 				participation++
 			} else {
 				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp(0), []byte{})
@@ -1017,10 +1018,10 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 						return false
 					}
-					inclusionSlot := MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
+					inclusionSlot := MAX_CL_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 
 					status := uint64(1)
-					if inclusionSlot == MAX_BLOCK_NUMBER {
+					if inclusionSlot == MAX_CL_BLOCK_NUMBER {
 						inclusionSlot = 0
 						status = 0
 					}
@@ -1218,7 +1219,7 @@ func (bigtable *Bigtable) GetSyncParticipationBySlotRange(startSlot, endSlot uin
 			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
 			return false
 		}
-		slot = MAX_BLOCK_NUMBER - slot
+		slot = MAX_CL_BLOCK_NUMBER - slot
 
 		for _, ri := range r[SYNC_COMMITTEES_PARTICIPATION_FAMILY] {
 			res[slot] = binary.LittleEndian.Uint64(ri.Value)
@@ -1307,10 +1308,10 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 						return false
 					}
 
-					inclusionSlot := MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
+					inclusionSlot := MAX_CL_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 
 					status := uint64(1)
-					if inclusionSlot == MAX_BLOCK_NUMBER {
+					if inclusionSlot == MAX_CL_BLOCK_NUMBER {
 						status = 0
 					}
 
@@ -1406,13 +1407,13 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 					logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 					return false
 				}
-				slot = MAX_BLOCK_NUMBER - slot
+				slot = MAX_CL_BLOCK_NUMBER - slot
 				for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
 
-					inclusionSlot := MAX_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
+					inclusionSlot := MAX_CL_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
 
 					status := uint64(1) // 1: participated
-					if inclusionSlot == MAX_BLOCK_NUMBER {
+					if inclusionSlot == MAX_CL_BLOCK_NUMBER {
 						inclusionSlot = 0
 						status = 0 // 0: missed
 					}
@@ -1718,11 +1719,11 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
 						return false
 					}
-					proposalSlot = MAX_BLOCK_NUMBER - proposalSlot
-					inclusionSlot := MAX_BLOCK_NUMBER - uint64(r[PROPOSALS_FAMILY][0].Timestamp)/1000
+					proposalSlot = MAX_CL_BLOCK_NUMBER - proposalSlot
+					inclusionSlot := MAX_CL_BLOCK_NUMBER - uint64(r[PROPOSALS_FAMILY][0].Timestamp)/1000
 
 					status := uint64(1)
-					if inclusionSlot == MAX_BLOCK_NUMBER {
+					if inclusionSlot == MAX_CL_BLOCK_NUMBER {
 						inclusionSlot = 0
 						status = 2
 					}
@@ -2166,5 +2167,5 @@ func (bigtable *Bigtable) reversedPaddedEpoch(epoch uint64) string {
 }
 
 func (bigtable *Bigtable) reversedPaddedSlot(slot uint64) string {
-	return fmt.Sprintf("%09d", MAX_BLOCK_NUMBER-slot)
+	return fmt.Sprintf("%09d", MAX_CL_BLOCK_NUMBER-slot)
 }
