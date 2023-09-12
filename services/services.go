@@ -1499,7 +1499,7 @@ func burnUpdater(wg *sync.WaitGroup) {
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Minute)
+		time.Sleep(time.Minute * 15) // only update once every 15 minutes
 	}
 }
 

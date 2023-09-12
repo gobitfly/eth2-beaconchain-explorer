@@ -74,7 +74,7 @@ func LatestChartsPageData() []*types.ChartsPageDataChart {
 }
 
 func chartsPageDataUpdater(wg *sync.WaitGroup) {
-	sleepDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
+	sleepDuration := time.Hour // only update charts once per hour
 	var prevEpoch uint64
 
 	firstun := true
