@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"html/template"
 	"image/color"
-	"io/ioutil"
+	"io"
 	"log"
 	"math"
 	"math/big"
@@ -241,7 +241,7 @@ func GetTemplateFuncs() template.FuncMap {
 
 // IncludeHTML adds html to the page
 func IncludeHTML(path string) template.HTML {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		log.Printf("includeHTML - error reading file: %v", err)
 		return ""
@@ -793,7 +793,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return false, err
 	}
 	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body) // Read the response from Google
+	body, err := io.ReadAll(req.Body) // Read the response from Google
 	if err != nil {
 		return false, err
 	}
@@ -843,49 +843,6 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 	return getABIFromEtherscan(address)
 }
 
-// func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
-// 	httpClient := http.Client{
-// 		Timeout: time.Second * 5,
-// 	}
-
-// 	resp, err := httpClient.Get(fmt.Sprintf("https://sourcify.dev/server/repository/contracts/full_match/%d/0x%x/metadata.json", 1, address))
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if resp.StatusCode == 200 {
-// 		body, err := ioutil.ReadAll(resp.Body)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		data := &types.SourcifyContractMetadata{}
-// 		err = json.Unmarshal(body, data)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		abiString, err := json.Marshal(data.Output.Abi)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		contractAbi, err := abi.JSON(bytes.NewReader(abiString))
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		meta := &types.ContractMetadata{}
-// 		meta.ABIJson = abiString
-// 		meta.ABI = &contractAbi
-// 		meta.Name = ""
-
-// 		return meta, nil
-// 	} else {
-// 		return nil, fmt.Errorf("sourcify contract code not found")
-// 	}
-// }
-
 func GetEtherscanAPIBaseUrl(provideDefault bool) string {
 	const mainnetBaseUrl = "api.etherscan.io"
 	const goerliBaseUrl = "api-goerli.etherscan.io"
@@ -929,7 +886,7 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 		return nil, fmt.Errorf("StatusCode: '%d', Status: '%s'", resp.StatusCode, resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
