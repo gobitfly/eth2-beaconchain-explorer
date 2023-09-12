@@ -1377,8 +1377,10 @@ func sanitizeMessage(msg string) ([]byte, error) {
 	}
 }
 
-func ValidatorSave(w http.ResponseWriter, r *http.Request) {
-	pubkey := r.FormValue("pubkey")
+func ValidatorName(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	pubkey := vars["pubkey"]
 	pubkey = strings.ToLower(pubkey)
 	pubkey = strings.Replace(pubkey, "0x", "", -1)
 
@@ -1485,7 +1487,6 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 	}
-
 }
 
 // ValidatorHistory returns a validators history in json
