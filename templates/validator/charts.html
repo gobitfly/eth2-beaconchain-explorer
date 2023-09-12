@@ -307,6 +307,8 @@
                 return response.json();
               })
               .then(data => {
+                incomeHistory = data.consensusChartData
+                executionIncomeHistory = data.executionChartData
                 incomeChart.update({
                   series: [
                     {
