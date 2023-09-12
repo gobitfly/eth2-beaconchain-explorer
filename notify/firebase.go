@@ -39,7 +39,7 @@ func SendPushBatch(messages []*messaging.Message) error {
 	if strings.HasPrefix(credentialsPath, "projects/") {
 		x, err := utils.AccessSecretVersion(credentialsPath)
 		if err != nil {
-			return fmt.Errorf("error getting config from secret store: %v", err)
+			return fmt.Errorf("error getting firebase config from secret store: %v", err)
 		}
 		opt = option.WithCredentialsJSON([]byte(*x))
 	} else {
