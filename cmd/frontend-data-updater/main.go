@@ -3,12 +3,14 @@ package main
 import (
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
+	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
+	"math/big"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
@@ -75,6 +77,13 @@ func main() {
 	if utils.Config.TieredCacheProvider != "redis" {
 		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
 	}
+
+	chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
+	if err != nil {
+		utils.LogFatal(err, "new explorer lighthouse client error", 0)
+	}
+	rpc.CurrentClient = rpcClient
 
 	logrus.Infof("initializing frontend services")
 	services.Init() // Init frontend services

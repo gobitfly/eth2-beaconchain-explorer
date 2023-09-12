@@ -258,6 +258,26 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	return assignments, nil
 }
 
+func (lc *LighthouseClient) GetValidatorState(epoch uint64) (*StandardValidatorsResponse, error) {
+	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.Config.SlotsPerEpoch))
+	if err != nil && epoch == 0 {
+		validatorsResp, err = lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%v/validators", lc.endpoint, "genesis"))
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving validators for genesis: %v", err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("error retrieving validators for epoch %v: %v", epoch, err)
+	}
+
+	parsedValidators := &StandardValidatorsResponse{}
+	err = json.Unmarshal(validatorsResp, parsedValidators)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
+	}
+
+	return parsedValidators, nil
+}
+
 // GetEpochData will get the epoch data from Lighthouse RPC api
 func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error) {
 	wg := &errgroup.Group{}
