@@ -204,15 +204,15 @@
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
                     Rate limit per minute:<br />
-                    10
+                    {{ formatAddCommas 20 }}
                   </li>
                   <li>
                     Requests per day:<br />
-                    10,000
+                    {{ formatAddCommas 30000 }}
                   </li>
                   <li>
                     Total requests per month:<br />
-                    30,000
+                    {{ formatAddCommas 30000 }}
                   </li>
                 </ul>
                 <a href="https://beaconcha.in/api/v1/docs/index.html" target="_blank" class="btn btn-lg btn-block btn-outline-primary">Get started</a>
@@ -227,15 +227,15 @@
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
                     Rate limit per minute:<br />
-                    100
+                    {{ formatAddCommas 100 }}
                   </li>
                   <li>
                     Requests per day:<br />
-                    100,000
+                    {{ formatAddCommas 100000 }}
                   </li>
                   <li>
                     Total requests per month:<br />
-                    500,000
+                    {{ formatAddCommas 500000 }}
                   </li>
                 </ul>
                 {{ if .User.Authenticated }}
@@ -268,15 +268,15 @@
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
                     Rate limit per minute:<br />
-                    <strong>Unlimited</strong>
+                    {{ formatAddCommas 600 }}
                   </li>
                   <li>
                     Requests per day:<br />
-                    200,000
+                    {{ formatAddCommas 200000 }}
                   </li>
                   <li>
                     Total requests per month:<br />
-                    1,000,000
+                    {{ formatAddCommas 1000000 }}
                   </li>
                 </ul>
                 {{ if .User.Authenticated }}
@@ -306,7 +306,7 @@
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
                     Rate limit per minute:<br />
-                    <strong>Unlimited</strong>
+                    {{ formatAddCommas 1200 }}
                   </li>
                   <li>
                     Requests per day:<br />
@@ -314,7 +314,7 @@
                   </li>
                   <li>
                     Total requests per month:<br />
-                    4,000,000
+                    {{ formatAddCommas 4000000 }}
                   </li>
                 </ul>
                 {{ if .User.Authenticated }}
