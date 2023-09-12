@@ -115,3 +115,20 @@ MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
 BLOB_SIDECAR_SUBNET_COUNT: 6
 # `uint64(6)`
 MAX_BLOBS_PER_BLOCK: 6
+
+# Time parameters
+# ---------------------------------------------------------------
+# 2**0 (= 1) slots 12 seconds
+MIN_ATTESTATION_INCLUSION_DELAY: 1
+# 2**5 (= 32) slots 6.4 minutes
+SLOTS_PER_EPOCH: 32
+# 2**0 (= 1) epochs 6.4 minutes
+MIN_SEED_LOOKAHEAD: 1
+# 2**2 (= 4) epochs 25.6 minutes
+MAX_SEED_LOOKAHEAD: 4
+# 2**6 (= 64) epochs ~6.8 hours
+EPOCHS_PER_ETH1_VOTING_PERIOD: 64
+# 2**13 (= 8,192) slots ~27 hours
+SLOTS_PER_HISTORICAL_ROOT: 8192
+# 2**2 (= 4) epochs 25.6 minutes
+MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
