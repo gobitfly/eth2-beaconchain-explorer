@@ -1482,24 +1482,22 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 
 func burnUpdater(wg *sync.WaitGroup) {
 	firstRun := true
-	for {
+	for ; ; time.Sleep(time.Minute * 15) { // only update once every 15 minutes
 		data, err := getBurnPageData()
 		if err != nil {
 			logger.Errorf("error retrieving burn page data: %v", err)
-			time.Sleep(time.Second * 30)
 			continue
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.Config.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching relaysData: %v", err)
+			logger.Errorf("error caching burn data: %v", err)
 		}
 		if firstRun {
 			logger.Infof("initialized burn updater")
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Minute * 15) // only update once every 15 minutes
 	}
 }
 
