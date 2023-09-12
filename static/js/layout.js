@@ -223,7 +223,7 @@ $(document).ready(function () {
 
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
-  let requestNum = 9
+  let requestNum = 10
   var timeWait = 0
 
   // used to overwrite Bloodhounds "transport._get" function which handles the rateLimitWait parameter
