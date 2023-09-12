@@ -47,7 +47,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, generate-config-from-testnet-stub")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -151,6 +151,13 @@ func main() {
 			logrus.WithError(err).Fatal("error applying db schema")
 		}
 		logrus.Infof("db schema applied successfully")
+	case "initBigtableSchema":
+		logrus.Infof("initializing bigtable schema")
+		err := db.InitBigtableSchema()
+		if err != nil {
+			logrus.WithError(err).Fatal("error initializing bigtable schema")
+		}
+		logrus.Infof("bigtable schema initialization completed")
 	case "epoch-export":
 		logrus.Infof("exporting epochs %v - %v", opts.StartEpoch, opts.EndEpoch)
 
@@ -539,7 +546,7 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 					logrus.Infof("block [%v] not found so we need to index it", j)
 					if _, err := db.BigtableClient.GetBlockFromBlocksTable(j); err != nil {
 						logrus.Infof("could not load [%v] from blocks table so we need to fetch it from the node and save it", j)
-						bc, _, err := client.GetBlock(int64(j))
+						bc, _, err := client.GetBlock(int64(j), "parity/geth")
 						if err != nil {
 							utils.LogError(err, fmt.Sprintf("error getting block: %v from ethereum node", j), 0)
 						}

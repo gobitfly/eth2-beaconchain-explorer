@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/hex"
+	"errors"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -55,6 +56,8 @@ const MaxSqlInteger = 2147483647
 
 var addressRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{40}$`)
 var blsRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{96}$`)
+
+var ErrNoStats = errors.New("no stats available")
 
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	// The golang sql driver does not properly implement PingContext
@@ -518,8 +521,11 @@ func GetAllEpochs() ([]uint64, error) {
 // Get latest finalized epoch
 func GetLatestFinalizedEpoch() (uint64, error) {
 	var latestFinalized uint64
-	err := WriterDb.Get(&latestFinalized, "SELECT finalized_epoch FROM chain_head")
+	err := WriterDb.Get(&latestFinalized, "SELECT epoch FROM epochs WHERE finalized ORDER BY epoch DESC LIMIT 1")
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
 		utils.LogError(err, "error retrieving latest exported finalized epoch from the database", 0)
 		return 0, err
 	}
@@ -737,67 +743,6 @@ func SaveBlock(block *types.Block, forceSlotUpdate bool) error {
 	return nil
 }
 
-func UpdateChainHead(head *types.ChainHead) error {
-	count := 0
-	err := ReaderDb.Get(&count, "SELECT COUNT(*) FROM chain_head")
-	if err != nil {
-		return fmt.Errorf("error getting count from chain_head: %w", err)
-	}
-
-	query := `
-		INSERT INTO chain_head (
-			finalized_block_root,
-			finalized_epoch,
-			finalized_slot,
-			head_block_root,
-			head_epoch,
-			head_slot,
-			justified_block_root,
-			justified_epoch,
-			justified_slot,
-			previous_justified_block_root,
-			previous_justified_epoch,
-			previous_justified_slot
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-	`
-	if count > 0 {
-		query = `
-			UPDATE chain_head SET 
-				finalized_block_root = $1,
-				finalized_epoch = $2,
-				finalized_slot = $3,
-				head_block_root = $4,
-				head_epoch = $5,
-				head_slot = $6,
-				justified_block_root = $7,
-				justified_epoch = $8,
-				justified_slot = $9,
-				previous_justified_block_root = $10,
-				previous_justified_epoch = $11,
-				previous_justified_slot = $12
-		`
-	}
-	_, err = WriterDb.Exec(query,
-		head.FinalizedBlockRoot,
-		head.FinalizedEpoch,
-		head.FinalizedSlot,
-		head.HeadBlockRoot,
-		head.HeadEpoch,
-		head.HeadSlot,
-		head.JustifiedBlockRoot,
-		head.JustifiedEpoch,
-		head.JustifiedSlot,
-		head.PreviousJustifiedBlockRoot,
-		head.PreviousJustifiedEpoch,
-		head.PreviousJustifiedSlot)
-	if err != nil {
-		return fmt.Errorf("error updating chain_head: %w", err)
-	}
-
-	return nil
-}
-
 // SaveEpoch will save the epoch data into the database
 func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
@@ -846,7 +791,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
+	if data.Epoch%10 != 0 && uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
 	} else {
 		go func() {
@@ -941,9 +886,10 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 			totalvalidatorbalance,
 			eligibleether, 
 			globalparticipationrate, 
-			votedether
+			votedether,
+			finalized
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
 		ON CONFLICT (epoch) DO UPDATE SET 
 			blockscount             = excluded.blockscount, 
 			proposerslashingscount  = excluded.proposerslashingscount,
@@ -957,7 +903,8 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 			totalvalidatorbalance   = excluded.totalvalidatorbalance,
 			eligibleether           = excluded.eligibleether,
 			globalparticipationrate = excluded.globalparticipationrate,
-			votedether              = excluded.votedether`,
+			votedether              = excluded.votedether,
+			finalized               = excluded.finalized`,
 		data.Epoch,
 		len(data.Blocks),
 		proposerSlashingsCount,
@@ -971,7 +918,8 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 		validatorBalanceSum.Uint64(),
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,
-		data.EpochParticipationStats.VotedEther)
+		data.EpochParticipationStats.VotedEther,
+		data.Finalized)
 
 	if err != nil {
 		return fmt.Errorf("error executing save epoch statement: %w", err)
@@ -1079,7 +1027,13 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	if data.Epoch == 0 {
 		var err error
-		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory([]uint64{}, 0, 0)
+
+		indices := make([]uint64, 0, len(data.Validators))
+
+		for _, validator := range data.Validators {
+			indices = append(indices, validator.Index)
+		}
+		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory(indices, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -1806,11 +1760,19 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 		UPDATE epochs SET
 			eligibleether = $1,
 			globalparticipationrate = $2,
-			votedether = $3
-		WHERE epoch = $4`,
-		stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
+			votedether = $3,
+			finalized = $4
+		WHERE epoch = $5`,
+		stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Finalized, stats.Epoch)
 
 	return err
+}
+
+// GetValidatorIndices will return the total-validator-indices
+func GetValidatorIndices() ([]uint64, error) {
+	indices := []uint64{}
+	err := ReaderDb.Select(&indices, "select validatorindex from validators order by validatorindex;")
+	return indices, err
 }
 
 // GetTotalValidatorsCount will return the total-validator-count
@@ -3204,16 +3166,20 @@ func GetPendingBLSChangeValidatorCount() (uint64, error) {
 }
 
 func GetLastExportedStatisticDay() (uint64, error) {
-	var lastStatsDay uint64
-	err := ReaderDb.Get(&lastStatsDay, "SELECT COALESCE(MAX(day),0) FROM validator_stats_status WHERE status")
+	var lastStatsDay sql.NullInt64
+	err := ReaderDb.Get(&lastStatsDay, "SELECT MAX(day) FROM validator_stats_status WHERE status")
 
 	if err != nil {
 		return 0, fmt.Errorf("error getting lastStatsDay %v", err)
 	}
-	return lastStatsDay, nil
+
+	if !lastStatsDay.Valid {
+		return 0, ErrNoStats
+	}
+	return uint64(lastStatsDay.Int64), nil
 }
 
-func GetValidatorIncomePerforamance(validators []uint64, incomePerformance *types.ValidatorIncomePerformance) error {
+func GetValidatorIncomePerformance(validators []uint64, incomePerformance *types.ValidatorIncomePerformance) error {
 	validatorsPQArray := pq.Array(validators)
 	// el rewards are converted from wei to gwei
 	return ReaderDb.Get(incomePerformance, `
@@ -3294,6 +3260,20 @@ func GetValidatorBalanceForDay(validators []uint64, day uint64, balance *uint64)
 		FROM validator_stats     
 		WHERE validatorindex = ANY($1) AND day = $2
 	`, validatorsPQArray, day)
+}
+
+func GetValidatorActivationBalance(validators []uint64, balance *uint64) error {
+	if len(validators) == 0 {
+		return fmt.Errorf("passing empty validator array is unsupported")
+	}
+
+	validatorsPQArray := pq.Array(validators)
+	return ReaderDb.Get(balance, `
+		SELECT 
+			SUM(balanceactivation)
+		FROM validators     
+		WHERE validatorindex = ANY($1)
+	`, validatorsPQArray)
 }
 
 func GetValidatorPropsosals(validators []uint64, proposals *[]types.ValidatorProposalInfo) error {

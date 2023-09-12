@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -73,6 +72,17 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	}
 	logger.Infof("getting exported state took %v", time.Since(start))
 
+	maxValidatorIndex, err := BigtableClient.GetMaxValidatorindexForEpoch(lastEpoch)
+	if err != nil {
+		return err
+	}
+	validators := make([]uint64, 0, maxValidatorIndex)
+
+	logger.Infof("processing statistics for validators 0-%d", maxValidatorIndex)
+	for i := uint64(0); i <= maxValidatorIndex; i++ {
+		validators = append(validators, i)
+	}
+
 	if exported.FailedAttestations && exported.SyncDuties && exported.WithdrawalsDeposits && exported.Balance && exported.ClRewards && exported.ElRewards && exported.TotalAccumulation && exported.TotalPerformance && exported.BlockStats && exported.Status {
 		logger.Infof("Skipping day %v as it is already exported", day)
 		return nil
@@ -80,13 +90,13 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 
 	if exported.FailedAttestations {
 		logger.Infof("Skipping failed attestations")
-	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(day, concurrencyFailedAttestations); err != nil {
+	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(validators, day, concurrencyFailedAttestations); err != nil {
 		return fmt.Errorf("error in WriteValidatorFailedAttestationsStatisticsForDay: %w", err)
 	}
 
 	if exported.SyncDuties {
 		logger.Infof("Skipping sync duties")
-	} else if err := WriteValidatorSyncDutiesForDay(day); err != nil {
+	} else if err := WriteValidatorSyncDutiesForDay(validators, day); err != nil {
 		return fmt.Errorf("error in WriteValidatorSyncDutiesForDay: %w", err)
 	}
 
@@ -104,13 +114,13 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 
 	if exported.Balance {
 		logger.Infof("Skipping balances")
-	} else if err := WriteValidatorBalances(day); err != nil {
+	} else if err := WriteValidatorBalances(validators, day); err != nil {
 		return fmt.Errorf("error in WriteValidatorBalances: %w", err)
 	}
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
-	} else if err := WriteValidatorClIcome(day, concurrencyCl); err != nil {
+	} else if err := WriteValidatorClIcome(validators, day, concurrencyCl); err != nil {
 		return fmt.Errorf("error in WriteValidatorClIcome: %w", err)
 	}
 
@@ -659,7 +669,7 @@ func WriteValidatorElIcome(day uint64) error {
 	return nil
 }
 
-func WriteValidatorClIcome(day uint64, concurrency uint64) error {
+func WriteValidatorClIcome(validators []uint64, day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -773,7 +783,7 @@ func WriteValidatorClIcome(day uint64, concurrency uint64) error {
 	return nil
 }
 
-func WriteValidatorBalances(day uint64) error {
+func WriteValidatorBalances(validators []uint64, day uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
@@ -791,7 +801,7 @@ func WriteValidatorBalances(day uint64) error {
 	start := time.Now()
 
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
-	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(firstEpoch, lastEpoch)
+	balanceStatistics, err := BigtableClient.GetValidatorBalanceStatistics(validators, firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error in GetValidatorBalanceStatistics for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 	}
@@ -989,7 +999,7 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 	return nil
 }
 
-func WriteValidatorSyncDutiesForDay(day uint64) error {
+func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_sync_stats").Observe(time.Since(exportStart).Seconds())
@@ -1004,7 +1014,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 	start := time.Now()
 	logrus.Infof("Update Sync duties for day [%v] epoch %v -> %v", day, startEpoch, endEpoch)
 
-	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics([]uint64{}, startEpoch, endEpoch)
+	syncStats, err := BigtableClient.GetValidatorSyncDutiesStatistics(validators, startEpoch, endEpoch)
 	if err != nil {
 		return fmt.Errorf("error in GetValidatorSyncDutiesStatistics for startEpoch [%v] and endEpoch [%v]: %w", startEpoch, endEpoch, err)
 	}
@@ -1068,7 +1078,7 @@ func WriteValidatorSyncDutiesForDay(day uint64) error {
 	return nil
 }
 
-func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency uint64) error {
+func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -1086,50 +1096,24 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency ui
 
 	logrus.Infof("exporting 'failed attestations' statistics firstEpoch: %v lastEpoch: %v", firstEpoch, lastEpoch)
 
-	// first key is the batch start index and the second is the validator id
-	failed := map[uint64]map[uint64]*types.ValidatorMissedAttestationsStatistic{}
-	mux := sync.Mutex{}
-	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(int(concurrency))
-	epochBatchSize := uint64(2) // Fetching 2 Epochs per batch seems to be the fastest way to go
-	for i := firstEpoch; i < lastEpoch; i += epochBatchSize {
-		fromEpoch := i
-		toEpoch := fromEpoch + epochBatchSize
-		if toEpoch >= lastEpoch {
-			toEpoch = lastEpoch
-		} else {
-			toEpoch--
-		}
-		g.Go(func() error {
-			select {
-			case <-gCtx.Done():
-				return gCtx.Err()
-			default:
-			}
-			ma, err := BigtableClient.GetValidatorMissedAttestationsCount([]uint64{}, fromEpoch, toEpoch)
-			if err != nil {
-				return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", fromEpoch, toEpoch, err)
-			}
-			mux.Lock()
-			failed[fromEpoch] = ma
-			mux.Unlock()
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return err
-	}
-
 	validatorMap := map[uint64]*types.ValidatorMissedAttestationsStatistic{}
-	for _, f := range failed {
+	batchSize := 10000
+	for i := 0; i < len(validators); i += batchSize {
 
-		for key, val := range f {
-			if validatorMap[key] == nil {
-				validatorMap[key] = val
-			} else {
-				validatorMap[key].MissedAttestations += val.MissedAttestations
-			}
+		upperBound := i + batchSize
+		if len(validators) < upperBound {
+			upperBound = len(validators)
+		}
+		vals := validators[i:upperBound]
+
+		logrus.Infof("retrieving validator missed attestations stats for validators %v - %v", vals[0], vals[len(vals)-1])
+
+		ma, err := BigtableClient.GetValidatorMissedAttestationsCount(vals, firstEpoch, lastEpoch)
+		if err != nil {
+			return fmt.Errorf("error in GetValidatorMissedAttestationsCount for fromEpoch [%v] and toEpoch [%v]: %w", firstEpoch, lastEpoch, err)
+		}
+		for validator, stats := range ma {
+			validatorMap[validator] = stats
 		}
 	}
 
@@ -1141,13 +1125,13 @@ func WriteValidatorFailedAttestationsStatisticsForDay(day uint64, concurrency ui
 		maArr = append(maArr, stat)
 	}
 
-	g, gCtx = errgroup.WithContext(ctx)
-
-	batchSize := 100 // max: 65535 / 4, but we are faster with smaller batches
-	for b := 0; b < len(maArr); b += batchSize {
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(int(concurrency))
+	dbBatchSize := 100
+	for b := 0; b < len(maArr); b += dbBatchSize {
 
 		start := b
-		end := b + batchSize
+		end := b + dbBatchSize
 		if len(maArr) < end {
 			end = len(maArr)
 		}
@@ -1283,18 +1267,25 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 	// retrieve rewards for epochs not yet in stats
 	if upperBoundDay == 65536 {
-		lastDay := uint64(0)
+		lastDay := int64(0)
 		if len(result) > 0 {
-			lastDay = uint64(result[len(result)-1].Day)
+			lastDay = int64(result[len(result)-1].Day)
 		} else {
-			lastDay, err = GetLastExportedStatisticDay()
-			if err != nil {
+			lastDayDb, err := GetLastExportedStatisticDay()
+			if err == nil {
+				lastDay = int64(lastDayDb)
+			} else if err == ErrNoStats {
+				lastDay = -1
+			} else {
 				return nil, err
 			}
 		}
 
 		currentDay := lastDay + 1
-		firstSlot := utils.GetLastBalanceInfoSlotForDay(lastDay) + 1
+		firstSlot := uint64(0)
+		if lastDay > -1 {
+			firstSlot = utils.GetLastBalanceInfoSlotForDay(uint64(lastDay)) + 1
+		}
 		lastSlot := lastFinalizedEpoch * utils.Config.Chain.Config.SlotsPerEpoch
 
 		totalBalance := uint64(0)
@@ -1319,7 +1310,12 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 
 		var lastBalance uint64
 		g.Go(func() error {
-			return GetValidatorBalanceForDay(validatorIndices, lastDay, &lastBalance)
+
+			if lastDay < 0 {
+				return GetValidatorActivationBalance(validatorIndices, &lastBalance)
+			} else {
+				return GetValidatorBalanceForDay(validatorIndices, uint64(lastDay), &lastBalance)
+			}
 		})
 
 		var lastDeposits uint64

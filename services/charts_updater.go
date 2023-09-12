@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
+	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -74,7 +75,7 @@ func LatestChartsPageData() []*types.ChartsPageDataChart {
 }
 
 func chartsPageDataUpdater(wg *sync.WaitGroup) {
-	sleepDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
+	sleepDuration := time.Hour // only update charts once per hour
 	var prevEpoch uint64
 
 	firstun := true
@@ -599,18 +600,18 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{}, epoch, epoch)
+	validators, err := rpc.CurrentClient.GetValidatorState(epoch)
 	if err != nil {
 		return nil, err
 	}
 
-	currentBalances := make([]float64, 0, len(balances))
+	if validators.Data == nil {
+		return nil, fmt.Errorf("GetValidatorState returned empty validator set for epoch %v", epoch)
+	}
 
-	for _, balance := range balances {
-		if len(balance) == 0 {
-			continue
-		}
-		currentBalances = append(currentBalances, float64(balance[0].Balance)/1e9)
+	currentBalances := make([]float64, 0, len(validators.Data))
+	for _, entry := range validators.Data {
+		currentBalances = append(currentBalances, float64(entry.Balance)/1e9)
 	}
 
 	bins := int(math.Sqrt(float64(len(currentBalances)))) + 1
@@ -649,18 +650,19 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("chart-data not available pre-genesis")
 	}
 
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory([]uint64{}, epoch, epoch)
+	validators, err := rpc.CurrentClient.GetValidatorState(epoch)
 	if err != nil {
 		return nil, err
 	}
 
-	effectiveBalances := make([]float64, 0, len(balances))
+	if validators.Data == nil {
+		return nil, fmt.Errorf("GetValidatorState returned empty validator set for epoch %v", epoch)
+	}
 
-	for _, balance := range balances {
-		if len(balance) == 0 {
-			continue
-		}
-		effectiveBalances = append(effectiveBalances, float64(balance[0].EffectiveBalance)/1e9)
+	effectiveBalances := make([]float64, 0, len(validators.Data))
+
+	for _, entry := range validators.Data {
+		effectiveBalances = append(effectiveBalances, float64(entry.Validator.EffectiveBalance)/1e9)
 	}
 
 	bins := int(math.Sqrt(float64(len(effectiveBalances)))) + 1

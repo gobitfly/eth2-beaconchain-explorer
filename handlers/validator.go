@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -19,7 +18,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -77,6 +75,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	latestEpoch := services.LatestEpoch()
+	latestProposedSlot := services.LatestProposedSlot()
 	lastFinalizedEpoch := services.LatestFinalizedEpoch()
 
 	validatorPageData := types.ValidatorPageData{}
@@ -299,7 +298,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
 
-	lastStatsDay := services.LatestExportedStatisticDay()
+	lastStatsDay, lastStatsDayErr := services.LatestExportedStatisticDay()
 
 	timings.BasicInfo = time.Since(timings.Start)
 
@@ -366,7 +365,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if lastStatsDay > 30 {
 		lowerBoundDay = lastStatsDay - 30
 	}
-
 	g := errgroup.Group{}
 	g.Go(func() error {
 		start := time.Now()
@@ -703,9 +701,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			// if sync duties of last period haven't fully been exported yet, fetch remaining duties from bigtable
 			lastExportedEpoch := (lastStatsDay+1)*utils.EpochsPerDay() - 1
+
+			if lastStatsDayErr == db.ErrNoStats {
+				lastExportedEpoch = 0
+			}
 			lastSyncPeriod := actualSyncPeriods[0]
 			if lastSyncPeriod.LastEpoch > lastExportedEpoch {
-				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, lastExportedEpoch+1, latestEpoch)
+				res, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{index}, (lastExportedEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch, latestProposedSlot)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator sync participations data from bigtable: %w", err)
 				}
@@ -1550,7 +1552,11 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		start = uint64((maxPages - 1) * pageLength)
 	}
 
-	currentEpoch := services.LatestEpoch() - 1
+	currentEpoch := services.LatestEpoch()
+
+	if currentEpoch != 0 {
+		currentEpoch = currentEpoch - 1
+	}
 	var postExitEpochs uint64 = 0
 	// for an exited validator we show the history until his exit or (in rare cases) until his last sync / propose duties are finished
 	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 && currentEpoch > (activationAndExitEpoch.ExitEpoch-1) {
@@ -1583,7 +1589,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tableData := make([][]interface{}, 0)
-
 	if postExitEpochs > 0 {
 		startEpoch := currentEpoch + 1
 		endEpoch := startEpoch + postExitEpochs
@@ -1594,6 +1599,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 		// if there are additional epochs with duties we have to go through all of them as there can be gaps (after the exit before the duty)
 		for i := endEpoch; i >= startEpoch; i-- {
+			if i > endEpoch {
+				break
+			}
+
 			if incomeDetails[index] == nil || incomeDetails[index][i] == nil {
 				continue
 			}
@@ -1624,6 +1633,11 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for epoch := endEpoch; epoch >= startEpoch && len(tableData) < pageLength; epoch-- {
+
+			if epoch > endEpoch {
+				break
+			}
+
 			if incomeDetails[index] == nil || incomeDetails[index][epoch] == nil {
 				if epoch <= endEpoch {
 					rewardsStr := "pending..."
@@ -1642,6 +1656,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
+
 		}
 	}
 
@@ -1828,8 +1843,6 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
 // ValidatorSync retrieves one page of sync duties of a specific validator for DataTable.
 func ValidatorSync(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
-	defer cancel()
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -1863,7 +1876,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
-	descOrdering := q.Get("order[0][dir]") == "desc"
+	// descOrdering := q.Get("order[0][dir]") == "desc"
 
 	// retrieve all sync periods for this validator
 	var syncPeriods []uint64 = []uint64{}
@@ -1872,152 +1885,126 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		SELECT period
 		FROM sync_committees 
 		WHERE validatorindex = $1
-		ORDER BY period asc`, validatorIndex)
+		ORDER BY period desc`, validatorIndex)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting sync tab count data of sync-assignments")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	latestEpoch := services.LatestEpoch()
-
-	var syncSlots []uint64 = []uint64{}
-	// getting all sync slots until the latestEpoch (so we exclude scheduled)
-	for _, syncPeriod := range syncPeriods {
-		startEpoch := syncPeriod * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod
-		endEpoch := (syncPeriod + 1) * utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod
-		for epoch := startEpoch; epoch < endEpoch; epoch++ {
-			if epoch <= latestEpoch {
-				for slot := epoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
-					syncSlots = append(syncSlots, slot)
-				}
-			}
-		}
-	}
-
 	// total count of sync duties for this validator
-	totalCount := uint64(len(syncSlots))
+	totalCount := uint64(0)
 
 	tableData := [][]interface{}{}
 
-	if totalCount > 0 && start <= totalCount {
+	if len(syncPeriods) > 0 {
 
-		// if ordering is desc, reverse sync slots
-		if descOrdering {
-			utils.ReverseSlice(syncSlots)
-		}
+		latestProposedSlot := services.LatestProposedSlot()
 
-		// let's pick the slots we want to display on the requested page
-		pageSlots := syncSlots[start:protomath.MinU64(start+length, totalCount)]
-		length = uint64(len(pageSlots)) // Last page might be shorter
-		epochs := []uint64{}
-		last := uint64(0)
-		// we gather all epochs for that page (the table currently displays 10 items per page, so it displays max 2 epoches. But we want to be future proof, so we support bigger page sizes)
-		for _, slot := range pageSlots {
-			epoch := slot / utils.Config.Chain.Config.SlotsPerEpoch
-			if len(epochs) == 0 || epoch != last {
-				epochs = append(epochs, epoch)
-				last = epoch
+		slots := make([]uint64, 0, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod*utils.Config.Chain.Config.SlotsPerEpoch*uint64(len(syncPeriods)))
+
+		for _, period := range syncPeriods {
+			firstEpoch := utils.FirstEpochOfSyncPeriod(period)
+			lastEpoch := firstEpoch + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
+
+			firstSlot := firstEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+			lastSlot := (lastEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+
+			// logger.Infof("processing sync period %v epoch (%v/%v) slots (%v/%v)", period, firstEpoch, lastEpoch, firstSlot, lastSlot)
+			for slot := lastSlot; slot >= firstSlot && (slot <= lastSlot /* guards against underflows */); slot-- {
+				if slot > latestProposedSlot || utils.EpochOfSlot(slot) < utils.Config.Chain.Config.AltairForkEpoch {
+					continue
+				}
+				slots = append(slots, slot)
 			}
 		}
 
-		type PageSlot struct {
-			Status        uint64
-			Participation uint64
+		// if ordering is desc, reverse sync slots
+		totalCount = uint64(len(slots))
+
+		startIndex := start + length - 1
+		if startIndex > uint64(len(slots)-1) {
+			startIndex = uint64(len(slots) - 1)
 		}
-		pageSlotsMap := make(map[uint64]PageSlot)
-		for i := 0; i < len(pageSlots); i++ {
-			pageSlotsMap[pageSlots[i]] = PageSlot{}
-		}
-		var missedSyncSlots []uint64
+		endIndex := start
 
-		mux := sync.Mutex{}
-		g, gCtx := errgroup.WithContext(ctx)
+		endSlot := slots[endIndex]
+		startSlot := slots[startIndex]
 
-		// load the sync duties for all epochs involved from bt
-		for i := 0; i < len(epochs); i++ {
-			epoch := epochs[i]
-			g.Go(func() error {
-				select {
-				case <-gCtx.Done():
-					return gCtx.Err()
-				default:
-				}
+		// logger.Infof("retrieving sync duty history for validator %v and slots %v-%v (%v-%v)", validatorIndex, startSlot, endSlot, startIndex, endIndex)
+		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startSlot, endSlot)
 
-				syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{}, epoch, epoch)
-				if err != nil {
-					return fmt.Errorf("error retrieving validator [%v] sync duty data from bigtable for epoch [%v]: %w", validatorIndex, epoch, err)
-				} else if uint64(len(syncDuties[validatorIndex]))%utils.Config.Chain.Config.SlotsPerEpoch > 0 {
-					return fmt.Errorf("wrong number [%v] of syncDuties for validator [%v] received from from bigtable for epoch [%v]", len(syncDuties[validatorIndex]), validatorIndex, epoch)
-				}
-
-				for validator, duties := range syncDuties {
-					for _, duty := range duties {
-						mux.Lock()
-						pageSlot, ok := pageSlotsMap[duty.Slot]
-						if !ok {
-							mux.Unlock()
-							continue // this is not the slot we are looking for
-						}
-
-						// We want to know how many validators successfully participated in this duty
-						if duty.Status == 1 {
-							pageSlot.Participation++
-						}
-
-						// Get the status if the duty belongs to our validator
-						if validator == validatorIndex {
-							slotTime := utils.SlotToTime(duty.Slot)
-							if duty.Status == 0 && time.Since(slotTime) <= time.Minute {
-								duty.Status = 2 // scheduled
-							}
-
-							if duty.Status == 0 {
-								missedSyncSlots = append(missedSyncSlots, duty.Slot)
-							}
-							pageSlot.Status = duty.Status
-						}
-						pageSlotsMap[duty.Slot] = pageSlot
-						mux.Unlock()
-					}
-				}
-				return nil
-			})
-		}
-
-		if err := g.Wait(); err != nil {
-			utils.LogError(err, "", 0)
+		if err != nil {
+			utils.LogError(fmt.Errorf("error retrieving validator [%v] sync duty data from bigtable for slots [%v-%v]: %w", validatorIndex, startSlot, endSlot, err), "", 0)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
+		// spew.Dump(syncDuties[validatorIndex])
 		// Search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
-		missedSlotsMap, err := db.GetMissedSlotsMap(missedSyncSlots)
+		slotsRange := slots[endIndex : startIndex+1]
+
+		participations, err := db.BigtableClient.GetSyncParticipationBySlotRange(startSlot, endSlot)
+		if err != nil {
+			utils.LogError(fmt.Errorf("error retrieving validator [%v] sync participation data from bigtable for slots [%v-%v]: %w", validatorIndex, startSlot, endSlot, err), "", 0)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		missedSlots := []uint64{}
+		err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, slotsRange)
 		if err != nil {
 			logger.WithError(err).Errorf("error getting missed slots data")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		missedSlotsMap := make(map[uint64]bool, len(missedSlots))
+		for _, slot := range missedSlots {
+			missedSlotsMap[slot] = true
+		}
 
 		// extract correct slots
-		tableData = make([][]interface{}, length)
-		for i := 0; i < len(pageSlots); i++ {
-			slot := pageSlots[i]
-			pageSlot := pageSlotsMap[slot]
-			participation := pageSlot.Participation
+		tableData = make([][]interface{}, 0, length)
+		for slot := endSlot; slot >= startSlot; slot-- {
 
 			epoch := utils.EpochOfSlot(slot)
-			status := pageSlot.Status
+			participation := participations[slot]
+
+			if syncDuties[validatorIndex] == nil {
+				tableData = append(tableData,
+					[]interface{}{
+						fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
+						utils.FormatEpoch(epoch),
+						utils.FormatBlockSlot(slot),
+						utils.FormatSyncParticipationStatus(0, slot),
+						utils.FormatSyncParticipations(participation),
+					},
+				)
+			}
+
+			// if utils.SlotToTime(slot).Before(time.Now()) {
+			// 	continue
+			// }
+
+			status := uint64(0)
+
+			if syncDuties[validatorIndex][slot] != nil {
+				status = syncDuties[validatorIndex][slot].Status
+			}
 			if _, ok := missedSlotsMap[slot]; ok {
 				status = 3
 			}
 
-			tableData[i] = []interface{}{
+			tableData = append(tableData, []interface{}{
 				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
 				utils.FormatEpoch(epoch),
 				utils.FormatBlockSlot(slot),
 				utils.FormatSyncParticipationStatus(status, slot),
 				utils.FormatSyncParticipations(participation),
+			})
+
+			if slot == 0 {
+				break
 			}
 		}
 	}

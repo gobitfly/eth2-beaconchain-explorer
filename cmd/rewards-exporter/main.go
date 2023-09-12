@@ -66,6 +66,24 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
+	if bnAddress == nil || *bnAddress == "" {
+		if utils.Config.Indexer.Node.Host == "" {
+			utils.LogFatal(nil, "no beacon node url provided", 0)
+		} else {
+			logrus.Info("applying becon node endpoint from config")
+			*bnAddress = fmt.Sprintf("http://%s:%s", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port)
+		}
+	}
+
+	if enAddress == nil || *enAddress == "" {
+		if utils.Config.Eth1ErigonEndpoint == "" {
+			utils.LogFatal(nil, "no execution node url provided", 0)
+		} else {
+			logrus.Info("applying execution node endpoint from config")
+			*enAddress = utils.Config.Eth1ErigonEndpoint
+		}
+	}
+
 	client := beacon.NewClient(*bnAddress, time.Minute*5)
 
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)

@@ -2,51 +2,100 @@
 This document summarized the bigtable configuration options and table definitions required to run the beaconcha.in explorer. All settings can be applied either by using the GCP bigtable web interface or the `cbt` tool.
 
 ----
-Table name: `beaconchain`
+Table name: `beaconchain_validator_history`
+
+```
+cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_history
+```
 
 Column families:
-* Name: `at` | GC Policy: Version based policy with a maximum of 1 versions
-* Name: `id` | GC Policy: None
-* Name: `pr` | GC Policy: Version based policy with a maximum of 1 versions
-* Name: `sc` | GC Policy: Version based policy with a maximum of 1 versions
-* Name: `stats` | GC Policy: None
 * Name: `vb` | GC Policy: None
+* Name: `ha` | GC Policy: None
+* Name: `at` | GC Policy: None
+* Name: `pr` | GC Policy: None
+* Name: `sc` | GC Policy: None
+* Name: `sp` | GC Policy: None
+* Name: `id` | GC Policy: None
+* Name: `stats` | GC Policy: None
 
+```
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history vb
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history ha
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history at
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history pr
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history sc
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history sp
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history id
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history stats
+```
 ----
 Table name: `beaconchain_validators`
 
+```
+cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validators
+```
+
 Column families:
 * Name: `at` | GC Policy: Version based policy with a maximum of 1 versions
 
+```
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators at
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy beaconchain_validators at maxversions=1
+```
 ----
 Table name: `blocks`
+
+```
+cbt -project $PROJECT -instance $INSTANCE createtable blocks
+```
 
 Column families:
 * Name: `default` | GC Policy: Version based policy with a maximum of 1 versions
 
-----
-Table name: `cache`
+```
+cbt -project $PROJECT -instance $INSTANCE createfamily blocks default
 
-Column families:
-* Name: `10_min` | GC Policy: Version based policy with a maximum of 1 versions and a maximum age of 10 minutes
-* Name: `1_day` | GC Policy: Version based policy with a maximum of 1 versions and a maximum age of 1 day
-* Name: `1_hour` | GC Policy: Version based policy with a maximum of 1 versions and a maximum age of 1 hour
-
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy blocks default maxversions=1
+```
 ----
 Table name: `data`
+
+```
+cbt -project $PROJECT -instance $INSTANCE createtable data
+```
 
 Column families:
 * Name: `c` | GC Policy: Age based policy with a max age of 1 day
 * Name: `f` | GC Policy: None
 
+```
+cbt -project $PROJECT -instance $INSTANCE createfamily data c
+cbt -project $PROJECT -instance $INSTANCE createfamily data f
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy data c maxage=1d
+```
 ----
 Table name: `machine_metrics`
+
+```
+cbt -project $PROJECT -instance $INSTANCE createtable machine_metrics
+```
 
 Column families:
 * Name: `mm` | GC Policy: Age based policy with a max age of 31 days
 
+```
+cbt -project $PROJECT -instance $INSTANCE createfamily machine_metrics mm
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy machine_metrics mm maxage=31d
+```
 ----
 Table name: `metadata`
+
+```
+cbt -project $PROJECT -instance $INSTANCE createtable metadata
+```
 
 Column families:
 * Name: `a` | GC Policy: None
@@ -56,9 +105,30 @@ Column families:
 * Name: `erc721` | GC Policy: None
 * Name: `series` | GC Policy: Version based policy with a maximum of 1 versions
 
+```
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata a
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata c
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata erc1155
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata erc20
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata erc721
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata series
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy metadata series maxversions=1
+```
 ----
 Table name: `metadata_updates`
+
+```
+cbt -project $PROJECT -instance $INSTANCE createtable metadata_updates
+```
 
 Column families:
 * Name: `blocks` | GC Policy: Age based policy with a max age of 1 day
 * Name: `f` | GC Policy: None
+
+```
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata_updates blocks
+cbt -project $PROJECT -instance $INSTANCE createfamily metadata_updates f
+
+cbt -project $PROJECT -instance $INSTANCE setgcpolicy metadata_updates blocks maxage=1d
+```

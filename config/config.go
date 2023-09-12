@@ -22,3 +22,6 @@ var TestnetChainYml string
 
 //go:embed gnosis.chain.yml
 var GnosisChainYml string
+
+//go:embed holesky.chain.yml
+var HoleskyChainYml string

@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"context"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -28,6 +29,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -38,6 +40,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/carlmjohnson/requests"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
@@ -371,6 +374,11 @@ func WaitForCtrlC() {
 // ReadConfig will process a configuration
 func ReadConfig(cfg *types.Config, path string) error {
 
+	configPathFromEnv := os.Getenv("BEACONCHAIN_CONFIG")
+
+	if configPathFromEnv != "" { // allow the location of the config file to be passed via env args
+		path = configPathFromEnv
+	}
 	if strings.HasPrefix(path, "projects/") {
 		x, err := AccessSecretVersion(path)
 		if err != nil {
@@ -409,6 +417,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
 		case "gnosis":
 			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.Config)
+		case "holesky":
+			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &cfg.Chain.Config)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
 		}
@@ -419,6 +429,127 @@ func ReadConfig(cfg *types.Config, path string) error {
 		// if err != nil {
 		// 	return fmt.Errorf("error setting chainConfig (%v) for prysmParams: %w", cfg.Chain.Name, err)
 		// }
+	} else if cfg.Chain.ConfigPath == "node" {
+		nodeEndpoint := fmt.Sprintf("http://%s:%s", cfg.Indexer.Node.Host, cfg.Indexer.Node.Port)
+
+		jr := &types.ConfigJsonResponse{}
+
+		err := requests.
+			URL(nodeEndpoint + "/eth/v1/config/spec").
+			ToJSON(jr).
+			Fetch(context.Background())
+
+		if err != nil {
+			return err
+		}
+
+		chainCfg := types.ChainConfig{
+			PresetBase:                              jr.Data.PresetBase,
+			ConfigName:                              jr.Data.ConfigName,
+			TerminalTotalDifficulty:                 jr.Data.TerminalTotalDifficulty,
+			TerminalBlockHash:                       jr.Data.TerminalBlockHash,
+			TerminalBlockHashActivationEpoch:        mustParseUint(jr.Data.TerminalBlockHashActivationEpoch),
+			MinGenesisActiveValidatorCount:          mustParseUint(jr.Data.MinGenesisActiveValidatorCount),
+			MinGenesisTime:                          int64(mustParseUint(jr.Data.MinGenesisTime)),
+			GenesisForkVersion:                      jr.Data.GenesisForkVersion,
+			GenesisDelay:                            mustParseUint(jr.Data.GenesisDelay),
+			AltairForkVersion:                       jr.Data.AltairForkVersion,
+			AltairForkEpoch:                         mustParseUint(jr.Data.AltairForkEpoch),
+			BellatrixForkVersion:                    jr.Data.BellatrixForkVersion,
+			BellatrixForkEpoch:                      mustParseUint(jr.Data.BellatrixForkEpoch),
+			CappellaForkVersion:                     jr.Data.CapellaForkVersion,
+			CappellaForkEpoch:                       mustParseUint(jr.Data.CapellaForkEpoch),
+			SecondsPerSlot:                          mustParseUint(jr.Data.SecondsPerSlot),
+			SecondsPerEth1Block:                     mustParseUint(jr.Data.SecondsPerEth1Block),
+			MinValidatorWithdrawabilityDelay:        mustParseUint(jr.Data.MinValidatorWithdrawabilityDelay),
+			ShardCommitteePeriod:                    mustParseUint(jr.Data.ShardCommitteePeriod),
+			Eth1FollowDistance:                      mustParseUint(jr.Data.Eth1FollowDistance),
+			InactivityScoreBias:                     mustParseUint(jr.Data.InactivityScoreBias),
+			InactivityScoreRecoveryRate:             mustParseUint(jr.Data.InactivityScoreRecoveryRate),
+			EjectionBalance:                         mustParseUint(jr.Data.EjectionBalance),
+			MinPerEpochChurnLimit:                   mustParseUint(jr.Data.MinPerEpochChurnLimit),
+			ChurnLimitQuotient:                      mustParseUint(jr.Data.ChurnLimitQuotient),
+			ProposerScoreBoost:                      mustParseUint(jr.Data.ProposerScoreBoost),
+			DepositChainID:                          mustParseUint(jr.Data.DepositChainID),
+			DepositNetworkID:                        mustParseUint(jr.Data.DepositNetworkID),
+			DepositContractAddress:                  jr.Data.DepositContractAddress,
+			MaxCommitteesPerSlot:                    mustParseUint(jr.Data.MaxCommitteesPerSlot),
+			TargetCommitteeSize:                     mustParseUint(jr.Data.TargetCommitteeSize),
+			MaxValidatorsPerCommittee:               mustParseUint(jr.Data.TargetCommitteeSize),
+			ShuffleRoundCount:                       mustParseUint(jr.Data.ShuffleRoundCount),
+			HysteresisQuotient:                      mustParseUint(jr.Data.HysteresisQuotient),
+			HysteresisDownwardMultiplier:            mustParseUint(jr.Data.HysteresisDownwardMultiplier),
+			HysteresisUpwardMultiplier:              mustParseUint(jr.Data.HysteresisUpwardMultiplier),
+			SafeSlotsToUpdateJustified:              mustParseUint(jr.Data.SafeSlotsToUpdateJustified),
+			MinDepositAmount:                        mustParseUint(jr.Data.MinDepositAmount),
+			MaxEffectiveBalance:                     mustParseUint(jr.Data.MaxEffectiveBalance),
+			EffectiveBalanceIncrement:               mustParseUint(jr.Data.EffectiveBalanceIncrement),
+			MinAttestationInclusionDelay:            mustParseUint(jr.Data.MinAttestationInclusionDelay),
+			SlotsPerEpoch:                           mustParseUint(jr.Data.SlotsPerEpoch),
+			MinSeedLookahead:                        mustParseUint(jr.Data.MinSeedLookahead),
+			MaxSeedLookahead:                        mustParseUint(jr.Data.MaxSeedLookahead),
+			EpochsPerEth1VotingPeriod:               mustParseUint(jr.Data.EpochsPerEth1VotingPeriod),
+			SlotsPerHistoricalRoot:                  mustParseUint(jr.Data.SlotsPerHistoricalRoot),
+			MinEpochsToInactivityPenalty:            mustParseUint(jr.Data.MinEpochsToInactivityPenalty),
+			EpochsPerHistoricalVector:               mustParseUint(jr.Data.EpochsPerHistoricalVector),
+			EpochsPerSlashingsVector:                mustParseUint(jr.Data.EpochsPerSlashingsVector),
+			HistoricalRootsLimit:                    mustParseUint(jr.Data.HistoricalRootsLimit),
+			ValidatorRegistryLimit:                  mustParseUint(jr.Data.ValidatorRegistryLimit),
+			BaseRewardFactor:                        mustParseUint(jr.Data.BaseRewardFactor),
+			WhistleblowerRewardQuotient:             mustParseUint(jr.Data.WhistleblowerRewardQuotient),
+			ProposerRewardQuotient:                  mustParseUint(jr.Data.ProposerRewardQuotient),
+			InactivityPenaltyQuotient:               mustParseUint(jr.Data.InactivityPenaltyQuotient),
+			MinSlashingPenaltyQuotient:              mustParseUint(jr.Data.MinSlashingPenaltyQuotient),
+			ProportionalSlashingMultiplier:          mustParseUint(jr.Data.ProportionalSlashingMultiplier),
+			MaxProposerSlashings:                    mustParseUint(jr.Data.MaxProposerSlashings),
+			MaxAttesterSlashings:                    mustParseUint(jr.Data.MaxAttesterSlashings),
+			MaxAttestations:                         mustParseUint(jr.Data.MaxAttestations),
+			MaxDeposits:                             mustParseUint(jr.Data.MaxDeposits),
+			MaxVoluntaryExits:                       mustParseUint(jr.Data.MaxVoluntaryExits),
+			InvactivityPenaltyQuotientAltair:        mustParseUint(jr.Data.InactivityPenaltyQuotientAltair),
+			MinSlashingPenaltyQuotientAltair:        mustParseUint(jr.Data.MinSlashingPenaltyQuotientAltair),
+			ProportionalSlashingMultiplierAltair:    mustParseUint(jr.Data.ProportionalSlashingMultiplierAltair),
+			SyncCommitteeSize:                       mustParseUint(jr.Data.SyncCommitteeSize),
+			EpochsPerSyncCommitteePeriod:            mustParseUint(jr.Data.EpochsPerSyncCommitteePeriod),
+			MinSyncCommitteeParticipants:            mustParseUint(jr.Data.MinSyncCommitteeParticipants),
+			InvactivityPenaltyQuotientBellatrix:     mustParseUint(jr.Data.InactivityPenaltyQuotientBellatrix),
+			MinSlashingPenaltyQuotientBellatrix:     mustParseUint(jr.Data.MinSlashingPenaltyQuotientBellatrix),
+			ProportionalSlashingMultiplierBellatrix: mustParseUint(jr.Data.ProportionalSlashingMultiplierBellatrix),
+			MaxBytesPerTransaction:                  mustParseUint(jr.Data.MaxBytesPerTransaction),
+			MaxTransactionsPerPayload:               mustParseUint(jr.Data.MaxTransactionsPerPayload),
+			BytesPerLogsBloom:                       mustParseUint(jr.Data.BytesPerLogsBloom),
+			MaxExtraDataBytes:                       mustParseUint(jr.Data.MaxExtraDataBytes),
+			MaxWithdrawalsPerPayload:                mustParseUint(jr.Data.MaxWithdrawalsPerPayload),
+			MaxValidatorsPerWithdrawalSweep:         mustParseUint(jr.Data.MaxValidatorsPerWithdrawalsSweep),
+			MaxBlsToExecutionChange:                 mustParseUint(jr.Data.MaxBlsToExecutionChanges),
+		}
+
+		cfg.Chain.Config = chainCfg
+
+		type GenesisResponse struct {
+			Data struct {
+				GenesisTime           string `json:"genesis_time"`
+				GenesisValidatorsRoot string `json:"genesis_validators_root"`
+				GenesisForkVersion    string `json:"genesis_fork_version"`
+			} `json:"data"`
+		}
+
+		gtr := &GenesisResponse{}
+
+		err = requests.
+			URL(nodeEndpoint + "/eth/v1/beacon/genesis").
+			ToJSON(gtr).
+			Fetch(context.Background())
+
+		if err != nil {
+			return err
+		}
+
+		cfg.Chain.GenesisTimestamp = mustParseUint(gtr.Data.GenesisTime)
+		cfg.Chain.GenesisValidatorsRoot = gtr.Data.GenesisValidatorsRoot
+
+		logger.Infof("loaded chain config from node with genesis time %s", gtr.Data.GenesisTime)
+
 	} else {
 		f, err := os.Open(cfg.Chain.ConfigPath)
 		if err != nil {
@@ -489,6 +620,20 @@ func ReadConfig(cfg *types.Config, path string) error {
 	}).Infof("did init config")
 
 	return nil
+}
+
+func mustParseUint(str string) uint64 {
+
+	if str == "" {
+		return 0
+	}
+
+	nbr, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		logrus.Fatalf("fatal error parsing uint %s: %v", str, err)
+	}
+
+	return nbr
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
@@ -842,6 +987,49 @@ func ElementExists(arr []string, el string) bool {
 func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 	return getABIFromEtherscan(address)
 }
+
+// func getABIFromSourcify(address []byte) (*types.ContractMetadata, error) {
+// 	httpClient := http.Client{
+// 		Timeout: time.Second * 5,
+// 	}
+
+// 	resp, err := httpClient.Get(fmt.Sprintf("https://sourcify.dev/server/repository/contracts/full_match/%d/0x%x/metadata.json", 1, address))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if resp.StatusCode == 200 {
+// 		body, err := io.ReadAll(resp.Body)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		data := &types.SourcifyContractMetadata{}
+// 		err = json.Unmarshal(body, data)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		abiString, err := json.Marshal(data.Output.Abi)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		contractAbi, err := abi.JSON(bytes.NewReader(abiString))
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		meta := &types.ContractMetadata{}
+// 		meta.ABIJson = abiString
+// 		meta.ABI = &contractAbi
+// 		meta.Name = ""
+
+// 		return meta, nil
+// 	} else {
+// 		return nil, fmt.Errorf("sourcify contract code not found")
+// 	}
+// }
 
 func GetEtherscanAPIBaseUrl(provideDefault bool) string {
 	const mainnetBaseUrl = "api.etherscan.io"
@@ -1227,7 +1415,7 @@ func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesSta
 //   - `validators` : the validators to add the stats for
 //   - `syncDutiesHistory` : the sync duties history of all queried validators
 //   - `stats` : the stats object to add the stats to, if nil a new stats object is created
-func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
+func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64]map[uint64]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
 	if stats == nil {
 		stats = &types.SyncCommitteesStats{}
 	}
@@ -1343,4 +1531,17 @@ func SortedUniqueUint64(arr []uint64) []uint64 {
 	}
 
 	return result
+}
+
+func ReverseString(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
+func GetCurrentFuncName() string {
+	pc, _, _, _ := runtime.Caller(1)
+	return runtime.FuncForPC(pc).Name()
 }

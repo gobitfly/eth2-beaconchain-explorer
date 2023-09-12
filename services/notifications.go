@@ -1382,7 +1382,13 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 	}
 
 	// get attestations for all validators for the last 4 epochs
-	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch-3, epoch)
+
+	validators, err := db.GetValidatorIndices()
+	if err != nil {
+		return err
+	}
+
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory(validators, epoch-3, epoch)
 	if err != nil {
 		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
 	}
@@ -2330,7 +2336,7 @@ func collectMonitoringMachine(
 
 	rowKeys := gcp_bigtable.RowList{}
 	for _, data := range allSubscribed {
-		rowKeys = append(rowKeys, db.GetMachineRowKey(data.UserID, "system", data.MachineName))
+		rowKeys = append(rowKeys, db.BigtableClient.GetMachineRowKey(data.UserID, "system", data.MachineName))
 	}
 
 	machineDataOfSubscribed, err := db.BigtableClient.GetMachineMetricsForNotifications(rowKeys)
@@ -2587,8 +2593,11 @@ func (n *taxReportNotification) GetInfoMarkdown() string {
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	lastStatsDay := LatestExportedStatisticDay()
+	lastStatsDay, err := LatestExportedStatisticDay()
 
+	if err != nil {
+		return err
+	}
 	//Check that the last day of the month is already exported
 	tNow := time.Now()
 	firstDayOfMonth := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -2609,7 +2618,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		name = utils.Config.Chain.Config.ConfigName + ":" + name
 	}
 
-	err := db.FrontendWriterDB.Select(&dbResult, `
+	err = db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));

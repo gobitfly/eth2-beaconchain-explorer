@@ -74,7 +74,7 @@ func (client *ErigonClient) GetRPCClient() *geth_rpc.Client {
 	return client.rpcClient
 }
 
-func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBlockTimings, error) {
+func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth1Block, *types.GetBlockTimings, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -192,10 +192,75 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 	g := new(errgroup.Group)
 
 	g.Go(func() error {
-		traces, err := client.TraceParity(block.NumberU64())
+		if block.NumberU64() == 0 { // genesis block is not traceable
+			return nil
+		}
 
-		if err != nil {
-			logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+		var traceError error
+		if traceMode == "parity" || traceMode == "parity/geth" {
+			traces, err := client.TraceParity(block.NumberU64())
+
+			if err != nil {
+				if traceMode == "parity" {
+					return fmt.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+				} else {
+					logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+
+				}
+				traceError = err
+			} else {
+				for _, trace := range traces {
+					if trace.Type == "reward" {
+						continue
+					}
+
+					if trace.TransactionHash == "" {
+						continue
+					}
+
+					if trace.TransactionPosition >= len(c.Transactions) {
+						return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
+					}
+
+					if trace.Error == "" {
+						c.Transactions[trace.TransactionPosition].Status = 1
+					} else {
+						c.Transactions[trace.TransactionPosition].Status = 0
+						c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
+					}
+
+					tracePb := &types.Eth1InternalTransaction{
+						Type: trace.Type,
+						Path: fmt.Sprint(trace.TraceAddress),
+					}
+
+					if tracePb.Type == "call" {
+						tracePb.Type = trace.Action.CallType
+					}
+
+					if trace.Type == "create" {
+						tracePb.From = common.FromHex(trace.Action.From)
+						tracePb.To = common.FromHex(trace.Result.Address)
+						tracePb.Value = common.FromHex(trace.Action.Value)
+					} else if trace.Type == "suicide" {
+						tracePb.From = common.FromHex(trace.Action.Address)
+						tracePb.To = common.FromHex(trace.Action.RefundAddress)
+						tracePb.Value = common.FromHex(trace.Action.Balance)
+					} else if trace.Type == "call" {
+						tracePb.From = common.FromHex(trace.Action.From)
+						tracePb.To = common.FromHex(trace.Action.To)
+						tracePb.Value = common.FromHex(trace.Action.Value)
+					} else {
+						spew.Dump(trace)
+						logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionHash)
+					}
+
+					c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+				}
+			}
+		}
+
+		if traceMode == "geth" || (traceError != nil && traceMode == "parity/geth") {
 
 			gethTraceData, err := client.TraceGeth(block.Hash())
 
@@ -203,7 +268,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 				return fmt.Errorf("error tracing block via geth style traces (%v), %v: %v", block.Number(), block.Hash(), err)
 			}
 
-			logger.Infof("retrieved %v calls via geth", len(gethTraceData))
+			// logger.Infof("retrieved %v calls via geth", len(gethTraceData))
 
 			for _, trace := range gethTraceData {
 				if trace.Error == "" {
@@ -233,7 +298,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 					logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
 				}
 
-				logger.Infof("appending trace %v to tx %x from %v to %v value %v", trace.TransactionPosition, c.Transactions[trace.TransactionPosition].Hash, trace.From, trace.To, trace.Value)
+				logger.Tracef("appending trace %v to tx %x from %v to %v value %v", trace.TransactionPosition, c.Transactions[trace.TransactionPosition].Hash, trace.From, trace.To, trace.Value)
 
 				c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 			}
@@ -242,54 +307,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 		timings.Traces = time.Since(start)
 
 		// logrus.Infof("retrieved %v traces for %v txs", len(traces), len(c.Transactions))
-		for _, trace := range traces {
-			if trace.Type == "reward" {
-				continue
-			}
 
-			if trace.TransactionHash == "" {
-				continue
-			}
-
-			if trace.TransactionPosition >= len(c.Transactions) {
-				return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
-			}
-
-			if trace.Error == "" {
-				c.Transactions[trace.TransactionPosition].Status = 1
-			} else {
-				c.Transactions[trace.TransactionPosition].Status = 0
-				c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
-			}
-
-			tracePb := &types.Eth1InternalTransaction{
-				Type: trace.Type,
-				Path: fmt.Sprint(trace.TraceAddress),
-			}
-
-			if tracePb.Type == "call" {
-				tracePb.Type = trace.Action.CallType
-			}
-
-			if trace.Type == "create" {
-				tracePb.From = common.FromHex(trace.Action.From)
-				tracePb.To = common.FromHex(trace.Result.Address)
-				tracePb.Value = common.FromHex(trace.Action.Value)
-			} else if trace.Type == "suicide" {
-				tracePb.From = common.FromHex(trace.Action.Address)
-				tracePb.To = common.FromHex(trace.Action.RefundAddress)
-				tracePb.Value = common.FromHex(trace.Action.Balance)
-			} else if trace.Type == "call" {
-				tracePb.From = common.FromHex(trace.Action.From)
-				tracePb.To = common.FromHex(trace.Action.To)
-				tracePb.Value = common.FromHex(trace.Action.Value)
-			} else {
-				spew.Dump(trace)
-				logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionHash)
-			}
-
-			c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
-		}
 		return nil
 	})
 
@@ -369,6 +387,10 @@ func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 	return latestBlock.NumberU64(), nil
 }
 
+type GethTraceCallResultWrapper struct {
+	Result *GethTraceCallResult
+}
+
 type GethTraceCallResult struct {
 	TransactionPosition int
 	Time                string
@@ -382,15 +404,6 @@ type GethTraceCallResult struct {
 	Error               string
 	Type                string
 	Calls               []*GethTraceCallResult
-}
-
-type GethTraceCallData struct {
-	From     common.Address
-	To       common.Address
-	Gas      hexutil.Uint64
-	GasPrice hexutil.Big
-	Value    hexutil.Big
-	Data     hexutil.Bytes
 }
 
 var gethTracerArg = map[string]string{
@@ -413,7 +426,7 @@ func extractCalls(r *GethTraceCallResult, d *[]*GethTraceCallResult) {
 }
 
 func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallResult, error) {
-	var res []*GethTraceCallResult
+	var res []*GethTraceCallResultWrapper
 
 	err := client.rpcClient.Call(&res, "debug_traceBlockByHash", blockHash, gethTracerArg)
 	if err != nil {
@@ -422,8 +435,8 @@ func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallRe
 
 	data := make([]*GethTraceCallResult, 0, 20)
 	for i, r := range res {
-		r.TransactionPosition = i
-		extractCalls(r, &data)
+		r.Result.TransactionPosition = i
+		extractCalls(r.Result, &data)
 	}
 
 	return data, nil
