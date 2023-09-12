@@ -1054,7 +1054,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 	// Find all missed and orphaned slots
 	slots := []uint64{}
-	maxSlot := (endEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch
+	maxSlot := ((endEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch) - 1
 	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= maxSlot; slot++ {
 		slots = append(slots, slot)
 	}
@@ -2018,7 +2018,7 @@ func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, pr
 		startEpoch = 0
 	}
 
-	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch))*len(validatorIndices)+1)
+	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch))*len(validatorIndices))
 
 	for _, validatorIndex := range validatorIndices {
 		validatorKey := bigtable.validatorIndexToKey(validatorIndex)
@@ -2038,7 +2038,7 @@ func (bigtable *Bigtable) getValidatorsEpochSlotRanges(validatorIndices []uint64
 		startEpoch = 0
 	}
 
-	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch))*len(validatorIndices)+1)
+	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch))*len(validatorIndices))
 
 	for _, validatorIndex := range validatorIndices {
 		validatorKey := bigtable.validatorIndexToKey(validatorIndex)
@@ -2060,7 +2060,7 @@ func (bigtable *Bigtable) getValidatorSlotRanges(validatorIndices []uint64, pref
 	startEpoch := utils.EpochOfSlot(startSlot)
 	endEpoch := utils.EpochOfSlot(endSlot)
 
-	ranges := make(gcp_bigtable.RowRangeList, 0, len(validatorIndices)+1)
+	ranges := make(gcp_bigtable.RowRangeList, 0, len(validatorIndices))
 
 	for _, validatorIndex := range validatorIndices {
 		validatorKey := bigtable.validatorIndexToKey(validatorIndex)

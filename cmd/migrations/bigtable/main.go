@@ -55,8 +55,6 @@ func main() {
 	}
 
 	for i := *start; i <= *end; i++ {
-		i := i
-
 		logrus.Infof("exporting epoch %v", i)
 		exporter.ExportEpoch(i, rpcClient)
 	}

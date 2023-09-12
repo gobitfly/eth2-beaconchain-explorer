@@ -112,7 +112,7 @@ func (bigtable *Bigtable) GetMetadatTable() *gcp_bigtable.Table {
 }
 
 func (bigtable *Bigtable) SaveBlock(block *types.Eth1Block) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	encodedBc, err := proto.Marshal(block)
