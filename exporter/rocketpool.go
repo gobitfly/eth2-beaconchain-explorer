@@ -21,6 +21,7 @@ import (
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/klauspost/compress/zstd"
+	"github.com/lib/pq"
 	rpDAO "github.com/rocket-pool/rocketpool-go/dao"
 	rpDAOTrustedNode "github.com/rocket-pool/rocketpool-go/dao/trustednode"
 	"github.com/rocket-pool/rocketpool-go/minipool"
