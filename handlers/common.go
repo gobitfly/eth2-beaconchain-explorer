@@ -814,28 +814,3 @@ func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
 
 	return count, nil
 }
-
-func GetTotalWithdrawalsAmount(validators []uint64, totalWithdrawals *uint64) error {
-	validatorsPQArray := pq.Array(validators)
-	lastExportedDay, err := services.LatestExportedStatisticDay()
-	if err != nil {
-		return fmt.Errorf("error getting latest exported statistic day for total withdrawals amount: %w", err)
-	}
-	firstSlotToday := ((lastExportedDay+1)*utils.EpochsPerDay() - 1) * utils.Config.Chain.Config.SlotsPerEpoch // -1 because validator_stats does not include last epoch of the day for some reason
-
-	return db.ReaderDb.Get(totalWithdrawals, `
-		WITH today AS (
-			SELECT COALESCE(SUM(w.amount), 0) as amount_today
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
-		),
-		stats AS (
-			SELECT COALESCE(SUM(withdrawals_amount)) as total_amount
-			FROM validator_stats
-			WHERE validatorindex = ANY($1)
-		)
-		SELECT today.amount_today + stats.total_amount as total
-		FROM today, stats;
-	`, validatorsPQArray, firstSlotToday)
-}
