@@ -478,6 +478,7 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 	highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
 	lowKey := fmt.Sprintf("%s:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(low)) // add \x00 to make the range inclusive
 
+	limit := high - low + 1
 	// the low key will have a higher reverse padded number
 	rowRange := gcp_bigtable.NewRange(highKey, lowKey)
 
@@ -494,7 +495,7 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 		return true
 	}
 
-	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter)
+	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
 	if err != nil {
 		return err
 	}
