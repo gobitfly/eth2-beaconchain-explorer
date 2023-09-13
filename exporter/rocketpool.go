@@ -1160,7 +1160,7 @@ func (rp *RocketpoolExporter) SaveDAOMembers() error {
 
 		_, err = tx.Exec(`
 			DELETE FROM rocketpool_dao_members
-			WHERE NOT address = ANY($1)`, addresses)
+			WHERE NOT address = ANY($1)`, pq.ByteaArray(addresses))
 		if err != nil {
 			return fmt.Errorf("error deleting from rocketpool_dao_members: %w", err)
 		}
