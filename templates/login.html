@@ -39,7 +39,7 @@
 {{ end }}
 
 {{ define "content" }}
-  {{ with .Data }}
+  {{ with .Data.AuthData }}
     <div class="container mt-2">
       <div class="row my-3">
         <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
@@ -68,6 +68,8 @@
               </label>
               <input tabindex="2" required type="password" maxlength="256" class="form-control" autocomplete="current-password" id="password" name="password" />
             </div>
+            <input type="hidden" value="{{ $.Data.RedirectData.Redirect_uri }}" name="oauth_redirect_uri" />
+            <input type="hidden" value="{{ $.Data.RedirectData.State }}" name="state" />
             <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" tabindex="3" type="submit" class="g-recaptcha btn btn-primary float-right">Login</button>
           </form>
           <span style="font-size: 90%;" class="text-muted">Don't have an account? </span><a tabindex="4" href="/register">Sign up</a>
