@@ -80,11 +80,6 @@ func main() {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
-	err = handlers.CheckAndPreloadImprint()
-	if err != nil {
-		logrus.Fatalf("error check / preload imprint: %v", err)
-	}
-
 	if utils.Config.Pprof.Enabled {
 		go func() {
 			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
@@ -626,8 +621,6 @@ func main() {
 				jsHandler := http.FileServer(http.Dir("static/js"))
 				router.PathPrefix("/js").Handler(http.StripPrefix("/js/", jsHandler))
 			}
-			legalFs := http.Dir(utils.Config.Frontend.LegalDir)
-			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", handlers.CustomFileServer(http.FileServer(legalFs), legalFs, handlers.NotFound)))
 			fileSys := http.FS(static.Files)
 			router.PathPrefix("/").Handler(handlers.CustomFileServer(http.FileServer(fileSys), fileSys, handlers.NotFound))
 
