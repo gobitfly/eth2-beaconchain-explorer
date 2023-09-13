@@ -230,11 +230,6 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// UserAuthorizationCancel cancels oauth authorization session states and redirects to frontpage
-func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "user/notifications.html")
 	var notificationTemplate = templates.GetTemplate(templateFiles...)
@@ -3033,7 +3028,7 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LoginPost handles authenticating the user.
+// UserGlobalNotificationPost handles the global notifications
 func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
 	isAdmin, _ := handleAdminPermissions(w, r)
 	if !isAdmin {
