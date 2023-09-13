@@ -1356,18 +1356,10 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d,
 		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal,
 		COALESCE(validator_performance.rank7d, 0) AS rank7d,
-		((validator_performance.rank7d::float * 100) / COALESCE((SELECT total_count FROM maxValidatorIndex), 1)) as rankpercentage,
-		w.total as total_withdrawals
+		((validator_performance.rank7d::float * 100) / COALESCE((SELECT total_count FROM maxValidatorIndex), 1)) as rankpercentage
 	FROM validators
 	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
-	LEFT JOIN (
-		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
-		WHERE validatorindex = ANY($1)
-		GROUP BY validatorindex
-	) as w ON w.index = validators.validatorindex
 	WHERE validators.validatorindex = ANY($1)
 	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
 	if err != nil {
@@ -1551,11 +1543,42 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lastExportedDay, err := services.LatestExportedStatisticDay()
+	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "error retrieving data, please try again later")
+		return
+	}
+	firstSlotToday := ((lastExportedDay+1)*utils.EpochsPerDay() - 1) * utils.Config.Chain.Config.SlotsPerEpoch // -1 because validator_stats does not include last epoch of the day for some reason
+
 	data := make([]*ApiValidatorResponse, 0)
 
 	err = db.ReaderDb.Select(&data, `
+		WITH today AS (
+			SELECT
+				w.validatorindex,
+				COALESCE(SUM(w.amount), 0) as amount_today
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
+			GROUP BY w.validatorindex
+		),
+		stats AS (
+			SELECT
+				vs.validatorindex,
+				COALESCE(SUM(vs.withdrawals_amount), 0) as total_amount
+			FROM validator_stats vs
+			WHERE vs.validatorindex = ANY($1)
+			GROUP BY vs.validatorindex
+		),
+		withdrawals_summary AS (
+			SELECT
+				COALESCE(t.validatorindex, s.validatorindex) as validatorindex,
+				COALESCE(t.amount_today, 0) + COALESCE(s.total_amount, 0) as total
+			FROM today t
+			FULL OUTER JOIN stats s ON t.validatorindex = s.validatorindex
+		)
 		SELECT
-			validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+			v.validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
 			'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
 			slashed,
 			activationeligibilityepoch,
@@ -1563,19 +1586,13 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			exitepoch,
 			status,
 			COALESCE(n.name, '') AS name,
-			COALESCE(w.total, 0) as total_withdrawals
+			COALESCE(ws.total, 0) as total_withdrawals
 		FROM validators v
 		LEFT JOIN validator_names n ON n.publickey = v.pubkey
-		LEFT JOIN (
-			SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
-			WHERE validatorindex = ANY($1)
-			GROUP BY validatorindex
-		) as w ON w.index = v.validatorindex
-		WHERE validatorindex = ANY($1)
-		ORDER BY validatorindex;
-	`, pq.Array(queryIndices))
+		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
+		WHERE v.validatorindex = ANY($1)
+		ORDER BY v.validatorindex;
+	`, pq.Array(queryIndices), firstSlotToday)
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")

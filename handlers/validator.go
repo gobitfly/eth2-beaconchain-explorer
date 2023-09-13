@@ -436,12 +436,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if validatorPageData.CappellaHasHappened {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
 
-			// get validator withdrawals
-			withdrawalsCount, lastWithdrawalsEpoch, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+			validatorSlice := []uint64{index}
+			withdrawalsCount, err := GetTotalWithdrawalsCount(validatorSlice)
 			if err != nil {
 				return fmt.Errorf("error getting validator withdrawals count from db: %w", err)
 			}
 			validatorPageData.WithdrawalCount = withdrawalsCount
+			lastWithdrawalsEpochs, err := db.GetLastWithdrawalEpoch(validatorSlice)
+			if err != nil {
+				return fmt.Errorf("error getting validator last withdrawal epoch from db: %w", err)
+			}
+			lastWithdrawalsEpoch := lastWithdrawalsEpochs[index]
 
 			blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
 			if err != nil {
@@ -1225,7 +1230,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, _, err := db.GetValidatorWithdrawalsCount(index)
+	withdrawalCount, err := GetTotalWithdrawalsCount([]uint64{index})
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

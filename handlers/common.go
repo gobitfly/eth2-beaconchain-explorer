@@ -23,6 +23,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	"github.com/lib/pq"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
@@ -98,11 +99,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	var firstActivationEpoch uint64
 	g.Go(func() error {
 		return db.GetFirstActivationEpoch(validators, &firstActivationEpoch)
-	})
-
-	var totalWithdrawals uint64
-	g.Go(func() error {
-		return db.GetTotalValidatorWithdrawals(validators, &totalWithdrawals)
 	})
 
 	var lastDeposits uint64
@@ -784,4 +780,62 @@ func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint
 	})
 
 	return chartData, nil
+}
+
+func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
+	var count uint64
+	validatorFilter := pq.Array(validators)
+	lastExportedDay, err := services.LatestExportedStatisticDay()
+	if err != nil {
+		return 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
+	}
+	firstSlotToday := ((lastExportedDay+1)*utils.EpochsPerDay() - 1) * utils.Config.Chain.Config.SlotsPerEpoch // -1 because validator_stats does not include last epoch of the day for some reason
+
+	err = db.ReaderDb.Get(&count, `
+		WITH today AS (
+			SELECT count(*) as count_today
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
+		),
+		stats AS (
+			SELECT COALESCE(SUM(withdrawals)) as total_count
+			FROM validator_stats
+			WHERE validatorindex = ANY($1)
+		)
+		SELECT today.count_today + stats.total_count
+		FROM today, stats;`, validatorFilter, firstSlotToday)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("error getting dashboard validator blocks_withdrawals count for validators: %d: %w", validators, err)
+	}
+
+	return count, nil
+}
+
+func GetTotalWithdrawalsAmount(validators []uint64, totalWithdrawals *uint64) error {
+	validatorsPQArray := pq.Array(validators)
+	lastExportedDay, err := services.LatestExportedStatisticDay()
+	if err != nil {
+		return fmt.Errorf("error getting latest exported statistic day for total withdrawals amount: %w", err)
+	}
+	firstSlotToday := ((lastExportedDay+1)*utils.EpochsPerDay() - 1) * utils.Config.Chain.Config.SlotsPerEpoch // -1 because validator_stats does not include last epoch of the day for some reason
+
+	return db.ReaderDb.Get(totalWithdrawals, `
+		WITH today AS (
+			SELECT COALESCE(SUM(w.amount), 0) as amount_today
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
+		),
+		stats AS (
+			SELECT COALESCE(SUM(withdrawals_amount)) as total_amount
+			FROM validator_stats
+			WHERE validatorindex = ANY($1)
+		)
+		SELECT today.amount_today + stats.total_amount as total
+		FROM today, stats;
+	`, validatorsPQArray, firstSlotToday)
 }
