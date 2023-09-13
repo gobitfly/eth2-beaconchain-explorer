@@ -87,8 +87,12 @@ type Config struct {
 		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
 		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		// Imprint is deprdecated place imprint file into the legal directory
-		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
-		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`
+		Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
+		Legal   struct {
+			TermsOfServiceUrl string `yaml:"termsOfServiceUrl" envconfig:"FRONTEND_LEGAL_TERMS_OF_SERVICE_URL"`
+			PrivacyPolicyUrl  string `yaml:"privacyPolicyUrl" envconfig:"FRONTEND_LEGAL_PRIVACY_POLICY_URL"`
+			ImprintTemplate   string `yaml:"imprintTemplate" envconfig:"FRONTEND_LEGAL_IMPRINT_TEMPLATE"`
+		} `yaml:"legal"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
 		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
 		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`

@@ -70,6 +70,11 @@ frontend:
       domain: mg.localhost
       privateKey: "key-11111111111111111111111111111111"
   csrfAuthKey: '1111111111111111111111111111111111111111111111111111111111111111'
+  legal:
+    termsOfServiceUrl: "tos.pdf"
+    privacyPolicyUrl: "privacy.pdf"
+    imprintTemplate: '{{ define "js" }}{{ end }}{{ define "css" }}{{ end }}{{ define "content" }}Imprint{{ end }}'
+
 indexer:
   # fullIndexOnStartup: false # Perform a one time full db index on startup
   # indexMissingEpochsOnStartup: true # Check for missing epochs and export them after startup

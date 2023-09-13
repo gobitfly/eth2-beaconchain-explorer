@@ -52,6 +52,8 @@ type PageData struct {
 	GlobalNotification  template.HTML
 	AvailableCurrencies []string
 	MainMenuItems       []MainMenuItem
+	TermsOfServiceUrl   string
+	PrivacyPolicyUrl    string
 }
 
 type MainMenuItem struct {

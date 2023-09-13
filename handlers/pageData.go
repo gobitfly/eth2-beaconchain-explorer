@@ -89,6 +89,8 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		GlobalNotification:  services.GlobalNotificationMessage(),
 		AvailableCurrencies: price.GetAvailableCurrencies(),
 		MainMenuItems:       createMenuItems(active, isMainnet),
+		TermsOfServiceUrl:   utils.Config.Frontend.Legal.TermsOfServiceUrl,
+		PrivacyPolicyUrl:    utils.Config.Frontend.Legal.PrivacyPolicyUrl,
 	}
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)

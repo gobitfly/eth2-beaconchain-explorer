@@ -3,6 +3,7 @@ package notify
 import (
 	"context"
 	"eth2-exporter/utils"
+	"fmt"
 	"strings"
 	"time"
 
@@ -33,7 +34,18 @@ func SendPushBatch(messages []*messaging.Message) error {
 	}
 
 	ctx := context.Background()
-	opt := option.WithCredentialsFile(credentialsPath)
+	var opt option.ClientOption
+
+	if strings.HasPrefix(credentialsPath, "projects/") {
+		x, err := utils.AccessSecretVersion(credentialsPath)
+		if err != nil {
+			return fmt.Errorf("error getting firebase config from secret store: %v", err)
+		}
+		opt = option.WithCredentialsJSON([]byte(*x))
+	} else {
+		opt = option.WithCredentialsFile(credentialsPath)
+	}
+
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		logger.Errorf("error initializing app:  %v", err)
