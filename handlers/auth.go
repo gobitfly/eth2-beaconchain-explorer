@@ -230,14 +230,14 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		UserGroup string `db:"user_group"`
 	}{}
 
-	redirect := ""
+	redirectParam := ""
 	redirectURI := r.FormValue("oauth_redirect_uri")
 	if redirectURI != "" {
-		redirect = "?redirect_uri=" + redirectURI
+		redirectParam = "?redirect_uri=" + redirectURI
 
 		state := r.FormValue("state")
 		if state != "" {
-			redirect += "&state=" + state
+			redirectParam += "&state=" + state
 		}
 	}
 
@@ -248,14 +248,14 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		}
 		session.AddFlash("Error: Invalid email or password!")
 		session.Save(r, w)
-		http.Redirect(w, r, "/login"+redirect, http.StatusSeeOther)
+		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
 	if !user.Confirmed {
 		session.AddFlash("Error: Email has not been confirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
 		session.Save(r, w)
-		http.Redirect(w, r, "/login"+redirect, http.StatusSeeOther)
+		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
@@ -263,7 +263,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		session.AddFlash("Error: Invalid email or password!")
 		session.Save(r, w)
-		http.Redirect(w, r, "/login"+redirect, http.StatusSeeOther)
+		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
@@ -310,8 +310,8 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		},
 	).Info("login succeeded")
 
-	if redirect != "" {
-		http.Redirect(w, r, "/user/authorize"+redirect, http.StatusSeeOther)
+	if redirectParam != "" {
+		http.Redirect(w, r, "/user/authorize"+redirectParam, http.StatusSeeOther)
 		return
 	}
 

@@ -555,7 +555,6 @@ func main() {
 
 			oauthRouter := router.PathPrefix("/user").Subrouter()
 			oauthRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirm).Methods("GET")
-			oauthRouter.HandleFunc("/cancel", handlers.UserAuthorizationCancel).Methods("GET")
 			oauthRouter.Use(csrfHandler)
 
 			authRouter := router.PathPrefix("/user").Subrouter()
