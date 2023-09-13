@@ -1,6 +1,14 @@
+# Holesky config
+
 # Extends the mainnet preset
-PRESET_BASE: 'mainnet'
-CONFIG_NAME: holesky
+PRESET_BASE: "mainnet"
+
+# Free-form short name of the network that this configuration applies to - known
+# canonical network names include:
+# * 'mainnet' - there can be only one
+# * 'prater' - testnet
+# Must match the regex: [a-z0-9\-]
+CONFIG_NAME: "holesky"
 
 # Genesis
 # ---------------------------------------------------------------
@@ -8,10 +16,10 @@ CONFIG_NAME: holesky
 MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
 # Sep-15-2023 13:55:00 +UTC
 MIN_GENESIS_TIME: 1694786100
+# Mainnet initial fork version, recommend altering for testnets
 GENESIS_FORK_VERSION: 0x00017000
 # Genesis delay 5 mins
 GENESIS_DELAY: 300
-
 
 # Forking
 # ---------------------------------------------------------------
@@ -28,12 +36,10 @@ BELLATRIX_FORK_EPOCH: 0
 TERMINAL_TOTAL_DIFFICULTY: 0
 TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000000
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
-
 # Capella
 CAPELLA_FORK_VERSION: 0x30017000
 CAPELLA_FORK_EPOCH: 256
-
-# DENEB
+# Deneb
 DENEB_FORK_VERSION: 0x40017000
 DENEB_FORK_EPOCH: 18446744073709551615
 
@@ -49,7 +55,6 @@ MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 SHARD_COMMITTEE_PERIOD: 256
 # 2**11 (= 2,048) Eth1 blocks ~8 hours
 ETH1_FOLLOW_DISTANCE: 2048
-
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -71,9 +76,17 @@ PROPOSER_SCORE_BOOST: 40
 
 # Deposit contract
 # ---------------------------------------------------------------
+# Ethereum
 DEPOSIT_CHAIN_ID: 17000
 DEPOSIT_NETWORK_ID: 17000
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
+
+# Sync committee
+# ---------------------------------------------------------------
+# 2**9 (= 512)
+SYNC_COMMITTEE_SIZE: 512
+# 2**8 (= 256)
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
 
 # Networking
 # ---------------------------------------------------------------
@@ -115,3 +128,20 @@ MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
 BLOB_SIDECAR_SUBNET_COUNT: 6
 # `uint64(6)`
 MAX_BLOBS_PER_BLOCK: 6
+
+# Time parameters
+# ---------------------------------------------------------------
+# 2**0 (= 1) slots 12 seconds
+MIN_ATTESTATION_INCLUSION_DELAY: 1
+# 2**5 (= 32) slots 6.4 minutes
+SLOTS_PER_EPOCH: 32
+# 2**0 (= 1) epochs 6.4 minutes
+MIN_SEED_LOOKAHEAD: 1
+# 2**2 (= 4) epochs 25.6 minutes
+MAX_SEED_LOOKAHEAD: 4
+# 2**6 (= 64) epochs ~6.8 hours
+EPOCHS_PER_ETH1_VOTING_PERIOD: 64
+# 2**13 (= 8,192) slots ~27 hours
+SLOTS_PER_HISTORICAL_ROOT: 8192
+# 2**2 (= 4) epochs 25.6 minutes
+MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
