@@ -1377,7 +1377,7 @@ func sanitizeMessage(msg string) ([]byte, error) {
 	}
 }
 
-func ValidatorName(w http.ResponseWriter, r *http.Request) {
+func SaveValidatorName(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	pubkey := vars["pubkey"]
