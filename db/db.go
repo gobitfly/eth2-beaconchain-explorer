@@ -1081,7 +1081,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 	err := tx.Select(&currentState, "SELECT validatorindex, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, status FROM validators;")
 
 	if err != nil {
-		return err
+		return fmt.Errorf("error retrieving current validator state set: %v", err)
 	}
 
 	lastAttestationSlots, err := BigtableClient.GetLastAttestationSlots([]uint64{})
@@ -1278,7 +1278,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 		ActivationEpoch uint64
 	}{}
 
-	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL ORDER BY activationepoch LIMIT ?", activationBalanceBatchSize)
+	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL ORDER BY activationepoch LIMIT $1", activationBalanceBatchSize)
 	if err != nil {
 		return err
 	}

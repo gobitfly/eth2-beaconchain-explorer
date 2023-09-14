@@ -226,22 +226,10 @@ func main() {
 			logrus.Fatalf("error retrieving genesis validator state")
 		}
 
-		data := &types.EpochData{
-			SyncDuties:        make(map[types.Slot]map[types.ValidatorIndex]bool),
-			AttestationDuties: make(map[types.Slot]map[types.ValidatorIndex][]types.Slot),
-			ValidatorAssignmentes: &types.EpochAssignments{
-				ProposerAssignments: map[uint64]uint64{},
-				AttestorAssignments: map[string]uint64{},
-				SyncAssignments:     make([]uint64, 0),
-			},
-			Blocks:                  make(map[uint64]map[string]*types.Block),
-			FutureBlocks:            make(map[uint64]map[string]*types.Block),
-			EpochParticipationStats: &types.ValidatorParticipation{},
-			Finalized:               false,
-		}
+		validatorsArr := make([]*types.Validator, 0, len(validators.Data))
 
 		for _, validator := range validators.Data {
-			data.Validators = append(data.Validators, &types.Validator{
+			validatorsArr = append(validatorsArr, &types.Validator{
 				Index:                      uint64(validator.Index),
 				PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
 				WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
@@ -256,15 +244,43 @@ func main() {
 			})
 		}
 
-		tx := db.WriterDb.MustBegin()
+		batchSize := 10000
+		for i := 0; i < len(validatorsArr); i += batchSize {
 
-		err = db.SaveValidators(data, tx, rpcClient, len(data.Validators))
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		err = tx.Commit()
-		if err != nil {
-			logrus.Fatal(err)
+			data := &types.EpochData{
+				SyncDuties:        make(map[types.Slot]map[types.ValidatorIndex]bool),
+				AttestationDuties: make(map[types.Slot]map[types.ValidatorIndex][]types.Slot),
+				ValidatorAssignmentes: &types.EpochAssignments{
+					ProposerAssignments: map[uint64]uint64{},
+					AttestorAssignments: map[string]uint64{},
+					SyncAssignments:     make([]uint64, 0),
+				},
+				Blocks:                  make(map[uint64]map[string]*types.Block),
+				FutureBlocks:            make(map[uint64]map[string]*types.Block),
+				EpochParticipationStats: &types.ValidatorParticipation{},
+				Finalized:               false,
+			}
+
+			data.Validators = make([]*types.Validator, 0, batchSize)
+
+			start := i
+			end := i + batchSize
+			if end >= len(validatorsArr) {
+				end = len(validatorsArr) - 1
+			}
+			data.Validators = append(data.Validators, validatorsArr[start:end]...)
+
+			logrus.Infof("saving validators %v-%v", data.Validators[0].Index, data.Validators[len(data.Validators)-1].Index)
+			tx := db.WriterDb.MustBegin()
+
+			err = db.SaveValidators(data, tx, rpcClient, len(data.Validators))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			err = tx.Commit()
+			if err != nil {
+				logrus.Fatal(err)
+			}
 		}
 
 	default:

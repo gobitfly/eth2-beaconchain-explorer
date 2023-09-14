@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -2014,7 +2015,9 @@ func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 }
 
 func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, prefix string, startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
-
+	if endEpoch > math.MaxInt64 {
+		endEpoch = 0
+	}
 	if endEpoch < startEpoch { // handle overflows
 		startEpoch = 0
 	}
@@ -2035,6 +2038,9 @@ func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, pr
 
 func (bigtable *Bigtable) getValidatorsEpochSlotRanges(validatorIndices []uint64, prefix string, startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
 
+	if endEpoch > math.MaxInt64 {
+		endEpoch = 0
+	}
 	if endEpoch < startEpoch { // handle overflows
 		startEpoch = 0
 	}
@@ -2053,7 +2059,9 @@ func (bigtable *Bigtable) getValidatorsEpochSlotRanges(validatorIndices []uint64
 }
 
 func (bigtable *Bigtable) getValidatorSlotRanges(validatorIndices []uint64, prefix string, startSlot uint64, endSlot uint64) gcp_bigtable.RowRangeList {
-
+	if endSlot > math.MaxInt64 {
+		endSlot = 0
+	}
 	if endSlot < startSlot { // handle overflows
 		startSlot = 0
 	}

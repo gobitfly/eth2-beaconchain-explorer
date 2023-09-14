@@ -691,6 +691,18 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
 
+		if deposit.Total == 0 { // see if there are any genesis validators
+			err = db.ReaderDb.Get(&deposit.Total, "SELECT COALESCE(MAX(validatorindex), 0) FROM validators")
+			if err != nil {
+				return nil, fmt.Errorf("error retrieving max validator index: %v", err)
+			}
+
+			if deposit.Total > 0 {
+				deposit.Total = (deposit.Total + 1) * 32
+				deposit.BlockTs = time.Now()
+			}
+		}
+
 		threshold, err := db.GetDepositThresholdTime()
 		if err != nil {
 			logger.WithError(err).Error("error could not calculate threshold time")
