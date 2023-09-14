@@ -31,6 +31,14 @@ type Config struct {
 		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
 		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
 	} `yaml:"bigtable"`
+	BlobIndexer struct {
+		S3 struct {
+			Endpoint        string `yaml:"endpoint" envconfig:"BLOB_INDEXER_S3_ENDPOINT"`
+			Bucket          string `yaml:"bucket" envconfig:"BLOB_INDEXER_S3_BUCKET"`
+			AccessKeyId     string `yaml:"accessKeyId" envconfig:"BLOB_INDEXER_S3_ACCESS_KEY_ID"`
+			AccessKeySecret string `yaml:"accessKeySecret" envconfig:"BLOB_INDEXER_S3_ACCESS_KEY_SECRET"`
+		} `yaml:"s3"`
+	} `yaml:"blobIndexer"`
 	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`

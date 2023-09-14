@@ -1460,6 +1460,16 @@ func SortedUniqueUint64(arr []uint64) []uint64 {
 	return result
 }
 
+type HttpReqHttpError struct {
+	StatusCode int
+	Url        string
+	Body       []byte
+}
+
+func (err *HttpReqHttpError) Error() string {
+	return fmt.Sprintf("urls: %s, status: %d, body: %s", err.Url, err.StatusCode, err.Body)
+}
+
 func HttpReq(ctx context.Context, method, url string, params, result interface{}) error {
 	var err error
 	var req *http.Request
@@ -1487,7 +1497,11 @@ func HttpReq(ctx context.Context, method, url string, params, result interface{}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
-		return fmt.Errorf("statusCode: %v, url: %v, body: %s", res.StatusCode, url, body)
+		return &HttpReqHttpError{
+			StatusCode: res.StatusCode,
+			Url:        url,
+			Body:       body,
+		}
 	}
 	if result != nil {
 		err = json.NewDecoder(res.Body).Decode(result)

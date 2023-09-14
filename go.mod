@@ -11,6 +11,10 @@ require (
 	github.com/alexedwards/scs/v2 v2.5.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/awa/go-iap v1.3.7
+	github.com/aws/aws-sdk-go-v2 v1.21.0
+	github.com/aws/aws-sdk-go-v2/credentials v1.1.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.38.5
+	github.com/aws/smithy-go v1.14.2
 	github.com/aybabtme/uniplot v0.0.0-20151203143629-039c559e5e7e
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.12.2-0.20230824084913-1a2135044cd4
@@ -82,6 +86,14 @@ require (
 	cloud.google.com/go/longrunning v0.3.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.13 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.41 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.35 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.1.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.14 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.36 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.35 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.15.4 // indirect
 	github.com/bits-and-blooms/bitset v1.7.0 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.2.1 // indirect
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4 // indirect
