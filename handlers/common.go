@@ -147,32 +147,51 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
-	if clApr7d < float64(-1) || math.IsNaN(clApr7d) {
+	if clApr7d < float64(-1) {
 		clApr7d = float64(-1)
+	}
+	if math.IsNaN(clApr7d) {
+		clApr7d = float64(0)
 	}
 
 	elApr7d := ((float64(income.ElIncome7d) / float64(totalDeposits)) * 365) / 7
-	if elApr7d < float64(-1) || math.IsNaN(elApr7d) {
+	if elApr7d < float64(-1) {
 		elApr7d = float64(-1)
+	}
+	if math.IsNaN(elApr7d) {
+		elApr7d = float64(0)
 	}
 
 	clApr31d := ((float64(income.ClIncome31d) / float64(totalDeposits)) * 365) / 31
-	if clApr31d < float64(-1) || math.IsNaN(clApr31d) {
+	if clApr31d < float64(-1) {
 		clApr31d = float64(-1)
+	}
+	if math.IsNaN(clApr31d) {
+		clApr31d = float64(0)
 	}
 
 	elApr31d := ((float64(income.ElIncome31d) / float64(totalDeposits)) * 365) / 31
-	if elApr31d < float64(-1) || math.IsNaN(elApr31d) {
+	if elApr31d < float64(-1) {
 		elApr31d = float64(-1)
 	}
+	if math.IsNaN(elApr31d) {
+		elApr31d = float64(0)
+	}
+
 	clApr365d := (float64(income.ClIncome365d) / float64(totalDeposits))
-	if clApr365d < float64(-1) || math.IsNaN(clApr365d) {
+	if clApr365d < float64(-1) {
 		clApr365d = float64(-1)
+	}
+	if math.IsNaN(clApr365d) {
+		clApr365d = float64(0)
 	}
 
 	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
-	if elApr365d < float64(-1) || math.IsNaN(elApr365d) {
+	if elApr365d < float64(-1) {
 		elApr365d = float64(-1)
+	}
+	if math.IsNaN(elApr365d) {
+		elApr365d = float64(0)
 	}
 
 	incomeToday := types.ClElInt64{
