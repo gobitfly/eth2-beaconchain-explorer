@@ -77,11 +77,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	latestEpoch := services.LatestEpoch()
 	latestProposedSlot := services.LatestProposedSlot()
 	lastFinalizedEpoch := services.LatestFinalizedEpoch()
-
-	if latestProposedSlot == 0 {
+	isPreGenesis := false
+	if latestEpoch == 0 {
 		latestEpoch = 1
 		latestProposedSlot = 1
 		lastFinalizedEpoch = 1
+		isPreGenesis = true
 	}
 
 	validatorPageData := types.ValidatorPageData{}
@@ -352,7 +353,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
 	validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
-	if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
+	if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
 		validatorPageData.AttestationsCount = 0
 	}
 
@@ -381,6 +382,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		incomeHistoryChartData, err := db.GetValidatorIncomeHistoryChart([]uint64{index}, currency, lastFinalizedEpoch, lowerBoundDay)
 		if err != nil {
 			return fmt.Errorf("error calling db.GetValidatorIncomeHistoryChart: %w", err)
+		}
+
+		if isPreGenesis {
+			incomeHistoryChartData = make([]*types.ChartDataPoint, 0)
 		}
 
 		validatorPageData.IncomeHistoryChartData = incomeHistoryChartData
@@ -601,9 +606,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
 			}
 
-			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
-			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
-			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			if isPreGenesis {
+				validatorPageData.MissedAttestationsCount = 0
+				validatorPageData.ExecutedAttestationsCount = 0
+				validatorPageData.UnmissedAttestationsPercentage = 1
+			} else {
+				validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
+				validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
+				validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			}
 		}
 		return nil
 	})
@@ -893,8 +904,12 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	epoch := services.LatestEpoch()
+	if epoch > 0 {
+		epoch = epoch - 1
+	}
 
-	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, services.LatestEpoch()-1)
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, epoch)
 	if err != nil {
 		logger.Errorf("error retrieving validator effectiveness: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1104,8 +1119,17 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	tableData := [][]interface{}{}
 
 	if totalCount > 0 {
-		endEpoch := uint64(int64(lastAttestationEpoch) - start)
-		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, endEpoch-uint64(length)+1, endEpoch)
+		endEpoch := int64(lastAttestationEpoch) - start
+		if endEpoch < 0 {
+			endEpoch = 0
+		}
+
+		startEpoch := endEpoch - int64(length) + 1
+		if startEpoch < 0 {
+			startEpoch = 0
+		}
+
+		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(startEpoch), uint64(endEpoch))
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

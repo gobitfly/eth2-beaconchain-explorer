@@ -246,7 +246,6 @@ func main() {
 
 		batchSize := 10000
 		for i := 0; i < len(validatorsArr); i += batchSize {
-
 			data := &types.EpochData{
 				SyncDuties:        make(map[types.Slot]map[types.ValidatorIndex]bool),
 				AttestationDuties: make(map[types.Slot]map[types.ValidatorIndex][]types.Slot),
@@ -283,6 +282,32 @@ func main() {
 			}
 		}
 
+		_, err = db.WriterDb.Exec(`
+		INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature, valid_signature)
+			SELECT
+				0 as block_slot,
+				v.validatorindex as block_index,
+				v.pubkey as publickey,
+				v.withdrawalcredentials,
+				32*1e9 as amount,
+				'\x'::bytea as signature,
+				true
+			FROM validators v ON CONFLICT DO NOTHING`)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		_, err = db.WriterDb.Exec(`
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, syncaggregate_participation, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, proposer, status, exec_transactions_count, eth1data_depositcount)
+		VALUES (0, 0, '\x'::bytea, '\x'::bytea, '\x'::bytea, '\x'::bytea, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+		ON CONFLICT (slot, blockroot) DO NOTHING`)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = db.BigtableClient.SaveValidatorBalances(0, validatorsArr)
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}

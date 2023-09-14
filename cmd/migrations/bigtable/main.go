@@ -167,7 +167,7 @@ func main() {
 
 	err = gOuter.Wait()
 	if err != nil {
-		logrus.Fatalf("error during bigtable export: %w", err)
+		logrus.Fatalf("error during bigtable export: %v", err)
 	}
 
 }
