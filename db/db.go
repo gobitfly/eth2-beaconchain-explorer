@@ -807,7 +807,7 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 			}
 			defer validatorsTx.Rollback()
 
-			err = saveValidators(data, validatorsTx, client)
+			err = SaveValidators(data, validatorsTx, client, 10000)
 			if err != nil {
 				logger.Errorf("error saving validators to db: %v", err)
 			}
@@ -1017,11 +1017,15 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) er
 	return nil
 }
 
-func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error {
+func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activationBalanceBatchSize int) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
 	}()
+
+	if activationBalanceBatchSize <= 0 {
+		activationBalanceBatchSize = 10000
+	}
 
 	var genesisBalances map[uint64][]*types.ValidatorBalance
 
@@ -1104,6 +1108,25 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 
 	var queries strings.Builder
 
+	insertStmt, err := tx.Prepare(`INSERT INTO validators (
+		validatorindex,
+		pubkey,
+		withdrawableepoch,
+		withdrawalcredentials,
+		balance,
+		effectivebalance,
+		slashed,
+		activationeligibilityepoch,
+		activationepoch,
+		exitepoch,
+		pubkeyhex,
+		status
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`)
+	if err != nil {
+		return fmt.Errorf("error preparing insert validator statement: %w", err)
+	}
+
 	updates := 0
 	for _, v := range data.Validators {
 
@@ -1124,23 +1147,11 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		c := currentStateMap[v.Index]
 
 		if c == nil {
-			logger.Infof("validator %v is new", v.Index)
+			if v.Index%1000 == 0 {
+				logger.Infof("validator %v is new", v.Index)
+			}
 
-			_, err = tx.Exec(`INSERT INTO validators (
-				validatorindex,
-				pubkey,
-				withdrawableepoch,
-				withdrawalcredentials,
-				balance,
-				effectivebalance,
-				slashed,
-				activationeligibilityepoch,
-				activationepoch,
-				exitepoch,
-				pubkeyhex,
-				status
-			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`,
+			_, err = insertStmt.Exec(
 				v.Index,
 				v.PublicKey,
 				v.WithdrawableEpoch,
@@ -1245,6 +1256,11 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		}
 	}
 
+	err = insertStmt.Close()
+	if err != nil {
+		return fmt.Errorf("error closing insert validator statement: %w", err)
+	}
+
 	if updates > 0 {
 		updateStart := time.Now()
 		logger.Infof("applying %v update queries", updates)
@@ -1262,7 +1278,7 @@ func saveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client) error
 		ActivationEpoch uint64
 	}{}
 
-	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL ORDER BY activationepoch LIMIT 10000")
+	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL ORDER BY activationepoch LIMIT ?", activationBalanceBatchSize)
 	if err != nil {
 		return err
 	}
