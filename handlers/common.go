@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -146,31 +147,31 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
-	if clApr7d < float64(-1) {
+	if clApr7d < float64(-1) || math.IsNaN(clApr7d) {
 		clApr7d = float64(-1)
 	}
 
 	elApr7d := ((float64(income.ElIncome7d) / float64(totalDeposits)) * 365) / 7
-	if elApr7d < float64(-1) {
+	if elApr7d < float64(-1) || math.IsNaN(elApr7d) {
 		elApr7d = float64(-1)
 	}
 
 	clApr31d := ((float64(income.ClIncome31d) / float64(totalDeposits)) * 365) / 31
-	if clApr31d < float64(-1) {
+	if clApr31d < float64(-1) || math.IsNaN(clApr31d) {
 		clApr31d = float64(-1)
 	}
 
 	elApr31d := ((float64(income.ElIncome31d) / float64(totalDeposits)) * 365) / 31
-	if elApr31d < float64(-1) {
+	if elApr31d < float64(-1) || math.IsNaN(elApr31d) {
 		elApr31d = float64(-1)
 	}
 	clApr365d := (float64(income.ClIncome365d) / float64(totalDeposits))
-	if clApr365d < float64(-1) {
+	if clApr365d < float64(-1) || math.IsNaN(clApr365d) {
 		clApr365d = float64(-1)
 	}
 
 	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
-	if elApr365d < float64(-1) {
+	if elApr365d < float64(-1) || math.IsNaN(elApr365d) {
 		elApr365d = float64(-1)
 	}
 

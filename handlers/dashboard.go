@@ -1023,6 +1023,11 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	var avgIncDistance []float64
 
+	epoch := services.LatestEpoch()
+	if epoch > 0 {
+		epoch = epoch - 1
+	}
+
 	effectiveness, err := db.BigtableClient.GetValidatorEffectiveness(activeValidators, services.LatestEpoch()-1)
 	for _, e := range effectiveness {
 		avgIncDistance = append(avgIncDistance, e.AttestationEfficiency)
@@ -1072,7 +1077,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lastDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
+	if err != nil && err != db.ErrNoStats {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving last exported statistic day")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return

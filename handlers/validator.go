@@ -78,7 +78,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	latestProposedSlot := services.LatestProposedSlot()
 	lastFinalizedEpoch := services.LatestFinalizedEpoch()
 	isPreGenesis := false
-	if latestProposedSlot == 0 {
+	if latestEpoch == 0 {
 		latestEpoch = 1
 		latestProposedSlot = 1
 		lastFinalizedEpoch = 1
@@ -904,8 +904,12 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	epoch := services.LatestEpoch()
+	if epoch > 0 {
+		epoch = epoch - 1
+	}
 
-	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, services.LatestEpoch()-1)
+	eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, epoch)
 	if err != nil {
 		logger.Errorf("error retrieving validator effectiveness: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1115,8 +1119,17 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	tableData := [][]interface{}{}
 
 	if totalCount > 0 {
-		endEpoch := uint64(int64(lastAttestationEpoch) - start)
-		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, endEpoch-uint64(length)+1, endEpoch)
+		endEpoch := int64(lastAttestationEpoch) - start
+		if endEpoch < 0 {
+			endEpoch = 0
+		}
+
+		startEpoch := endEpoch - int64(length) + 1
+		if startEpoch < 0 {
+			startEpoch = 0
+		}
+
+		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(startEpoch), uint64(endEpoch))
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
