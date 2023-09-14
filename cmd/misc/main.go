@@ -47,7 +47,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, generate-config-from-testnet-stub")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, generate-config-from-testnet-stub, export-genesis-validators")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -220,6 +220,69 @@ func main() {
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
+	case "export-genesis-validators":
+		validators, err := rpcClient.GetValidatorState(0)
+		if err != nil {
+			logrus.Fatalf("error retrieving genesis validator state")
+		}
+
+		validatorsArr := make([]*types.Validator, 0, len(validators.Data))
+
+		for _, validator := range validators.Data {
+			validatorsArr = append(validatorsArr, &types.Validator{
+				Index:                      uint64(validator.Index),
+				PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
+				WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
+				Balance:                    uint64(validator.Balance),
+				EffectiveBalance:           uint64(validator.Validator.EffectiveBalance),
+				Slashed:                    validator.Validator.Slashed,
+				ActivationEligibilityEpoch: uint64(validator.Validator.ActivationEligibilityEpoch),
+				ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
+				ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
+				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
+				Status:                     validator.Status,
+			})
+		}
+
+		batchSize := 10000
+		for i := 0; i < len(validatorsArr); i += batchSize {
+
+			data := &types.EpochData{
+				SyncDuties:        make(map[types.Slot]map[types.ValidatorIndex]bool),
+				AttestationDuties: make(map[types.Slot]map[types.ValidatorIndex][]types.Slot),
+				ValidatorAssignmentes: &types.EpochAssignments{
+					ProposerAssignments: map[uint64]uint64{},
+					AttestorAssignments: map[string]uint64{},
+					SyncAssignments:     make([]uint64, 0),
+				},
+				Blocks:                  make(map[uint64]map[string]*types.Block),
+				FutureBlocks:            make(map[uint64]map[string]*types.Block),
+				EpochParticipationStats: &types.ValidatorParticipation{},
+				Finalized:               false,
+			}
+
+			data.Validators = make([]*types.Validator, 0, batchSize)
+
+			start := i
+			end := i + batchSize
+			if end >= len(validatorsArr) {
+				end = len(validatorsArr) - 1
+			}
+			data.Validators = append(data.Validators, validatorsArr[start:end]...)
+
+			logrus.Infof("saving validators %v-%v", data.Validators[0].Index, data.Validators[len(data.Validators)-1].Index)
+			tx := db.WriterDb.MustBegin()
+
+			err = db.SaveValidators(data, tx, rpcClient, len(data.Validators))
+			if err != nil {
+				logrus.Fatal(err)
+			}
+			err = tx.Commit()
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		}
+
 	default:
 		utils.LogFatal(nil, "unknown command", 0)
 	}

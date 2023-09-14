@@ -78,6 +78,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	latestProposedSlot := services.LatestProposedSlot()
 	lastFinalizedEpoch := services.LatestFinalizedEpoch()
 
+	if latestProposedSlot == 0 {
+		latestEpoch = 1
+		latestProposedSlot = 1
+		lastFinalizedEpoch = 1
+	}
+
 	validatorPageData := types.ValidatorPageData{}
 
 	validatorPageData.CappellaHasHappened = latestEpoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
