@@ -30,14 +30,18 @@ function dataTableLoader(path) {
         if (!response.ok) {
           throw new Error(`Failed with status: ${response.status}`)
         }
-        turnstile.reset(window.turnstileWidgetId);
-        window.turnstileToken = "";
+        if (window.turnstile) {
+          console.log("resetting turnstile")
+          window.turnstile.reset(window.turnstileWidgetId);
+          window.turnstileToken = "";
+        }
         return response.json()
       })
       .then((data) => {
         callback(data)
       })
       .catch((err) => {
+        console.log(err)
         if (retries < MAX_RETRIES) {
           retries++
           timeoutId = setTimeout(() => doFetch(tableData, callback), RETRY_DELAY * (retries + 1))
@@ -52,7 +56,7 @@ function dataTableLoader(path) {
     retries = 0 // Reset retry count.
 
     function waitForTurnstileToken() {
-      if(!window.turnstileToken) {//we want it to match
+      if(window.turnstileSiteKey && !window.turnstileToken) {//we want it to match
           setTimeout(waitForTurnstileToken, 50);//wait 50 milliseconds then recheck
           return;
       }

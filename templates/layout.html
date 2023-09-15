@@ -493,11 +493,12 @@
       {{ if not (eq $.TurnstileSiteKey "") }}
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=_turnstileCb" async defer></script>
         <script>
+          window.turnstileSiteKey = {{ $.TurnstileSiteKey }};
           function _turnstileCb() {
               console.debug('_turnstileCb called');
 
               window.turnstileWidgetId = turnstile.render('#turnstileModalContent', {
-                sitekey: '{{$.TurnstileSiteKey}}',
+                sitekey: window.turnstileSiteKey,
                 theme: 'auto',
                 callback: function(token) {
                   window.turnstileToken = token;
