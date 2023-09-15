@@ -33,6 +33,14 @@ func Slots(w http.ResponseWriter, r *http.Request) {
 func SlotsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	if utils.Config.Frontend.Turnstile.Enabled {
+		err := verifyTurnstileToken(r)
+
+		if err != nil {
+			http.Error(w, "Turnstile challenge failed", http.StatusServiceUnavailable)
+			return
+		}
+	}
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")

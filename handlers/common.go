@@ -12,9 +12,11 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"io"
 	"math"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"syscall"
@@ -726,4 +728,60 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 	} else {
 		return 0, nil
 	}
+}
+
+var turnstileClient = &http.Client{
+	Timeout: time.Second * 10,
+}
+
+func verifyTurnstileToken(req *http.Request) error {
+	token := req.Header.Get("X-TURNSTILE-TOKEN")
+	if token == "" {
+		return fmt.Errorf("missing turnstile token")
+	}
+	ip := readUserIP(req)
+
+	turnstileURL := "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
+	values := url.Values{"secret": {utils.Config.Frontend.Turnstile.SecretKey}, "response": {token}}
+
+	if ip != "" {
+		values.Set("remoteip", ip)
+	}
+
+	resp, err := turnstileClient.PostForm(turnstileURL, values)
+	if err != nil {
+		return fmt.Errorf("error posting data to turnstile http endpoint: %w", err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading turnstile response: %w", err)
+	}
+
+	r := types.TurnstileResponse{}
+	err = json.Unmarshal(body, &r)
+	if err != nil {
+		return fmt.Errorf("error decoding turnstile response: %w", err)
+	}
+
+	if !r.Success {
+		return fmt.Errorf("invalid turnstile token")
+	}
+
+	return nil
+}
+
+func readUserIP(req *http.Request) string {
+	ipAddress := req.Header.Get("CF-Connecting-IP")
+	if ipAddress == "" {
+		ipAddress = req.Header.Get("X-Real-Ip")
+		if ipAddress == "" {
+			ipAddress = req.Header.Get("X-Forwarded-For")
+		}
+		if ipAddress == "" {
+			ipAddress = req.RemoteAddr
+		}
+	}
+	return ipAddress
 }

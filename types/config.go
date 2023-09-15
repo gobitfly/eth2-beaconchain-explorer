@@ -165,6 +165,11 @@ type Config struct {
 		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
 		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
 		HttpIdleTimeout  time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
+		Turnstile        struct {
+			Enabled   bool   `yaml:"enabled" envconfig:"FRONTEND_TURNSTILE_ENABLED"`
+			SiteKey   string `yaml:"siteKey" envconfig:"FRONTEND_TURNSTILE_SITE_KEY"`
+			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_TURNSTILE_SECRET_KEY"`
+		} `yaml:"turnstile"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`

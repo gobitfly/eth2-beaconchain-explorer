@@ -331,6 +331,23 @@
             </div>
           </div>
         </footer>
+        <div class="modal fade" id="turnstileModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Verify you are human</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body text-center" id="turnstileModalContent">
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#turnstileModal">
+  Launch demo modal
+</button>
       </div>
 
       <script src="/js/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
@@ -471,6 +488,34 @@
         <script src="/js/debug.js"></script>
         <script>
           GoDebug.initialize({{ . }})
+        </script>
+      {{ end }}
+      {{ if not (eq $.TurnstileSiteKey "") }}
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=_turnstileCb" async defer></script>
+        <script>
+          function _turnstileCb() {
+              console.debug('_turnstileCb called');
+
+              window.turnstileWidgetId = turnstile.render('#turnstileModalContent', {
+                sitekey: '{{$.TurnstileSiteKey}}',
+                theme: 'auto',
+                callback: function(token) {
+                  window.turnstileToken = token;
+                  console.log(`Challenge Success ${token}`);
+                },
+                'before-interactive-callback': function() {
+                  console.log(`before interactive`);
+                  $('#turnstileModal').modal('show');
+                },
+                'after-interactive-callback': function() {
+                  console.log(`after interactive`);
+                  $('#turnstileModal').modal('hide');
+                },
+                'error-callback': function(error) {
+                  console.log(`error callback called with ${error}`);
+                },
+              });
+          }
         </script>
       {{ end }}
     </body>

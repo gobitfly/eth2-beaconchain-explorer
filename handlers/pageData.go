@@ -91,6 +91,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		MainMenuItems:       createMenuItems(active, isMainnet),
 		TermsOfServiceUrl:   utils.Config.Frontend.Legal.TermsOfServiceUrl,
 		PrivacyPolicyUrl:    utils.Config.Frontend.Legal.PrivacyPolicyUrl,
+		TurnstileSiteKey:    utils.Config.Frontend.Turnstile.SiteKey,
 	}
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)

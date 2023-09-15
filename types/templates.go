@@ -54,6 +54,7 @@ type PageData struct {
 	MainMenuItems       []MainMenuItem
 	TermsOfServiceUrl   string
 	PrivacyPolicyUrl    string
+	TurnstileSiteKey    string
 }
 
 type MainMenuItem struct {

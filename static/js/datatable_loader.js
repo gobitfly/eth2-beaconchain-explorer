@@ -25,11 +25,13 @@ function dataTableLoader(path) {
   }
 
   const doFetch = (tableData, callback) => {
-    fetch(`${path}?${new URLSearchParams(tableData)}`)
+    fetch(`${path}?${new URLSearchParams(tableData)}`, {headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}})
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed with status: ${response.status}`)
         }
+        turnstile.reset(window.turnstileWidgetId);
+        window.turnstileToken = "";
         return response.json()
       })
       .then((data) => {
@@ -48,7 +50,16 @@ function dataTableLoader(path) {
   const fetchWithRetry = (tableData, callback) => {
     clearTimeout(timeoutId) // Clear any pending retries.
     retries = 0 // Reset retry count.
-    doFetch(tableData, callback)
+
+    function waitForTurnstileToken() {
+      if(!window.turnstileToken) {//we want it to match
+          setTimeout(waitForTurnstileToken, 50);//wait 50 milliseconds then recheck
+          return;
+      }
+      doFetch(tableData, callback)
+    }
+
+    waitForTurnstileToken()
   }
   const debouncedFetchData = debounce(fetchWithRetry, DEBOUNCE_DELAY)
 

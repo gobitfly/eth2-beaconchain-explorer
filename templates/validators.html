@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
     <script>
         var validatorsDataTable;
         const totalCount = {{.TotalCount}};
@@ -109,14 +110,7 @@
                 serverSide: true,
                 searching: false,
                 stateSave: true,
-                stateSaveCallback: function (settings, data) {
-                  data.start = 0
-                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
-                },
-                stateLoadCallback: function (settings) {
-                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
-                },
-                ajax: '/validators/data?filterByState=' + state,
+                ajax: dataTableLoader("/validators/data"),
                 pagingType: 'input',
                 language: {
                     paginate: {
@@ -129,18 +123,6 @@
                 dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" +
                     "<'row'<'col-sm-12'tr>>" +
                     "<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
-                fnInitComplete: function() {
-                    $('.filter-by-status')
-                        .html(stateFilterDropDownHtml)
-                        .find('[data-filter-validators]')
-                        .click(function() {
-                            var f = $(this).data('filter-validators');
-                            validatorsDataTable.ajax.url(`/validators/data?filterByState=${f}`);
-                            validatorsDataTable.ajax.reload();
-                            adaptTableToState(f)
-                        });
-                    adaptTableToState(state)
-                },
                 preDrawCallback: function() {
                     // this does not always work.. not sure how to solve the staying tooltip
                     try {
@@ -249,14 +231,6 @@
                         }
                     },
                 ]
-            })
-            $("#validators_filter > label > input").on('input', function(ev) {
-                if (ev && ev.target && ev.target.value) {
-                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-                    window.history.replaceState(null, 'Validators Overview', newUrl)
-                } else {
-                    window.history.replaceState(null, 'Validators Overview', window.location.pathname)
-                }
             })
         })
     </script>
