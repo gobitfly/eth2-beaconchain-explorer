@@ -626,8 +626,8 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 
 	writes := 0
 
-	mutLastAttestationSlotSet := false
 	mutLastAttestationSlot := gcp_bigtable.NewMutation()
+	mutLastAttestationSlotCount := 0
 
 	for attestedSlot, validators := range duties {
 		for validator, inclusions := range validators {
@@ -649,7 +649,18 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 				if uint64(attestedSlot) > bigtable.lastAttestationCache[uint64(validator)] {
 					mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((attestedSlot)*1000), []byte{})
 					bigtable.lastAttestationCache[uint64(validator)] = uint64(attestedSlot)
-					mutLastAttestationSlotSet = true
+					mutLastAttestationSlotCount++
+
+					if mutLastAttestationSlotCount == MAX_BATCH_MUTATIONS {
+						mutStart := time.Now()
+						err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
+						if err != nil {
+							return fmt.Errorf("error applying last attestation slot mutations: %v", err)
+						}
+						mutLastAttestationSlot = gcp_bigtable.NewMutation()
+						mutLastAttestationSlotCount = 0
+						logger.Infof("applyied last attestation slot mutations in %v", time.Since(mutStart))
+					}
 				}
 
 				if len(mutsInclusionSlot) == MAX_BATCH_MUTATIONS {
@@ -671,14 +682,8 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		}
 	}
 
-	if mutLastAttestationSlotSet {
-		err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
-		if err != nil {
-			return err
-		}
-	}
-
 	if len(mutsInclusionSlot) > 0 {
+		logger.Infof("exporting remaining %v attestation mutations", len(mutsInclusionSlot))
 		attstart := time.Now()
 		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 		if err != nil {
@@ -688,6 +693,13 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 			return err
 		}
 		logger.Infof("applied attestation mutations in %v", time.Since(attstart))
+	}
+
+	if mutLastAttestationSlotCount > 0 {
+		err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
+		if err != nil {
+			return fmt.Errorf("error applying last attestation slot mutations: %v", err)
+		}
 	}
 
 	logger.Infof("exported %v attestations to bigtable in %v", writes, time.Since(start))
@@ -858,9 +870,9 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startEpoch": startEpoch,
-			"endEpoch":   endEpoch,
+			"validators_count": len(validators),
+			"startEpoch":       startEpoch,
+			"endEpoch":         endEpoch,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
