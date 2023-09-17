@@ -182,7 +182,6 @@
           <div class="col-md-6 mb-5">
             <h1 class="h6 font-weight-bold text-primary">API Pricing Plans</h1>
             <h2 class="mb-4">Start for free or choose a plan that suits you best.</h2>
-            <a href="#contact" class="btn btn-sm btn-outline-primary">Contact Us</a>
           </div>
           <div class="col-md-5 p-1">
             {{ template "pricing_svg" }}
@@ -202,6 +201,10 @@
               <div class="card-body">
                 <h1 class="card-title pricing-card-title">0€ <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
+                  <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 5 }}
+                  </li>
                   <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 20 }}
@@ -225,6 +228,10 @@
               <div class="card-body">
                 <h1 class="card-title pricing-card-title">59€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
+                  <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 10 }}
+                  </li>
                   <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 100 }}
@@ -267,6 +274,10 @@
                 <h1 class="card-title pricing-card-title">99€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 20 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 600 }}
                   </li>
@@ -305,6 +316,10 @@
                 <h1 class="card-title pricing-card-title">399€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 35 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 1200 }}
                   </li>
@@ -335,7 +350,7 @@
                 {{ end }}
               </div>
             </div>
-            <div class="position-absolute" style="right: 1rem; bottom: -1rem;">
+            <div class="position-absolute" style="right: 1rem; bottom: -0.7rem;">
               <span class="text-muted">* All prices are excluding VAT</span>
             </div>
           </div>
@@ -378,6 +393,7 @@
                         <option>Sapphire</option>
                         <option>Emerald</option>
                         <option>Diamond</option>
+                        <option>Enterprise</option>
                       </select>
                     </div>
                     <div class="form-group">
@@ -391,6 +407,17 @@
             </div>
           </div>
         </div>
+        <div style="height: 150px; max-width: 60%; margin: auto" class="box-shadow card">
+          <div class="card-body">
+          <div class="badge badge-hot">Enterprise</div>
+        <div class="my-0 font-weight-normal" style="margin: 0 0 0 0.25rem; padding-top: 10px" padding-top:="">Dedicated Plan
+      
+      
+      </div>
+      <div href="#contact" style="margin-top:0.8rem;"><button id="enterprise" class="btn btn-sm btn-block btn-outline-primary">Contact us</button></div>
+      
+      </div>
+      </div>
       </section>
 
       <!-- Error Modal -->
