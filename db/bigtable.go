@@ -974,9 +974,9 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startEpoch": startEpoch,
-			"endEpoch":   endEpoch,
+			"validatorsCount": len(validators),
+			"startEpoch":      startEpoch,
+			"endEpoch":        endEpoch,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
@@ -1146,7 +1146,7 @@ func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
+			"validatorsCount": len(validators),
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
@@ -1253,9 +1253,9 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startEpoch": startEpoch,
-			"endEpoch":   endEpoch,
+			"validatorsCount": len(validators),
+			"startEpoch":      startEpoch,
+			"endEpoch":        endEpoch,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
@@ -1366,9 +1366,9 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startSlot":  startSlot,
-			"endSlot":    endSlot,
+			"validatorsCount": len(validators),
+			"startSlot":       startSlot,
+			"endSlot":         endSlot,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
@@ -1467,9 +1467,9 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startEpoch": firstEpoch,
-			"endEpoch":   lastEpoch,
+			"validatorsCount": len(validators),
+			"startEpoch":      firstEpoch,
+			"endEpoch":        lastEpoch,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
@@ -1604,9 +1604,9 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(validators []uint64, sta
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startEpoch": startEpoch,
-			"endEpoch":   endEpoch,
+			"validatorsCount": len(validators),
+			"startEpoch":      startEpoch,
+			"endEpoch":        endEpoch,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
@@ -1690,9 +1690,9 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startEpoch": startEpoch,
-			"endEpoch":   endEpoch,
+			"validatorsCount": len(validators),
+			"startEpoch":      startEpoch,
+			"endEpoch":        endEpoch,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
@@ -1878,9 +1878,9 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 	go func() {
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
-			"validators": validators,
-			"startEpoch": startEpoch,
-			"endEpoch":   endEpoch,
+			"validatorsCount": len(validators),
+			"startEpoch":      startEpoch,
+			"endEpoch":        endEpoch,
 		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
