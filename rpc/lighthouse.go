@@ -567,8 +567,8 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		BlobKZGCommitments:         make([][]byte, len(parsedBlock.Message.Body.BlobKZGCommitments)),
 	}
 
-	for _, c := range parsedBlock.Message.Body.BlobKZGCommitments {
-		block.BlobKZGCommitments = append(block.BlobKZGCommitments, c)
+	for i, c := range parsedBlock.Message.Body.BlobKZGCommitments {
+		block.BlobKZGCommitments[i] = c
 	}
 
 	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.ClConfig.SlotsPerEpoch)
@@ -620,7 +620,9 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
 				tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
 
-				tx.MaxFeePerBlobGas = decTx.BlobGasFeeCap().Uint64()
+				if decTx.BlobGasFeeCap() != nil {
+					tx.MaxFeePerBlobGas = decTx.BlobGasFeeCap().Uint64()
+				}
 				for _, h := range decTx.BlobHashes() {
 					tx.BlobVersionedHashes = append(tx.BlobVersionedHashes, h.Bytes())
 				}

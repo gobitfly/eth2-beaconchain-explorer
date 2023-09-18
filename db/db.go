@@ -1653,9 +1653,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			n := time.Now()
 			logger.Tracef("done, took %v", time.Since(n))
 			for i, c := range b.BlobKZGCommitments {
-				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, utils.VersionedBlobHash(c))
+				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, utils.VersionedBlobHash(c).Bytes())
 				if err != nil {
-					return fmt.Errorf("error executing stmtBlobs")
+					return fmt.Errorf("error executing stmtBlobs for block at slot %v: %w", b.Slot, err)
 				}
 			}
 			logger.Tracef("writing transactions and withdrawal data")
@@ -1663,7 +1663,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 				for _, w := range payload.Withdrawals {
 					_, err := stmtWithdrawals.Exec(b.Slot, b.BlockRoot, w.Index, w.ValidatorIndex, w.Address, fmt.Sprintf("%x", w.Address), w.Amount)
 					if err != nil {
-						return fmt.Errorf("error executing stmtWithdrawals for block %v: %v", b.Slot, err)
+						return fmt.Errorf("error executing stmtWithdrawals for block at slot %v: %w", b.Slot, err)
 					}
 				}
 			}
@@ -1673,7 +1673,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			for i, ps := range b.ProposerSlashings {
 				_, err := stmtProposerSlashing.Exec(b.Slot, i, b.BlockRoot, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtProposerSlashing for block %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtProposerSlashing for block at slot %v: %w", b.Slot, err)
 				}
 			}
 			blockLog.WithField("duration", time.Since(n)).Tracef("stmtProposerSlashing")
