@@ -352,13 +352,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
-	validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
-	if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
-		validatorPageData.AttestationsCount = 0
-	}
-
 	if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
+	} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
+		validatorPageData.AttestationsCount = 0
+	} else {
+		validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
+
+		// Check if the latest epoch still needs to be attested (scheduled) and if so do not count it
+		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(validatorPageData.Epoch), uint64(validatorPageData.Epoch))
+		if err != nil {
+			logger.Errorf("error retrieving validator attestations data: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if len(attestationData[index]) > 0 && attestationData[index][0].Status == 0 {
+			validatorPageData.AttestationsCount--
+		}
 	}
 
 	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
