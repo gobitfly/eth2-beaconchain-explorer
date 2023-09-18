@@ -1431,17 +1431,6 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	}
 	defer stmtBlock.Close()
 
-	/*
-		stmtTransaction, err := tx.Prepare(`
-			INSERT INTO blocks_transactions (block_slot, block_index, block_root, raw, txhash, nonce, gas_price, gas_limit, sender, recipient, amount, payload, max_priority_fee_per_gas, max_fee_per_gas)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-			ON CONFLICT (block_slot, block_index) DO NOTHING`)
-		if err != nil {
-			return err
-		}
-		defer stmtTransaction.Close()
-	*/
-
 	stmtWithdrawals, err := tx.Prepare(`
 	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, address_text, amount)
 	VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -1491,6 +1480,18 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 		INSERT INTO blocks_deposits (block_slot, block_index, block_root, proof, publickey, withdrawalcredentials, amount, signature, valid_signature)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
 		ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtDeposits.Close()
+
+	stmtBlobs, err := tx.Prepare(`
+		INSERT INTO blocks_blobs (slot, block_root, index, kzg_commitment, blob_versioned_hash)
+		VALUES ($1, $2, $3, $4, $5) 
+		ON CONFLICT (block_root, index) DO UPDATE SET
+			slot                = excluded.slot,
+			kzg_commitment      = excluded.kzg_commitment,
+			blob_versioned_hash = excluded.blob_versioned_hash`)
 	if err != nil {
 		return err
 	}
@@ -1651,21 +1652,18 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 
 			n := time.Now()
 			logger.Tracef("done, took %v", time.Since(n))
+			for i, c := range b.BlobKZGCommitments {
+				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, utils.VersionedBlobHash(c))
+				if err != nil {
+					return fmt.Errorf("error executing stmtBlobs")
+				}
+			}
 			logger.Tracef("writing transactions and withdrawal data")
 			if payload := b.ExecutionPayload; payload != nil {
-				/*
-					for i, tx := range payload.Transactions {
-						_, err := stmtTransaction.Exec(b.Slot, i, b.BlockRoot,
-							tx.Raw, tx.TxHash, tx.AccountNonce, tx.Price, tx.GasLimit, tx.Sender, tx.Recipient, tx.Amount, tx.Payload, tx.MaxPriorityFeePerGas, tx.MaxFeePerGas)
-						if err != nil {
-							return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
-						}
-					}
-				*/
 				for _, w := range payload.Withdrawals {
 					_, err := stmtWithdrawals.Exec(b.Slot, b.BlockRoot, w.Index, w.ValidatorIndex, w.Address, fmt.Sprintf("%x", w.Address), w.Amount)
 					if err != nil {
-						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
+						return fmt.Errorf("error executing stmtWithdrawals for block %v: %v", b.Slot, err)
 					}
 				}
 			}

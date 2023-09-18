@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"eth2-exporter/metrics"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/coocood/freecache"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -27,10 +29,11 @@ type BlobIndexer struct {
 	running    bool
 	runningMu  *sync.Mutex
 	clEndpoint string
+	cache      *freecache.Cache
 }
 
 func NewBlobIndexer() (*BlobIndexer, error) {
-	s3Resolver := aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
+	s3Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			PartitionID:       "aws",
 			URL:               utils.Config.BlobIndexer.S3.Endpoint,
@@ -45,7 +48,7 @@ func NewBlobIndexer() (*BlobIndexer, error) {
 			utils.Config.BlobIndexer.S3.AccessKeySecret,
 			"",
 		),
-		EndpointResolver: s3Resolver,
+		EndpointResolverWithOptions: s3Resolver,
 	}, func(o *s3.Options) {
 		o.UsePathStyle = true
 	})
@@ -53,6 +56,7 @@ func NewBlobIndexer() (*BlobIndexer, error) {
 		S3Client:   s3Client,
 		runningMu:  &sync.Mutex{},
 		clEndpoint: "http://" + utils.Config.Indexer.Node.Host + ":" + utils.Config.Indexer.Node.Port,
+		cache:      freecache.NewCache(1024 * 1024),
 	}
 	return bi, nil
 }
@@ -79,7 +83,7 @@ func (bi *BlobIndexer) Index() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(2)
+	g.SetLimit(3)
 	headHeader := &BeaconBlockHeaderResponse{}
 	finalizedHeader := &BeaconBlockHeaderResponse{}
 	spec := &BeaconSpecResponse{}
@@ -138,7 +142,6 @@ func (bi *BlobIndexer) Index() error {
 		logrus.WithFields(logrus.Fields{
 			"startSlot": startSlot,
 			"endSlot":   headHeader.Data.Header.Message.Slot,
-			"slots":     headHeader.Data.Header.Message.Slot - startSlot,
 			"duration":  time.Since(start),
 		}).Infof("finished indexing blobs")
 	}()
@@ -188,6 +191,7 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 	defer cancel()
 
 	blobSidecar := &BeaconBlobSidecarsResponse{}
+	tGetBlobSidcar := time.Now()
 	err := utils.HttpReq(context.Background(), http.MethodGet, fmt.Sprintf("%s/eth/v1/beacon/blob_sidecars/%d", bi.clEndpoint, slot), nil, blobSidecar)
 	if err != nil {
 		var httpErr *utils.HttpReqHttpError
@@ -197,6 +201,7 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 		}
 		return err
 	}
+	metrics.TaskDuration.WithLabelValues("blobindexer_get_blob_sidecars").Observe(time.Since(tGetBlobSidcar).Seconds())
 
 	if len(blobSidecar.Data) <= 0 {
 		return nil
@@ -227,15 +232,18 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 			versionedBlobHash := fmt.Sprintf("%#x", utils.VersionedBlobHash(kzgCommitment).Bytes())
 			key := fmt.Sprintf("blobs/%s", versionedBlobHash)
 
+			tS3HeadObj := time.Now()
 			_, err = bi.S3Client.HeadObject(gCtx, &s3.HeadObjectInput{
 				Bucket: &utils.Config.BlobIndexer.S3.Bucket,
 				Key:    &key,
 			})
+			metrics.TaskDuration.WithLabelValues("blobindexer_check_blob").Observe(time.Since(tS3HeadObj).Seconds())
 			if err != nil {
 				// Only put the object if it does not exist yet
 				var httpResponseErr *awshttp.ResponseError
 				if errors.As(err, &httpResponseErr) && (httpResponseErr.HTTPStatusCode() == 404 || httpResponseErr.HTTPStatusCode() == 403) {
 					//logrus.WithFields(logrus.Fields{"slot": d.Slot, "index": d.Index, "key": key}).Infof("putting blob")
+					tS3PutObj := time.Now()
 					_, putErr := bi.S3Client.PutObject(gCtx, &s3.PutObjectInput{
 						Bucket: &utils.Config.BlobIndexer.S3.Bucket,
 						Key:    &key,
@@ -250,6 +258,7 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 							"kzg_proof":         fmt.Sprintf("%s", d.KzgProof),
 						},
 					})
+					metrics.TaskDuration.WithLabelValues("blobindexer_put_blob").Observe(time.Since(tS3PutObj).Seconds())
 					if putErr != nil {
 						return fmt.Errorf("error putting object: %s (%v/%v): %w", key, d.Slot, d.Index, putErr)
 					}
@@ -268,11 +277,11 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 	return nil
 }
 
-func (bi *BlobIndexer) PutBlob(blob *BeaconBlobSidecarsResponseBlob) error {
-	return nil
-}
-
 func (bi *BlobIndexer) GetIndexerStatus() (*BlobIndexerStatus, error) {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("blobindexer_get_indexer_status").Observe(time.Since(start).Seconds())
+	}()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	key := "blob-indexer-status.json"
@@ -294,6 +303,10 @@ func (bi *BlobIndexer) GetIndexerStatus() (*BlobIndexerStatus, error) {
 }
 
 func (bi *BlobIndexer) PutIndexerStatus(status BlobIndexerStatus) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("blobindexer_put_indexer_status").Observe(time.Since(start).Seconds())
+	}()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	key := "blob-indexer-status.json"
@@ -307,9 +320,11 @@ func (bi *BlobIndexer) PutIndexerStatus(status BlobIndexerStatus) error {
 		Key:         &key,
 		Body:        bytes.NewReader(body),
 		ContentType: &contentType,
+		Metadata: map[string]string{
+			"last_indexed_finalized_slot": fmt.Sprintf("%d", status.LastIndexedFinalizedSlot),
+		},
 	})
 	if err != nil {
-		fmt.Printf("bucket:%s\nkey:%s\nbody:%s\n", utils.Config.BlobIndexer.S3.Bucket, key, body)
 		return err
 	}
 	return nil

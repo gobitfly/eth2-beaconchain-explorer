@@ -564,6 +564,11 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		Deposits:                   make([]*types.Deposit, len(parsedBlock.Message.Body.Deposits)),
 		VoluntaryExits:             make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
 		SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(parsedBlock.Message.Body.SignedBLSToExecutionChange)),
+		BlobKZGCommitments:         make([][]byte, len(parsedBlock.Message.Body.BlobKZGCommitments)),
+	}
+
+	for _, c := range parsedBlock.Message.Body.BlobKZGCommitments {
+		block.BlobKZGCommitments = append(block.BlobKZGCommitments, c)
 	}
 
 	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.ClConfig.SlotsPerEpoch)
