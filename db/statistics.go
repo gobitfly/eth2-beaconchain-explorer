@@ -911,17 +911,18 @@ func WriteValidatorDepositWithdrawals(day uint64) error {
 		firstDayExtraCondition = " OR day = -1"
 	}
 
+	// Reset the deposits and withdrawals for the day
 	resetQry := fmt.Sprintf(`
 		UPDATE validator_stats SET 
 			deposits = NULL, 
 			deposits_amount = NULL,
 			withdrawals = NULL, 
 			withdrawals_amount = NULL
-		WHERE day = $1%s;`, firstDayExtraCondition)
+		WHERE day = $1%s`, firstDayExtraCondition)
 
 	_, err = tx.Exec(resetQry, day)
 	if err != nil {
-		return fmt.Errorf("error resetting validator_stats for day [%v]: %w", day, err)
+		return fmt.Errorf("error resetting validator_stats deposists and withdrawals for day [%v]: %w", day, err)
 	}
 	logger.Infof("reset completed, took %v", time.Since(start))
 
@@ -1031,6 +1032,17 @@ func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64) error {
 		return err
 	}
 	defer tx.Rollback()
+
+	// Reset the sync duties for the day
+	_, err = tx.Exec(`
+		UPDATE validator_stats SET
+			participated_sync = NULL,
+			missed_sync = NULL,
+			orphaned_sync = NULL
+		WHERE day = $1 AND validatorindex = ANY($2)`, day, pq.Array(validators))
+	if err != nil {
+		return fmt.Errorf("error resetting validator_stats sync duties for day [%v]: %w", day, err)
+	}
 
 	batchSize := 13000 // max parameters: 65535
 	for b := 0; b < len(syncStatsArr); b += batchSize {
