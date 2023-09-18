@@ -1548,7 +1548,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		sendServerErrorResponse(w, r.URL.String(), "error retrieving data, please try again later")
 		return
 	}
-	firstSlotToday := ((lastExportedDay+1)*utils.EpochsPerDay() - 1) * utils.Config.Chain.Config.SlotsPerEpoch // -1 because validator_stats does not include last epoch of the day for some reason
+	cutoffSlot := (((lastExportedDay+1)*utils.EpochsPerDay() - 1) * utils.Config.Chain.Config.SlotsPerEpoch) + 1
 
 	data := make([]*ApiValidatorResponse, 0)
 
@@ -1575,7 +1575,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 				COALESCE(t.validatorindex, s.validatorindex) as validatorindex,
 				COALESCE(t.amount_today, 0) + COALESCE(s.total_amount, 0) as total
 			FROM today t
-			FULL OUTER JOIN stats s ON t.validatorindex = s.validatorindex
+			FULL JOIN stats s ON t.validatorindex = s.validatorindex
 		)
 		SELECT
 			v.validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
@@ -1592,7 +1592,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
 		WHERE v.validatorindex = ANY($1)
 		ORDER BY v.validatorindex;
-	`, pq.Array(queryIndices), firstSlotToday)
+	`, pq.Array(queryIndices), cutoffSlot)
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
