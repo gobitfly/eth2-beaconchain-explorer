@@ -155,7 +155,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 // ApiHealthzLoadbalancer godoc
 // @Summary Health of the explorer-api regarding having a healthy connection to the database
 // @Tags Misc
-// @Description Health endpoint for montitoring if the explorer-api
+// @Description Health endpoint for monitoring if the explorer-api
 // @Produce  text/plain
 // @Success 200 {object} types.ApiResponse
 // @Router /api/healthz-loadbalancer [get]
@@ -191,7 +191,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 // @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
 // @Description See https://github.com/gobitfly/eth.store for further information.
 // @Produce json
-// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE® for. Must be a number or the string 'latest'."
+// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the ETH.STORE® for. Must be a number or the string 'latest'."
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/ethstore/{day} [get]
@@ -1938,7 +1938,7 @@ func getIncomeDetailsHistoryQueryParameters(q url.Values) (uint64, uint64, error
 }
 
 // ApiValidatorWithdrawals godoc
-// @Summary Get the withdrawal history of up to 100 validators for the last 100 epochs. To receive older withdrawals modify the epoch paraum
+// @Summary Get the withdrawal history of up to 100 validators for the last 100 epochs. To receive older withdrawals modify the epoch param
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
