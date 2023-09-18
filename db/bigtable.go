@@ -1501,7 +1501,10 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorSyncDutiesStatistic, error) {
-	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
+	startSlot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+	endSlot := endEpoch*utils.Config.Chain.Config.SlotsPerEpoch + utils.Config.Chain.Config.SlotsPerEpoch - 1
+
+	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startSlot, endSlot)
 
 	if err != nil {
 		return nil, err
