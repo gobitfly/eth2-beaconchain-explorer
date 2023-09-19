@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script>
     $("#slashings").DataTable({
       processing: true,
@@ -17,7 +18,7 @@
       },
       paging: true,
       pagingType: "input",
-      ajax: "/validators/slashings/data",
+      ajax: dataTableLoader("/validators/slashings/data"),
       language: {
         // searchPlaceholder: 'Search by Epoch Number',
         // search: '',

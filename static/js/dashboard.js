@@ -66,7 +66,7 @@ function showValidatorHist(index) {
     details: false,
     pagingType: "simple",
     pageLength: 10,
-    ajax: "/validator/" + index + "/history",
+    ajax: dataTableLoader("/validator/" + index + "/history"),
     language: {
       searchPlaceholder: "Search by Epoch Number",
       search: "",
@@ -1170,6 +1170,7 @@ $(document).ready(function () {
     window.dispatchEvent(new CustomEvent("dashboard_validators_set"))
 
     if (state.validators.length) {
+      var uRLSearchParams = new URLSearchParams([["validators", state.validators.join(",")]])
       var qryStr = "?validators=" + state.validators.join(",")
       if (window.location.search != qryStr) {
         var newUrl = window.location.pathname + qryStr + window.location.hash
@@ -1182,7 +1183,7 @@ $(document).ready(function () {
       document.querySelector("#clear-search").style.visibility = "visible"
 
       $.ajax({
-        url: "/dashboard/data/validators" + qryStr,
+        url: dataTableLoader("/dashboard/data/validators", uRLSearchParams),
         success: function (result) {
           var t1 = Date.now()
           console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1 - t0}ms`)
@@ -1233,7 +1234,7 @@ $(document).ready(function () {
         document.querySelector("#bookmark-button").style.visibility = "visible"
 
         $.ajax({
-          url: "/dashboard/data/earnings" + qryStr,
+          url: dataTableLoader("/dashboard/data/earnings", uRLSearchParams),
           success: function (result) {
             var t1 = Date.now()
             console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
@@ -1319,9 +1320,14 @@ $(document).ready(function () {
 
   function renderCharts() {
     var t0 = Date.now()
-    var qryStr = "?validators=" + state.validators.join(",")
     $.ajax({
-      url: "/dashboard/data/allbalances" + qryStr + "&days=31",
+      url: dataTableLoader(
+        "/dashboard/data/allbalances",
+        new URLSearchParams([
+          ["validators", state.validators.join(",")],
+          ["days", "31"],
+        ])
+      ),
       success: function (result) {
         var t1 = Date.now()
         createIncomeChart(result.consensusChartData, result.executionChartData)
@@ -1332,7 +1338,7 @@ $(document).ready(function () {
       },
     })
     $.ajax({
-      url: "/dashboard/data/proposals" + qryStr,
+      url: dataTableLoader("/dashboard/data/proposals", new URLSearchParams([["validators", state.validators.join(",")]])),
       success: function (result) {
         var t1 = Date.now()
         if (result && result.length) {

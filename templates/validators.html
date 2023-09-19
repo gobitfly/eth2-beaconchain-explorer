@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
     <script>
         var validatorsDataTable;
         const totalCount = {{.TotalCount}};
@@ -116,7 +117,7 @@
                 stateLoadCallback: function (settings) {
                   return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                 },
-                ajax: '/validators/data?filterByState=' + state,
+                ajax: dataTableLoader('/validators/data', new URLSearchParams([["filterByState", state]])),
                 pagingType: 'input',
                 language: {
                     paginate: {

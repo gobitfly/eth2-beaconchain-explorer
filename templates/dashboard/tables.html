@@ -64,12 +64,7 @@
             order: [[1, "desc"]],
             lengthChange: false,
             searching: false,
-            ajax: {
-              url: `/dashboard/data/withdrawal`,
-              data: function (d) {
-                d.validators = getValidatorString()
-              },
-            },
+            ajax: dataTableLoader(`/dashboard/data/withdrawal`, new URLSearchParams([["validators", getValidatorString()]])),
             pagingType: "input",
             pageLength: 10,
             language: {

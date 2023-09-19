@@ -6,7 +6,7 @@
  * There is also a retry mechanism that retries the server request if the request fails.
  * @param path: Path to load the table data from the server
  */
-function dataTableLoader(path) {
+function dataTableLoader(path, param) {
   const MAX_RETRIES = 5
   const DEBOUNCE_DELAY = 500
   const RETRY_DELAY = 1000
@@ -25,7 +25,7 @@ function dataTableLoader(path) {
   }
 
   const doFetch = (tableData, callback) => {
-    fetch(`${path}?${new URLSearchParams(tableData)}`)
+    fetch(`${path}?${new URLSearchParams(tableData)}&${param}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed with status: ${response.status}`)
