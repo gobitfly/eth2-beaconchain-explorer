@@ -817,12 +817,12 @@ function trimCurrency(value) {
   return trimPrice(value, 2)
 }
 
-function getIncomeChartValueString(value, currency, ethPrice) {
+function getIncomeChartValueString(value, currency) {
   if (this.currency === "ETH") {
     return `${trimToken(value)} ETH`
   }
 
-  return `${trimToken(value / ethPrice)} ETH (${trimCurrency(value)} ${currency})`
+  return `${trimCurrency(value)} ${currency}`
 }
 
 $("[data-tooltip-date=true]").each(function (item) {
