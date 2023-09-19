@@ -245,17 +245,25 @@ func main() {
 			if len(utils.Config.Indexer.OneTimeExport.Epochs) > 0 {
 				logrus.Infof("onetimeexport epochs: %+v", utils.Config.Indexer.OneTimeExport.Epochs)
 				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
-					err := exporter.ExportEpoch(epoch, rpcClient)
+					err := db.DeleteEpoch(epoch)
 					if err != nil {
-						utils.LogFatal(err, "exporting OneTimeExport epochs error", 0)
+						utils.LogFatal(err, "onetimeexport: failed deleting epoch", 0)
+					}
+					err = exporter.ExportEpoch(epoch, rpcClient)
+					if err != nil {
+						utils.LogFatal(err, "onetimeexport: failed exporting epoch", 0)
 					}
 				}
 			} else {
 				logrus.Infof("onetimeexport epochs: %v-%v", utils.Config.Indexer.OneTimeExport.StartEpoch, utils.Config.Indexer.OneTimeExport.EndEpoch)
 				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
-					err := exporter.ExportEpoch(epoch, rpcClient)
+					err := db.DeleteEpoch(epoch)
 					if err != nil {
-						utils.LogFatal(err, "exporting OneTimeExport start to end epoch error", 0)
+						utils.LogFatal(err, "onetimeexport: failed deleting epoch", 0)
+					}
+					err = exporter.ExportEpoch(epoch, rpcClient)
+					if err != nil {
+						utils.LogFatal(err, "onetimeexport: failed exporting epoch", 0)
 					}
 				}
 			}

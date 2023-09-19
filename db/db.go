@@ -734,6 +734,41 @@ func SaveBlock(block *types.Block) error {
 	return nil
 }
 
+// DeleteEpoch will delete all epoch data from the database
+func DeleteEpoch(epoch uint64) error {
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions when deleting epoch %v: %w", epoch, err)
+	}
+	defer tx.Rollback()
+
+	startSlot := utils.Config.Chain.ClConfig.SlotsPerEpoch * epoch
+	endSlot := utils.Config.Chain.ClConfig.SlotsPerEpoch*(epoch+1) - 1
+	for _, stmt := range []string{
+		"DELETE FROM blocks WHERE slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_withdrawals WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_bls_change WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_proposerslashings WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_attesterslashings WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_attestations WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_deposits WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_blobs WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks_voluntaryexits WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM proposal_assignments WHERE epoch = $1",
+	} {
+		_, err = tx.Exec(stmt, epoch, startSlot, endSlot)
+		if err != nil {
+			return fmt.Errorf("error executing db statement when deleting epoch %v: %v: %w", epoch, stmt, err)
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("error committing db transaction when deleting epoch %v: %w", epoch, err)
+	}
+
+	return nil
+}
+
 // SaveEpoch will save the epoch data into the database
 func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	// Check if we need to export the epoch
@@ -817,16 +852,6 @@ func SaveEpoch(data *types.EpochData, client rpc.Client) error {
 	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator proposal assignments to db: %w", err)
-	}
-
-	logger.Infof("exporting attestation assignments data")
-	// only export validator balances for epoch zero (validator_balances_recent is only needed for genesis deposits)
-	if data.Epoch == 0 {
-		logger.Infof("exporting validator balances for epoch 0")
-		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
-		if err != nil {
-			return fmt.Errorf("error saving recent validator balances to db: %w", err)
-		}
 	}
 
 	logger.Infof("exporting epoch statistics data")
@@ -1343,51 +1368,6 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 	return nil
 }
 
-func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sqlx.Tx) error {
-	start := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_save_validator_balances_recent").Observe(time.Since(start).Seconds())
-	}()
-
-	batchSize := 10000
-
-	for b := 0; b < len(validators); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(validators) < end {
-			end = len(validators)
-		}
-
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*3)
-		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
-			valueArgs = append(valueArgs, epoch)
-			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.Balance)
-		}
-		stmt := fmt.Sprintf(`
-			INSERT INTO validator_balances_recent (epoch, validatorindex, balance)
-			VALUES %s
-			ON CONFLICT (epoch, validatorindex) DO UPDATE SET
-				balance = EXCLUDED.balance`, strings.Join(valueStrings, ","))
-
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			return err
-		}
-	}
-
-	if epoch > 10 {
-		_, err := tx.Exec("DELETE FROM validator_balances_recent WHERE epoch < $1 AND epoch <> 0", epoch-10)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func GetRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.Hash]types.RelaysData, error) {
 	var execBlockHashes [][]byte
 	var relaysData []types.RelaysData
@@ -1432,18 +1412,18 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtBlock.Close()
 
 	stmtWithdrawals, err := tx.Prepare(`
-	INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, address_text, amount)
-	VALUES ($1, $2, $3, $4, $5, $6, $7)
-	ON CONFLICT (block_slot, block_root, withdrawalindex) DO NOTHING`)
+		INSERT INTO blocks_withdrawals (block_slot, block_root, withdrawalindex, validatorindex, address, address_text, amount)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (block_slot, block_root, withdrawalindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtWithdrawals.Close()
 
 	stmtBLSChange, err := tx.Prepare(`
-	INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, pubkey_text, address)
-	VALUES ($1, $2, $3, $4, $5, $6, $7)
-	ON CONFLICT (block_slot, block_root, validatorindex) DO NOTHING`)
+		INSERT INTO blocks_bls_change (block_slot, block_root, validatorindex, signature, pubkey, pubkey_text, address)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (block_slot, block_root, validatorindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -1486,12 +1466,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtDeposits.Close()
 
 	stmtBlobs, err := tx.Prepare(`
-		INSERT INTO blocks_blobs (slot, block_root, index, kzg_commitment, blob_versioned_hash)
+		INSERT INTO blocks_blobs (block_slot, block_root, index, kzg_commitment, blob_versioned_hash)
 		VALUES ($1, $2, $3, $4, $5) 
-		ON CONFLICT (block_root, index) DO UPDATE SET
-			slot                = excluded.slot,
-			kzg_commitment      = excluded.kzg_commitment,
-			blob_versioned_hash = excluded.blob_versioned_hash`)
+		ON CONFLICT (block_root, index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -1652,6 +1629,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 
 			n := time.Now()
 			logger.Tracef("done, took %v", time.Since(n))
+			logger.Tracef("writing BlobKZGCommitments data")
 			for i, c := range b.BlobKZGCommitments {
 				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, utils.VersionedBlobHash(c).Bytes())
 				if err != nil {

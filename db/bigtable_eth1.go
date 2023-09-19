@@ -989,6 +989,110 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 		if i > 9999 {
 			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
+		if tx.Type == 3 {
+			// skip blob-txs
+			continue
+		}
+		iReverse := reversePaddedIndex(i, 10000)
+		// logger.Infof("address to: %x address: contract: %x, len(to): %v, len(contract): %v, contranct zero: %v", tx.GetTo(), tx.GetContractAddress(), len(tx.GetTo()), len(tx.GetContractAddress()), bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS))
+		to := tx.GetTo()
+		isContract := false
+		if !bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS) {
+			to = tx.GetContractAddress()
+			isContract = true
+		}
+		// logger.Infof("sending to: %x", to)
+		invokesContract := false
+		if len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != "" {
+			invokesContract = true
+		}
+		method := make([]byte, 0)
+		if len(tx.GetData()) > 3 {
+			method = tx.GetData()[:4]
+		}
+
+		key := fmt.Sprintf("%s:TX:%x", bigtable.chainId, tx.GetHash())
+		fee := new(big.Int).Mul(new(big.Int).SetBytes(tx.GetGasPrice()), big.NewInt(int64(tx.GetGasUsed()))).Bytes()
+		indexedTx := &types.Eth1TransactionIndexed{
+			Hash:               tx.GetHash(),
+			BlockNumber:        blk.GetNumber(),
+			Time:               blk.GetTime(),
+			MethodId:           method,
+			From:               tx.GetFrom(),
+			To:                 to,
+			Value:              tx.GetValue(),
+			TxFee:              fee,
+			GasPrice:           tx.GetGasPrice(),
+			IsContractCreation: isContract,
+			InvokesContract:    invokesContract,
+			ErrorMsg:           tx.GetErrorMsg(),
+		}
+		// Mark Sender and Recipient for balance update
+		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
+		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
+
+		if len(indexedTx.Hash) != 32 {
+			logger.Fatalf("retrieved hash of length %v for a tx in block %v", len(indexedTx.Hash), blk.GetNumber())
+		}
+
+		b, err := proto.Marshal(indexedTx)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(DEFAULT_FAMILY, DATA_COLUMN, gcp_bigtable.Timestamp(0), b)
+
+		bulkData.Keys = append(bulkData.Keys, key)
+		bulkData.Muts = append(bulkData.Muts, mut)
+
+		indexes := []string{
+			fmt.Sprintf("%s:I:TX:%x:TO:%x:%s:%s", bigtable.chainId, tx.GetFrom(), to, reversePaddedBigtableTimestamp(blk.GetTime()), iReverse),
+			fmt.Sprintf("%s:I:TX:%x:TIME:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), iReverse),
+			fmt.Sprintf("%s:I:TX:%x:BLOCK:%s:%s", bigtable.chainId, tx.GetFrom(), reversedPaddedBlockNumber(blk.GetNumber()), iReverse),
+			fmt.Sprintf("%s:I:TX:%x:METHOD:%x:%s:%s", bigtable.chainId, tx.GetFrom(), method, reversePaddedBigtableTimestamp(blk.GetTime()), iReverse),
+			fmt.Sprintf("%s:I:TX:%x:FROM:%x:%s:%s", bigtable.chainId, to, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), iReverse),
+			fmt.Sprintf("%s:I:TX:%x:TIME:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), iReverse),
+			fmt.Sprintf("%s:I:TX:%x:BLOCK:%s:%s", bigtable.chainId, to, reversedPaddedBlockNumber(blk.GetNumber()), iReverse),
+			fmt.Sprintf("%s:I:TX:%x:METHOD:%x:%s:%s", bigtable.chainId, to, method, reversePaddedBigtableTimestamp(blk.GetTime()), iReverse),
+		}
+
+		if indexedTx.ErrorMsg != "" {
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:ERROR:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), iReverse))
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:ERROR:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), iReverse))
+		}
+
+		if indexedTx.IsContractCreation {
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:CONTRACT:%s:%s", bigtable.chainId, tx.GetFrom(), reversePaddedBigtableTimestamp(blk.GetTime()), iReverse))
+			indexes = append(indexes, fmt.Sprintf("%s:I:TX:%x:CONTRACT:%s:%s", bigtable.chainId, to, reversePaddedBigtableTimestamp(blk.GetTime()), iReverse))
+		}
+
+		for _, idx := range indexes {
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
+
+			bulkData.Keys = append(bulkData.Keys, idx)
+			bulkData.Muts = append(bulkData.Muts, mut)
+		}
+
+	}
+
+	return bulkData, bulkMetadataUpdates, nil
+}
+
+// TransformBlobTx extracts transactions from bigtable more specifically from the table blocks.
+func (bigtable *Bigtable) TransformBlobTx(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
+
+	for i, tx := range blk.Transactions {
+		if i > 9999 {
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+		}
+		if tx.Type != 3 {
+			// skip blob-txs
+			continue
+		}
 		iReverse := reversePaddedIndex(i, 10000)
 		// logger.Infof("address to: %x address: contract: %x, len(to): %v, len(contract): %v, contranct zero: %v", tx.GetTo(), tx.GetContractAddress(), len(tx.GetTo()), len(tx.GetContractAddress()), bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS))
 		to := tx.GetTo()

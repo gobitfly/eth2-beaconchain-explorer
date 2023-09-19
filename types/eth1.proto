@@ -123,6 +123,10 @@ message Eth1BlockIndexed {
     // bytes base_fee_change = 27;
     // bytes block_utilization_change = 28;
     uint64 internal_transaction_count = 29;
+
+    uint64 blob_gas_used = 30;
+    uint64 excess_blob_gas = 31;
+    uint64 blob_transaction_count = 32;
 }
 
 message Eth1UncleIndexed {
