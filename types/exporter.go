@@ -126,6 +126,7 @@ type Block struct {
 	BlobGasUsed                uint64
 	ExcessBlobGas              uint64
 	BlobKZGCommitments         [][]byte
+	BlobKZGProofs              [][]byte
 }
 
 type SignedBLSToExecutionChange struct {

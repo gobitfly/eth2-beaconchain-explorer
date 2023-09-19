@@ -565,10 +565,27 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		VoluntaryExits:             make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
 		SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(parsedBlock.Message.Body.SignedBLSToExecutionChange)),
 		BlobKZGCommitments:         make([][]byte, len(parsedBlock.Message.Body.BlobKZGCommitments)),
+		BlobKZGProofs:              make([][]byte, len(parsedBlock.Message.Body.BlobKZGCommitments)),
 	}
 
 	for i, c := range parsedBlock.Message.Body.BlobKZGCommitments {
 		block.BlobKZGCommitments[i] = c
+	}
+
+	if len(parsedBlock.Message.Body.BlobKZGCommitments) > 0 {
+		res, err := lc.GetBlobSidecars(fmt.Sprintf("%#x", block.BlockRoot))
+		if err != nil {
+			return nil, err
+		}
+		if len(res.Data) != len(parsedBlock.Message.Body.BlobKZGCommitments) {
+			return nil, fmt.Errorf("error constructing block at slot %v: len(blob_sidecars) != len(block.blob_kzg_commitments): %v != %v", block.Slot, len(res.Data), len(parsedBlock.Message.Body.BlobKZGCommitments))
+		}
+		for i, d := range res.Data {
+			if !bytes.Equal(d.KzgCommitment, block.BlobKZGCommitments[i]) {
+				return nil, fmt.Errorf("error constructing block at slot %v: unequal kzg_commitments at index %v: %#x != %#x", block.Slot, i, d.KzgCommitment, block.BlobKZGCommitments[i])
+			}
+			block.BlobKZGProofs[i] = d.KzgProof
+		}
 	}
 
 	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.ClConfig.SlotsPerEpoch)
@@ -889,6 +906,19 @@ func (lc *LighthouseClient) GetSyncCommittee(stateID string, epoch uint64) (*Sta
 		return nil, fmt.Errorf("error parsing sync_committees data for epoch %v (state: %v): %w", epoch, stateID, err)
 	}
 	return &parsedSyncCommittees.Data, nil
+}
+
+func (lc *LighthouseClient) GetBlobSidecars(stateID string) (*StandardBlobSidecarsResponse, error) {
+	res, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blob_sidecars/%s", lc.endpoint, stateID))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving blob_sidecars for %v: %w", stateID, err)
+	}
+	var parsed StandardBlobSidecarsResponse
+	err = json.Unmarshal(res, &parsed)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing blob_sidecars for %v: %w", stateID, err)
+	}
+	return &parsed, nil
 }
 
 var errNotFound = errors.New("not found 404")
@@ -1286,4 +1316,17 @@ type StandardValidatorBalancesResponse struct {
 		Index   uint64Str `json:"index"`
 		Balance uint64Str `json:"balance"`
 	} `json:"data"`
+}
+
+type StandardBlobSidecarsResponse struct {
+	Data []struct {
+		BlockRoot       bytesHexStr `json:"block_root"`
+		Index           uint64Str   `json:"index"`
+		Slot            uint64Str   `json:"slot"`
+		BlockParentRoot bytesHexStr `json:"block_parent_root"`
+		ProposerIndex   uint64Str   `json:"proposer_index"`
+		KzgCommitment   bytesHexStr `json:"kzg_commitment"`
+		KzgProof        bytesHexStr `json:"kzg_proof"`
+		// Blob            string `json:"blob"`
+	}
 }

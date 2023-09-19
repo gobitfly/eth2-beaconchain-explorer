@@ -745,18 +745,26 @@ func DeleteEpoch(epoch uint64) error {
 	startSlot := utils.Config.Chain.ClConfig.SlotsPerEpoch * epoch
 	endSlot := utils.Config.Chain.ClConfig.SlotsPerEpoch*(epoch+1) - 1
 	for _, stmt := range []string{
-		"DELETE FROM blocks WHERE slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_withdrawals WHERE block_slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_bls_change WHERE block_slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_proposerslashings WHERE block_slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_attesterslashings WHERE block_slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_attestations WHERE block_slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_deposits WHERE block_slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_blobs WHERE block_slot BETWEEN $2 AND $3",
-		"DELETE FROM blocks_voluntaryexits WHERE block_slot BETWEEN $2 AND $3",
+		"DELETE FROM blocks WHERE slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_withdrawals WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_bls_change WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_proposerslashings WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_attesterslashings WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_attestations WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_deposits WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_blobs WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_voluntaryexits WHERE block_slot BETWEEN $1 AND $2",
+	} {
+		_, err = tx.Exec(stmt, startSlot, endSlot)
+		if err != nil {
+			return fmt.Errorf("error executing db statement when deleting epoch %v: %v: %w", epoch, stmt, err)
+		}
+	}
+
+	for _, stmt := range []string{
 		"DELETE FROM proposal_assignments WHERE epoch = $1",
 	} {
-		_, err = tx.Exec(stmt, epoch, startSlot, endSlot)
+		_, err = tx.Exec(stmt, epoch)
 		if err != nil {
 			return fmt.Errorf("error executing db statement when deleting epoch %v: %v: %w", epoch, stmt, err)
 		}
@@ -1466,8 +1474,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 	defer stmtDeposits.Close()
 
 	stmtBlobs, err := tx.Prepare(`
-		INSERT INTO blocks_blobs (block_slot, block_root, index, kzg_commitment, blob_versioned_hash)
-		VALUES ($1, $2, $3, $4, $5) 
+		INSERT INTO blocks_blob_sidecars (block_slot, block_root, index, kzg_commitment, kzg_proof, blob_versioned_hash)
+		VALUES ($1, $2, $3, $4, $5, $6) 
 		ON CONFLICT (block_root, index) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1631,7 +1639,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx) error {
 			logger.Tracef("done, took %v", time.Since(n))
 			logger.Tracef("writing BlobKZGCommitments data")
 			for i, c := range b.BlobKZGCommitments {
-				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, utils.VersionedBlobHash(c).Bytes())
+				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, b.BlobKZGProofs[i], utils.VersionedBlobHash(c).Bytes())
 				if err != nil {
 					return fmt.Errorf("error executing stmtBlobs for block at slot %v: %w", b.Slot, err)
 				}
