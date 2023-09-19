@@ -90,7 +90,7 @@ func (ese *EthStoreExporter) exportDay(day string) error {
 	}
 	defer tx.Rollback()
 
-	ese.prepareExportDayTx(tx, day)
+	err = ese.prepareExportDayTx(tx, day)
 	if err != nil {
 		return err
 	}
