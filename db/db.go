@@ -752,7 +752,7 @@ func DeleteEpoch(epoch uint64) error {
 		"DELETE FROM blocks_attesterslashings WHERE block_slot BETWEEN $1 AND $2",
 		"DELETE FROM blocks_attestations WHERE block_slot BETWEEN $1 AND $2",
 		"DELETE FROM blocks_deposits WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_blobs WHERE block_slot BETWEEN $1 AND $2",
+		"DELETE FROM blocks_blob_sidecars WHERE block_slot BETWEEN $1 AND $2",
 		"DELETE FROM blocks_voluntaryexits WHERE block_slot BETWEEN $1 AND $2",
 	} {
 		_, err = tx.Exec(stmt, startSlot, endSlot)

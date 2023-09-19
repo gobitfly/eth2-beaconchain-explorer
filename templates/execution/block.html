@@ -41,6 +41,11 @@
             <a class="nav-link" id="transactions-tab" data-toggle="pill" href="#transactions" role="tab" aria-controls="transactions" aria-selected="false">Transactions <span class="badge bg-secondary text-white">{{ .TxCount }}</span></a>
           </li>
         {{ end }}
+        {{ if gt (len .Txs) 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="blobs-tab" data-toggle="pill" href="#blobs" role="tab" aria-controls="blobs" aria-selected="false">Blobs <span class="badge bg-secondary text-white">{{ .BlobCount }}</span></a>
+          </li>
+        {{ end }}
         {{ if gt (len .Uncles) 0 }}
           <li class="nav-item">
             <a class="nav-link" id="uncles-tab" data-toggle="pill" href="#uncles" role="tab" aria-controls="uncles" aria-selected="false">Uncles <span class="badge bg-secondary text-white">{{ .UncleCount }}</span></a>
