@@ -119,7 +119,7 @@ func main() {
 
 			// export epoch data to bigtable
 			g := new(errgroup.Group)
-			g.SetLimit(5)
+			g.SetLimit(6)
 			g.Go(func() error {
 				err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 				if err != nil {
@@ -150,6 +150,13 @@ func main() {
 			})
 			g.Go(func() error {
 				err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
+				if err != nil {
+					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+				}
+				return nil
+			})
+			g.Go(func() error {
+				err = db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
 				if err != nil {
 					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
 				}
