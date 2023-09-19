@@ -646,7 +646,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 				keysInclusionSlot = append(keysInclusionSlot, key)
 				writes++
 
-				if uint64(attestedSlot) > bigtable.lastAttestationCache[uint64(validator)] {
+				if inclusionSlot != MAX_CL_BLOCK_NUMBER && uint64(attestedSlot) > bigtable.lastAttestationCache[uint64(validator)] {
 					mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((attestedSlot)*1000), []byte{})
 					bigtable.lastAttestationCache[uint64(validator)] = uint64(attestedSlot)
 					mutLastAttestationSlotCount++
