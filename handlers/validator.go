@@ -349,30 +349,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
 
-	// Every validator is scheduled to issue an attestation once per epoch
-	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
-	// Special care needs to be take for exited and pending validators
-	if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
-		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
-	} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
-		validatorPageData.AttestationsCount = 0
-	} else {
-		validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
-
-		// Check if the latest epoch still needs to be attested (scheduled) and if so do not count it
-		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, validatorPageData.Epoch, validatorPageData.Epoch)
-		if err != nil {
-			logAdditionalInfo := map[string]interface{}{"epoch": fmt.Sprintf("%v", validatorPageData.Epoch), "index": fmt.Sprintf("%v", index)}
-			utils.LogError(err, "error retrieving validator attestations data", 0, logAdditionalInfo)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		if len(attestationData[index]) > 0 && attestationData[index][0].Status == 0 {
-			validatorPageData.AttestationsCount--
-		}
-	}
-
 	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
 	avgSyncIntervalAsDuration := time.Duration(
 		utils.Config.Chain.Config.SecondsPerSlot*
@@ -593,6 +569,27 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		// Every validator is scheduled to issue an attestation once per epoch
+		// Hence we can calculate the number of attestations using the current epoch and the activation epoch
+		// Special care needs to be take for exited and pending validators
+		if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
+			validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
+		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
+			validatorPageData.AttestationsCount = 0
+		} else {
+			validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
+
+			// Check if the latest epoch still needs to be attested (scheduled) and if so do not count it
+			attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, validatorPageData.Epoch, validatorPageData.Epoch)
+			if err != nil {
+				return fmt.Errorf("error retrieving validator attestations data for epoch [%v] and validator index [%v]: %w", validatorPageData.Epoch, index, err)
+			}
+
+			if len(attestationData[index]) > 0 && attestationData[index][0].Status == 0 {
+				validatorPageData.AttestationsCount--
+			}
+		}
+
 		if validatorPageData.AttestationsCount > 0 {
 			// get attestationStats from validator_stats
 			attestationStats := struct {
@@ -823,7 +820,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	err = g.Wait()
 	if err != nil {
-		logger.Error(err)
+		utils.LogError(err, "error retrieving validator attestations data", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
