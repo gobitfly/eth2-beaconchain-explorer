@@ -1319,8 +1319,9 @@ $(document).ready(function () {
 
   function renderCharts() {
     var t0 = Date.now()
+    var qryStr = "?validators=" + state.validators.join(",")
     $.ajax({
-      url: "/dashboard/data/allbalances?validators=" + state.validators.join(",") + "&days=31",
+      url: "/dashboard/data/allbalances" + qryStr + "&days=31",
       success: function (result) {
         var t1 = Date.now()
         createIncomeChart(result.consensusChartData, result.executionChartData)
@@ -1331,7 +1332,7 @@ $(document).ready(function () {
       },
     })
     $.ajax({
-      url: "/dashboard/data/proposals?validators=" + state.validators.join(","),
+      url: "/dashboard/data/proposals" + qryStr,
       success: function (result) {
         var t1 = Date.now()
         if (result && result.length) {

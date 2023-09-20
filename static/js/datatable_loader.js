@@ -1,5 +1,5 @@
 /**
- * function dataTableLoader(path, param)
+ * function dataTableLoader(path, param, dataSrc)
  * used to create an ajax function for a DataTable.
  * This function is used to load data from the server for a DataTable.
  * It is debounced to avoid multiple requests to the server when the user clicks on the pagination buttons.
