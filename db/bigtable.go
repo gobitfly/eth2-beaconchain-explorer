@@ -2195,3 +2195,93 @@ func (bigtable *Bigtable) reversedPaddedEpoch(epoch uint64) string {
 func (bigtable *Bigtable) reversedPaddedSlot(slot uint64) string {
 	return fmt.Sprintf("%09d", MAX_CL_BLOCK_NUMBER-slot)
 }
+
+func (bigtable *Bigtable) MigrateIncomeDataV1V2Schema(epoch uint64) error {
+	type validatorEpochData struct {
+		ValidatorIndex uint64
+		IncomeDetails  *itypes.ValidatorEpochIncome
+	}
+
+	epochData := make(map[uint64]*validatorEpochData)
+	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY), gcp_bigtable.LatestNFilter(1))
+	ctx := context.Background()
+
+	prefixEpochRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:b:%s", bigtable.chainId, fmt.Sprintf("%09d", (MAX_EPOCH+1)-epoch)))
+
+	err := bigtable.tableBeaconchain.ReadRows(ctx, prefixEpochRange, func(r gcp_bigtable.Row) bool {
+		// logger.Infof("processing row %v", r.Key())
+
+		keySplit := strings.Split(r.Key(), ":")
+
+		rowKeyEpoch, err := strconv.ParseUint(keySplit[3], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+			return false
+		}
+
+		rowKeyEpoch = MAX_EPOCH - rowKeyEpoch
+
+		if epoch != rowKeyEpoch {
+			logger.Errorf("retrieved different epoch than requested, requested: %d, retrieved: %d", epoch, rowKeyEpoch)
+		}
+
+		// logger.Infof("epoch is %d", rowKeyEpoch)
+
+		for columnFamily, readItems := range r {
+
+			for _, ri := range readItems {
+
+				if ri.Column == "stats:sum" { // skip migrating the total epoch income stats
+					continue
+				}
+
+				validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, columnFamily+":"), 10, 64)
+				if err != nil {
+					logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
+					return false
+				}
+
+				// logger.Infof("retrieved field %s from column family %s for validator %d", ri.Column, columnFamily, validator)
+				if columnFamily == INCOME_DETAILS_COLUMN_FAMILY {
+					if epochData[validator] == nil {
+						epochData[validator] = &validatorEpochData{
+							ValidatorIndex: validator,
+						}
+					}
+					// logger.Infof("processing income details data for validator %d", validator)
+					incomeDetails := &itypes.ValidatorEpochIncome{}
+					err = proto.Unmarshal(ri.Value, incomeDetails)
+					if err != nil {
+						logger.Errorf("error decoding validator income data for row %v: %v", r.Key(), err)
+						return false
+					}
+
+					epochData[validator].IncomeDetails = incomeDetails
+				} else {
+					logger.Errorf("retrieved unexpected column family %s", columnFamily)
+				}
+			}
+		}
+
+		return true
+	}, gcp_bigtable.RowFilter(filter))
+
+	if err != nil {
+		return err
+	}
+
+	incomeData := make(map[uint64]*itypes.ValidatorEpochIncome)
+	for _, validator := range epochData {
+		if validator.IncomeDetails == nil {
+			continue
+		}
+		incomeData[validator.ValidatorIndex] = validator.IncomeDetails
+	}
+
+	err = bigtable.SaveValidatorIncomeDetails(epoch, incomeData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -2582,6 +2582,10 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	var total uint64
 
 	err := ReaderDb.Get(&total, `
+	/*+
+	BitmapScan(w)
+	NestLoop(b w)
+	*/
 	SELECT 
 		COALESCE(sum(w.amount), 0) as total
 	FROM blocks_withdrawals w
@@ -2601,6 +2605,10 @@ func GetDashboardWithdrawalsCount(validators []uint64) (uint64, error) {
 	var count uint64
 	validatorFilter := pq.Array(validators)
 	err := ReaderDb.Get(&count, `
+	/*+
+	BitmapScan(w)
+	NestLoop(b w)
+	*/
 	SELECT count(*) 
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
@@ -2622,6 +2630,10 @@ func GetDashboardWithdrawals(validators []uint64, limit uint64, offset uint64, o
 	}
 	validatorFilter := pq.Array(validators)
 	err := ReaderDb.Select(&withdrawals, fmt.Sprintf(`
+		/*+
+		BitmapScan(w)
+		NestLoop(b w)
+		*/
 		SELECT 
 			w.block_slot as slot, 
 			w.withdrawalindex as index, 
@@ -2652,6 +2664,10 @@ func GetValidatorWithdrawalsCount(validator uint64) (count, lastWithdrawalEpoch 
 
 	r := &dbResponse{}
 	err = ReaderDb.Get(r, `
+	/*+
+	BitmapScan(w)
+	NestLoop(b w)
+	*/
 	SELECT count(*) as withdrawals_count, COALESCE(max(block_slot), 0) as last_withdawal_slot
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
