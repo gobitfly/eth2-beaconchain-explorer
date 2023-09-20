@@ -25,7 +25,7 @@ function dataTableLoader(path) {
   }
 
   const doFetch = (tableData, callback) => {
-    fetch(`${path}?${new URLSearchParams(tableData)}`)
+    fetch(`${path}?${$.param(tableData)}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed with status: ${response.status}`)
