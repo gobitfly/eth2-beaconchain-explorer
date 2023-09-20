@@ -196,9 +196,7 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
-                    ajax: {
-                      url: dataTableLoader(`/validator/${index}/withdrawals`),
-                      dataSrc: function ( { data } ) {
+                    ajax: dataTableLoader(`/validator/${index}/withdrawals`, "", function ( {data} ) {
                         // add the estimate row if it exists
                         {{ if .NextWithdrawalRow }}
                           let row = {{.NextWithdrawalRow}}
@@ -207,8 +205,7 @@
                           }
                         {{ end }}
                         return data
-                      },
-                    },
+                      }),
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
