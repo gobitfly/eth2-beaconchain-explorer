@@ -820,7 +820,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	err = g.Wait()
 	if err != nil {
-		utils.LogError(err, "error retrieving validator attestations data", 0)
+		utils.LogError(err, "error retrieving validator data", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
