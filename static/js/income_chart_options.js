@@ -84,14 +84,8 @@ function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, hei
         var text = ``
         var total = 0
 
-        // if selected range is large enough, the hovered ts might not be in the data
-        // so we find the closest ts in the data
-        const hoverTs = tooltip.chart.hoverPoints[0].x
-        const ts = incomeHistory.reduce((prev, val) => {
-          return val.x >= hoverTs && val.x < prev ? val.x : prev
-        }, Number.MAX_SAFE_INTEGER)
-
         // time range for hovered point
+        const ts = tooltip.chart.hoverPoints[0].x
         const startEpoch = timeToEpoch(ts)
         const timeForOneDay = 24 * 60 * 60 * 1000
         const endEpoch = timeToEpoch(ts + timeForOneDay) - 1

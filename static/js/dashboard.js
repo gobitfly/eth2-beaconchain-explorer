@@ -1381,7 +1381,7 @@ $(document).ready(function () {
 
 function createIncomeChart(income, executionIncomeHistory) {
   executionIncomeHistory = executionIncomeHistory || []
-  const incomeChartOptions = getIncomeChartOptions(income, executionIncomeHistory, 'Daily Income for all Validators', 627, currency)
+  const incomeChartOptions = getIncomeChartOptions(income, executionIncomeHistory, "Daily Income for all Validators", 627, currency)
   incomeChart = Highcharts.stockChart("balance-chart", incomeChartOptions)
 }
 
