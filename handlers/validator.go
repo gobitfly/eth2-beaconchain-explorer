@@ -360,9 +360,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
 
 		// Check if the latest epoch still needs to be attested (scheduled) and if so do not count it
-		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(validatorPageData.Epoch), uint64(validatorPageData.Epoch))
+		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, validatorPageData.Epoch, validatorPageData.Epoch)
 		if err != nil {
-			logger.Errorf("error retrieving validator attestations data: %v", err)
+			logAdditionalInfo := map[string]interface{}{"epoch": fmt.Sprintf("%v", validatorPageData.Epoch), "index": fmt.Sprintf("%v", index)}
+			utils.LogError(err, "error retrieving validator attestations data", 0, logAdditionalInfo)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
