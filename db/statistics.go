@@ -52,13 +52,7 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 	}
 	exported := Exported{}
 
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		return fmt.Errorf("error starting transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	err = tx.Get(&exported, `
+	err := WriterDb.Get(&exported, `
 		SELECT 
 			status,
 			failed_attestations_exported,
@@ -95,46 +89,77 @@ func WriteValidatorStatisticsForDay(day uint64, concurrencyTotal uint64, concurr
 		return nil
 	}
 
-	if exported.FailedAttestations {
-		logger.Infof("Skipping failed attestations")
-	} else if err := WriteValidatorFailedAttestationsStatisticsForDay(validators, day, concurrencyFailedAttestations, tx); err != nil {
-		return fmt.Errorf("error in WriteValidatorFailedAttestationsStatisticsForDay: %w", err)
+	g := &errgroup.Group{}
+
+	g.Go(func() error {
+		if exported.FailedAttestations {
+			logger.Infof("Skipping failed attestations")
+		} else if err := WriteValidatorFailedAttestationsStatisticsForDay(validators, day, concurrencyFailedAttestations); err != nil {
+			return fmt.Errorf("error in WriteValidatorFailedAttestationsStatisticsForDay: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if exported.SyncDuties {
+			logger.Infof("Skipping sync duties")
+		} else if err := WriteValidatorSyncDutiesForDay(validators, day); err != nil {
+			return fmt.Errorf("error in WriteValidatorSyncDutiesForDay: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if exported.WithdrawalsDeposits {
+			logger.Infof("Skipping withdrawals / deposits")
+		} else if err := WriteValidatorDepositWithdrawals(day); err != nil {
+			return fmt.Errorf("error in WriteValidatorDepositWithdrawals: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if exported.BlockStats {
+			logger.Infof("Skipping block stats")
+		} else if err := WriteValidatorBlockStats(day); err != nil {
+			return fmt.Errorf("error in WriteValidatorBlockStats: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if exported.Balance {
+			logger.Infof("Skipping balances")
+		} else if err := WriteValidatorBalances(validators, day); err != nil {
+			return fmt.Errorf("error in WriteValidatorBalances: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if exported.ElRewards {
+			logger.Infof("Skipping el rewards")
+		} else if err := WriteValidatorElIcome(day); err != nil {
+			return fmt.Errorf("error in WriteValidatorElIcome: %w", err)
+		}
+		return nil
+	})
+
+	err = g.Wait()
+	if err != nil {
+		return fmt.Errorf("error during gather/write of stats: %w", err)
 	}
 
-	if exported.SyncDuties {
-		logger.Infof("Skipping sync duties")
-	} else if err := WriteValidatorSyncDutiesForDay(validators, day, tx); err != nil {
-		return fmt.Errorf("error in WriteValidatorSyncDutiesForDay: %w", err)
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
 	}
-
-	if exported.WithdrawalsDeposits {
-		logger.Infof("Skipping withdrawals / deposits")
-	} else if err := WriteValidatorDepositWithdrawals(day, tx); err != nil {
-		return fmt.Errorf("error in WriteValidatorDepositWithdrawals: %w", err)
-	}
-
-	if exported.BlockStats {
-		logger.Infof("Skipping block stats")
-	} else if err := WriteValidatorBlockStats(day, tx); err != nil {
-		return fmt.Errorf("error in WriteValidatorBlockStats: %w", err)
-	}
-
-	if exported.Balance {
-		logger.Infof("Skipping balances")
-	} else if err := WriteValidatorBalances(validators, day, tx); err != nil {
-		return fmt.Errorf("error in WriteValidatorBalances: %w", err)
-	}
+	defer tx.Rollback()
 
 	if exported.ClRewards {
 		logger.Infof("Skipping cl rewards")
 	} else if err := WriteValidatorClIcome(validators, day, concurrencyCl, tx); err != nil {
 		return fmt.Errorf("error in WriteValidatorClIcome: %w", err)
-	}
-
-	if exported.ElRewards {
-		logger.Infof("Skipping el rewards")
-	} else if err := WriteValidatorElIcome(day, tx); err != nil {
-		return fmt.Errorf("error in WriteValidatorElIcome: %w", err)
 	}
 
 	if exported.TotalAccumulation {
@@ -489,7 +514,7 @@ func WriteValidatorTotalPerformance(day uint64, concurrency uint64, tx *sqlx.Tx)
 	return nil
 }
 
-func WriteValidatorBlockStats(day uint64, tx *sqlx.Tx) error {
+func WriteValidatorBlockStats(day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_block_stats").Observe(time.Since(exportStart).Seconds())
@@ -499,12 +524,18 @@ func WriteValidatorBlockStats(day uint64, tx *sqlx.Tx) error {
 		return err
 	}
 
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
 	start := time.Now()
 
 	logger.Infof("exporting proposed_blocks, missed_blocks and orphaned_blocks statistics")
-	_, err := tx.Exec(`
+	_, err = tx.Exec(`
 		insert into validator_stats (validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks) 
 		(
 			select proposer, $3, sum(case when status = '1' then 1 else 0 end), sum(case when status = '2' then 1 else 0 end), sum(case when status = '3' then 1 else 0 end)
@@ -540,11 +571,15 @@ func WriteValidatorBlockStats(day uint64, tx *sqlx.Tx) error {
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	logger.Infof("block statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
 
-func WriteValidatorElIcome(day uint64, tx *sqlx.Tx) error {
+func WriteValidatorElIcome(day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_el_income_stats").Observe(time.Since(exportStart).Seconds())
@@ -553,6 +588,12 @@ func WriteValidatorElIcome(day uint64, tx *sqlx.Tx) error {
 	if err := checkIfDayIsFinalized(day); err != nil {
 		return err
 	}
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
@@ -571,7 +612,7 @@ func WriteValidatorElIcome(day uint64, tx *sqlx.Tx) error {
 	blocks := make([]*Container, 0)
 	blocksMap := make(map[uint64]*Container)
 
-	err := tx.Select(&blocks, "SELECT slot, exec_block_number, proposer FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND exec_block_number > 0 AND status = '1'", firstEpoch, lastEpoch)
+	err = tx.Select(&blocks, "SELECT slot, exec_block_number, proposer FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND exec_block_number > 0 AND status = '1'", firstEpoch, lastEpoch)
 	if err != nil {
 		return fmt.Errorf("error retrieving blocks data for firstEpoch [%v] and lastEpoch [%v]: %w", firstEpoch, lastEpoch, err)
 	}
@@ -649,6 +690,10 @@ func WriteValidatorElIcome(day uint64, tx *sqlx.Tx) error {
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	logger.Infof("el rewards statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
@@ -713,8 +758,6 @@ func WriteValidatorClIcome(validators []uint64, day uint64, concurrency uint64, 
 			end = int(maxValidatorIndex)
 		}
 
-		logrus.Info(start, end)
-
 		g.Go(func() error {
 			select {
 			case <-gCtx.Done():
@@ -762,12 +805,11 @@ func WriteValidatorClIcome(validators []uint64, day uint64, concurrency uint64, 
 	if err = markColumnExported(day, "cl_rewards_exported", tx); err != nil {
 		return err
 	}
-
 	logger.Infof("cl rewards statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
 
-func WriteValidatorBalances(validators []uint64, day uint64, tx *sqlx.Tx) error {
+func WriteValidatorBalances(validators []uint64, day uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 
@@ -779,6 +821,12 @@ func WriteValidatorBalances(validators []uint64, day uint64, tx *sqlx.Tx) error 
 	if err := checkIfDayIsFinalized(day); err != nil {
 		return err
 	}
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
@@ -857,11 +905,15 @@ func WriteValidatorBalances(validators []uint64, day uint64, tx *sqlx.Tx) error 
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	logger.Infof("balance statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
 
-func WriteValidatorDepositWithdrawals(day uint64, tx *sqlx.Tx) error {
+func WriteValidatorDepositWithdrawals(day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_deposit_withdrawal_stats").Observe(time.Since(exportStart).Seconds())
@@ -870,6 +922,12 @@ func WriteValidatorDepositWithdrawals(day uint64, tx *sqlx.Tx) error {
 	if err := checkIfDayIsFinalized(day); err != nil {
 		return err
 	}
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
 
 	// The end_balance of a day is the balance after the first slot of the last epoch of that day.
 	// Therefore the last 31 slots of the day are not included in the end_balance of that day.
@@ -897,7 +955,7 @@ func WriteValidatorDepositWithdrawals(day uint64, tx *sqlx.Tx) error {
 			withdrawals_amount = NULL
 		WHERE day = $1%s;`, firstDayExtraCondition)
 
-	_, err := tx.Exec(resetQry, day)
+	_, err = tx.Exec(resetQry, day)
 	if err != nil {
 		return fmt.Errorf("error resetting validator_stats for day [%v]: %w", day, err)
 	}
@@ -970,11 +1028,15 @@ func WriteValidatorDepositWithdrawals(day uint64, tx *sqlx.Tx) error {
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	logger.Infof("deposits and withdrawals statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
 
-func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64, tx *sqlx.Tx) error {
+func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_sync_stats").Observe(time.Since(exportStart).Seconds())
@@ -983,6 +1045,12 @@ func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64, tx *sqlx.Tx
 	if err := checkIfDayIsFinalized(day); err != nil {
 		return err
 	}
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
 
 	startEpoch, endEpoch := utils.GetFirstAndLastEpochForDay(day)
 	if startEpoch < utils.Config.Chain.Config.AltairForkEpoch && endEpoch > utils.Config.Chain.Config.AltairForkEpoch {
@@ -1045,11 +1113,15 @@ func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64, tx *sqlx.Tx
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	logger.Infof("sync duties and statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
 
-func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day uint64, concurrency uint64, tx *sqlx.Tx) error {
+func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day uint64, concurrency uint64) error {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
 	defer cancel()
 	exportStart := time.Now()
@@ -1060,6 +1132,12 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 	if err := checkIfDayIsFinalized(day); err != nil {
 		return err
 	}
+
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting transaction: %w", err)
+	}
+	defer tx.Rollback()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
@@ -1132,6 +1210,10 @@ func WriteValidatorFailedAttestationsStatisticsForDay(validators []uint64, day u
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	logger.Infof("'failed attestation' statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
