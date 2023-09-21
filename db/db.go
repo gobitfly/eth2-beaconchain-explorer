@@ -2965,7 +2965,7 @@ func GetBLSChangesCountForQuery(query string) (uint64, error) {
 		if decErr != nil {
 			return 0, decErr
 		}
-		err = ReaderDb.Select(&count, fmt.Sprintf(blsQuery, searchQuery, BlsChangeQueryLimit),
+		err = ReaderDb.Get(&count, fmt.Sprintf(blsQuery, searchQuery, BlsChangeQueryLimit),
 			pubkey)
 	} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
 		// Check whether the query can be used for a validator, slot or epoch search
