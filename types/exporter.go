@@ -642,45 +642,45 @@ type ValidatorStatsTableDbRow struct {
 	ValidatorIndex uint64 `db:"validatorindex"`
 	Day            int64  `db:"day"`
 
-	StartBalance          sql.NullInt64 `db:"start_balance"`
-	EndBalance            sql.NullInt64 `db:"end_balance"`
-	MinBalance            sql.NullInt64 `db:"min_balance"`
-	MaxBalance            sql.NullInt64 `db:"max_balance"`
-	StartEffectiveBalance sql.NullInt64 `db:"start_effective_balance"`
-	EndEffectiveBalance   sql.NullInt64 `db:"end_effective_balance"`
-	MinEffectiveBalance   sql.NullInt64 `db:"min_effective_balance"`
-	MaxEffectiveBalance   sql.NullInt64 `db:"max_effective_balance"`
+	StartBalance          int64 `db:"start_balance"`
+	EndBalance            int64 `db:"end_balance"`
+	MinBalance            int64 `db:"min_balance"`
+	MaxBalance            int64 `db:"max_balance"`
+	StartEffectiveBalance int64 `db:"start_effective_balance"`
+	EndEffectiveBalance   int64 `db:"end_effective_balance"`
+	MinEffectiveBalance   int64 `db:"min_effective_balance"`
+	MaxEffectiveBalance   int64 `db:"max_effective_balance"`
 
-	MissedAttestations      sql.NullInt64 `db:"missed_attestations"`
-	MissedAttestationsTotal sql.NullInt64 `db:"missed_attestations_total"`
-	OrphanedAttestations    sql.NullInt64 `db:"orphaned_attestations"`
+	MissedAttestations      int64 `db:"missed_attestations"`
+	MissedAttestationsTotal int64 `db:"missed_attestations_total"`
+	OrphanedAttestations    int64 `db:"orphaned_attestations"`
 
-	ParticipatedSync      sql.NullInt64 `db:"participated_sync"`
-	ParticipatedSyncTotal sql.NullInt64 `db:"participated_sync_total"`
-	MissedSync            sql.NullInt64 `db:"missed_sync"`
-	MissedSyncTotal       sql.NullInt64 `db:"missed_sync_total"`
-	OrphanedSync          sql.NullInt64 `db:"orphaned_sync"`
-	OrphanedSyncTotal     sql.NullInt64 `db:"orphaned_sync_total"`
+	ParticipatedSync      int64 `db:"participated_sync"`
+	ParticipatedSyncTotal int64 `db:"participated_sync_total"`
+	MissedSync            int64 `db:"missed_sync"`
+	MissedSyncTotal       int64 `db:"missed_sync_total"`
+	OrphanedSync          int64 `db:"orphaned_sync"`
+	OrphanedSyncTotal     int64 `db:"orphaned_sync_total"`
 
-	ProposedBlocks sql.NullInt64 `db:"proposed_blocks"`
-	MissedBlocks   sql.NullInt64 `db:"missed_blocks"`
-	OrphanedBlocks sql.NullInt64 `db:"orphaned_blocks"`
+	ProposedBlocks int64 `db:"proposed_blocks"`
+	MissedBlocks   int64 `db:"missed_blocks"`
+	OrphanedBlocks int64 `db:"orphaned_blocks"`
 
-	AttesterSlashings sql.NullInt64 `db:"attester_slashings"`
-	ProposerSlashing  sql.NullInt64 `db:"proposer_slashings"`
+	AttesterSlashings int64 `db:"attester_slashings"`
+	ProposerSlashing  int64 `db:"proposer_slashings"`
 
-	Deposits       sql.NullInt64 `db:"deposits"`
-	DepositsAmount sql.NullInt64 `db:"deposits_amount"`
+	Deposits       int64 `db:"deposits"`
+	DepositsAmount int64 `db:"deposits_amount"`
 
-	Withdrawals       sql.NullInt64 `db:"withdrawals"`
-	WithdrawalsAmount sql.NullInt64 `db:"withdrawals_amount"`
+	Withdrawals       int64 `db:"withdrawals"`
+	WithdrawalsAmount int64 `db:"withdrawals_amount"`
 
-	ClRewardsGWei      sql.NullInt64 `db:"cl_rewards_gwei"`
-	ClRewardsGWeiTotal sql.NullInt64 `db:"cl_rewards_gwei_total"`
+	ClRewardsGWei      int64 `db:"cl_rewards_gwei"`
+	ClRewardsGWeiTotal int64 `db:"cl_rewards_gwei_total"`
 
-	ElRewardsWei      decimal.NullDecimal `db:"el_rewards_wei"`
-	ElRewardsWeiTotal decimal.NullDecimal `db:"el_rewards_wei_total"`
+	ElRewardsWei      decimal.Decimal `db:"el_rewards_wei"`
+	ElRewardsWeiTotal decimal.Decimal `db:"el_rewards_wei_total"`
 
-	MEVRewardsWei      decimal.NullDecimal `db:"mev_rewards_wei"`
-	MEVRewardsWeiTotal decimal.NullDecimal `db:"mev_rewards_wei_total"`
+	MEVRewardsWei      decimal.Decimal `db:"mev_rewards_wei"`
+	MEVRewardsWeiTotal decimal.Decimal `db:"mev_rewards_wei_total"`
 }
