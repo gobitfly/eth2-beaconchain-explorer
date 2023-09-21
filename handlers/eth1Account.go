@@ -393,6 +393,35 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func Eth1AddressBlobTransactions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
+	addressBytes := common.FromHex(address)
+
+	pageToken := q.Get("pageToken")
+
+	search := ""
+
+	data, err := db.BigtableClient.GetAddressBlobTableData(addressBytes, search, pageToken)
+	if err != nil {
+		utils.LogError(err, "error getting eth1 block table data", 0)
+	}
+
+	// logger.Infof("GOT TX: %+v", data)
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
 func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

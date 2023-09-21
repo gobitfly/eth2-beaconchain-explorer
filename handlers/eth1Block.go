@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/gorilla/mux"
 )
 
@@ -214,8 +215,10 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		}
 	}
 
-	burnedEth := new(big.Int).Mul(new(big.Int).SetBytes(block.BaseFee), big.NewInt(int64(block.GasUsed)))
-	blockReward.Add(blockReward, txFees).Add(blockReward, uncleInclusionRewards).Sub(blockReward, burnedEth)
+	blobGasPrice := eip4844.CalcBlobFee(block.ExcessBlobGas)
+	burnedTxFees := new(big.Int).Mul(new(big.Int).SetBytes(block.BaseFee), big.NewInt(int64(block.GasUsed)))
+	burnedBlobFees := new(big.Int).Mul(blobGasPrice, big.NewInt(int64(block.BlobGasUsed)))
+	blockReward.Add(blockReward, txFees).Add(blockReward, uncleInclusionRewards).Sub(blockReward, burnedTxFees)
 	nextBlock := number + 1
 	if nextBlock > services.LatestEth1BlockNumber() {
 		nextBlock = 0
@@ -241,7 +244,8 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		Ts:             block.GetTime().AsTime(),
 		Difficulty:     new(big.Int).SetBytes(block.Difficulty),
 		BaseFeePerGas:  new(big.Int).SetBytes(block.BaseFee),
-		BurnedFees:     burnedEth,
+		BurnedTxFees:   burnedTxFees,
+		BurnedBlobFees: burnedBlobFees,
 		Extra:          fmt.Sprintf("%#x", block.Extra),
 		Txs:            txs,
 		Uncles:         uncles,

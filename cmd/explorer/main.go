@@ -437,6 +437,7 @@ func main() {
 			router.HandleFunc("/address/{address}/withdrawals", handlers.Eth1AddressWithdrawals).Methods("GET")
 			router.HandleFunc("/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
+			router.HandleFunc("/address/{address}/blobTxns", handlers.Eth1AddressBlobTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc721", handlers.Eth1AddressErc721Transactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc1155", handlers.Eth1AddressErc1155Transactions).Methods("GET")

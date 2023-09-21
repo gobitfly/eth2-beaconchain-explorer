@@ -351,70 +351,21 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		}
 	}
 
+	err = db.ReaderDb.Select(&blockPageData.BlobSidecars, `SELECT block_slot, block_root, index, kzg_commitment, kzg_proof, blob_versioned_hash FROM blocks_blob_sidecars WHERE block_root = $1`, blockPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving block blob sidecars (slot: %d, blockroot: %#x): %w", blockPageData.Slot, blockPageData.BlockRoot, err)
+	}
+
 	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block proposer slashings data: %v", err)
 	}
 
-	// TODO: fix blockPageData data type to include SyncCommittee
 	err = db.ReaderDb.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
 	}
 
-	// old code retrieving txs from postgres db
-	/* if retrieveTxsFromDb {
-			// retrieve transactions from db
-			var transactions []*types.BlockPageTransaction
-			rows, err = db.ReaderDb.Query(`
-				SELECT
-	    		block_slot,
-	    		block_index,
-	    		txhash,
-	    		nonce,
-	    		gas_price,
-	    		gas_limit,
-	    		sender,
-	    		recipient,
-	    		amount,
-	    		payload
-				FROM blocks_transactions
-				WHERE block_slot = $1
-				ORDER BY block_index`,
-				blockPageData.Slot)
-			if err != nil {
-				return nil, fmt.Errorf("error retrieving block transaction data: %v", err)
-			}
-			defer rows.Close()
-
-			for rows.Next() {
-				tx := &types.BlockPageTransaction{}
-
-				err := rows.Scan(
-					&tx.BlockSlot,
-					&tx.BlockIndex,
-					&tx.TxHash,
-					&tx.AccountNonce,
-					&tx.Price,
-					&tx.GasLimit,
-					&tx.Sender,
-					&tx.Recipient,
-					&tx.Amount,
-					&tx.Payload,
-				)
-				if err != nil {
-					return nil, fmt.Errorf("error scanning block transaction data: %v", err)
-				}
-				var amount, price big.Int
-				amount.SetBytes(tx.Amount)
-				price.SetBytes(tx.Price)
-				tx.AmountPretty = ToEth(&amount)
-				tx.PricePretty = ToGWei(&amount)
-				transactions = append(transactions, tx)
-			}
-			blockPageData.Transactions = transactions
-		}
-	*/
 	return &blockPageData, nil
 }
 

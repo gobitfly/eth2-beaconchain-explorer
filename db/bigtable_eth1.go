@@ -2229,6 +2229,111 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 	return data, nil
 }
 
+func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*types.Eth1BlobTransactionIndexed, string, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	defer cancel()
+
+	// add \x00 to the row range such that we skip the previous value
+	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 5))
+	data := make([]*types.Eth1BlobTransactionIndexed, 0, limit)
+	keys := make([]string, 0, limit)
+	indexes := make([]string, 0, limit)
+
+	keysMap := make(map[string]*types.Eth1BlobTransactionIndexed, limit)
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+
+		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+		indexes = append(indexes, row.Key())
+		return true
+	}, gcp_bigtable.LimitRows(limit))
+	if err != nil {
+		return nil, "", err
+	}
+	if len(keys) == 0 {
+		return data, "", nil
+	}
+
+	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
+		b := &types.Eth1BlobTransactionIndexed{}
+		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
+
+		if err != nil {
+			logrus.Fatalf("error parsing Eth1BlobTransactionIndexed data: %v", err)
+		}
+
+		// geth traces include zero-value staticalls
+		if bytes.Equal(b.Value, []byte{}) {
+			return true
+		}
+		keysMap[row.Key()] = b
+		return true
+	})
+	if err != nil {
+		logger.WithError(err).WithField("prefix", prefix).WithField("limit", limit).Errorf("error reading rows in bigtable_eth1 / GetEth1BtxForAddress")
+		return nil, "", err
+	}
+
+	for _, key := range keys {
+		if d := keysMap[key]; d != nil {
+			data = append(data, d)
+		}
+	}
+
+	return data, indexes[len(indexes)-1], nil
+}
+
+func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
+	// defaults to most recent
+	if pageToken == "" {
+		pageToken = fmt.Sprintf("%s:I:BTX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
+	}
+
+	transactions, lastKey, err := bigtable.GetEth1BtxForAddress(pageToken, 25)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make(map[string]string)
+	for _, t := range transactions {
+		names[string(t.From)] = ""
+		names[string(t.To)] = ""
+	}
+	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	tableData := make([][]interface{}, len(transactions))
+	for i, t := range transactions {
+
+		fromName := names[string(t.From)]
+		toName := names[string(t.To)]
+
+		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
+		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
+
+		tableData[i] = []interface{}{}
+
+		tableData[i] = []interface{}{
+			utils.FormatTransactionHash(t.Hash),
+			utils.FormatTimestamp(t.Time.AsTime().Unix()),
+			from,
+			utils.FormatInOutSelf(address, t.From, t.To),
+			to,
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
+			t.BlobGasPrice,
+			t.BlobGasUsed,
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Data:        tableData,
+		PagingToken: lastKey,
+	}
+
+	return data, nil
+}
+
 func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()

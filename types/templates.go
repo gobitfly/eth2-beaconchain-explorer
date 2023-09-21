@@ -680,6 +680,7 @@ type BlockPageData struct {
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
+	BlobSidecars      []*BlockPageBlobSidecar
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
@@ -806,6 +807,16 @@ type BlockPageProposerSlashing struct {
 	Header2StateRoot  []byte `db:"header2_stateroot"`
 	Header2BodyRoot   []byte `db:"header2_bodyroot"`
 	Header2Signature  []byte `db:"header2_signature"`
+}
+
+// BlockPageBlobSidecar holds data of blob-sidecars of the corresponding block
+type BlockPageBlobSidecar struct {
+	BlockSlot         uint64 `db:"block_slot"`
+	BlockRoot         []byte `db:"block_root"`
+	Index             uint64 `db:"index"`
+	KzgCommitment     []byte `db:"kzg_commitment"`
+	KzgProof          []byte `db:"kzg_proof"`
+	BlobVersionedHash []byte `db:"blob_versioned_hash"`
 }
 
 // DataTableResponse is a struct to hold data for data table responses
@@ -1823,7 +1834,8 @@ type Eth1BlockPageData struct {
 	Ts                    time.Time
 	Difficulty            *big.Int
 	BaseFeePerGas         *big.Int
-	BurnedFees            *big.Int
+	BurnedTxFees          *big.Int
+	BurnedBlobFees        *big.Int
 	Extra                 string
 	Txs                   []Eth1BlockPageTransaction
 	Uncles                []Eth1BlockPageData

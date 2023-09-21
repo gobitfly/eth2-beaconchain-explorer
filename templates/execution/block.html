@@ -110,7 +110,7 @@
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Burned fees:</div>
-                <div class="col-md-10">{{ formatAmount .BurnedFees "Ether" 5 }}</div>
+                <div class="col-md-10">{{ formatAmount addBigInt .BurnedTxFees .BurnedBlobFees "Ether" 5 }}</div>
               </div>
               <div class="row border-bottom p-3 mx-0">
                 <div class="col-md-2">Extra:</div>

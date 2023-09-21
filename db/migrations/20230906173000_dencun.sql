@@ -1,10 +1,12 @@
 -- +goose Up
 -- +goose StatementBegin
+DROP TABLE IF EXISTS blocks_transactions;
 DROP TABLE IF EXISTS validator_balances_recent;
 
 ALTER TABLE blocks ADD COLUMN IF NOT EXISTS exec_blob_gas_used INT NOT NULL DEFAULT 0;
 ALTER TABLE blocks ADD COLUMN IF NOT EXISTS exec_excess_blob_gas INT NOT NULL DEFAULT 0;
 ALTER TABLE blocks ADD COLUMN IF NOT EXISTS exec_blob_transactions_count INT NOT NULL DEFAULt 0;
+
 CREATE TABLE IF NOT EXISTS
     blocks_blob_sidecars (
         block_slot INT NOT NULL,
