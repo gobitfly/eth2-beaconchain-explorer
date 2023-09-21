@@ -988,7 +988,7 @@ func WriteValidatorSyncDutiesForDay(validators []uint64, day uint64, tx *sqlx.Tx
 	if startEpoch < utils.Config.Chain.Config.AltairForkEpoch && endEpoch > utils.Config.Chain.Config.AltairForkEpoch {
 		startEpoch = utils.Config.Chain.Config.AltairForkEpoch
 	} else if endEpoch < utils.Config.Chain.Config.AltairForkEpoch {
-		logger.Infof("day %v is pre-altair, skipping sync committee export")
+		logger.Infof("day %v is pre-altair, skipping sync committee export", day)
 		return nil
 	}
 
