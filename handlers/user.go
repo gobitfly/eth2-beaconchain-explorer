@@ -180,12 +180,20 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	clientID := q.Get("client_id")
 	state := q.Get("state")
 
-	session.SetValue("state", state)
 	session.SetValue("client_id", clientID)
-	session.SetValue("oauth_redirect_uri", redirectURI)
 	session.Save(r, w)
 
 	if !user.Authenticated {
+		if redirectURI != "" {
+			var stateParam = ""
+			if state != "" {
+				stateParam = "&state=" + state
+			}
+
+			http.Redirect(w, r, "/login?redirect_uri="+redirectURI+stateParam, http.StatusSeeOther)
+			return
+		}
+
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -220,21 +228,6 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	}
-}
-
-// UserAuthorizationCancel cancels oauth authorization session states and redirects to frontpage
-func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
-	_, session, err := getUserSession(r)
-	if err != nil {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	session.DeleteValue("oauth_redirect_uri")
-	session.DeleteValue("state")
-	session.Save(r, w)
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
@@ -3035,7 +3028,7 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LoginPost handles authenticating the user.
+// UserGlobalNotificationPost handles the global notifications
 func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
 	isAdmin, _ := handleAdminPermissions(w, r)
 	if !isAdmin {
