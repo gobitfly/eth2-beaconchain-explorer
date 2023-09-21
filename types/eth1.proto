@@ -125,9 +125,10 @@ message Eth1BlockIndexed {
     uint64 internal_transaction_count = 29;
 
     // https://eips.ethereum.org/EIPS/eip-4844
-    uint64 blob_gas_used = 30;
-    uint64 excess_blob_gas = 31;
-    uint64 blob_transaction_count = 32;
+    bytes blob_gas_price = 30;
+    uint64 blob_gas_used = 31;
+    uint64 excess_blob_gas = 32;
+    uint64 blob_transaction_count = 33;
 }
 
 message Eth1UncleIndexed {
@@ -185,9 +186,11 @@ message Eth1BlobTransactionIndexed {
     bytes value = 6;
     bytes tx_fee = 7;
     bytes gas_price = 8;
-    bytes max_priority_fee_per_gas = 9;
-    bytes max_fee_per_blob_gas = 10;
-    repeated bytes blob_versioned_hashes = 11;
+    bytes blob_gas_price = 9;
+    uint64 blob_gas_used = 10;
+    bool invokes_contract = 11;
+    string error_msg = 12;
+    repeated bytes blob_versioned_hashes = 13;
 }
 
 message Eth1ERC20Indexed {

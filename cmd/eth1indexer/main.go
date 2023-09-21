@@ -197,6 +197,7 @@ func main() {
 		bt.TransformBlock,
 		bt.TransformTx,
 		bt.TransformItx,
+		bt.TransformBlobTx,
 		bt.TransformERC20,
 		bt.TransformERC721,
 		bt.TransformERC1155,
