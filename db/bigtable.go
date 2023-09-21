@@ -212,7 +212,7 @@ func (bigtable Bigtable) GetMachineMetricsMachineNames(userID uint64) ([]string,
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
 			"userId": userID,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	names, err := bigtable.getMachineMetricNamesMap(userID, 300)
@@ -235,7 +235,7 @@ func (bigtable Bigtable) GetMachineMetricsMachineCount(userID uint64) (uint64, e
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
 			"userId": userID,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -259,7 +259,7 @@ func (bigtable Bigtable) GetMachineMetricsNode(userID uint64, limit, offset int)
 			"userId": userID,
 			"limit":  limit,
 			"offset": offset,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	return getMachineMetrics(bigtable, "beaconnode", userID, limit, offset,
@@ -284,7 +284,7 @@ func (bigtable Bigtable) GetMachineMetricsValidator(userID uint64, limit, offset
 			"userId": userID,
 			"limit":  limit,
 			"offset": offset,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	return getMachineMetrics(bigtable, "validator", userID, limit, offset,
@@ -309,7 +309,7 @@ func (bigtable Bigtable) GetMachineMetricsSystem(userID uint64, limit, offset in
 			"userId": userID,
 			"limit":  limit,
 			"offset": offset,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	return getMachineMetrics(bigtable, "system", userID, limit, offset,
@@ -384,7 +384,7 @@ func (bigtable Bigtable) GetMachineMetricsForNotifications(rowKeys gcp_bigtable.
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
 			"rowKeys": rowKeys,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*200))
@@ -844,7 +844,7 @@ func (bigtable *Bigtable) GetMaxValidatorindexForEpoch(epoch uint64) (uint64, er
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
 			"epoch": epoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
@@ -873,7 +873,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 			"validators_count": len(validators),
 			"startEpoch":       startEpoch,
 			"endEpoch":         endEpoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	if len(validators) == 0 {
@@ -977,7 +977,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 			"validatorsCount": len(validators),
 			"startEpoch":      startEpoch,
 			"endEpoch":        endEpoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	if len(validators) == 0 {
@@ -1147,7 +1147,7 @@ func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint
 		<-tmr.C
 		logger.WithFields(logrus.Fields{
 			"validatorsCount": len(validators),
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	valLen := len(validators)
@@ -1213,7 +1213,7 @@ func (bigtable *Bigtable) GetSyncParticipationBySlotRange(startSlot, endSlot uin
 		logger.WithFields(logrus.Fields{
 			"startSlot": startSlot,
 			"endSlot":   endSlot,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
@@ -1256,7 +1256,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 			"validatorsCount": len(validators),
 			"startEpoch":      startEpoch,
 			"endEpoch":        endEpoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	if len(validators) == 0 {
@@ -1369,7 +1369,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 			"validatorsCount": len(validators),
 			"startSlot":       startSlot,
 			"endSlot":         endSlot,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	if len(validators) == 0 {
@@ -1470,7 +1470,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 			"validatorsCount": len(validators),
 			"startEpoch":      firstEpoch,
 			"endEpoch":        lastEpoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	if firstEpoch > lastEpoch {
@@ -1608,7 +1608,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(validators []uint64, sta
 			"validatorsCount": len(validators),
 			"startEpoch":      startEpoch,
 			"endEpoch":        endEpoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	type ResultContainer struct {
@@ -1694,7 +1694,7 @@ func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, start
 			"validatorsCount": len(validators),
 			"startEpoch":      startEpoch,
 			"endEpoch":        endEpoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	if len(validators) == 0 {
@@ -1882,7 +1882,7 @@ func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, 
 			"validatorsCount": len(validators),
 			"startEpoch":      startEpoch,
 			"endEpoch":        endEpoch,
-		}).Errorf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
 	}()
 
 	if len(validators) == 0 {
