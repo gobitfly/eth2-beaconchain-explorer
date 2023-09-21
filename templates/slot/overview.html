@@ -228,18 +228,38 @@
                 </div>
 
                 <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Gas Limit">Excess Blob Gas:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ .ExcessBlobGas }}</div>
+                </div>
+
+                <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
                   <div class="col-md-10 text-monospace text-break">{{ formatAmount .BaseFeePerGas "GWei" 5 }}</div>
                 </div>
 
                 <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees:</span></div>
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned tx fees:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedTxFees "Ether" 5 }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned blob fees:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedBlobFees "Ether" 5 }}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees (total):</span></div>
                   <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedFees "Ether" 5 }}</div>
                 </div>
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
-                  <div class="col-md-10 text-monospace text-break">{{ .TxCount }}</div>
+                  <div class="col-md-10 text-monospace text-break">{{ .TxCount }} {{if gt .BlobTxCount 0}}({{.BlobTxCount}} Blob Transactions){{end}}</div>
+                </div>
+
+                <div class="row p-1">
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Blobs">Blobs:</span></div>
+                  <div class="col-md-10 text-monospace text-break">{{ .BlobsCount }}</div>
                 </div>
 
                 <div class="row p-1">

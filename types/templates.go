@@ -1701,6 +1701,9 @@ type Eth1TxData struct {
 		Limit          uint64
 		TxFee          []byte
 		EffectiveFee   []byte
+		BlobGasUsed    uint64
+		BlobGasPrice   []byte
+		BlobFee        []byte
 	}
 	Epoch struct {
 		Finalized     bool    `db:"finalized"`
@@ -1726,6 +1729,7 @@ type Eth1TxData struct {
 	DepositContractInteractions []DepositContractInteraction
 	CurrentEtherPrice           template.HTML
 	HistoricalEtherPrice        template.HTML
+	BlobHashes                  [][]byte
 }
 
 type Eth1EventData struct {
@@ -1816,6 +1820,8 @@ type Eth1BlockPageData struct {
 	PreviousBlock         uint64
 	NextBlock             uint64
 	TxCount               uint64
+	BlobTxCount           uint64
+	BlobsCount            uint64
 	WithdrawalCount       uint64
 	UncleCount            uint64
 	Hash                  string
@@ -1834,8 +1840,12 @@ type Eth1BlockPageData struct {
 	Ts                    time.Time
 	Difficulty            *big.Int
 	BaseFeePerGas         *big.Int
+	BurnedFees            *big.Int
 	BurnedTxFees          *big.Int
 	BurnedBlobFees        *big.Int
+	BlobGasUsed           uint64
+	BlobGasPrice          *big.Int
+	ExcessBlobGas         uint64
 	Extra                 string
 	Txs                   []Eth1BlockPageTransaction
 	Uncles                []Eth1BlockPageData

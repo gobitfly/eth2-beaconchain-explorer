@@ -28,24 +28,26 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.ClConfig.DepositChainID, hash.String())
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
-		logger.Infof("retrieved data for tx %v from cache", hash)
-		logger.Trace(wanted)
+	/*
+		if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
+			logger.Infof("retrieved data for tx %v from cache", hash)
+			logger.Trace(wanted)
 
-		data := wanted.(*types.Eth1TxData)
-		if data.BlockNumber != 0 {
-			err := db.ReaderDb.Get(&data.Epoch,
-				`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
-				data.BlockNumber)
-			if err != nil {
-				logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
-				data.Epoch.Finalized = false
-				data.Epoch.Participation = -1
+			data := wanted.(*types.Eth1TxData)
+			if data.BlockNumber != 0 {
+				err := db.ReaderDb.Get(&data.Epoch,
+					`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
+					data.BlockNumber)
+				if err != nil {
+					logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
+					data.Epoch.Finalized = false
+					data.Epoch.Participation = -1
+				}
 			}
-		}
 
-		return data, nil
-	}
+			return data, nil
+		}
+	*/
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {
@@ -126,6 +128,17 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	} else {
 		txPageData.Gas.EffectiveFee = tx.GasFeeCap().Bytes()
 		txPageData.Gas.TxFee = tx.GasFeeCap().Mul(tx.GasFeeCap(), big.NewInt(int64(receipt.GasUsed))).Bytes()
+	}
+
+	if receipt.Type == 3 {
+		txPageData.Gas.BlobGasPrice = receipt.BlobGasPrice.Bytes()
+		txPageData.Gas.BlobGasUsed = receipt.BlobGasUsed
+		txPageData.Gas.BlobFee = new(big.Int).Mul(receipt.BlobGasPrice, big.NewInt(int64(txPageData.Gas.BlobGasUsed))).Bytes()
+
+		txPageData.BlobHashes = make([][]byte, len(tx.BlobHashes()))
+		for i, h := range tx.BlobHashes() {
+			txPageData.BlobHashes[i] = h.Bytes()
+		}
 	}
 
 	if receipt.Status != 1 {

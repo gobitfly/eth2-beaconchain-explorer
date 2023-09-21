@@ -298,6 +298,8 @@ func FormatTransactionType(txnType uint8) string {
 		return "1 (Access-list)"
 	case 2:
 		return "2 (EIP-1559)"
+	case 3:
+		return "3 (Blob, EIP-4844)"
 	default:
 		return fmt.Sprintf("%v (???)", txnType)
 	}

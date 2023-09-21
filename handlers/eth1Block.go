@@ -32,6 +32,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html",
+		"slot/blobs.html",
 		"slot/withdrawals.html")
 	var blockTemplate = templates.GetTemplate(
 		blockTemplateFiles...,
@@ -145,7 +146,14 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 	txs := []types.Eth1BlockPageTransaction{}
 	txFees := new(big.Int)
 	lowestGasPrice := big.NewInt(1 << 62)
+	blobTxCount := 0
+	blobsCount := 0
 	for _, tx := range block.Transactions {
+		if tx.Type == 3 {
+			blobTxCount++
+			blobsCount += len(tx.BlobVersionedHashes)
+		}
+
 		// sum txFees
 		txFee := db.CalculateTxFeeFromTransaction(tx, new(big.Int).SetBytes(block.BaseFee))
 		txFees.Add(txFees, txFee)
@@ -218,6 +226,7 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 	blobGasPrice := eip4844.CalcBlobFee(block.ExcessBlobGas)
 	burnedTxFees := new(big.Int).Mul(new(big.Int).SetBytes(block.BaseFee), big.NewInt(int64(block.GasUsed)))
 	burnedBlobFees := new(big.Int).Mul(blobGasPrice, big.NewInt(int64(block.BlobGasUsed)))
+	burnedFees := new(big.Int).Add(burnedTxFees, burnedBlobFees)
 	blockReward.Add(blockReward, txFees).Add(blockReward, uncleInclusionRewards).Sub(blockReward, burnedTxFees)
 	nextBlock := number + 1
 	if nextBlock > services.LatestEth1BlockNumber() {
@@ -229,6 +238,7 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		NextBlock:     nextBlock,
 		TxCount:       uint64(len(block.Transactions)),
 		UncleCount:    uint64(len(block.Uncles)),
+		BlobTxCount:   uint64(blobTxCount),
 		Hash:          fmt.Sprintf("%#x", block.Hash),
 		ParentHash:    fmt.Sprintf("%#x", block.ParentHash),
 		MinerAddress:  fmt.Sprintf("%#x", block.Coinbase),
@@ -244,8 +254,12 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		Ts:             block.GetTime().AsTime(),
 		Difficulty:     new(big.Int).SetBytes(block.Difficulty),
 		BaseFeePerGas:  new(big.Int).SetBytes(block.BaseFee),
+		BurnedFees:     burnedFees,
 		BurnedTxFees:   burnedTxFees,
 		BurnedBlobFees: burnedBlobFees,
+		BlobGasUsed:    block.GetBlobGasUsed(),
+		ExcessBlobGas:  block.GetExcessBlobGas(),
+		BlobGasPrice:   blobGasPrice,
 		Extra:          fmt.Sprintf("%#x", block.Extra),
 		Txs:            txs,
 		Uncles:         uncles,

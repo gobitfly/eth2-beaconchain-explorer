@@ -186,6 +186,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 			AccessList:           []*types.AccessList{},
 			Hash:                 tx.Hash().Bytes(),
 			Itx:                  []*types.Eth1InternalTransaction{},
+			BlobVersionedHashes:  [][]byte{},
 		}
 
 		if tx.BlobGasFeeCap() != nil {
@@ -198,6 +199,7 @@ func (client *ErigonClient) GetBlock(number int64) (*types.Eth1Block, *types.Get
 		if tx.To() != nil {
 			pbTx.To = tx.To().Bytes()
 		}
+
 		c.Transactions = append(c.Transactions, pbTx)
 
 	}

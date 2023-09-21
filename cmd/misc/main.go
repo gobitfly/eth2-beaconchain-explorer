@@ -221,7 +221,7 @@ func main() {
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
 	default:
-		utils.LogFatal(nil, "unknown command", 0)
+		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
 
 	if err != nil {
