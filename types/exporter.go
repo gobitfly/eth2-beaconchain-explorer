@@ -634,5 +634,53 @@ func (b *WeiString) BigInt() *big.Int {
 	mul := &big.Int{}
 	mul.Exp(big.NewInt(10), big.NewInt(int64(b.Exp)), nil)
 	num.Mul(num, mul)
+
 	return num
+}
+
+type ValidatorStatsTableDbRow struct {
+	ValidatorIndex uint64 `db:"validatorindex"`
+	Day            int64  `db:"day"`
+
+	StartBalance          sql.NullInt64 `db:"start_balance"`
+	EndBalance            sql.NullInt64 `db:"end_balance"`
+	MinBalance            sql.NullInt64 `db:"min_balance"`
+	MaxBalance            sql.NullInt64 `db:"max_balance"`
+	StartEffectiveBalance sql.NullInt64 `db:"start_effective_balance"`
+	EndEffectiveBalance   sql.NullInt64 `db:"end_effective_balance"`
+	MinEffectiveBalance   sql.NullInt64 `db:"min_effective_balance"`
+	MaxEffectiveBalance   sql.NullInt64 `db:"max_effective_balance"`
+
+	MissedAttestations      sql.NullInt64 `db:"missed_attestations"`
+	MissedAttestationsTotal sql.NullInt64 `db:"missed_attestations_total"`
+	OrphanedAttestations    sql.NullInt64 `db:"orphaned_attestations"`
+
+	ParticipatedSync      sql.NullInt64 `db:"participated_sync"`
+	ParticipatedSyncTotal sql.NullInt64 `db:"participated_sync_total"`
+	MissedSync            sql.NullInt64 `db:"missed_sync"`
+	MissedSyncTotal       sql.NullInt64 `db:"missed_sync_total"`
+	OrphanedSync          sql.NullInt64 `db:"orphaned_sync"`
+	OrphanedSyncTotal     sql.NullInt64 `db:"orphaned_sync_total"`
+
+	ProposedBlocks sql.NullInt64 `db:"proposed_blocks"`
+	MissedBlocks   sql.NullInt64 `db:"missed_blocks"`
+	OrphanedBlocks sql.NullInt64 `db:"orphaned_blocks"`
+
+	AttesterSlashings sql.NullInt64 `db:"attester_slashings"`
+	ProposerSlashing  sql.NullInt64 `db:"proposer_slashings"`
+
+	Deposits       sql.NullInt64 `db:"deposits"`
+	DepositsAmount sql.NullInt64 `db:"deposits_amount"`
+
+	Withdrawals       sql.NullInt64 `db:"withdrawals"`
+	WithdrawalsAmount sql.NullInt64 `db:"withdrawals_amount"`
+
+	ClRewardsGWei      sql.NullInt64 `db:"cl_rewards_gwei"`
+	ClRewardsGWeiTotal sql.NullInt64 `db:"cl_rewards_gwei_total"`
+
+	ElRewardsWei      decimal.NullDecimal `db:"el_rewards_wei"`
+	ElRewardsWeiTotal decimal.NullDecimal `db:"el_rewards_wei_total"`
+
+	MEVRewardsWei      decimal.NullDecimal `db:"mev_rewards_wei"`
+	MEVRewardsWeiTotal decimal.NullDecimal `db:"mev_rewards_wei_total"`
 }
