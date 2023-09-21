@@ -125,10 +125,9 @@ message Eth1BlockIndexed {
     uint64 internal_transaction_count = 29;
 
     // https://eips.ethereum.org/EIPS/eip-4844
-    bytes blob_gas_price = 30;
-    uint64 blob_gas_used = 31;
-    uint64 excess_blob_gas = 32;
-    uint64 blob_transaction_count = 33;
+    uint64 blob_gas_used = 30;
+    uint64 excess_blob_gas = 31;
+    uint64 blob_transaction_count = 32;
 }
 
 message Eth1UncleIndexed {

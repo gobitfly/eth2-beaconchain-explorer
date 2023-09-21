@@ -826,6 +826,8 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *freecach
 		TransactionCount: uint64(len(block.GetTransactions())),
 		// BaseFeeChange:          new(big.Int).Sub(new(big.Int).SetBytes(block.GetBaseFee()), new(big.Int).SetBytes(previous.GetBaseFee())).Bytes(),
 		// BlockUtilizationChange: new(big.Int).Sub(new(big.Int).Div(big.NewInt(int64(block.GetGasUsed())), big.NewInt(int64(block.GetGasLimit()))), new(big.Int).Div(big.NewInt(int64(previous.GetGasUsed())), big.NewInt(int64(previous.GetGasLimit())))).Bytes(),
+		BlobGasUsed:   block.GetBlobGasUsed(),
+		ExcessBlobGas: block.GetExcessBlobGas(),
 	}
 
 	uncleReward := big.NewInt(0)
@@ -893,6 +895,11 @@ func (bigtable *Bigtable) TransformBlock(block *types.Eth1Block, cache *freecach
 			}
 			idx.InternalTransactionCount++
 		}
+
+		if t.GetType() == 3 {
+			idx.BlobTransactionCount++
+		}
+
 	}
 
 	idx.TxReward = txReward.Bytes()
