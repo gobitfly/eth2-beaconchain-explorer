@@ -1421,7 +1421,6 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 				}
 				slot = MAX_CL_BLOCK_NUMBER - slot
 
-				logger.Info(slot)
 				for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
 
 					inclusionSlot := MAX_CL_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
