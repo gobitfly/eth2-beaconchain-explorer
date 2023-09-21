@@ -832,7 +832,7 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 		return err
 	}
 
-	logger.Infof("exported sync committee duties to bigtable in %v", time.Since(start))
+	logger.Infof("exported %v sync committee duties to bigtable in %v", len(muts), time.Since(start))
 	return nil
 }
 
@@ -1407,7 +1407,6 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 			ranges := bigtable.getValidatorSlotRanges(vals, SYNC_COMMITTEES_FAMILY, startSlot, endSlot)
 
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-
 				keySplit := strings.Split(r.Key(), ":")
 
 				validator, err := bigtable.validatorKeyToIndex(keySplit[1])
@@ -1421,6 +1420,8 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 					return false
 				}
 				slot = MAX_CL_BLOCK_NUMBER - slot
+
+				logger.Info(slot)
 				for _, ri := range r[SYNC_COMMITTEES_FAMILY] {
 
 					inclusionSlot := MAX_CL_BLOCK_NUMBER - uint64(ri.Timestamp)/1000
@@ -1501,7 +1502,8 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 }
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorSyncDutiesStatistic, error) {
-	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch, endEpoch)
+
+	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch*utils.Config.Chain.Config.SlotsPerEpoch, ((endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)-1)
 
 	if err != nil {
 		return nil, err
@@ -2206,7 +2208,7 @@ func (bigtable *Bigtable) MigrateIncomeDataV1V2Schema(epoch uint64) error {
 	filter := gcp_bigtable.ChainFilters(gcp_bigtable.FamilyFilter(INCOME_DETAILS_COLUMN_FAMILY), gcp_bigtable.LatestNFilter(1))
 	ctx := context.Background()
 
-	prefixEpochRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:b:%s", bigtable.chainId, fmt.Sprintf("%09d", (MAX_EPOCH+1)-epoch)))
+	prefixEpochRange := gcp_bigtable.PrefixRange(fmt.Sprintf("%s:e:b:%s", bigtable.chainId, fmt.Sprintf("%09d", (MAX_EPOCH)-epoch)))
 
 	err := bigtable.tableBeaconchain.ReadRows(ctx, prefixEpochRange, func(r gcp_bigtable.Row) bool {
 		// logger.Infof("processing row %v", r.Key())
