@@ -1821,7 +1821,7 @@ type Eth1BlockPageData struct {
 	NextBlock             uint64
 	TxCount               uint64
 	BlobTxCount           uint64
-	BlobsCount            uint64
+	BlobCount             uint64
 	WithdrawalCount       uint64
 	UncleCount            uint64
 	Hash                  string

@@ -147,11 +147,11 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 	txFees := new(big.Int)
 	lowestGasPrice := big.NewInt(1 << 62)
 	blobTxCount := 0
-	blobsCount := 0
+	blobCount := 0
 	for _, tx := range block.Transactions {
 		if tx.Type == 3 {
 			blobTxCount++
-			blobsCount += len(tx.BlobVersionedHashes)
+			blobCount += len(tx.BlobVersionedHashes)
 		}
 
 		// sum txFees
@@ -239,6 +239,7 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		TxCount:       uint64(len(block.Transactions)),
 		UncleCount:    uint64(len(block.Uncles)),
 		BlobTxCount:   uint64(blobTxCount),
+		BlobCount:     uint64(blobCount),
 		Hash:          fmt.Sprintf("%#x", block.Hash),
 		ParentHash:    fmt.Sprintf("%#x", block.ParentHash),
 		MinerAddress:  fmt.Sprintf("%#x", block.Coinbase),
