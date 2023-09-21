@@ -663,7 +663,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
 	if transformerFlag == "all" {
-		transformerList = []string{"TransformBlock", "TransformTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered"}
+		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered"}
 	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
 		return
@@ -679,6 +679,8 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 			transforms = append(transforms, bt.TransformBlock)
 		case "TransformTx":
 			transforms = append(transforms, bt.TransformTx)
+		case "TransformBlobTx":
+			transforms = append(transforms, bt.TransformBlobTx)
 		case "TransformItx":
 			transforms = append(transforms, bt.TransformItx)
 		case "TransformERC20":
