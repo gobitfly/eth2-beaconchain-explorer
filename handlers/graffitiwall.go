@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"net/http"
 )
 
@@ -21,7 +22,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&graffitiwallData, "SELECT DISTINCT ON (x, y) x, y, color, slot, validator from graffitiwall ORDER BY x, y, slot DESC")
 
 	if err != nil {
-		logger.Errorf("error retrieving block tree data: %v", err)
+		utils.LogError(err, "error retrieving graffitiwall data", 0)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
