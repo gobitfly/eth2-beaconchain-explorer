@@ -45,7 +45,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		Status bool `db:"status"`
 	}
 	exported := Exported{}
-
 	err := WriterDb.Get(&exported, `
 		SELECT 
 			status
@@ -55,6 +54,22 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 	if err != nil && err != sql.ErrNoRows {
 		return fmt.Errorf("error retrieving exported state: %w", err)
+	}
+
+	previousDayExported := Exported{}
+	err = WriterDb.Get(&previousDayExported, `
+		SELECT 
+			status
+		FROM validator_stats_status 
+		WHERE day = $1;
+		`, int64(day)-1)
+
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("error retrieving previous day exported state: %w", err)
+	}
+
+	if day > 0 && !previousDayExported.Status {
+		return fmt.Errorf("cannot export day %v as day %v has not yet been exported yet", day, int64(day)-1)
 	}
 
 	maxValidatorIndex, err := BigtableClient.GetMaxValidatorindexForEpoch(lastEpoch)

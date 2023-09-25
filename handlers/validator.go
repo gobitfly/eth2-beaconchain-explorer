@@ -751,7 +751,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// sync luck
 		if len(allSyncPeriods) > 0 {
 			maxPeriod := allSyncPeriods[0].Period
-			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, latestEpoch)
+			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, lastFinalizedEpoch)
 			if err != nil {
 				return fmt.Errorf("error retrieving expected sync committee slots: %w", err)
 			}
