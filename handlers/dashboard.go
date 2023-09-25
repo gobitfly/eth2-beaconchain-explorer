@@ -629,7 +629,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, err := GetTotalWithdrawalsCount(validatorIndices)
+	withdrawalCount, err := db.GetTotalWithdrawalsCount(validatorIndices)
 	if err != nil {
 		utils.LogError(err, fmt.Errorf("error retrieving dashboard validator withdrawals count: %v", err), 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

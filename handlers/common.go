@@ -23,7 +23,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
-	"github.com/lib/pq"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"github.com/rocket-pool/rocketpool-go/utils/eth"
 	"github.com/sirupsen/logrus"
@@ -780,37 +779,4 @@ func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint
 	})
 
 	return chartData, nil
-}
-
-func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
-	var count uint64
-	validatorFilter := pq.Array(validators)
-	lastExportedDay, err := services.LatestExportedStatisticDay()
-	if err != nil {
-		return 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
-	}
-	cutoffSlot := (((lastExportedDay+1)*utils.EpochsPerDay() - 1) * utils.Config.Chain.Config.SlotsPerEpoch) + 1
-
-	err = db.ReaderDb.Get(&count, `
-		WITH today AS (
-			SELECT COUNT(*) as count_today
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
-		),
-		stats AS (
-			SELECT COALESCE(SUM(withdrawals), 0) as total_count
-			FROM validator_stats
-			WHERE validatorindex = ANY($1)
-		)
-		SELECT today.count_today + stats.total_count
-		FROM today, stats;`, validatorFilter, cutoffSlot)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("error getting dashboard validator blocks_withdrawals count for validators: %d: %w", validators, err)
-	}
-
-	return count, nil
 }
