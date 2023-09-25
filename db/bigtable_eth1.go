@@ -147,7 +147,7 @@ func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Blo
 	}
 
 	if len(row[DEFAULT_FAMILY_BLOCKS]) == 0 { // block not found
-		logger.WithFields(logrus.Fields{"block": number}).Warnf("block not found in block table", number)
+		logger.WithFields(logrus.Fields{"block": number}).Warnf("block not found in block table")
 		return nil, ErrBlockNotFound
 	}
 
