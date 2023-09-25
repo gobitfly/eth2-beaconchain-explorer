@@ -34,7 +34,7 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/stripe/stripe-go/v72"
 	"github.com/urfave/negroni"

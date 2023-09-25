@@ -1485,7 +1485,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 		return nil, err
 	}
 
-	logger.Infof("retrieved missed attestation history for epochs %v - %v", firstEpoch, lastEpoch)
+	// logger.Infof("retrieved missed attestation history for epochs %v - %v", firstEpoch, lastEpoch)
 
 	for validator, attestations := range data {
 		if len(attestations) == 0 {
@@ -1629,7 +1629,7 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(validators []uint64, sta
 		}
 		vals := validators[i:upperBound]
 
-		logrus.Infof("retrieving validator balance stats for validators %v - %v", vals[0], vals[len(vals)-1])
+		// logrus.Infof("retrieving validator balance stats for validators %v - %v", vals[0], vals[len(vals)-1])
 
 		res, err := bigtable.GetValidatorBalanceHistory(vals, startEpoch, endEpoch)
 		if err != nil {
