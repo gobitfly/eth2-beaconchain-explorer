@@ -768,11 +768,12 @@ func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint
 	}
 
 	// Now populate the chartData array using the dayRewardMap
+	exchangeRate := utils.ExchangeRateForCurrency(currency)
 	for day, reward := range dayRewardMap {
 		ts := float64(utils.DayToTime(day).Unix() * 1000)
 		chartData = append(chartData, &types.ChartDataPoint{
 			X:     ts,
-			Y:     utils.ExchangeRateForCurrency(currency) * reward,
+			Y:     exchangeRate * reward,
 			Color: color,
 		})
 	}
