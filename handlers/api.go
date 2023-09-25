@@ -1548,8 +1548,8 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		sendServerErrorResponse(w, r.URL.String(), "error retrieving data, please try again later")
 		return
 	}
-	firstDayEpoch, _ := utils.GetFirstAndLastEpochForDay(lastExportedDay + 1)
-	cutoffSlot := ((firstDayEpoch - 1) * utils.Config.Chain.Config.SlotsPerEpoch) + 1
+	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
+	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.Config.SlotsPerEpoch) + 1
 
 	data := make([]*ApiValidatorResponse, 0)
 
