@@ -116,20 +116,24 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	currency := q.Get("currency")
 
-	var start uint64 = 0
-	var end uint64 = 0
+	// Set the default start and end time to the first day
+	t := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+	startGenesisDay := uint64(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix())
+	var start uint64 = startGenesisDay
+	var end uint64 = startGenesisDay
+
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
-		start, err = strconv.ParseUint(dateRange[0], 10, 64)
-		if err != nil {
-			logger.Errorf("error retrieving days range %v", err)
-			http.Error(w, "Invalid query", 400)
+		start, err = strconv.ParseUint(dateRange[0], 10, 32) //Limit to uint32 for postgres
+		if err != nil || start < startGenesisDay {
+			logger.Warnf("error parsing days range: %v", err)
+			http.Error(w, "Error: Invalid parameter days.", http.StatusBadRequest)
 			return
 		}
-		end, err = strconv.ParseUint(dateRange[1], 10, 64)
-		if err != nil {
-			logger.Errorf("error retrieving days range %v", err)
-			http.Error(w, "Invalid query", 400)
+		end, err = strconv.ParseUint(dateRange[1], 10, 32) //Limit to uint32 for postgres
+		if err != nil || end < startGenesisDay {
+			logger.Warnf("error parsing days range: %v", err)
+			http.Error(w, "Error: Invalid parameter days.", http.StatusBadRequest)
 			return
 		}
 	}
@@ -155,20 +159,24 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	currency := q.Get("currency")
 
-	var start uint64 = 0
-	var end uint64 = 0
+	// Set the default start and end time to the first day
+	t := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+	startGenesisDay := uint64(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC).Unix())
+	var start uint64 = startGenesisDay
+	var end uint64 = startGenesisDay
+
 	dateRange := strings.Split(q.Get("days"), "-")
 	if len(dateRange) == 2 {
-		start, err = strconv.ParseUint(dateRange[0], 10, 64)
-		if err != nil {
-			logger.Errorf("error retrieving days range %v", err)
-			http.Error(w, "Invalid query", 400)
+		start, err = strconv.ParseUint(dateRange[0], 10, 32) //Limit to uint32 for postgres
+		if err != nil || start < startGenesisDay {
+			logger.Warnf("error parsing days range: %v", err)
+			http.Error(w, "Error: Invalid parameter days.", http.StatusBadRequest)
 			return
 		}
-		end, err = strconv.ParseUint(dateRange[1], 10, 64)
-		if err != nil {
-			logger.Errorf("error retrieving days range %v", err)
-			http.Error(w, "Invalid query", 400)
+		end, err = strconv.ParseUint(dateRange[1], 10, 32) //Limit to uint32 for postgres
+		if err != nil || end < startGenesisDay {
+			logger.Warnf("error parsing days range: %v", err)
+			http.Error(w, "Error: Invalid parameter days.", http.StatusBadRequest)
 			return
 		}
 	}

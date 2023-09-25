@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,7 +30,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	var epochFutureTemplate = templates.GetTemplate(epochFutureTemplateFiles...)
 	var epochNotFoundTemplate = templates.GetTemplate(epochNotFoundTemplateFiles...)
 
-	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
+	const MaxEpochValue = math.MaxUint32 + 1 // we only render a page for epochs up to this value
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -48,6 +50,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	epochPageData := types.EpochPageData{}
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 
 	err = db.ReaderDb.Get(&epochPageData, `
 		SELECT 
@@ -60,12 +63,12 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			voluntaryexitscount, 
 			validatorscount, 
 			averagevalidatorbalance, 
-			finalized,
+			(epoch <= $2) AS finalized,
 			eligibleether,
 			globalparticipationrate,
 			votedether
 		FROM epochs 
-		WHERE epoch = $1`, epoch)
+		WHERE epoch = $1`, epoch, latestFinalizedEpoch)
 	if err != nil {
 		//Epoch not in database -> Show future epoch
 		if epoch > MaxEpochValue {

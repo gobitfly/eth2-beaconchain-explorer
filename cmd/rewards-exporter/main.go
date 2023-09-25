@@ -1,6 +1,7 @@
 package main
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -65,6 +66,24 @@ func main() {
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
+	if bnAddress == nil || *bnAddress == "" {
+		if utils.Config.Indexer.Node.Host == "" {
+			utils.LogFatal(nil, "no beacon node url provided", 0)
+		} else {
+			logrus.Info("applying becon node endpoint from config")
+			*bnAddress = fmt.Sprintf("http://%s:%s", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port)
+		}
+	}
+
+	if enAddress == nil || *enAddress == "" {
+		if utils.Config.Eth1ErigonEndpoint == "" {
+			utils.LogFatal(nil, "no execution node url provided", 0)
+		} else {
+			logrus.Info("applying execution node endpoint from config")
+			*enAddress = utils.Config.Eth1ErigonEndpoint
+		}
+	}
+
 	client := beacon.NewClient(*bnAddress, time.Minute*5)
 
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
@@ -73,14 +92,22 @@ func main() {
 	}
 	defer bt.Close()
 
+	cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
+
 	if *epochEnd != 0 {
+		latestFinalizedEpoch := services.LatestFinalizedEpoch()
+		if *epochEnd > latestFinalizedEpoch {
+			logrus.Errorf("error epochEnd [%v] is greater then latestFinalizedEpoch [%v]", epochEnd, latestFinalizedEpoch)
+			return
+		}
 		g := errgroup.Group{}
 		g.SetLimit(*batchConcurrency)
 
 		start := time.Now()
 		epochsCompleted := int64(0)
 		notExportedEpochs := []uint64{}
-		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
+		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -142,8 +169,9 @@ func main() {
 	if *epoch == -1 {
 		lastExportedEpoch := uint64(0)
 		for {
+			latestFinalizedEpoch := services.LatestFinalizedEpoch()
 			notExportedEpochs := []uint64{}
-			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch > $1 ORDER BY epoch desc LIMIT 10", lastExportedEpoch)
+			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch > $1 AND epoch <= $2 ORDER BY epoch desc LIMIT 10", lastExportedEpoch, latestFinalizedEpoch)
 			if err != nil {
 				utils.LogFatal(err, "getting chain head from lighthouse error", 0)
 			}
@@ -173,6 +201,11 @@ func main() {
 		}
 	}
 
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
+	if *epoch > int64(latestFinalizedEpoch) {
+		logrus.Errorf("error epoch [%v] is greater then latestFinalizedEpoch [%v]", epoch, latestFinalizedEpoch)
+		return
+	}
 	err = export(uint64(*epoch), bt, client, enAddress)
 	if err != nil {
 		logrus.Fatal(err)

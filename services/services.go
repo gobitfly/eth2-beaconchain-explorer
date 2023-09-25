@@ -377,14 +377,14 @@ func epochUpdater(wg *sync.WaitGroup) {
 			}
 		}
 
-		// latest exportered finalized epoch
-		var latestFinalized uint64
-		err = db.WriterDb.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		// latest exported finalized epoch
+
+		latestFinalizedEpoch, err := db.GetLatestFinalizedEpoch()
 		if err != nil {
 			logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.ClConfig.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, latestFinalized, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, latestFinalizedEpoch, time.Hour*24)
 			if err != nil {
 				logger.Errorf("error caching latestFinalizedEpoch: %v", err)
 			}
@@ -691,6 +691,18 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
 
+		if deposit.Total == 0 { // see if there are any genesis validators
+			err = db.ReaderDb.Get(&deposit.Total, "SELECT COALESCE(MAX(validatorindex), 0) FROM validators")
+			if err != nil {
+				return nil, fmt.Errorf("error retrieving max validator index: %v", err)
+			}
+
+			if deposit.Total > 0 {
+				deposit.Total = (deposit.Total + 1) * 32
+				deposit.BlockTs = time.Now()
+			}
+		}
+
 		threshold, err := db.GetDepositThresholdTime()
 		if err != nil {
 			logger.WithError(err).Error("error could not calculate threshold time")
@@ -785,8 +797,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	data.ScheduledCount = scheduledCount
 
+	latestFinalizedEpoch := LatestFinalizedEpoch()
 	var epochs []*types.IndexPageDataEpochs
-	err = db.ReaderDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	err = db.ReaderDb.Select(&epochs, `SELECT epoch, (epoch <= $1) AS finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`, latestFinalizedEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
@@ -905,7 +918,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		epochLowerBound = epoch - 1600
 	}
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+	err = db.WriterDb.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, (epoch <= $3) AS finalized, averagevalidatorbalance FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound, latestFinalizedEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}
@@ -1319,7 +1332,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 
 	err = client.Call(&raw, "txpool_content")
 	if err != nil {
-		utils.LogFatal(err, "error getting raw json data from txpool_content", 0)
+		return nil, fmt.Errorf("error getting raw json data from txpool_content: %w", err)
 	}
 
 	txPoolContent := &TxPoolContent{}
@@ -1481,24 +1494,22 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 
 func burnUpdater(wg *sync.WaitGroup) {
 	firstRun := true
-	for {
+	for ; ; time.Sleep(time.Minute * 15) { // only update once every 15 minutes
 		data, err := getBurnPageData()
 		if err != nil {
 			logger.Errorf("error retrieving burn page data: %v", err)
-			time.Sleep(time.Second * 30)
 			continue
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.ClConfig.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
 		if err != nil {
-			logger.Errorf("error caching relaysData: %v", err)
+			logger.Errorf("error caching burn data: %v", err)
 		}
 		if firstRun {
 			logger.Infof("initialized burn updater")
 			wg.Done()
 			firstRun = false
 		}
-		time.Sleep(time.Minute)
 	}
 }
 
@@ -1509,16 +1520,23 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	latestEpoch := LatestEpoch()
 	latestBlock := LatestEth1BlockNumber()
 
+	// Check db to have at least one entry (will error otherwise anyway)
+	burnedFeesCount := 0
+	if err := db.ReaderDb.Get(&burnedFeesCount, "SELECT COUNT(*) FROM chart_series WHERE indicator = 'BURNED_FEES'"); err != nil {
+		return nil, fmt.Errorf("error get BURNED_FEES count from chart_series: %w", err)
+	}
+	if burnedFeesCount <= 0 {
+		return data, nil
+	}
+
 	// Retrieve the total amount of burned Ether
-	err := db.ReaderDb.Get(&data.TotalBurned, "select sum(value) from chart_series where indicator = 'BURNED_FEES';")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving total burned amount from chart_series table: %v", err)
+	if err := db.ReaderDb.Get(&data.TotalBurned, "SELECT SUM(value) FROM chart_series WHERE indicator = 'BURNED_FEES'"); err != nil {
+		return nil, fmt.Errorf("error retrieving total burned amount from chart_series table: %w", err)
 	}
 
 	cutOff := time.Time{}
-	err = db.ReaderDb.Get(&cutOff, "select (select max(time) from chart_series where indicator = 'BURNED_FEES') + interval '24 hours';")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving cutoff date from chart_series table: %v", err)
+	if err := db.ReaderDb.Get(&cutOff, "SELECT ( SELECT MAX(time) FROM chart_series WHERE indicator = 'BURNED_FEES' ) + interval '24 hours'"); err != nil {
+		return nil, fmt.Errorf("error retrieving cutoff date from chart_series table: %w", err)
 	}
 
 	cutOffEpoch := utils.TimeToEpoch(cutOff)
@@ -1530,14 +1548,14 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// db.ReaderDb.Get(&blockLastDay)
 
 	additionalBurned := float64(0)
-	err = db.ReaderDb.Get(&additionalBurned, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) as burnedfees from blocks where epoch > $1", cutOffEpoch)
+	err := db.ReaderDb.Get(&additionalBurned, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) AS burnedfees FROM blocks WHERE epoch > $1", cutOffEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
 	}
 	// logger.Infof("additonal burn: %v", additionalBurned)
 	data.TotalBurned += additionalBurned
 
-	err = db.ReaderDb.Get(&data.BurnRate1h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) as burnedfees from blocks where epoch > $1", latestEpoch-10)
+	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", latestEpoch-10)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
 	}
@@ -1548,7 +1566,13 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// }
 
 	// swap this for GetEpochIncomeHistory in the future
-	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{}, latestEpoch-10, latestBlock)
+
+	validators, err := db.GetValidatorIndices()
+	if err != nil {
+		return nil, err
+	}
+
+	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, latestEpoch-10, latestEpoch)
 	if err != nil {
 		logger.WithError(err).Error("error getting validator income history")
 	}
@@ -1667,6 +1691,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 
 func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 	firstRun := true
+	cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.ClConfig.DepositChainID)
 	for {
 		lastDay, err := db.GetLastExportedStatisticDay()
 		if err != nil {
@@ -1675,7 +1700,6 @@ func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 			continue
 		}
 
-		cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.ClConfig.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, lastDay, time.Hour*24)
 		if err != nil {
 			logger.Errorf("error caching last exported statistics day: %v", err)
@@ -1691,14 +1715,16 @@ func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 }
 
 // LatestExportedStatisticDay will return the last exported day in the validator_stats table
-func LatestExportedStatisticDay() uint64 {
+func LatestExportedStatisticDay() (uint64, error) {
 	cacheKey := fmt.Sprintf("%d:frontend:lastExportedStatisticDay", utils.Config.Chain.ClConfig.DepositChainID)
 
 	if wanted, err := cache.TieredCache.GetUint64WithLocalTimeout(cacheKey, time.Second*5); err == nil {
-		return wanted
-	} else {
-		logger.Errorf("error retrieving last exported statistics day from cache: %v", err)
+		return wanted, nil
 	}
-	wanted, _ := db.GetLastExportedStatisticDay()
-	return wanted
+	wanted, err := db.GetLastExportedStatisticDay()
+
+	if err != nil {
+		return 0, err
+	}
+	return wanted, nil
 }

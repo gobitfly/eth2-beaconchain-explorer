@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -241,7 +241,7 @@ func AuthorizedAPIMiddleware(next http.Handler) http.Handler {
 		// as context to the request. By doing this here,
 		// we can use base.FormValueOrJson(key) without multiple parsings of the same body
 		if r.Method == "POST" && r.Header.Get("Content-Type") == "application/json" {
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err == nil {
 				keyVal := make(map[string]interface{})
 				json.Unmarshal(body, &keyVal)

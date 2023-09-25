@@ -10,7 +10,7 @@ import (
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -202,7 +202,7 @@ func GetNextSignatures(bt *db.Bigtable, page string, status types.SignatureImpor
 		return nil, nil, fmt.Errorf("error querying signatures api: %v", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, err
 	}

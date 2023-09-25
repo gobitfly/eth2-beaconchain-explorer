@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	geth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 )
@@ -35,18 +37,14 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 
 			data := wanted.(*types.Eth1TxData)
 			if data.BlockNumber != 0 {
-				err := db.ReaderDb.Get(&data.Epoch,
-					`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
-					data.BlockNumber)
-				if err != nil {
+				if err := db.GetBlockStatus(data.BlockNumber, services.LatestFinalizedEpoch(), &data.Epoch); err != nil {
 					logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
 					data.Epoch.Finalized = false
 					data.Epoch.Participation = -1
 				}
-			}
 
-			return data, nil
-		}
+				return data, nil
+			}
 	*/
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
@@ -91,54 +89,37 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	txPageData.BlockNumber = header.Number.Int64()
 	txPageData.Timestamp = time.Unix(int64(header.Time), 0)
 
-	// msg, err := tx.AsMessage(geth_types.NewLondonSigner(tx.ChainId()), header.BaseFee)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error converting tx %v to message: %v", hash, err)
-	// }
-
-	sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
+	msg, err := core.TransactionToMessage(tx, geth_types.NewLondonSigner(tx.ChainId()), header.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("error getting sender of tx %v: %w", hash, err)
 	}
-
-	txPageData.From = common.BytesToAddress(sender.Bytes())
-	txPageData.Nonce = tx.Nonce()
+	txPageData.From = msg.From
+	txPageData.Nonce = msg.Nonce
 	txPageData.Type = receipt.Type
 	txPageData.TypeFormatted = utils.FormatTransactionType(receipt.Type)
 	txPageData.TxnPosition = receipt.TransactionIndex
 
-	txPageData.Gas.MaxPriorityFee = tx.GasTipCap().Bytes()
-	txPageData.Gas.MaxFee = tx.GasFeeCap().Bytes()
+	txPageData.Gas.MaxPriorityFee = msg.GasTipCap.Bytes()
+	txPageData.Gas.MaxFee = msg.GasFeeCap.Bytes()
 	if header.BaseFee != nil {
 		txPageData.Gas.BlockBaseFee = header.BaseFee.Bytes()
 	}
 	txPageData.Gas.Used = receipt.GasUsed
-	txPageData.Gas.Limit = tx.Gas()
-	txPageData.Gas.UsedPerc = float64(receipt.GasUsed) / float64(tx.Gas())
+	txPageData.Gas.Limit = msg.GasLimit
+	txPageData.Gas.UsedPerc = float64(receipt.GasUsed) / float64(msg.GasLimit)
 	if receipt.Type >= 2 {
 		tmp := new(big.Int)
 		tmp.Add(tmp, header.BaseFee)
-		if t := *new(big.Int).Sub(tx.GasFeeCap(), tmp); t.Cmp(tx.GasTipCap()) == -1 {
+		if t := *new(big.Int).Sub(msg.GasFeeCap, tmp); t.Cmp(msg.GasTipCap) == -1 {
 			tmp.Add(tmp, &t)
 		} else {
-			tmp.Add(tmp, tx.GasTipCap())
+			tmp.Add(tmp, msg.GasTipCap)
 		}
 		txPageData.Gas.EffectiveFee = tmp.Bytes()
 		txPageData.Gas.TxFee = tmp.Mul(tmp, big.NewInt(int64(receipt.GasUsed))).Bytes()
 	} else {
-		txPageData.Gas.EffectiveFee = tx.GasFeeCap().Bytes()
-		txPageData.Gas.TxFee = tx.GasFeeCap().Mul(tx.GasFeeCap(), big.NewInt(int64(receipt.GasUsed))).Bytes()
-	}
-
-	if receipt.Type == 3 {
-		txPageData.Gas.BlobGasPrice = receipt.BlobGasPrice.Bytes()
-		txPageData.Gas.BlobGasUsed = receipt.BlobGasUsed
-		txPageData.Gas.BlobFee = new(big.Int).Mul(receipt.BlobGasPrice, big.NewInt(int64(txPageData.Gas.BlobGasUsed))).Bytes()
-
-		txPageData.BlobHashes = make([][]byte, len(tx.BlobHashes()))
-		for i, h := range tx.BlobHashes() {
-			txPageData.BlobHashes[i] = h.Bytes()
-		}
+		txPageData.Gas.EffectiveFee = msg.GasFeeCap.Bytes()
+		txPageData.Gas.TxFee = msg.GasFeeCap.Mul(msg.GasFeeCap, big.NewInt(int64(receipt.GasUsed))).Bytes()
 	}
 
 	if receipt.Status != 1 {
@@ -156,17 +137,17 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error loading token transfers from tx %v: %v", hash, err)
 		}
-		txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), txPageData.From.Bytes())
+		txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("error loading internal transfers from tx %v: %v", hash, err)
 		}
 	}
-	txPageData.FromName, err = db.BigtableClient.GetAddressName(txPageData.From.Bytes())
+	txPageData.FromName, err = db.BigtableClient.GetAddressName(msg.From.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("error retrieveing from name for tx %v: %v", hash, err)
 	}
-	if tx.To() != nil {
-		txPageData.ToName, err = db.BigtableClient.GetAddressName(tx.To().Bytes())
+	if msg.To != nil {
+		txPageData.ToName, err = db.BigtableClient.GetAddressName(msg.To.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("error retrieveing to name for tx %v: %v", hash, err)
 		}
@@ -247,10 +228,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	if txPageData.BlockNumber != 0 {
-		err := db.ReaderDb.Get(&txPageData.Epoch,
-			`select epochs.finalized, epochs.globalparticipationrate from blocks left join epochs on blocks.epoch = epochs.epoch where blocks.exec_block_number = $1 and blocks.status='1';`,
-			&txPageData.BlockNumber)
-		if err != nil {
+		if err := db.GetBlockStatus(txPageData.BlockNumber, services.LatestFinalizedEpoch(), &txPageData.Epoch); err != nil {
 			logger.Warningf("failed to get finalization stats for block %v: %v", txPageData.BlockNumber, err)
 			txPageData.Epoch.Finalized = false
 			txPageData.Epoch.Participation = -1

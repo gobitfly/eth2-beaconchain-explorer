@@ -28,8 +28,11 @@ type Config struct {
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 	} `yaml:"writerDatabase"`
 	Bigtable struct {
-		Project  string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
-		Instance string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+		Project      string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+		Instance     string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+		Emulator     bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
+		EmulatorPort int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
+		EmulatorHost string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
 	} `yaml:"bigtable"`
 	BlobIndexer struct {
 		S3 struct {
@@ -97,8 +100,12 @@ type Config struct {
 		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`
 		// Imprint is deprdecated place imprint file into the legal directory
-		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
-		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`
+		Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
+		Legal   struct {
+			TermsOfServiceUrl string `yaml:"termsOfServiceUrl" envconfig:"FRONTEND_LEGAL_TERMS_OF_SERVICE_URL"`
+			PrivacyPolicyUrl  string `yaml:"privacyPolicyUrl" envconfig:"FRONTEND_LEGAL_PRIVACY_POLICY_URL"`
+			ImprintTemplate   string `yaml:"imprintTemplate" envconfig:"FRONTEND_LEGAL_IMPRINT_TEMPLATE"`
+		} `yaml:"legal"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
 		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
 		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
@@ -168,9 +175,6 @@ type Config struct {
 			Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
 			Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
 		} `yaml:"countdown"`
-		Validator struct {
-			ShowProposerRewards bool `yaml:"showProposerRewards" envconfig:"FRONTEND_SHOW_PROPOSER_REWARDS"`
-		} `yaml:"validator"`
 		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
 		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
 		HttpIdleTimeout  time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
@@ -228,4 +232,104 @@ type DatabaseConfig struct {
 type ServiceMonitoringConfiguration struct {
 	Name     string        `yaml:"name" envconfig:"NAME"`
 	Duration time.Duration `yaml:"duration" envconfig:"DURATION"`
+}
+
+type ConfigJsonResponse struct {
+	Data struct {
+		ConfigName                              string `json:"CONFIG_NAME"`
+		PresetBase                              string `json:"PRESET_BASE"`
+		TerminalTotalDifficulty                 string `json:"TERMINAL_TOTAL_DIFFICULTY"`
+		TerminalBlockHash                       string `json:"TERMINAL_BLOCK_HASH"`
+		TerminalBlockHashActivationEpoch        string `json:"TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"`
+		SafeSlotsToImportOptimistically         string `json:"SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY"`
+		MinGenesisActiveValidatorCount          string `json:"MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
+		MinGenesisTime                          string `json:"MIN_GENESIS_TIME"`
+		GenesisForkVersion                      string `json:"GENESIS_FORK_VERSION"`
+		GenesisDelay                            string `json:"GENESIS_DELAY"`
+		AltairForkVersion                       string `json:"ALTAIR_FORK_VERSION"`
+		AltairForkEpoch                         string `json:"ALTAIR_FORK_EPOCH"`
+		BellatrixForkVersion                    string `json:"BELLATRIX_FORK_VERSION"`
+		BellatrixForkEpoch                      string `json:"BELLATRIX_FORK_EPOCH"`
+		CapellaForkVersion                      string `json:"CAPELLA_FORK_VERSION"`
+		CapellaForkEpoch                        string `json:"CAPELLA_FORK_EPOCH"`
+		SecondsPerSlot                          string `json:"SECONDS_PER_SLOT"`
+		SecondsPerEth1Block                     string `json:"SECONDS_PER_ETH1_BLOCK"`
+		MinValidatorWithdrawabilityDelay        string `json:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`
+		ShardCommitteePeriod                    string `json:"SHARD_COMMITTEE_PERIOD"`
+		Eth1FollowDistance                      string `json:"ETH1_FOLLOW_DISTANCE"`
+		SubnetsPerNode                          string `json:"SUBNETS_PER_NODE"`
+		InactivityScoreBias                     string `json:"INACTIVITY_SCORE_BIAS"`
+		InactivityScoreRecoveryRate             string `json:"INACTIVITY_SCORE_RECOVERY_RATE"`
+		EjectionBalance                         string `json:"EJECTION_BALANCE"`
+		MinPerEpochChurnLimit                   string `json:"MIN_PER_EPOCH_CHURN_LIMIT"`
+		ChurnLimitQuotient                      string `json:"CHURN_LIMIT_QUOTIENT"`
+		ProposerScoreBoost                      string `json:"PROPOSER_SCORE_BOOST"`
+		DepositChainID                          string `json:"DEPOSIT_CHAIN_ID"`
+		DepositNetworkID                        string `json:"DEPOSIT_NETWORK_ID"`
+		DepositContractAddress                  string `json:"DEPOSIT_CONTRACT_ADDRESS"`
+		MaxCommitteesPerSlot                    string `json:"MAX_COMMITTEES_PER_SLOT"`
+		TargetCommitteeSize                     string `json:"TARGET_COMMITTEE_SIZE"`
+		MaxValidatorsPerCommittee               string `json:"MAX_VALIDATORS_PER_COMMITTEE"`
+		ShuffleRoundCount                       string `json:"SHUFFLE_ROUND_COUNT"`
+		HysteresisQuotient                      string `json:"HYSTERESIS_QUOTIENT"`
+		HysteresisDownwardMultiplier            string `json:"HYSTERESIS_DOWNWARD_MULTIPLIER"`
+		HysteresisUpwardMultiplier              string `json:"HYSTERESIS_UPWARD_MULTIPLIER"`
+		SafeSlotsToUpdateJustified              string `json:"SAFE_SLOTS_TO_UPDATE_JUSTIFIED"`
+		MinDepositAmount                        string `json:"MIN_DEPOSIT_AMOUNT"`
+		MaxEffectiveBalance                     string `json:"MAX_EFFECTIVE_BALANCE"`
+		EffectiveBalanceIncrement               string `json:"EFFECTIVE_BALANCE_INCREMENT"`
+		MinAttestationInclusionDelay            string `json:"MIN_ATTESTATION_INCLUSION_DELAY"`
+		SlotsPerEpoch                           string `json:"SLOTS_PER_EPOCH"`
+		MinSeedLookahead                        string `json:"MIN_SEED_LOOKAHEAD"`
+		MaxSeedLookahead                        string `json:"MAX_SEED_LOOKAHEAD"`
+		EpochsPerEth1VotingPeriod               string `json:"EPOCHS_PER_ETH1_VOTING_PERIOD"`
+		SlotsPerHistoricalRoot                  string `json:"SLOTS_PER_HISTORICAL_ROOT"`
+		MinEpochsToInactivityPenalty            string `json:"MIN_EPOCHS_TO_INACTIVITY_PENALTY"`
+		EpochsPerHistoricalVector               string `json:"EPOCHS_PER_HISTORICAL_VECTOR"`
+		EpochsPerSlashingsVector                string `json:"EPOCHS_PER_SLASHINGS_VECTOR"`
+		HistoricalRootsLimit                    string `json:"HISTORICAL_ROOTS_LIMIT"`
+		ValidatorRegistryLimit                  string `json:"VALIDATOR_REGISTRY_LIMIT"`
+		BaseRewardFactor                        string `json:"BASE_REWARD_FACTOR"`
+		WhistleblowerRewardQuotient             string `json:"WHISTLEBLOWER_REWARD_QUOTIENT"`
+		ProposerRewardQuotient                  string `json:"PROPOSER_REWARD_QUOTIENT"`
+		InactivityPenaltyQuotient               string `json:"INACTIVITY_PENALTY_QUOTIENT"`
+		MinSlashingPenaltyQuotient              string `json:"MIN_SLASHING_PENALTY_QUOTIENT"`
+		ProportionalSlashingMultiplier          string `json:"PROPORTIONAL_SLASHING_MULTIPLIER"`
+		MaxProposerSlashings                    string `json:"MAX_PROPOSER_SLASHINGS"`
+		MaxAttesterSlashings                    string `json:"MAX_ATTESTER_SLASHINGS"`
+		MaxAttestations                         string `json:"MAX_ATTESTATIONS"`
+		MaxDeposits                             string `json:"MAX_DEPOSITS"`
+		MaxVoluntaryExits                       string `json:"MAX_VOLUNTARY_EXITS"`
+		InactivityPenaltyQuotientAltair         string `json:"INACTIVITY_PENALTY_QUOTIENT_ALTAIR"`
+		MinSlashingPenaltyQuotientAltair        string `json:"MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR"`
+		ProportionalSlashingMultiplierAltair    string `json:"PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR"`
+		SyncCommitteeSize                       string `json:"SYNC_COMMITTEE_SIZE"`
+		EpochsPerSyncCommitteePeriod            string `json:"EPOCHS_PER_SYNC_COMMITTEE_PERIOD"`
+		MinSyncCommitteeParticipants            string `json:"MIN_SYNC_COMMITTEE_PARTICIPANTS"`
+		InactivityPenaltyQuotientBellatrix      string `json:"INACTIVITY_PENALTY_QUOTIENT_BELLATRIX"`
+		MinSlashingPenaltyQuotientBellatrix     string `json:"MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX"`
+		ProportionalSlashingMultiplierBellatrix string `json:"PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX"`
+		MaxBytesPerTransaction                  string `json:"MAX_BYTES_PER_TRANSACTION"`
+		MaxTransactionsPerPayload               string `json:"MAX_TRANSACTIONS_PER_PAYLOAD"`
+		BytesPerLogsBloom                       string `json:"BYTES_PER_LOGS_BLOOM"`
+		MaxExtraDataBytes                       string `json:"MAX_EXTRA_DATA_BYTES"`
+		MaxBlsToExecutionChanges                string `json:"MAX_BLS_TO_EXECUTION_CHANGES"`
+		MaxWithdrawalsPerPayload                string `json:"MAX_WITHDRAWALS_PER_PAYLOAD"`
+		MaxValidatorsPerWithdrawalsSweep        string `json:"MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP"`
+		DomainAggregateAndProof                 string `json:"DOMAIN_AGGREGATE_AND_PROOF"`
+		TargetAggregatorsPerSyncSubcommittee    string `json:"TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE"`
+		SyncCommitteeSubnetCount                string `json:"SYNC_COMMITTEE_SUBNET_COUNT"`
+		BlsWithdrawalPrefix                     string `json:"BLS_WITHDRAWAL_PREFIX"`
+		DomainRandao                            string `json:"DOMAIN_RANDAO"`
+		DomainVoluntaryExit                     string `json:"DOMAIN_VOLUNTARY_EXIT"`
+		DomainSyncCommitteeSelectionProof       string `json:"DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF"`
+		DomainBeaconAttester                    string `json:"DOMAIN_BEACON_ATTESTER"`
+		DomainBeaconProposer                    string `json:"DOMAIN_BEACON_PROPOSER"`
+		DomainDeposit                           string `json:"DOMAIN_DEPOSIT"`
+		DomainSelectionProof                    string `json:"DOMAIN_SELECTION_PROOF"`
+		DomainSyncCommittee                     string `json:"DOMAIN_SYNC_COMMITTEE"`
+		TargetAggregatorsPerCommittee           string `json:"TARGET_AGGREGATORS_PER_COMMITTEE"`
+		DomainContributionAndProof              string `json:"DOMAIN_CONTRIBUTION_AND_PROOF"`
+		DomainApplicationMask                   string `json:"DOMAIN_APPLICATION_MASK"`
+	} `json:"data"`
 }

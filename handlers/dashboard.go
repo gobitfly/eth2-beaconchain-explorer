@@ -450,12 +450,12 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	if len(param) != 0 {
 		days, err := strconv.ParseUint(param, 10, 32)
 		if err != nil {
-			logger.Error(err)
-			http.Error(w, "Error: invalid days parameter", http.StatusBadRequest)
+			logger.Warnf("error parsing days: %v", err)
+			http.Error(w, "Error: invalid parameter days", http.StatusBadRequest)
 			return
 		}
-		lastStatsDay := services.LatestExportedStatisticDay()
-		if days < lastStatsDay {
+		lastStatsDay, err := services.LatestExportedStatisticDay()
+		if days < lastStatsDay && err == nil {
 			lowerBoundDay = lastStatsDay - days + 1
 		}
 	}
@@ -648,14 +648,14 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
@@ -1023,7 +1023,12 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	var avgIncDistance []float64
 
-	effectiveness, err := db.BigtableClient.GetValidatorEffectiveness(activeValidators, services.LatestEpoch()-1)
+	epoch := services.LatestEpoch()
+	if epoch > 0 {
+		epoch = epoch - 1
+	}
+
+	effectiveness, err := db.BigtableClient.GetValidatorEffectiveness(activeValidators, epoch)
 	for _, e := range effectiveness {
 		avgIncDistance = append(avgIncDistance, e.AttestationEfficiency)
 	}
@@ -1072,7 +1077,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lastDay, err := db.GetLastExportedStatisticDay()
-	if err != nil {
+	if err != nil && err != db.ErrNoStats {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving last exported statistic day")
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return

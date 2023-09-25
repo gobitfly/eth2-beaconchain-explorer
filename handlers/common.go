@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -47,8 +48,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return nil, nil, errors.New("no validators provided")
 	}
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	lastStatsDay := services.LatestExportedStatisticDay()
-	firstSlot := utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
+
+	firstSlot := uint64(0)
+	lastStatsDay, lastExportedStatsErr := services.LatestExportedStatisticDay()
+	if lastExportedStatsErr == nil {
+		firstSlot = utils.GetLastBalanceInfoSlotForDay(lastStatsDay) + 1
+	}
+
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
 	balancesMap := make(map[uint64]*types.Validator, 0)
@@ -80,7 +86,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	income := types.ValidatorIncomePerformance{}
 	g.Go(func() error {
-		return db.GetValidatorIncomePerforamance(validators, &income)
+		return db.GetValidatorIncomePerformance(validators, &income)
 	})
 
 	var totalDeposits uint64
@@ -99,18 +105,25 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	})
 
 	var lastDeposits uint64
-	g.Go(func() error {
-		return db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
-	})
-
 	var lastWithdrawals uint64
-	g.Go(func() error {
-		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
-	})
-
 	var lastBalance uint64
 	g.Go(func() error {
-		return db.GetValidatorBalanceForDay(validators, lastStatsDay, &lastBalance)
+		if lastExportedStatsErr == db.ErrNoStats {
+			err := db.GetValidatorActivationBalance(validators, &lastBalance)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := db.GetValidatorBalanceForDay(validators, lastStatsDay, &lastBalance)
+			if err != nil {
+				return err
+			}
+		}
+		err := db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
+		if err != nil {
+			return err
+		}
+		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
 	})
 
 	proposals := []types.ValidatorProposalInfo{}
@@ -137,35 +150,48 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	if clApr7d < float64(-1) {
 		clApr7d = float64(-1)
 	}
+	if math.IsNaN(clApr7d) {
+		clApr7d = float64(0)
+	}
 
 	elApr7d := ((float64(income.ElIncome7d) / float64(totalDeposits)) * 365) / 7
 	if elApr7d < float64(-1) {
 		elApr7d = float64(-1)
+	}
+	if math.IsNaN(elApr7d) {
+		elApr7d = float64(0)
 	}
 
 	clApr31d := ((float64(income.ClIncome31d) / float64(totalDeposits)) * 365) / 31
 	if clApr31d < float64(-1) {
 		clApr31d = float64(-1)
 	}
+	if math.IsNaN(clApr31d) {
+		clApr31d = float64(0)
+	}
 
 	elApr31d := ((float64(income.ElIncome31d) / float64(totalDeposits)) * 365) / 31
 	if elApr31d < float64(-1) {
 		elApr31d = float64(-1)
 	}
+	if math.IsNaN(elApr31d) {
+		elApr31d = float64(0)
+	}
+
 	clApr365d := (float64(income.ClIncome365d) / float64(totalDeposits))
 	if clApr365d < float64(-1) {
 		clApr365d = float64(-1)
+	}
+	if math.IsNaN(clApr365d) {
+		clApr365d = float64(0)
 	}
 
 	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
 	if elApr365d < float64(-1) {
 		elApr365d = float64(-1)
 	}
-
-	// retrieve cl income not yet in stats
-	currentDayProposerIncome, err := db.GetCurrentDayProposerIncomeTotal(validators)
-	if err != nil {
-		return nil, nil, err
+	if math.IsNaN(elApr365d) {
+		elApr365d = float64(0)
 	}
 
 	incomeToday := types.ClElInt64{
@@ -175,7 +201,10 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 
 	proposedToday := []uint64{}
-	todayStartEpoch := uint64(lastStatsDay+1) * utils.EpochsPerDay()
+	todayStartEpoch := uint64(0)
+	if lastExportedStatsErr == nil {
+		todayStartEpoch = uint64(lastStatsDay+1) * utils.EpochsPerDay()
+	}
 	validatorProposalData := types.ValidatorProposalData{}
 	validatorProposalData.Proposals = make([][]uint64, len(proposals))
 	for i, b := range proposals {
@@ -213,8 +242,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 	}
 
-	validatorProposalData.ProposalLuck = getProposalLuck(slots, len(validators), firstActivationEpoch)
-	avgSlotInterval := uint64(getAvgSlotInterval(1))
+	validatorProposalData.ProposalLuck, _ = getProposalLuck(slots, len(validators), firstActivationEpoch)
+	avgSlotInterval := uint64(getAvgSlotInterval(len(validators)))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 	if len(slots) > 0 {
@@ -259,12 +288,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		Total: income.ClIncomeTotal + income.ElIncomeTotal + incomeToday.Total,
 	}
 
-	incomeTotalProposer := types.ClElInt64{
-		El:    income.ElIncomeTotal,
-		Cl:    income.ClProposerIncomeTotal + currentDayProposerIncome,
-		Total: income.ClProposerIncomeTotal + income.ElIncomeTotal + currentDayProposerIncome,
-	}
-
 	return &types.ValidatorEarnings{
 		Income1d: types.ClElInt64{
 			El:    income.ElIncome1d,
@@ -298,45 +321,45 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		TotalDeposits:          int64(totalDeposits),
-		LastDayFormatted:       utils.FormatIncome(earnings1d, currency),
-		LastWeekFormatted:      utils.FormatIncome(earnings7d, currency),
-		LastMonthFormatted:     utils.FormatIncome(earnings31d, currency),
-		TotalFormatted:         utils.FormatIncomeClElInt64(incomeTotal, currency),
-		ProposerTotalFormatted: utils.FormatIncomeClElInt64(incomeTotalProposer, currency),
-		TotalChangeFormatted:   utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency),
-		TotalBalance:           utils.FormatIncome(int64(totalBalance), currency),
-		ProposalData:           validatorProposalData,
+		TotalDeposits:        int64(totalDeposits),
+		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
+		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
+		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
+		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
+		ProposalData:         validatorProposalData,
 	}, balancesMap, nil
 }
+
+// Timeframe constants
+const fiveDays = utils.Day * 5
+const oneWeek = utils.Week
+const oneMonth = utils.Month
+const sixWeeks = utils.Day * 45
+const twoMonths = utils.Month * 2
+const threeMonths = utils.Month * 3
+const fourMonths = utils.Month * 4
+const fiveMonths = utils.Month * 5
+const sixMonths = utils.Month * 6
+const year = utils.Year
 
 // getProposalLuck calculates the luck of a given set of proposed blocks for a certain number of validators
 // given the blocks proposed by the validators and the number of validators
 //
 // precondition: slots is sorted by ascending block number
-func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) float64 {
+func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) (float64, time.Duration) {
 	// Return 0 if there are no proposed blocks or no validators
 	if len(slots) == 0 || validatorsCount == 0 {
-		return 0
+		return 0, 0
 	}
-	// Timeframe constants
-	fiveDays := utils.Day * 5
-	oneWeek := utils.Week
-	oneMonth := utils.Month
-	sixWeeks := utils.Day * 45
-	twoMonths := utils.Month * 2
-	threeMonths := utils.Month * 3
-	fourMonths := utils.Month * 4
-	fiveMonths := utils.Month * 5
-	sixMonths := utils.Month * 6
-	year := utils.Year
 
 	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
 	// Calculate the expected number of slot proposals for 30 days
 	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorsCount, activeValidatorsCount)
 
 	// Get the timeframe for which we should consider qualified proposals
-	var proposalTimeframe time.Duration
+	var proposalTimeFrame time.Duration
 	// Time since the first epoch of the related validators
 	timeSinceFirstEpoch := time.Since(utils.EpochToTime(fromEpoch))
 
@@ -345,36 +368,36 @@ func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) floa
 	// Determine the appropriate timeframe based on the time since the first block and the expected slot proposals
 	switch {
 	case timeSinceFirstEpoch < fiveDays:
-		proposalTimeframe = fiveDays
+		proposalTimeFrame = fiveDays
 	case timeSinceFirstEpoch < oneWeek:
-		proposalTimeframe = oneWeek
+		proposalTimeFrame = oneWeek
 	case timeSinceFirstEpoch < oneMonth:
-		proposalTimeframe = oneMonth
+		proposalTimeFrame = oneMonth
 	case timeSinceFirstEpoch > year && expectedSlotProposals <= targetBlocks/12:
-		proposalTimeframe = year
+		proposalTimeFrame = year
 	case timeSinceFirstEpoch > sixMonths && expectedSlotProposals <= targetBlocks/6:
-		proposalTimeframe = sixMonths
+		proposalTimeFrame = sixMonths
 	case timeSinceFirstEpoch > fiveMonths && expectedSlotProposals <= targetBlocks/5:
-		proposalTimeframe = fiveMonths
+		proposalTimeFrame = fiveMonths
 	case timeSinceFirstEpoch > fourMonths && expectedSlotProposals <= targetBlocks/4:
-		proposalTimeframe = fourMonths
+		proposalTimeFrame = fourMonths
 	case timeSinceFirstEpoch > threeMonths && expectedSlotProposals <= targetBlocks/3:
-		proposalTimeframe = threeMonths
+		proposalTimeFrame = threeMonths
 	case timeSinceFirstEpoch > twoMonths && expectedSlotProposals <= targetBlocks/2:
-		proposalTimeframe = twoMonths
+		proposalTimeFrame = twoMonths
 	case timeSinceFirstEpoch > sixWeeks && expectedSlotProposals <= targetBlocks/1.5:
-		proposalTimeframe = sixWeeks
+		proposalTimeFrame = sixWeeks
 	default:
-		proposalTimeframe = oneMonth
+		proposalTimeFrame = oneMonth
 	}
 
 	// Recalculate expected slot proposals for the new timeframe
-	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeframe, validatorsCount, activeValidatorsCount)
+	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeFrame, validatorsCount, activeValidatorsCount)
 	if expectedSlotProposals == 0 {
-		return 0
+		return 0, 0
 	}
 	// Cutoff time for proposals to be considered qualified
-	blockProposalCutoffTime := time.Now().Add(-proposalTimeframe)
+	blockProposalCutoffTime := time.Now().Add(-proposalTimeFrame)
 
 	// Count the number of qualified proposals
 	qualifiedProposalCount := 0
@@ -384,7 +407,34 @@ func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) floa
 		}
 	}
 	// Return the luck as the ratio of qualified proposals to expected slot proposals
-	return float64(qualifiedProposalCount) / expectedSlotProposals
+	return float64(qualifiedProposalCount) / expectedSlotProposals, proposalTimeFrame
+}
+
+func getProposalTimeframeName(proposalTimeframe time.Duration) string {
+	switch {
+	case proposalTimeframe == fiveDays:
+		return "5 days"
+	case proposalTimeframe == oneWeek:
+		return "week"
+	case proposalTimeframe == oneMonth:
+		return "month"
+	case proposalTimeframe == sixWeeks:
+		return "6 weeks"
+	case proposalTimeframe == twoMonths:
+		return "2 months"
+	case proposalTimeframe == threeMonths:
+		return "3 months"
+	case proposalTimeframe == fourMonths:
+		return "4 months"
+	case proposalTimeframe == fiveMonths:
+		return "5 months"
+	case proposalTimeframe == sixMonths:
+		return "6 months"
+	case proposalTimeframe == year:
+		return "year"
+	default:
+		return "month"
+	}
 }
 
 // calcExpectedSlotProposals calculates the expected number of slot proposals for a certain time frame and validator count
@@ -606,8 +656,8 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	settings := types.DataTableSaveState{}
 	err = json.NewDecoder(r.Body).Decode(&settings)
 	if err != nil {
-		utils.LogError(err, errMsgPrefix+", could not parse body", 0, errFields)
-		w.WriteHeader(http.StatusInternalServerError)
+		logger.Warnf(errMsgPrefix+", could not parse body for tableKey %v: %v", tableKey, err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 

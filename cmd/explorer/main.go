@@ -80,11 +80,6 @@ func main() {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
-	err = handlers.CheckAndPreloadImprint()
-	if err != nil {
-		logrus.Fatalf("error check / preload imprint: %v", err)
-	}
-
 	if utils.Config.Pprof.Enabled {
 		go func() {
 			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
@@ -190,13 +185,9 @@ func main() {
 	}
 
 	wg.Wait()
-	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
-		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
-		logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
-	}
 
-	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (example redis, bigtable)")
+	if utils.Config.TieredCacheProvider != "redis" {
+		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (example redis)")
 	}
 
 	defer db.ReaderDb.Close()
@@ -326,6 +317,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}", handlers.ApiWithdrawalCredentialsValidators).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validators/queue", handlers.ApiValidatorQueue).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validators/proposalLuck", handlers.ApiProposalLuck).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/graffitiwall", handlers.ApiGraffitiwall).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
@@ -475,7 +467,7 @@ func main() {
 			router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 			router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
 			router.HandleFunc("/validator/{index}/effectiveness", handlers.ValidatorAttestationInclusionEffectiveness).Methods("GET")
-			router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")
+			router.HandleFunc("/validator/{pubkey}/name", handlers.SaveValidatorName).Methods("POST")
 			router.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
 			router.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST")
 			router.HandleFunc("/validator/{index}/stats", handlers.ValidatorStatsTable).Methods("GET")
@@ -485,8 +477,6 @@ func main() {
 			router.HandleFunc("/validators/slashings/data", handlers.ValidatorsSlashingsData).Methods("GET")
 			router.HandleFunc("/validators/leaderboard", handlers.ValidatorsLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
-			router.HandleFunc("/validators/streakleaderboard", handlers.ValidatorsStreakLeaderboard).Methods("GET")
-			router.HandleFunc("/validators/streakleaderboard/data", handlers.ValidatorsStreakLeaderboardData).Methods("GET")
 			router.HandleFunc("/validators/withdrawals", handlers.Withdrawals).Methods("GET")
 			router.HandleFunc("/validators/withdrawals/data", handlers.WithdrawalsData).Methods("GET")
 			router.HandleFunc("/validators/withdrawals/bls", handlers.BLSChangeData).Methods("GET")
@@ -514,10 +504,7 @@ func main() {
 			router.HandleFunc("/calculator", handlers.StakingCalculator).Methods("GET")
 			router.HandleFunc("/search", handlers.Search).Methods("POST")
 			router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
-			router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
-			router.HandleFunc("/poap", handlers.Poap).Methods("GET")
-			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
@@ -533,7 +520,6 @@ func main() {
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 
-			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")
@@ -578,7 +564,6 @@ func main() {
 
 			oauthRouter := router.PathPrefix("/user").Subrouter()
 			oauthRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirm).Methods("GET")
-			oauthRouter.HandleFunc("/cancel", handlers.UserAuthorizationCancel).Methods("GET")
 			oauthRouter.Use(csrfHandler)
 
 			authRouter := router.PathPrefix("/user").Subrouter()
@@ -644,8 +629,6 @@ func main() {
 				jsHandler := http.FileServer(http.Dir("static/js"))
 				router.PathPrefix("/js").Handler(http.StripPrefix("/js/", jsHandler))
 			}
-			legalFs := http.Dir(utils.Config.Frontend.LegalDir)
-			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", handlers.CustomFileServer(http.FileServer(legalFs), legalFs, handlers.NotFound)))
 			fileSys := http.FS(static.Files)
 			router.PathPrefix("/").Handler(handlers.CustomFileServer(http.FileServer(fileSys), fileSys, handlers.NotFound))
 
@@ -665,10 +648,10 @@ func main() {
 		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))
 
 		if utils.Config.Frontend.HttpWriteTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+			utils.Config.Frontend.HttpWriteTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpReadTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+			utils.Config.Frontend.HttpReadTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpIdleTimeout == 0 {
 			utils.Config.Frontend.HttpIdleTimeout = time.Second * 60

@@ -715,3 +715,10 @@ type EnsDomainResponse struct {
 	Address string `json:"address"`
 	Domain  string `json:"domain"`
 }
+
+type ApiProposalLuckResponse struct {
+	ProposalLuck            *float64 `json:"proposal_luck"`             // The proposal luck for the given set of validators as a percentage
+	AverageProposalInterval float64  `json:"average_proposal_interval"` // The average slot interval between proposals for the given set of validators
+	NextProposalEstimateTs  *int64   `json:"next_proposal_estimate_ts"` // The estimated timestamp of the next proposal
+	TimeFrameName           *string  `json:"time_frame_name"`           // The timeframe for which the luck is calculated
+}

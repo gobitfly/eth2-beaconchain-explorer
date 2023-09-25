@@ -42,20 +42,20 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -76,6 +76,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 
 	var epochs []*types.EpochsPageData
 
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	if search == -1 {
 		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
@@ -88,13 +89,13 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
-				finalized,
+				(epoch <= $3) AS finalized,
 				eligibleether,
 				globalparticipationrate,
 				votedether
 			FROM epochs 
 			WHERE epoch >= $1 AND epoch <= $2
-			ORDER BY epoch DESC`, endEpoch, startEpoch)
+			ORDER BY epoch DESC`, endEpoch, startEpoch, latestFinalizedEpoch)
 	} else {
 		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
@@ -106,13 +107,13 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
-				finalized,
+				(epoch <= $2) AS finalized,
 				eligibleether,
 				globalparticipationrate,
 				votedether
 			FROM epochs 
 			WHERE epoch = $1
-			ORDER BY epoch DESC`, search)
+			ORDER BY epoch DESC`, search, latestFinalizedEpoch)
 	}
 	if err != nil {
 		logger.Errorf("error retrieving epoch data: %v", err)

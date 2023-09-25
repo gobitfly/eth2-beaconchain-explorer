@@ -267,7 +267,7 @@
                 $('#sync-table').DataTable({
                     processing: true,
                     serverSide: true,
-                    ordering: true,
+                    ordering: false,
                     order: [[0, 'desc']],
                     lengthChange: false,
                     stateSave: true,
@@ -294,17 +294,17 @@
                         {
                             targets: 0,
                             data: '0',
-                            "orderable": true
+                            "orderable": false
                         },
                         {
                             targets: 1,
                             data: '1',
-                            "orderable": true
+                            "orderable": false
                         },
                         {
                             targets: 2,
                             data: '2',
-                            "orderable": true
+                            "orderable": false
                         },
                         {
                             targets: 3,
@@ -689,14 +689,6 @@
             {{ .IncomeTotalFormatted }}
           </td>
         </tr>
-        {{ if .IncomeProposerFormatted }}
-          <tr>
-            <th scope="row">Proposer Rewards</th>
-            <td class="pl-0">
-              {{ .IncomeProposerFormatted }}
-            </td>
-          </tr>
-        {{ end }}
         <tr class="">
           <th scope="row">Income Today</th>
           <td class="pl-0">

@@ -62,6 +62,13 @@ func main() {
 	}
 	utils.Config = cfg
 
+	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
+		utils.LogFatal(fmt.Errorf("error ether SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.ClConfig.SlotsPerEpoch, utils.Config.Chain.ClConfig.SecondsPerSlot), "", 0)
+		return
+	} else {
+		logrus.Infof("Writing statistic with: SlotsPerEpoch [%v] or SecondsPerSlot [%v]", utils.Config.Chain.ClConfig.SlotsPerEpoch, utils.Config.Chain.ClConfig.SecondsPerSlot)
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
 		Password:     cfg.WriterDatabase.Password,
@@ -109,14 +116,12 @@ func main() {
 
 	price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 
-	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
-		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
-	} else if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
-		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
+	if utils.Config.TieredCacheProvider != "redis" {
+		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis)")
 	}
 
-	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
+		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
 	}
 
 	if opt.statisticsDaysToExport != "" {
@@ -141,7 +146,7 @@ func main() {
 
 				err = db.WriteValidatorStatisticsForDay(uint64(d), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 				if err != nil {
-					logrus.Errorf("error exporting stats for day %v: %v", d, err)
+					utils.LogError(err, fmt.Errorf("error exporting stats for day %v", d), 0)
 					break
 				}
 			}
@@ -181,7 +186,7 @@ func main() {
 
 			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), opt.concurrencyTotal, opt.concurrencyCl, opt.concurrencyFailedAttestations)
 			if err != nil {
-				logrus.Errorf("error exporting stats for day %v: %v", opt.statisticsDayToExport, err)
+				utils.LogError(err, fmt.Errorf("error exporting stats for day %v", opt.statisticsDayToExport), 0)
 			}
 		}
 
@@ -232,6 +237,7 @@ func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64, concurrencyFa
 		currentDay := latestEpoch / epochsPerDay
 		previousDay := currentDay - 1
 
+		logrus.Infof("Performing statisticsLoop with currentDay %v and previousDay %v", currentDay, previousDay)
 		if previousDay > currentDay {
 			previousDay = currentDay
 		}
@@ -250,7 +256,7 @@ func statisticsLoop(concurrencyTotal uint64, concurrencyCl uint64, concurrencyFa
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
 					err := db.WriteValidatorStatisticsForDay(day, concurrencyTotal, concurrencyCl, concurrencyFailedAttestations)
 					if err != nil {
-						logrus.Errorf("error exporting stats for day %v: %v", day, err)
+						utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
 						break
 					}
 				}

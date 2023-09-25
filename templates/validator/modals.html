@@ -50,7 +50,7 @@
 
 {{ define "validatorEditModal" }}
   <div class="modal fade" id="edit-validator-modal" tabindex="-1" role="dialog" aria-labelledby="edit-validator-modal-label" aria-hidden="true">
-    <form action="0x{{ printf "%x" .PublicKey }}/save" method="post">
+    <form action="0x{{ printf "%x" .PublicKey }}/name" method="POST">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -62,7 +62,6 @@
           <div class="modal-body">
             <p>In order to save any validator details you will need to provide a signed message of the eth account that sent the first valid deposit ({{ formatEth1Address .Eth1DepositAddress }}) for verification. You can for example use <a target="_blank" href="https://www.mycrypto.com/sign-and-verify-message/sign">MyCrypto</a> or <a target="_blank" href="https://www.myetherwallet.com/wallet/sign">MyEtherWallet</a> to generate the signature.</p>
             <p>The signature text MUST CONTAIN the string <b>beaconcha.in</b>.</p>
-            <input type="hidden" value="0x{{ printf "%x" .PublicKey }}" name="pubkey" />
             <div class="form-group">
               <label for="input-name">Custom name or twitter handle</label>
               <input class="form-control" id="input-name" type="text" maxlength="40" name="name" />

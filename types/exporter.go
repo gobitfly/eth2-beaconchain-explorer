@@ -45,13 +45,20 @@ type FinalityCheckpoints struct {
 	} `json:"finalized"`
 }
 
+type Slot uint64
+type ValidatorIndex uint64
+
 // EpochData is a struct to hold epoch data
 type EpochData struct {
 	Epoch                   uint64
 	Validators              []*Validator
 	ValidatorAssignmentes   *EpochAssignments
 	Blocks                  map[uint64]map[string]*Block
+	FutureBlocks            map[uint64]map[string]*Block
 	EpochParticipationStats *ValidatorParticipation
+	AttestationDuties       map[Slot]map[ValidatorIndex][]Slot
+	SyncDuties              map[Slot]map[ValidatorIndex]bool
+	Finalized               bool
 }
 
 // ValidatorParticipation is a struct to hold validator participation data
@@ -60,6 +67,7 @@ type ValidatorParticipation struct {
 	GlobalParticipationRate float32
 	VotedEther              uint64
 	EligibleEther           uint64
+	Finalized               bool
 }
 
 // BeaconCommitteItem is a struct to hold beacon committee data
@@ -127,6 +135,8 @@ type Block struct {
 	ExcessBlobGas              uint64
 	BlobKZGCommitments         [][]byte
 	BlobKZGProofs              [][]byte
+	AttestationDuties          map[ValidatorIndex]Slot
+	SyncDuties                 map[ValidatorIndex]bool
 }
 
 type SignedBLSToExecutionChange struct {

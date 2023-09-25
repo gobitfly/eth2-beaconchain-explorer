@@ -29,20 +29,6 @@ func Correlations(w http.ResponseWriter, r *http.Request) {
 
 	var correlationsTemplate = templates.GetTemplate(templateFiles...)
 
-	// data := &types.PageData{
-	// 	Meta: &types.Meta{
-	// 		Image:       "https://etherchain.org/img/ballon-512x512.png",
-	// 		Title:       fmt.Sprintf("%v - Correlations - etherchain.org - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-	// 		Description: "etherchain.org makes the Ethereum block chain accessible to non-technical end users",
-	// 		Path:        "/correlations",
-	// 		GATag:       utils.Config.Frontend.GATag,
-	// 	},
-	// 	Active:       "stats",
-	// 	Data:         indicators,
-	// 	CurrentBlock: services.LatestBlock(),
-	// 	GPO:          services.LatestGasNowData(),
-	// }
-
 	if handleTemplateError(w, r, "correlations.go", "Correlations", "", correlationsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}

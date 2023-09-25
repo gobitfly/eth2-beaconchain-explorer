@@ -183,19 +183,23 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
 		return nil, err
 	}
 
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
 		return nil, err
+	}
+	if start > 10000 {
+		// limit offset to 10000, otherwise the query will be too slow
+		start = 10000
 	}
 
 	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
 		return nil, err
 	}
 	if length < 0 {
@@ -229,8 +233,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 	dataQuery, err := parseValidatorsDataQueryParams(r)
 	if err != nil {
-		logger.Errorf("error parsing query-data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error parsing query-data: %v", err)
+		http.Error(w, "Error: Invalid query-data parameter.", http.StatusBadRequest)
 		return
 	}
 
@@ -362,6 +366,13 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		countFiltered = countTotal
+	}
+
+	if countTotal > 10000 {
+		countTotal = 10000
+	}
+	if countFiltered > 10000 {
+		countFiltered = 10000
 	}
 
 	data := &types.DataTableResponse{
