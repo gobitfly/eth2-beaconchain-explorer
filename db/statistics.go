@@ -173,6 +173,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	if err != nil {
 		return fmt.Errorf("error retrieving raw sql connection: %w", err)
 	}
+	defer conn.Close()
 
 	err = conn.Raw(func(driverConn interface{}) error {
 		conn := driverConn.(*stdlib.Conn).Conn()
@@ -300,9 +301,19 @@ func WriteValidatorStatsExported(day uint64, tx pgx.Tx) error {
 
 	logger.Infof("marking day export as completed in the validator_stats_status table for day %v", day)
 	_, err := tx.Exec(context.Background(), `
-		UPDATE validator_stats_status
-		SET status = true
-		WHERE day=$1;
+		INSERT INTO validator_stats_status (day, status,failed_attestations_exported,sync_duties_exported,withdrawals_deposits_exported,balance_exported,cl_rewards_exported,el_rewards_exported,total_performance_exported,block_stats_exported,total_accumulation_exported)
+		VALUES ($1, true, true, true, true,true,true,true,true,true,true)
+		ON CONFLICT (day) DO UPDATE
+		SET status = true,
+		failed_attestations_exported = true,
+		sync_duties_exported = true,
+		withdrawals_deposits_exported = true,
+		balance_exported = true,
+		cl_rewards_exported = true,
+		el_rewards_exported = true,
+		total_performance_exported = true,
+		block_stats_exported = true,
+		total_accumulation_exported = true;
 		`, day)
 	if err != nil {
 		return fmt.Errorf("error marking day export as completed in the validator_stats_status table for day %v: %w", day, err)
