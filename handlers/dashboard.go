@@ -509,57 +509,6 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
-	var limit uint64 = 300
-	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false, true, lowerBoundDay)
-	if err != nil {
-		return nil, err
-	}
-
-	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
-	if err != nil {
-		return nil, err
-	}
-	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
-	if err != nil {
-		return nil, err
-	}
-
-	var chartData = make([]*types.ChartDataPoint, len(blocks))
-	epochsPerDay := utils.EpochsPerDay()
-	lastFinalizedEpoch := services.LatestFinalizedEpoch()
-	color := "#90ed7d"
-
-	for i := len(blocks) - 1; i >= 0; i-- {
-		blockEpoch := utils.TimeToEpoch(blocks[i].Time.AsTime())
-		consData := consMap[blocks[i].Number]
-		day := int64(consData.Epoch / epochsPerDay)
-		ts := float64(utils.DayToTime(day).Unix() * 1000)
-		if blockEpoch > int64(lastFinalizedEpoch) {
-			// we need to fill also the first items in the list, otherwise the charts break
-			chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-				X:     ts,
-				Y:     0,
-				Color: color,
-			}
-			continue
-		}
-		var totalReward float64
-		if relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]; ok {
-			totalReward = utils.WeiToEther(relayData.MevBribe.BigInt()).InexactFloat64()
-		} else {
-			totalReward = utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).InexactFloat64()
-		}
-
-		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-			X:     ts,
-			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
-			Color: color,
-		}
-	}
-	return chartData, nil
-}
-
 // DashboardDataBalance retrieves the income history of a set of validators
 func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
