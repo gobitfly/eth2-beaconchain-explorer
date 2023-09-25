@@ -1,6 +1,9 @@
 function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, height, currency) {
   return {
     colors: ["#90ed7d", "#7cb5ec"],
+    exporting: {
+      scale: 1,
+    },
     rangeSelector: {
       enabled: false,
     },
@@ -106,9 +109,6 @@ function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, hei
         }
 
         return text
-      },
-      exporting: {
-        scale: 1,
       },
     },
     responsive: {
