@@ -306,6 +306,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				tracePb.To = trace.To.Bytes()
 				tracePb.Value = common.FromHex(trace.Value)
 				if trace.Type == "CREATE" {
+				} else if trace.Type == "SELFDESTRUCT" {
 				} else if trace.Type == "SUICIDE" {
 				} else if trace.Type == "CALL" || trace.Type == "DELEGATECALL" || trace.Type == "STATICCALL" {
 				} else if trace.Type == "" {
