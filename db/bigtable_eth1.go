@@ -1055,10 +1055,6 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 		if i > 9999 {
 			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
 		}
-		if tx.Type == 3 {
-			// skip blob-txs
-			continue
-		}
 		iReverse := reversePaddedIndex(i, 10000)
 		// logger.Infof("address to: %x address: contract: %x, len(to): %v, len(contract): %v, contranct zero: %v", tx.GetTo(), tx.GetContractAddress(), len(tx.GetTo()), len(tx.GetContractAddress()), bytes.Equal(tx.GetContractAddress(), ZERO_ADDRESS))
 		to := tx.GetTo()
@@ -1079,6 +1075,7 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 
 		key := fmt.Sprintf("%s:TX:%x", bigtable.chainId, tx.GetHash())
 		fee := new(big.Int).Mul(new(big.Int).SetBytes(tx.GetGasPrice()), big.NewInt(int64(tx.GetGasUsed()))).Bytes()
+		blobFee := new(big.Int).Mul(new(big.Int).SetBytes(tx.GetBlobGasPrice()), big.NewInt(int64(tx.GetBlobGasUsed()))).Bytes()
 		indexedTx := &types.Eth1TransactionIndexed{
 			Hash:               tx.GetHash(),
 			BlockNumber:        blk.GetNumber(),
@@ -1089,6 +1086,8 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			Value:              tx.GetValue(),
 			TxFee:              fee,
 			GasPrice:           tx.GetGasPrice(),
+			BlobTxFee:          blobFee,
+			BlobGasPrice:       tx.GetBlobGasPrice(),
 			IsContractCreation: isContract,
 			InvokesContract:    invokesContract,
 			ErrorMsg:           tx.GetErrorMsg(),
@@ -1171,6 +1170,7 @@ func (bigtable *Bigtable) TransformBlobTx(blk *types.Eth1Block, cache *freecache
 
 		key := fmt.Sprintf("%s:BTX:%x", bigtable.chainId, tx.GetHash())
 		fee := new(big.Int).Mul(new(big.Int).SetBytes(tx.GetGasPrice()), big.NewInt(int64(tx.GetGasUsed()))).Bytes()
+		blobFee := new(big.Int).Mul(new(big.Int).SetBytes(tx.GetBlobGasPrice()), big.NewInt(int64(tx.GetBlobGasUsed()))).Bytes()
 		indexedTx := &types.Eth1BlobTransactionIndexed{
 			Hash:                tx.GetHash(),
 			BlockNumber:         blk.GetNumber(),
@@ -1180,8 +1180,8 @@ func (bigtable *Bigtable) TransformBlobTx(blk *types.Eth1Block, cache *freecache
 			Value:               tx.GetValue(),
 			TxFee:               fee,
 			GasPrice:            tx.GetGasPrice(),
+			BlobTxFee:           blobFee,
 			BlobGasPrice:        tx.GetBlobGasPrice(),
-			BlobGasUsed:         tx.GetBlobGasUsed(),
 			InvokesContract:     invokesContract,
 			ErrorMsg:            tx.GetErrorMsg(),
 			BlobVersionedHashes: tx.GetBlobVersionedHashes(),

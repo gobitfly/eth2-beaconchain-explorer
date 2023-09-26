@@ -82,11 +82,13 @@ func (bi *BlobIndexer) Start() {
 func (bi *BlobIndexer) Index() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(3)
+
 	headHeader := &BeaconBlockHeaderResponse{}
 	finalizedHeader := &BeaconBlockHeaderResponse{}
 	spec := &BeaconSpecResponse{}
+
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(3)
 	g.Go(func() error {
 		err := utils.HttpReq(gCtx, http.MethodGet, fmt.Sprintf("%s/eth/v1/config/spec", bi.clEndpoint), nil, spec)
 		if err != nil {
