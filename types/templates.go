@@ -1709,7 +1709,7 @@ type Eth1TxData struct {
 		EffectiveFee   []byte
 		BlobGasUsed    uint64
 		BlobGasPrice   []byte
-		BlobFee        []byte
+		BlobTxFee      []byte
 	}
 	Epoch                       EpochInfo
 	TypeFormatted               string

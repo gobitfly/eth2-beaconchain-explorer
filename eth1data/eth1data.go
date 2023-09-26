@@ -122,6 +122,17 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		txPageData.Gas.TxFee = msg.GasFeeCap.Mul(msg.GasFeeCap, big.NewInt(int64(receipt.GasUsed))).Bytes()
 	}
 
+	if receipt.Type == 3 {
+		txPageData.Gas.BlobGasPrice = receipt.BlobGasPrice.Bytes()
+		txPageData.Gas.BlobGasUsed = receipt.BlobGasUsed
+		txPageData.Gas.BlobTxFee = new(big.Int).Mul(receipt.BlobGasPrice, big.NewInt(int64(txPageData.Gas.BlobGasUsed))).Bytes()
+
+		txPageData.BlobHashes = make([][]byte, len(tx.BlobHashes()))
+		for i, h := range tx.BlobHashes() {
+			txPageData.BlobHashes[i] = h.Bytes()
+		}
+	}
+
 	if receipt.Status != 1 {
 		data, err := rpc.CurrentErigonClient.TraceParityTx(tx.Hash().Hex())
 		if err != nil {
