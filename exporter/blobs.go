@@ -251,11 +251,11 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 						Metadata: map[string]string{
 							"slot":              fmt.Sprintf("%d", d.Slot),
 							"index":             fmt.Sprintf("%d", d.Index),
-							"block_root":        fmt.Sprintf("%s", d.BlockRoot),
-							"block_parent_root": fmt.Sprintf("%s", d.BlockParentRoot),
+							"block_root":        d.BlockRoot,
+							"block_parent_root": d.BlockParentRoot,
 							"proposer_index":    fmt.Sprintf("%d", d.ProposerIndex),
-							"kzg_commitment":    fmt.Sprintf("%s", d.KzgCommitment),
-							"kzg_proof":         fmt.Sprintf("%s", d.KzgProof),
+							"kzg_commitment":    d.KzgCommitment,
+							"kzg_proof":         d.KzgProof,
 						},
 					})
 					metrics.TaskDuration.WithLabelValues("blobindexer_put_blob").Observe(time.Since(tS3PutObj).Seconds())
