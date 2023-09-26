@@ -1059,6 +1059,11 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 		return 0, nil
 	}
 
+	lastFinalizedEpoch := services.LatestFinalizedEpoch()
+	if epoch > lastFinalizedEpoch {
+		epoch = lastFinalizedEpoch
+	}
+
 	// retrieve activation and exit epochs from database per validator
 	type ValidatorInfo struct {
 		Id                         int64  `db:"validatorindex"`

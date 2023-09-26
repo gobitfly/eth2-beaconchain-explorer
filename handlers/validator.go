@@ -2004,7 +2004,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// extract correct slots
 		tableData = make([][]interface{}, 0, length)
-		for slot := endSlot; slot >= startSlot; slot-- {
+		for index := startIndex; index >= endIndex; index-- {
+
+			slot := slots[index]
 
 			epoch := utils.EpochOfSlot(slot)
 			participation := participations[slot]
@@ -2020,10 +2022,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 					},
 				)
 			}
-
-			// if utils.SlotToTime(slot).Before(time.Now()) {
-			// 	continue
-			// }
 
 			status := uint64(0)
 
@@ -2042,7 +2040,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				utils.FormatSyncParticipations(participation),
 			})
 
-			if slot == 0 {
+			if index == 0 {
 				break
 			}
 		}
