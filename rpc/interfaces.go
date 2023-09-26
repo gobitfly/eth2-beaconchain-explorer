@@ -19,6 +19,7 @@ type Client interface {
 	GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error)
 	GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error)
 	GetBalancesForEpoch(epoch int64) (map[uint64]uint64, error)
+	GetValidatorState(epoch uint64) (*StandardValidatorsResponse, error)
 }
 
 type Eth1Client interface {
