@@ -63,6 +63,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	isContract := false
 	txns := &types.DataTableResponse{}
+	blobs := &types.DataTableResponse{}
 	internal := &types.DataTableResponse{}
 	erc20 := &types.DataTableResponse{}
 	erc721 := &types.DataTableResponse{}
@@ -87,6 +88,14 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", "")
 		if err != nil {
 			return fmt.Errorf("GetAddressTransactionsTableData: %w", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		blobs, err = db.BigtableClient.GetAddressBlobTableData(addressBytes, "", "")
+		if err != nil {
+			return fmt.Errorf("GetAddressBlobTableData: %w", err)
 		}
 		return nil
 	})
@@ -189,6 +198,14 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	ethPrice := utils.WeiBytesToEther(metadata.EthBalance.Balance).Mul(decimal.NewFromInt(int64(price)))
 	tabs := []types.Eth1AddressPageTabs{}
 
+	if blobs != nil && len(blobs.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "blobTxns",
+			Href: "#blobTxns",
+			Text: "Blob Txns",
+			Data: blobs,
+		})
+	}
 	if internal != nil && len(internal.Data) != 0 {
 		tabs = append(tabs, types.Eth1AddressPageTabs{
 			Id:   "internalTxns",

@@ -2461,9 +2461,9 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string,
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
 			t.BlobGasPrice,
-			t.BlobGasUsed,
+			t.BlobTxFee,
+			len(t.BlobVersionedHashes),
 		}
 	}
 
