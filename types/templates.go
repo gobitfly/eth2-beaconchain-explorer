@@ -1590,6 +1590,7 @@ type Eth1AddressPageData struct {
 	BlocksMinedTable   *DataTableResponse
 	UnclesMinedTable   *DataTableResponse
 	TransactionsTable  *DataTableResponse
+	BlobTxnsTable      *DataTableResponse
 	InternalTxnsTable  *DataTableResponse
 	Erc20Table         *DataTableResponse
 	Erc721Table        *DataTableResponse

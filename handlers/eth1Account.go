@@ -272,6 +272,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		Metadata:           metadata,
 		WithdrawalsSummary: withdrawalSummary,
 		TransactionsTable:  txns,
+		BlobTxnsTable:      blobs,
 		InternalTxnsTable:  internal,
 		Erc20Table:         erc20,
 		Erc721Table:        erc721,
