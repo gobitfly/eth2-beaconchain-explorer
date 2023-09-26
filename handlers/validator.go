@@ -2004,7 +2004,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// extract correct slots
 		tableData = make([][]interface{}, 0, length)
-		for index := startIndex; index >= endIndex; index-- {
+		for index := endIndex; index <= startIndex; index++ {
 
 			slot := slots[index]
 
@@ -2040,9 +2040,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				utils.FormatSyncParticipations(participation),
 			})
 
-			if index == 0 {
-				break
-			}
+			// if index == 0 {
+			// 	break
+			// }
 		}
 	}
 
