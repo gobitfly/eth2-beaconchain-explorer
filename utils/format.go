@@ -339,6 +339,12 @@ func FormatEth1Address(addr []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"/address/%s\" class=\"text-monospace\">%s…</a>%s", eth1Addr, eth1Addr[:8], copyBtn))
 }
 
+// FormatEth1Name will return the eth1-name formated as html
+func FormatEth1Name(addr string) template.HTML {
+	copyBtn := CopyButton(addr)
+	return template.HTML(fmt.Sprintf("<a href=\"/address/%s\">%s</a>%s", addr, addr, copyBtn))
+}
+
 // FormatEth1Block will return the eth1-block formated as html
 func FormatEth1Block(block uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", block))
