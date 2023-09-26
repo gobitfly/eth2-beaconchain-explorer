@@ -113,9 +113,10 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 func PricingPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		utils.LogError(err, "error parsing form", 0)
+		utils.LogError(err, "error parsing form for pricing request", 0, map[string]interface{}{
+			"route": r.URL.String(),
+		})
 		utils.SetFlash(w, r, "pricing_flash", "Error: invalid form submitted")
-		logger.Errorf("error parsing pricing request form for %v route: %v", r.URL.String(), err)
 		http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 		return
 	}

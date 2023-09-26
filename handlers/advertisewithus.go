@@ -39,13 +39,15 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		utils.LogError(err, "error parsing form", 0)
+		utils.LogError(err, "error parsing ad request form", 0, map[string]interface{}{
+			"route": r.URL.String(),
+		})
 		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
 		return
 	}
 
-	if err := utils.HandleRecaptcha(w, r, "/pricing"); err != nil {
+	if err := utils.HandleRecaptcha(w, r, "/advertisewithus"); err != nil {
 		return
 	}
 

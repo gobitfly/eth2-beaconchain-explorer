@@ -37,13 +37,15 @@ func MobilePage(w http.ResponseWriter, r *http.Request) {
 func MobilePagePost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		utils.LogError(err, "error parsing form", 0)
+		utils.LogError(err, "error parsing form for mobile request", 0, map[string]interface{}{
+			"route": r.URL.String(),
+		})
 		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/mobile", http.StatusSeeOther)
 		return
 	}
 
-	if err := utils.HandleRecaptcha(w, r, "/pricing"); err != nil {
+	if err := utils.HandleRecaptcha(w, r, "/mobile"); err != nil {
 		return
 	}
 
