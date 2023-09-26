@@ -56,6 +56,11 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return fmt.Errorf("error retrieving exported state: %w", err)
 	}
 
+	if exported.Status {
+		logger.Infof("Skipping day %v as it is already exported", day)
+		return nil
+	}
+
 	previousDayExported := Exported{}
 	err = WriterDb.Get(&previousDayExported, `
 		SELECT 
@@ -88,12 +93,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			Day:            int64(day),
 		})
 	}
-
-	// temporarily disabled for debugging
-	// if exported.Status {
-	// 	logger.Infof("Skipping day %v as it is already exported", day)
-	// 	return nil
-	// }
 
 	g := &errgroup.Group{}
 
@@ -137,7 +136,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	var previousDayStatisticsData []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		previousDayStatisticsData, err = gatherPreviousDayStatisticsData(int64(day)) // convert to int64 to avoid underflows
+		previousDayStatisticsData, err = gatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -153,7 +152,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 	for index, data := range validatorData {
 
 		previousDayData := &types.ValidatorStatsTableDbRow{
-			ValidatorIndex: uint64(index),
+			ValidatorIndex: uint64(data.ValidatorIndex),
 			EndBalance:     data.StartBalance, // special case for handling day 0
 		}
 
@@ -162,7 +161,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		}
 
 		if data.ValidatorIndex != previousDayData.ValidatorIndex {
-			return fmt.Errorf("logic error when retrieving previous day data for validator %v (%v wanted, %v retrieved)", index, index, previousDayData.ValidatorIndex)
+			return fmt.Errorf("logic error when retrieving previous day data for validator %v (%v wanted, %v retrieved)", index, data.ValidatorIndex, previousDayData.ValidatorIndex)
 		}
 
 		// update attestation totals
@@ -176,6 +175,10 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		// calculate cl reward & update totals
 		data.ClRewardsGWei = data.EndBalance - previousDayData.EndBalance + data.WithdrawalsAmount - data.DepositsAmount
 		data.ClRewardsGWeiTotal = previousDayData.ClRewardsGWeiTotal + data.ClRewardsGWei
+
+		if day == 0 { // special case for deposits included in the genesis block
+			data.DepositsAmount = data.DepositsAmount + data.GenesisDepositsAmount
+		}
 
 		// update el reward total
 		data.ElRewardsWeiTotal = previousDayData.ElRewardsWeiTotal.Add(data.ElRewardsWei)
@@ -483,7 +486,7 @@ func gatherValidatorBlockStats(day uint64, data []*types.ValidatorStatsTableDbRo
 		;`,
 		firstEpoch, lastEpoch, MaxSqlInteger)
 	if err != nil {
-		return fmt.Errorf("error inserting blocks into validator_stats for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
+		return fmt.Errorf("error retrieving blocks for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
 	}
 
 	mux.Lock()
@@ -510,7 +513,7 @@ func gatherValidatorBlockStats(day uint64, data []*types.ValidatorStatsTableDbRo
 		`,
 		firstEpoch, lastEpoch, MaxSqlInteger)
 	if err != nil {
-		return fmt.Errorf("error inserting slashings into validator_stats for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
+		return fmt.Errorf("error retrieving slashings for day [%v], firstEpoch [%v] and lastEpoch [%v]: %w", day, firstEpoch, lastEpoch, err)
 	}
 
 	mux.Lock()
@@ -677,12 +680,12 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where blocks.slot >= $1 and blocks.slot <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
+			where blocks.slot > 0 and blocks.slot >= $1 and blocks.slot <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
 			group by validators.validatorindex`
 
 	err := WriterDb.Select(&resDeposits, depositsQry, firstSlot, lastSlot)
 	if err != nil {
-		return fmt.Errorf("error inserting deposits into validator_stats for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
+		return fmt.Errorf("error retrieving deposits for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
 	}
 
 	mux.Lock()
@@ -691,6 +694,28 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 		data[r.ValidatorIndex].DepositsAmount = int64(r.DepositsAmount)
 	}
 	mux.Unlock()
+
+	if day == 0 {
+		resGenesisDeposits := make([]*resRowDeposits, 0, 1024)
+		genesisDepositsQry := `
+			select validators.validatorindex, count(*) AS deposits, sum(amount) AS deposits_amount
+			from blocks_deposits
+			inner join validators on blocks_deposits.publickey = validators.pubkey
+			inner join blocks on blocks_deposits.block_root = blocks.blockroot
+			where blocks.slot = 0 and blocks_deposits.valid_signature
+			group by validators.validatorindex`
+
+		err := WriterDb.Select(&resGenesisDeposits, genesisDepositsQry)
+		if err != nil {
+			return fmt.Errorf("error retrieving genesis deposits for day [%v]: %w", day, err)
+		}
+
+		mux.Lock()
+		for _, r := range resGenesisDeposits {
+			data[r.ValidatorIndex].GenesisDepositsAmount = int64(r.DepositsAmount)
+		}
+		mux.Unlock()
+	}
 
 	type resRowWithdrawals struct {
 		ValidatorIndex    uint64 `db:"validatorindex"`
@@ -706,7 +731,7 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 			group by validatorindex;`
 	err = WriterDb.Select(&resWithdrawals, withdrawalsQuery, firstSlot, lastSlot)
 	if err != nil {
-		return fmt.Errorf("error inserting withdrawals into validator_stats for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
+		return fmt.Errorf("error retrieving withdrawals for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
 	}
 
 	mux.Lock()
@@ -802,7 +827,7 @@ func gatherValidatorFailedAttestationsStatisticsForDay(validators []uint64, day 
 	return nil
 }
 
-func gatherPreviousDayStatisticsData(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
+func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
 	ret := make([]*types.ValidatorStatsTableDbRow, 0)
 
 	err := WriterDb.Select(&ret, `SELECT 
@@ -841,10 +866,10 @@ func gatherPreviousDayStatisticsData(day int64) ([]*types.ValidatorStatsTableDbR
 		COALESCE(mev_rewards_wei, 0) AS mev_rewards_wei,
 		COALESCE(mev_rewards_wei_total, 0) AS mev_rewards_wei_total
 	 from validator_stats WHERE day = $1 ORDER BY validatorindex
-	`, day-1)
+	`, day)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retreiving previous day statistics data: %w", err)
+		return nil, fmt.Errorf("error statistics for day %v data: %w", day, err)
 	}
 
 	return ret, nil
