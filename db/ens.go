@@ -308,11 +308,10 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	return bulkData, bulkMetadataUpdates, nil
 }
 
-// Ens names are only supported to a length of 40
-// Source: https://github.com/wealdtech/go-ens/blob/5b323a4ef0472f06c515723b060b166843b9db08/resolver.go#L190
 func verifyName(name string) error {
-	if (strings.HasPrefix(name, "0x") && len(name) > 42) || (!strings.HasPrefix(name, "0x") && len(name) > 40) {
-		return fmt.Errorf("name too long")
+	// limited by max capacity of db (caused by btrees of indexes); tests showed maximum of 2684 (added buffer)
+	if len(name) > 2048 {
+		return fmt.Errorf("name too long: %v", name)
 	}
 	return nil
 }

@@ -450,8 +450,8 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	if len(param) != 0 {
 		days, err := strconv.ParseUint(param, 10, 32)
 		if err != nil {
-			logger.Error(err)
-			http.Error(w, "Error: invalid days parameter", http.StatusBadRequest)
+			logger.Warnf("error parsing days: %v", err)
+			http.Error(w, "Error: invalid parameter days", http.StatusBadRequest)
 			return
 		}
 		lastStatsDay, err := services.LatestExportedStatisticDay()
@@ -507,57 +507,6 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
-}
-
-func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
-	var limit uint64 = 300
-	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false, true, lowerBoundDay)
-	if err != nil {
-		return nil, err
-	}
-
-	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
-	if err != nil {
-		return nil, err
-	}
-	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
-	if err != nil {
-		return nil, err
-	}
-
-	var chartData = make([]*types.ChartDataPoint, len(blocks))
-	epochsPerDay := utils.EpochsPerDay()
-	lastFinalizedEpoch := services.LatestFinalizedEpoch()
-	color := "#90ed7d"
-
-	for i := len(blocks) - 1; i >= 0; i-- {
-		blockEpoch := utils.TimeToEpoch(blocks[i].Time.AsTime())
-		consData := consMap[blocks[i].Number]
-		day := int64(consData.Epoch / epochsPerDay)
-		ts := float64(utils.DayToTime(day).Unix() * 1000)
-		if blockEpoch > int64(lastFinalizedEpoch) {
-			// we need to fill also the first items in the list, otherwise the charts break
-			chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-				X:     ts,
-				Y:     0,
-				Color: color,
-			}
-			continue
-		}
-		var totalReward float64
-		if relayData, ok := relaysData[common.BytesToHash(blocks[i].Hash)]; ok {
-			totalReward = utils.WeiToEther(relayData.MevBribe.BigInt()).InexactFloat64()
-		} else {
-			totalReward = utils.WeiToEther(utils.Eth1TotalReward(blocks[i])).InexactFloat64()
-		}
-
-		chartData[len(blocks)-1-i] = &types.ChartDataPoint{
-			X:     ts,
-			Y:     utils.ExchangeRateForCurrency(currency) * totalReward,
-			Color: color,
-		}
-	}
-	return chartData, nil
 }
 
 // DashboardDataBalance retrieves the income history of a set of validators
@@ -648,14 +597,14 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("error converting datatables data parameter from string to int: %v", err), 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 

@@ -16,7 +16,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"io"
-	"math"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -1502,7 +1501,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // ApiValidator godoc
 // @Summary Get up to 100 validators
 // @Tags Validator
-// @Description Searching for too many validators based on their pubkeys will lead to an "URI too long" error
+// @Description Searching for too many validators based on their pubkeys will lead to a "URI too long" error
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
@@ -1513,10 +1512,11 @@ func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get unlimited validators
+// @Summary Get up to 100 validators
 // @Tags Validator
+// @Description This POST endpoint exists because the GET endpoint can lead to a "URI too long" error when searching for too many validators based on their pubkeys.
 // @Produce  json
-// @Param  indexOrPubkey body types.DashboardRequest true "Validator indicesOrPubkeys, comma separated"
+// @Param  indexOrPubkey body types.DashboardRequest true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator [post]
@@ -1530,16 +1530,13 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	var maxValidators int
+	maxValidators := getUserPremium(r).MaxValidators
+
 	var param string
 	if r.Method == http.MethodGet {
-		maxValidators = getUserPremium(r).MaxValidators
-
 		// Get the validators from the URL
 		param = vars["indexOrPubkey"]
 	} else {
-		maxValidators = math.MaxInt
-
 		// Get the validators from the request body
 		decoder := json.NewDecoder(r.Body)
 		req := &types.DashboardRequest{}
