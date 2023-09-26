@@ -178,6 +178,7 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 		if day == 0 { // special case for deposits included in the genesis block
 			data.DepositsAmount = data.DepositsAmount + data.GenesisDepositsAmount
+			data.Deposits = data.Deposits + data.GenesisDeposits
 		}
 
 		// update el reward total
@@ -712,6 +713,7 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 
 		mux.Lock()
 		for _, r := range resGenesisDeposits {
+			data[r.ValidatorIndex].GenesisDeposits = int64(r.Deposits)
 			data[r.ValidatorIndex].GenesisDepositsAmount = int64(r.DepositsAmount)
 		}
 		mux.Unlock()

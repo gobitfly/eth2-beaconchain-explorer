@@ -671,6 +671,7 @@ type ValidatorStatsTableDbRow struct {
 
 	Deposits              int64 `db:"deposits"`
 	DepositsAmount        int64 `db:"deposits_amount"`
+	GenesisDeposits       int64 `db:"-"`
 	GenesisDepositsAmount int64 `db:"-"`
 
 	Withdrawals       int64 `db:"withdrawals"`
