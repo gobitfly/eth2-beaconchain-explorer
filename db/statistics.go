@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -181,10 +180,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 		// update mev reward total
 		data.MEVRewardsWeiTotal = previousDayData.MEVRewardsWeiTotal.Add(data.MEVRewardsWei)
-
-		if data.ValidatorIndex == 10 {
-			spew.Dump(data)
-		}
 	}
 
 	conn, err := WriterDb.Conn(context.Background())
@@ -290,8 +285,17 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 		logger.Infof("batch insert of statistics data completed")
 
-		if err := WriteValidatorTotalPerformance(day, tx); err != nil {
-			return fmt.Errorf("error in WriteValidatorTotalPerformance: %w", err)
+		lastExportedStatsDay, err := GetLastExportedStatisticDay()
+		if err != nil && err != ErrNoStats {
+			return fmt.Errorf("error retrieving last exported statistics day: %w", err)
+		}
+
+		if day > lastExportedStatsDay {
+			if err := WriteValidatorTotalPerformance(day, tx); err != nil {
+				return fmt.Errorf("error in WriteValidatorTotalPerformance: %w", err)
+			}
+		} else {
+			logger.Infof("skipping total performance export as last exported day (%v) is greater than the exported day (%v)", lastExportedStatsDay, day)
 		}
 
 		if err := WriteValidatorStatsExported(day, tx); err != nil {
