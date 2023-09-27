@@ -221,6 +221,7 @@ func main() {
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
 	case "export-genesis-validators":
+		logrus.Infof("retrieving genesis validator state")
 		validators, err := rpcClient.GetValidatorState(0)
 		if err != nil {
 			logrus.Fatalf("error retrieving genesis validator state")
@@ -282,20 +283,19 @@ func main() {
 			}
 		}
 
-		_, err = db.WriterDb.Exec(`
-		INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature, valid_signature)
-			SELECT
-				0 as block_slot,
-				v.validatorindex as block_index,
-				v.pubkey as publickey,
-				v.withdrawalcredentials,
-				32*1e9 as amount,
-				'\x'::bytea as signature,
-				true
-			FROM validators v ON CONFLICT DO NOTHING`)
-		if err != nil {
-			logrus.Fatal(err)
+		for _, validator := range validators.Data {
+			logrus.Infof("exporting deposit data for genesis validator %v", validator.Index)
+			_, err = db.WriterDb.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
+			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},
+			)
+			if err != nil {
+				logrus.Errorf("error exporting genesis-deposits: %v", err)
+				time.Sleep(time.Second * 60)
+				continue
+			}
 		}
+
 		_, err = db.WriterDb.Exec(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, syncaggregate_participation, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, proposer, status, exec_transactions_count, eth1data_depositcount)
 		VALUES (0, 0, '\x'::bytea, '\x'::bytea, '\x'::bytea, '\x'::bytea, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
