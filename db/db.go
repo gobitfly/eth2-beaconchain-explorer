@@ -594,20 +594,20 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	}
 	if len(deposits.Eth1Deposits) > 0 {
 		deposits.LastEth1DepositTs = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
-	}
 
-	// retrieve address names from bigtable
-	names := make(map[string]string)
-	for _, v := range deposits.Eth1Deposits {
-		names[string(v.FromAddress)] = ""
-	}
-	names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
-	if err != nil {
-		return nil, err
-	}
+		// retrieve address names from bigtable
+		names := make(map[string]string)
+		for _, v := range deposits.Eth1Deposits {
+			names[string(v.FromAddress)] = ""
+		}
+		names, _, err = BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	for k, v := range deposits.Eth1Deposits {
-		deposits.Eth1Deposits[k].FromName = names[string(v.FromAddress)]
+		for k, v := range deposits.Eth1Deposits {
+			deposits.Eth1Deposits[k].FromName = names[string(v.FromAddress)]
+		}
 	}
 
 	err = ReaderDb.Select(&deposits.Eth2Deposits, `
