@@ -598,7 +598,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 		case "gnosis":
 			cfg.Chain.GenesisTimestamp = 1638993340
 		case "holesky":
-			cfg.Chain.GenesisTimestamp = 1694786400
+			cfg.Chain.GenesisTimestamp = 1695902400
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}

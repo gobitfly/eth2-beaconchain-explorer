@@ -14,7 +14,7 @@ CONFIG_NAME: "holesky"
 # ---------------------------------------------------------------
 # `2**14` (= 16,384)
 MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
-# Sep-15-2023 13:55:00 +UTC
+# Sep-28-2023 11:55:00 +UTC
 MIN_GENESIS_TIME: 1695902100
 # Mainnet initial fork version, recommend altering for testnets
 GENESIS_FORK_VERSION: 0x01017000
