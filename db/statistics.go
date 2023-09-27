@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -153,7 +154,6 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 		previousDayData := &types.ValidatorStatsTableDbRow{
 			ValidatorIndex: uint64(data.ValidatorIndex),
-			EndBalance:     data.StartBalance, // special case for handling day 0
 		}
 
 		if index < len(previousDayStatisticsData) && day > 0 {
@@ -176,16 +176,15 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		data.ClRewardsGWei = data.EndBalance - previousDayData.EndBalance + data.WithdrawalsAmount - data.DepositsAmount
 		data.ClRewardsGWeiTotal = previousDayData.ClRewardsGWeiTotal + data.ClRewardsGWei
 
-		if day == 0 { // special case for deposits included in the genesis block
-			data.DepositsAmount = data.DepositsAmount + data.GenesisDepositsAmount
-			data.Deposits = data.Deposits + data.GenesisDeposits
-		}
-
 		// update el reward total
 		data.ElRewardsWeiTotal = previousDayData.ElRewardsWeiTotal.Add(data.ElRewardsWei)
 
 		// update mev reward total
 		data.MEVRewardsWeiTotal = previousDayData.MEVRewardsWeiTotal.Add(data.MEVRewardsWei)
+
+		if data.ValidatorIndex == 10 {
+			spew.Dump(data)
+		}
 	}
 
 	conn, err := WriterDb.Conn(context.Background())
@@ -681,7 +680,7 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 			from blocks_deposits
 			inner join validators on blocks_deposits.publickey = validators.pubkey
 			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where blocks.slot > 0 and blocks.slot >= $1 and blocks.slot <= $2 and blocks.status = '1' and blocks_deposits.valid_signature
+			where blocks.slot >= $1 and blocks.slot <= $2 and (blocks.status = '1' OR blocks.slot = 0) and blocks_deposits.valid_signature
 			group by validators.validatorindex`
 
 	err := WriterDb.Select(&resDeposits, depositsQry, firstSlot, lastSlot)
@@ -695,29 +694,6 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 		data[r.ValidatorIndex].DepositsAmount = int64(r.DepositsAmount)
 	}
 	mux.Unlock()
-
-	if day == 0 {
-		resGenesisDeposits := make([]*resRowDeposits, 0, 1024)
-		genesisDepositsQry := `
-			select validators.validatorindex, count(*) AS deposits, sum(amount) AS deposits_amount
-			from blocks_deposits
-			inner join validators on blocks_deposits.publickey = validators.pubkey
-			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where blocks.slot = 0 and blocks_deposits.valid_signature
-			group by validators.validatorindex`
-
-		err := WriterDb.Select(&resGenesisDeposits, genesisDepositsQry)
-		if err != nil {
-			return fmt.Errorf("error retrieving genesis deposits for day [%v]: %w", day, err)
-		}
-
-		mux.Lock()
-		for _, r := range resGenesisDeposits {
-			data[r.ValidatorIndex].GenesisDeposits = int64(r.Deposits)
-			data[r.ValidatorIndex].GenesisDepositsAmount = int64(r.DepositsAmount)
-		}
-		mux.Unlock()
-	}
 
 	type resRowWithdrawals struct {
 		ValidatorIndex    uint64 `db:"validatorindex"`
