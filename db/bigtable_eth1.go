@@ -2379,10 +2379,9 @@ func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*t
 	data := make([]*types.Eth1BlobTransactionIndexed, 0, limit)
 	keys := make([]string, 0, limit)
 	indexes := make([]string, 0, limit)
-
 	keysMap := make(map[string]*types.Eth1BlobTransactionIndexed, limit)
-	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		indexes = append(indexes, row.Key())
 		return true
@@ -2397,14 +2396,8 @@ func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*t
 	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1BlobTransactionIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
-
 		if err != nil {
 			logrus.Fatalf("error parsing Eth1BlobTransactionIndexed data: %v", err)
-		}
-
-		// geth traces include zero-value staticalls
-		if bytes.Equal(b.Value, []byte{}) {
-			return true
 		}
 		keysMap[row.Key()] = b
 		return true
@@ -2453,16 +2446,14 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string,
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
-		tableData[i] = []interface{}{}
-
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			t.BlobGasPrice,
-			t.BlobTxFee,
+			utils.FormatBytesAmount(t.BlobGasPrice, "GWei", 6),
+			utils.FormatBytesAmount(t.BlobTxFee, "ETH", 6),
 			len(t.BlobVersionedHashes),
 		}
 	}
