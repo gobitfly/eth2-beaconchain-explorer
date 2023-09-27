@@ -737,7 +737,7 @@ func gatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*ty
 	if firstEpoch < utils.Config.Chain.Config.AltairForkEpoch && lastEpoch > utils.Config.Chain.Config.AltairForkEpoch {
 		firstEpoch = utils.Config.Chain.Config.AltairForkEpoch
 	} else if lastEpoch < utils.Config.Chain.Config.AltairForkEpoch {
-		logger.Infof("day %v is pre-altair, skipping sync committee export")
+		logger.Infof("day %v is pre-altair, skipping sync committee export", day)
 		return nil
 	}
 	logger := logger.WithFields(logrus.Fields{
