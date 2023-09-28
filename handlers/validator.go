@@ -805,7 +805,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
-		WHERE validators.validatorindex = $1`, index)
+		WHERE validators.validatorindex = $1
+		ORDER BY rplm.status_time DESC 
+		LIMIT 1`, index)
 		if err == nil && (validatorPageData.Rocketpool.MinipoolAddress != nil || validatorPageData.Rocketpool.NodeAddress != nil) {
 			validatorPageData.IsRocketpool = true
 			if utils.Config.Chain.Config.DepositChainID == 1 {
