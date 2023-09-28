@@ -2182,7 +2182,7 @@ func (bigtable *Bigtable) ClearByPrefix(table string, family, prefix string, dry
 				err := bigtable.WriteBulk(mutsDelete, btTable)
 
 				if err != nil {
-					logger.Errorf("error writing bulk mutations: %w", err)
+					logger.Errorf("error writing bulk mutations: %v", err)
 					return false
 				}
 			}
