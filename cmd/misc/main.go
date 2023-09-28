@@ -40,6 +40,7 @@ var opts = struct {
 	BatchSize       uint64
 	DataConcurrency uint64
 	Transformers    string
+	Table           string
 	Family          string
 	Key             string
 	DryRun          bool
@@ -55,6 +56,7 @@ func main() {
 	flag.Uint64Var(&opts.EndDay, "day-end", 0, "end day to debug")
 	flag.Uint64Var(&opts.Validator, "validator", 0, "validator to check for")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
+	flag.StringVar(&opts.Table, "table", "", "big table table")
 	flag.StringVar(&opts.Family, "family", "", "big table family")
 	flag.StringVar(&opts.Key, "key", "", "big table key")
 	flag.Uint64Var(&opts.StartBlock, "blocks.start", 0, "Block to start indexing")
@@ -209,7 +211,7 @@ func main() {
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
 	case "clear-bigtable":
-		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
+		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
 		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
@@ -573,7 +575,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 
 }
 
-func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
+func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
 
 	if !dryRun {
 		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
@@ -582,15 +584,26 @@ func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
 			return
 		}
 	}
-	deletedKeys, err := bt.ClearByPrefix(family, key, dryRun)
+
+	if !strings.Contains(key, ":") {
+		logrus.Fatalf("provided invalid prefix: %s", key)
+	}
+
+	// admin, err := gcp_bigtable.NewAdminClient(context.Background(), utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance)
+	// if err != nil {
+	// 	logrus.Fatal(err)
+	// }
+
+	// err = admin.DropRowRange(context.Background(), table, key)
+	// if err != nil {
+	// 	logrus.Fatal(err)
+	// }
+	err := bt.ClearByPrefix(table, family, key, dryRun)
 
 	if err != nil {
 		logrus.Fatalf("error deleting from bigtable: %v", err)
-	} else if dryRun {
-		logrus.Infof("the following keys would be deleted: %v", deletedKeys)
-	} else {
-		logrus.Infof("%v keys have been deleted", len(deletedKeys))
 	}
+	logrus.Info("delete completed")
 }
 
 // Let's find blocks that are missing in bt and index them.

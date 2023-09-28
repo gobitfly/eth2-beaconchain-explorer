@@ -1039,7 +1039,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 		}
 		genesisBalances, err = BigtableClient.GetValidatorBalanceHistory(indices, 0, 0)
 		if err != nil {
-			return err
+			return fmt.Errorf("error retrieving genesis validator balances: %w", err)
 		}
 	}
 
@@ -1099,9 +1099,9 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 		currentStateMap[v.Index] = v
 	}
 
-	thresholdSlot := latestBlock - 64
-	if latestBlock < 64 {
-		thresholdSlot = 0
+	thresholdSlot := uint64(0)
+	if latestBlock >= 64 {
+		thresholdSlot = latestBlock - 64
 	}
 
 	latestEpoch := latestBlock / utils.Config.Chain.Config.SlotsPerEpoch
@@ -1210,6 +1210,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 
 			if c.Status != v.Status {
 				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
+				// logger.Infof("v.ActivationEpoch, latestEpoch, lastAttestationSlots[v.Index], thresholdSlot", v.ActivationEpoch, latestEpoch, lastAttestationSlots[v.Index], thresholdSlot)
 				queries.WriteString(fmt.Sprintf("UPDATE validators SET status = '%s' WHERE validatorindex = %d;\n", v.Status, c.Index))
 				updates++
 			}
@@ -1280,7 +1281,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 
 	err = tx.Select(&newValidators, "SELECT validatorindex, activationepoch FROM validators WHERE balanceactivation IS NULL ORDER BY activationepoch LIMIT $1", activationBalanceBatchSize)
 	if err != nil {
-		return err
+		return fmt.Errorf("error retreiving activation epoch balances from db: %w", err)
 	}
 
 	balanceCache := make(map[uint64]map[uint64]uint64)
@@ -1305,7 +1306,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 		} else {
 			balance, err = BigtableClient.GetValidatorBalanceHistory([]uint64{newValidator.Validatorindex}, newValidator.ActivationEpoch, newValidator.ActivationEpoch)
 			if err != nil {
-				return err
+				return fmt.Errorf("error retreiving validator balance history: %w", err)
 			}
 		}
 
@@ -1329,7 +1330,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 
 		_, err = tx.Exec("update validators set balanceactivation = $1 WHERE validatorindex = $2 AND balanceactivation IS NULL;", foundBalance, newValidator.Validatorindex)
 		if err != nil {
-			return err
+			return fmt.Errorf("error updating activation epoch balance for validator %v: %w", newValidator.Validatorindex, err)
 		}
 	}
 
@@ -1338,7 +1339,7 @@ func SaveValidators(data *types.EpochData, tx *sqlx.Tx, client rpc.Client, activ
 	s = time.Now()
 	_, err = tx.Exec("ANALYZE (SKIP_LOCKED) validators;")
 	if err != nil {
-		return err
+		return fmt.Errorf("analyzing validators table", err)
 	}
 	logger.Infof("analyze of validators table completed, took %v", time.Since(s))
 

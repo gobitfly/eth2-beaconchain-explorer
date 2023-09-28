@@ -883,7 +883,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 	batchSize := 1000
 	concurrency := 10
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
 	defer cancel()
 
 	res := make(map[uint64][]*types.ValidatorBalance, len(validators))
@@ -910,6 +910,7 @@ func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startE
 			ro := gcp_bigtable.LimitRows(int64(endEpoch-startEpoch+1) * int64(len(vals)))
 
 			handleRow := func(r gcp_bigtable.Row) bool {
+				// logger.Info(r.Key())
 				keySplit := strings.Split(r.Key(), ":")
 
 				epoch, err := strconv.ParseUint(keySplit[3], 10, 64)
@@ -2115,46 +2116,100 @@ func (bigtable *Bigtable) validatorKeyToIndex(key string) (uint64, error) {
 	return indexKey, nil
 }
 
-func (bigtable *Bigtable) ClearByPrefix(family, prefix string, dryRun bool) ([]string, error) {
+func (bigtable *Bigtable) ClearByPrefix(table string, family, prefix string, dryRun bool) error {
 	if family == "" || prefix == "" {
-		return []string{}, fmt.Errorf("please provide family [%v] and prefix [%v]", family, prefix)
+		return fmt.Errorf("please provide family [%v] and prefix [%v]", family, prefix)
 	}
-
-	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
-	defer done()
 
 	rowRange := gcp_bigtable.PrefixRange(prefix)
-	deleteKeys := []string{}
 
-	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-		row_ := row[family][0]
-		deleteKeys = append(deleteKeys, row_.Row)
-		return true
-	})
-	if err != nil {
-		return deleteKeys, err
-	}
+	var btTable *gcp_bigtable.Table
 
-	if len(deleteKeys) == 0 {
-		return deleteKeys, fmt.Errorf("no keys found")
-	}
-
-	if dryRun {
-		return deleteKeys, nil
+	switch table {
+	case "data":
+		btTable = bigtable.tableData
+	case "blocks":
+		btTable = bigtable.tableBlocks
+	case "metadata_updates":
+		btTable = bigtable.tableMetadataUpdates
+	case "metadata":
+		btTable = bigtable.tableMetadata
+	case "beaconchain":
+		btTable = bigtable.tableBeaconchain
+	case "machine_metrics":
+		btTable = bigtable.tableMachineMetrics
+	case "beaconchain_validators":
+		btTable = bigtable.tableValidators
+	case "beaconchain_validators_history":
+		btTable = bigtable.tableValidatorsHistory
+	default:
+		return fmt.Errorf("unknown table %v provided", table)
 	}
 
 	mutsDelete := &types.BulkMutations{
-		Keys: make([]string, 0, len(deleteKeys)),
-		Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
+		Keys: make([]string, 0, MAX_BATCH_MUTATIONS),
+		Muts: make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS),
 	}
-	for _, key := range deleteKeys {
-		mutDelete := gcp_bigtable.NewMutation()
-		mutDelete.DeleteRow()
-		mutsDelete.Keys = append(mutsDelete.Keys, key)
-		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+
+	keysCount := 0
+	err := btTable.ReadRows(context.Background(), rowRange, func(row gcp_bigtable.Row) bool {
+
+		if family == "*" {
+			// if dryRun {
+			// 	logger.Infof("would delete key %v", row.Key())
+			// }
+			mutDelete := gcp_bigtable.NewMutation()
+			mutDelete.DeleteRow()
+			mutsDelete.Keys = append(mutsDelete.Keys, row.Key())
+			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+			keysCount++
+		} else {
+			row_ := row[family][0]
+			// if dryRun {
+			// 	logger.Infof("would delete key %v", row_.Row)
+			// }
+
+			mutDelete := gcp_bigtable.NewMutation()
+			mutDelete.DeleteRow()
+			mutsDelete.Keys = append(mutsDelete.Keys, row_.Row)
+			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+			keysCount++
+		}
+
+		if len(mutsDelete.Keys) == 1000000 {
+			logrus.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
+			if !dryRun {
+				err := bigtable.WriteBulk(mutsDelete, btTable)
+
+				if err != nil {
+					logger.Errorf("error writing bulk mutations: %w", err)
+					return false
+				}
+			}
+			mutsDelete = &types.BulkMutations{
+				Keys: make([]string, 0, MAX_BATCH_MUTATIONS),
+				Muts: make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS),
+			}
+		}
+		return true
+	})
+	if err != nil {
+		return err
 	}
-	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
-	return deleteKeys, err
+
+	if !dryRun && len(mutsDelete.Keys) > 0 {
+		logrus.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
+
+		err := bigtable.WriteBulk(mutsDelete, btTable)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Infof("deleted %v keys", keysCount)
+
+	return nil
 }
 
 func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error) {

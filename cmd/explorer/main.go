@@ -665,7 +665,7 @@ func main() {
 
 	if utils.Config.Metrics.Enabled {
 		go func(addr string) {
-			logrus.Infof("Serving metrics on %v", addr)
+			logrus.Infof("serving metrics on %v", addr)
 			if err := metrics.Serve(addr); err != nil {
 				logrus.WithError(err).Fatal("Error serving metrics")
 			}
