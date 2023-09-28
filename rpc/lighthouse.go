@@ -296,6 +296,10 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 		data.Finalized = true
 	}
 
+	if head.FinalizedEpoch == 0 && epoch == 0 {
+		data.Finalized = false
+	}
+
 	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.Config.SlotsPerEpoch))
 	if err != nil && epoch == 0 {
 		validatorsResp, err = lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%v/validators", lc.endpoint, "genesis"))
@@ -376,7 +380,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				}
 				data.EpochParticipationStats = &types.ValidatorParticipation{
 					Epoch:                   epoch,
-					GlobalParticipationRate: 1.0,
+					GlobalParticipationRate: 0.0,
 					VotedEther:              0,
 					EligibleEther:           0,
 				}
@@ -386,7 +390,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	} else {
 		data.EpochParticipationStats = &types.ValidatorParticipation{
 			Epoch:                   epoch,
-			GlobalParticipationRate: 1.0,
+			GlobalParticipationRate: 0.0,
 			VotedEther:              0,
 			EligibleEther:           0,
 		}

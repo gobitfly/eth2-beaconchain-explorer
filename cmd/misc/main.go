@@ -243,7 +243,7 @@ func main() {
 				ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
 				ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
 				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-				Status:                     validator.Status,
+				Status:                     "active_online",
 			})
 		}
 

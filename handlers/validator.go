@@ -575,8 +575,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// Special care needs to be take for exited and pending validators
 		if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
 			validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
-		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
+		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 			validatorPageData.AttestationsCount = 0
+		} else if isPreGenesis {
+			validatorPageData.AttestationsCount = 1
 		} else {
 			validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
 
@@ -1152,7 +1154,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 		for i, history := range attestationData[index] {
 
-			if history.Status == 0 && history.Epoch < epoch-1 {
+			if history.Status == 0 && int64(history.Epoch) < int64(epoch)-1 {
 				history.Status = 2
 			}
 			tableData[i] = []interface{}{
