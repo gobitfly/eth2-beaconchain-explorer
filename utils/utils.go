@@ -700,6 +700,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Chain.DomainVoluntaryExit = "0x04000000"
 	}
 
+	if cfg.Chain.Id != 0 && cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID {
+		logrus.Fatalf("cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID: %v != %v", cfg.Chain.Id, cfg.Chain.ClConfig.DepositChainID)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
 		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,
