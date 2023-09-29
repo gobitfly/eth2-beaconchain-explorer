@@ -399,9 +399,8 @@ func NameValidatorsByRanges(rangesUrl string) error {
 		}
 	}
 
-	stmt := `do $$
-begin
-`
+	stmts := []string{}
+
 	for r, n := range ranges.Ranges {
 		rs := strings.Split(r, "-")
 		if len(rs) != 2 {
@@ -418,13 +417,19 @@ begin
 		if rTo < rFrom {
 			return fmt.Errorf("invalid format, range must be X-Y where X <= Y")
 		}
-		stmt += fmt.Sprintf("for r in %d..%d loop insert into validator_names(publickey, name) values((select pubkey from validators where validatorindex = r),'%s'); end loop;\n", rFrom, rTo, n)
-	}
-	stmt += "end; $$;"
-	fmt.Println(stmt)
-	_, err := db.WriterDb.Exec(stmt)
 
-	return err
+		stmts = append(stmts, fmt.Sprintf("insert into validator_names(publickey, name) select pubkey as publickey, '%s' as name from validators where validatorindex >= %d and validatorindex <= %d on conflict(publickey) do update set name = excluded.name;\n", n, rFrom, rTo))
+	}
+	fmt.Println(stmts)
+
+	for _, stmt := range stmts {
+		_, err := db.WriterDb.Exec(stmt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // one time migration of the last attestation slot values from postgres to bigtable
