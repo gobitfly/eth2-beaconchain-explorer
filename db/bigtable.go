@@ -473,7 +473,7 @@ func machineMetricRowParts(r string) (bool, uint64, string, string) {
 
 func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*types.Validator) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
 	// start := time.Now()
@@ -616,7 +616,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 	}
 	bigtable.lastAttestationCacheMux.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
 	start := time.Now()
@@ -638,9 +638,10 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 				inclusions = append(inclusions, MAX_CL_BLOCK_NUMBER)
 			}
 			for _, inclusionSlot := range inclusions {
+				key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(uint64(validator)), ATTESTATIONS_FAMILY, bigtable.reversedPaddedEpoch(epoch))
+
 				mutInclusionSlot := gcp_bigtable.NewMutation()
 				mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", attestedSlot), gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-inclusionSlot)*1000), []byte{})
-				key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(uint64(validator)), ATTESTATIONS_FAMILY, bigtable.reversedPaddedEpoch(epoch))
 
 				mutsInclusionSlot = append(mutsInclusionSlot, mutInclusionSlot)
 				keysInclusionSlot = append(keysInclusionSlot, key)
@@ -655,6 +656,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 						mutStart := time.Now()
 						err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
 						if err != nil {
+							bigtable.lastAttestationCacheMux.Unlock()
 							return fmt.Errorf("error applying last attestation slot mutations: %v", err)
 						}
 						mutLastAttestationSlot = gcp_bigtable.NewMutation()
@@ -667,12 +669,14 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 					attstart := time.Now()
 					errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 					if err != nil {
+						bigtable.lastAttestationCacheMux.Unlock()
 						return err
 					}
 					for _, err := range errs {
+						bigtable.lastAttestationCacheMux.Unlock()
 						return err
 					}
-					logger.Infof("applied attestation mutations in %v", time.Since(attstart))
+					logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
 					mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
 					keysInclusionSlot = make([]string, 0, MAX_BATCH_MUTATIONS)
 				}
@@ -683,7 +687,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 	}
 
 	if len(mutsInclusionSlot) > 0 {
-		logger.Infof("exporting remaining %v attestation mutations", len(mutsInclusionSlot))
+		// logger.Infof("exporting remaining %v attestation mutations", len(mutsInclusionSlot))
 		attstart := time.Now()
 		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 		if err != nil {
@@ -692,7 +696,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		for _, err := range errs {
 			return err
 		}
-		logger.Infof("applied attestation mutations in %v", time.Since(attstart))
+		logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
 	}
 
 	if mutLastAttestationSlotCount > 0 {
