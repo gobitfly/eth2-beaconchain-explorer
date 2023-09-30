@@ -15,7 +15,6 @@ import (
 	"math/big"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	itypes "github.com/gobitfly/eth-rewards/types"
@@ -27,9 +26,6 @@ import (
 	geth_types "github.com/ethereum/go-ethereum/core/types"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 )
-
-var eth1BlockDepositReached atomic.Value
-var depositThresholdReached atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
@@ -701,14 +697,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				deposit.Total = (deposit.Total + 1) * 32
 				deposit.BlockTs = time.Now()
 			}
-		}
-
-		threshold, err := db.GetDepositThresholdTime()
-		if err != nil {
-			logger.WithError(err).Error("error could not calculate threshold time")
-		}
-		if threshold == nil {
-			threshold = &deposit.BlockTs
 		}
 
 		data.DepositThreshold = float64(utils.Config.Chain.Config.MinGenesisActiveValidatorCount) * 32
