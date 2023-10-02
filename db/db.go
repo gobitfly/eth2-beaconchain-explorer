@@ -2377,12 +2377,16 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 		Sum   uint64 `db:"sum"`
 		Count uint64 `db:"count"`
 	}{}
+	lastExportedDay, err := GetLastExportedStatisticDay()
+	if err != nil {
+		return 0, 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
+	}
 	err = ReaderDb.Get(&res, `
 	SELECT 
-		COALESCE(sum(w.amount), 0) as sum,
-		COALESCE(count(*), 0) as count
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'`)
+		COALESCE(SUM(withdrawals_amount_total), 0) as sum,
+		COALESCE(SUM(withdrawals_total), 0) as count
+	FROM validator_stats
+	WHERE day = $1`, lastExportedDay)
 	return res.Sum, res.Count, err
 }
 
