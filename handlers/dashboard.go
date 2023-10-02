@@ -389,10 +389,11 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		return nil, nil
 	}
 
-	_, lastWithdrawnEpoch, err := db.GetValidatorWithdrawalsCount(nextValidator.Index)
+	lastWithdrawnEpochs, err := db.GetLastWithdrawalEpoch([]uint64{nextValidator.Index})
 	if err != nil {
 		return nil, err
 	}
+	lastWithdrawnEpoch := lastWithdrawnEpochs[nextValidator.Index]
 
 	distance, err := GetWithdrawableCountFromCursor(epoch, nextValidator.Index, *stats.LatestValidatorWithdrawalIndex)
 	if err != nil {
@@ -642,7 +643,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	errFieldMap := map[string]interface{}{"route": r.URL.String()}
 
-	withdrawalCount, err := db.GetDashboardWithdrawalsCount(validatorIndices)
+	withdrawalCount, err := db.GetTotalWithdrawalsCount(validatorIndices)
 	if err != nil {
 		utils.LogError(err, "error retrieving dashboard validator withdrawals count", 0, errFieldMap)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

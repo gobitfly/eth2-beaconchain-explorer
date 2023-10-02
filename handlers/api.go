@@ -870,6 +870,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		if len(queryIndices) > 0 {
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				validatorsData, err = getGeneralValidatorInfoForAppDashboard(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -880,6 +881,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				validatorEffectivenessData, err = getValidatorEffectiveness(epoch-1, queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -890,6 +892,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				rocketpoolData, err = getRocketpoolValidators(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -900,6 +903,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				executionPerformance, err = getValidatorExecutionPerformance(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -910,6 +914,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				period := utils.SyncPeriodOfEpoch(epoch)
 				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
 				elapsed := time.Since(start)
@@ -922,6 +927,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				period := utils.SyncPeriodOfEpoch(epoch) + 1
 				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
 				elapsed := time.Since(start)
@@ -934,6 +940,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				syncCommitteeStats, err = getSyncCommitteeStatistics(queryIndices, epoch)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -944,6 +951,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				proposalLuckStats, err = getProposalLuckStats(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -956,6 +964,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		start := time.Now()
+		var err error
 		currentEpochData, err = getEpoch(int64(epoch) - 1)
 		elapsed := time.Since(start)
 		if elapsed > 10*time.Second {
@@ -966,6 +975,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		start := time.Now()
+		var err error
 		olderEpochData, err = getEpoch(int64(epoch) - 10)
 		elapsed := time.Since(start)
 		if elapsed > 10*time.Second {
@@ -976,6 +986,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		start := time.Now()
+		var err error
 		rocketpoolStats, err = getRocketpoolStats()
 		elapsed := time.Since(start)
 		if elapsed > 10*time.Second {
@@ -1361,18 +1372,10 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d,
 		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal,
 		COALESCE(validator_performance.rank7d, 0) AS rank7d,
-		((validator_performance.rank7d::float * 100) / COALESCE((SELECT total_count FROM maxValidatorIndex), 1)) as rankpercentage,
-		w.total as total_withdrawals
+		((validator_performance.rank7d::float * 100) / COALESCE((SELECT total_count FROM maxValidatorIndex), 1)) as rankpercentage
 	FROM validators
 	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
-	LEFT JOIN (
-		SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
-		WHERE validatorindex = ANY($1)
-		GROUP BY validatorindex
-	) as w ON w.index = validators.validatorindex
 	WHERE validators.validatorindex = ANY($1)
 	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
 	if err != nil {
@@ -1389,6 +1392,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var balances map[uint64][]*types.ValidatorBalance
 	g.Go(func() error {
+		var err error
 		balances, err = db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), services.LatestEpoch())
 		if err != nil {
 			return fmt.Errorf("error in GetValidatorBalanceHistory: %w", err)
@@ -1398,6 +1402,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var currentDayIncome map[uint64]int64
 	g.Go(func() error {
+		var err error
 		currentDayIncome, err = db.GetCurrentDayClIncome(queryIndices)
 		if err != nil {
 			return fmt.Errorf("error in GetCurrentDayClIncome: %w", err)
@@ -1407,6 +1412,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var lastAttestationSlots map[uint64]uint64
 	g.Go(func() error {
+		var err error
 		lastAttestationSlots, err = db.BigtableClient.GetLastAttestationSlots(queryIndices)
 		if err != nil {
 			return fmt.Errorf("error in GetLastAttestationSlots: %w", err)
@@ -1556,11 +1562,43 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lastExportedDay, err := services.LatestExportedStatisticDay()
+	if err != nil {
+		sendServerErrorResponse(w, r.URL.String(), "error retrieving data, please try again later")
+		return
+	}
+	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
+	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.Config.SlotsPerEpoch) + 1
+
 	data := make([]*ApiValidatorResponse, 0)
 
 	err = db.ReaderDb.Select(&data, `
+		WITH today AS (
+			SELECT
+				w.validatorindex,
+				COALESCE(SUM(w.amount), 0) as amount_today
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
+			GROUP BY w.validatorindex
+		),
+		stats AS (
+			SELECT
+				vs.validatorindex,
+				COALESCE(SUM(vs.withdrawals_amount), 0) as total_amount
+			FROM validator_stats vs
+			WHERE vs.validatorindex = ANY($1)
+			GROUP BY vs.validatorindex
+		),
+		withdrawals_summary AS (
+			SELECT
+				COALESCE(t.validatorindex, s.validatorindex) as validatorindex,
+				COALESCE(t.amount_today, 0) + COALESCE(s.total_amount, 0) as total
+			FROM today t
+			FULL JOIN stats s ON t.validatorindex = s.validatorindex
+		)
 		SELECT
-			validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
+			v.validatorindex, '0x' || encode(pubkey, 'hex') as  pubkey, withdrawableepoch,
 			'0x' || encode(withdrawalcredentials, 'hex') as withdrawalcredentials,
 			slashed,
 			activationeligibilityepoch,
@@ -1568,19 +1606,13 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 			exitepoch,
 			status,
 			COALESCE(n.name, '') AS name,
-			COALESCE(w.total, 0) as total_withdrawals
+			COALESCE(ws.total, 0) as total_withdrawals
 		FROM validators v
 		LEFT JOIN validator_names n ON n.publickey = v.pubkey
-		LEFT JOIN (
-			SELECT validatorindex as index, COALESCE(sum(amount), 0) as total 
-			FROM blocks_withdrawals w
-			INNER JOIN blocks b ON b.blockroot = w.block_root AND status = '1'
-			WHERE validatorindex = ANY($1)
-			GROUP BY validatorindex
-		) as w ON w.index = v.validatorindex
-		WHERE validatorindex = ANY($1)
-		ORDER BY validatorindex;
-	`, pq.Array(queryIndices))
+		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
+		WHERE v.validatorindex = ANY($1)
+		ORDER BY v.validatorindex;
+	`, pq.Array(queryIndices), cutoffSlot)
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")

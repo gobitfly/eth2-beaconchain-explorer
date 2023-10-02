@@ -251,48 +251,6 @@
           </div>
         </div>
       </section>
-      <br />
-      <hr />
-      <br />
-      <section class="my-5">
-        <div class="row">
-          <div class="col-md-12">
-            <div class="row justify-content-center">
-              <div class="col-md-12 col-lg-8 text-center">
-                <h1 class="h4">You want your pool supported by the app?</h1>
-                <p class="text-muted col-md-8 px-0 mx-auto">Reach out to us if you are interested in a partnership.</p>
-                <form id="contact" action="/mobile" method="post">
-                  <div class="text-left">
-                    <div class="form-row">
-                      <div class="form-group col-md-6">
-                        <label for="inputName">Contact name (required)</label>
-                        <input type="text" class="form-control" id="inputName" placeholder="Ex.: Vitalik Buterin" required name="name" />
-                      </div>
-                      <div class="form-group col-md-6">
-                        <label for="inputEmail">Email (required)</label>
-                        <input type="email" class="form-control" id="inputEmail" placeholder="Ex.: office@company.com" required name="email" />
-                      </div>
-                    </div>
-                    <div class="form-group">
-                      <label for="inputUrl">Official Website URL (required)</label>
-                      <input type="text" class="form-control" id="inputUrl" placeholder="Ex.: https://example.com/" required name="url" />
-                    </div>
-                    <div class="form-group">
-                      <label for="inputCompanyName">Company / Project name (required)</label>
-                      <input type="text" class="form-control" id="inputCompanyName" placeholder="Ex.: Chainlab" required name="company" />
-                    </div>
-                    <div class="form-group">
-                      <label for="inputAddress2">What can we do for you? (required)</label>
-                      <textarea type="text" class="form-control" id="inputAdText" required name="text"></textarea>
-                    </div>
-                  </div>
-                  <button data-sitekey="{{ .RecaptchaKey }}" data-callback="onSubmit" data-action="submit" type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Message</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   {{ end }}
 {{ end }}

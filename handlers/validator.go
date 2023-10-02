@@ -436,12 +436,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if validatorPageData.CappellaHasHappened {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
 
-			// get validator withdrawals
-			withdrawalsCount, lastWithdrawalsEpoch, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+			validatorSlice := []uint64{index}
+			withdrawalsCount, err := db.GetTotalWithdrawalsCount(validatorSlice)
 			if err != nil {
 				return fmt.Errorf("error getting validator withdrawals count from db: %w", err)
 			}
 			validatorPageData.WithdrawalCount = withdrawalsCount
+			lastWithdrawalsEpochs, err := db.GetLastWithdrawalEpoch(validatorSlice)
+			if err != nil {
+				return fmt.Errorf("error getting validator last withdrawal epoch from db: %w", err)
+			}
+			lastWithdrawalsEpoch := lastWithdrawalsEpochs[index]
 
 			blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
 			if err != nil {
@@ -575,8 +580,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// Special care needs to be take for exited and pending validators
 		if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
 			validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
-		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
+		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 			validatorPageData.AttestationsCount = 0
+		} else if isPreGenesis {
+			validatorPageData.AttestationsCount = 1
 		} else {
 			validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
 
@@ -805,7 +812,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
-		WHERE validators.validatorindex = $1`, index)
+		WHERE validators.validatorindex = $1
+		ORDER BY rplm.status_time DESC 
+		LIMIT 1`, index)
 		if err == nil && (validatorPageData.Rocketpool.MinipoolAddress != nil || validatorPageData.Rocketpool.NodeAddress != nil) {
 			validatorPageData.IsRocketpool = true
 			if utils.Config.Chain.Config.DepositChainID == 1 {
@@ -1150,7 +1159,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 		for i, history := range attestationData[index] {
 
-			if history.Status == 0 && history.Epoch < epoch-1 {
+			if history.Status == 0 && int64(history.Epoch) < int64(epoch)-1 {
 				history.Status = 2
 			}
 			tableData[i] = []interface{}{
@@ -1225,7 +1234,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, _, err := db.GetValidatorWithdrawalsCount(index)
+	withdrawalCount, err := db.GetTotalWithdrawalsCount([]uint64{index})
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
