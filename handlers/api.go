@@ -1576,7 +1576,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		WITH today AS (
 			SELECT
 				w.validatorindex,
-				COALESCE(SUM(w.amount), 0) as amount_today
+				COALESCE(SUM(w.amount), 0) as amount
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
@@ -1585,15 +1585,15 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		stats AS (
 			SELECT
 				vs.validatorindex,
-				COALESCE(SUM(vs.withdrawals_amount), 0) as total_amount
+				COALESCE(SUM(vs.withdrawals_amount_total), 0) as amount
 			FROM validator_stats vs
-			WHERE vs.validatorindex = ANY($1)
+			WHERE vs.validatorindex = ANY($1) AND day = $3
 			GROUP BY vs.validatorindex
 		),
 		withdrawals_summary AS (
 			SELECT
 				COALESCE(t.validatorindex, s.validatorindex) as validatorindex,
-				COALESCE(t.amount_today, 0) + COALESCE(s.total_amount, 0) as total
+				COALESCE(t.amount, 0) + COALESCE(s.amount, 0) as total
 			FROM today t
 			FULL JOIN stats s ON t.validatorindex = s.validatorindex
 		)
@@ -1612,7 +1612,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
 		WHERE v.validatorindex = ANY($1)
 		ORDER BY v.validatorindex;
-	`, pq.Array(queryIndices), cutoffSlot)
+	`, pq.Array(queryIndices), cutoffSlot, lastExportedDay)
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")

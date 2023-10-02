@@ -2648,18 +2648,18 @@ func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
 
 	err = ReaderDb.Get(&count, `
 		WITH today AS (
-			SELECT COUNT(*) as count_today
+			SELECT COUNT(*) as count
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
 		),
 		stats AS (
-			SELECT COALESCE(SUM(withdrawals), 0) as total_count
+			SELECT COALESCE(SUM(withdrawals_total), 0) as count
 			FROM validator_stats
-			WHERE validatorindex = ANY($1)
+			WHERE validatorindex = ANY($1) AND day = $3
 		)
-		SELECT today.count_today + stats.total_count
-		FROM today, stats;`, validatorFilter, cutoffSlot)
+		SELECT today.count + stats.count
+		FROM today, stats;`, validatorFilter, cutoffSlot, lastExportedDay)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil

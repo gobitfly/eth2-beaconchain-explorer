@@ -180,6 +180,10 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 
 		// update mev reward total
 		data.MEVRewardsWeiTotal = previousDayData.MEVRewardsWeiTotal.Add(data.MEVRewardsWei)
+
+		// update withdrawal total
+		data.WithdrawalsTotal = previousDayData.WithdrawalsTotal + data.Withdrawals
+		data.WithdrawalsAmountTotal = previousDayData.WithdrawalsAmountTotal + data.WithdrawalsAmount
 	}
 
 	conn, err := WriterDb.Conn(context.Background())
@@ -233,7 +237,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 			"deposits",
 			"deposits_amount",
 			"withdrawals",
+			"withdrawals_total",
 			"withdrawals_amount",
+			"withdrawals_amount_total",
 			"cl_rewards_gwei",
 			"cl_rewards_gwei_total",
 			"el_rewards_wei",
@@ -269,7 +275,9 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 				validatorData[i].Deposits,
 				validatorData[i].DepositsAmount,
 				validatorData[i].Withdrawals,
+				validatorData[i].WithdrawalsTotal,
 				validatorData[i].WithdrawalsAmount,
+				validatorData[i].WithdrawalsAmountTotal,
 				validatorData[i].ClRewardsGWei,
 				validatorData[i].ClRewardsGWeiTotal,
 				validatorData[i].ElRewardsWei,
@@ -840,7 +848,8 @@ func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error
 		COALESCE(deposits, 0) AS deposits,
 		COALESCE(deposits_amount, 0) AS deposits_amount,
 		COALESCE(withdrawals, 0) AS withdrawals,
-		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
+		COALESCE(withdrawals_total, 0) AS withdrawals_total,
+		COALESCE(withdrawals_amount_total, 0) AS withdrawals_amount_total,
 		COALESCE(cl_rewards_gwei, 0) AS cl_rewards_gwei,
 		COALESCE(cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total,
 		COALESCE(el_rewards_wei, 0) AS el_rewards_wei,
