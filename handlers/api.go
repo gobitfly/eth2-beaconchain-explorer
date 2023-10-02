@@ -1400,6 +1400,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var balances map[uint64][]*types.ValidatorBalance
 	g.Go(func() error {
+		var err error
 		balances, err = db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), services.LatestEpoch())
 		if err != nil {
 			return fmt.Errorf("error in GetValidatorBalanceHistory: %w", err)
@@ -1409,6 +1410,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var currentDayIncome map[uint64]int64
 	g.Go(func() error {
+		var err error
 		currentDayIncome, err = db.GetCurrentDayClIncome(queryIndices)
 		if err != nil {
 			return fmt.Errorf("error in GetCurrentDayClIncome: %w", err)
@@ -1418,6 +1420,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var lastAttestationSlots map[uint64]uint64
 	g.Go(func() error {
+		var err error
 		lastAttestationSlots, err = db.BigtableClient.GetLastAttestationSlots(queryIndices)
 		if err != nil {
 			return fmt.Errorf("error in GetLastAttestationSlots: %w", err)
