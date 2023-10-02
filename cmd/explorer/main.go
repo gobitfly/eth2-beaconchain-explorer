@@ -497,7 +497,6 @@ func main() {
 			router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
-			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 			router.HandleFunc("/tools/broadcast", handlers.Broadcast).Methods("GET")
 			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")

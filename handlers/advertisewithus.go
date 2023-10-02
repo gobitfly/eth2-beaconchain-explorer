@@ -39,13 +39,15 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		utils.LogError(err, "error parsing form", 0)
+		utils.LogError(err, "error parsing ad request form", 0, map[string]interface{}{
+			"route": r.URL.String(),
+		})
 		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
 		return
 	}
 
-	if err := utils.HandleRecaptcha(w, r, "/pricing"); err != nil {
+	if err := utils.HandleRecaptcha(w, r, "/advertisewithus"); err != nil {
 		return
 	}
 
@@ -66,7 +68,7 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
-	err = mail.SendTextMail("support@beaconcha.in", "New ad inquiry", msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(utils.Config.Frontend.Mail.Contact.InquiryEmail, "New ad inquiry", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit ad request")
