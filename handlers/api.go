@@ -870,6 +870,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		if len(queryIndices) > 0 {
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				validatorsData, err = getGeneralValidatorInfoForAppDashboard(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -880,6 +881,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				validatorEffectivenessData, err = getValidatorEffectiveness(epoch-1, queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -890,6 +892,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				rocketpoolData, err = getRocketpoolValidators(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -900,6 +903,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				executionPerformance, err = getValidatorExecutionPerformance(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -910,6 +914,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				period := utils.SyncPeriodOfEpoch(epoch)
 				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
 				elapsed := time.Since(start)
@@ -922,6 +927,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				period := utils.SyncPeriodOfEpoch(epoch) + 1
 				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
 				elapsed := time.Since(start)
@@ -934,6 +940,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				syncCommitteeStats, err = getSyncCommitteeStatistics(queryIndices, epoch)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -944,6 +951,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 			g.Go(func() error {
 				start := time.Now()
+				var err error
 				proposalLuckStats, err = getProposalLuckStats(queryIndices)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
@@ -956,6 +964,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		start := time.Now()
+		var err error
 		currentEpochData, err = getEpoch(int64(epoch) - 1)
 		elapsed := time.Since(start)
 		if elapsed > 10*time.Second {
@@ -966,6 +975,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		start := time.Now()
+		var err error
 		olderEpochData, err = getEpoch(int64(epoch) - 10)
 		elapsed := time.Since(start)
 		if elapsed > 10*time.Second {
@@ -976,6 +986,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		start := time.Now()
+		var err error
 		rocketpoolStats, err = getRocketpoolStats()
 		elapsed := time.Since(start)
 		if elapsed > 10*time.Second {
@@ -1381,6 +1392,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var balances map[uint64][]*types.ValidatorBalance
 	g.Go(func() error {
+		var err error
 		balances, err = db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), services.LatestEpoch())
 		if err != nil {
 			return fmt.Errorf("error in GetValidatorBalanceHistory: %w", err)
@@ -1390,6 +1402,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var currentDayIncome map[uint64]int64
 	g.Go(func() error {
+		var err error
 		currentDayIncome, err = db.GetCurrentDayClIncome(queryIndices)
 		if err != nil {
 			return fmt.Errorf("error in GetCurrentDayClIncome: %w", err)
@@ -1399,6 +1412,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var lastAttestationSlots map[uint64]uint64
 	g.Go(func() error {
+		var err error
 		lastAttestationSlots, err = db.BigtableClient.GetLastAttestationSlots(queryIndices)
 		if err != nil {
 			return fmt.Errorf("error in GetLastAttestationSlots: %w", err)
