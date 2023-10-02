@@ -200,9 +200,9 @@ func FormatAddressAsLink(address []byte, name string, verified bool, isContract 
 
 	if len(name) > 0 {
 		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">✔ %s (%s…%s)</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">✔ %s</a> %v", addressString, name, CopyButton(addressString))
 		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s %s…%s</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
+			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s</a> %v", addressString, name, CopyButton(addressString))
 		}
 	} else {
 		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s…%s</a> %v", addressString, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))

@@ -98,7 +98,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEth1Block":                         FormatEth1Block,
 		"formatEth1BlockHash":                     FormatEth1BlockHash,
 		"formatEth1Address":                       FormatEth1Address,
-		"formatEth1Name":                          FormatEth1Name,
 		"formatEth1AddressStringLowerCase":        FormatEth1AddressStringLowerCase,
 		"formatEth1TxHash":                        FormatEth1TxHash,
 		"formatGraffiti":                          FormatGraffiti,

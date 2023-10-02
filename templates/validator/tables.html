@@ -416,13 +416,7 @@
           <tbody>
             {{ range $i, $deposit := .Deposits.Eth1Deposits }}
               <tr>
-                <td>
-                  {{ if $deposit.FromName }}
-                    {{ formatEth1Name $deposit.FromName }}
-                  {{ else }}
-                    {{ formatEth1Address $deposit.FromAddress }}
-                  {{ end }}
-                </td>
+                <td>{{ formatAddressAsLink $deposit.FromAddress $deposit.FromName false false }}</td>
                 <td>{{ formatEth1TxHash $deposit.TxHash }}</td>
                 <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
                 <td>{{ formatTimestamp $deposit.BlockTs }}</td>
