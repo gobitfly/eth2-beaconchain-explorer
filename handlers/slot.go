@@ -11,6 +11,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -61,7 +62,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
-		if err != nil || blockSlot >= 2147483648 { // block slot must be lower then max int4
+		if err != nil || blockSlot > math.MaxInt32 { // block slot must be lower than max int4
 			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
 			data.Data = "slot"
 			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -430,8 +431,8 @@ func SlotDepositData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
-			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			logger.Warnf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
+			http.Error(w, "Error: Invalid parameter slotOrHash.", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -452,21 +453,21 @@ func SlotDepositData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 
@@ -552,8 +553,8 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
-			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			logger.Warnf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
+			http.Error(w, "Error: Invalid parameter slotOrHash.", http.StatusBadRequest)
 			return
 		}
 		err = db.ReaderDb.Get(&blockRootHash, "select blocks.blockroot from blocks where blocks.slot = $1", blockSlot)
@@ -574,29 +575,29 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
-	searchIsUint64 := false
-	searchUint64, err := strconv.ParseUint(search, 10, 64)
-	if err == nil {
-		searchIsUint64 = true
+	searchIsInt32 := false
+	searchInt32, err := strconv.ParseInt(search, 10, 32)
+	if err == nil && searchInt32 >= 0 {
+		searchIsInt32 = true
 	}
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 
@@ -635,8 +636,8 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-	} else if searchIsUint64 {
-		err = db.ReaderDb.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1 AND $2 = ANY(validators)`, blockRootHash, searchUint64)
+	} else if searchIsInt32 {
+		err = db.ReaderDb.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1 AND $2 = ANY(validators)`, blockRootHash, searchInt32)
 		if err != nil {
 			logger.Errorf("error retrieving deposit count for slot %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -653,7 +654,7 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 			ORDER BY committeeindex
 			LIMIT $3
 			OFFSET $4`,
-			blockRootHash, searchUint64, length, start)
+			blockRootHash, searchInt32, length, start)
 		if err != nil {
 			logger.Errorf("error retrieving block vote data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -709,8 +710,8 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slot, err := strconv.ParseUint(vars["block"], 10, 64)
 	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 
@@ -766,9 +767,9 @@ func SlotAttestationsData(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || slot > math.MaxInt32 {
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 
@@ -813,9 +814,9 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || slot > math.MaxInt32 {
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 	withdrawals, err := db.GetSlotWithdrawals(slot)
@@ -854,9 +855,9 @@ func SlotBlsChangeData(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || slot > math.MaxInt32 {
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 	blsChange, err := db.GetSlotBLSChange(slot)

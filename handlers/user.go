@@ -180,12 +180,20 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	clientID := q.Get("client_id")
 	state := q.Get("state")
 
-	session.SetValue("state", state)
 	session.SetValue("client_id", clientID)
-	session.SetValue("oauth_redirect_uri", redirectURI)
 	session.Save(r, w)
 
 	if !user.Authenticated {
+		if redirectURI != "" {
+			var stateParam = ""
+			if state != "" {
+				stateParam = "&state=" + state
+			}
+
+			http.Redirect(w, r, "/login?redirect_uri="+redirectURI+stateParam, http.StatusSeeOther)
+			return
+		}
+
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -220,21 +228,6 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	}
-}
-
-// UserAuthorizationCancel cancels oauth authorization session states and redirects to frontpage
-func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
-	_, session, err := getUserSession(r)
-	if err != nil {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
-	session.DeleteValue("oauth_redirect_uri")
-	session.DeleteValue("state")
-	session.Save(r, w)
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
@@ -906,25 +899,10 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
-	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
-	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
-	// if length > 100 {
-	// 	length = 100
-	// }
 
 	user := getUser(r)
 
@@ -1019,20 +997,15 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
-	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
+
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -2205,8 +2178,8 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 
 	hashes, ok := q["hash"]
 	if !ok {
-		logger.Errorf("no query params given")
-		http.Error(w, "invalid request", 400)
+		logger.Warn("error no query params given")
+		http.Error(w, "Error: Missing parameter hash.", http.StatusBadRequest)
 		return
 	}
 
@@ -2214,7 +2187,7 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		//  return fmt.Errorf("error beginning transaction")
 		logger.WithError(err).Errorf("error committing transacton")
-		http.Error(w, "error processing request", 500)
+		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
@@ -2223,8 +2196,8 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	for _, hash := range hashes {
 		hash = strings.Replace(hash, "0x", "", -1)
 		if !utils.HashLikeRegex.MatchString(hash) {
-			logger.Errorf("error validating unsubscribe digest hashes")
-			http.Error(w, "error processing request", 500)
+			logger.Warn("error validating unsubscribe digest hashes")
+			http.Error(w, "Error: Invalid parameter hash entry.", http.StatusBadRequest)
 		}
 		b, _ := hex.DecodeString(hash)
 		bHashes = append(bHashes, b)
@@ -2233,14 +2206,14 @@ func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) 
 	_, err = tx.ExecContext(ctx, `DELETE from users_subscriptions where unsubscribe_hash = ANY($1)`, pq.ByteaArray(bHashes))
 	if err != nil {
 		logger.Errorf("error deleting from users_subscriptions %v", err)
-		http.Error(w, "error processing request", 500)
+		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		logger.WithError(err).Errorf("error committing transacton")
-		http.Error(w, "error processing request", 500)
+		http.Error(w, "error processing request", http.StatusInternalServerError)
 		return
 	}
 
@@ -3035,7 +3008,7 @@ func UserGlobalNotification(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LoginPost handles authenticating the user.
+// UserGlobalNotificationPost handles the global notifications
 func UserGlobalNotificationPost(w http.ResponseWriter, r *http.Request) {
 	isAdmin, _ := handleAdminPermissions(w, r)
 	if !isAdmin {

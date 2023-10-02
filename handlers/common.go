@@ -15,6 +15,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -97,11 +98,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	var firstActivationEpoch uint64
 	g.Go(func() error {
 		return db.GetFirstActivationEpoch(validators, &firstActivationEpoch)
-	})
-
-	var totalWithdrawals uint64
-	g.Go(func() error {
-		return db.GetTotalValidatorWithdrawals(validators, &totalWithdrawals)
 	})
 
 	var lastDeposits uint64
@@ -656,8 +652,8 @@ func SetDataTableStateChanges(w http.ResponseWriter, r *http.Request) {
 	settings := types.DataTableSaveState{}
 	err = json.NewDecoder(r.Body).Decode(&settings)
 	if err != nil {
-		utils.LogError(err, errMsgPrefix+", could not parse body", 0, errFields)
-		w.WriteHeader(http.StatusInternalServerError)
+		logger.Warnf(errMsgPrefix+", could not parse body for tableKey %v: %v", tableKey, err)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -726,4 +722,61 @@ func GetWithdrawableCountFromCursor(epoch uint64, validatorindex uint64, cursor 
 	} else {
 		return 0, nil
 	}
+}
+
+func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint64) ([]*types.ChartDataPoint, error) {
+	var limit uint64 = 300
+	blockList, consMap, err := findExecBlockNumbersByProposerIndex(indices, 0, limit, false, true, lowerBoundDay)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
+	if err != nil {
+		return nil, err
+	}
+	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
+	if err != nil {
+		return nil, err
+	}
+
+	var chartData = []*types.ChartDataPoint{}
+	epochsPerDay := utils.EpochsPerDay()
+	color := "#90ed7d"
+
+	// Map to keep track of the cumulative reward for each day
+	dayRewardMap := make(map[int64]float64)
+
+	for _, block := range blocks {
+		consData := consMap[block.Number]
+		day := int64(consData.Epoch / epochsPerDay)
+
+		var totalReward float64
+		if relayData, ok := relaysData[common.BytesToHash(block.Hash)]; ok {
+			totalReward = utils.WeiToEther(relayData.MevBribe.BigInt()).InexactFloat64()
+		} else {
+			totalReward = utils.WeiToEther(utils.Eth1TotalReward(block)).InexactFloat64()
+		}
+
+		// Add the reward to the existing reward for the day or set it if not previously set
+		dayRewardMap[day] += totalReward
+	}
+
+	// Now populate the chartData array using the dayRewardMap
+	exchangeRate := utils.ExchangeRateForCurrency(currency)
+	for day, reward := range dayRewardMap {
+		ts := float64(utils.DayToTime(day).Unix() * 1000)
+		chartData = append(chartData, &types.ChartDataPoint{
+			X:     ts,
+			Y:     exchangeRate * reward,
+			Color: color,
+		})
+	}
+
+	// If needed, sort chartData based on X values
+	sort.Slice(chartData, func(i, j int) bool {
+		return chartData[i].X < chartData[j].X
+	})
+
+	return chartData, nil
 }

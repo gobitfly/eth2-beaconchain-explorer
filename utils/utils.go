@@ -252,9 +252,9 @@ func IncludeHTML(path string) template.HTML {
 	return template.HTML(string(b))
 }
 
-func GraffitiToSring(graffiti []byte) string {
+func GraffitiToString(graffiti []byte) string {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
-	s = strings.Replace(s, "\u0000", "", -1) // rempove 0x00 bytes as it is not supported in postgres
+	s = strings.Replace(s, "\u0000", "", -1) // remove 0x00 bytes as it is not supported in postgres
 
 	if !utf8.ValidString(s) {
 		return "INVALID_UTF8_STRING"
@@ -266,6 +266,22 @@ func GraffitiToSring(graffiti []byte) string {
 // FormatGraffitiString formats (and escapes) the graffiti
 func FormatGraffitiString(graffiti string) string {
 	return strings.Map(fixUtf, template.HTMLEscapeString(graffiti))
+}
+
+func HasProblematicUtfCharacters(s string) bool {
+	// Check for null character ('\x00')
+	if utf8.ValidString(s) && utf8.Valid([]byte(s)) {
+		// Check for control characters ('\x01' to '\x1F' and '\x7F')
+		for _, r := range s {
+			if r <= 0x1F || r == 0x7F {
+				return true
+			}
+		}
+	} else {
+		return true // Invalid UTF-8 sequence
+	}
+
+	return false
 }
 
 func fixUtf(r rune) rune {
@@ -582,7 +598,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 		case "gnosis":
 			cfg.Chain.GenesisTimestamp = 1638993340
 		case "holesky":
-			cfg.Chain.GenesisTimestamp = 1694786400
+			cfg.Chain.GenesisTimestamp = 1695902400
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
@@ -699,6 +715,7 @@ var withdrawalCredentialsRE = regexp.MustCompile("^(0x)?00[0-9a-fA-F]{62}$")
 var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?010000000000000000000000[0-9a-fA-F]{40}$")
 var eth1TxRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{64}$")
 var zeroHashRE = regexp.MustCompile("^(0x)?0+$")
+var hashRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{96}$")
 
 // IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
@@ -713,6 +730,11 @@ func IsEth1Address(s string) bool {
 // IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
 func IsValidEth1Tx(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
+}
+
+// IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
+func IsHash(s string) bool {
+	return hashRE.MatchString(s)
 }
 
 // IsValidWithdrawalCredentials verifies whether a string represents valid withdrawal credentials.
@@ -1213,7 +1235,9 @@ func FormatTokenSymbolTitle(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 
 	if len(urls) > 0 {
-		return "The token symbol has been hidden as it contains a URL which might be a scam"
+		return fmt.Sprintf("The token symbol has been hidden as it contains a URL (%s) which might be a scam", symbol)
+	} else if symbol == "ETH" {
+		return fmt.Sprintf("The token symbol has been hidden as it contains a Token name (%s) which might be a scam", symbol)
 	}
 	return ""
 }
@@ -1221,8 +1245,9 @@ func FormatTokenSymbolTitle(symbol string) string {
 func FormatTokenSymbol(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 
-	if len(urls) > 0 {
-		return "[hidden-symbol]"
+	if len(urls) > 0 ||
+		symbol == "ETH" {
+		return "[hidden-symbol] ⚠️"
 	}
 	return symbol
 }

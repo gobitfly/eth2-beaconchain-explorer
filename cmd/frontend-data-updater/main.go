@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"math/big"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sirupsen/logrus"
 
 	"net/http"
