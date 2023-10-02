@@ -100,11 +100,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		return db.GetFirstActivationEpoch(validators, &firstActivationEpoch)
 	})
 
-	var totalWithdrawals uint64
-	g.Go(func() error {
-		return db.GetTotalValidatorWithdrawals(validators, &totalWithdrawals)
-	})
-
 	var lastDeposits uint64
 	var lastWithdrawals uint64
 	var lastBalance uint64

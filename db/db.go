@@ -2602,28 +2602,6 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	return total, nil
 }
 
-func GetDashboardWithdrawalsCount(validators []uint64) (uint64, error) {
-	var count uint64
-	validatorFilter := pq.Array(validators)
-	err := ReaderDb.Get(&count, `
-	/*+
-	BitmapScan(w)
-	NestLoop(b w)
-	*/
-	SELECT count(*) 
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE w.validatorindex = Any($1)`, validatorFilter)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("error getting dashboard validator blocks_withdrawals count for validators: %d: %w", validators, err)
-	}
-
-	return count, nil
-}
-
 func GetDashboardWithdrawals(validators []uint64, limit uint64, offset uint64, orderBy string, orderDir string) ([]*types.Withdrawals, error) {
 	var withdrawals []*types.Withdrawals
 	if limit == 0 {
@@ -2656,49 +2634,53 @@ func GetDashboardWithdrawals(validators []uint64, limit uint64, offset uint64, o
 	return withdrawals, nil
 }
 
-func GetValidatorWithdrawalsCount(validator uint64) (count, lastWithdrawalEpoch uint64, err error) {
-
-	type dbResponse struct {
-		Count              uint64 `db:"withdrawals_count"`
-		LastWithdrawalSlot uint64 `db:"last_withdawal_slot"`
+func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
+	var count uint64
+	validatorFilter := pq.Array(validators)
+	lastExportedDay, err := GetLastExportedStatisticDay()
+	if err != nil {
+		return 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
 	}
+	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
+	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.Config.SlotsPerEpoch) + 1
 
-	r := &dbResponse{}
-	err = ReaderDb.Get(r, `
-	/*+
-	BitmapScan(w)
-	NestLoop(b w)
-	*/
-	SELECT count(*) as withdrawals_count, COALESCE(max(block_slot), 0) as last_withdawal_slot
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE w.validatorindex = $1`, validator)
+	err = ReaderDb.Get(&count, `
+		WITH today AS (
+			SELECT COUNT(*) as count_today
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
+		),
+		stats AS (
+			SELECT COALESCE(SUM(withdrawals), 0) as total_count
+			FROM validator_stats
+			WHERE validatorindex = ANY($1)
+		)
+		SELECT today.count_today + stats.total_count
+		FROM today, stats;`, validatorFilter, cutoffSlot)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return 0, 0, nil
+			return 0, nil
 		}
-		return 0, 0, fmt.Errorf("error getting validator blocks_withdrawals count for validator: %d: %w", validator, err)
+		return 0, fmt.Errorf("error getting dashboard validator blocks_withdrawals count for validators: %d: %w", validators, err)
 	}
 
-	return r.Count, r.LastWithdrawalSlot / utils.Config.Chain.Config.SlotsPerEpoch, nil
+	return count, nil
 }
 
 func GetLastWithdrawalEpoch(validators []uint64) (map[uint64]uint64, error) {
-
-	type dbResponse struct {
+	var dbResponse []struct {
 		ValidatorIndex     uint64 `db:"validatorindex"`
 		LastWithdrawalSlot uint64 `db:"last_withdawal_slot"`
 	}
 
 	res := make(map[uint64]uint64)
-
-	r := make([]*dbResponse, 0)
-	err := ReaderDb.Get(r, `
-	SELECT w.validatorindex, COALESCE(max(block_slot), 0) as last_withdawal_slot
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE w.validatorindex = ANY($1)
-	GROUP BY w.validatorindex`, validators)
+	err := ReaderDb.Select(&dbResponse, `
+		SELECT w.validatorindex as validatorindex, COALESCE(max(block_slot), 0) as last_withdawal_slot
+		FROM blocks_withdrawals w
+		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+		WHERE w.validatorindex = ANY($1)
+		GROUP BY w.validatorindex`, validators)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return res, nil
@@ -2706,7 +2688,7 @@ func GetLastWithdrawalEpoch(validators []uint64) (map[uint64]uint64, error) {
 		return nil, fmt.Errorf("error getting validator blocks_withdrawals count for validators: %d: %w", validators, err)
 	}
 
-	for _, row := range r {
+	for _, row := range dbResponse {
 		res[row.ValidatorIndex] = row.LastWithdrawalSlot / utils.Config.Chain.Config.SlotsPerEpoch
 	}
 
@@ -3249,17 +3231,6 @@ func GetFirstActivationEpoch(validators []uint64, firstActivationEpoch *uint64) 
 		FROM validators
 		WHERE validatorindex = ANY($1) 
 		ORDER BY activationepoch LIMIT 1
-	`, validatorsPQArray)
-}
-
-func GetTotalValidatorWithdrawals(validators []uint64, totalWithdrawals *uint64) error {
-	validatorsPQArray := pq.Array(validators)
-	return ReaderDb.Get(totalWithdrawals, `
-		SELECT 
-			COALESCE(sum(w.amount), 0)
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-		WHERE validatorindex = ANY($1)
 	`, validatorsPQArray)
 }
 
