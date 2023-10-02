@@ -32,6 +32,8 @@ type LighthouseClient struct {
 	endpoint            string
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
+	slotsCache          *lru.Cache
+	slotsCacheMux       *sync.Mutex
 	signer              gtypes.Signer
 }
 
@@ -41,9 +43,11 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
+		slotsCacheMux:       &sync.Mutex{},
 		signer:              signer,
 	}
 	client.assignmentsCache, _ = lru.New(10)
+	client.slotsCache, _ = lru.New(128) // cache at most 128 slots
 
 	return client, nil
 }
@@ -165,15 +169,16 @@ func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 
 // GetEpochAssignments will get the epoch assignments from Lighthouse RPC api
 func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
-	lc.assignmentsCacheMux.Lock()
-	defer lc.assignmentsCacheMux.Unlock()
 
 	var err error
 
+	lc.assignmentsCacheMux.Lock()
 	cachedValue, found := lc.assignmentsCache.Get(epoch)
 	if found {
+		lc.assignmentsCacheMux.Unlock()
 		return cachedValue.(*types.EpochAssignments), nil
 	}
+	lc.assignmentsCacheMux.Unlock()
 
 	proposerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/validator/duties/proposer/%d", lc.endpoint, epoch))
 	if err != nil {
@@ -252,7 +257,9 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	}
 
 	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
+		lc.assignmentsCacheMux.Lock()
 		lc.assignmentsCache.Add(epoch, assignments)
+		lc.assignmentsCacheMux.Unlock()
 	}
 
 	return assignments, nil
@@ -294,6 +301,10 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	data.Epoch = epoch
 	if head.FinalizedEpoch >= epoch {
 		data.Finalized = true
+	}
+
+	if head.FinalizedEpoch == 0 && epoch == 0 {
+		data.Finalized = false
 	}
 
 	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.ClConfig.SlotsPerEpoch))
@@ -376,7 +387,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				}
 				data.EpochParticipationStats = &types.ValidatorParticipation{
 					Epoch:                   epoch,
-					GlobalParticipationRate: 1.0,
+					GlobalParticipationRate: 0.0,
 					VotedEther:              0,
 					EligibleEther:           0,
 				}
@@ -386,7 +397,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 	} else {
 		data.EpochParticipationStats = &types.ValidatorParticipation{
 			Epoch:                   epoch,
-			GlobalParticipationRate: 1.0,
+			GlobalParticipationRate: 0.0,
 			VotedEther:              0,
 			EligibleEther:           0,
 		}
@@ -397,16 +408,15 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 		return nil, err
 	}
 	wg = &errgroup.Group{}
-
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
-	for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch-1; slot++ {
-		if slot != 0 && slot > head.HeadSlot { // don't export slots that have not occured yet
-			continue
-		}
-		slot := slot
-		wg.Go(func() error {
+	wg.Go(func() error {
+		for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch-1; slot++ {
+			if slot != 0 && slot > head.HeadSlot { // don't export slots that have not occured yet
+				continue
+			}
+			start := time.Now()
 			blocks, err := lc.GetBlocksBySlot(slot)
 
 			if err != nil {
@@ -434,18 +444,20 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				}
 				mux.Unlock()
 			}
-			return nil
-		})
-	}
+			logger.Infof("processed data for current epoch slot %v in %v", slot, time.Since(start))
+
+		}
+		return nil
+	})
 
 	// we need future blocks to properly tracke fullfilled attestation duties
 	data.FutureBlocks = make(map[uint64]map[string]*types.Block)
-	for slot := (epoch + 1) * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot <= (epoch+2)*utils.Config.Chain.ClConfig.SlotsPerEpoch-1; slot++ {
-		if slot != 0 && slot > head.HeadSlot { // don't export slots that have not occured yet
-			continue
-		}
-		slot := slot
-		wg.Go(func() error {
+	wg.Go(func() error {
+		for slot := (epoch + 1) * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot <= (epoch+2)*utils.Config.Chain.ClConfig.SlotsPerEpoch-1; slot++ {
+			if slot != 0 && slot > head.HeadSlot { // don't export slots that have not occured yet
+				continue
+			}
+			start := time.Now()
 			blocks, err := lc.GetBlocksBySlot(slot)
 
 			if err != nil {
@@ -467,9 +479,11 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				}
 				mux.Unlock()
 			}
-			return nil
-		})
-	}
+			logger.Infof("processed data for next epoch slot %v in %v", slot, time.Since(start))
+
+		}
+		return nil
+	})
 
 	err = wg.Wait()
 	if err != nil {
@@ -643,6 +657,21 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		}
 	}
 
+	lc.slotsCacheMux.Lock()
+	cachedBlock, ok := lc.slotsCache.Get(parsedHeaders.Data.Root)
+	if ok {
+		lc.slotsCacheMux.Unlock()
+		block, ok := cachedBlock.(*types.Block)
+
+		if ok {
+			logger.Infof("retrieved slot %v (0x%x) from in memory cache", block.Slot, block.BlockRoot)
+			return []*types.Block{block}, nil
+		} else {
+			logger.Errorf("unable to convert cached block to block type")
+		}
+	}
+	lc.slotsCacheMux.Unlock()
+
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedHeaders.Data.Root))
 	if err != nil && slot == 0 {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
@@ -659,6 +688,11 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	if err != nil {
 		return nil, err
 	}
+
+	lc.slotsCacheMux.Lock()
+	lc.slotsCache.Add(parsedHeaders.Data.Root, block)
+	lc.slotsCacheMux.Unlock()
+
 	return []*types.Block{block}, nil
 }
 

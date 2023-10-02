@@ -365,8 +365,6 @@ type ValidatorPageData struct {
 	ExecutedAttestationsCount                uint64
 	MissedAttestationsCount                  uint64
 	UnmissedAttestationsPercentage           float64 // missed/(executed+orphaned)
-	StatusProposedCount                      uint64
-	StatusMissedCount                        uint64
 	DepositsCount                            uint64
 	WithdrawalCount                          uint64
 	SlashingsCount                           uint64
@@ -403,7 +401,6 @@ type ValidatorPageData struct {
 	Watchlist                                []*TaggedValidators
 	SubscriptionFlash                        []interface{}
 	User                                     *User
-	AverageAttestationInclusionDistance      float64
 	AttestationInclusionEffectiveness        float64
 	CsrfField                                template.HTML
 	NetworkStats                             *IndexPageData

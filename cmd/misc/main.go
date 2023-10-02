@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/coocood/freecache"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
@@ -42,6 +42,7 @@ var opts = struct {
 	BatchSize           uint64
 	DataConcurrency     uint64
 	Transformers        string
+	Table               string
 	Family              string
 	Key                 string
 	ValidatorNameRanges string
@@ -58,6 +59,7 @@ func main() {
 	flag.Uint64Var(&opts.EndDay, "day-end", 0, "end day to debug")
 	flag.Uint64Var(&opts.Validator, "validator", 0, "validator to check for")
 	flag.Int64Var(&opts.TargetVersion, "target-version", -2, "Db migration target version, use -2 to apply up to the latest version, -1 to apply only the next version or the specific versions")
+	flag.StringVar(&opts.Table, "table", "", "big table table")
 	flag.StringVar(&opts.Family, "family", "", "big table family")
 	flag.StringVar(&opts.Key, "key", "", "big table key")
 	flag.Uint64Var(&opts.StartBlock, "blocks.start", 0, "Block to start indexing")
@@ -220,7 +222,7 @@ func main() {
 	case "debug-blocks":
 		err = DebugBlocks()
 	case "clear-bigtable":
-		ClearBigtable(opts.Family, opts.Key, opts.DryRun, bt)
+		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
 		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
@@ -232,6 +234,7 @@ func main() {
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
 	case "export-genesis-validators":
+		logrus.Infof("retrieving genesis validator state")
 		validators, err := rpcClient.GetValidatorState(0)
 		if err != nil {
 			logrus.Fatalf("error retrieving genesis validator state")
@@ -251,7 +254,7 @@ func main() {
 				ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
 				ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
 				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-				Status:                     validator.Status,
+				Status:                     "active_online",
 			})
 		}
 
@@ -293,20 +296,19 @@ func main() {
 			}
 		}
 
-		_, err = db.WriterDb.Exec(`
-		INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature, valid_signature)
-			SELECT
-				0 as block_slot,
-				v.validatorindex as block_index,
-				v.pubkey as publickey,
-				v.withdrawalcredentials,
-				32*1e9 as amount,
-				'\x'::bytea as signature,
-				true
-			FROM validators v ON CONFLICT DO NOTHING`)
-		if err != nil {
-			logrus.Fatal(err)
+		for _, validator := range validators.Data {
+			logrus.Infof("exporting deposit data for genesis validator %v", validator.Index)
+			_, err = db.WriterDb.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
+			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},
+			)
+			if err != nil {
+				logrus.Errorf("error exporting genesis-deposits: %v", err)
+				time.Sleep(time.Second * 60)
+				continue
+			}
 		}
+
 		_, err = db.WriterDb.Exec(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, syncaggregate_participation, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, proposer, status, exec_transactions_count, eth1data_depositcount)
 		VALUES (0, 0, '\x'::bytea, '\x'::bytea, '\x'::bytea, '\x'::bytea, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
@@ -692,7 +694,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 
 }
 
-func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
+func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
 
 	if !dryRun {
 		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
@@ -701,15 +703,26 @@ func ClearBigtable(family string, key string, dryRun bool, bt *db.Bigtable) {
 			return
 		}
 	}
-	deletedKeys, err := bt.ClearByPrefix(family, key, dryRun)
+
+	if !strings.Contains(key, ":") {
+		logrus.Fatalf("provided invalid prefix: %s", key)
+	}
+
+	// admin, err := gcp_bigtable.NewAdminClient(context.Background(), utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance)
+	// if err != nil {
+	// 	logrus.Fatal(err)
+	// }
+
+	// err = admin.DropRowRange(context.Background(), table, key)
+	// if err != nil {
+	// 	logrus.Fatal(err)
+	// }
+	err := bt.ClearByPrefix(table, family, key, dryRun)
 
 	if err != nil {
 		logrus.Fatalf("error deleting from bigtable: %v", err)
-	} else if dryRun {
-		logrus.Infof("the following keys would be deleted: %v", deletedKeys)
-	} else {
-		logrus.Infof("%v keys have been deleted", len(deletedKeys))
 	}
+	logrus.Info("delete completed")
 }
 
 // Let's find blocks that are missing in bt and index them.

@@ -34,7 +34,7 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/stripe/stripe-go/v72"
 	"github.com/urfave/negroni"
@@ -506,7 +506,6 @@ func main() {
 			router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
-			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 			router.HandleFunc("/tools/broadcast", handlers.Broadcast).Methods("GET")
 			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")
@@ -674,7 +673,7 @@ func main() {
 
 	if utils.Config.Metrics.Enabled {
 		go func(addr string) {
-			logrus.Infof("Serving metrics on %v", addr)
+			logrus.Infof("serving metrics on %v", addr)
 			if err := metrics.Serve(addr); err != nil {
 				logrus.WithError(err).Fatal("Error serving metrics")
 			}

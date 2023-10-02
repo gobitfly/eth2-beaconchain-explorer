@@ -643,5 +643,53 @@ func (b *WeiString) BigInt() *big.Int {
 	mul := &big.Int{}
 	mul.Exp(big.NewInt(10), big.NewInt(int64(b.Exp)), nil)
 	num.Mul(num, mul)
+
 	return num
+}
+
+type ValidatorStatsTableDbRow struct {
+	ValidatorIndex uint64 `db:"validatorindex"`
+	Day            int64  `db:"day"`
+
+	StartBalance          int64 `db:"start_balance"`
+	EndBalance            int64 `db:"end_balance"`
+	MinBalance            int64 `db:"min_balance"`
+	MaxBalance            int64 `db:"max_balance"`
+	StartEffectiveBalance int64 `db:"start_effective_balance"`
+	EndEffectiveBalance   int64 `db:"end_effective_balance"`
+	MinEffectiveBalance   int64 `db:"min_effective_balance"`
+	MaxEffectiveBalance   int64 `db:"max_effective_balance"`
+
+	MissedAttestations      int64 `db:"missed_attestations"`
+	MissedAttestationsTotal int64 `db:"missed_attestations_total"`
+	OrphanedAttestations    int64 `db:"orphaned_attestations"`
+
+	ParticipatedSync      int64 `db:"participated_sync"`
+	ParticipatedSyncTotal int64 `db:"participated_sync_total"`
+	MissedSync            int64 `db:"missed_sync"`
+	MissedSyncTotal       int64 `db:"missed_sync_total"`
+	OrphanedSync          int64 `db:"orphaned_sync"`
+	OrphanedSyncTotal     int64 `db:"orphaned_sync_total"`
+
+	ProposedBlocks int64 `db:"proposed_blocks"`
+	MissedBlocks   int64 `db:"missed_blocks"`
+	OrphanedBlocks int64 `db:"orphaned_blocks"`
+
+	AttesterSlashings int64 `db:"attester_slashings"`
+	ProposerSlashing  int64 `db:"proposer_slashings"`
+
+	Deposits       int64 `db:"deposits"`
+	DepositsAmount int64 `db:"deposits_amount"`
+
+	Withdrawals       int64 `db:"withdrawals"`
+	WithdrawalsAmount int64 `db:"withdrawals_amount"`
+
+	ClRewardsGWei      int64 `db:"cl_rewards_gwei"`
+	ClRewardsGWeiTotal int64 `db:"cl_rewards_gwei_total"`
+
+	ElRewardsWei      decimal.Decimal `db:"el_rewards_wei"`
+	ElRewardsWeiTotal decimal.Decimal `db:"el_rewards_wei_total"`
+
+	MEVRewardsWei      decimal.Decimal `db:"mev_rewards_wei"`
+	MEVRewardsWeiTotal decimal.Decimal `db:"mev_rewards_wei_total"`
 }

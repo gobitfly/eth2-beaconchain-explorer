@@ -668,7 +668,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 		case "gnosis":
 			cfg.Chain.GenesisTimestamp = 1638993340
 		case "holesky":
-			cfg.Chain.GenesisTimestamp = 1694786400
+			cfg.Chain.GenesisTimestamp = 1695902400
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
@@ -1309,7 +1309,9 @@ func FormatTokenSymbolTitle(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 
 	if len(urls) > 0 {
-		return "The token symbol has been hidden as it contains a URL which might be a scam"
+		return fmt.Sprintf("The token symbol has been hidden as it contains a URL (%s) which might be a scam", symbol)
+	} else if symbol == "ETH" {
+		return fmt.Sprintf("The token symbol has been hidden as it contains a Token name (%s) which might be a scam", symbol)
 	}
 	return ""
 }
@@ -1317,8 +1319,9 @@ func FormatTokenSymbolTitle(symbol string) string {
 func FormatTokenSymbol(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 
-	if len(urls) > 0 {
-		return "[hidden-symbol]"
+	if len(urls) > 0 ||
+		symbol == "ETH" {
+		return "[hidden-symbol] ⚠️"
 	}
 	return symbol
 }

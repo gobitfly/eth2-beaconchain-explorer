@@ -536,7 +536,7 @@ func createNewStripeSubscription(subscription stripe.Subscription, event stripe.
 }
 
 func emailCustomerAboutFailedPayment(email string) {
-	msg := fmt.Sprintf("Payment processing failed. Could not activate your subscription. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
+	msg := fmt.Sprintf("Payment processing failed. Could not activate your subscription. Please contact support at " + utils.Config.Frontend.Mail.Contact.SupportEmail + ". Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 	err := mail.SendTextMail(email, "Failed Payment", msg, []types.EmailAttachment{})

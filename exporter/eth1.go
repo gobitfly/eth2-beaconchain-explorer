@@ -99,7 +99,7 @@ func eth1DepositsExporter() {
 			if toBlock > eth1LookBack {
 				fromBlock = toBlock - eth1LookBack
 			} else {
-				fromBlock = 1
+				fromBlock = 0
 			}
 		}
 
