@@ -1766,16 +1766,22 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 		EventThreshold float64 `json:"event_threshold"`
 	}
 
+	errFields := map[string]interface{}{
+		"route": r.URL.String(),
+	}
+
 	var jsonObjects []SubIntent
 	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
-		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
+		utils.LogError(err, "could not parse multiple notification subscription intent", 0, errFields)
 		sendErrorResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
+	errFields["jsonObjects"] = jsonObjects
+
 	if len(jsonObjects) > 100 {
-		utils.LogError(nil, "Multiple notification subscription: max number bundle subscribe is 100", 0)
+		utils.LogError(nil, "multiple notification subscription: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
@@ -1861,19 +1867,23 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 	filter = strings.Replace(filter, "0x", "", -1)
 	event = strings.TrimPrefix(event, utils.GetNetwork()+":")
 
+	errFields := map[string]interface{}{
+		"event":      event,
+		"filter":     filter,
+		"filter_len": len(filter),
+		"userId":     user.UserID}
+
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
-		logger.Errorf("error invalid event name: %v event: %v", err, event)
+		utils.LogError(err, "error invalid event name for subscription", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
 
+	errFields["event_name"] = eventName
+
 	if !isValidSubscriptionFilter(eventName, filter) {
-		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
-		errFields := map[string]interface{}{
-			"filter":     filter,
-			"filter_len": len(filter)}
-		utils.LogError(nil, errMsg, 0, errFields)
+		utils.LogError(nil, "error invalid filter: not pubkey or client for subscription", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -1904,6 +1914,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && !strings.HasPrefix(string(eventName), "rocketpool_") { // no filter = add all my watched validators
 		myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 		if err2 != nil {
+			utils.LogError(err2, "could not retrieve tagged validators for ADD", 0, errFields)
 			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
 			return false
 		}
@@ -1920,7 +1931,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold,
 			)
 			if err != nil {
-				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				utils.LogError(err, "could not ADD subscription", 0, errFields)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 				return false
 			}
@@ -1940,6 +1951,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 			myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 			if err2 != nil {
+				utils.LogError(err2, "could not retrieve tagged validators for ADD", 0, errFields)
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
 				return false
 			}
@@ -1956,6 +1968,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
+				utils.LogError(err, "could not retrieve rocketpool_minipools for ADD", 0, errFields)
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
 				return false
 			}
@@ -1963,7 +1976,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			for i, v := range rocketpoolNodes {
 				err = db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, v, threshold)
 				if err != nil {
-					logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+					utils.LogError(err, "could not ADD all subscription", 0, errFields)
 					ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 					return false
 				}
@@ -1975,7 +1988,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 		} else {
 			err = db.AddSubscription(user.UserID, network, eventName, filter, threshold)
 			if err != nil {
-				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				utils.LogError(err, "error could not ADD subscription", 0, errFields)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 				return false
 			}
@@ -1994,16 +2007,22 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 		EventFilter string `json:"event_filter"`
 	}
 
+	errFields := map[string]interface{}{
+		"body": r.Body,
+	}
+
 	var jsonObjects []UnSubIntent
 	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
-		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
+		utils.LogError(err, "Could not parse multiple notification unsubscription intent", 0, errFields)
 		sendErrorResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
+	errFields["jsonObjects"] = jsonObjects
+
 	if len(jsonObjects) > 100 {
-		utils.LogError(nil, "Max number bundle unsubscribe is 100", 0)
+		utils.LogError(nil, "multiple notification unsubscription: Max number bundle unsubscribe is 100", 0, errFields)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}
@@ -2038,19 +2057,23 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 	filter = strings.Replace(filter, "0x", "", -1)
 	event = strings.TrimPrefix(event, utils.GetNetwork()+":")
 
+	errFields := map[string]interface{}{
+		"event":      event,
+		"filter":     filter,
+		"filter_len": len(filter),
+		"userId":     user.UserID}
+
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
-		logger.Errorf("error invalid event name: %v event: %v", err, event)
+		utils.LogError(err, "error invalid event name for unsubscription", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
 
+	errFields["event_name"] = eventName
+
 	if !isValidSubscriptionFilter(eventName, filter) {
-		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
-		errFields := map[string]interface{}{
-			"filter":     filter,
-			"filter_len": len(filter)}
-		utils.LogError(nil, errMsg, 0, errFields)
+		utils.LogError(nil, "error invalid filter: not pubkey or client for unsubscription", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2068,6 +2091,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 		myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 		if err2 != nil {
+			utils.LogError(err2, "could not retrieve tagged validators for REMOVE", 0, errFields)
 			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
 			return false
 		}
@@ -2077,7 +2101,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		for i, v := range myValidators {
 			err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, fmt.Sprintf("%v", hex.EncodeToString(v.ValidatorPublickey)))
 			if err != nil {
-				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				utils.LogError(err, "could not REMOVE subscription", 0, errFields)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 				return false
 			}
@@ -2091,7 +2115,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 			err = db.DeleteAllSubscription(user.UserID, utils.GetNetwork(), eventName)
 			if err != nil {
-				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				utils.LogError(err, "could not REMOVE all subscriptions", 0, errFields)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 				return false
 			}
@@ -2104,7 +2128,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 			// filtered one only
 			err = db.DeleteSubscription(user.UserID, network, eventName, filter)
 			if err != nil {
-				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				utils.LogError(err, "error could not REMOVE subscription", 0, errFields)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 				return false
 			}
