@@ -142,7 +142,7 @@ func PricingPost(w http.ResponseWriter, r *http.Request) {
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
-	err = mail.SendTextMail("inquiries@beaconcha.in", "New API usage inquiry", msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(utils.Config.Frontend.Mail.Contact.InquiryEmail, "New API usage inquiry", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "pricing_flash", "Error: unable to submit api request")
