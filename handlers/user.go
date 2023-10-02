@@ -1735,6 +1735,8 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	errFields["jsonObjects"] = jsonObjects
+
 	if len(jsonObjects) > 100 {
 		utils.LogError(nil, "multiple notification subscription: max number bundle subscribe is 100", 0)
 		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
@@ -1963,7 +1965,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	}
 
 	errFields := map[string]interface{}{
-		"route": r.URL.String(),
+		"body": r.Body,
 	}
 
 	var jsonObjects []UnSubIntent
@@ -1973,6 +1975,8 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 		sendErrorResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
+
+	errFields["jsonObjects"] = jsonObjects
 
 	if len(jsonObjects) > 100 {
 		utils.LogError(nil, "multiple notification unsubscription: Max number bundle unsubscribe is 100", 0, errFields)
