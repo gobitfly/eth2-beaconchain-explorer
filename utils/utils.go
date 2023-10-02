@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"runtime"
 	"sort"
@@ -1645,30 +1644,4 @@ func ReverseString(s string) string {
 func GetCurrentFuncName() string {
 	pc, _, _, _ := runtime.Caller(1)
 	return runtime.FuncForPC(pc).Name()
-}
-
-// CheckAndInverse checks if all bool fields of a struct are true and returns the struct with all bool fields inverted.
-//
-// Parameters:
-//   - `v` : the struct to check, should only contain bool fields
-//
-// Returns:
-//   - `bool` : true if all bool fields are true
-//   - `interface{}` : the struct with all bool fields inverted
-func CheckAndInverse(v interface{}) (bool, interface{}) {
-	val := reflect.ValueOf(v)
-	allTrue := true
-	inverse := reflect.New(val.Type()).Elem()
-
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		if field.Kind() == reflect.Bool {
-			if !field.Bool() {
-				allTrue = false
-			}
-			inverse.Field(i).SetBool(!field.Bool())
-		}
-	}
-
-	return allTrue, inverse.Interface()
 }
