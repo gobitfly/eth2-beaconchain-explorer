@@ -1,8 +1,8 @@
-parse_input = import_module("github.com/kurtosis-tech/eth2-package/src/package_io/parse_input.star")
+parse_input = import_module("github.com/kurtosis-tech/ethereum-package/src/package_io/parse_input.star")
 eth_network_module = import_module("github.com/kurtosis-tech/eth-network-package/main.star")
-transaction_spammer = import_module("github.com/kurtosis-tech/eth2-package/src/transaction_spammer/transaction_spammer.star")
+transaction_spammer = import_module("github.com/kurtosis-tech/ethereum-package/src/transaction_spammer/transaction_spammer.star")
 genesis_constants = import_module("github.com/kurtosis-tech/eth-network-package/src/prelaunch_data_generator/genesis_constants/genesis_constants.star")
-shared_utils = import_module("github.com/kurtosis-tech/eth2-package/src/shared_utils/shared_utils.star")
+shared_utils = import_module("github.com/kurtosis-tech/ethereum-package/src/shared_utils/shared_utils.star")
 
 POSTGRES_PORT_ID = "postgres"
 POSTGRES_DB = "db"
