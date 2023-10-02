@@ -732,7 +732,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 		period = utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
 	}
 
-	rows, err := db.ReaderDb.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod)
+	rows, err := db.ReaderDb.Query(`SELECT period, GREATEST(period*$2, $3) AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, utils.Config.Chain.Config.AltairForkEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -754,7 +754,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM  epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1 ")
+	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1")
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -1023,14 +1023,15 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 	rows, err := db.ReaderDb.Query(
 		`SELECT 
 			period, 
-			period*$2 AS start_epoch, 
+			GREATEST(period*$2, $3) AS start_epoch, 
 			(period+1)*$2-1 AS end_epoch, 
 			ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
 		FROM sync_committees 
-		WHERE period = $1 AND validatorindex = ANY($3)
+		WHERE period = $1 AND validatorindex = ANY($4)
 		GROUP BY period`,
 		period,
 		utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod,
+		utils.Config.Chain.Config.AltairForkEpoch,
 		pq.Array(validators),
 	)
 	if err != nil {

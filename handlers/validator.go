@@ -645,14 +645,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				Reason  string
 			}
 			err = db.ReaderDb.Get(&slashingInfo,
-				`select block_slot as slot, proposer as slasher, 'Attestation Violation' as reason
-					from blocks_attesterslashings a1 left join blocks b1 on b1.slot = a1.block_slot
-					where b1.status = '1' and $1 = ANY(a1.attestation1_indices) and $1 = ANY(a1.attestation2_indices)
-				union all
-				select block_slot as slot, proposer as slasher, 'Proposer Violation' as reason
-					from blocks_proposerslashings a2 left join blocks b2 on b2.slot = a2.block_slot
-					where b2.status = '1' and a2.proposerindex = $1
-				limit 1`,
+				`SELECT block_slot AS slot, proposer AS slasher, 'Attestation Violation' AS reason
+					FROM blocks_attesterslashings a1 LEFT JOIN blocks b1 ON b1.slot = a1.block_slot
+					WHERE b1.status = '1' AND $1 = ANY(a1.attestation1_indices) AND $1 = ANY(a1.attestation2_indices)
+				UNION ALL
+				SELECT block_slot AS slot, proposer AS slasher, 'Proposer Violation' AS reason
+					FROM blocks_proposerslashings a2 LEFT JOIN blocks b2 ON b2.slot = a2.block_slot
+					WHERE b2.status = '1' AND a2.proposerindex = $1
+				LIMIT 1`,
 				index)
 			if err != nil {
 				return fmt.Errorf("error retrieving validator slashing info: %w", err)
@@ -662,7 +662,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.SlashedFor = slashingInfo.Reason
 		}
 
-		err = db.ReaderDb.Get(&validatorPageData.SlashingsCount, `select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1 and blocks.status = '1'`, index)
+		err = db.ReaderDb.Get(&validatorPageData.SlashingsCount, `SELECT COALESCE(SUM(attesterslashingscount) + SUM(proposerslashingscount), 0) FROM blocks WHERE blocks.proposer = $1 AND blocks.status = '1'`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving slashings-count: %w", err)
 		}
@@ -697,10 +697,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		allSyncPeriods := actualSyncPeriods
 
 		err := db.ReaderDb.Select(&allSyncPeriods, `
-		SELECT period as period, (period*$1) as firstepoch, ((period+1)*$1)-1 as lastepoch
+		SELECT period, GREATEST(period*$1, $2) AS firstepoch, ((period+1)*$1)-1 AS lastepoch
 		FROM sync_committees 
-		WHERE validatorindex = $2
-		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, index)
+		WHERE validatorindex = $3
+		ORDER BY period desc`, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, utils.Config.Chain.Config.AltairForkEpoch, index)
 		if err != nil {
 			return fmt.Errorf("error getting sync participation count data of sync-assignments: %w", err)
 		}
@@ -723,9 +723,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if lastStatsDay > 0 {
 				err = db.ReaderDb.Get(&syncStats, `
 					SELECT
-						COALESCE(SUM(participated_sync), 0) as participated_sync,
-						COALESCE(SUM(missed_sync), 0) as missed_sync,
-						COALESCE(SUM(orphaned_sync), 0) as orphaned_sync
+						COALESCE(SUM(participated_sync), 0) AS participated_sync,
+						COALESCE(SUM(missed_sync), 0) AS missed_sync,
+						COALESCE(SUM(orphaned_sync), 0) AS orphaned_sync
 					FROM validator_stats
 					WHERE validatorindex = $1`, index)
 				if err != nil {
@@ -786,29 +786,29 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
 		err := db.ReaderDb.Get(validatorPageData.Rocketpool, `
 		SELECT
-			rplm.node_address      AS node_address,
-			rplm.address           AS minipool_address,
-			rplm.node_fee          AS minipool_node_fee,
-			rplm.deposit_type      AS minipool_deposit_type,
-			rplm.status            AS minipool_status,
-			rplm.status_time       AS minipool_status_time,
-			COALESCE(rplm.penalty_count,0)     AS penalty_count,
-			rpln.timezone_location AS node_timezone_location,
-			rpln.rpl_stake         AS node_rpl_stake,
-			rpln.max_rpl_stake     AS node_max_rpl_stake,
-			rpln.min_rpl_stake     AS node_min_rpl_stake,
-			rpln.rpl_cumulative_rewards     AS rpl_cumulative_rewards,
-			rpln.claimed_smoothing_pool     AS claimed_smoothing_pool,
-			rpln.unclaimed_smoothing_pool   AS unclaimed_smoothing_pool,
-			rpln.unclaimed_rpl_rewards      AS unclaimed_rpl_rewards,
-			COALESCE(node_deposit_balance, 0) AS node_deposit_balance,
-			COALESCE(node_refund_balance, 0) AS node_refund_balance,
-			COALESCE(user_deposit_balance, 0) AS user_deposit_balance,
-			COALESCE(rpln.effective_rpl_stake, 0) as effective_rpl_stake,
-			COALESCE(deposit_credit, 0) AS deposit_credit,
-			COALESCE(is_vacant, false) AS is_vacant,
+			rplm.node_address      					AS node_address,
+			rplm.address           					AS minipool_address,
+			rplm.node_fee          					AS minipool_node_fee,
+			rplm.deposit_type      					AS minipool_deposit_type,
+			rplm.status            					AS minipool_status,
+			rplm.status_time       					AS minipool_status_time,
+			COALESCE(rplm.penalty_count,0) 			AS penalty_count,
+			rpln.timezone_location 					AS node_timezone_location,
+			rpln.rpl_stake 							AS node_rpl_stake,
+			rpln.max_rpl_stake 						AS node_max_rpl_stake,
+			rpln.min_rpl_stake 						AS node_min_rpl_stake,
+			rpln.rpl_cumulative_rewards 			AS rpl_cumulative_rewards,
+			rpln.claimed_smoothing_pool 			AS claimed_smoothing_pool,
+			rpln.unclaimed_smoothing_pool 			AS unclaimed_smoothing_pool,
+			rpln.unclaimed_rpl_rewards 				AS unclaimed_rpl_rewards,
+			COALESCE(node_deposit_balance, 0) 		AS node_deposit_balance,
+			COALESCE(node_refund_balance, 0) 		AS node_refund_balance,
+			COALESCE(user_deposit_balance, 0) 		AS user_deposit_balance,
+			COALESCE(rpln.effective_rpl_stake, 0) 	AS effective_rpl_stake,
+			COALESCE(deposit_credit, 0) 			AS deposit_credit,
+			COALESCE(is_vacant, false) 				AS is_vacant,
 			version,
-			COALESCE(rpln.smoothing_pool_opted_in, false)    AS smoothing_pool_opted_in 
+			COALESCE(rpln.smoothing_pool_opted_in, false) AS smoothing_pool_opted_in 
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
@@ -1027,21 +1027,21 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	var blocks []*types.IndexPageDataBlocks
 	err = db.ReaderDb.Select(&blocks, `
 		SELECT 
-			blocks.epoch, 
-			blocks.slot, 
-			blocks.proposer, 
-			blocks.blockroot, 
-			blocks.parentroot, 
-			blocks.attestationscount, 
-			blocks.depositscount,
-			blocks.withdrawalcount, 
-			blocks.voluntaryexitscount, 
-			blocks.proposerslashingscount, 
-			blocks.attesterslashingscount, 
-			blocks.status, 
-			blocks.graffiti 
+			epoch, 
+			slot, 
+			proposer, 
+			blockroot, 
+			parentroot, 
+			attestationscount, 
+			depositscount,
+			withdrawalcount, 
+			voluntaryexitscount, 
+			proposerslashingscount, 
+			attesterslashingscount, 
+			status, 
+			graffiti 
 		FROM blocks 
-		WHERE blocks.proposer = $1
+		WHERE proposer = $1
 		ORDER BY `+orderBy+` `+orderDir+`
 		LIMIT $2 OFFSET $3`, index, length, start)
 
@@ -1298,14 +1298,14 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 	err = db.ReaderDb.Get(&totalCount, `
-		select
+		SELECT
 			(
-				select count(*) from blocks_attesterslashings a
-				inner join blocks b on b.slot = a.block_slot and b.proposer = $1
-				where attestation1_indices is not null and attestation2_indices is not null
+				SELECT COUNT(*) FROM blocks_attesterslashings a
+				INNER JOIN blocks b ON b.slot = a.block_slot AND b.proposer = $1
+				WHERE attestation1_indices IS NOT null AND attestation2_indices IS NOT null
 			) + (
-				select count(*) from blocks_proposerslashings c
-				inner join blocks d on d.slot = c.block_slot and d.proposer = $1
+				SELECT COUNT(*) FROM blocks_proposerslashings c
+				INNER JOIN blocks d ON d.slot = c.block_slot AND d.proposer = $1
 			)`, index)
 	if err != nil {
 		logger.Errorf("error retrieving totalCount of validator-slashings: %v", err)
@@ -2014,7 +2014,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// extract correct slots
 		tableData = make([][]interface{}, 0, length)
 		for index := endIndex; index <= startIndex; index++ {
-
 			slot := slots[index]
 
 			epoch := utils.EpochOfSlot(slot)
@@ -2048,10 +2047,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				utils.FormatSyncParticipationStatus(status, slot),
 				utils.FormatSyncParticipations(participation),
 			})
-
-			// if index == 0 {
-			// 	break
-			// }
 		}
 	}
 

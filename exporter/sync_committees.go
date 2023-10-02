@@ -26,7 +26,7 @@ func syncCommitteesExporter(rpcClient rpc.Client) {
 
 func exportSyncCommittees(rpcClient rpc.Client) error {
 	var dbPeriods []uint64
-	err := db.WriterDb.Select(&dbPeriods, `select period from sync_committees group by period`)
+	err := db.WriterDb.Select(&dbPeriods, `SELECT period FROM sync_committees GROUP BY period`)
 	if err != nil {
 		return err
 	}
