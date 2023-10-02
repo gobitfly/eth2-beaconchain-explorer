@@ -510,7 +510,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 		case "holesky":
 			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &cfg.Chain.ClConfig)
 		default:
-			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
+			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ClConfigPath)
 		}
 		if err != nil {
 			return err
