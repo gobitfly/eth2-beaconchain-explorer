@@ -744,7 +744,7 @@ func genesisDepositsExporter(client rpc.Client) {
 				SELECT DISTINCT ON(publickey) publickey, signature 
 				FROM eth1_deposits 
 				WHERE valid_signature = true) AS a 
-			WHERE block_slot = 0 AND blocks_deposits.publickey = a.publickey AND blocks_deposits.signature = '\x0'`)
+			WHERE block_slot = 0 AND blocks_deposits.publickey = a.publickey AND blocks_deposits.signature = '\x'`)
 		if err != nil {
 			tx.Rollback()
 			logger.Errorf("error hydrating eth1 data into genesis-deposits: %v", err)
