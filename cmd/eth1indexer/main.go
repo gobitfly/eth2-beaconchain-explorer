@@ -40,8 +40,8 @@ func main() {
 	reorgDepth := flag.Int("reorg.depth", 20, "Lookback to check and handle chain reorgs")
 
 	concurrencyBlocks := flag.Int64("blocks.concurrency", 30, "Concurrency to use when indexing blocks from erigon")
-	startBlocks := flag.Int64("blocks.start", 1, "Block to start indexing")
-	endBlocks := flag.Int64("blocks.end", 1, "Block to finish indexing")
+	startBlocks := flag.Int64("blocks.start", 0, "Block to start indexing")
+	endBlocks := flag.Int64("blocks.end", 0, "Block to finish indexing")
 	bulkBlocks := flag.Int64("blocks.bulk", 8000, "Maximum number of blocks to be processed before saving")
 	offsetBlocks := flag.Int64("blocks.offset", 100, "Blocks offset")
 	checkBlocksGaps := flag.Bool("blocks.gaps", false, "Check for gaps in the blocks table")
