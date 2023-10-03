@@ -21,10 +21,11 @@
       "deposit_contract_address": "0x4242424242424242424242424242424242424242",
       "seconds_per_slot": 4,
       "genesis_delay": 10,
-      "capella_fork_epoch": 3,
-      "deneb_fork_epoch": 500
+      "capella_fork_epoch": 2,
+      "deneb_fork_epoch": 4
     },
     "global_client_log_level": "info",
-    "start_tx_spammer": false
+    "start_tx_spammer": true,
+    "blob_spammer": true
   }
   
