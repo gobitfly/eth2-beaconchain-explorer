@@ -2635,11 +2635,15 @@ func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
 	var count uint64
 	validatorFilter := pq.Array(validators)
 	lastExportedDay, err := GetLastExportedStatisticDay()
-	if err != nil {
+	if err != nil && err != ErrNoStats {
 		return 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
 	}
-	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
-	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.ClConfig.SlotsPerEpoch) + 1
+
+	cutoffSlot := uint64(0)
+	if err == nil {
+		_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
+		cutoffSlot = (lastEpochOfDay * utils.Config.Chain.ClConfig.SlotsPerEpoch) + 1
+	}
 
 	err = ReaderDb.Get(&count, `
 		WITH today AS (
