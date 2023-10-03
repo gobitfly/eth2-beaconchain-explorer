@@ -30,22 +30,22 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	defer cancel()
 
 	cacheKey := fmt.Sprintf("%d:tx:%s", utils.Config.Chain.ClConfig.DepositChainID, hash.String())
-	/*
-		if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
-			logger.Infof("retrieved data for tx %v from cache", hash)
-			logger.Trace(wanted)
 
-			data := wanted.(*types.Eth1TxData)
-			if data.BlockNumber != 0 {
-				if err := db.GetBlockStatus(data.BlockNumber, services.LatestFinalizedEpoch(), &data.Epoch); err != nil {
-					logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
-					data.Epoch.Finalized = false
-					data.Epoch.Participation = -1
-				}
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, new(types.Eth1TxData)); err == nil {
+		logger.Infof("retrieved data for tx %v from cache", hash)
+		logger.Trace(wanted)
 
-				return data, nil
+		data := wanted.(*types.Eth1TxData)
+		if data.BlockNumber != 0 {
+			if err := db.GetBlockStatus(data.BlockNumber, services.LatestFinalizedEpoch(), &data.Epoch); err != nil {
+				logger.Warningf("failed to get finalization stats for block %v", data.BlockNumber)
+				data.Epoch.Finalized = false
+				data.Epoch.Participation = -1
 			}
-	*/
+
+			return data, nil
+		}
+	}
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {
