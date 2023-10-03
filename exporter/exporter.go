@@ -738,29 +738,20 @@ func genesisDepositsExporter(client rpc.Client) {
 
 		// hydrate the eth1 deposit signature for all genesis validators that have a corresponding eth1 deposit
 		_, err = tx.Exec(`
-				INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature)
-				SELECT
-					0 as block_slot,
-					v.validatorindex as block_index,
-					v.pubkey as publickey,
-					v.withdrawalcredentials,
-					b.balance as amount,
-					d.signature as signature
-				FROM validators v
-				LEFT JOIN validator_balances_recent b 
-					ON v.validatorindex = b.validatorindex
-					AND b.epoch = 0
-				LEFT JOIN ( 
-					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
-				) d ON d.publickey = v.pubkey
-				WHERE v.validatorindex < $1 AND d.signature IS NOT NULL
-				ON CONFLICT (block_slot, block_index) DO UPDATE SET signature = EXCLUDED.signature`, len(genesisValidators.Data))
+			UPDATE blocks_deposits 
+			SET signature = a.signature 
+			FROM (
+				SELECT DISTINCT ON(publickey) publickey, signature 
+				FROM eth1_deposits 
+				WHERE valid_signature = true) AS a 
+			WHERE block_slot = 0 AND blocks_deposits.publickey = a.publickey AND blocks_deposits.signature = \x0`, len(genesisValidators.Data))
 		if err != nil {
 			tx.Rollback()
 			logger.Errorf("error hydrating eth1 data into genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
 			continue
 		}
+
 		// update deposits-count
 		_, err = tx.Exec("UPDATE blocks SET depositscount = $1 WHERE slot = 0", len(genesisValidators.Data))
 		if err != nil {
