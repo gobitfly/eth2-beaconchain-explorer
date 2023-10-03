@@ -299,8 +299,8 @@ func main() {
 				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
 
 				startBlock := int64(lastBlockFromBlocksTable) - *offsetBlocks
-				if startBlock < 1 {
-					startBlock = 1
+				if startBlock < 0 {
+					startBlock = 0
 				}
 
 				if *bulkBlocks <= 0 || *bulkBlocks > int64(lastBlockFromNode)-startBlock+1 {
