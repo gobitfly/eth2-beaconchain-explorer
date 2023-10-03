@@ -42,9 +42,8 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 				data.Epoch.Finalized = false
 				data.Epoch.Participation = -1
 			}
-
-			return data, nil
 		}
+		return data, nil
 	}
 	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
 
