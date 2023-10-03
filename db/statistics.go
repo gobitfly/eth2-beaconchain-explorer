@@ -849,6 +849,7 @@ func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error
 		COALESCE(deposits_amount, 0) AS deposits_amount,
 		COALESCE(withdrawals, 0) AS withdrawals,
 		COALESCE(withdrawals_total, 0) AS withdrawals_total,
+		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
 		COALESCE(withdrawals_amount_total, 0) AS withdrawals_amount_total,
 		COALESCE(cl_rewards_gwei, 0) AS cl_rewards_gwei,
 		COALESCE(cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total,
