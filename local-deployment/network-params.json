@@ -26,6 +26,6 @@
     },
     "global_client_log_level": "info",
     "start_tx_spammer": true,
-    "blob_spammer": true
+    "start_blob_spammer": true
   }
   
