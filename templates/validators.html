@@ -99,6 +99,7 @@
                 var hashState = window.location.hash.substring(1);
                 if (possibleStates[hashState]) state = hashState
             }
+            var urlSearchParams = new URLSearchParams([["filterByState", state]])
 
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
@@ -117,7 +118,7 @@
                 stateLoadCallback: function (settings) {
                   return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                 },
-                ajax: dataTableLoader('/validators/data', new URLSearchParams([["filterByState", state]])),
+                ajax: dataTableLoader('/validators/data', urlSearchParams),
                 pagingType: 'input',
                 language: {
                     paginate: {
@@ -136,7 +137,7 @@
                         .find('[data-filter-validators]')
                         .click(function() {
                             var f = $(this).data('filter-validators');
-                            validatorsDataTable.ajax.url(`/validators/data?filterByState=${f}`);
+                            urlSearchParams.set("filterByState", f)
                             validatorsDataTable.ajax.reload();
                             adaptTableToState(f)
                         });
