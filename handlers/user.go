@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
 	"eth2-exporter/services"
@@ -1303,10 +1302,35 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 
 // UserUpdateEmailPost gets called from the settings page to request a new email update. Only once the update link is pressed does the email actually change.
 func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
+	// get current user session
 	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// get user data from db
+	userData := struct {
+		Email     string     `db:"email"`
+		Password  string     `db:"password"`
+		ConfirmTs *time.Time `db:"email_confirmation_ts"`
+	}{}
+	err = db.FrontendWriterDB.Get(&userData, "SELECT email, password, email_confirmation_ts FROM users WHERE users.id = $1", user.UserID)
+	if err != nil {
+		utils.LogError(err, "error user data for email change request", 0, map[string]interface{}{"userID": user.UserID})
+		session.AddFlash("Error: Error processing request, please try again later.")
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	// check if email change request is ratelimited
+	now := time.Now()
+	if userData.ConfirmTs != nil && (*userData.ConfirmTs).Add(authConfirmEmailRateLimit).After(now) {
+		session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1318,48 +1342,84 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
-	email := r.FormValue("email")
 
-	if !utils.IsValidEmail(email) {
+	// check if password is correct
+	formPassword := r.FormValue("password")
+
+	err = bcrypt.CompareHashAndPassword([]byte(userData.Password), []byte(formPassword))
+	if err != nil {
+		session.AddFlash("Error: Invalid email or password!")
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	// validate new email
+	newEmail := r.FormValue("email")
+
+	if userData.Email == newEmail {
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	if !utils.IsValidEmail(newEmail) {
 		session.AddFlash("Error: Invalid email format!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
-	var existingEmails struct {
-		Count int
-		Email string
-	}
-	db.FrontendWriterDB.Get(&existingEmails, "SELECT email FROM users WHERE email = $1", email)
+	emailExists := false
+	db.FrontendWriterDB.Get(&emailExists, "EXISTS (SELECT email FROM users WHERE email = $1)", newEmail)
 
-	if existingEmails.Email == email {
-		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-		return
-	} else if existingEmails.Email != "" {
-		session.AddFlash("Error: Email already exists please choose a unique email")
+	if emailExists {
+		session.AddFlash("Error: Email already exists, please choose a unique email")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
-	var rateLimitError *types.RateLimitError
-	err = sendEmailUpdateConfirmation(user.UserID, email)
+	// everything is fine, send confirmation email
+
+	err = sendEmailUpdateConfirmation(user.UserID, newEmail)
 	if err != nil {
 		logger.Errorf("error sending confirmation-email: %v", err)
-		if errors.As(err, &rateLimitError) {
-			session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
-		} else {
-			session.AddFlash(authInternalServerErrorFlashMsg)
-		}
+		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
-	session.AddFlash("Verification link sent to your new email " + email)
+	session.AddFlash("Verification link sent to your new email " + newEmail)
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+}
+
+func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
+	emailConfirmationHash := utils.RandomString(40)
+
+	_, err := db.FrontendWriterDB.Exec("UPDATE users SET email_confirmation_hash = $1, email_change_to_value = $2, email_confirmation_ts = TO_TIMESTAMP($3) WHERE id = $4", emailConfirmationHash, newEmail, time.Now().Unix(), userId)
+	if err != nil {
+		return fmt.Errorf("error updating db data for user %v for email change: %w", userId, err)
+	}
+
+	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
+	msg := fmt.Sprintf(`To update your email on %[1]s please verify it by clicking this link:
+
+https://%[1]s/settings/email/%[2]s
+
+This link will expire in 30 minutes.
+
+Best regards,
+
+%[1]s
+`, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
+	err = mail.SendTextMail(newEmail, subject, msg, []types.EmailAttachment{})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ConfirmUpdateEmail confirms and updates the email address of the user. Given an update link the email in the db is changed.
@@ -1382,7 +1442,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		NewEmail  string    `db:"email_change_to_value"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed FROM users WHERE email_confirmation_hash = $1", hash)
+	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed, email_change_to_value FROM users WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
 		logger.Errorf("error retreiveing email for confirmation_hash %v %v", hash, err)
 		utils.SetFlash(w, r, authSessionName, "Error: This confirmation link is invalid / outdated.")
@@ -1408,15 +1468,15 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var emailExists string
-	db.FrontendWriterDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", user.NewEmail)
-	if emailExists != "" {
+	emailExists := false
+	db.FrontendWriterDB.Get(&emailExists, "EXISTS (SELECT email FROM users WHERE email = $1)", user.NewEmail)
+	if emailExists {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
-	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = '' WHERE id = $2`, user.NewEmail, user.ID)
+	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = '', email_change_to_value = '' WHERE id = $2`, user.NewEmail, user.ID)
 	if err != nil {
 		logger.Errorf("error: updating email for user: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
@@ -1438,57 +1498,6 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
-}
-
-func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
-	now := time.Now()
-	emailConfirmationHash := utils.RandomString(40)
-
-	tx, err := db.FrontendWriterDB.Beginx()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	var lastTs *time.Time
-	err = tx.Get(&lastTs, "SELECT email_confirmation_ts FROM users WHERE id = $1", userId)
-	if err != nil {
-		return fmt.Errorf("error getting confirmation-ts: %w", err)
-	}
-	if lastTs != nil && (*lastTs).Add(authConfirmEmailRateLimit).After(now) {
-		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
-	}
-
-	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1, email_change_to_value = $2 WHERE id = $3", emailConfirmationHash, newEmail, userId)
-	if err != nil {
-		return fmt.Errorf("error updating confirmation-hash: %w", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("error committing db-tx: %w", err)
-	}
-
-	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
-	msg := fmt.Sprintf(`To update your email on %[1]s please verify it by clicking this link:
-
-https://%[1]s/settings/email/%[2]s
-
-Best regards,
-
-%[1]s
-`, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
-	err = mail.SendTextMail(newEmail, subject, msg, []types.EmailAttachment{})
-	if err != nil {
-		return err
-	}
-
-	_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmation_ts = TO_TIMESTAMP($1) WHERE id = $2", time.Now().Unix(), userId)
-	if err != nil {
-		return fmt.Errorf("error updating confirmation-ts: %w", err)
-	}
-
-	return nil
 }
 
 // UserValidatorWatchlistAdd godoc
