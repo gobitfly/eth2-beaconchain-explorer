@@ -401,7 +401,11 @@ func NameValidatorsByRanges(rangesUrl string) error {
 		}
 	}
 
-	stmts := []string{}
+	inserts := []struct {
+		Name string
+		From uint64
+		To   uint64
+	}{}
 
 	for r, n := range ranges.Ranges {
 		rs := strings.Split(r, "-")
@@ -420,12 +424,16 @@ func NameValidatorsByRanges(rangesUrl string) error {
 			return fmt.Errorf("invalid format, range must be X-Y where X <= Y")
 		}
 
-		stmts = append(stmts, fmt.Sprintf("insert into validator_names(publickey, name) select pubkey as publickey, '%s' as name from validators where validatorindex >= %d and validatorindex <= %d on conflict(publickey) do update set name = excluded.name;\n", n, rFrom, rTo))
+		inserts = append(inserts, struct {
+			Name string
+			From uint64
+			To   uint64
+		}{n, rFrom, rTo})
 	}
-	fmt.Println(stmts)
 
-	for _, stmt := range stmts {
-		_, err := db.WriterDb.Exec(stmt)
+	for _, insert := range inserts {
+		fmt.Printf("insert into validator_names(publickey, name) select pubkey as publickey, %v as name from validators where validatorindex >= %v and validatorindex <= %v on conflict(publickey) do update set name = excluded.name;\n", insert.Name, insert.From, insert.To)
+		_, err := db.WriterDb.Exec("insert into validator_names(publickey, name) select pubkey as publickey, $1 as name from validators where validatorindex >= $2 and validatorindex <= $3 on conflict(publickey) do update set name = excluded.name;", insert.Name, insert.From, insert.To)
 		if err != nil {
 			return err
 		}
