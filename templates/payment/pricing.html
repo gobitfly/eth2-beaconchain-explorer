@@ -203,6 +203,10 @@
                 <h1 class="card-title pricing-card-title">0€ <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 5 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 20 }}
                   </li>
@@ -225,6 +229,10 @@
               <div class="card-body">
                 <h1 class="card-title pricing-card-title">59€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
+                  <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 10 }}
+                  </li>
                   <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 100 }}
@@ -267,6 +275,10 @@
                 <h1 class="card-title pricing-card-title">99€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 10 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 600 }}
                   </li>
@@ -305,6 +317,10 @@
                 <h1 class="card-title pricing-card-title">399€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 30 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
                     {{ formatAddCommas 1200 }}
                   </li>
@@ -314,7 +330,7 @@
                   </li>
                   <li>
                     Total requests per month:<br />
-                    {{ formatAddCommas 4000000 }}
+                    {{ formatAddCommas 6000000 }}
                   </li>
                 </ul>
                 {{ if .User.Authenticated }}
@@ -378,6 +394,7 @@
                         <option>Sapphire</option>
                         <option>Emerald</option>
                         <option>Diamond</option>
+                        <option>Enterprise</option>
                       </select>
                     </div>
                     <div class="form-group">

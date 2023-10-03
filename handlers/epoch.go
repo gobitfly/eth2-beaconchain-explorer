@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,7 +30,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	var epochFutureTemplate = templates.GetTemplate(epochFutureTemplateFiles...)
 	var epochNotFoundTemplate = templates.GetTemplate(epochNotFoundTemplateFiles...)
 
-	const MaxEpochValue = 4294967296 // we only render a page for epochs up to this value
+	const MaxEpochValue = math.MaxUint32 + 1 // we only render a page for epochs up to this value
 
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)

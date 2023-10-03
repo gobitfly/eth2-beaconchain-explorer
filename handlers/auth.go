@@ -156,12 +156,30 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
+	q := r.URL.Query()
+
 	data := InitPageData(w, r, "login", "/login", "Login", templateFiles)
-	data.Data = types.AuthData{
+
+	authData := types.AuthData{
 		Flashes:      utils.GetFlashes(w, r, authSessionName),
 		CsrfField:    csrf.TemplateField(r),
 		RecaptchaKey: utils.Config.Frontend.RecaptchaSiteKey,
 	}
+
+	redirectData := struct {
+		Redirect_uri string
+		State        string
+	}{
+		Redirect_uri: q.Get("redirect_uri"),
+		State:        q.Get("state"),
+	}
+
+	data.Data = struct {
+		AuthData     types.AuthData
+		RedirectData interface{}
+	}{
+		AuthData:     authData,
+		RedirectData: redirectData}
 	data.Meta.NoTrack = true
 
 	if handleTemplateError(w, r, "auth.go", "Login", "", loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -171,7 +189,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 // LoginPost handles authenticating the user.
 func LoginPost(w http.ResponseWriter, r *http.Request) {
-
 	if err := utils.HandleRecaptcha(w, r, "/login"); err != nil {
 		return
 	}
@@ -213,6 +230,17 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		UserGroup string `db:"user_group"`
 	}{}
 
+	redirectParam := ""
+	redirectURI := r.FormValue("oauth_redirect_uri")
+	if redirectURI != "" {
+		redirectParam = "?redirect_uri=" + redirectURI
+
+		state := r.FormValue("state")
+		if state != "" {
+			redirectParam += "&state=" + state
+		}
+	}
+
 	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active, COALESCE(user_group, '') AS user_group FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
 		if err != sql.ErrNoRows {
@@ -220,14 +248,14 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		}
 		session.AddFlash("Error: Invalid email or password!")
 		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
 	if !user.Confirmed {
 		session.AddFlash("Error: Email has not been confirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
 		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
@@ -235,7 +263,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		session.AddFlash("Error: Invalid email or password!")
 		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
@@ -282,20 +310,8 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		},
 	).Info("login succeeded")
 
-	redirectURI := session.GetValue("oauth_redirect_uri")
-
-	if redirectURI != nil {
-		state := session.GetValue("state")
-		var stateParam = ""
-
-		if state != nil {
-			stateParam = "&state=" + state.(string)
-		}
-
-		session.DeleteValue("oauth_redirect_uri")
-		session.DeleteValue("state")
-
-		http.Redirect(w, r, "/user/authorize?redirect_uri="+redirectURI.(string)+stateParam, http.StatusSeeOther)
+	if redirectParam != "" {
+		http.Redirect(w, r, "/user/authorize"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
@@ -316,7 +332,6 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	session.SetValue("subscription", "")
 	session.SetValue("authenticated", false)
 	session.DeleteValue("user_id")
-	session.DeleteValue("oauth_redirect_uri")
 
 	err = session.SCS.Destroy(r.Context())
 	if err != nil {

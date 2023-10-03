@@ -15,7 +15,6 @@ import (
 	"math/big"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	itypes "github.com/gobitfly/eth-rewards/types"
@@ -27,9 +26,6 @@ import (
 	geth_types "github.com/ethereum/go-ethereum/core/types"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 )
-
-var eth1BlockDepositReached atomic.Value
-var depositThresholdReached atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
@@ -703,44 +699,39 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 
-		threshold, err := db.GetDepositThresholdTime()
-		if err != nil {
-			logger.WithError(err).Error("error could not calculate threshold time")
-		}
-		if threshold == nil {
-			threshold = &deposit.BlockTs
-		}
-
 		data.DepositThreshold = float64(utils.Config.Chain.Config.MinGenesisActiveValidatorCount) * 32
-		data.DepositedTotal = float64(deposit.Total) * 32
+		data.DepositedTotal = float64(deposit.Total)
 
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
-		genesisDelay := time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
+		// genesisDelay := time.Duration(int64(utils.Config.Chain.Config.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.Config.MinGenesisTime), 0)
 
 		data.MinGenesisTime = minGenesisTime.Unix()
-		data.NetworkStartTs = minGenesisTime.Add(genesisDelay).Unix()
+		data.NetworkStartTs = minGenesisTime.Add(time.Second * time.Duration(utils.Config.Chain.Config.GenesisDelay)).Unix()
 
-		if minGenesisTime.Before(time.Now()) {
-			minGenesisTime = time.Now()
-		}
+		// if minGenesisTime.Before(time.Now()) {
+		// 	minGenesisTime = time.Now()
+		// }
+
+		// logger.Infof("start ts is :%v", data.NetworkStartTs)
 
 		// enough deposits
-		if data.DepositedTotal > data.DepositThreshold {
-			if depositThresholdReached.Load() == nil {
-				eth1BlockDepositReached.Store(*threshold)
-				depositThresholdReached.Store(true)
-			}
-			eth1Block := eth1BlockDepositReached.Load().(time.Time)
+		// if data.DepositedTotal > data.DepositThreshold {
+		// 	if depositThresholdReached.Load() == nil {
+		// 		eth1BlockDepositReached.Store(*threshold)
+		// 		depositThresholdReached.Store(true)
+		// 	}
+		// 	eth1Block := eth1BlockDepositReached.Load().(time.Time)
 
-			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
-				// Network starts after min genesis time
-				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
-			} else {
-				data.NetworkStartTs = minGenesisTime.Unix()
-			}
-		}
+		// 	if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
+		// 		// Network starts after min genesis time
+		// 		data.NetworkStartTs = eth1Block.Add(time.Second * time.Duration(utils.Config.Chain.Config.GenesisDelay)).Unix()
+		// 	} else {
+		// 		data.NetworkStartTs = minGenesisTime.Unix()
+		// 	}
+		// }
+		// logger.Infof("start ts is :%v", data.NetworkStartTs)
 
 		latestChartsPageData := LatestChartsPageData()
 		if len(latestChartsPageData) != 0 {

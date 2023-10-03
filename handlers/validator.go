@@ -13,6 +13,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math"
 	"math/big"
 	"net/http"
 	"sort"
@@ -249,7 +250,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
-		if err != nil {
+		if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
 			validatorNotFound(data, w, r, vars, "")
 			return
 		}
@@ -349,18 +350,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
 
-	// Every validator is scheduled to issue an attestation once per epoch
-	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
-	// Special care needs to be take for exited and pending validators
-	validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
-	if validatorPageData.ActivationEpoch > validatorPageData.Epoch || isPreGenesis {
-		validatorPageData.AttestationsCount = 0
-	}
-
-	if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
-		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
-	}
-
 	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
 	avgSyncIntervalAsDuration := time.Duration(
 		utils.Config.Chain.Config.SecondsPerSlot*
@@ -447,12 +436,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if validatorPageData.CappellaHasHappened {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
 
-			// get validator withdrawals
-			withdrawalsCount, lastWithdrawalsEpoch, err := db.GetValidatorWithdrawalsCount(validatorPageData.Index)
+			validatorSlice := []uint64{index}
+			withdrawalsCount, err := db.GetTotalWithdrawalsCount(validatorSlice)
 			if err != nil {
 				return fmt.Errorf("error getting validator withdrawals count from db: %w", err)
 			}
 			validatorPageData.WithdrawalCount = withdrawalsCount
+			lastWithdrawalsEpochs, err := db.GetLastWithdrawalEpoch(validatorSlice)
+			if err != nil {
+				return fmt.Errorf("error getting validator last withdrawal epoch from db: %w", err)
+			}
+			lastWithdrawalsEpoch := lastWithdrawalsEpochs[index]
 
 			blsChange, err := db.GetValidatorBLSChange(validatorPageData.Index)
 			if err != nil {
@@ -581,6 +575,29 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		// Every validator is scheduled to issue an attestation once per epoch
+		// Hence we can calculate the number of attestations using the current epoch and the activation epoch
+		// Special care needs to be take for exited and pending validators
+		if validatorPageData.ExitEpoch != 9223372036854775807 && validatorPageData.ExitEpoch <= validatorPageData.Epoch {
+			validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
+		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
+			validatorPageData.AttestationsCount = 0
+		} else if isPreGenesis {
+			validatorPageData.AttestationsCount = 1
+		} else {
+			validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
+
+			// Check if the latest epoch still needs to be attested (scheduled) and if so do not count it
+			attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, validatorPageData.Epoch, validatorPageData.Epoch)
+			if err != nil {
+				return fmt.Errorf("error retrieving validator attestations data for epoch [%v] and validator index [%v]: %w", validatorPageData.Epoch, index, err)
+			}
+
+			if len(attestationData[index]) > 0 && attestationData[index][0].Status == 0 {
+				validatorPageData.AttestationsCount--
+			}
+		}
+
 		if validatorPageData.AttestationsCount > 0 {
 			// get attestationStats from validator_stats
 			attestationStats := struct {
@@ -751,7 +768,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// sync luck
 		if len(allSyncPeriods) > 0 {
 			maxPeriod := allSyncPeriods[0].Period
-			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, latestEpoch)
+			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, lastFinalizedEpoch)
 			if err != nil {
 				return fmt.Errorf("error retrieving expected sync committee slots: %w", err)
 			}
@@ -795,7 +812,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FROM validators
 		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
 		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
-		WHERE validators.validatorindex = $1`, index)
+		WHERE validators.validatorindex = $1
+		ORDER BY rplm.status_time DESC 
+		LIMIT 1`, index)
 		if err == nil && (validatorPageData.Rocketpool.MinipoolAddress != nil || validatorPageData.Rocketpool.NodeAddress != nil) {
 			validatorPageData.IsRocketpool = true
 			if utils.Config.Chain.Config.DepositChainID == 1 {
@@ -811,7 +830,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	err = g.Wait()
 	if err != nil {
-		logger.Error(err)
+		utils.LogError(err, "error retrieving validator data", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -873,8 +892,8 @@ func ValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 
 	pubkey, err := hex.DecodeString(strings.Replace(vars["pubkey"], "0x", "", -1))
 	if err != nil {
-		logger.Errorf("error parsing validator public key %v: %v", vars["pubkey"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error parsing validator public key %v: %v", vars["pubkey"], err)
+		http.Error(w, "Error: Invalid parameter public key.", http.StatusBadRequest)
 		return
 	}
 
@@ -899,9 +918,9 @@ func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.R
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		logger.Warnf("error parsing validator index: %v", err)
+		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
 	}
 	epoch := services.LatestEpoch()
@@ -948,9 +967,9 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		logger.Warnf("error parsing validator index: %v", err)
+		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
 	}
 
@@ -958,20 +977,20 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -1069,9 +1088,9 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		logger.Warnf("error parsing validator index: %v", err)
+		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
 	}
 
@@ -1079,14 +1098,14 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseInt(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
@@ -1131,7 +1150,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 		attestationData, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{index}, uint64(startEpoch), uint64(endEpoch))
 		if err != nil {
-			logger.Errorf("error retrieving validator attestations data: %v", err)
+			logger.Errorf("error retrieving bigtable validator attestations data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -1140,7 +1159,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 		for i, history := range attestationData[index] {
 
-			if history.Status == 0 && history.Epoch < epoch-1 {
+			if history.Status == 0 && int64(history.Epoch) < int64(epoch)-1 {
 				history.Status = 2
 			}
 			tableData[i] = []interface{}{
@@ -1175,9 +1194,9 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		logger.Warnf("error parsing validator index: %v", err)
+		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
 	}
 
@@ -1185,14 +1204,14 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
@@ -1215,7 +1234,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	length := uint64(10)
 
-	withdrawalCount, _, err := db.GetValidatorWithdrawalsCount(index)
+	withdrawalCount, err := db.GetTotalWithdrawalsCount([]uint64{index})
 	if err != nil {
 		logger.Errorf("error retrieving validator withdrawals count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1262,9 +1281,9 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		logger.Warnf("error parsing validator index: %v", err)
+		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
 	}
 
@@ -1272,8 +1291,8 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 
@@ -1414,14 +1433,16 @@ func sanitizeMessage(msg string) ([]byte, error) {
 	}
 }
 
-func ValidatorSave(w http.ResponseWriter, r *http.Request) {
-	pubkey := r.FormValue("pubkey")
+func SaveValidatorName(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	pubkey := vars["pubkey"]
 	pubkey = strings.ToLower(pubkey)
 	pubkey = strings.Replace(pubkey, "0x", "", -1)
 
 	pubkeyDecoded, err := hex.DecodeString(pubkey)
 	if err != nil {
-		logger.Errorf("error parsing submitted pubkey %v: %v", pubkey, err)
+		logger.Warnf("error parsing submitted pubkey %v: %v", pubkey, err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 		return
@@ -1522,7 +1543,6 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, http.StatusMovedPermanently)
 	}
-
 }
 
 // ValidatorHistory returns a validators history in json
@@ -1534,9 +1554,9 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		logger.Warnf("error parsing validator index: %v", err)
+		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
 	}
 
@@ -1544,15 +1564,15 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
@@ -1795,18 +1815,16 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "validators", "/validators", "", templateFiles)
 
 	// Request came with a hash
-	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
-		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
+	if utils.IsHash(vars["index"]) {
+		pubKey, err := hex.DecodeString(strings.TrimPrefix(vars["index"], "0x"))
 		if err != nil {
 			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
-
 			validatorNotFound(data, w, r, vars, "/stats")
-
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
-			logger.Errorf("error parsing validator pubkey: %v", err)
+			logger.Warnf("error parsing validator pubkey: %v", err)
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
@@ -1814,8 +1832,8 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		// Request is not a valid index number
-		if err != nil {
-			logger.Errorf("error parsing validator index: %v", err)
+		if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+			logger.Warnf("error parsing validator index: %v", err)
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
@@ -1877,9 +1895,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	validatorIndex, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || validatorIndex > math.MaxInt32 { // index in postgres is limited to int
+		logger.Warnf("error parsing validator index: %v", err)
+		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
 	}
 
@@ -1887,20 +1905,20 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data draw-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start start-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length length-parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -1995,7 +2013,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 		// extract correct slots
 		tableData = make([][]interface{}, 0, length)
-		for slot := endSlot; slot >= startSlot; slot-- {
+		for index := endIndex; index <= startIndex; index++ {
+
+			slot := slots[index]
 
 			epoch := utils.EpochOfSlot(slot)
 			participation := participations[slot]
@@ -2011,10 +2031,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 					},
 				)
 			}
-
-			// if utils.SlotToTime(slot).Before(time.Now()) {
-			// 	continue
-			// }
 
 			status := uint64(0)
 
@@ -2033,9 +2049,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 				utils.FormatSyncParticipations(participation),
 			})
 
-			if slot == 0 {
-				break
-			}
+			// if index == 0 {
+			// 	break
+			// }
 		}
 	}
 
