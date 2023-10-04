@@ -1664,9 +1664,9 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 				return fmt.Errorf("error executing stmtBlocks for block %v: %w", b.Slot, err)
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtBlock")
+			logger.Tracef("done, took %v", time.Since(t))
 
-			n := time.Now()
-			logger.Tracef("done, took %v", time.Since(n))
+			t = time.Now()
 			logger.Tracef("writing BlobKZGCommitments data")
 			for i, c := range b.BlobKZGCommitments {
 				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, b.BlobKZGProofs[i], utils.VersionedBlobHash(c).Bytes())
@@ -1674,6 +1674,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 					return fmt.Errorf("error executing stmtBlobs for block at slot %v: %w", b.Slot, err)
 				}
 			}
+			logger.Tracef("done, took %v", time.Since(t))
+			t = time.Now()
 			logger.Tracef("writing transactions and withdrawal data")
 			if payload := b.ExecutionPayload; payload != nil {
 				for _, w := range payload.Withdrawals {
@@ -1683,8 +1685,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 					}
 				}
 			}
-			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
+			logger.Tracef("done, took %v", time.Since(t))
+			t = time.Now()
 			logger.Tracef("writing proposer slashings data")
 			for i, ps := range b.ProposerSlashings {
 				_, err := stmtProposerSlashing.Exec(b.Slot, i, b.BlockRoot, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
@@ -1692,9 +1694,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 					return fmt.Errorf("error executing stmtProposerSlashing for block at slot %v: %w", b.Slot, err)
 				}
 			}
-			blockLog.WithField("duration", time.Since(n)).Tracef("stmtProposerSlashing")
-
-			n = time.Now()
+			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposerSlashing")
+			t = time.Now()
 			logger.Tracef("writing bls change data")
 			for _, bls := range b.SignedBLSToExecutionChange {
 				_, err := stmtBLSChange.Exec(b.Slot, b.BlockRoot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, bls.Message.Address)
@@ -1702,7 +1703,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 					return fmt.Errorf("error executing stmtBLSChange for block %v: %w", b.Slot, err)
 				}
 			}
-			blockLog.WithField("duration", time.Since(n)).Tracef("stmtBLSChange")
+			blockLog.WithField("duration", time.Since(t)).Tracef("stmtBLSChange")
 			t = time.Now()
 
 			for i, as := range b.AttesterSlashings {
