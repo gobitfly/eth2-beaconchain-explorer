@@ -254,6 +254,13 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	}
 	logger.Infof("collecting block proposal missed notifications took: %v", time.Since(start))
 
+	err = collectBlockProposalNotifications(notificationsByUserID, 3, types.ValidatorMissedProposalEventName, epoch)
+	if err != nil {
+		metrics.Errors.WithLabelValues("notifications_collect_missed_orphaned_block_proposal").Inc()
+		return nil, fmt.Errorf("error collecting validator_proposal_missed notifications for orphaned slots: %w", err)
+	}
+	logger.Infof("collecting block proposal missed notifications for orphaned slots took: %v", time.Since(start))
+
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID, epoch)
 	if err != nil {
 		metrics.Errors.WithLabelValues("notifications_collect_validator_got_slashed").Inc()
@@ -1180,7 +1187,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 	_, subMap, err := db.GetSubsForEventFilter(eventName)
 	if err != nil {
-		return fmt.Errorf("error getting subscriptions for missted attestations %w", err)
+		return fmt.Errorf("error getting subscriptions for (missed) block proposals %w", err)
 	}
 
 	events := make([]dbResult, 0)
@@ -1231,44 +1238,43 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 	for _, event := range events {
 		pubkey, err := GetGetPubkeyForIndex(event.Proposer)
-		if err == nil {
-			subscribers, ok := subMap[hex.EncodeToString(pubkey)]
-			if ok {
-				for _, sub := range subscribers {
-					if sub.UserID == nil || sub.ID == nil {
-						return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
-					}
-					if sub.LastEpoch != nil {
-						lastSentEpoch := *sub.LastEpoch
-						if lastSentEpoch >= epoch || epoch < sub.CreatedEpoch {
-							continue
-						}
-					}
-					logger.Infof("creating %v notification for validator %v in epoch %v", eventName, event.Proposer, epoch)
-					n := &validatorProposalNotification{
-						SubscriptionID: *sub.ID,
-						ValidatorIndex: event.Proposer,
-						Epoch:          epoch,
-						Slot:           event.Slot,
-						Status:         event.Status,
-						EventName:      eventName,
-						Reward:         event.ExecRewardETH,
-						EventFilter:    hex.EncodeToString(pubkey),
-					}
-					if _, exists := notificationsByUserID[*sub.UserID]; !exists {
-						notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
-					}
-					if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
-						notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
-					}
-					notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
-					metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
+		if err != nil {
+			utils.LogError(err, "error retrieving pubkey for validator", 0, map[string]interface{}{"validator": event.Proposer})
+			continue
+		}
+		subscribers, ok := subMap[hex.EncodeToString(pubkey)]
+		if !ok {
+			continue
+		}
+		for _, sub := range subscribers {
+			if sub.UserID == nil || sub.ID == nil {
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+			}
+			if sub.LastEpoch != nil {
+				lastSentEpoch := *sub.LastEpoch
+				if lastSentEpoch >= epoch || epoch < sub.CreatedEpoch {
+					continue
 				}
 			}
-		} else {
-			logger.Errorf("error retrieving pubkey for validator %v: %v", event.Proposer, err)
+			logger.Infof("creating %v notification for validator %v in epoch %v", eventName, event.Proposer, epoch)
+			n := &validatorProposalNotification{
+				SubscriptionID: *sub.ID,
+				ValidatorIndex: event.Proposer,
+				Epoch:          epoch,
+				Status:         event.Status,
+				EventName:      eventName,
+				Reward:         event.ExecRewardETH,
+				EventFilter:    hex.EncodeToString(pubkey),
+			}
+			if _, exists := notificationsByUserID[*sub.UserID]; !exists {
+				notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
+				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
+			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
-
 	}
 
 	return nil
@@ -1377,7 +1383,13 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 	}
 
 	// get attestations for all validators for the last 4 epochs
-	attestations, err := db.BigtableClient.GetValidatorAttestationHistory([]uint64{}, epoch-3, epoch)
+
+	validators, err := db.GetValidatorIndices()
+	if err != nil {
+		return err
+	}
+
+	attestations, err := db.BigtableClient.GetValidatorAttestationHistory(validators, epoch-3, epoch)
 	if err != nil {
 		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
 	}
@@ -1433,7 +1445,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		}
 		for _, sub := range subscribers {
 			if sub.UserID == nil || sub.ID == nil {
-				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
 			if sub.LastEpoch != nil {
 				lastSentEpoch := *sub.LastEpoch
@@ -1560,7 +1572,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 		subs := subMap[t]
 		for _, sub := range subs {
 			if sub.UserID == nil || sub.ID == nil {
-				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
 			logger.Infof("new event: validator %v detected as offline since epoch %v", validator.Index, epoch)
 
@@ -1617,7 +1629,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 			}
 
 			if sub.UserID == nil || sub.ID == nil {
-				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+				return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
 
 			logger.Infof("new event: validator %v detected as online again at epoch %v", validator.Index, epoch)
@@ -1905,8 +1917,8 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	}
 
 	name := string(types.ValidatorGotSlashedEventName)
-	if utils.Config.Chain.Config.ConfigName != "" {
-		name = utils.Config.Chain.Config.ConfigName + ":" + name
+	if utils.Config.Chain.ClConfig.ConfigName != "" {
+		name = utils.Config.Chain.ClConfig.ConfigName + ":" + name
 	}
 	err = db.FrontendWriterDB.Select(&subscribers, query, name)
 	if err != nil {
@@ -2021,7 +2033,7 @@ func collectWithdrawalNotifications(notificationsByUserID map[uint64]map[types.E
 		if ok {
 			for _, sub := range subscribers {
 				if sub.UserID == nil || sub.ID == nil {
-					return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+					return fmt.Errorf("error expected userId and subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 				}
 				if sub.LastEpoch != nil {
 					lastSentEpoch := *sub.LastEpoch
@@ -2325,7 +2337,7 @@ func collectMonitoringMachine(
 
 	rowKeys := gcp_bigtable.RowList{}
 	for _, data := range allSubscribed {
-		rowKeys = append(rowKeys, db.GetMachineRowKey(data.UserID, "system", data.MachineName))
+		rowKeys = append(rowKeys, db.BigtableClient.GetMachineRowKey(data.UserID, "system", data.MachineName))
 	}
 
 	machineDataOfSubscribed, err := db.BigtableClient.GetMachineMetricsForNotifications(rowKeys)
@@ -2582,8 +2594,11 @@ func (n *taxReportNotification) GetInfoMarkdown() string {
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	lastStatsDay := LatestExportedStatisticDay()
+	lastStatsDay, err := LatestExportedStatisticDay()
 
+	if err != nil {
+		return err
+	}
 	//Check that the last day of the month is already exported
 	tNow := time.Now()
 	firstDayOfMonth := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -2600,11 +2615,11 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 	}
 
 	name := string(eventName)
-	if utils.Config.Chain.Config.ConfigName != "" {
-		name = utils.Config.Chain.Config.ConfigName + ":" + name
+	if utils.Config.Chain.ClConfig.ConfigName != "" {
+		name = utils.Config.Chain.ClConfig.ConfigName + ":" + name
 	}
 
-	err := db.FrontendWriterDB.Select(&dbResult, `
+	err = db.FrontendWriterDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));
@@ -2785,9 +2800,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolNewClaimRoundStartedEventName:
 		return `A new reward round has started. You can now claim your rewards from the previous round.`
 	case types.RocketpoolCollateralMaxReached:
-		return `Your RPL collateral has reached your configured threshold at 150%.`
+		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.RocketpoolCollateralMinReached:
-		return `Your RPL collateral has reached your configured threshold at 10%.`
+		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.SyncCommitteeSoon:
 		extras := strings.Split(n.ExtraData, "|")
 		if len(extras) != 3 {
@@ -2955,7 +2970,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 		RPLStakeMax BigFloat `db:"max_rpl_stake"`
 	}
 
-	events := make([]dbResult, 0)
+	stakeInfoPerNode := make([]dbResult, 0)
 	batchSize := 5000
 	dataLen := len(pubkeys)
 	for i := 0; i < dataLen; i += batchSize {
@@ -2971,39 +2986,65 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 		var partial []dbResult
 
+		// filter nodes with no minipools (anymore) because they have min/max stake of 0
+		// TODO properly remove notification entry from db
 		err = db.WriterDb.Select(&partial, `
-		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake                    
-		FROM rocketpool_nodes WHERE address = ANY($1)`, pq.ByteaArray(keys))
+		SELECT address, rpl_stake, min_rpl_stake, max_rpl_stake
+		FROM rocketpool_nodes
+		WHERE address = ANY($1) AND min_rpl_stake != 0 AND max_rpl_stake != 0`, pq.ByteaArray(keys))
 		if err != nil {
 			return err
 		}
-		events = append(events, partial...)
+		stakeInfoPerNode = append(stakeInfoPerNode, partial...)
 	}
 
-	for _, r := range events {
+	// factor in network-wide min/max collat ratio. Since LEB8 they are not directly correlated anymore (ratio of bonded to borrowed ETH), so we need either min or max
+	// however this is dynamic and might be changed in the future; Should extend rocketpool_network_stats to include min/max collateral values!
+	minRPLCollatRatio := bigFloat(0.1) // bigFloat it to save some memory re-allocations
+	maxRPLCollatRatio := bigFloat(1.5)
+	// temporary helper (modifying values in dbResult directly would be bad style)
+	nodeCollatRatioHelper := bigFloat(0)
+
+	for _, r := range stakeInfoPerNode {
 		subs, ok := subMap[hex.EncodeToString(r.Address)]
 		if !ok {
 			continue
 		}
-		sub := subs[0]
+		sub := subs[0] // RPL min/max collateral notifications are always unique per user
 		var alertConditionMet bool = false
 
-		if sub.EventThreshold >= 0 {
-			var threshold float64 = sub.EventThreshold
-			if threshold == 0 {
-				threshold = 1.0
-			}
-			if eventName == types.RocketpoolCollateralMaxReached {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
+		// according to app logic, sub.EventThreshold can be +- [0.9 to 1.5] for CollateralMax after manually changed by the user
+		// this corresponds to a collateral range of 140% to 200% currently shown in the app UI; so +- 0.5 allows us to compare to the actual collat ratio
+		// for CollateralMin it  can be 1.0 to 4.0 if manually changed, to represent 10% to 40%
+		// 0 in both cases if not modified
+		var threshold float64 = sub.EventThreshold
+		if threshold == 0 {
+			threshold = 1.0 // default case
+		}
+		inverse := false
+		if eventName == types.RocketpoolCollateralMaxReached {
+			if threshold < 0 {
+				threshold *= -1
 			} else {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
+				inverse = true
 			}
+			threshold += 0.5
+
+			// 100% (of bonded eth)
+			nodeCollatRatioHelper.Quo(r.RPLStakeMax.bigFloat(), maxRPLCollatRatio)
 		} else {
-			if eventName == types.RocketpoolCollateralMaxReached {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
-			} else {
-				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= -1
-			}
+			threshold /= 10.0
+
+			// 100% (of borrowed eth)
+			nodeCollatRatioHelper.Quo(r.RPLStakeMin.bigFloat(), minRPLCollatRatio)
+		}
+
+		nodeCollatRatio, _ := nodeCollatRatioHelper.Quo(r.RPLStake.bigFloat(), nodeCollatRatioHelper).Float64()
+
+		alertConditionMet = nodeCollatRatio <= threshold
+		if inverse {
+			// handle special case for max collateral: notify if *above* selected amount
+			alertConditionMet = !alertConditionMet
 		}
 
 		if !alertConditionMet {
@@ -3012,7 +3053,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 
 		if sub.LastEpoch != nil {
 			lastSentEpoch := *sub.LastEpoch
-			if lastSentEpoch >= epoch-80 || epoch < sub.CreatedEpoch {
+			if lastSentEpoch >= epoch-225 || epoch < sub.CreatedEpoch {
 				continue
 			}
 		}
@@ -3023,6 +3064,7 @@ func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint6
 			Epoch:           epoch,
 			EventFilter:     sub.EventFilter,
 			EventName:       eventName,
+			ExtraData:       strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", threshold*100), "0"), "."),
 			UnsubscribeHash: sub.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[*sub.UserID]; !exists {
@@ -3082,7 +3124,7 @@ func bigFloat(x float64) *big.Float {
 func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName, epoch uint64) error {
 
 	slotsPerSyncCommittee := utils.SlotsPerSyncCommittee()
-	currentPeriod := epoch * utils.Config.Chain.Config.SlotsPerEpoch / slotsPerSyncCommittee
+	currentPeriod := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch / slotsPerSyncCommittee
 	nextPeriod := currentPeriod + 1
 
 	var validators []struct {
@@ -3132,7 +3174,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 			Epoch:           epoch,
 			EventFilter:     r.EventFilter,
 			EventName:       eventName,
-			ExtraData:       fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod),
+			ExtraData:       fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod),
 			UnsubscribeHash: r.UnsubscribeHash,
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {

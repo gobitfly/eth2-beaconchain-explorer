@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"eth2-exporter/utils"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -72,7 +71,7 @@ func bundle(staticDir string) (map[string]string, error) {
 		}
 
 		for _, match := range matches {
-			code, err := ioutil.ReadFile(match)
+			code, err := os.ReadFile(match)
 			if err != nil {
 				return nameMapping, fmt.Errorf("error reading file %v", err)
 			}
@@ -97,7 +96,7 @@ func bundle(staticDir string) (map[string]string, error) {
 			newPath := strings.ReplaceAll(matchHash, "static/", "")
 			nameMapping[path] = newPath
 
-			err = ioutil.WriteFile(matchHash, code, 0755)
+			err = os.WriteFile(matchHash, code, 0755)
 			if err != nil {
 				return nameMapping, fmt.Errorf("error failed to write file %v", err)
 			}
@@ -116,7 +115,7 @@ func replaceFilesNames(files map[string]string) error {
 		return err
 	}
 	for _, match := range matches {
-		html, err := ioutil.ReadFile(match)
+		html, err := os.ReadFile(match)
 		if err != nil {
 			return err
 		}
@@ -125,7 +124,7 @@ func replaceFilesNames(files map[string]string) error {
 			// logrus.Info("replacing: ", oldPath, " with: ", newPath)
 			h = strings.ReplaceAll(h, oldPath, newPath)
 		}
-		err = ioutil.WriteFile(match, []byte(h), 0755)
+		err = os.WriteFile(match, []byte(h), 0755)
 		if err != nil {
 			return err
 		}

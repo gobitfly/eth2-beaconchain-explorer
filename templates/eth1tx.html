@@ -243,6 +243,20 @@
                 <div class="col-md-3">Effective Gas Price:</div>
                 <div class="col-md-9">{{ formatBytesAmount .Gas.EffectiveFee "GWei" 8 }}</div>
               </div>
+              {{ if eq .Type 3 }}
+                <div class="row border-bottom p-3 mx-0">
+                  <div class="col-md-3">Blob Tx Fees:</div>
+                  <div class="col-md-9">{{ formatBytesAmount .Gas.BlobTxFee "Ether" 8 }} <span class="text-secondary">(Used</span> <span class="text-black">{{ .Gas.BlobGasUsed }}</span> <span class="text-secondary">@</span> <span class="text-black">{{ formatBytesAmount .Gas.BlobGasPrice "GWei" 8 }}</span><span class="text-secondary">)</span></div>
+                </div>
+                <div class="row border-bottom p-3 mx-0">
+                  <div class="col-md-3">Blob VersionedHashes:</div>
+                  <div class="col-md-9">
+                    <ul>
+                      {{ range $i, $h := .BlobHashes }}<li>{{ $i }}: {{ formatBlobVersionedHash $h }}</li>{{ end }}
+                    </ul>
+                  </div>
+                </div>
+              {{ end }}
               <div class="collapse" id="collapseExample">
                 <div class="row border-bottom p-3 mx-0">
                   <div class="col-md-3">Execution Stats:</div>

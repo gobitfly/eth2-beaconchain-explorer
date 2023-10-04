@@ -63,6 +63,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	isContract := false
 	txns := &types.DataTableResponse{}
+	blobs := &types.DataTableResponse{}
 	internal := &types.DataTableResponse{}
 	erc20 := &types.DataTableResponse{}
 	erc721 := &types.DataTableResponse{}
@@ -87,6 +88,14 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", "")
 		if err != nil {
 			return fmt.Errorf("GetAddressTransactionsTableData: %w", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		blobs, err = db.BigtableClient.GetAddressBlobTableData(addressBytes, "", "")
+		if err != nil {
+			return fmt.Errorf("GetAddressBlobTableData: %w", err)
 		}
 		return nil
 	})
@@ -189,6 +198,14 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	ethPrice := utils.WeiBytesToEther(metadata.EthBalance.Balance).Mul(decimal.NewFromInt(int64(price)))
 	tabs := []types.Eth1AddressPageTabs{}
 
+	if blobs != nil && len(blobs.Data) != 0 {
+		tabs = append(tabs, types.Eth1AddressPageTabs{
+			Id:   "blobTxns",
+			Href: "#blobTxns",
+			Text: "Blob Txns",
+			Data: blobs,
+		})
+	}
 	if internal != nil && len(internal.Data) != 0 {
 		tabs = append(tabs, types.Eth1AddressPageTabs{
 			Id:   "internalTxns",
@@ -255,6 +272,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		Metadata:           metadata,
 		WithdrawalsSummary: withdrawalSummary,
 		TransactionsTable:  txns,
+		BlobTxnsTable:      blobs,
 		InternalTxnsTable:  internal,
 		Erc20Table:         erc20,
 		Erc721Table:        erc721,
@@ -385,6 +403,35 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 		Data:        tableData,
 		PagingToken: nextPageToken,
 	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
+func Eth1AddressBlobTransactions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+	address, err := lowerAddressFromRequest(w, r)
+	if err != nil {
+		return
+	}
+	addressBytes := common.FromHex(address)
+
+	pageToken := q.Get("pageToken")
+
+	search := ""
+
+	data, err := db.BigtableClient.GetAddressBlobTableData(addressBytes, search, pageToken)
+	if err != nil {
+		utils.LogError(err, "error getting eth1 block table data", 0)
+	}
+
+	// logger.Infof("GOT TX: %+v", data)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {

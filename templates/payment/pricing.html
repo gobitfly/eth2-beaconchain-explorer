@@ -203,16 +203,20 @@
                 <h1 class="card-title pricing-card-title">0€ <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 5 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
-                    10
+                    {{ formatAddCommas 20 }}
                   </li>
                   <li>
                     Requests per day:<br />
-                    10,000
+                    {{ formatAddCommas 30000 }}
                   </li>
                   <li>
                     Total requests per month:<br />
-                    30,000
+                    {{ formatAddCommas 30000 }}
                   </li>
                 </ul>
                 <a href="https://beaconcha.in/api/v1/docs/index.html" target="_blank" class="btn btn-lg btn-block btn-outline-primary">Get started</a>
@@ -226,16 +230,20 @@
                 <h1 class="card-title pricing-card-title">59€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 10 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
-                    100
+                    {{ formatAddCommas 100 }}
                   </li>
                   <li>
                     Requests per day:<br />
-                    100,000
+                    {{ formatAddCommas 100000 }}
                   </li>
                   <li>
                     Total requests per month:<br />
-                    500,000
+                    {{ formatAddCommas 500000 }}
                   </li>
                 </ul>
                 {{ if .User.Authenticated }}
@@ -267,16 +275,20 @@
                 <h1 class="card-title pricing-card-title">99€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 10 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
-                    <strong>Unlimited</strong>
+                    {{ formatAddCommas 600 }}
                   </li>
                   <li>
                     Requests per day:<br />
-                    200,000
+                    {{ formatAddCommas 200000 }}
                   </li>
                   <li>
                     Total requests per month:<br />
-                    1,000,000
+                    {{ formatAddCommas 1000000 }}
                   </li>
                 </ul>
                 {{ if .User.Authenticated }}
@@ -305,8 +317,12 @@
                 <h1 class="card-title pricing-card-title">399€* <small class="text-muted">/ mo</small></h1>
                 <ul class="list-unstyled mt-3 mb-4">
                   <li>
+                    Rate limit per second:<br />
+                    {{ formatAddCommas 30 }}
+                  </li>
+                  <li>
                     Rate limit per minute:<br />
-                    <strong>Unlimited</strong>
+                    {{ formatAddCommas 1200 }}
                   </li>
                   <li>
                     Requests per day:<br />
@@ -314,7 +330,7 @@
                   </li>
                   <li>
                     Total requests per month:<br />
-                    4,000,000
+                    {{ formatAddCommas 6000000 }}
                   </li>
                 </ul>
                 {{ if .User.Authenticated }}
@@ -378,6 +394,7 @@
                         <option>Sapphire</option>
                         <option>Emerald</option>
                         <option>Diamond</option>
+                        <option>Enterprise</option>
                       </select>
                     </div>
                     <div class="form-group">

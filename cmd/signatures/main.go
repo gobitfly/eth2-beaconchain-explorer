@@ -10,11 +10,11 @@ import (
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sirupsen/logrus"
 
 	_ "net/http/pprof"
@@ -44,7 +44,7 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
@@ -203,7 +203,7 @@ func GetNextSignatures(bt *db.Bigtable, page string, status types.SignatureImpor
 		return nil, nil, fmt.Errorf("error querying signatures api: %v", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, err
 	}

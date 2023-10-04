@@ -42,7 +42,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	txHash, err := hex.DecodeString(strings.ReplaceAll(txHashString, "0x", ""))
 	if err != nil {
-		logger.Errorf("error parsing tx hash %v: %v", txHashString, err)
+		logger.Warnf("error parsing tx hash %v: %v", txHashString, err)
 		data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 		txTemplate = txNotFoundTemplate
 	} else {
@@ -93,7 +93,7 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 				if txDay < currentDay {
 					// Do not show the historical price if it is the current day
 					currency := GetCurrency(r)
-					price, err := db.GetHistoricalPrice(utils.Config.Chain.Config.DepositChainID, currency, txDay)
+					price, err := db.GetHistoricalPrice(utils.Config.Chain.ClConfig.DepositChainID, currency, txDay)
 					if err != nil {
 						utils.LogError(err, "error retrieving historical prices", 0, map[string]interface{}{"txDay": txDay, "currency": currency})
 					} else {

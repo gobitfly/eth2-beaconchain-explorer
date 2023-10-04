@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	gcp_bigtable "cloud.google.com/go/bigtable"
 	"github.com/coocood/freecache"
 	"github.com/sirupsen/logrus"
 )
@@ -46,18 +45,6 @@ func MustInitTieredCache(redisAddress string) {
 		remoteCache:  remoteCache,
 		localGoCache: freecache.NewCache(100 * 1024 * 1024), // 100 MB
 	}
-}
-
-func MustInitTieredCacheBigtable(client *gcp_bigtable.Client, chainId string) {
-	localCache := freecache.NewCache(100 * 1024 * 1024) // 100 MB
-
-	cache := InitBigtableCache(client, chainId)
-
-	TieredCache = &tieredCache{
-		remoteCache:  cache,
-		localGoCache: localCache,
-	}
-
 }
 
 func (cache *tieredCache) SetString(key, value string, expiration time.Duration) error {

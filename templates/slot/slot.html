@@ -121,7 +121,7 @@
     }
 
     async function setupInfiniteScrollAttestations() {
-      const infLoading = document.getElementById('attestations');
+      const infLoading = document.getElementById('attestationsTabPanel');
       if(infLoading) {
         try {
           const slot = {{ .Slot }} || 0;
@@ -289,10 +289,16 @@
       var attestations_tab_loaded = false
       let atab = $('#attestations-tab')
       if(atab.length > 0) {
-        atab.on('shown.bs.tab', function (event) { if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true; });
+        var activateAttestations = ()=>{
+          if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true;
+        }
+        atab.on('shown.bs.tab', activateAttestations);
+        if (atab.hasClass("active")){
+          activateAttestations()
+        }
       } else {
         console.error('error getting #attestations-tab')
-        const att = document.getElementById('attestations');
+        const att = document.getElementById('attestationsTabPanel');
         if(att) {
           att.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
         }
@@ -410,6 +416,11 @@
             <a class="nav-link" id="blsChange-tab" data-toggle="tab" href="#blsChange" role="tab" aria-controls="blsChange" aria-selected="false">BLS Change <span class="badge bg-secondary text-white">{{ .BLSChangeCount }}</span></a>
           </li>
         {{ end }}
+        {{ if gt (len .BlobSidecars) 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="blobs-tab" data-toggle="tab" href="#blobs" role="tab" aria-controls="blobs" aria-selected="false">Blobs <span class="badge bg-secondary text-white">{{ len .BlobSidecars }}</span></a>
+          </li>
+        {{ end }}
       </ul>
       <style>
         .block-card {
@@ -498,6 +509,13 @@
               </div>
             </div>
             {{ template "block_proposerSlashing" . }}
+          </div>
+        {{ end }}
+        {{ if gt (len .BlobSidecars) 0 }}
+          <div class="tab-pane fade" id="blobsTabPanel" role="tabpanel" aria-labelledby="blobs-tab">
+            <div class="card block-card py-1">
+              {{ template "block_blobs" . }}
+            </div>
           </div>
         {{ end }}
       </div>

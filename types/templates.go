@@ -42,7 +42,7 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
-	ChainConfig         ChainConfig
+	ChainConfig         ClChainConfig
 	Lang                string
 	NoAds               bool
 	Debug               bool
@@ -52,6 +52,8 @@ type PageData struct {
 	GlobalNotification  template.HTML
 	AvailableCurrencies []string
 	MainMenuItems       []MainMenuItem
+	TermsOfServiceUrl   string
+	PrivacyPolicyUrl    string
 }
 
 type MainMenuItem struct {
@@ -352,8 +354,6 @@ type ValidatorPageData struct {
 	ExecutedAttestationsCount                uint64
 	MissedAttestationsCount                  uint64
 	UnmissedAttestationsPercentage           float64 // missed/(executed+orphaned)
-	StatusProposedCount                      uint64
-	StatusMissedCount                        uint64
 	DepositsCount                            uint64
 	WithdrawalCount                          uint64
 	SlashingsCount                           uint64
@@ -366,17 +366,16 @@ type ValidatorPageData struct {
 	ParticipatedSyncCountSlots               uint64
 	MissedSyncCountSlots                     uint64
 	OrphanedSyncCountSlots                   uint64
-	UnmissedSyncPercentage                   float64        // participated/(participated+missed)
-	IncomeToday                              ClElInt64      `json:"incomeToday"`
-	Income1d                                 ClElInt64      `json:"income1d"`
-	Income7d                                 ClElInt64      `json:"income7d"`
-	Income31d                                ClElInt64      `json:"income31d"`
-	IncomeTotal                              ClElInt64      `json:"incomeTotal"`
-	IncomeTotalFormatted                     template.HTML  `json:"incomeTotalFormatted"`
-	IncomeProposerFormatted                  *template.HTML `json:"incomeProposerFormatted"`
-	Apr7d                                    ClElFloat64    `json:"apr7d"`
-	Apr31d                                   ClElFloat64    `json:"apr31d"`
-	Apr365d                                  ClElFloat64    `json:"apr365d"`
+	UnmissedSyncPercentage                   float64       // participated/(participated+missed)
+	IncomeToday                              ClElInt64     `json:"incomeToday"`
+	Income1d                                 ClElInt64     `json:"income1d"`
+	Income7d                                 ClElInt64     `json:"income7d"`
+	Income31d                                ClElInt64     `json:"income31d"`
+	IncomeTotal                              ClElInt64     `json:"incomeTotal"`
+	IncomeTotalFormatted                     template.HTML `json:"incomeTotalFormatted"`
+	Apr7d                                    ClElFloat64   `json:"apr7d"`
+	Apr31d                                   ClElFloat64   `json:"apr31d"`
+	Apr365d                                  ClElFloat64   `json:"apr365d"`
 	SyncLuck                                 float64
 	SyncEstimate                             *time.Time
 	AvgSyncInterval                          *time.Duration
@@ -391,7 +390,6 @@ type ValidatorPageData struct {
 	Watchlist                                []*TaggedValidators
 	SubscriptionFlash                        []interface{}
 	User                                     *User
-	AverageAttestationInclusionDistance      float64
 	AttestationInclusionEffectiveness        float64
 	CsrfField                                template.HTML
 	NetworkStats                             *IndexPageData
@@ -669,6 +667,7 @@ type BlockPageData struct {
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
+	BlobSidecars      []*BlockPageBlobSidecar
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
@@ -795,6 +794,16 @@ type BlockPageProposerSlashing struct {
 	Header2StateRoot  []byte `db:"header2_stateroot"`
 	Header2BodyRoot   []byte `db:"header2_bodyroot"`
 	Header2Signature  []byte `db:"header2_signature"`
+}
+
+// BlockPageBlobSidecar holds data of blob-sidecars of the corresponding block
+type BlockPageBlobSidecar struct {
+	BlockSlot         uint64 `db:"block_slot"`
+	BlockRoot         []byte `db:"block_root"`
+	Index             uint64 `db:"index"`
+	KzgCommitment     []byte `db:"kzg_commitment"`
+	KzgProof          []byte `db:"kzg_proof"`
+	BlobVersionedHash []byte `db:"blob_versioned_hash"`
 }
 
 // DataTableResponse is a struct to hold data for data table responses
@@ -1036,7 +1045,6 @@ type ValidatorEarnings struct {
 	LastDayFormatted        template.HTML `json:"lastDayFormatted"`
 	LastWeekFormatted       template.HTML `json:"lastWeekFormatted"`
 	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
-	ProposerTotalFormatted  template.HTML `json:"proposerTotalFormatted"`
 	TotalFormatted          template.HTML `json:"totalFormatted"`
 	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
 	TotalBalance            template.HTML `json:"totalBalance"`
@@ -1568,6 +1576,7 @@ type Eth1AddressPageData struct {
 	BlocksMinedTable   *DataTableResponse
 	UnclesMinedTable   *DataTableResponse
 	TransactionsTable  *DataTableResponse
+	BlobTxnsTable      *DataTableResponse
 	InternalTxnsTable  *DataTableResponse
 	Erc20Table         *DataTableResponse
 	Erc721Table        *DataTableResponse
@@ -1665,6 +1674,11 @@ type DepositContractInteraction struct {
 	Amount          []byte
 }
 
+type EpochInfo struct {
+	Finalized     bool    `db:"finalized"`
+	Participation float64 `db:"globalparticipationrate"`
+}
+
 type Eth1TxData struct {
 	From         common.Address
 	To           *common.Address
@@ -1680,11 +1694,11 @@ type Eth1TxData struct {
 		Limit          uint64
 		TxFee          []byte
 		EffectiveFee   []byte
+		BlobGasUsed    uint64
+		BlobGasPrice   []byte
+		BlobTxFee      []byte
 	}
-	Epoch struct {
-		Finalized     bool    `db:"finalized"`
-		Participation float64 `db:"globalparticipationrate"`
-	}
+	Epoch                       EpochInfo
 	TypeFormatted               string
 	Type                        uint8
 	Nonce                       uint64
@@ -1705,6 +1719,7 @@ type Eth1TxData struct {
 	DepositContractInteractions []DepositContractInteraction
 	CurrentEtherPrice           template.HTML
 	HistoricalEtherPrice        template.HTML
+	BlobHashes                  [][]byte
 }
 
 type Eth1EventData struct {
@@ -1795,6 +1810,8 @@ type Eth1BlockPageData struct {
 	PreviousBlock         uint64
 	NextBlock             uint64
 	TxCount               uint64
+	BlobTxCount           uint64
+	BlobCount             uint64
 	WithdrawalCount       uint64
 	UncleCount            uint64
 	Hash                  string
@@ -1814,6 +1831,11 @@ type Eth1BlockPageData struct {
 	Difficulty            *big.Int
 	BaseFeePerGas         *big.Int
 	BurnedFees            *big.Int
+	BurnedTxFees          *big.Int
+	BurnedBlobFees        *big.Int
+	BlobGasUsed           uint64
+	BlobGasPrice          *big.Int
+	ExcessBlobGas         uint64
 	Extra                 string
 	Txs                   []Eth1BlockPageTransaction
 	Uncles                []Eth1BlockPageData
@@ -2056,17 +2078,16 @@ type BroadcastStatusPageData struct {
 }
 
 type ValidatorIncomePerformance struct {
-	ClIncome1d            int64 `db:"cl_performance_1d"`
-	ClIncome7d            int64 `db:"cl_performance_7d"`
-	ClIncome31d           int64 `db:"cl_performance_31d"`
-	ClIncome365d          int64 `db:"cl_performance_365d"`
-	ClIncomeTotal         int64 `db:"cl_performance_total"`
-	ClProposerIncomeTotal int64 `db:"cl_proposer_performance_total"`
-	ElIncome1d            int64 `db:"el_performance_1d"`
-	ElIncome7d            int64 `db:"el_performance_7d"`
-	ElIncome31d           int64 `db:"el_performance_31d"`
-	ElIncome365d          int64 `db:"el_performance_365d"`
-	ElIncomeTotal         int64 `db:"el_performance_total"`
+	ClIncome1d    int64 `db:"cl_performance_1d"`
+	ClIncome7d    int64 `db:"cl_performance_7d"`
+	ClIncome31d   int64 `db:"cl_performance_31d"`
+	ClIncome365d  int64 `db:"cl_performance_365d"`
+	ClIncomeTotal int64 `db:"cl_performance_total"`
+	ElIncome1d    int64 `db:"el_performance_1d"`
+	ElIncome7d    int64 `db:"el_performance_7d"`
+	ElIncome31d   int64 `db:"el_performance_31d"`
+	ElIncome365d  int64 `db:"el_performance_365d"`
+	ElIncomeTotal int64 `db:"el_performance_total"`
 }
 
 type ValidatorProposalInfo struct {

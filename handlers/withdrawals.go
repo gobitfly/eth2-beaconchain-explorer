@@ -10,6 +10,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -58,21 +59,24 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
+	}
+	if start > db.WithdrawalsQueryLimit {
+		start = db.WithdrawalsQueryLimit
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -175,6 +179,21 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		filteredCount = withdrawalCount
 	}
 
+	formatCurrency := currency
+	if currency == "ETH" {
+		formatCurrency = "Ether"
+	}
+
+	var err error
+	names := make(map[string]string)
+	for _, v := range withdrawals {
+		names[string(v.Address)] = ""
+	}
+	names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	tableData := make([][]interface{}, len(withdrawals))
 	for i, w := range withdrawals {
 		tableData[i] = []interface{}{
@@ -183,9 +202,16 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddressWithLimits(w.Address, names[string(w.Address)], false, "address", visibleDigitsForHash+5, 18, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6))),
 		}
+	}
+
+	if filteredCount > db.WithdrawalsQueryLimit {
+		filteredCount = db.WithdrawalsQueryLimit
+	}
+	if withdrawalCount > db.WithdrawalsQueryLimit {
+		withdrawalCount = db.WithdrawalsQueryLimit
 	}
 
 	data := &types.DataTableResponse{
@@ -208,20 +234,24 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
+	}
+	if start > db.BlsChangeQueryLimit {
+		// limit offset to 10000, otherwise the query will be too slow
+		start = db.BlsChangeQueryLimit
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -320,6 +350,16 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 		filteredCount = totalCount
 	}
 
+	var err error
+	names := make(map[string]string)
+	for _, v := range blsChange {
+		names[string(v.Address)] = ""
+	}
+	names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	tableData := make([][]interface{}, len(blsChange))
 	for i, bls := range blsChange {
 		tableData[i] = []interface{}{
@@ -328,8 +368,15 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(bls.Validatorindex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(bls.Signature))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(bls.BlsPubkey))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(bls.Address, nil, "", false, false, true))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatAddressWithLimits(bls.Address, names[string(bls.Address)], false, "address", visibleDigitsForHash+5, 18, true))),
 		}
+	}
+
+	if totalCount > db.BlsChangeQueryLimit {
+		totalCount = db.BlsChangeQueryLimit
+	}
+	if filteredCount > db.BlsChangeQueryLimit {
+		filteredCount = db.BlsChangeQueryLimit
 	}
 
 	data := &types.DataTableResponse{

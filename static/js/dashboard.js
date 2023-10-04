@@ -269,7 +269,15 @@ function renderProposedHistoryTable(data) {
         targets: 1,
         data: "1",
         render: function (data, type, row, meta) {
-          return "<span>" + getRelativeTime(luxon.DateTime.fromMillis(data * 1000)) + "</span>"
+          // date and epochs
+          const startEpoch = timeToEpoch(data * 1000)
+          const startDate = luxon.DateTime.fromMillis(data * 1000)
+          const timeForOneDay = 24 * 60 * 60 * 1000
+          const endEpoch = timeToEpoch(data * 1000 + timeForOneDay) - 1
+          const endDate = luxon.DateTime.fromMillis(epochToTime(endEpoch + 1))
+          const tooltip = `${startDate.toFormat("MMM-dd-yyyy HH:mm:ss")} - ${endDate.toFormat("MMM-dd-yyyy HH:mm:ss")}<br> Epochs ${startEpoch} - ${endEpoch}<br/>`
+
+          return `<span data-html="true" data-toggle="tooltip" data-placement="top" title="${tooltip}">${startDate.toFormat("yyyy-MM-dd")}</span>`
         },
       },
       {
@@ -684,6 +692,24 @@ $(document).ready(function () {
   }
   create_validators_typeahead("input[aria-controls='validators']", "#validators")
 
+  var timeWait = 0
+  var debounce = function (context, func) {
+    var timeout, result
+
+    return function () {
+      var args = arguments,
+        later = function () {
+          timeout = null
+          result = func.apply(context, args)
+        }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, timeWait)
+      if (!timeout) {
+        result = func.apply(context, args)
+      }
+      return result
+    }
+  }
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -692,9 +718,19 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators/%QUERY",
-      wildcard: "%QUERY",
+      // use prepare hook to modify the rateLimitWait parameter on input changes
+      // NOTE: we only need to do this for the first function because testing showed that queries are executed/queued in order
+      // No need to update `timeWait` multiple times.
+      prepare: function (_, settings) {
+        var cur_query = $(".typeahead-dashboard").val()
+        timeWait = 4000 - Math.min(cur_query.length, 5) * 500
+        // "wildcard" can't be used anymore, need to set query wildcard ourselves now
+        settings.url = settings.url.replace("%QUERY", encodeURIComponent(cur_query))
+        return settings
+      },
     },
   })
+  bhValidators.remote.transport._get = debounce(bhValidators.remote.transport, bhValidators.remote.transport._get)
   var bhPubkey = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -706,6 +742,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)
   var bhEth1Addresses = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -717,6 +754,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
   var bhName = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -728,6 +766,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
   var bhGraffiti = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -739,6 +778,7 @@ $(document).ready(function () {
       wildcard: "%QUERY",
     },
   })
+  bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
 
   $(".typeahead-dashboard").typeahead(
     {
@@ -1131,8 +1171,10 @@ $(document).ready(function () {
 
     if (state.validators.length) {
       var qryStr = "?validators=" + state.validators.join(",")
-      var newUrl = window.location.pathname + qryStr
-      window.history.replaceState(null, "Dashboard", newUrl)
+      if (window.location.search != qryStr) {
+        var newUrl = window.location.pathname + qryStr + window.location.hash
+        window.history.replaceState(null, "Dashboard", newUrl)
+      }
     }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
@@ -1339,134 +1381,8 @@ $(document).ready(function () {
 
 function createIncomeChart(income, executionIncomeHistory) {
   executionIncomeHistory = executionIncomeHistory || []
-  incomeChart = Highcharts.stockChart("balance-chart", {
-    colors: ["#90ed7d", "#7cb5ec"],
-    exporting: {
-      scale: 1,
-    },
-    rangeSelector: {
-      enabled: false,
-    },
-    chart: {
-      type: "column",
-      height: "627px",
-      pointInterval: 24 * 3600 * 1000,
-      events: {
-        load: function () {
-          $("#load-income-btn").removeClass("d-none")
-        },
-      },
-    },
-    credits: {
-      enabled: false,
-    },
-    legend: {
-      enabled: true,
-    },
-    title: {
-      text: "Daily Income for all Validators",
-    },
-    navigator: {
-      series: {
-        data: income,
-        color: "#7cb5ec",
-      },
-    },
-    plotOptions: {
-      column: {
-        stacking: "stacked",
-        dataLabels: {
-          enabled: false,
-        },
-        pointInterval: 24 * 3600 * 1000,
-      },
-    },
-    xAxis: {
-      type: "datetime",
-      range: 31 * 24 * 60 * 60 * 1000,
-      labels: {
-        formatter: function () {
-          var epoch = timeToEpoch(this.value)
-          var orig = this.axis.defaultLabelFormatter.call(this)
-          return `${orig}<br/>Epoch ${epoch}`
-        },
-      },
-    },
-    tooltip: {
-      split: false,
-      shared: true,
-      formatter: (tooltip) => {
-        var text = ``
-        var total = 0
-        // date and epochs
-        const startEpoch = timeToEpoch(tooltip.chart.hoverPoint.x)
-        const timeForOneDay = 24 * 60* 60 * 1000
-        const endEpoch = timeToEpoch(tooltip.chart.hoverPoint.x + timeForOneDay) - 1
-        text += `${new Date(tooltip.chart.hoverPoints[0].x).toLocaleDateString()} (Epochs ${startEpoch} - ${endEpoch})`;
-        // income
-        for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
-          const value = tooltip.chart.hoverPoints[i].y
-          const series = tooltip.chart.hoverPoints[i].series
-          var iPrice = clPrice
-          var iCurrency = clCurrency
-          if (series.name == "Execution Income") {
-            iPrice = elPrice
-            iCurrency = elCurrency
-          }
-          // console.log(`sname: ${series.name} si: ${series.index} iprice: ${iPrice} iCurr: ${iCurrency} sCurr: ${selectedCurrency} value: ${value}`)
-          text += `<br/><span style="color:${series.color}">\u25CF</span> <b>${series.name}:</b> ${getIncomeChartValueString(value, iCurrency, selectedCurrency, iPrice)}`
-          total += value
-        }
-        if (tooltip.chart.hoverPoints.length > 1) {
-            text += `<br/><b>Total:</b> ${getIncomeChartValueString(total, selectedCurrency, selectedCurrency, clPrice)}`
-        }
-        return text
-      },
-    },
-    yAxis: [
-      {
-        title: {
-          text: "Income [" + selectedCurrency + "]",
-        },
-        opposite: false,
-        labels: {
-          formatter: function () {
-            if (selectedCurrency !== "ETH") {
-              return this.value.toFixed(2)
-            }
-            return this.value.toFixed(5)
-          },
-        },
-      },
-    ],
-    series: [
-      {
-        name: "Daily Execution Income",
-        data: executionIncomeHistory,
-      },
-      {
-        name: "Daily Consensus Income",
-        data: income,
-      },
-    ],
-    responsive: {
-      rules: [
-        {
-          condition: {
-            callback: function () {
-              return window.innerWidth >= 820
-            },
-          },
-          chartOptions: {
-            legend: {
-              itemMarginTop: 7,
-              itemMarginBottom: -7,
-            },
-          },
-        },
-      ],
-    },
-  })
+  const incomeChartOptions = getIncomeChartOptions(income, executionIncomeHistory, "Daily Income for all Validators", 627)
+  incomeChart = Highcharts.stockChart("balance-chart", incomeChartOptions)
 }
 
 function createProposedChart(data) {
@@ -1481,7 +1397,7 @@ function createProposedChart(data) {
   proposedChart = Highcharts.stockChart("proposed-chart", {
     chart: {
       type: "column",
-      height: "250px",
+      height: "630px",
     },
     title: {
       text: "Proposal History for all Validators",

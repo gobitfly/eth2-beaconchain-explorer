@@ -14,9 +14,10 @@ import (
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -24,7 +25,7 @@ import (
 
 	"github.com/coocood/freecache"
 	"github.com/ethereum/go-ethereum/common"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -45,6 +46,7 @@ func main() {
 	offsetBlocks := flag.Int64("blocks.offset", 100, "Blocks offset")
 	checkBlocksGaps := flag.Bool("blocks.gaps", false, "Check for gaps in the blocks table")
 	checkBlocksGapsLookback := flag.Int("blocks.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
+	traceMode := flag.String("blocks.tracemode", "parity/geth", "Trace mode to use, can bei either 'parity', 'geth' or 'parity/geth' for both")
 
 	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	startData := flag.Int64("data.start", 0, "Block to start indexing")
@@ -82,7 +84,7 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
 	// enable pprof endpoint if requested
 	if utils.Config.Pprof.Enabled {
@@ -113,7 +115,15 @@ func main() {
 	defer db.WriterDb.Close()
 
 	if erigonEndpoint == nil || *erigonEndpoint == "" {
-		utils.LogFatal(nil, "no erigon node url provided", 0)
+
+		if utils.Config.Eth1ErigonEndpoint == "" {
+
+			utils.LogFatal(nil, "no erigon node url provided", 0)
+		} else {
+			logrus.Info("applying erigon endpoint from config")
+			*erigonEndpoint = utils.Config.Eth1ErigonEndpoint
+		}
+
 	}
 
 	logrus.Infof("using erigon node at %v", *erigonEndpoint)
@@ -122,7 +132,7 @@ func main() {
 		utils.LogFatal(err, "erigon client creation error", 0)
 	}
 
-	chainId := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
+	chainId := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
 
 	balanceUpdaterPrefix := chainId + ":B:"
 
@@ -198,6 +208,7 @@ func main() {
 		bt.TransformBlock,
 		bt.TransformTx,
 		bt.TransformItx,
+		bt.TransformBlobTx,
 		bt.TransformERC20,
 		bt.TransformERC721,
 		bt.TransformERC1155,
@@ -208,7 +219,7 @@ func main() {
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
 	if *block != 0 {
-		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks)
+		err = IndexFromNode(bt, client, *block, *block, *concurrencyBlocks, *traceMode)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *block, *block, *concurrencyBlocks)
 		}
@@ -233,7 +244,7 @@ func main() {
 	}
 
 	if *endBlocks != 0 && *startBlocks < *endBlocks {
-		err = IndexFromNode(bt, client, *startBlocks, *endBlocks, *concurrencyBlocks)
+		err = IndexFromNode(bt, client, *startBlocks, *endBlocks, *concurrencyBlocks, *traceMode)
 		if err != nil {
 			logrus.WithError(err).Fatalf("error indexing from node, start: %v end: %v concurrency: %v", *startBlocks, *endBlocks, *concurrencyBlocks)
 		}
@@ -303,7 +314,7 @@ func main() {
 						endBlock = int64(lastBlockFromNode)
 					}
 
-					err = IndexFromNode(bt, client, startBlock, endBlock, *concurrencyBlocks)
+					err = IndexFromNode(bt, client, startBlock, endBlock, *concurrencyBlocks, *traceMode)
 					if err != nil {
 						errMsg := "error indexing from node"
 						errFields := map[string]interface{}{
@@ -384,7 +395,7 @@ func main() {
 
 func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath string) error {
 
-	tokenListContent, err := ioutil.ReadFile(tokenListPath)
+	tokenListContent, err := os.ReadFile(tokenListPath)
 	if err != nil {
 		return err
 	}
@@ -424,7 +435,7 @@ func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath 
 		return fmt.Errorf("error querying defillama api: %v", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -715,7 +726,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 	// }
 }
 
-func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concurrency int64) error {
+func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concurrency int64, traceMode string) error {
 	ctx := context.Background()
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(int(concurrency))
@@ -736,7 +747,7 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 			}
 
 			blockStartTs := time.Now()
-			bc, timings, err := client.GetBlock(i)
+			bc, timings, err := client.GetBlock(i, traceMode)
 			if err != nil {
 				return fmt.Errorf("error getting block: %v from ethereum node err: %w", i, err)
 			}
@@ -797,7 +808,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 		utils.LogFatal(err, "getting client error", 0)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		utils.LogFatal(err, "reading body for ERC20 tokens error", 0)
@@ -850,7 +861,7 @@ func ImportMainnetERC20TokenMetadataFromTokenDirectory(bt *db.Bigtable) {
 			resp, err := client.Get(token.LogoURI)
 
 			if err == nil && resp.StatusCode == 200 {
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 
 				if err != nil {
 					utils.LogFatal(err, "reading body for ERC20 token logo URI error", 0)
@@ -880,7 +891,7 @@ func ImportNameLabels(bt *db.Bigtable) {
 
 	res := make(map[string]*NameEntry)
 
-	data, err := ioutil.ReadFile("")
+	data, err := os.ReadFile("")
 
 	if err != nil {
 		utils.LogFatal(err, "reading file error", 0)

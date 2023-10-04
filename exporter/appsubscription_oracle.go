@@ -8,8 +8,8 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -98,7 +98,7 @@ func VerifyReceipt(googleClient *playstore.Client, receipt *types.PremiumData) (
 }
 
 func initGoogle() *playstore.Client {
-	jsonKey, err := ioutil.ReadFile(utils.Config.Frontend.AppSubsGoogleJSONPath)
+	jsonKey, err := os.ReadFile(utils.Config.Frontend.AppSubsGoogleJSONPath)
 	if err != nil {
 		log.Fatal(err)
 	}

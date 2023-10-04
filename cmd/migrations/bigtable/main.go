@@ -2,6 +2,7 @@ package main
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -9,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -22,6 +22,7 @@ func main() {
 
 	start := flag.Uint64("start", 1, "Start epoch")
 	end := flag.Uint64("end", 1, "End epoch")
+	concurrency := flag.Int("concurrency", 1, "Number of parallel epoch exports")
 
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -43,97 +44,143 @@ func main() {
 	}
 	utils.Config = cfg
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	db.MustInitDB(&types.DatabaseConfig{
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
+	}, &types.DatabaseConfig{
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
+	})
+	defer db.ReaderDb.Close()
+	defer db.WriterDb.Close()
+	db.MustInitFrontendDB(&types.DatabaseConfig{
+		Username:     cfg.Frontend.WriterDatabase.Username,
+		Password:     cfg.Frontend.WriterDatabase.Password,
+		Name:         cfg.Frontend.WriterDatabase.Name,
+		Host:         cfg.Frontend.WriterDatabase.Host,
+		Port:         cfg.Frontend.WriterDatabase.Port,
+		MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
+	}, &types.DatabaseConfig{
+		Username:     cfg.Frontend.ReaderDatabase.Username,
+		Password:     cfg.Frontend.ReaderDatabase.Password,
+		Name:         cfg.Frontend.ReaderDatabase.Name,
+		Host:         cfg.Frontend.ReaderDatabase.Host,
+		Port:         cfg.Frontend.ReaderDatabase.Port,
+		MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
+	})
+	defer db.FrontendReaderDB.Close()
+	defer db.FrontendWriterDB.Close()
+
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
 		utils.LogFatal(err, "new bigtable lighthouse client error", 0)
 	}
 
-	for i := *start; i <= *end; i++ {
-		i := i
+	gOuter := errgroup.Group{}
+	gOuter.SetLimit(*concurrency)
+	for epoch := *start; epoch <= *end; epoch++ {
+		epoch := epoch
+		gOuter.Go(func() error {
+			logrus.Infof("exporting epoch %v", epoch)
+			start := time.Now()
 
-		logrus.Infof("exporting epoch %v", i)
+			startGetEpochData := time.Now()
+			logrus.Printf("retrieving data for epoch %v", epoch)
 
-		logrus.Infof("deleting existing epoch data")
-		err := bt.DeleteEpoch(i)
-		if err != nil {
-			utils.LogFatal(err, "deleting epoch error", 0)
-		}
-
-		firstSlot := i * utils.Config.Chain.Config.SlotsPerEpoch
-		lastSlot := (i+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
-
-		c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", firstSlot), i)
-		if err != nil {
-			utils.LogFatal(err, "getting sync comittee error", 0)
-		}
-
-		validatorsU64 := make([]uint64, len(c.Validators))
-		for i, idxStr := range c.Validators {
-			idxU64, err := strconv.ParseUint(idxStr, 10, 64)
+			data, err := rpcClient.GetEpochData(epoch, false)
 			if err != nil {
-				utils.LogFatal(err, "parsing validator index to uint error", 0)
+				logrus.Fatalf("error retrieving epoch data: %v", err)
 			}
-			validatorsU64[i] = idxU64
-		}
+			logrus.WithFields(logrus.Fields{"duration": time.Since(startGetEpochData), "epoch": epoch}).Info("completed getting epoch-data")
+			logrus.Printf("data for epoch %v retrieved, took %v", epoch, time.Since(start))
 
-		logrus.Infof("saving sync assignments for %v validators", len(validatorsU64))
+			if len(data.Validators) == 0 {
+				logrus.Fatal("error retrieving epoch data: no validators received for epoch")
+			}
 
-		err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
-		if err != nil {
-			logrus.Fatalf("error saving sync committee assignments: %v", err)
-		}
-		logrus.Infof("exported sync committee assignments to bigtable in %v", i)
+			// export epoch data to bigtable
+			g := new(errgroup.Group)
+			g.SetLimit(6)
+			g.Go(func() error {
+				err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
+				if err != nil {
+					return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
+				}
+				return nil
+			})
+			g.Go(func() error {
+				err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
+				if err != nil {
+					return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+				}
+				return nil
+			})
+			g.Go(func() error {
+				err = db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
+				if err != nil {
+					return fmt.Errorf("error exporting attestations to bigtable: %v", err)
+				}
+				return nil
+			})
+			g.Go(func() error {
+				err = db.BigtableClient.SaveProposals(data.Blocks)
+				if err != nil {
+					return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+				}
+				return nil
+			})
+			g.Go(func() error {
+				err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
+				if err != nil {
+					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+				}
+				return nil
+			})
+			g.Go(func() error {
+				err = db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
+				if err != nil {
+					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+				}
+				return nil
+			})
 
-		data, err := rpcClient.GetEpochData(uint64(i), true)
-		if err != nil {
-			utils.LogFatal(err, "getting epoch data error", 0)
-		}
-
-		g := new(errgroup.Group)
-
-		g.Go(func() error {
-			return bt.SaveValidatorBalances(data.Epoch, data.Validators)
+			err = g.Wait()
+			if err != nil {
+				return fmt.Errorf("error during bigtable export: %w", err)
+			}
+			logrus.WithFields(logrus.Fields{"duration": time.Since(start), "epoch": epoch}).Info("completed exporting epoch")
+			return nil
 		})
+	}
 
-		g.Go(func() error {
-			return bt.SaveAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments)
-		})
-
-		g.Go(func() error {
-			return bt.SaveProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments)
-		})
-
-		g.Go(func() error {
-			return bt.SaveAttestations(data.Blocks)
-		})
-
-		g.Go(func() error {
-			return bt.SaveProposals(data.Blocks)
-		})
-
-		g.Go(func() error {
-			return bt.SaveSyncComitteeDuties(data.Blocks)
-		})
-
-		err = g.Wait()
-
-		if err != nil {
-			utils.LogFatal(err, "wait group error", 0)
-		}
+	err = gOuter.Wait()
+	if err != nil {
+		logrus.Fatalf("error during bigtable export: %v", err)
 	}
 
 }
 
 func monitor(configPath string) {
-
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, configPath)
 	if err != nil {
@@ -141,13 +188,13 @@ func monitor(configPath string) {
 	}
 	utils.Config = cfg
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
@@ -170,42 +217,7 @@ func monitor(configPath string) {
 
 		for i := head.FinalizedEpoch; i <= head.HeadEpoch; i++ {
 			logrus.Infof("exporting epoch %v", i)
-			data, err := rpcClient.GetEpochData(i, true)
-			if err != nil {
-				utils.LogFatal(err, "getting epoch data error", 0)
-			}
-
-			g := new(errgroup.Group)
-
-			g.Go(func() error {
-				return bt.SaveValidatorBalances(data.Epoch, data.Validators)
-			})
-
-			g.Go(func() error {
-				return bt.SaveAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments)
-			})
-
-			g.Go(func() error {
-				return bt.SaveProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments)
-			})
-
-			g.Go(func() error {
-				return bt.SaveAttestations(data.Blocks)
-			})
-
-			g.Go(func() error {
-				return bt.SaveProposals(data.Blocks)
-			})
-
-			g.Go(func() error {
-				return bt.SaveSyncComitteeDuties(data.Blocks)
-			})
-
-			err = g.Wait()
-
-			if err != nil {
-				utils.LogFatal(err, "wait group error", 0)
-			}
+			exporter.ExportEpoch(i, rpcClient)
 		}
 		current = head.HeadEpoch
 	}

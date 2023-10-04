@@ -173,24 +173,28 @@ func startApiMonitoringService() {
 		Timeout: time.Second * 10,
 	}
 
+	url := "https://" + utils.Config.Frontend.SiteDomain + "/api/v1/epoch/latest"
+	// add apikey (if any) to url but don't log the api key when errors occur
+	errFields := map[string]interface{}{
+		"url": url}
+	url += "?apikey=" + utils.Config.Monitoring.ApiKey
+
 	for {
 		if !firstRun {
 			time.Sleep(time.Minute)
 		}
 		firstRun = false
 
-		url := "https://" + utils.Config.Frontend.SiteDomain + "/api/v1/epoch/latest"
 		resp, err := client.Get(url)
-
 		if err != nil {
-			utils.LogError(err, "getting client error", 0)
+			utils.LogError(err, "getting client error", 0, errFields)
 			ReportStatus(name, err.Error(), nil)
 			continue
 		}
 
 		if resp.StatusCode != 200 {
 			errorMsg := fmt.Errorf("error: api epoch / latest endpoint returned a non 200 status: %v", resp.StatusCode)
-			utils.LogError(nil, errorMsg, 0)
+			utils.LogError(nil, errorMsg, 0, errFields)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -208,24 +212,28 @@ func startAppMonitoringService() {
 		Timeout: time.Second * 10,
 	}
 
+	url := "https://" + utils.Config.Frontend.SiteDomain + "/api/v1/app/dashboard"
+	// add apikey (if any) to url but don't log the api key when errors occur
+	errFields := map[string]interface{}{
+		"url": url}
+	url += "?apikey=" + utils.Config.Monitoring.ApiKey
+
 	for {
 		if !firstRun {
 			time.Sleep(time.Minute)
 		}
 		firstRun = false
 
-		url := "https://" + utils.Config.Frontend.SiteDomain + "/api/v1/app/dashboard"
 		resp, err := client.Post(url, "application/json", strings.NewReader(`{"indicesOrPubkey": "1,2"}`))
-
 		if err != nil {
-			utils.LogError(err, "POST to dashboard URL error", 0)
+			utils.LogError(err, "POST to dashboard URL error", 0, errFields)
 			ReportStatus(name, err.Error(), nil)
 			continue
 		}
 
 		if resp.StatusCode != 200 {
 			errorMsg := fmt.Errorf("error: api app endpoint returned a non 200 status: %v", resp.StatusCode)
-			utils.LogError(nil, errorMsg, 0)
+			utils.LogError(nil, errorMsg, 0, errFields)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}
@@ -262,8 +270,8 @@ func startServicesMonitoringService() {
 		//"notification-sender", //exclude for now as the sender is only running on mainnet
 	}
 
-	if utils.Config.ServiceMonitoringConfigurations != nil {
-		for _, service := range utils.Config.ServiceMonitoringConfigurations {
+	if utils.Config.Monitoring.ServiceMonitoringConfigurations != nil {
+		for _, service := range utils.Config.Monitoring.ServiceMonitoringConfigurations {
 			if service.Duration == 0 {
 				delete(servicesToCheck, service.Name)
 				logger.Infof("Removing %v from monitoring service", service.Name)

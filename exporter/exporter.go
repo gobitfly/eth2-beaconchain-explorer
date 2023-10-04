@@ -32,7 +32,7 @@ var Client *rpc.Client
 func Start(client rpc.Client) error {
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
-	go genesisDepositsExporter()
+	go genesisDepositsExporter(client)
 	go checkSubscriptions()
 	go syncCommitteesExporter(client)
 	go syncCommitteesCountExporter()
@@ -54,8 +54,7 @@ func Start(client rpc.Client) error {
 	for {
 		head, err := client.GetChainHead()
 		if err == nil {
-			logger.Infof("Beacon node is available with head slot: %v", head.HeadSlot)
-
+			logger.Infof("beacon node is available with head slot: %v", head.HeadSlot)
 			// if we are still waiting for genesis, export epoch 0 with genesis data
 			// epoch 0 will only contain genesis data at this point
 			if head.HeadSlot == 0 {
@@ -110,6 +109,7 @@ func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.IndexMissingEpochsOnStartup {
 		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
+		logger.Infof("checking for missing epochs")
 		epochs, err := db.GetAllEpochs()
 		if err != nil {
 			utils.LogFatal(err, "getting all epochs from db error", 0)
@@ -258,16 +258,34 @@ func Start(client rpc.Client) error {
 		}
 		blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 
-		err := db.BigtableClient.SaveAttestations(blocksMap)
+		syncDuties := make(map[types.Slot]map[types.ValidatorIndex]bool)
+		syncDuties[types.Slot(block.Slot)] = make(map[types.ValidatorIndex]bool)
+
+		for validator, duty := range block.SyncDuties {
+			syncDuties[types.Slot(block.Slot)][types.ValidatorIndex(validator)] = duty
+		}
+
+		attDuties := make(map[types.Slot]map[types.ValidatorIndex][]types.Slot)
+		for validator, attestedSlot := range block.AttestationDuties {
+			if attDuties[types.Slot(attestedSlot)] == nil {
+				attDuties[types.Slot(attestedSlot)] = make(map[types.ValidatorIndex][]types.Slot)
+			}
+			if attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] == nil {
+				attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = []types.Slot{}
+			}
+			attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
+		}
+
+		err := db.BigtableClient.SaveAttestationDuties(attDuties)
 		if err != nil {
 			logrus.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
 		}
-		err = db.BigtableClient.SaveSyncComitteeDuties(blocksMap)
+		err = db.BigtableClient.SaveSyncComitteeDuties(syncDuties)
 		if err != nil {
 			logrus.Errorf("error exporting sync committee duties to bigtable for block %v: %v", block.Slot, err)
 		}
 
-		err = db.SaveBlock(block)
+		err = db.SaveBlock(block, false)
 		if err != nil {
 			logger.Errorf("error saving block: %v", err)
 		}
@@ -426,6 +444,14 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 			}
 		}
 		logger.Printf("finished export for epoch %v", epoch)
+
+		if len(keys) > 10 && epoch%10 == 0 && epoch >= 10 { // this ensures that epoch finalization is properly updated during long running exports
+			logger.Infof("updating status of epochs %v-%v", startEpoch, head.HeadEpoch)
+			err = updateEpochStatus(client, epoch-10, epoch)
+			if err != nil {
+				logger.Errorf("error updating epoch stratus: %v", err)
+			}
+		}
 	}
 
 	logger.Infof("marking orphaned blocks of epochs %v-%v", startEpoch, head.HeadEpoch)
@@ -455,11 +481,6 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 	if err != nil {
 		logger.Errorf("error updating epoch stratus: %v", err)
 	}
-	// set all finalized epochs to finalized
-	err = db.UpdateEpochFinalization(head.FinalizedEpoch)
-	if err != nil {
-		logger.Errorf("error updating finalization of epochs: %v", err)
-	}
 
 	logger.Infof("exporting validation queue")
 	err = exportValidatorQueue(client)
@@ -485,8 +506,8 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		startSlot := epoch * utils.Config.Chain.Config.SlotsPerEpoch
-		endSlot := (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+		startSlot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+		endSlot := (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
 			blocks, err := client.GetBlocksBySlot(slot)
 			if err != nil {
@@ -535,18 +556,11 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	// export epoch data to bigtable
 	g := new(errgroup.Group)
-	g.SetLimit(7)
+	g.SetLimit(5)
 	g.Go(func() error {
 		err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 		if err != nil {
 			return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		err = db.BigtableClient.SaveAttestationAssignments(epoch, data.ValidatorAssignmentes.AttestorAssignments)
-		if err != nil {
-			return fmt.Errorf("error exporting attestation assignments to bigtable: %v", err)
 		}
 		return nil
 	})
@@ -558,7 +572,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		return nil
 	})
 	g.Go(func() error {
-		err = db.BigtableClient.SaveAttestations(data.Blocks)
+		err = db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
 		if err != nil {
 			return fmt.Errorf("error exporting attestations to bigtable: %v", err)
 		}
@@ -572,7 +586,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		return nil
 	})
 	g.Go(func() error {
-		err = db.BigtableClient.SaveSyncComitteeDuties(data.Blocks)
+		err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
 		if err != nil {
 			return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
 		}
@@ -627,8 +641,8 @@ func networkLivenessUpdater(client rpc.Client) {
 		utils.LogFatal(err, "getting previous head epoch from db error", 0)
 	}
 
-	epochDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch)
-	slotDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
+	epochDuration := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch)
+	slotDuration := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
 
 	for {
 		head, err := client.GetChainHead()
@@ -664,7 +678,7 @@ func networkLivenessUpdater(client rpc.Client) {
 	}
 }
 
-func genesisDepositsExporter() {
+func genesisDepositsExporter(client rpc.Client) {
 	for {
 		// check if the beaconchain has started
 		var latestEpoch uint64
@@ -682,7 +696,7 @@ func genesisDepositsExporter() {
 
 		// check if genesis-deposits have already been exported
 		var genesisDepositsCount uint64
-		err = db.WriterDb.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1' WHERE block_slot=0")
+		err = db.WriterDb.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits WHERE block_slot=0")
 		if err != nil {
 			logger.Errorf("error retrieving genesis-deposits-count when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
@@ -694,32 +708,9 @@ func genesisDepositsExporter() {
 			return
 		}
 
-		// get genesis-validators-count
-		var genesisValidatorsCount uint64
-		err = db.WriterDb.Get(&genesisValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch=0")
+		genesisValidators, err := client.GetValidatorState(0)
 		if err != nil {
-			logger.Errorf("error retrieving validatorscount for genesis-epoch when exporting genesis-deposits: %v", err)
-			time.Sleep(time.Second * 60)
-			continue
-		}
-
-		// check if eth1-deposits have already been exported
-		var missingEth1Deposits uint64
-		err = db.WriterDb.Get(&missingEth1Deposits, `
-			SELECT COUNT(*)
-			FROM validators v
-			LEFT JOIN ( 
-				SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
-			) d ON d.publickey = v.pubkey
-			WHERE d.publickey IS NULL AND v.validatorindex < $1`, genesisValidatorsCount)
-		if err != nil {
-			logger.Errorf("error retrieving missing-eth1-deposits-count when exporting genesis-deposits")
-			time.Sleep(time.Second * 60)
-			continue
-		}
-
-		if missingEth1Deposits > 0 {
-			logger.Infof("delaying export of genesis-deposits until eth1-deposits have been exported")
+			logger.Errorf("error retrieving genesis validator data for genesis-epoch when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
 			continue
 		}
@@ -731,36 +722,41 @@ func genesisDepositsExporter() {
 			continue
 		}
 
-		// export genesis-deposits from eth1-deposits and data already gathered from the eth2-client
+		for _, validator := range genesisValidators.Data {
+			logger.Infof("exporting deposit data for genesis validator %v", validator.Index)
+			_, err = tx.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
+			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},
+			)
+			if err != nil {
+				tx.Rollback()
+				logger.Errorf("error exporting genesis-deposits: %v", err)
+				time.Sleep(time.Second * 60)
+				continue
+			}
+		}
+
+		// hydrate the eth1 deposit signature for all genesis validators that have a corresponding eth1 deposit
 		_, err = tx.Exec(`
-				INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature)
-				SELECT
-					0 as block_slot,
-					v.validatorindex as block_index,
-					v.pubkey as publickey,
-					v.withdrawalcredentials,
-					b.balance as amount,
-					d.signature as signature
-				FROM validators v
-				LEFT JOIN validator_balances_recent b 
-					ON v.validatorindex = b.validatorindex
-					AND b.epoch = 0
-				LEFT JOIN ( 
-					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
-				) d ON d.publickey = v.pubkey
-				WHERE v.validatorindex < $1`, genesisValidatorsCount)
+			UPDATE blocks_deposits 
+			SET signature = a.signature 
+			FROM (
+				SELECT DISTINCT ON(publickey) publickey, signature 
+				FROM eth1_deposits 
+				WHERE valid_signature = true) AS a 
+			WHERE block_slot = 0 AND blocks_deposits.publickey = a.publickey AND blocks_deposits.signature = '\x'`)
 		if err != nil {
 			tx.Rollback()
-			logger.Errorf("error exporting genesis-deposits: %v", err)
+			logger.Errorf("error hydrating eth1 data into genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
 			continue
 		}
 
 		// update deposits-count
-		_, err = tx.Exec("UPDATE blocks SET depositscount = $1 WHERE slot = 0", genesisValidatorsCount)
+		_, err = tx.Exec("UPDATE blocks SET depositscount = $1 WHERE slot = 0", len(genesisValidators.Data))
 		if err != nil {
 			tx.Rollback()
-			logger.Errorf("error exporting genesis-deposits: %v", err)
+			logger.Errorf("error updating deposit count for the genesis slot: %v", err)
 			time.Sleep(time.Second * 60)
 			continue
 		}
@@ -773,7 +769,7 @@ func genesisDepositsExporter() {
 			continue
 		}
 
-		logger.Infof("exported genesis-deposits for %v genesis-validators", genesisValidatorsCount)
+		logger.Infof("exported genesis-deposits for %v genesis-validators", len(genesisValidators.Data))
 		return
 	}
 }

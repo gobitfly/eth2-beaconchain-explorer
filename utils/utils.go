@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"context"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -16,7 +17,7 @@ import (
 	"fmt"
 	"html/template"
 	"image/color"
-	"io/ioutil"
+	"io"
 	"log"
 	"math"
 	"math/big"
@@ -28,6 +29,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -38,6 +40,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/carlmjohnson/requests"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
@@ -131,6 +134,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
+		"formatBytes":                             FormatBytes,
+		"formatBlobVersionedHash":                 FormatBlobVersionedHash,
 		"formatBigAmount":                         FormatBigAmount,
 		"formatBytesAmount":                       FormatBytesAmount,
 		"formatYesNo":                             FormatYesNo,
@@ -152,6 +157,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"addUI64":                                 func(i, j uint64) uint64 { return i + j },
 		"addFloat64":                              func(i, j float64) float64 { return i + j },
+		"addBigInt":                               func(i, j *big.Int) *big.Int { return new(big.Int).Add(i, j) },
 		"mul":                                     func(i, j float64) float64 { return i * j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"divInt":                                  func(i, j int) float64 { return float64(i) / float64(j) },
@@ -243,7 +249,7 @@ func GetTemplateFuncs() template.FuncMap {
 
 // IncludeHTML adds html to the page
 func IncludeHTML(path string) template.HTML {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		log.Printf("includeHTML - error reading file: %v", err)
 		return ""
@@ -251,9 +257,9 @@ func IncludeHTML(path string) template.HTML {
 	return template.HTML(string(b))
 }
 
-func GraffitiToSring(graffiti []byte) string {
+func GraffitiToString(graffiti []byte) string {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
-	s = strings.Replace(s, "\u0000", "", -1) // rempove 0x00 bytes as it is not supported in postgres
+	s = strings.Replace(s, "\u0000", "", -1) // remove 0x00 bytes as it is not supported in postgres
 
 	if !utf8.ValidString(s) {
 		return "INVALID_UTF8_STRING"
@@ -267,6 +273,22 @@ func FormatGraffitiString(graffiti string) string {
 	return strings.Map(fixUtf, template.HTMLEscapeString(graffiti))
 }
 
+func HasProblematicUtfCharacters(s string) bool {
+	// Check for null character ('\x00')
+	if utf8.ValidString(s) && utf8.Valid([]byte(s)) {
+		// Check for control characters ('\x01' to '\x1F' and '\x7F')
+		for _, r := range s {
+			if r <= 0x1F || r == 0x7F {
+				return true
+			}
+		}
+	} else {
+		return true // Invalid UTF-8 sequence
+	}
+
+	return false
+}
+
 func fixUtf(r rune) rune {
 	if r == utf8.RuneError {
 		return -1
@@ -275,14 +297,14 @@ func fixUtf(r rune) rune {
 }
 
 func SyncPeriodOfEpoch(epoch uint64) uint64 {
-	if epoch < Config.Chain.Config.AltairForkEpoch {
+	if epoch < Config.Chain.ClConfig.AltairForkEpoch {
 		return 0
 	}
-	return epoch / Config.Chain.Config.EpochsPerSyncCommitteePeriod
+	return epoch / Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod
 }
 
 func FirstEpochOfSyncPeriod(syncPeriod uint64) uint64 {
-	return syncPeriod * Config.Chain.Config.EpochsPerSyncCommitteePeriod
+	return syncPeriod * Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod
 }
 
 func TimeToSyncPeriod(t time.Time) uint64 {
@@ -291,22 +313,22 @@ func TimeToSyncPeriod(t time.Time) uint64 {
 
 // EpochOfSlot returns the corresponding epoch of a slot
 func EpochOfSlot(slot uint64) uint64 {
-	return slot / Config.Chain.Config.SlotsPerEpoch
+	return slot / Config.Chain.ClConfig.SlotsPerEpoch
 }
 
 // DayOfSlot returns the corresponding day of a slot
 func DayOfSlot(slot uint64) uint64 {
-	return Config.Chain.Config.SecondsPerSlot * slot / (24 * 3600)
+	return Config.Chain.ClConfig.SecondsPerSlot * slot / (24 * 3600)
 }
 
 // WeekOfSlot returns the corresponding week of a slot
 func WeekOfSlot(slot uint64) uint64 {
-	return Config.Chain.Config.SecondsPerSlot * slot / (7 * 24 * 3600)
+	return Config.Chain.ClConfig.SecondsPerSlot * slot / (7 * 24 * 3600)
 }
 
 // SlotToTime returns a time.Time to slot
 func SlotToTime(slot uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.Config.SecondsPerSlot), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.ClConfig.SecondsPerSlot), 0)
 }
 
 // TimeToSlot returns time to slot in seconds
@@ -314,19 +336,19 @@ func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
 		return 0
 	}
-	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.Config.SecondsPerSlot
+	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.ClConfig.SecondsPerSlot
 }
 
 func TimeToFirstSlotOfEpoch(timestamp uint64) uint64 {
 	slot := TimeToSlot(timestamp)
-	lastEpochOffset := slot % Config.Chain.Config.SlotsPerEpoch
+	lastEpochOffset := slot % Config.Chain.ClConfig.SlotsPerEpoch
 	slot = slot - lastEpochOffset
 	return slot
 }
 
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.Config.SecondsPerSlot*Config.Chain.Config.SlotsPerEpoch), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.ClConfig.SecondsPerSlot*Config.Chain.ClConfig.SlotsPerEpoch), 0)
 }
 
 // TimeToDay will return a days since genesis for an timestamp
@@ -344,7 +366,7 @@ func TimeToEpoch(ts time.Time) int64 {
 	if int64(Config.Chain.GenesisTimestamp) > ts.Unix() {
 		return 0
 	}
-	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.Config.SecondsPerSlot) / int64(Config.Chain.Config.SlotsPerEpoch)
+	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.ClConfig.SecondsPerSlot) / int64(Config.Chain.ClConfig.SlotsPerEpoch)
 }
 
 func WeiToEther(wei *big.Int) decimal.Decimal {
@@ -373,6 +395,11 @@ func WaitForCtrlC() {
 // ReadConfig will process a configuration
 func ReadConfig(cfg *types.Config, path string) error {
 
+	configPathFromEnv := os.Getenv("BEACONCHAIN_CONFIG")
+
+	if configPathFromEnv != "" { // allow the location of the config file to be passed via env args
+		path = configPathFromEnv
+	}
 	if strings.HasPrefix(path, "projects/") {
 		x, err := AccessSecretVersion(path)
 		if err != nil {
@@ -402,21 +429,23 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Frontend.SiteBrand = "beaconcha.in"
 	}
 
-	if cfg.Chain.ConfigPath == "" {
+	if cfg.Chain.ClConfigPath == "" {
 		// var prysmParamsConfig *prysmParams.BeaconChainConfig
 		switch cfg.Chain.Name {
 		case "mainnet":
-			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.ClConfig)
 		case "prater":
-			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.ClConfig)
 		case "ropsten":
-			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.ClConfig)
 		case "sepolia":
-			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.ClConfig)
 		case "gnosis":
-			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.ClConfig)
+		case "holesky":
+			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &cfg.Chain.ClConfig)
 		default:
-			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
+			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ClConfigPath)
 		}
 		if err != nil {
 			return err
@@ -425,24 +454,141 @@ func ReadConfig(cfg *types.Config, path string) error {
 		// if err != nil {
 		// 	return fmt.Errorf("error setting chainConfig (%v) for prysmParams: %w", cfg.Chain.Name, err)
 		// }
-	} else {
-		f, err := os.Open(cfg.Chain.ConfigPath)
+	} else if cfg.Chain.ClConfigPath == "node" {
+		nodeEndpoint := fmt.Sprintf("http://%s:%s", cfg.Indexer.Node.Host, cfg.Indexer.Node.Port)
+
+		jr := &types.ConfigJsonResponse{}
+
+		err := requests.
+			URL(nodeEndpoint + "/eth/v1/config/spec").
+			ToJSON(jr).
+			Fetch(context.Background())
+
 		if err != nil {
-			return fmt.Errorf("error opening Chain Config file %v: %w", cfg.Chain.ConfigPath, err)
+			return err
 		}
-		var chainConfig *types.ChainConfig
+
+		chainCfg := types.ClChainConfig{
+			PresetBase:                              jr.Data.PresetBase,
+			ConfigName:                              jr.Data.ConfigName,
+			TerminalTotalDifficulty:                 jr.Data.TerminalTotalDifficulty,
+			TerminalBlockHash:                       jr.Data.TerminalBlockHash,
+			TerminalBlockHashActivationEpoch:        mustParseUint(jr.Data.TerminalBlockHashActivationEpoch),
+			MinGenesisActiveValidatorCount:          mustParseUint(jr.Data.MinGenesisActiveValidatorCount),
+			MinGenesisTime:                          int64(mustParseUint(jr.Data.MinGenesisTime)),
+			GenesisForkVersion:                      jr.Data.GenesisForkVersion,
+			GenesisDelay:                            mustParseUint(jr.Data.GenesisDelay),
+			AltairForkVersion:                       jr.Data.AltairForkVersion,
+			AltairForkEpoch:                         mustParseUint(jr.Data.AltairForkEpoch),
+			BellatrixForkVersion:                    jr.Data.BellatrixForkVersion,
+			BellatrixForkEpoch:                      mustParseUint(jr.Data.BellatrixForkEpoch),
+			CappellaForkVersion:                     jr.Data.CapellaForkVersion,
+			CappellaForkEpoch:                       mustParseUint(jr.Data.CapellaForkEpoch),
+			SecondsPerSlot:                          mustParseUint(jr.Data.SecondsPerSlot),
+			SecondsPerEth1Block:                     mustParseUint(jr.Data.SecondsPerEth1Block),
+			MinValidatorWithdrawabilityDelay:        mustParseUint(jr.Data.MinValidatorWithdrawabilityDelay),
+			ShardCommitteePeriod:                    mustParseUint(jr.Data.ShardCommitteePeriod),
+			Eth1FollowDistance:                      mustParseUint(jr.Data.Eth1FollowDistance),
+			InactivityScoreBias:                     mustParseUint(jr.Data.InactivityScoreBias),
+			InactivityScoreRecoveryRate:             mustParseUint(jr.Data.InactivityScoreRecoveryRate),
+			EjectionBalance:                         mustParseUint(jr.Data.EjectionBalance),
+			MinPerEpochChurnLimit:                   mustParseUint(jr.Data.MinPerEpochChurnLimit),
+			ChurnLimitQuotient:                      mustParseUint(jr.Data.ChurnLimitQuotient),
+			ProposerScoreBoost:                      mustParseUint(jr.Data.ProposerScoreBoost),
+			DepositChainID:                          mustParseUint(jr.Data.DepositChainID),
+			DepositNetworkID:                        mustParseUint(jr.Data.DepositNetworkID),
+			DepositContractAddress:                  jr.Data.DepositContractAddress,
+			MaxCommitteesPerSlot:                    mustParseUint(jr.Data.MaxCommitteesPerSlot),
+			TargetCommitteeSize:                     mustParseUint(jr.Data.TargetCommitteeSize),
+			MaxValidatorsPerCommittee:               mustParseUint(jr.Data.TargetCommitteeSize),
+			ShuffleRoundCount:                       mustParseUint(jr.Data.ShuffleRoundCount),
+			HysteresisQuotient:                      mustParseUint(jr.Data.HysteresisQuotient),
+			HysteresisDownwardMultiplier:            mustParseUint(jr.Data.HysteresisDownwardMultiplier),
+			HysteresisUpwardMultiplier:              mustParseUint(jr.Data.HysteresisUpwardMultiplier),
+			SafeSlotsToUpdateJustified:              mustParseUint(jr.Data.SafeSlotsToUpdateJustified),
+			MinDepositAmount:                        mustParseUint(jr.Data.MinDepositAmount),
+			MaxEffectiveBalance:                     mustParseUint(jr.Data.MaxEffectiveBalance),
+			EffectiveBalanceIncrement:               mustParseUint(jr.Data.EffectiveBalanceIncrement),
+			MinAttestationInclusionDelay:            mustParseUint(jr.Data.MinAttestationInclusionDelay),
+			SlotsPerEpoch:                           mustParseUint(jr.Data.SlotsPerEpoch),
+			MinSeedLookahead:                        mustParseUint(jr.Data.MinSeedLookahead),
+			MaxSeedLookahead:                        mustParseUint(jr.Data.MaxSeedLookahead),
+			EpochsPerEth1VotingPeriod:               mustParseUint(jr.Data.EpochsPerEth1VotingPeriod),
+			SlotsPerHistoricalRoot:                  mustParseUint(jr.Data.SlotsPerHistoricalRoot),
+			MinEpochsToInactivityPenalty:            mustParseUint(jr.Data.MinEpochsToInactivityPenalty),
+			EpochsPerHistoricalVector:               mustParseUint(jr.Data.EpochsPerHistoricalVector),
+			EpochsPerSlashingsVector:                mustParseUint(jr.Data.EpochsPerSlashingsVector),
+			HistoricalRootsLimit:                    mustParseUint(jr.Data.HistoricalRootsLimit),
+			ValidatorRegistryLimit:                  mustParseUint(jr.Data.ValidatorRegistryLimit),
+			BaseRewardFactor:                        mustParseUint(jr.Data.BaseRewardFactor),
+			WhistleblowerRewardQuotient:             mustParseUint(jr.Data.WhistleblowerRewardQuotient),
+			ProposerRewardQuotient:                  mustParseUint(jr.Data.ProposerRewardQuotient),
+			InactivityPenaltyQuotient:               mustParseUint(jr.Data.InactivityPenaltyQuotient),
+			MinSlashingPenaltyQuotient:              mustParseUint(jr.Data.MinSlashingPenaltyQuotient),
+			ProportionalSlashingMultiplier:          mustParseUint(jr.Data.ProportionalSlashingMultiplier),
+			MaxProposerSlashings:                    mustParseUint(jr.Data.MaxProposerSlashings),
+			MaxAttesterSlashings:                    mustParseUint(jr.Data.MaxAttesterSlashings),
+			MaxAttestations:                         mustParseUint(jr.Data.MaxAttestations),
+			MaxDeposits:                             mustParseUint(jr.Data.MaxDeposits),
+			MaxVoluntaryExits:                       mustParseUint(jr.Data.MaxVoluntaryExits),
+			InvactivityPenaltyQuotientAltair:        mustParseUint(jr.Data.InactivityPenaltyQuotientAltair),
+			MinSlashingPenaltyQuotientAltair:        mustParseUint(jr.Data.MinSlashingPenaltyQuotientAltair),
+			ProportionalSlashingMultiplierAltair:    mustParseUint(jr.Data.ProportionalSlashingMultiplierAltair),
+			SyncCommitteeSize:                       mustParseUint(jr.Data.SyncCommitteeSize),
+			EpochsPerSyncCommitteePeriod:            mustParseUint(jr.Data.EpochsPerSyncCommitteePeriod),
+			MinSyncCommitteeParticipants:            mustParseUint(jr.Data.MinSyncCommitteeParticipants),
+			InvactivityPenaltyQuotientBellatrix:     mustParseUint(jr.Data.InactivityPenaltyQuotientBellatrix),
+			MinSlashingPenaltyQuotientBellatrix:     mustParseUint(jr.Data.MinSlashingPenaltyQuotientBellatrix),
+			ProportionalSlashingMultiplierBellatrix: mustParseUint(jr.Data.ProportionalSlashingMultiplierBellatrix),
+			MaxBytesPerTransaction:                  mustParseUint(jr.Data.MaxBytesPerTransaction),
+			MaxTransactionsPerPayload:               mustParseUint(jr.Data.MaxTransactionsPerPayload),
+			BytesPerLogsBloom:                       mustParseUint(jr.Data.BytesPerLogsBloom),
+			MaxExtraDataBytes:                       mustParseUint(jr.Data.MaxExtraDataBytes),
+			MaxWithdrawalsPerPayload:                mustParseUint(jr.Data.MaxWithdrawalsPerPayload),
+			MaxValidatorsPerWithdrawalSweep:         mustParseUint(jr.Data.MaxValidatorsPerWithdrawalsSweep),
+			MaxBlsToExecutionChange:                 mustParseUint(jr.Data.MaxBlsToExecutionChanges),
+		}
+
+		cfg.Chain.ClConfig = chainCfg
+
+		type GenesisResponse struct {
+			Data struct {
+				GenesisTime           string `json:"genesis_time"`
+				GenesisValidatorsRoot string `json:"genesis_validators_root"`
+				GenesisForkVersion    string `json:"genesis_fork_version"`
+			} `json:"data"`
+		}
+
+		gtr := &GenesisResponse{}
+
+		err = requests.
+			URL(nodeEndpoint + "/eth/v1/beacon/genesis").
+			ToJSON(gtr).
+			Fetch(context.Background())
+
+		if err != nil {
+			return err
+		}
+
+		cfg.Chain.GenesisTimestamp = mustParseUint(gtr.Data.GenesisTime)
+		cfg.Chain.GenesisValidatorsRoot = gtr.Data.GenesisValidatorsRoot
+
+		logger.Infof("loaded chain config from node with genesis time %s", gtr.Data.GenesisTime)
+
+	} else {
+		f, err := os.Open(cfg.Chain.ClConfigPath)
+		if err != nil {
+			return fmt.Errorf("error opening Chain Config file %v: %w", cfg.Chain.ClConfigPath, err)
+		}
+		var chainConfig *types.ClChainConfig
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(&chainConfig)
 		if err != nil {
-			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
+			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ClConfigPath, err)
 		}
-		cfg.Chain.Config = *chainConfig
-		// err = prysmParams.LoadChainConfigFile(cfg.Chain.ConfigPath, nil)
-		// if err != nil {
-		// 	return fmt.Errorf("error loading chainConfig (%v) for prysmParams: %w", cfg.Chain.ConfigPath, err)
-		// }
+		cfg.Chain.ClConfig = *chainConfig
 	}
-	cfg.Chain.Name = cfg.Chain.Config.ConfigName
+	cfg.Chain.Name = cfg.Chain.ClConfig.ConfigName
 
 	if cfg.Chain.GenesisTimestamp == 0 {
 		switch cfg.Chain.Name {
@@ -456,6 +602,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.GenesisTimestamp = 1675263600
 		case "gnosis":
 			cfg.Chain.GenesisTimestamp = 1638993340
+		case "holesky":
+			cfg.Chain.GenesisTimestamp = 1695902400
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
@@ -473,6 +621,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.GenesisValidatorsRoot = "0x53a92d8f2bb1d85f62d16a156e6ebcd1bcaba652d0900b2c2f387826f3481f6f"
 		case "gnosis":
 			cfg.Chain.GenesisValidatorsRoot = "0xf5dcb5564e829aab27264b9becd5dfaa017085611224cb3036f573368dbb9d47"
+		case "holesky":
+			cfg.Chain.GenesisValidatorsRoot = "0x9143aa7c615a7f7115e2b6aac319c03529df8242ae705fba9df39b79c59fa8b1"
 		default:
 			return fmt.Errorf("tried to set known genesis-validators-root, but unknown chain-name")
 		}
@@ -513,19 +663,37 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Frontend.SiteTitle = "Open Source Ethereum Explorer"
 	}
 
+	if cfg.Chain.Id != 0 && cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID {
+		logrus.Fatalf("cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID: %v != %v", cfg.Chain.Id, cfg.Chain.ClConfig.DepositChainID)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
 		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,
-		"configName":             cfg.Chain.Config.ConfigName,
-		"depositChainID":         cfg.Chain.Config.DepositChainID,
-		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
-		"depositContractAddress": cfg.Chain.Config.DepositContractAddress,
+		"configName":             cfg.Chain.ClConfig.ConfigName,
+		"depositChainID":         cfg.Chain.ClConfig.DepositChainID,
+		"depositNetworkID":       cfg.Chain.ClConfig.DepositNetworkID,
+		"depositContractAddress": cfg.Chain.ClConfig.DepositContractAddress,
 		"clCurrency":             cfg.Frontend.ClCurrency,
 		"elCurrency":             cfg.Frontend.ElCurrency,
 		"mainCurrency":           cfg.Frontend.MainCurrency,
 	}).Infof("did init config")
 
 	return nil
+}
+
+func mustParseUint(str string) uint64 {
+
+	if str == "" {
+		return 0
+	}
+
+	nbr, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		logrus.Fatalf("fatal error parsing uint %s: %v", str, err)
+	}
+
+	return nbr
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
@@ -587,6 +755,7 @@ var withdrawalCredentialsRE = regexp.MustCompile("^(0x)?00[0-9a-fA-F]{62}$")
 var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?010000000000000000000000[0-9a-fA-F]{40}$")
 var eth1TxRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{64}$")
 var zeroHashRE = regexp.MustCompile("^(0x)?0+$")
+var hashRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{96}$")
 
 // IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
@@ -601,6 +770,11 @@ func IsEth1Address(s string) bool {
 // IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
 func IsValidEth1Tx(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
+}
+
+// IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
+func IsHash(s string) bool {
+	return hashRE.MatchString(s)
 }
 
 // IsValidWithdrawalCredentials verifies whether a string represents valid withdrawal credentials.
@@ -826,7 +1000,7 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 		return false, err
 	}
 	defer req.Body.Close()
-	body, err := ioutil.ReadAll(req.Body) // Read the response from Google
+	body, err := io.ReadAll(req.Body) // Read the response from Google
 	if err != nil {
 		return false, err
 	}
@@ -860,7 +1034,7 @@ func BitAtVectorReversed(b []byte, i int) bool {
 }
 
 func GetNetwork() string {
-	return strings.ToLower(Config.Chain.Config.ConfigName)
+	return strings.ToLower(Config.Chain.ClConfig.ConfigName)
 }
 
 func ElementExists(arr []string, el string) bool {
@@ -887,7 +1061,7 @@ func TryFetchContractMetadata(address []byte) (*types.ContractMetadata, error) {
 // 	}
 
 // 	if resp.StatusCode == 200 {
-// 		body, err := ioutil.ReadAll(resp.Body)
+// 		body, err := io.ReadAll(resp.Body)
 // 		if err != nil {
 // 			return nil, err
 // 		}
@@ -930,7 +1104,7 @@ func GetEtherscanAPIBaseUrl(provideDefault bool) string {
 	}
 
 	// check chain id
-	switch Config.Chain.Config.DepositChainID {
+	switch Config.Chain.ClConfig.DepositChainID {
 	case 1: // mainnet
 		return mainnetBaseUrl
 	case 5: // goerli
@@ -962,7 +1136,7 @@ func getABIFromEtherscan(address []byte) (*types.ContractMetadata, error) {
 		return nil, fmt.Errorf("StatusCode: '%d', Status: '%s'", resp.StatusCode, resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1097,7 +1271,9 @@ func FormatTokenSymbolTitle(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 
 	if len(urls) > 0 {
-		return "The token symbol has been hidden as it contains a URL which might be a scam"
+		return fmt.Sprintf("The token symbol has been hidden as it contains a URL (%s) which might be a scam", symbol)
+	} else if symbol == "ETH" {
+		return fmt.Sprintf("The token symbol has been hidden as it contains a Token name (%s) which might be a scam", symbol)
 	}
 	return ""
 }
@@ -1105,8 +1281,9 @@ func FormatTokenSymbolTitle(symbol string) string {
 func FormatTokenSymbol(symbol string) string {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 
-	if len(urls) > 0 {
-		return "[hidden-symbol]"
+	if len(urls) > 0 ||
+		symbol == "ETH" {
+		return "[hidden-symbol] ⚠️"
 	}
 	return symbol
 }
@@ -1133,8 +1310,8 @@ func AddBigInts(a, b []byte) []byte {
 
 // GetTimeToNextWithdrawal calculates the time it takes for the validators next withdrawal to be processed.
 func GetTimeToNextWithdrawal(distance uint64) time.Time {
-	minTimeToWithdrawal := time.Now().Add(time.Second * time.Duration((distance/Config.Chain.Config.MaxValidatorsPerWithdrawalSweep)*Config.Chain.Config.SecondsPerSlot))
-	timeToWithdrawal := time.Now().Add(time.Second * time.Duration((float64(distance)/float64(Config.Chain.Config.MaxWithdrawalsPerPayload))*float64(Config.Chain.Config.SecondsPerSlot)))
+	minTimeToWithdrawal := time.Now().Add(time.Second * time.Duration((distance/Config.Chain.ClConfig.MaxValidatorsPerWithdrawalSweep)*Config.Chain.ClConfig.SecondsPerSlot))
+	timeToWithdrawal := time.Now().Add(time.Second * time.Duration((float64(distance)/float64(Config.Chain.ClConfig.MaxWithdrawalsPerPayload))*float64(Config.Chain.ClConfig.SecondsPerSlot)))
 
 	if timeToWithdrawal.Before(minTimeToWithdrawal) {
 		return minTimeToWithdrawal
@@ -1145,7 +1322,7 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 
 func EpochsPerDay() uint64 {
 	day := time.Hour * 24
-	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
+	return (uint64(day.Seconds()) / Config.Chain.ClConfig.SlotsPerEpoch) / Config.Chain.ClConfig.SecondsPerSlot
 }
 
 func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
@@ -1155,36 +1332,36 @@ func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
 }
 
 func GetLastBalanceInfoSlotForDay(day uint64) uint64 {
-	return ((day+1)*EpochsPerDay() - 1) * Config.Chain.Config.SlotsPerEpoch
+	return ((day+1)*EpochsPerDay() - 1) * Config.Chain.ClConfig.SlotsPerEpoch
 }
 
 // ForkVersionAtEpoch returns the forkversion active a specific epoch
 func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
-	if epoch >= Config.Chain.Config.CappellaForkEpoch {
+	if epoch >= Config.Chain.ClConfig.CappellaForkEpoch {
 		return &types.ForkVersion{
-			Epoch:           Config.Chain.Config.CappellaForkEpoch,
-			CurrentVersion:  MustParseHex(Config.Chain.Config.CappellaForkVersion),
-			PreviousVersion: MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+			Epoch:           Config.Chain.ClConfig.CappellaForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.ClConfig.CappellaForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.ClConfig.BellatrixForkVersion),
 		}
 	}
-	if epoch >= Config.Chain.Config.BellatrixForkEpoch {
+	if epoch >= Config.Chain.ClConfig.BellatrixForkEpoch {
 		return &types.ForkVersion{
-			Epoch:           Config.Chain.Config.BellatrixForkEpoch,
-			CurrentVersion:  MustParseHex(Config.Chain.Config.BellatrixForkVersion),
-			PreviousVersion: MustParseHex(Config.Chain.Config.AltairForkVersion),
+			Epoch:           Config.Chain.ClConfig.BellatrixForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.ClConfig.BellatrixForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.ClConfig.AltairForkVersion),
 		}
 	}
-	if epoch >= Config.Chain.Config.AltairForkEpoch {
+	if epoch >= Config.Chain.ClConfig.AltairForkEpoch {
 		return &types.ForkVersion{
-			Epoch:           Config.Chain.Config.AltairForkEpoch,
-			CurrentVersion:  MustParseHex(Config.Chain.Config.AltairForkVersion),
-			PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+			Epoch:           Config.Chain.ClConfig.AltairForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.ClConfig.AltairForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.ClConfig.GenesisForkVersion),
 		}
 	}
 	return &types.ForkVersion{
 		Epoch:           0,
-		CurrentVersion:  MustParseHex(Config.Chain.Config.GenesisForkVersion),
-		PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		CurrentVersion:  MustParseHex(Config.Chain.ClConfig.GenesisForkVersion),
+		PreviousVersion: MustParseHex(Config.Chain.ClConfig.GenesisForkVersion),
 	}
 }
 
@@ -1258,7 +1435,7 @@ func logErrorInfo(err error, callerSkip int, additionalInfos ...map[string]inter
 
 func GetSigningDomain() ([]byte, error) {
 	beaconConfig := prysm_params.BeaconConfig()
-	genForkVersion, err := hex.DecodeString(strings.Replace(Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
+	genForkVersion, err := hex.DecodeString(strings.Replace(Config.Chain.ClConfig.GenesisForkVersion, "0x", "", -1))
 	if err != nil {
 		return nil, err
 	}
@@ -1278,7 +1455,7 @@ func GetSigningDomain() ([]byte, error) {
 
 // SlotsPerSyncCommittee returns the count of slots per sync committee period
 func SlotsPerSyncCommittee() uint64 {
-	return Config.Chain.Config.EpochsPerSyncCommitteePeriod * Config.Chain.Config.SlotsPerEpoch
+	return Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod * Config.Chain.ClConfig.SlotsPerEpoch
 }
 
 // GetRemainingScheduledSync returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
@@ -1293,7 +1470,7 @@ func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesSta
 	if lastExportedEpoch >= firstEpochOfPeriod {
 		exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
 	}
-	exportedSlots := exportedEpochs * Config.Chain.Config.SlotsPerEpoch * uint64(validatorCount)
+	exportedSlots := exportedEpochs * Config.Chain.ClConfig.SlotsPerEpoch * uint64(validatorCount)
 	slotsPerSyncCommittee := SlotsPerSyncCommittee() * uint64(validatorCount)
 	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
 }
@@ -1303,7 +1480,7 @@ func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesSta
 //   - `validators` : the validators to add the stats for
 //   - `syncDutiesHistory` : the sync duties history of all queried validators
 //   - `stats` : the stats object to add the stats to, if nil a new stats object is created
-func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64][]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
+func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64]map[uint64]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
 	if stats == nil {
 		stats = &types.SyncCommitteesStats{}
 	}
@@ -1419,4 +1596,69 @@ func SortedUniqueUint64(arr []uint64) []uint64 {
 	}
 
 	return result
+}
+
+type HttpReqHttpError struct {
+	StatusCode int
+	Url        string
+	Body       []byte
+}
+
+func (err *HttpReqHttpError) Error() string {
+	return fmt.Sprintf("error response: url: %s, status: %d, body: %s", err.Url, err.StatusCode, err.Body)
+}
+
+func HttpReq(ctx context.Context, method, url string, params, result interface{}) error {
+	var err error
+	var req *http.Request
+	if params != nil {
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			return fmt.Errorf("error marshaling params for request: %w, url: %v", err, url)
+		}
+		req, err = http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(paramsJSON))
+		if err != nil {
+			return fmt.Errorf("error creating request with params: %w, url: %v", err, url)
+		}
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, url, nil)
+		if err != nil {
+			return fmt.Errorf("error creating request: %w, url: %v", err, url)
+		}
+	}
+	req.Header.Set("Content-Type", "application/json")
+	httpClient := &http.Client{Timeout: time.Minute}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return &HttpReqHttpError{
+			StatusCode: res.StatusCode,
+			Url:        url,
+			Body:       body,
+		}
+	}
+	if result != nil {
+		err = json.NewDecoder(res.Body).Decode(result)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling response: %w, url: %v", err, url)
+		}
+	}
+	return nil
+}
+
+func ReverseString(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
+func GetCurrentFuncName() string {
+	pc, _, _, _ := runtime.Caller(1)
+	return runtime.FuncForPC(pc).Name()
 }

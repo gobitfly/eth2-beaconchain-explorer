@@ -40,7 +40,7 @@ var gethRequestEntityTooLargeRE = regexp.MustCompile("413 Request Entity Too Lar
 // If a reorg of the eth1-chain happened within these 100 blocks it will delete
 // removed deposits.
 func eth1DepositsExporter() {
-	eth1DepositContractAddress = common.HexToAddress(utils.Config.Chain.Config.DepositContractAddress)
+	eth1DepositContractAddress = common.HexToAddress(utils.Config.Chain.ClConfig.DepositContractAddress)
 	eth1DepositContractFirstBlock = utils.Config.Indexer.Eth1DepositContractFirstBlock
 
 	rpcClient, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
@@ -88,15 +88,19 @@ func eth1DepositsExporter() {
 			fromBlock = lastFetchedBlock + 1
 		}
 		// if we are not synced to the head yet fetch missing blocks in batches of size 1000
-		if toBlock-fromBlock > eth1MaxFetch {
-			toBlock = fromBlock + 1000
+		if toBlock > fromBlock+eth1MaxFetch {
+			toBlock = fromBlock + eth1MaxFetch
 		}
 		if toBlock > blockHeight {
 			toBlock = blockHeight
 		}
 		// if we are synced to the head look at the last 100 blocks
-		if (toBlock-fromBlock < eth1LookBack) && (toBlock > eth1LookBack) {
-			fromBlock = toBlock - eth1LookBack
+		if toBlock < fromBlock+eth1LookBack {
+			if toBlock > eth1LookBack {
+				fromBlock = toBlock - eth1LookBack
+			} else {
+				fromBlock = 0
+			}
 		}
 
 		depositsToSave, err := fetchEth1Deposits(fromBlock, toBlock)
@@ -135,13 +139,15 @@ func eth1DepositsExporter() {
 		// make sure we are progressing even if there are no deposits in the last batch
 		lastFetchedBlock = toBlock
 
-		logger.WithFields(logrus.Fields{
-			"duration":      time.Since(t0),
-			"blockHeight":   blockHeight,
-			"fromBlock":     fromBlock,
-			"toBlock":       toBlock,
-			"depositsSaved": len(depositsToSave),
-		}).Info("exported eth1-deposits")
+		if len(depositsToSave) > 0 {
+			logger.WithFields(logrus.Fields{
+				"duration":      time.Since(t0),
+				"blockHeight":   blockHeight,
+				"fromBlock":     fromBlock,
+				"toBlock":       toBlock,
+				"depositsSaved": len(depositsToSave),
+			}).Info("exported eth1-deposits")
+		}
 
 		// progress faster if we are not synced to head yet
 		if blockHeight != toBlock {
@@ -233,7 +239,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if chainID == nil {
 			return depositsToSave, fmt.Errorf("error getting tx-chainId for eth1-deposit")
 		}
-		signer := gethTypes.NewLondonSigner(chainID)
+		signer := gethTypes.NewCancunSigner(chainID)
 		sender, err := signer.Sender(tx)
 		if err != nil {
 			return depositsToSave, fmt.Errorf("error getting sender for eth1-deposit (txHash: %x, chainID: %v): %w", d.TxHash, chainID, err)
