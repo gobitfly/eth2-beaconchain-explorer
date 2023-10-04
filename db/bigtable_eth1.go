@@ -2371,6 +2371,16 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 }
 
 func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*types.Eth1BlobTransactionIndexed, string, error) {
+	tmr := time.NewTimer(REPORT_TIMEOUT)
+	defer tmr.Stop()
+	go func() {
+		<-tmr.C
+		logger.WithFields(logrus.Fields{
+			"prefix": prefix,
+			"limit":  limit,
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+	}()
+
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
