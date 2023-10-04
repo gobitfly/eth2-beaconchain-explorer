@@ -64,6 +64,7 @@ func NewBlobIndexer() (*BlobIndexer, error) {
 func (bi *BlobIndexer) Start() {
 	bi.runningMu.Lock()
 	if bi.running {
+		bi.runningMu.Unlock()
 		return
 	}
 	bi.running = true
