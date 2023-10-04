@@ -135,7 +135,7 @@ func (bigtable *Bigtable) gcWriteCache() {
 	for ; ; time.Sleep(time.Minute) {
 		logger.Infof("cleaning up write cache")
 		bigtable.epochWriteCacheMux.Lock()
-		for len(bigtable.epochWriteCache) > 9 {
+		for len(bigtable.epochWriteCache) > 5 {
 			minEpoch := types.Epoch(math.MaxUint64)
 
 			for epoch := range bigtable.epochWriteCache {
