@@ -9,5 +9,5 @@ ALTER TABLE validator_stats ADD COLUMN IF NOT EXISTS withdrawals_amount_total BI
 -- +goose StatementBegin
 SELECT 'down SQL query - remove total withdrawal count and amount columns from stats';
 ALTER TABLE validator_stats DROP COLUMN IF EXISTS withdrawals_total;
-ALTER TABLE validator_stats DROP COLUMN IF EXISTS withdrawals_amount;
+ALTER TABLE validator_stats DROP COLUMN IF EXISTS withdrawals_amount_total;
 -- +goose StatementEnd

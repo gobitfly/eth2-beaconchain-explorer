@@ -2381,12 +2381,36 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 	if err != nil {
 		return 0, 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
 	}
-	err = ReaderDb.Get(&res, `
-	SELECT 
-		COALESCE(SUM(withdrawals_amount_total), 0) as sum,
-		COALESCE(SUM(withdrawals_total), 0) as count
-	FROM validator_stats
-	WHERE day = $1`, lastExportedDay)
+	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
+	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.Config.SlotsPerEpoch) + 1
+
+	err = ReaderDb.Get(&count, `
+		WITH today AS (
+			SELECT
+				COALESCE(SUM(w.amount), 0) as sum,
+				COALESCE(COUNT(*), 0) as count
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+			WHERE w.block_slot >= $1
+		),
+		stats AS (
+			SELECT
+				COALESCE(SUM(withdrawals_amount_total), 0) as sum,
+				COALESCE(SUM(withdrawals_total), 0) as count
+			FROM validator_stats
+			WHERE day = $2
+		)
+		SELECT
+			today.sum + stats.sum as sum,
+			today.count + stats.count as count
+		FROM today, stats;`, cutoffSlot, lastExportedDay)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, 0, nil
+		}
+		return 0, 0, fmt.Errorf("error fetching total withdrawal count and amount: %w", err)
+	}
+
 	return res.Sum, res.Count, err
 }
 
