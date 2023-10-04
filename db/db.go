@@ -2388,7 +2388,7 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 		WITH today AS (
 			SELECT
 				COALESCE(SUM(w.amount), 0) as sum,
-				COALESCE(COUNT(*), 0) as count
+				COUNT(*) as count
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 			WHERE w.block_slot >= $1
