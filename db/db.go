@@ -1508,7 +1508,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 	if err != nil {
 		return err
 	}
-	defer stmtDeposits.Close()
+	defer stmtBlobs.Close()
 
 	stmtVoluntaryExits, err := tx.Prepare(`
 		INSERT INTO blocks_voluntaryexits (block_slot, block_index, block_root, epoch, validatorindex, signature)
