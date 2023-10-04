@@ -201,7 +201,7 @@
                         {{ if .NextWithdrawalRow }}
                           let row = {{.NextWithdrawalRow}}
                           if (row && row.length) {
-                            data = row.concat(data)
+                            data.data = row.concat(data.data)
                           }
                         {{ end }}
                         return data
