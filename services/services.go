@@ -1204,7 +1204,7 @@ func GetLatestStats() *types.Stats {
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
 		return wanted.(*types.Stats)
 	} else {
-		logger.Errorf("error retrieving slotVizMetrics from cache: %v", err)
+		logger.Errorf("error retrieving latestStats from cache: %v", err)
 	}
 
 	// create an empty stats object if no stats exist (genesis)

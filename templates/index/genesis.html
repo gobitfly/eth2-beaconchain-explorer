@@ -86,11 +86,13 @@
     var epoch1 = JSON.parse(defaultEpoch)
     var epoch2 = JSON.parse(defaultEpoch)
     var epoch3 = JSON.parse(defaultEpoch)
+    var epoch4 = JSON.parse(defaultEpoch)
 
-    var epochs = [epoch0, epoch1, epoch2, epoch3]
+    var epochs = [epoch0, epoch1, epoch2, epoch3, epoch4]
     epochs[1].epoch = 1
     epochs[2].epoch = 2
     epochs[3].epoch = 3
+    epochs[4].epoch = 4
 
     // epochs[0].participation = 65.9
     // epochs[0].slots[0].status = "proposed"
@@ -374,16 +376,17 @@
             var justified = [null, null, "08", "12"]
 
             for (var i = 0; i < data.length; i++) {
-              if (i > 3) {
+              epoch = data[i].epoch
+              if (epoch > 4) {
                 break
               }
 
-              if (finalized[i] && i > 0 && data[i - 1].finalized) {
-                document.getElementById(finalized[i]).checked = true
+              if (finalized[epoch] && epoch > 0 && data[i].finalized) {
+                document.getElementById(finalized[epoch]).checked = true
               }
 
-              if (justified[i] && data[i].justified) {
-                document.getElementById(justified[i]).checked = true
+              if (justified[epoch] && data[i].justified) {
+                document.getElementById(justified[epoch]).checked = true
               }
 
               if (data[i].participation <= 1) {
@@ -391,17 +394,17 @@
               }
 
               if (data[i].participation >= 66.666) {
-                document.getElementById(participationInputs[i]).checked = true
+                document.getElementById(participationInputs[epoch]).checked = true
               }
               var slots = data[i].slots
               for (var j = 0; j < slots.length; j++) {
-                if (i === 0 && j === 0) {
+                if (epoch === 0 && j === 0) {
                   continue
                 }
                 if (slots[j].status === "proposed") {
-                  if (firstProposed[i]) {
-                    document.getElementById(firstProposed[i]).checked = true
-                    var el = document.querySelector("[for='" + firstProposed[i] + "']")
+                  if (firstProposed[epoch]) {
+                    document.getElementById(firstProposed[epoch]).checked = true
+                    var el = document.querySelector("[for='" + firstProposed[epoch] + "']")
                     el.innerHTML = "First block proposed in Slot " + j
                     break
                   }
@@ -410,15 +413,14 @@
 
               for (let k = 0; k < slots.length; k++) {
                 var slot = slots[k]
-                epochs[i].slots[k] = data[i].slots[k]
+                epochs[epoch].slots[k] = data[i].slots[k]
               }
-              epochs[i].participation = data[i].participation
-              epochs[i].finalized = data[i].finalized
-              epochs[i].justified = data[i].justified
-              epochs[i].previousjustified = data[i].previousjustified
-              epochs[i].epoch = data[i].epoch
+              epochs[epoch].participation = data[i].participation
+              epochs[epoch].finalized = data[i].finalized
+              epochs[epoch].justified = data[i].justified
+              epochs[epoch].previousjustified = data[i].previousjustified
+              epochs[epoch].epoch = data[i].epoch
             }
-            console.log(epochs)
             chart.update(epochs)
           })
       }

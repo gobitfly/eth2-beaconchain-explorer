@@ -1868,9 +1868,6 @@ func GetSlotVizData(latestEpoch uint64) ([]*types.SlotVizEpochs, error) {
 	res := []*types.SlotVizEpochs{}
 
 	for _, b := range blks {
-		if b.Globalparticipationrate == 1 && !b.Finalized {
-			b.Globalparticipationrate = 0
-		}
 		_, exists := epochMap[b.Epoch]
 		if !exists {
 			r := types.SlotVizEpochs{
