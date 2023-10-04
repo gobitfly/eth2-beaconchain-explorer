@@ -971,7 +971,7 @@ OUTER:
 		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(day + 1)
 		maxValidatorIndex, err := db.BigtableClient.GetMaxValidatorindexForEpoch(firstEpoch)
 		if err != nil {
-			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: could not get max validator index from validator income history", 0, map[string]interface{}{
+			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: could not get max validator index", 0, map[string]interface{}{
 				"epoch": firstEpoch,
 			})
 		} else if maxValidatorIndex == uint64(0) {
