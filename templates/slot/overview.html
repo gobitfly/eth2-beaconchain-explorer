@@ -234,6 +234,7 @@
                   </div>
                 {{ end }}
 
+
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Base fee per gas">Base fee per gas:</span></div>
                   <div class="col-md-10 text-monospace text-break">{{ formatAmount .BaseFeePerGas "GWei" 5 }}</div>
@@ -251,8 +252,9 @@
                   </div>
                 {{ end }}
 
+
                 <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees{{ if ge .Epoch config.Config.Chain.ClConfig.DenebForkEpoch }} (total){{ end }}:</span></div>
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees{{ if ge .Epoch config.Config.Chain.ClConfig.DenebForkEpoch }}(total){{ end }}:</span></div>
                   <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedFees "Ether" 5 }}</div>
                 </div>
 
@@ -267,6 +269,7 @@
                     <div class="col-md-10 text-monospace text-break">{{ .BlobCount }}</div>
                   </div>
                 {{ end }}
+
 
                 <div class="row p-1">
                   <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
