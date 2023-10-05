@@ -484,6 +484,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			BellatrixForkEpoch:                      mustParseUint(jr.Data.BellatrixForkEpoch),
 			CappellaForkVersion:                     jr.Data.CapellaForkVersion,
 			CappellaForkEpoch:                       mustParseUint(jr.Data.CapellaForkEpoch),
+			DenebForkVersion:                        jr.Data.DenebForkVersion,
+			DenebForkEpoch:                          mustParseUint(jr.Data.DenebForkEpoch),
 			SecondsPerSlot:                          mustParseUint(jr.Data.SecondsPerSlot),
 			SecondsPerEth1Block:                     mustParseUint(jr.Data.SecondsPerEth1Block),
 			MinValidatorWithdrawabilityDelay:        mustParseUint(jr.Data.MinValidatorWithdrawabilityDelay),
@@ -547,6 +549,19 @@ func ReadConfig(cfg *types.Config, path string) error {
 			MaxWithdrawalsPerPayload:                mustParseUint(jr.Data.MaxWithdrawalsPerPayload),
 			MaxValidatorsPerWithdrawalSweep:         mustParseUint(jr.Data.MaxValidatorsPerWithdrawalsSweep),
 			MaxBlsToExecutionChange:                 mustParseUint(jr.Data.MaxBlsToExecutionChanges),
+		}
+
+		if jr.Data.AltairForkEpoch == "" {
+			chainCfg.AltairForkEpoch = 18446744073709551615
+		}
+		if jr.Data.BellatrixForkEpoch == "" {
+			chainCfg.BellatrixForkEpoch = 18446744073709551615
+		}
+		if jr.Data.CapellaForkEpoch == "" {
+			chainCfg.CappellaForkEpoch = 18446744073709551615
+		}
+		if jr.Data.DenebForkEpoch == "" {
+			chainCfg.DenebForkEpoch = 18446744073709551615
 		}
 
 		cfg.Chain.ClConfig = chainCfg

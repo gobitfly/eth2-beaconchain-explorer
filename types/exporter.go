@@ -46,7 +46,14 @@ type FinalityCheckpoints struct {
 }
 
 type Slot uint64
+type Epoch uint64
 type ValidatorIndex uint64
+
+type EpochWriteCacheEntry struct {
+	Balance          uint64
+	EffectiveBalance uint64
+	Attestations     map[Slot]Slot
+}
 
 // EpochData is a struct to hold epoch data
 type EpochData struct {

@@ -194,7 +194,7 @@ func Start(client rpc.Client) error {
 			}
 		}
 
-		logger.Printf("exporting %v epochs.", len(epochsToExport))
+		logger.Printf("exporting %v epochs. (%v)", len(epochsToExport), epochsToExport)
 
 		keys := make([]uint64, 0)
 		for k := range epochsToExport {
@@ -393,9 +393,11 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 	// Add not yet exported epochs to the export set (for example during the initial sync)
 	if len(epochs) > 0 && epochs[len(epochs)-1] < head.HeadEpoch {
 		for i := epochs[len(epochs)-1]; i <= head.HeadEpoch; i++ {
+			logrus.Infof("queuing epoch %v for export as it has not yet been exported", i)
 			epochsToExport[i] = true
 		}
 	} else if len(epochs) > 0 && epochs[0] != 0 { // Export the genesis epoch if not yet present in the db
+		logrus.Info("queuing genesis epoch 0 for export")
 		epochsToExport[0] = true
 	} else if len(epochs) == 0 { // No epochs are present int the db
 		for i := uint64(0); i <= head.HeadEpoch; i++ {
@@ -417,7 +419,7 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 		}
 	}
 
-	logger.Printf("exporting %v epochs.", len(epochsToExport))
+	logger.Printf("exporting %v epochs. (%v)", len(epochsToExport), epochsToExport)
 
 	keys := make([]uint64, 0)
 	for k := range epochsToExport {
