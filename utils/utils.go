@@ -143,6 +143,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
 		"getCurrencyLabel":                        price.GetCurrencyLabel,
+		"config":                                  func() *types.Config { return Config },
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
