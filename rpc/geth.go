@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
@@ -141,13 +140,12 @@ func (client *GethClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBl
 	for _, tx := range txs {
 
 		var from []byte
-		msg, err := core.TransactionToMessage(tx, geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
+		sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
 		if err != nil {
 			from, _ = hex.DecodeString("abababababababababababababababababababab")
-
 			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
 		} else {
-			from = msg.From.Bytes()
+			from = sender.Bytes()
 		}
 
 		pbTx := &types.Eth1Transaction{

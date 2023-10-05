@@ -133,6 +133,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
 		"formatExchangedAmount":                   FormatExchangedAmount,
+		"formatBytes":                             FormatBytes,
+		"formatBlobVersionedHash":                 FormatBlobVersionedHash,
 		"formatBigAmount":                         FormatBigAmount,
 		"formatBytesAmount":                       FormatBytesAmount,
 		"formatYesNo":                             FormatYesNo,
@@ -141,6 +143,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBuilder":                           FormatBuilder,
 		"formatDifficulty":                        FormatDifficulty,
 		"getCurrencyLabel":                        price.GetCurrencyLabel,
+		"config":                                  func() *types.Config { return Config },
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -153,6 +156,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"addUI64":                                 func(i, j uint64) uint64 { return i + j },
 		"addFloat64":                              func(i, j float64) float64 { return i + j },
+		"addBigInt":                               func(i, j *big.Int) *big.Int { return new(big.Int).Add(i, j) },
 		"mul":                                     func(i, j float64) float64 { return i * j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"divInt":                                  func(i, j int) float64 { return float64(i) / float64(j) },
@@ -292,14 +296,14 @@ func fixUtf(r rune) rune {
 }
 
 func SyncPeriodOfEpoch(epoch uint64) uint64 {
-	if epoch < Config.Chain.Config.AltairForkEpoch {
+	if epoch < Config.Chain.ClConfig.AltairForkEpoch {
 		return 0
 	}
-	return epoch / Config.Chain.Config.EpochsPerSyncCommitteePeriod
+	return epoch / Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod
 }
 
 func FirstEpochOfSyncPeriod(syncPeriod uint64) uint64 {
-	return syncPeriod * Config.Chain.Config.EpochsPerSyncCommitteePeriod
+	return syncPeriod * Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod
 }
 
 func TimeToSyncPeriod(t time.Time) uint64 {
@@ -308,22 +312,22 @@ func TimeToSyncPeriod(t time.Time) uint64 {
 
 // EpochOfSlot returns the corresponding epoch of a slot
 func EpochOfSlot(slot uint64) uint64 {
-	return slot / Config.Chain.Config.SlotsPerEpoch
+	return slot / Config.Chain.ClConfig.SlotsPerEpoch
 }
 
 // DayOfSlot returns the corresponding day of a slot
 func DayOfSlot(slot uint64) uint64 {
-	return Config.Chain.Config.SecondsPerSlot * slot / (24 * 3600)
+	return Config.Chain.ClConfig.SecondsPerSlot * slot / (24 * 3600)
 }
 
 // WeekOfSlot returns the corresponding week of a slot
 func WeekOfSlot(slot uint64) uint64 {
-	return Config.Chain.Config.SecondsPerSlot * slot / (7 * 24 * 3600)
+	return Config.Chain.ClConfig.SecondsPerSlot * slot / (7 * 24 * 3600)
 }
 
 // SlotToTime returns a time.Time to slot
 func SlotToTime(slot uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.Config.SecondsPerSlot), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.ClConfig.SecondsPerSlot), 0)
 }
 
 // TimeToSlot returns time to slot in seconds
@@ -331,19 +335,19 @@ func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
 		return 0
 	}
-	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.Config.SecondsPerSlot
+	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.ClConfig.SecondsPerSlot
 }
 
 func TimeToFirstSlotOfEpoch(timestamp uint64) uint64 {
 	slot := TimeToSlot(timestamp)
-	lastEpochOffset := slot % Config.Chain.Config.SlotsPerEpoch
+	lastEpochOffset := slot % Config.Chain.ClConfig.SlotsPerEpoch
 	slot = slot - lastEpochOffset
 	return slot
 }
 
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.Config.SecondsPerSlot*Config.Chain.Config.SlotsPerEpoch), 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.ClConfig.SecondsPerSlot*Config.Chain.ClConfig.SlotsPerEpoch), 0)
 }
 
 // TimeToDay will return a days since genesis for an timestamp
@@ -361,7 +365,7 @@ func TimeToEpoch(ts time.Time) int64 {
 	if int64(Config.Chain.GenesisTimestamp) > ts.Unix() {
 		return 0
 	}
-	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.Config.SecondsPerSlot) / int64(Config.Chain.Config.SlotsPerEpoch)
+	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.ClConfig.SecondsPerSlot) / int64(Config.Chain.ClConfig.SlotsPerEpoch)
 }
 
 func WeiToEther(wei *big.Int) decimal.Decimal {
@@ -420,23 +424,23 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
-	if cfg.Chain.ConfigPath == "" {
+	if cfg.Chain.ClConfigPath == "" {
 		// var prysmParamsConfig *prysmParams.BeaconChainConfig
 		switch cfg.Chain.Name {
 		case "mainnet":
-			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &cfg.Chain.ClConfig)
 		case "prater":
-			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.PraterChainYml), &cfg.Chain.ClConfig)
 		case "ropsten":
-			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &cfg.Chain.ClConfig)
 		case "sepolia":
-			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &cfg.Chain.ClConfig)
 		case "gnosis":
-			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.ClConfig)
 		case "holesky":
-			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &cfg.Chain.Config)
+			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &cfg.Chain.ClConfig)
 		default:
-			return fmt.Errorf("tried to set known chain-config, but unknown chain-name")
+			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ClConfigPath)
 		}
 		if err != nil {
 			return err
@@ -445,7 +449,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 		// if err != nil {
 		// 	return fmt.Errorf("error setting chainConfig (%v) for prysmParams: %w", cfg.Chain.Name, err)
 		// }
-	} else if cfg.Chain.ConfigPath == "node" {
+	} else if cfg.Chain.ClConfigPath == "node" {
 		nodeEndpoint := fmt.Sprintf("http://%s:%s", cfg.Indexer.Node.Host, cfg.Indexer.Node.Port)
 
 		jr := &types.ConfigJsonResponse{}
@@ -459,7 +463,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			return err
 		}
 
-		chainCfg := types.ChainConfig{
+		chainCfg := types.ClChainConfig{
 			PresetBase:                              jr.Data.PresetBase,
 			ConfigName:                              jr.Data.ConfigName,
 			TerminalTotalDifficulty:                 jr.Data.TerminalTotalDifficulty,
@@ -475,6 +479,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			BellatrixForkEpoch:                      mustParseUint(jr.Data.BellatrixForkEpoch),
 			CappellaForkVersion:                     jr.Data.CapellaForkVersion,
 			CappellaForkEpoch:                       mustParseUint(jr.Data.CapellaForkEpoch),
+			DenebForkVersion:                        jr.Data.DenebForkVersion,
+			DenebForkEpoch:                          mustParseUint(jr.Data.DenebForkEpoch),
 			SecondsPerSlot:                          mustParseUint(jr.Data.SecondsPerSlot),
 			SecondsPerEth1Block:                     mustParseUint(jr.Data.SecondsPerEth1Block),
 			MinValidatorWithdrawabilityDelay:        mustParseUint(jr.Data.MinValidatorWithdrawabilityDelay),
@@ -540,7 +546,20 @@ func ReadConfig(cfg *types.Config, path string) error {
 			MaxBlsToExecutionChange:                 mustParseUint(jr.Data.MaxBlsToExecutionChanges),
 		}
 
-		cfg.Chain.Config = chainCfg
+		if jr.Data.AltairForkEpoch == "" {
+			chainCfg.AltairForkEpoch = 18446744073709551615
+		}
+		if jr.Data.BellatrixForkEpoch == "" {
+			chainCfg.BellatrixForkEpoch = 18446744073709551615
+		}
+		if jr.Data.CapellaForkEpoch == "" {
+			chainCfg.CappellaForkEpoch = 18446744073709551615
+		}
+		if jr.Data.DenebForkEpoch == "" {
+			chainCfg.DenebForkEpoch = 18446744073709551615
+		}
+
+		cfg.Chain.ClConfig = chainCfg
 
 		type GenesisResponse struct {
 			Data struct {
@@ -567,23 +586,19 @@ func ReadConfig(cfg *types.Config, path string) error {
 		logger.Infof("loaded chain config from node with genesis time %s", gtr.Data.GenesisTime)
 
 	} else {
-		f, err := os.Open(cfg.Chain.ConfigPath)
+		f, err := os.Open(cfg.Chain.ClConfigPath)
 		if err != nil {
-			return fmt.Errorf("error opening Chain Config file %v: %w", cfg.Chain.ConfigPath, err)
+			return fmt.Errorf("error opening Chain Config file %v: %w", cfg.Chain.ClConfigPath, err)
 		}
-		var chainConfig *types.ChainConfig
+		var chainConfig *types.ClChainConfig
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(&chainConfig)
 		if err != nil {
-			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ConfigPath, err)
+			return fmt.Errorf("error decoding Chain Config file %v: %v", cfg.Chain.ClConfigPath, err)
 		}
-		cfg.Chain.Config = *chainConfig
-		// err = prysmParams.LoadChainConfigFile(cfg.Chain.ConfigPath, nil)
-		// if err != nil {
-		// 	return fmt.Errorf("error loading chainConfig (%v) for prysmParams: %w", cfg.Chain.ConfigPath, err)
-		// }
+		cfg.Chain.ClConfig = *chainConfig
 	}
-	cfg.Chain.Name = cfg.Chain.Config.ConfigName
+	cfg.Chain.Name = cfg.Chain.ClConfig.ConfigName
 
 	if cfg.Chain.GenesisTimestamp == 0 {
 		switch cfg.Chain.Name {
@@ -630,13 +645,17 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Chain.DomainVoluntaryExit = "0x04000000"
 	}
 
+	if cfg.Chain.Id != 0 && cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID {
+		logrus.Fatalf("cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID: %v != %v", cfg.Chain.Id, cfg.Chain.ClConfig.DepositChainID)
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
 		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,
-		"configName":             cfg.Chain.Config.ConfigName,
-		"depositChainID":         cfg.Chain.Config.DepositChainID,
-		"depositNetworkID":       cfg.Chain.Config.DepositNetworkID,
-		"depositContractAddress": cfg.Chain.Config.DepositContractAddress,
+		"configName":             cfg.Chain.ClConfig.ConfigName,
+		"depositChainID":         cfg.Chain.ClConfig.DepositChainID,
+		"depositNetworkID":       cfg.Chain.ClConfig.DepositNetworkID,
+		"depositContractAddress": cfg.Chain.ClConfig.DepositContractAddress,
 	}).Infof("did init config")
 
 	return nil
@@ -998,7 +1017,7 @@ func BitAtVectorReversed(b []byte, i int) bool {
 }
 
 func GetNetwork() string {
-	return strings.ToLower(Config.Chain.Config.ConfigName)
+	return strings.ToLower(Config.Chain.ClConfig.ConfigName)
 }
 
 func ElementExists(arr []string, el string) bool {
@@ -1068,7 +1087,7 @@ func GetEtherscanAPIBaseUrl(provideDefault bool) string {
 	}
 
 	// check chain id
-	switch Config.Chain.Config.DepositChainID {
+	switch Config.Chain.ClConfig.DepositChainID {
 	case 1: // mainnet
 		return mainnetBaseUrl
 	case 5: // goerli
@@ -1274,8 +1293,8 @@ func AddBigInts(a, b []byte) []byte {
 
 // GetTimeToNextWithdrawal calculates the time it takes for the validators next withdrawal to be processed.
 func GetTimeToNextWithdrawal(distance uint64) time.Time {
-	minTimeToWithdrawal := time.Now().Add(time.Second * time.Duration((distance/Config.Chain.Config.MaxValidatorsPerWithdrawalSweep)*Config.Chain.Config.SecondsPerSlot))
-	timeToWithdrawal := time.Now().Add(time.Second * time.Duration((float64(distance)/float64(Config.Chain.Config.MaxWithdrawalsPerPayload))*float64(Config.Chain.Config.SecondsPerSlot)))
+	minTimeToWithdrawal := time.Now().Add(time.Second * time.Duration((distance/Config.Chain.ClConfig.MaxValidatorsPerWithdrawalSweep)*Config.Chain.ClConfig.SecondsPerSlot))
+	timeToWithdrawal := time.Now().Add(time.Second * time.Duration((float64(distance)/float64(Config.Chain.ClConfig.MaxWithdrawalsPerPayload))*float64(Config.Chain.ClConfig.SecondsPerSlot)))
 
 	if timeToWithdrawal.Before(minTimeToWithdrawal) {
 		return minTimeToWithdrawal
@@ -1286,7 +1305,7 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 
 func EpochsPerDay() uint64 {
 	day := time.Hour * 24
-	return (uint64(day.Seconds()) / Config.Chain.Config.SlotsPerEpoch) / Config.Chain.Config.SecondsPerSlot
+	return (uint64(day.Seconds()) / Config.Chain.ClConfig.SlotsPerEpoch) / Config.Chain.ClConfig.SecondsPerSlot
 }
 
 func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
@@ -1296,36 +1315,36 @@ func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
 }
 
 func GetLastBalanceInfoSlotForDay(day uint64) uint64 {
-	return ((day+1)*EpochsPerDay() - 1) * Config.Chain.Config.SlotsPerEpoch
+	return ((day+1)*EpochsPerDay() - 1) * Config.Chain.ClConfig.SlotsPerEpoch
 }
 
 // ForkVersionAtEpoch returns the forkversion active a specific epoch
 func ForkVersionAtEpoch(epoch uint64) *types.ForkVersion {
-	if epoch >= Config.Chain.Config.CappellaForkEpoch {
+	if epoch >= Config.Chain.ClConfig.CappellaForkEpoch {
 		return &types.ForkVersion{
-			Epoch:           Config.Chain.Config.CappellaForkEpoch,
-			CurrentVersion:  MustParseHex(Config.Chain.Config.CappellaForkVersion),
-			PreviousVersion: MustParseHex(Config.Chain.Config.BellatrixForkVersion),
+			Epoch:           Config.Chain.ClConfig.CappellaForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.ClConfig.CappellaForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.ClConfig.BellatrixForkVersion),
 		}
 	}
-	if epoch >= Config.Chain.Config.BellatrixForkEpoch {
+	if epoch >= Config.Chain.ClConfig.BellatrixForkEpoch {
 		return &types.ForkVersion{
-			Epoch:           Config.Chain.Config.BellatrixForkEpoch,
-			CurrentVersion:  MustParseHex(Config.Chain.Config.BellatrixForkVersion),
-			PreviousVersion: MustParseHex(Config.Chain.Config.AltairForkVersion),
+			Epoch:           Config.Chain.ClConfig.BellatrixForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.ClConfig.BellatrixForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.ClConfig.AltairForkVersion),
 		}
 	}
-	if epoch >= Config.Chain.Config.AltairForkEpoch {
+	if epoch >= Config.Chain.ClConfig.AltairForkEpoch {
 		return &types.ForkVersion{
-			Epoch:           Config.Chain.Config.AltairForkEpoch,
-			CurrentVersion:  MustParseHex(Config.Chain.Config.AltairForkVersion),
-			PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+			Epoch:           Config.Chain.ClConfig.AltairForkEpoch,
+			CurrentVersion:  MustParseHex(Config.Chain.ClConfig.AltairForkVersion),
+			PreviousVersion: MustParseHex(Config.Chain.ClConfig.GenesisForkVersion),
 		}
 	}
 	return &types.ForkVersion{
 		Epoch:           0,
-		CurrentVersion:  MustParseHex(Config.Chain.Config.GenesisForkVersion),
-		PreviousVersion: MustParseHex(Config.Chain.Config.GenesisForkVersion),
+		CurrentVersion:  MustParseHex(Config.Chain.ClConfig.GenesisForkVersion),
+		PreviousVersion: MustParseHex(Config.Chain.ClConfig.GenesisForkVersion),
 	}
 }
 
@@ -1399,7 +1418,7 @@ func logErrorInfo(err error, callerSkip int, additionalInfos ...map[string]inter
 
 func GetSigningDomain() ([]byte, error) {
 	beaconConfig := prysm_params.BeaconConfig()
-	genForkVersion, err := hex.DecodeString(strings.Replace(Config.Chain.Config.GenesisForkVersion, "0x", "", -1))
+	genForkVersion, err := hex.DecodeString(strings.Replace(Config.Chain.ClConfig.GenesisForkVersion, "0x", "", -1))
 	if err != nil {
 		return nil, err
 	}
@@ -1419,7 +1438,7 @@ func GetSigningDomain() ([]byte, error) {
 
 // SlotsPerSyncCommittee returns the count of slots per sync committee period
 func SlotsPerSyncCommittee() uint64 {
-	return Config.Chain.Config.EpochsPerSyncCommitteePeriod * Config.Chain.Config.SlotsPerEpoch
+	return Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod * Config.Chain.ClConfig.SlotsPerEpoch
 }
 
 // GetRemainingScheduledSync returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
@@ -1434,7 +1453,7 @@ func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesSta
 	if lastExportedEpoch >= firstEpochOfPeriod {
 		exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
 	}
-	exportedSlots := exportedEpochs * Config.Chain.Config.SlotsPerEpoch * uint64(validatorCount)
+	exportedSlots := exportedEpochs * Config.Chain.ClConfig.SlotsPerEpoch * uint64(validatorCount)
 	slotsPerSyncCommittee := SlotsPerSyncCommittee() * uint64(validatorCount)
 	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
 }
@@ -1560,6 +1579,58 @@ func SortedUniqueUint64(arr []uint64) []uint64 {
 	}
 
 	return result
+}
+
+type HttpReqHttpError struct {
+	StatusCode int
+	Url        string
+	Body       []byte
+}
+
+func (err *HttpReqHttpError) Error() string {
+	return fmt.Sprintf("error response: url: %s, status: %d, body: %s", err.Url, err.StatusCode, err.Body)
+}
+
+func HttpReq(ctx context.Context, method, url string, params, result interface{}) error {
+	var err error
+	var req *http.Request
+	if params != nil {
+		paramsJSON, err := json.Marshal(params)
+		if err != nil {
+			return fmt.Errorf("error marshaling params for request: %w, url: %v", err, url)
+		}
+		req, err = http.NewRequestWithContext(ctx, method, url, bytes.NewBuffer(paramsJSON))
+		if err != nil {
+			return fmt.Errorf("error creating request with params: %w, url: %v", err, url)
+		}
+	} else {
+		req, err = http.NewRequestWithContext(ctx, method, url, nil)
+		if err != nil {
+			return fmt.Errorf("error creating request: %w, url: %v", err, url)
+		}
+	}
+	req.Header.Set("Content-Type", "application/json")
+	httpClient := &http.Client{Timeout: time.Minute}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return &HttpReqHttpError{
+			StatusCode: res.StatusCode,
+			Url:        url,
+			Body:       body,
+		}
+	}
+	if result != nil {
+		err = json.NewDecoder(res.Body).Decode(result)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling response: %w, url: %v", err, url)
+		}
+	}
+	return nil
 }
 
 func ReverseString(s string) string {

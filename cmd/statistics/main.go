@@ -56,11 +56,11 @@ func main() {
 	}
 	utils.Config = cfg
 
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		utils.LogFatal(fmt.Errorf("error either SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot), "", 0)
+	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
+		utils.LogFatal(fmt.Errorf("error ether SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.ClConfig.SlotsPerEpoch, utils.Config.Chain.ClConfig.SecondsPerSlot), "", 0)
 		return
 	} else {
-		logrus.Infof("writing statistic with: SlotsPerEpoch [%v] and SecondsPerSlot [%v]", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot)
+		logrus.Infof("Writing statistic with: SlotsPerEpoch [%v] or SecondsPerSlot [%v]", utils.Config.Chain.ClConfig.SlotsPerEpoch, utils.Config.Chain.ClConfig.SecondsPerSlot)
 	}
 
 	db.MustInitDB(&types.DatabaseConfig{
@@ -103,12 +103,12 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
-	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 
-	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
+	price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 
 	if utils.Config.TieredCacheProvider != "redis" {
 		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis)")

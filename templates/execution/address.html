@@ -260,6 +260,10 @@
       setupInfiniteScroll({{.TransactionsTable.PagingToken}},'transactions-table', 'transactions-table-inf-scroll', 'transactions')
     {{ end }}
 
+    {{ if .BlobTxnsTable.PagingToken }}
+      setupInfiniteScroll({{.BlobTxnsTable.PagingToken}},'blobTxns-table', 'blobTxns-table-inf-scroll', 'blobTxns')
+    {{ end }}
+
     {{ if .InternalTxnsTable.PagingToken }}
       setupInfiniteScroll({{.InternalTxnsTable.PagingToken}},'internalTxns-table', 'internalTxns-table-inf-scroll', 'internalTxns')
     {{ end }}
@@ -469,6 +473,11 @@
           <div class="tab-pane fade" id="transactionsTabPanel" role="tabpanel" aria-labelledby="transaction-tab">
             {{ template "AddressTransactionsTableGrid" .Data.TransactionsTable }}
           </div>
+          {{ if len .Data.BlobTxnsTable.Data }}
+            <div class="tab-pane fade" id="blobTxnsTabPanel" role="tabpanel" aria-labelledby="blobTxns-tab">
+              {{ template "AddressBlobTransactionsGrid" .Data.BlobTxnsTable }}
+            </div>
+          {{ end }}
           {{ if len .Data.InternalTxnsTable.Data }}
             <div class="tab-pane fade" id="internalTxnsTabPanel" role="tabpanel" aria-labelledby="internalTxns-tab">
               {{ template "AddressInternalTransactionsGrid" .Data.InternalTxnsTable }}
@@ -563,6 +572,45 @@
       </div>
     {{ end }}
 
+  </div>
+{{ end }}
+
+{{ define "AddressBlobTransactionsGrid" }}
+  <div id="blobTxns-table" style="display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)) max-content repeat(3, minmax(min-content, 1fr)); overflow-x: auto;">
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Hash</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Age</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">From</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky"></div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">To</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Blob Gas Price</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Blob Tx Fee</div>
+    <div style="z-index: 99; top: 0;" class="h5 mb-0 p-2 header-col position-sticky">Blob Count</div>
+
+    {{ if len .Data }}
+      {{ range $i, $row := .Data }}
+        {{ range $j, $col := $row }}
+          <div class="tbl-col">
+            <div class="tbl-col-content">{{ $col }}</div>
+          </div>
+        {{ end }}
+      {{ end }}
+      {{ if gt (len .Data) 24 }}
+        <div style="grid-column: 1 / 9;" id="blobTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
+          <span>loading...</span>
+        </div>
+      {{ end }}
+    {{ else }}
+      <div style="grid-column: 1 / 9;" id="blobTxns-table-inf-scroll" class="d-flex justify-content-center p-2">
+        <div class="d-flex justify-content-center align-items-center flex-column">
+          <div class="my-3 mt-5 p-2 pt-5">
+            {{ template "UndrawTree" }}
+          </div>
+          <div>
+            <h5>No entries found.</h5>
+          </div>
+        </div>
+      </div>
+    {{ end }}
   </div>
 {{ end }}
 

@@ -74,9 +74,9 @@ func main() {
 	logrus.WithFields(logrus.Fields{
 		"config":    *configPath,
 		"version":   version.Version,
-		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
+		"chainName": utils.Config.Chain.ClConfig.ConfigName}).Printf("starting")
 
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
@@ -159,15 +159,15 @@ func main() {
 			logrus.Fatalf("error retrieving geth chain id: %v", err)
 		}
 
-		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID)) {
+			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 		if err != nil {
 			logrus.Fatalf("error connecting to bigtable: %v", err)
 		}
@@ -222,7 +222,7 @@ func main() {
 	if utils.Config.Indexer.Enabled {
 		var rpcClient rpc.Client
 
-		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+		chainID := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
@@ -236,17 +236,25 @@ func main() {
 			if len(utils.Config.Indexer.OneTimeExport.Epochs) > 0 {
 				logrus.Infof("onetimeexport epochs: %+v", utils.Config.Indexer.OneTimeExport.Epochs)
 				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
-					err := exporter.ExportEpoch(epoch, rpcClient)
+					err := db.DeleteEpoch(epoch)
 					if err != nil {
-						utils.LogFatal(err, "exporting OneTimeExport epochs error", 0)
+						utils.LogFatal(err, "onetimeexport: failed deleting epoch", 0)
+					}
+					err = exporter.ExportEpoch(epoch, rpcClient)
+					if err != nil {
+						utils.LogFatal(err, "onetimeexport: failed exporting epoch", 0)
 					}
 				}
 			} else {
 				logrus.Infof("onetimeexport epochs: %v-%v", utils.Config.Indexer.OneTimeExport.StartEpoch, utils.Config.Indexer.OneTimeExport.EndEpoch)
 				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
-					err := exporter.ExportEpoch(epoch, rpcClient)
+					err := db.DeleteEpoch(epoch)
 					if err != nil {
-						utils.LogFatal(err, "exporting OneTimeExport start to end epoch error", 0)
+						utils.LogFatal(err, "onetimeexport: failed deleting epoch", 0)
+					}
+					err = exporter.ExportEpoch(epoch, rpcClient)
+					if err != nil {
+						utils.LogFatal(err, "onetimeexport: failed exporting epoch", 0)
 					}
 				}
 			}
@@ -368,7 +376,7 @@ func main() {
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
 		logrus.Infof("initializing prices")
-		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
+		price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1ErigonEndpoint)
 		logrus.Infof("prices initialized")
 		if !utils.Config.Frontend.Debug {
 			logrus.Infof("initializing ethclients")
@@ -421,6 +429,7 @@ func main() {
 			router.HandleFunc("/address/{address}/withdrawals", handlers.Eth1AddressWithdrawals).Methods("GET")
 			router.HandleFunc("/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
+			router.HandleFunc("/address/{address}/blobTxns", handlers.Eth1AddressBlobTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc721", handlers.Eth1AddressErc721Transactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc1155", handlers.Eth1AddressErc1155Transactions).Methods("GET")

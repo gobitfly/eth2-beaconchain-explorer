@@ -27,6 +27,10 @@ message Eth1Block {
     repeated Eth1Block uncles = 20;
     repeated Eth1Transaction transactions = 21;
     repeated Eth1Withdrawal withdrawals = 22;
+
+    // EIP 4844
+    uint64 blob_gas_used = 23;
+    uint64 excess_blob_gas = 24;
 }
 
 message Eth1Withdrawal {
@@ -65,6 +69,13 @@ message Eth1Transaction {
 
     // Internal transactions
     repeated Eth1InternalTransaction itx = 24;
+
+    // EIP 4844 transaction
+    bytes max_fee_per_blob_gas = 25;
+    repeated bytes blob_versioned_hashes = 26;
+    // EIP 4844 receipt
+    bytes blob_gas_price = 27;
+    uint64 blob_gas_used = 28;
 }
 
 message AccessList {
@@ -112,6 +123,11 @@ message Eth1BlockIndexed {
     // bytes base_fee_change = 27;
     // bytes block_utilization_change = 28;
     uint64 internal_transaction_count = 29;
+
+    // https://eips.ethereum.org/EIPS/eip-4844
+    uint64 blob_gas_used = 30;
+    uint64 excess_blob_gas = 31;
+    uint64 blob_transaction_count = 32;
 }
 
 message Eth1UncleIndexed {
@@ -147,6 +163,10 @@ message Eth1TransactionIndexed {
     bool is_contract_creation = 10;
     bool invokes_contract = 11;
     string error_msg = 12;
+
+    // EIP 4844
+    bytes blob_tx_fee = 13;
+    bytes blob_gas_price = 14;
 }
 
 message Eth1InternalTransactionIndexed {
@@ -157,6 +177,23 @@ message Eth1InternalTransactionIndexed {
     bytes from = 5;
     bytes to = 6;
     bytes value = 7;
+}
+
+// https://eips.ethereum.org/EIPS/eip-4844
+message Eth1BlobTransactionIndexed {
+    bytes hash = 1;
+    uint64 block_number = 2;
+    google.protobuf.Timestamp time = 3;
+    bytes from = 4;
+    bytes to = 5;
+    bytes value = 6;
+    bytes tx_fee = 7;
+    bytes gas_price = 8;
+    bytes blob_tx_fee = 9;
+    bytes blob_gas_price = 10;
+    bool invokes_contract = 11;
+    string error_msg = 12;
+    repeated bytes blob_versioned_hashes = 13;
 }
 
 message Eth1ERC20Indexed {

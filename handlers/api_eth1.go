@@ -397,11 +397,11 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
-		pageToken = fmt.Sprintf("%d:I:TX:%s:%s:%s", utils.Config.Chain.Config.DepositChainID, address, filter, token)
+		pageToken = fmt.Sprintf("%d:I:TX:%s:%s:%s", utils.Config.Chain.ClConfig.DepositChainID, address, filter, token)
 	}
 
 	if len(pageToken) == 0 {
-		pageToken = fmt.Sprintf("%d:I:TX:%s:%s:", utils.Config.Chain.Config.DepositChainID, address, filter)
+		pageToken = fmt.Sprintf("%d:I:TX:%s:%s:", utils.Config.Chain.ClConfig.DepositChainID, address, filter)
 	}
 
 	transactions, lastKey, err := db.BigtableClient.GetEth1TxForAddress(pageToken, 25)
@@ -410,7 +410,7 @@ func ApiEth1AddressTx(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
 		return
 	}
-	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf("%d:I:TX:%s:%s:", utils.Config.Chain.Config.DepositChainID, address, filter))))
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf("%d:I:TX:%s:%s:", utils.Config.Chain.ClConfig.DepositChainID, address, filter))))
 
 	txsParsed := make([]types.Eth1TransactionParsed, 0, len(transactions))
 
@@ -478,11 +478,11 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
-		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, filter, token)
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.ClConfig.DepositChainID, address, filter, token)
 	}
 
 	if len(pageToken) == 0 {
-		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address, filter)
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address, filter)
 	}
 
 	internalTransactions, lastKey, err := db.BigtableClient.GetEth1ItxForAddress(pageToken, 25)
@@ -491,7 +491,7 @@ func ApiEth1AddressItx(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
 		return
 	}
-	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address, filter))))
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address, filter))))
 
 	itxParsed := make([]types.Eth1InternalTransactionParsed, 0, len(internalTransactions))
 
@@ -539,11 +539,11 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
-		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, token)
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.ClConfig.DepositChainID, address, token)
 	}
 
 	if len(pageToken) == 0 {
-		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address)
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address)
 	}
 
 	producedBlocks, lastKey, err := db.BigtableClient.GetEth1BlocksForAddress(pageToken, 25)
@@ -552,7 +552,7 @@ func ApiEth1AddressBlocks(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
 		return
 	}
-	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address))))
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address))))
 
 	blocksParsed := make([]types.Eth1BlockParsed, 0, len(producedBlocks))
 
@@ -625,11 +625,11 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
-		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, token)
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.ClConfig.DepositChainID, address, token)
 	}
 
 	if len(pageToken) == 0 {
-		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address)
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address)
 	}
 
 	producedUncle, lastKey, err := db.BigtableClient.GetEth1UnclesForAddress(pageToken, 25)
@@ -638,7 +638,7 @@ func ApiEth1AddressUncles(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, r.URL.String(), "error getting transactions for address")
 		return
 	}
-	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address))))
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(lastKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address))))
 
 	unclesParsed := make([]types.Eth1UncleParsed, 0, len(producedUncle))
 
@@ -715,11 +715,11 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 			sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
-		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.Config.DepositChainID, address, token)
+		pageToken = fmt.Sprintf(prefixFormat+"%s", utils.Config.Chain.ClConfig.DepositChainID, address, token)
 	}
 
 	if len(pageToken) == 0 {
-		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address)
+		pageToken = fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address)
 	}
 	pageSize := 25
 	transactions := make([]*types.Eth1TokenTxParsed, 0, pageSize)
@@ -807,7 +807,7 @@ func ApiEth1AddressTokens(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(pageKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.Config.DepositChainID, address))))
+	response.Page = base58.FastBase58Encoding([]byte(strings.TrimPrefix(pageKey, fmt.Sprintf(prefixFormat, utils.Config.Chain.ClConfig.DepositChainID, address))))
 
 	response.TokenTxs = transactions
 	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})

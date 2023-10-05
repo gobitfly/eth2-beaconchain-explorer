@@ -931,8 +931,8 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 		return nil
 	}
 
-	muts := make([]*gcp_bigtable.Mutation, 0, utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SyncCommitteeSize+1)
-	keys := make([]string, 0, utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SyncCommitteeSize+1)
+	muts := make([]*gcp_bigtable.Mutation, 0, utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.SyncCommitteeSize+1)
+	keys := make([]string, 0, utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.SyncCommitteeSize+1)
 
 	for slot, validators := range duties {
 		participation := uint64(0)
@@ -1205,8 +1205,8 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 
 	// Find all missed and orphaned slots
 	slots := []uint64{}
-	maxSlot := ((endEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch) - 1
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot <= maxSlot; slot++ {
+	maxSlot := ((endEpoch + 1) * utils.Config.Chain.ClConfig.SlotsPerEpoch) - 1
+	for slot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot <= maxSlot; slot++ {
 		slots = append(slots, slot)
 	}
 
@@ -1257,7 +1257,7 @@ func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, st
 				}
 			}
 			currentAttInfo.Index = uint64(validator)
-			currentAttInfo.Epoch = uint64(attesterSlot) / utils.Config.Chain.Config.SlotsPerEpoch
+			currentAttInfo.Epoch = uint64(attesterSlot) / utils.Config.Chain.ClConfig.SlotsPerEpoch
 			currentAttInfo.CommitteeIndex = 0
 			currentAttInfo.AttesterSlot = uint64(attesterSlot)
 			currentAttInfo.Delay = int64(currentAttInfo.InclusionSlot - uint64(attesterSlot) - missedSlotsCount - 1)
@@ -1408,7 +1408,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 
 	slots := []uint64{}
 
-	for slot := startEpoch * utils.Config.Chain.Config.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch; slot++ {
+	for slot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
 		slots = append(slots, slot)
 	}
 	orphanedSlotsMap, err := GetOrphanedSlotsMap(slots)
@@ -1639,7 +1639,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationsCount(validators []uint6
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorSyncDutiesStatistic, error) {
 
-	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch*utils.Config.Chain.Config.SlotsPerEpoch, ((endEpoch+1)*utils.Config.Chain.Config.SlotsPerEpoch)-1)
+	data, err := bigtable.GetValidatorSyncDutiesHistory(validators, startEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch, ((endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch)-1)
 
 	if err != nil {
 		return nil, err
@@ -2206,8 +2206,8 @@ func (bigtable *Bigtable) getValidatorsEpochSlotRanges(validatorIndices []uint64
 	for _, validatorIndex := range validatorIndices {
 		validatorKey := bigtable.validatorIndexToKey(validatorIndex)
 
-		rangeEnd := fmt.Sprintf("%s:%s:%s:%s:%s%s", bigtable.chainId, validatorKey, prefix, bigtable.reversedPaddedEpoch(startEpoch), bigtable.reversedPaddedSlot(startEpoch*utils.Config.Chain.Config.SlotsPerEpoch), "\x00")
-		rangeStart := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, validatorKey, prefix, bigtable.reversedPaddedEpoch(endEpoch), bigtable.reversedPaddedSlot(endEpoch*utils.Config.Chain.Config.SlotsPerEpoch+utils.Config.Chain.Config.SlotsPerEpoch-1))
+		rangeEnd := fmt.Sprintf("%s:%s:%s:%s:%s%s", bigtable.chainId, validatorKey, prefix, bigtable.reversedPaddedEpoch(startEpoch), bigtable.reversedPaddedSlot(startEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch), "\x00")
+		rangeStart := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, validatorKey, prefix, bigtable.reversedPaddedEpoch(endEpoch), bigtable.reversedPaddedSlot(endEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch+utils.Config.Chain.ClConfig.SlotsPerEpoch-1))
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 
 	}

@@ -18,7 +18,7 @@ touch config.yml
 
 cat >config.yml <<EOL
 chain:
-  configPath: 'node'
+  clConfigPath: 'node'
 readerDatabase:
   name: db
   host: 127.0.0.1

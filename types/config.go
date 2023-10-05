@@ -3,6 +3,8 @@ package types
 import (
 	"html/template"
 	"time"
+
+	"github.com/ethereum/go-ethereum/params"
 )
 
 // Config is a struct to hold the configuration data
@@ -32,14 +34,25 @@ type Config struct {
 		EmulatorPort int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
 		EmulatorHost string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
 	} `yaml:"bigtable"`
+	BlobIndexer struct {
+		S3 struct {
+			Endpoint        string `yaml:"endpoint" envconfig:"BLOB_INDEXER_S3_ENDPOINT"`
+			Bucket          string `yaml:"bucket" envconfig:"BLOB_INDEXER_S3_BUCKET"`
+			AccessKeyId     string `yaml:"accessKeyId" envconfig:"BLOB_INDEXER_S3_ACCESS_KEY_ID"`
+			AccessKeySecret string `yaml:"accessKeySecret" envconfig:"BLOB_INDEXER_S3_ACCESS_KEY_SECRET"`
+		} `yaml:"s3"`
+	} `yaml:"blobIndexer"`
 	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
+		Id                         uint64 `yaml:"id" envconfig:"CHAIN_ID"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
 		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
 		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
-		ConfigPath                 string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
-		Config                     ChainConfig
+		ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
+		ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
+		ClConfig                   ClChainConfig
+		ElConfig                   *params.ChainConfig
 	} `yaml:"chain"`
 	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
@@ -86,6 +99,7 @@ type Config struct {
 		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
 		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
 		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`
 		// Imprint is deprdecated place imprint file into the legal directory
 		Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		Legal   struct {
@@ -243,6 +257,8 @@ type ConfigJsonResponse struct {
 		BellatrixForkEpoch                      string `json:"BELLATRIX_FORK_EPOCH"`
 		CapellaForkVersion                      string `json:"CAPELLA_FORK_VERSION"`
 		CapellaForkEpoch                        string `json:"CAPELLA_FORK_EPOCH"`
+		DenebForkVersion                        string `yaml:"DENEB_FORK_VERSION"`
+		DenebForkEpoch                          string `yaml:"DENEB_FORK_EPOCH"`
 		SecondsPerSlot                          string `json:"SECONDS_PER_SLOT"`
 		SecondsPerEth1Block                     string `json:"SECONDS_PER_ETH1_BLOCK"`
 		MinValidatorWithdrawabilityDelay        string `json:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`
