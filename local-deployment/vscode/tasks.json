@@ -1,0 +1,184 @@
+{
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "Network",
+            "type": "pickString",
+            "description": "Which network do you want to use?",
+            "options": [
+                "local",
+                "sepolia",
+                "sepolia-test",
+                "prater",
+                "mainnet",
+                "gnosis",
+                "holesky",
+                //...
+            ]
+        },
+        {
+            "id": "terminate",
+            "type": "command",
+            "command": "workbench.action.tasks.terminate",
+            "args": "terminateAll"
+        }
+    ],
+    "presentation": {
+        "reveal": "silent",
+        "revealProblems": "onProblem",
+        "close": true
+    },
+    "tasks": [
+        {
+            "label": "(re)start",
+            "dependsOrder": "sequence",
+            "type": "shell",
+            "command": "echo Everything running!",
+            "dependsOn": ["startTestnet", "deployExternal", "buildBeaconchain", "startBeaconchain"],
+        },
+        {
+            "label": "startTestnet",
+            "command": ".vscode/startTestnet.sh",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "NETWORK": "${input:Network}",
+                }
+            },
+            "dependsOn": ["stop"],
+        },
+        {
+            "label": "stop",
+            "command": "echo ${input:terminate}",   // Beaconchain
+            "type": "shell",
+            "dependsOn": ["stopTestnet"],
+        },
+        {
+            "label": "stopTestnet",
+            "command": "kurtosis clean -a",
+            "type": "shell",
+        },
+        {
+            "label": "deployExternal",
+            "type": "shell",
+            "command": "echo External running!",
+            "dependsOrder": "parallel",
+            "dependsOn": [], // "deployENS", "deployRocketPool"
+        },
+        {
+            "label": "buildBeaconchain",
+            "type": "shell",
+            "command": "make -f .vscode/Makefile all -j",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+        },
+        {
+            "label": "startBeaconchain",
+            "type": "shell",
+            "command": "echo Beaconchain running!",
+            "dependsOrder": "parallel",
+            "dependsOn": ["explorer", "frontend-data-updater", "eth1indexer", "notification-collector", "notification-sender", "statistics", "rewards-exporter"],
+        },
+
+        // ______________________________________________________
+        //
+        // #############      BEACONCHAIN APPS      #############
+        // ______________________________________________________
+        //
+        // Start all apps without debugging, since we don't know what we're working on - but
+        // we want to have everything running. Via launch.json we can select what we want to attach to.
+        // If you don't want to start any of these when launching the network, just remove them from the list above.
+        // To change environment variables of an application, change it below in the "env" section.
+
+        {
+            "label": "explorer",
+            "command": "bin/explorer",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "FRONTEND_ENABLED": "true",
+                    "INDEXER_ENABLED": "true"
+                },
+            },
+            "args": [
+                "-config",
+                "../__gitignore/${input:Network}.config.yml"
+            ],
+        },
+        {
+            "label": "frontend-data-updater",
+            "command": "bin/frontend-data-updater",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "args": [
+                "-config",
+                "../__gitignore/${input:Network}.config.yml"
+            ],
+        },
+        {
+            "label": "eth1indexer",
+            "command": "bin/eth1indexer",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "args": [
+                "-config",
+                "../__gitignore/${input:Network}.config.yml"
+            ],
+        },
+        {
+            "label": "notification-collector",
+            "command": "bin/notification-collector",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "args": [
+                "-config",
+                "../__gitignore/${input:Network}.config.yml"
+            ],
+        },
+        {
+            "label": "notification-sender",
+            "command": "bin/notification-sender",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "args": [
+                "-config",
+                "../__gitignore/${input:Network}.config.yml"
+            ],
+        },
+        {
+            "label": "statistics",
+            "command": "bin/statistics",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "args": [
+                "-config",
+                "../__gitignore/${input:Network}.config.yml"
+            ],
+        },
+        {
+            "label": "rewards-exporter",
+            "command": "bin/rewards-exporter",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "args": [
+                "-config",
+                "../__gitignore/${input:Network}.config.yml"
+            ],
+        },
+    ]
+}

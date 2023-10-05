@@ -11,7 +11,7 @@
         "el_extra_params": ["--http.api='admin,eth,net,debug,txpool' --syncmode full --gcmode archive"],
         "validator_extra_params": [],
         "builder_network_params": null,
-        "count": 1
+        "count": 2
       }
     ],
     "network_params": {
@@ -25,7 +25,12 @@
       "deneb_fork_epoch": 2
     },
     "global_client_log_level": "info",
-    "start_tx_spammer": true,
-    "start_blob_spammer": true
+    "additional_services": [
+      "tx_spammer",
+      "blob_spammer",
+      "cl_forkmon",
+      "el_forkmon"
+    ],
+    "mev_type": "None"
   }
   

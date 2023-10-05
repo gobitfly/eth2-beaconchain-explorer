@@ -8,6 +8,10 @@ clean_up () {
 } 
 trap clean_up EXIT
 
+# default values
+bn_endpoint=$(kurtosis port print my-testnet cl-1-lighthouse-geth http)
+mnemonic=$(eth2-val-tools mnemonic)
+
 while getopts b:i:m: flag
 do
     case "${flag}" in

@@ -1,22 +1,29 @@
 #! /bin/bash
-CL_PORT=$(kurtosis enclave inspect my-testnet | grep 4000/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/http\:\/\/127.0.0.1\://' | head -n 1)
+
+while getopts "c:" flag; do
+    case ${flag} in
+        c) config=${OPTARG};;
+    esac
+done
+
+CL_PORT=$(kurtosis port print my-testnet cl-1-lighthouse-geth http --format number)
 echo "CL Node port is $CL_PORT"
 
-EL_PORT=$(kurtosis enclave inspect my-testnet | grep 8545/tcp | tr -s ' ' | cut -d " " -f 5 | sed -e 's/127.0.0.1\://' | head -n 1)
+EL_PORT=$(kurtosis port print my-testnet el-1-geth-lighthouse rpc --format number)
 echo "EL Node port is $EL_PORT"
 
-REDIS_PORT=$(kurtosis enclave inspect my-testnet | grep 6379/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/tcp\:\/\/127.0.0.1\://' | head -n 1)
+REDIS_PORT=$(kurtosis port print my-testnet redis redis --format number)
 echo "Redis port is $REDIS_PORT"
 
-POSTGRES_PORT=$(kurtosis enclave inspect my-testnet | grep 5432/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/postgresql\:\/\/127.0.0.1\://' | head -n 1)
+POSTGRES_PORT=$(kurtosis port print my-testnet postgres postgres --format number)
 echo "Postgres port is $POSTGRES_PORT"
 
-LBT_PORT=$(kurtosis enclave inspect my-testnet | grep 9000/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/tcp\:\/\/127.0.0.1\://' | tail -n 1)
+LBT_PORT=$(kurtosis port print my-testnet littlebigtable littlebigtable --format number)
 echo "Little bigtable port is $LBT_PORT"
 
-touch config.yml
+touch ${config}
 
-cat >config.yml <<EOL
+cat >${config} <<EOL
 chain:
   clConfigPath: 'node'
 readerDatabase:
@@ -85,17 +92,17 @@ indexer:
   eth1DepositContractFirstBlock: 0
 EOL
 
-echo "generated config written to config.yml"
+echo "generated config written to ${config}"
 
 echo "initializing bigtable schema"
 PROJECT="explorer"
 INSTANCE="explorer"
 HOST="127.0.0.1:$LBT_PORT"
 
-go run ../cmd/misc/main.go -config config.yml -command initBigtableSchema
+go run cmd/misc/main.go -config ${config} -command initBigtableSchema
 
 echo "bigtable schema initialization completed"
 
 echo "provisioning postgres db schema"
-go run ../cmd/misc/main.go -config config.yml -command applyDbSchema
+go run cmd/misc/main.go -config ${config} -command applyDbSchema
 echo "postgres db schema initialization completed"

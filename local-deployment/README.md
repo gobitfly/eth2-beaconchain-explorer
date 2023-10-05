@@ -50,7 +50,7 @@ kurtosis clean -a && kurtosis run --enclave my-testnet . "$(cat network-params.j
 # Generate the explorer config file for the deployed testnet
 ```
 cd ~/eth2-beaconchain-explorer/local-deployment/
-bash provision-explorer-config.sh
+bash provision-explorer-config.sh -c config.yml
 ```
 This will generate a config.yml to be used by the explorer and then create the bigtable & postgres schema
 
