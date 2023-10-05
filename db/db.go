@@ -3366,7 +3366,7 @@ func GetSyncParticipationBySlotRange(startSlot, endSlot uint64) (map[uint64]uint
 	}{}
 
 	err := ReaderDb.Select(&rows, `SELECT slot, syncaggregate_participation * $1 AS participated FROM blocks WHERE slot >= $2 AND slot <= $3 AND status = '1'`,
-		utils.Config.Chain.Config.SyncCommitteeSize,
+		utils.Config.Chain.ClConfig.SyncCommitteeSize,
 		startSlot,
 		endSlot)
 
