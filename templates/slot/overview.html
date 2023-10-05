@@ -227,7 +227,7 @@
                   <div class="col-md-10 text-monospace text-break">{{ .GasLimit }}</div>
                 </div>
 
-                {{ if ge .Epoch config.Config.Chain.ClConfig.DenebForkEpoch }}
+                {{ if ge $.Data.Epoch config.Chain.ClConfig.DenebForkEpoch }}
                   <div class="row p-1">
                     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Excess Blob Gas">Excess Blob Gas:</span></div>
                     <div class="col-md-10 text-monospace text-break">{{ .ExcessBlobGas }}</div>
@@ -245,7 +245,7 @@
                   <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedTxFees "Ether" 5 }}</div>
                 </div>
 
-                {{ if ge .Epoch config.Config.Chain.ClConfig.DenebForkEpoch }}
+                {{ if ge $.Data.Epoch config.Chain.ClConfig.DenebForkEpoch }}
                   <div class="row p-1">
                     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned blob fees">Burned blob fees:</span></div>
                     <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedBlobFees "Ether" 5 }}</div>
@@ -254,7 +254,7 @@
 
 
                 <div class="row p-1">
-                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees{{ if ge .Epoch config.Config.Chain.ClConfig.DenebForkEpoch }}(total){{ end }}:</span></div>
+                  <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Burned fees">Burned fees{{ if ge $.Data.Epoch config.Chain.ClConfig.DenebForkEpoch }}(total){{ end }}:</span></div>
                   <div class="col-md-10 text-monospace text-break">{{ formatAmount .BurnedFees "Ether" 5 }}</div>
                 </div>
 
@@ -263,7 +263,7 @@
                   <div class="col-md-10 text-monospace text-break">{{ .TxCount }} {{ if gt .BlobTxCount 0 }}({{ .BlobTxCount }} Blob Transactions){{ end }}</div>
                 </div>
 
-                {{ if ge .Epoch config.Config.Chain.ClConfig.DenebForkEpoch }}
+                {{ if ge $.Data.Epoch config.Chain.ClConfig.DenebForkEpoch }}
                   <div class="row p-1">
                     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Blobs">Blobs:</span></div>
                     <div class="col-md-10 text-monospace text-break">{{ .BlobCount }}</div>
