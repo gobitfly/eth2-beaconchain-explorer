@@ -253,10 +253,7 @@ func FormatHashLong(hash common.Hash) template.HTML {
 
 func FormatAddressLong(address string) template.HTML {
 	if IsValidEnsDomain(address) {
-		if len(address) > 59 {
-			return template.HTML(fmt.Sprintf("%s…%s", address[:9], address[len(address)-50:]))
-		}
-		return template.HTML(address)
+		return template.HTML(fmt.Sprintf(`<span data-truncate-middle="%s"></span>.eth`, strings.TrimSuffix(address, ".eth")))
 	}
 	address = FixAddressCasing(address)
 	if len(address) > 4 {
