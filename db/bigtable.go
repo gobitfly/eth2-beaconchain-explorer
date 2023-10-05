@@ -32,7 +32,6 @@ const (
 	ATTESTATIONS_FAMILY                   = "at"
 	PROPOSALS_FAMILY                      = "pr"
 	SYNC_COMMITTEES_FAMILY                = "sc"
-	SYNC_COMMITTEES_PARTICIPATION_FAMILY  = "sp"
 	INCOME_DETAILS_COLUMN_FAMILY          = "id"
 	STATS_COLUMN_FAMILY                   = "stats"
 	MACHINE_METRICS_COLUMN_FAMILY         = "mm"
@@ -809,12 +808,10 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 	keys := make([]string, 0, utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SyncCommitteeSize+1)
 
 	for slot, validators := range duties {
-		participation := uint64(0)
 		for validator, participated := range validators {
 			mut := gcp_bigtable.NewMutation()
 			if participated {
 				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-slot)*1000), []byte{})
-				participation++
 			} else {
 				mut.Set(SYNC_COMMITTEES_FAMILY, "s", gcp_bigtable.Timestamp(0), []byte{})
 			}
@@ -823,13 +820,6 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 			muts = append(muts, mut)
 			keys = append(keys, key)
 		}
-		mut := gcp_bigtable.NewMutation()
-		key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SYNC_COMMITTEES_PARTICIPATION_FAMILY, bigtable.reversedPaddedSlot(uint64(slot)))
-		participationEncoded := make([]byte, 8)
-		binary.LittleEndian.PutUint64(participationEncoded, uint64(participation))
-		mut.Set(SYNC_COMMITTEES_PARTICIPATION_FAMILY, "s", gcp_bigtable.Timestamp(0), participationEncoded)
-		muts = append(muts, mut)
-		keys = append(keys, key)
 	}
 
 	errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
@@ -1699,6 +1689,9 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV1(validators []ui
 
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startSlot uint64, endSlot uint64) (map[uint64]map[uint64]*types.ValidatorSyncParticipation, error) {
 	if endSlot/utils.Config.Chain.Config.SlotsPerEpoch < bigtable.v2SchemaCutOffEpoch {
+		if startSlot/utils.Config.Chain.Config.SlotsPerEpoch == 0 {
+			return nil, fmt.Errorf("getValidatorSyncDutiesHistoryV1 is not supported for epoch 0")
+		}
 		return bigtable.getValidatorSyncDutiesHistoryV1(validators, startSlot, endSlot)
 	} else {
 		return bigtable.getValidatorSyncDutiesHistoryV2(validators, startSlot, endSlot)
