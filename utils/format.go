@@ -49,7 +49,7 @@ func FormatSyncParticipationStatus(status, blockSlot uint64) template.HTML {
 
 // FormatSyncParticipationStatus will return a user-friendly format for an sync-participation-status number
 func FormatSyncParticipations(participants uint64) template.HTML {
-	return template.HTML(fmt.Sprintf(`<span>%v/%v</span>`, participants, Config.Chain.Config.SyncCommitteeSize))
+	return template.HTML(fmt.Sprintf(`<span>%v/%v</span>`, participants, Config.Chain.ClConfig.SyncCommitteeSize))
 }
 
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
@@ -298,6 +298,8 @@ func FormatTransactionType(txnType uint8) string {
 		return "1 (Access-list)"
 	case 2:
 		return "2 (EIP-1559)"
+	case 3:
+		return "3 (Blob, EIP-4844)"
 	default:
 		return fmt.Sprintf("%v (???)", txnType)
 	}

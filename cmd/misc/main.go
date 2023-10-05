@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -12,6 +13,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"math/big"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -27,23 +29,24 @@ import (
 )
 
 var opts = struct {
-	Command         string
-	User            uint64
-	TargetVersion   int64
-	StartEpoch      uint64
-	EndEpoch        uint64
-	StartDay        uint64
-	EndDay          uint64
-	Validator       uint64
-	StartBlock      uint64
-	EndBlock        uint64
-	BatchSize       uint64
-	DataConcurrency uint64
-	Transformers    string
-	Table           string
-	Family          string
-	Key             string
-	DryRun          bool
+	Command             string
+	User                uint64
+	TargetVersion       int64
+	StartEpoch          uint64
+	EndEpoch            uint64
+	StartDay            uint64
+	EndDay              uint64
+	Validator           uint64
+	StartBlock          uint64
+	EndBlock            uint64
+	BatchSize           uint64
+	DataConcurrency     uint64
+	Transformers        string
+	Table               string
+	Family              string
+	Key                 string
+	ValidatorNameRanges string
+	DryRun              bool
 }{}
 
 func main() {
@@ -64,6 +67,7 @@ func main() {
 	flag.Uint64Var(&opts.DataConcurrency, "data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
+	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -83,14 +87,14 @@ func main() {
 	}
 	utils.Config = cfg
 
-	chainIdString := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
+	chainIdString := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
 
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "error initializing bigtable", 0)
 	}
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
@@ -141,6 +145,11 @@ func main() {
 	defer db.FrontendWriterDB.Close()
 
 	switch opts.Command {
+	case "nameValidatorsByRanges":
+		err := NameValidatorsByRanges(opts.ValidatorNameRanges)
+		if err != nil {
+			logrus.WithError(err).Fatal("error naming validators by ranges")
+		}
 	case "updateAPIKey":
 		err := UpdateAPIKey(opts.User)
 		if err != nil {
@@ -191,7 +200,7 @@ func main() {
 				AND slot < (SELECT slot FROM last_exported_epoch)
 			GROUP BY epoch 
 			ORDER BY epoch;
-		`, utils.Config.Chain.Config.SlotsPerEpoch, latestFinalizedEpoch)
+		`, utils.Config.Chain.ClConfig.SlotsPerEpoch, latestFinalizedEpoch)
 		if err != nil {
 			utils.LogError(err, "Error getting epochs with missing slot status from db", 0)
 			return
@@ -210,6 +219,8 @@ func main() {
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
+	case "debug-blocks":
+		err = DebugBlocks()
 	case "clear-bigtable":
 		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
@@ -311,8 +322,110 @@ func main() {
 			logrus.Fatal(err)
 		}
 	default:
-		utils.LogFatal(nil, "unknown command", 0)
+		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
+
+	if err != nil {
+		utils.LogFatal(err, "command returned error", 0)
+	} else {
+		logrus.Infof("command executed successfully")
+	}
+}
+
+func DebugBlocks() error {
+
+	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	if err != nil {
+		return err
+	}
+
+	for i := opts.StartBlock; i <= opts.EndBlock; i++ {
+		b, err := db.BigtableClient.GetBlockFromBlocksTable(i)
+		if err != nil {
+			return err
+		}
+		// logrus.WithFields(logrus.Fields{"block": i, "data": fmt.Sprintf("%+v", b)}).Infof("block from bt")
+
+		cb, _, err := client.GetBlock(int64(i), "parity/geth")
+		if err != nil {
+			return err
+		}
+
+		logrus.WithFields(logrus.Fields{"block": i, "bt.hash": fmt.Sprintf("%#x", b.Hash), "bt.BlobGasUsed": b.BlobGasUsed, "bt.ExcessBlobGas": b.ExcessBlobGas, "bt.txs": len(b.Transactions), "c.BlobGasUsed": cb.BlobGasUsed, "c.hash": fmt.Sprintf("%#x", cb.Hash), "c.ExcessBlobGas": cb.ExcessBlobGas, "c.txs": len(cb.Transactions)}).Infof("debug block")
+
+		for i := range b.Transactions {
+			btx := b.Transactions[i]
+			ctx := cb.Transactions[i]
+			btxH := []string{}
+			ctxH := []string{}
+			for _, h := range btx.BlobVersionedHashes {
+				btxH = append(btxH, fmt.Sprintf("%#x", h))
+			}
+			for _, h := range ctx.BlobVersionedHashes {
+				ctxH = append(ctxH, fmt.Sprintf("%#x", h))
+			}
+
+			logrus.WithFields(logrus.Fields{
+				"b.hash":                fmt.Sprintf("%#x", btx.Hash),
+				"c.hash":                fmt.Sprintf("%#x", ctx.Hash),
+				"b.BlobVersionedHashes": fmt.Sprintf("%+v", btxH),
+				"c.BlobVersionedHashes": fmt.Sprintf("%+v", ctxH),
+				"b.maxFeePerBlobGas":    btx.MaxFeePerBlobGas,
+				"c.maxFeePerBlobGas":    ctx.MaxFeePerBlobGas,
+				"b.BlobGasPrice":        btx.BlobGasPrice,
+				"c.BlobGasPrice":        ctx.BlobGasPrice,
+				"b.BlobGasUsed":         btx.BlobGasUsed,
+				"c.BlobGasUsed":         ctx.BlobGasUsed,
+			}).Infof("debug tx")
+		}
+	}
+	return nil
+}
+
+func NameValidatorsByRanges(rangesUrl string) error {
+	ranges := struct {
+		Ranges map[string]string `json:"ranges"`
+	}{}
+
+	if strings.HasPrefix(rangesUrl, "http") {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		err := utils.HttpReq(ctx, http.MethodGet, rangesUrl, nil, &ranges)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := json.Unmarshal([]byte(rangesUrl), &ranges)
+		if err != nil {
+			return err
+		}
+	}
+
+	for r, n := range ranges.Ranges {
+		rs := strings.Split(r, "-")
+		if len(rs) != 2 {
+			return fmt.Errorf("invalid format, range must be X-Y")
+		}
+		rFrom, err := strconv.ParseUint(rs[0], 10, 64)
+		if err != nil {
+			return err
+		}
+		rTo, err := strconv.ParseUint(rs[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		if rTo < rFrom {
+			return fmt.Errorf("invalid format, range must be X-Y where X <= Y")
+		}
+
+		fmt.Printf("insert into validator_names(publickey, name) select pubkey as publickey, %v as name from validators where validatorindex >= %v and validatorindex <= %v on conflict(publickey) do update set name = excluded.name;\n", n, rFrom, rTo)
+		_, err = db.WriterDb.Exec("insert into validator_names(publickey, name) select pubkey as publickey, $1 as name from validators where validatorindex >= $2 and validatorindex <= $3 on conflict(publickey) do update set name = excluded.name;", n, rFrom, rTo)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // one time migration of the last attestation slot values from postgres to bigtable
@@ -683,7 +796,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
 	if transformerFlag == "all" {
-		transformerList = []string{"TransformBlock", "TransformTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered"}
+		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered"}
 	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
 		return
@@ -699,6 +812,8 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 			transforms = append(transforms, bt.TransformBlock)
 		case "TransformTx":
 			transforms = append(transforms, bt.TransformTx)
+		case "TransformBlobTx":
+			transforms = append(transforms, bt.TransformBlobTx)
 		case "TransformItx":
 			transforms = append(transforms, bt.TransformItx)
 		case "TransformERC20":
