@@ -3323,7 +3323,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 		priceI := decimal.New(0, 0)
 		priceJ := decimal.New(0, 0)
 		if len(ret.Balances[i].Metadata.Price) > 0 {
-			priceI = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Price), 0)
+			priceI = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Price), 0)
 		}
 		if len(ret.Balances[j].Metadata.Price) > 0 {
 			priceJ = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Price), 0)

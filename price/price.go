@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,6 +24,7 @@ var runOnce sync.Once
 var runOnceWg sync.WaitGroup
 var prices = map[string]float64{}
 var pricesMu = &sync.Mutex{}
+var didInit = uint64(0)
 var feeds = map[string]*chainlink_feed.Feed{}
 var calcPairs = map[string]bool{}
 var clCurrency = "ETH"
@@ -52,11 +54,16 @@ func init() {
 }
 
 func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string) {
+	if atomic.AddUint64(&didInit, 1) > 1 {
+		logrus.Warnf("price.Init called multiple times")
+		return
+	}
+
 	switch chainId {
 	case 1, 100:
 	default:
-		prices[elCurrency+"/"+elCurrency] = 1
-		prices[clCurrency+"/"+clCurrency] = 1
+		setPrice(elCurrency, elCurrency, 1)
+		setPrice(clCurrency, clCurrency, 1)
 		logger.Warnf("chainId not supported for fetching prices: %v", chainId)
 		return
 	}
@@ -119,10 +126,10 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 		// feedAddrs["CHFUSD"] = "0xFb00261Af80ADb1629D3869E377ae1EEC7bE659F"
 		feedAddrs["ETH/USD"] = "0xa767f745331D267c7751297D982b050c93985627"
 
-		prices["mGNO/GNO"] = 1 / 32
-		prices["GNO/mGNO"] = 32
-		prices["mGNO/mGNO"] = 1
-		prices["GNO/GNO"] = 1
+		setPrice("mGNO", "GNO", 1/32)
+		setPrice("GNO", "mGNO", 32)
+		setPrice("mGNO", "mGNO", 1/32)
+		setPrice("GNO", "GNO", 1)
 
 		calcPairs["GNO"] = true
 
@@ -178,8 +185,8 @@ func updatePrices() {
 			return
 		}
 	}
-	prices[elCurrency+"/"+elCurrency] = 1
-	prices[clCurrency+"/"+clCurrency] = 1
+	setPrice(elCurrency, elCurrency, 1)
+	setPrice(clCurrency, clCurrency, 1)
 	// fmt.Printf("prices: %+v\n", prices)
 	runOnce.Do(func() { runOnceWg.Done() })
 }
@@ -203,7 +210,14 @@ func calcPricePairs(currency string) error {
 	return nil
 }
 
+func setPrice(a, b string, v float64) {
+	pricesMu.Lock()
+	defer pricesMu.Unlock()
+	prices[a+"/"+b] = v
+}
+
 func GetPrice(a, b string) float64 {
+	runOnceWg.Wait()
 	pricesMu.Lock()
 	defer pricesMu.Unlock()
 	if a == "xDAI" {

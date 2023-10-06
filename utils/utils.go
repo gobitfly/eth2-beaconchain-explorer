@@ -678,6 +678,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Frontend.SiteTitle = "Open Source Ethereum Explorer"
 	}
 
+	if cfg.Frontend.Keywords == "" {
+		cfg.Frontend.Keywords = "open source ethereum block explorer, ethereum block explorer, beacon chain explorer, ethereum blockchain explorer"
+	}
+
 	if cfg.Chain.Id != 0 && cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID {
 		logrus.Fatalf("cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID: %v != %v", cfg.Chain.Id, cfg.Chain.ClConfig.DepositChainID)
 	}

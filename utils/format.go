@@ -208,16 +208,24 @@ func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, dig
 	} else {
 		resStr = fmt.Sprintf("%s", valPriced.StringFixed(int32(digitsAfterComma)))
 	}
-	if colored {
-		if valPriced.Cmp(decimal.NewFromInt(0)) >= 0 {
-			if showPlusSign {
-				return template.HTML(fmt.Sprintf(`<span class="text-success">+%s</span>`, resStr))
-			}
-			return template.HTML(fmt.Sprintf(`<span class="text-success">%s</span>`, resStr))
+
+	classes := ""
+	plusSign := ""
+
+	if valPriced.Cmp(decimal.NewFromInt(0)) >= 0 {
+		if showPlusSign {
+			plusSign = "+"
 		}
-		return template.HTML(fmt.Sprintf(`<span class="text-danger">%s</span>`, resStr))
+		if colored {
+			classes = "text-success"
+		}
+	} else {
+		if colored {
+			classes = "text-danger"
+		}
 	}
-	return template.HTML(fmt.Sprintf(`<span>%s</span>`, resStr))
+
+	return template.HTML(fmt.Sprintf(`<span class="%s">%s%s</span>`, classes, plusSign, resStr))
 }
 
 // IfToDec trys to parse given parameter to decimal.Decimal, it only logs on error
@@ -571,7 +579,7 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 
 func FormatEtherValue(symbol string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
 	p := message.NewPrinter(language.English)
-	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/%s</span>`, symbol, ethPrice.InexactFloat64(), currentPrice, Config.Frontend.ClCurrency))
+	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/%s</span>`, symbol, ethPrice.InexactFloat64(), currentPrice, Config.Frontend.ElCurrency))
 }
 
 // FormatGraffiti will return the graffiti formated as html

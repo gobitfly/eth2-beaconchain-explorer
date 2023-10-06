@@ -101,6 +101,7 @@ type Config struct {
 		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`
 		SiteBrand                      string `yaml:"siteBrand" envconfig:"FRONTEND_SITE_BRAND"`
+		Keywords                       string `yaml:"keywords" envconfig:"FRONTEND_KEYWORDS"`
 		// Imprint is deprdecated place imprint file into the legal directory
 		Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		Legal   struct {
