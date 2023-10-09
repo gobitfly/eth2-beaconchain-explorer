@@ -235,7 +235,7 @@
                 <div class="col-md-9">
                   {{ formatBytesAmount .Gas.TxFee config.Frontend.ElCurrency 8 }}
                   <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value">
-                    {{ formatElCurrency .Gas.TxFee $.Rates.SelectedCurrency 8 true false false }}
+                    {{ formatElCurrency .Gas.TxFee $.Rates.SelectedCurrency 2 true false false }}
                   </span>
                 </div>
               </div>
