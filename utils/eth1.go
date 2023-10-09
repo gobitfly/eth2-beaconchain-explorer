@@ -26,9 +26,9 @@ func Eth1BlockReward(blockNumber uint64, difficulty []byte) *big.Int {
 		return big.NewInt(0)
 	}
 
-	if blockNumber < Config.Chain.Config.ByzantiumForkBlock {
+	if blockNumber < Config.Chain.ElConfig.ByzantiumBlock.Uint64() {
 		return big.NewInt(5e+18)
-	} else if blockNumber < Config.Chain.Config.ConstantinopleForkBlock {
+	} else if blockNumber < Config.Chain.ElConfig.ConstantinopleBlock.Uint64() {
 		return big.NewInt(3e+18)
 	} else {
 		return big.NewInt(2e+18)
@@ -117,6 +117,30 @@ func FormatBuilder(pubkey []byte) template.HTML {
 		name = "MEV-geth Default"
 	}
 	return FormatAddress(pubkey, nil, name, false, false, false)
+}
+
+func FormatBytes(b []byte, addCopyToClipboard bool, link string) template.HTML {
+	bStr := fmt.Sprintf("%#x", b)
+	ret := ""
+	if len(bStr) <= 10 {
+		ret += fmt.Sprintf(`<span class="text-monospace">%s</span>`, bStr)
+	} else {
+		ret += fmt.Sprintf(`<span class="text-monospace" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s…%s</span>`, bStr, bStr[0:6], bStr[len(bStr)-4:])
+	}
+	if len(link) > 0 {
+		ret = fmt.Sprintf(`<a href="%s" target="_parent">%s</a>`, link, ret)
+	}
+	if addCopyToClipboard {
+		ret += ` <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="` + bStr + `"></i>`
+	}
+	return template.HTML(ret)
+}
+
+func FormatBlobVersionedHash(h []byte) template.HTML {
+	if Config.Frontend.BlobProviderUrl == "" {
+		return FormatBytes(h, true, "")
+	}
+	return FormatBytes(h, true, fmt.Sprintf("%s/%#x", Config.Frontend.BlobProviderUrl, h))
 }
 
 func FormatAddressWithLimits(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {

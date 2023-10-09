@@ -194,7 +194,7 @@ func Start(client rpc.Client) error {
 			}
 		}
 
-		logger.Printf("exporting %v epochs.", len(epochsToExport))
+		logger.Printf("exporting %v epochs. (%v)", len(epochsToExport), epochsToExport)
 
 		keys := make([]uint64, 0)
 		for k := range epochsToExport {
@@ -393,9 +393,11 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 	// Add not yet exported epochs to the export set (for example during the initial sync)
 	if len(epochs) > 0 && epochs[len(epochs)-1] < head.HeadEpoch {
 		for i := epochs[len(epochs)-1]; i <= head.HeadEpoch; i++ {
+			logrus.Infof("queuing epoch %v for export as it has not yet been exported", i)
 			epochsToExport[i] = true
 		}
 	} else if len(epochs) > 0 && epochs[0] != 0 { // Export the genesis epoch if not yet present in the db
+		logrus.Info("queuing genesis epoch 0 for export")
 		epochsToExport[0] = true
 	} else if len(epochs) == 0 { // No epochs are present int the db
 		for i := uint64(0); i <= head.HeadEpoch; i++ {
@@ -417,7 +419,7 @@ func doFullCheck(client rpc.Client, lookback uint64) {
 		}
 	}
 
-	logger.Printf("exporting %v epochs.", len(epochsToExport))
+	logger.Printf("exporting %v epochs. (%v)", len(epochsToExport), epochsToExport)
 
 	keys := make([]uint64, 0)
 	for k := range epochsToExport {
@@ -506,8 +508,8 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		startSlot := epoch * utils.Config.Chain.Config.SlotsPerEpoch
-		endSlot := (epoch+1)*utils.Config.Chain.Config.SlotsPerEpoch - 1
+		startSlot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+		endSlot := (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
 			blocks, err := client.GetBlocksBySlot(slot)
 			if err != nil {
@@ -641,8 +643,8 @@ func networkLivenessUpdater(client rpc.Client) {
 		utils.LogFatal(err, "getting previous head epoch from db error", 0)
 	}
 
-	epochDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch)
-	slotDuration := time.Second * time.Duration(utils.Config.Chain.Config.SecondsPerSlot)
+	epochDuration := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch)
+	slotDuration := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
 
 	for {
 		head, err := client.GetChainHead()
@@ -738,29 +740,20 @@ func genesisDepositsExporter(client rpc.Client) {
 
 		// hydrate the eth1 deposit signature for all genesis validators that have a corresponding eth1 deposit
 		_, err = tx.Exec(`
-				INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature)
-				SELECT
-					0 as block_slot,
-					v.validatorindex as block_index,
-					v.pubkey as publickey,
-					v.withdrawalcredentials,
-					b.balance as amount,
-					d.signature as signature
-				FROM validators v
-				LEFT JOIN validator_balances_recent b 
-					ON v.validatorindex = b.validatorindex
-					AND b.epoch = 0
-				LEFT JOIN ( 
-					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
-				) d ON d.publickey = v.pubkey
-				WHERE v.validatorindex < $1 AND d.signature IS NOT NULL
-				ON CONFLICT (block_slot, block_index) DO UPDATE SET signature = EXCLUDED.signature`, len(genesisValidators.Data))
+			UPDATE blocks_deposits 
+			SET signature = a.signature 
+			FROM (
+				SELECT DISTINCT ON(publickey) publickey, signature 
+				FROM eth1_deposits 
+				WHERE valid_signature = true) AS a 
+			WHERE block_slot = 0 AND blocks_deposits.publickey = a.publickey AND blocks_deposits.signature = '\x'`)
 		if err != nil {
 			tx.Rollback()
 			logger.Errorf("error hydrating eth1 data into genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
 			continue
 		}
+
 		// update deposits-count
 		_, err = tx.Exec("UPDATE blocks SET depositscount = $1 WHERE slot = 0", len(genesisValidators.Data))
 		if err != nil {

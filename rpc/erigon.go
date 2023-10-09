@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
@@ -109,6 +108,14 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		Transactions: []*types.Eth1Transaction{},
 		Withdrawals:  []*types.Eth1Withdrawal{},
 	}
+	blobGasUsed := block.BlobGasUsed()
+	if blobGasUsed != nil {
+		c.BlobGasUsed = *blobGasUsed
+	}
+	excessBlobGas := block.ExcessBlobGas()
+	if excessBlobGas != nil {
+		c.ExcessBlobGas = *excessBlobGas
+	}
 
 	if block.BaseFee() != nil {
 		c.BaseFee = block.BaseFee().Bytes()
@@ -157,13 +164,12 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	for _, tx := range txs {
 
 		var from []byte
-		msg, err := core.TransactionToMessage(tx, geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
+		sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
 		if err != nil {
 			from, _ = hex.DecodeString("abababababababababababababababababababab")
-
 			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
 		} else {
-			from = msg.From.Bytes()
+			from = sender.Bytes()
 		}
 
 		pbTx := &types.Eth1Transaction{
@@ -180,11 +186,20 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			AccessList:           []*types.AccessList{},
 			Hash:                 tx.Hash().Bytes(),
 			Itx:                  []*types.Eth1InternalTransaction{},
+			BlobVersionedHashes:  [][]byte{},
+		}
+
+		if tx.BlobGasFeeCap() != nil {
+			pbTx.MaxFeePerBlobGas = tx.BlobGasFeeCap().Bytes()
+		}
+		for _, h := range tx.BlobHashes() {
+			pbTx.BlobVersionedHashes = append(pbTx.BlobVersionedHashes, h.Bytes())
 		}
 
 		if tx.To() != nil {
 			pbTx.To = tx.To().Bytes()
 		}
+
 		c.Transactions = append(c.Transactions, pbTx)
 
 	}
@@ -291,8 +306,13 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				tracePb.To = trace.To.Bytes()
 				tracePb.Value = common.FromHex(trace.Value)
 				if trace.Type == "CREATE" {
+				} else if trace.Type == "SELFDESTRUCT" {
 				} else if trace.Type == "SUICIDE" {
 				} else if trace.Type == "CALL" || trace.Type == "DELEGATECALL" || trace.Type == "STATICCALL" {
+				} else if trace.Type == "" {
+					logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": block.Number(), "block.Hash": block.Hash()}).Errorf("geth style trace without type")
+					spew.Dump(trace)
+					continue
 				} else {
 					spew.Dump(trace)
 					logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
@@ -341,6 +361,11 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		c.Transactions[i].GasUsed = r.GasUsed
 		c.Transactions[i].LogsBloom = r.Bloom[:]
 		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
+
+		if r.BlobGasPrice != nil {
+			c.Transactions[i].BlobGasPrice = r.BlobGasPrice.Bytes()
+		}
+		c.Transactions[i].BlobGasUsed = r.BlobGasUsed
 
 		for _, l := range r.Logs {
 			pbLog := &types.Eth1Log{

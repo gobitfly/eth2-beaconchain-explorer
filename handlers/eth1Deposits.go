@@ -32,7 +32,7 @@ func Deposits(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageData.Stats = services.GetLatestStats()
-	pageData.DepositContract = utils.Config.Chain.Config.DepositContractAddress
+	pageData.DepositContract = utils.Config.Chain.ClConfig.DepositContractAddress
 
 	data := InitPageData(w, r, "blockchain", "/deposits", "Deposits", templateFiles)
 	data.Data = pageData
@@ -152,7 +152,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Initiated Deposits", templateFiles)
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{
-		DepositContract: utils.Config.Chain.Config.DepositContractAddress,
+		DepositContract: utils.Config.Chain.ClConfig.DepositContractAddress,
 	}
 
 	if handleTemplateError(w, r, "eth1Deposits.go", "Eth1DepositsLeaderboard", "", eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)) != nil {

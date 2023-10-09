@@ -14,7 +14,7 @@ import (
 // SlotVizMetrics returns the metrics for the earliest epochs
 func SlotVizMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.Config.SecondsPerSlot)) // set local cache to the seconds per slot interval
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.ClConfig.SecondsPerSlot)) // set local cache to the seconds per slot interval
 
 	// res, err := db.GetSlotVizData(latestEpoch)
 	// if err != nil {

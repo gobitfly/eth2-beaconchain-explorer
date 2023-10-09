@@ -41,6 +41,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/attesterSlashing.html",
 		"slot/proposerSlashing.html",
 		"slot/exits.html",
+		"slot/blobs.html",
 		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html")
@@ -209,7 +210,7 @@ func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttesta
 func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	blockPageData := types.BlockPageData{}
-	blockPageData.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
+	blockPageData.Mainnet = utils.Config.Chain.ClConfig.ConfigName == "mainnet"
 	// for the first slot in an epoch the previous epoch defines the finalized state
 	err := db.ReaderDb.Get(&blockPageData, `
 		SELECT
@@ -259,7 +260,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			epoch_participation_rate
 		ORDER BY blocks.blockroot DESC, blocks.status ASC limit 1
 		`,
-		blockSlot, utils.Config.Chain.Config.SlotsPerEpoch, latestFinalizedEpoch)
+		blockSlot, utils.Config.Chain.ClConfig.SlotsPerEpoch, latestFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -352,70 +353,21 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		}
 	}
 
+	err = db.ReaderDb.Select(&blockPageData.BlobSidecars, `SELECT block_slot, block_root, index, kzg_commitment, kzg_proof, blob_versioned_hash FROM blocks_blob_sidecars WHERE block_root = $1`, blockPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving block blob sidecars (slot: %d, blockroot: %#x): %w", blockPageData.Slot, blockPageData.BlockRoot, err)
+	}
+
 	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block proposer slashings data: %v", err)
 	}
 
-	// TODO: fix blockPageData data type to include SyncCommittee
 	err = db.ReaderDb.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
 	}
 
-	// old code retrieving txs from postgres db
-	/* if retrieveTxsFromDb {
-			// retrieve transactions from db
-			var transactions []*types.BlockPageTransaction
-			rows, err = db.ReaderDb.Query(`
-				SELECT
-	    		block_slot,
-	    		block_index,
-	    		txhash,
-	    		nonce,
-	    		gas_price,
-	    		gas_limit,
-	    		sender,
-	    		recipient,
-	    		amount,
-	    		payload
-				FROM blocks_transactions
-				WHERE block_slot = $1
-				ORDER BY block_index`,
-				blockPageData.Slot)
-			if err != nil {
-				return nil, fmt.Errorf("error retrieving block transaction data: %v", err)
-			}
-			defer rows.Close()
-
-			for rows.Next() {
-				tx := &types.BlockPageTransaction{}
-
-				err := rows.Scan(
-					&tx.BlockSlot,
-					&tx.BlockIndex,
-					&tx.TxHash,
-					&tx.AccountNonce,
-					&tx.Price,
-					&tx.GasLimit,
-					&tx.Sender,
-					&tx.Recipient,
-					&tx.Amount,
-					&tx.Payload,
-				)
-				if err != nil {
-					return nil, fmt.Errorf("error scanning block transaction data: %v", err)
-				}
-				var amount, price big.Int
-				amount.SetBytes(tx.Amount)
-				price.SetBytes(tx.Price)
-				tx.AmountPretty = ToEth(&amount)
-				tx.PricePretty = ToGWei(&amount)
-				transactions = append(transactions, tx)
-			}
-			blockPageData.Transactions = transactions
-		}
-	*/
 	return &blockPageData, nil
 }
 

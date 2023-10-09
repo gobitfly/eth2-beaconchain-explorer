@@ -46,7 +46,14 @@ type FinalityCheckpoints struct {
 }
 
 type Slot uint64
+type Epoch uint64
 type ValidatorIndex uint64
+
+type EpochWriteCacheEntry struct {
+	Balance          uint64
+	EffectiveBalance uint64
+	Attestations     map[Slot]Slot
+}
 
 // EpochData is a struct to hold epoch data
 type EpochData struct {
@@ -131,6 +138,10 @@ type Block struct {
 	ExecutionPayload           *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
 	Canonical                  bool
 	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
+	BlobGasUsed                uint64
+	ExcessBlobGas              uint64
+	BlobKZGCommitments         [][]byte
+	BlobKZGProofs              [][]byte
 	AttestationDuties          map[ValidatorIndex]Slot
 	SyncDuties                 map[ValidatorIndex]bool
 }
@@ -162,6 +173,9 @@ type Transaction struct {
 
 	MaxPriorityFeePerGas uint64
 	MaxFeePerGas         uint64
+
+	MaxFeePerBlobGas    uint64
+	BlobVersionedHashes [][]byte
 }
 
 type ExecutionPayload struct {
@@ -180,6 +194,8 @@ type ExecutionPayload struct {
 	BlockHash     []byte
 	Transactions  []*Transaction
 	Withdrawals   []*Withdrawals
+	BlobGasUsed   uint64
+	ExcessBlobGas uint64
 }
 
 type Withdrawals struct {

@@ -42,7 +42,7 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
-	ChainConfig         ChainConfig
+	ChainConfig         ClChainConfig
 	Lang                string
 	NoAds               bool
 	Debug               bool
@@ -678,6 +678,7 @@ type BlockPageData struct {
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
 	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
+	BlobSidecars      []*BlockPageBlobSidecar
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
@@ -804,6 +805,16 @@ type BlockPageProposerSlashing struct {
 	Header2StateRoot  []byte `db:"header2_stateroot"`
 	Header2BodyRoot   []byte `db:"header2_bodyroot"`
 	Header2Signature  []byte `db:"header2_signature"`
+}
+
+// BlockPageBlobSidecar holds data of blob-sidecars of the corresponding block
+type BlockPageBlobSidecar struct {
+	BlockSlot         uint64 `db:"block_slot"`
+	BlockRoot         []byte `db:"block_root"`
+	Index             uint64 `db:"index"`
+	KzgCommitment     []byte `db:"kzg_commitment"`
+	KzgProof          []byte `db:"kzg_proof"`
+	BlobVersionedHash []byte `db:"blob_versioned_hash"`
 }
 
 // DataTableResponse is a struct to hold data for data table responses
@@ -1576,6 +1587,7 @@ type Eth1AddressPageData struct {
 	BlocksMinedTable   *DataTableResponse
 	UnclesMinedTable   *DataTableResponse
 	TransactionsTable  *DataTableResponse
+	BlobTxnsTable      *DataTableResponse
 	InternalTxnsTable  *DataTableResponse
 	Erc20Table         *DataTableResponse
 	Erc721Table        *DataTableResponse
@@ -1692,6 +1704,9 @@ type Eth1TxData struct {
 		Limit          uint64
 		TxFee          []byte
 		EffectiveFee   []byte
+		BlobGasUsed    uint64
+		BlobGasPrice   []byte
+		BlobTxFee      []byte
 	}
 	Epoch                       EpochInfo
 	TypeFormatted               string
@@ -1714,6 +1729,7 @@ type Eth1TxData struct {
 	DepositContractInteractions []DepositContractInteraction
 	CurrentEtherPrice           template.HTML
 	HistoricalEtherPrice        template.HTML
+	BlobHashes                  [][]byte
 }
 
 type Eth1EventData struct {
@@ -1804,6 +1820,8 @@ type Eth1BlockPageData struct {
 	PreviousBlock         uint64
 	NextBlock             uint64
 	TxCount               uint64
+	BlobTxCount           uint64
+	BlobCount             uint64
 	WithdrawalCount       uint64
 	UncleCount            uint64
 	Hash                  string
@@ -1823,6 +1841,11 @@ type Eth1BlockPageData struct {
 	Difficulty            *big.Int
 	BaseFeePerGas         *big.Int
 	BurnedFees            *big.Int
+	BurnedTxFees          *big.Int
+	BurnedBlobFees        *big.Int
+	BlobGasUsed           uint64
+	BlobGasPrice          *big.Int
+	ExcessBlobGas         uint64
 	Extra                 string
 	Txs                   []Eth1BlockPageTransaction
 	Uncles                []Eth1BlockPageData
