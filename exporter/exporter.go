@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -70,233 +69,15 @@ func Start(client rpc.Client) error {
 		time.Sleep(time.Second * 10)
 	}
 
-	if utils.Config.Indexer.FullIndexOnStartup {
-		logger.Printf("performing one time full db reindex")
-		head, err := client.GetChainHead()
-		if err != nil {
-			utils.LogFatal(err, "getting chain head from client for full db reindex error", 0)
-		}
-
-		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
-			err := ExportEpoch(epoch, client)
-
-			if err != nil {
-				utils.LogError(err, "exporting all epochs up to head epoch error", 0)
-			}
-		}
-	}
-
-	if utils.Config.Indexer.FixCanonOnStartup {
-		logger.Printf("performing one time full canon check")
-		head, err := client.GetChainHead()
-		if err != nil {
-			utils.LogFatal(err, "getting chain head from client for full canon check error", 0)
-		}
-
-		for epoch := int64(head.HeadEpoch) - 1; epoch >= 0; epoch-- {
-			blocks, err := client.GetBlockStatusByEpoch(uint64(epoch))
-			if err != nil {
-				logger.Errorf("error retrieving block status: %v", err)
-				continue
-			}
-			err = db.SetBlockStatus(blocks)
-			if err != nil {
-				logger.Errorf("error saving block status: %v", err)
-				continue
-			}
-		}
-	}
-
-	if utils.Config.Indexer.IndexMissingEpochsOnStartup {
-		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
-		logger.Infof("checking for missing epochs")
-		epochs, err := db.GetAllEpochs()
-		if err != nil {
-			utils.LogFatal(err, "getting all epochs from db error", 0)
-		}
-
-		if len(epochs) > 0 && epochs[0] != 0 {
-			err := ExportEpoch(0, client)
-			if err != nil {
-				utils.LogError(err, "exporting epoch 0 error", 0)
-			}
-			logger.Printf("finished export for epoch %v", 0)
-			epochs = append([]uint64{0}, epochs...)
-		}
-
-		for i := 0; i < len(epochs)-1; i++ {
-			if epochs[i] != epochs[i+1]-1 && epochs[i] != epochs[i+1] {
-				logger.Println("Epochs between", epochs[i], "and", epochs[i+1], "are missing!")
-
-				for epoch := epochs[i]; epoch <= epochs[i+1]; epoch++ {
-					err := ExportEpoch(epoch, client)
-					if err != nil {
-						utils.LogError(err, fmt.Errorf("exporting epochs between %v and %v error", epochs[i], epochs[i+1]), 0)
-					}
-					logger.Printf("finished export for epoch %v", epoch)
-				}
-			}
-		}
-	}
-
-	if utils.Config.Indexer.CheckAllBlocksOnStartup {
-		// Make sure that all blocks are correct by comparing all block hashes in the database to the ones we have in the node
-		head, err := client.GetChainHead()
-		if err != nil {
-			utils.LogFatal(err, "getting chain head from client for full blocks check error", 0)
-		}
-
-		dbBlocks, err := db.GetLastPendingAndProposedBlocks(1, head.HeadEpoch)
-		if err != nil {
-			utils.LogFatal(err, "getting proposed and pending blocks error ", 0)
-		}
-
-		nodeBlocks, err := GetLastBlocks(1, head.HeadEpoch, client)
-		if err != nil {
-			utils.LogFatal(err, "getting blocks for range of epochs error", 0)
-		}
-
-		blocksMap := make(map[string]*types.BlockComparisonContainer)
-
-		for _, block := range dbBlocks {
-			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
-			_, found := blocksMap[key]
-
-			if !found {
-				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
-			}
-
-			blocksMap[key].Db = block
-		}
-		for _, block := range nodeBlocks {
-			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
-			_, found := blocksMap[key]
-
-			if !found {
-				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
-			}
-
-			blocksMap[key].Node = block
-		}
-
-		epochsToExport := make(map[uint64]bool)
-
-		for key, block := range blocksMap {
-			if block.Db == nil {
-				logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
-				epochsToExport[block.Epoch] = true
-			} else if block.Node == nil && !strings.HasSuffix(key, "-00") { //do not re-export because of missed blocks
-				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
-				epochsToExport[block.Epoch] = true
-			} else if !bytes.Equal(block.Db.BlockRoot, block.Node.BlockRoot) {
-				logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
-				epochsToExport[block.Epoch] = true
-			}
-		}
-
-		logger.Printf("exporting %v epochs. (%v)", len(epochsToExport), epochsToExport)
-
-		keys := make([]uint64, 0)
-		for k := range epochsToExport {
-			keys = append(keys, k)
-		}
-		sort.Slice(keys, func(i, j int) bool {
-			return keys[i] < keys[j]
-		})
-
-		for _, epoch := range keys {
-			err = ExportEpoch(epoch, client)
-
-			if err != nil {
-				logger.Errorf("error exporting epoch: %v", err)
-				if utils.EpochToTime(epoch).Before(time.Now().Add(time.Hour * -24)) {
-					epochBlacklist[epoch]++
-				}
-			}
-		}
-	}
-
-	if utils.Config.Indexer.UpdateAllEpochStatistics {
-		// Update all epoch statistics
-		head, err := client.GetChainHead()
-		if err != nil {
-			utils.LogFatal(err, "getting chain head from client for updating epoch statistics error", 0)
-		}
-		startEpoch := uint64(0)
-		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
-		if err != nil {
-			utils.LogFatal(err, "error while updating epoch status", 0)
-		}
-	}
-
-	newBlockChan := client.GetNewBlockChan()
-
-	lastExportedSlot := uint64(0)
-
-	// doFullCheck(client)
-
-	logger.Infof("entering monitoring mode")
 	for {
-		block := <-newBlockChan
-		// Do a full check on any epoch transition or after during the first run
-		if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
-			go func() {
-				v := atomic.LoadUint64(&fullCheckRunning)
-				if v == 1 {
-					logger.Infof("skipping full check as one is already running")
-					return
-				}
-				atomic.StoreUint64(&fullCheckRunning, 1)
-				doFullCheck(client, 0)
-				atomic.StoreUint64(&fullCheckRunning, 0)
-			}()
-		}
-
-		blocksMap := make(map[uint64]map[string]*types.Block)
-		if blocksMap[block.Slot] == nil {
-			blocksMap[block.Slot] = make(map[string]*types.Block)
-		}
-		blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
-
-		syncDuties := make(map[types.Slot]map[types.ValidatorIndex]bool)
-		syncDuties[types.Slot(block.Slot)] = make(map[types.ValidatorIndex]bool)
-
-		for validator, duty := range block.SyncDuties {
-			syncDuties[types.Slot(block.Slot)][types.ValidatorIndex(validator)] = duty
-		}
-
-		attDuties := make(map[types.Slot]map[types.ValidatorIndex][]types.Slot)
-		for validator, attestedSlot := range block.AttestationDuties {
-			if attDuties[types.Slot(attestedSlot)] == nil {
-				attDuties[types.Slot(attestedSlot)] = make(map[types.ValidatorIndex][]types.Slot)
-			}
-			if attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] == nil {
-				attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = []types.Slot{}
-			}
-			attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
-		}
-
-		err := db.BigtableClient.SaveAttestationDuties(attDuties)
+		err := StartSlotExporter(client)
 		if err != nil {
-			logrus.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
+			logrus.Fatal(err)
 		}
-		err = db.BigtableClient.SaveSyncComitteeDuties(syncDuties)
-		if err != nil {
-			logrus.Errorf("error exporting sync committee duties to bigtable for block %v: %v", block.Slot, err)
-		}
-
-		err = db.SaveBlock(block, false)
-		if err != nil {
-			logger.Errorf("error saving block: %v", err)
-		}
-
-		err = db.UpdateMissedBlocksInEpochWithSlotCutoff(block.Slot)
-		if err != nil {
-			logger.Errorf("error marking missed blocks: %v", err)
-		}
-
-		lastExportedSlot = block.Slot
+		time.Sleep(time.Second)
+		logrus.Info("update run completed")
 	}
+	return nil
 }
 
 // Will ensure the db is fully in sync with the node
@@ -511,20 +292,18 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 		startSlot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 		endSlot := (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
-			blocks, err := client.GetBlocksBySlot(slot)
+			block, err := client.GetBlockBySlot(slot)
 			if err != nil {
 				return nil, err
 			}
 
-			for _, block := range blocks {
-				wrappedBlocks = append(wrappedBlocks, &types.MinimalBlock{
-					Epoch:      epoch,
-					Slot:       block.Slot,
-					BlockRoot:  block.BlockRoot,
-					ParentRoot: block.ParentRoot,
-					Canonical:  block.Canonical,
-				})
-			}
+			wrappedBlocks = append(wrappedBlocks, &types.MinimalBlock{
+				Epoch:      epoch,
+				Slot:       block.Slot,
+				BlockRoot:  block.BlockRoot,
+				ParentRoot: block.ParentRoot,
+				Canonical:  block.Canonical,
+			})
 		}
 
 		logger.Printf("retrieving all blocks for epoch %v. %v epochs remaining", epoch, endEpoch-epoch)
@@ -601,10 +380,10 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	}
 
 	// at this point all epoch data has been written to bigtable
-	err = db.SaveEpoch(data, client)
-	if err != nil {
-		return fmt.Errorf("error saving epoch data: %w", err)
-	}
+	// err = db.SaveEpoch(data, client)
+	// if err != nil {
+	// 	return fmt.Errorf("error saving epoch data: %w", err)
+	// }
 
 	services.ReportStatus("epochExporter", "Running", nil)
 	return nil

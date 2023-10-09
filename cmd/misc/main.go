@@ -284,13 +284,8 @@ func main() {
 			data.Validators = append(data.Validators, validatorsArr[start:end]...)
 
 			logrus.Infof("saving validators %v-%v", data.Validators[0].Index, data.Validators[len(data.Validators)-1].Index)
-			tx := db.WriterDb.MustBegin()
 
-			err = db.SaveValidators(data, tx, rpcClient, len(data.Validators))
-			if err != nil {
-				logrus.Fatal(err)
-			}
-			err = tx.Commit()
+			err = db.SaveValidators(0, data.Validators, rpcClient, len(data.Validators))
 			if err != nil {
 				logrus.Fatal(err)
 			}

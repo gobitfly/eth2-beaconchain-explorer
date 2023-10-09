@@ -100,7 +100,6 @@ type Validator struct {
 	Status            string        `db:"status"`
 
 	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
-	LastProposalSlot    sql.NullInt64 `db:"lastproposalslot"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data
@@ -144,6 +143,9 @@ type Block struct {
 	BlobKZGProofs              [][]byte
 	AttestationDuties          map[ValidatorIndex]Slot
 	SyncDuties                 map[ValidatorIndex]bool
+	Finalized                  bool
+	EpochAssignments           *EpochAssignments
+	Validators                 []*Validator
 }
 
 type SignedBLSToExecutionChange struct {

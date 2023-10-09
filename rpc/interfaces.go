@@ -12,7 +12,7 @@ type Client interface {
 	GetEpochData(epoch uint64, skipHistoricBalances bool) (*types.EpochData, error)
 	GetValidatorQueue() (*types.ValidatorQueue, error)
 	GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error)
-	GetBlocksBySlot(slot uint64) ([]*types.Block, error)
+	GetBlockBySlot(slot uint64) (*types.Block, error)
 	GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error)
 	GetNewBlockChan() chan *types.Block
 	GetBlockStatusByEpoch(slot uint64) ([]*types.CanonBlock, error)
@@ -20,6 +20,7 @@ type Client interface {
 	GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error)
 	GetBalancesForEpoch(epoch int64) (map[uint64]uint64, error)
 	GetValidatorState(epoch uint64) (*StandardValidatorsResponse, error)
+	GetBlockHeader(slot uint64) (*StandardBeaconHeaderResponse, error)
 }
 
 type Eth1Client interface {
