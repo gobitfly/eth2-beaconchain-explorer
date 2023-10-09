@@ -1257,6 +1257,8 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			// if latest returned period is the active one, add remaining scheduled slots
 			firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(syncCommitteeValidators[0].Period)
 			if firstEpochOfPeriod < utils.Config.Chain.ClConfig.AltairForkEpoch {
+				// the first actual sync period starts at the altair fork epoch and might be shorter than all others
+				// https://eth2book.info/capella/annotated-spec/#sync-committee-updates
 				firstEpochOfPeriod = utils.Config.Chain.ClConfig.AltairForkEpoch
 			}
 			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
