@@ -1451,7 +1451,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed, email_change_to_value FROM users WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
-		logger.Errorf("error retreiveing email for confirmation_hash %v %v", hash, err)
+		logger.Errorf("error retrieving email for confirmation_hash %v %v", hash, err)
 		utils.SetFlash(w, r, authSessionName, "Error: This confirmation link is invalid / outdated.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
