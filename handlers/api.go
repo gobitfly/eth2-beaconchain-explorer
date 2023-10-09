@@ -1172,6 +1172,11 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 }
 
 func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.SyncCommitteesStats, error) {
+	if epoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
+		// no sync committee duties before altair fork
+		return types.SyncCommitteesStats{}, nil
+	}
+
 	// collect aggregated sync committee stats from validator_stats table for all validators
 	var syncStats struct {
 		Participated int64 `db:"participated"`
@@ -1251,6 +1256,9 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			syncStats := utils.AddSyncStats(vs[:latestPeriodCount], res, nil)
 			// if latest returned period is the active one, add remaining scheduled slots
 			firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(syncCommitteeValidators[0].Period)
+			if firstEpochOfPeriod < utils.Config.Chain.ClConfig.AltairForkEpoch {
+				firstEpochOfPeriod = utils.Config.Chain.ClConfig.AltairForkEpoch
+			}
 			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
 			if lastEpochOfPeriod >= services.LatestEpoch() {
 				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
