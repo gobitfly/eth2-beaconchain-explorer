@@ -1031,6 +1031,7 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 		GROUP BY period`,
 		period,
 		utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod,
+		utils.Config.Chain.ClConfig.AltairForkEpoch,
 		pq.Array(validators),
 	)
 	if err != nil {
