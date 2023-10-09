@@ -1327,7 +1327,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 
 	// check if email change request is ratelimited
 	now := time.Now()
-	if userData.ConfirmTs != nil && (*userData.ConfirmTs).Add(authConfirmEmailRateLimit).After(now) {
+	if userData.ConfirmTs != nil && userData.ConfirmTs.Add(authConfirmEmailRateLimit).After(now) {
 		session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1348,7 +1348,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(userData.Password), []byte(formPassword))
 	if err != nil {
-		session.AddFlash("Error: Invalid email or password!")
+		session.AddFlash("Error: Invalid credentials!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -1371,7 +1371,14 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	emailExists := false
-	db.FrontendWriterDB.Get(&emailExists, "EXISTS (SELECT email FROM users WHERE email = $1)", newEmail)
+	err = db.FrontendWriterDB.Get(&emailExists, "SELECT EXISTS (SELECT email FROM users WHERE email = $1)", newEmail)
+	if err != nil {
+		utils.LogError(err, "error checking if email exists", 0, map[string]interface{}{"email": newEmail})
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
 
 	if emailExists {
 		session.AddFlash("Error: Email already exists, please choose a unique email")
@@ -1469,7 +1476,14 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	emailExists := false
-	db.FrontendWriterDB.Get(&emailExists, "EXISTS (SELECT email FROM users WHERE email = $1)", user.NewEmail)
+	err = db.FrontendWriterDB.Get(&emailExists, "SELECT EXISTS (SELECT email FROM users WHERE email = $1)", user.NewEmail)
+	if err != nil {
+		utils.LogError(err, "error checking if email exists", 0, map[string]interface{}{"email": user.NewEmail})
+		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	if emailExists {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)

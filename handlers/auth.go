@@ -21,8 +21,8 @@ import (
 )
 
 var authSessionName = "auth"
-var authResetEmailRateLimit = time.Second * 60 * 2
-var authConfirmEmailRateLimit = time.Second * 60 * 2
+var authResetEmailRateLimit = time.Minute
+var authConfirmEmailRateLimit = time.Minute
 var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please retry later"
 
 // Register handler renders a template that allows for the creation of a new user.
