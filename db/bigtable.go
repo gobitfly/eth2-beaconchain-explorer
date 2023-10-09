@@ -1421,7 +1421,7 @@ func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint
 
 	resMux := &sync.Mutex{}
 
-	filter := gcp_bigtable.LatestNFilter(1)
+	filter := gcp_bigtable.LatestNFilter(32)
 
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
