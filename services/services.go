@@ -1401,7 +1401,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		logrus.WithError(err).Error("error updating gas now history")
 	}
 
-	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ClCurrency, "USD")
+	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, "USD")
 	gpoData.Data.Currency = "USD"
 
 	// gpoData.RapidUSD = gpoData.Rapid * 21000 * params.GWei / params.Ether * usd

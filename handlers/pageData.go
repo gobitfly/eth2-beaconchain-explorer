@@ -578,11 +578,6 @@ func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
 							Icon:  "fa-money-bill-alt",
 						},
 						{
-							Label: "Profit Calculator",
-							Path:  "/calculator",
-							Icon:  "fa-calculator",
-						},
-						{
 							Label: "Block Viz",
 							Path:  "/vis",
 							Icon:  "fa-project-diagram",
