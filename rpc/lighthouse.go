@@ -433,14 +433,17 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				for validator, duty := range block.SyncDuties {
 					data.SyncDuties[types.Slot(block.Slot)][types.ValidatorIndex(validator)] = duty
 				}
-				for validator, attestedSlot := range block.AttestationDuties {
-					if data.AttestationDuties[types.Slot(attestedSlot)] == nil {
-						data.AttestationDuties[types.Slot(attestedSlot)] = make(map[types.ValidatorIndex][]types.Slot)
+				for validator, attestedSlots := range block.AttestationDuties {
+
+					for _, attestedSlot := range attestedSlots {
+						if data.AttestationDuties[types.Slot(attestedSlot)] == nil {
+							data.AttestationDuties[types.Slot(attestedSlot)] = make(map[types.ValidatorIndex][]types.Slot)
+						}
+						if data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] == nil {
+							data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = make([]types.Slot, 0, 10)
+						}
+						data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
 					}
-					if data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] == nil {
-						data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = make([]types.Slot, 0, 10)
-					}
-					data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
 				}
 				mux.Unlock()
 			}
@@ -472,9 +475,11 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 				data.FutureBlocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 
 				// fill out performed attestation duties
-				for validator, attestedSlot := range block.AttestationDuties {
-					if attestedSlot < types.Slot((epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch) {
-						data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
+				for validator, attestedSlots := range block.AttestationDuties {
+					for _, attestedSlot := range attestedSlots {
+						if attestedSlot < types.Slot((epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch) {
+							data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(data.AttestationDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
+						}
 					}
 				}
 				mux.Unlock()
@@ -723,7 +728,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		SignedBLSToExecutionChange: make([]*types.SignedBLSToExecutionChange, len(parsedBlock.Message.Body.SignedBLSToExecutionChange)),
 		BlobKZGCommitments:         make([][]byte, len(parsedBlock.Message.Body.BlobKZGCommitments)),
 		BlobKZGProofs:              make([][]byte, len(parsedBlock.Message.Body.BlobKZGCommitments)),
-		AttestationDuties:          make(map[types.ValidatorIndex]types.Slot),
+		AttestationDuties:          make(map[types.ValidatorIndex][]types.Slot),
 		SyncDuties:                 make(map[types.ValidatorIndex]bool),
 	}
 
@@ -944,7 +949,12 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 				}
 				a.Attesters = append(a.Attesters, validator)
 
-				block.AttestationDuties[types.ValidatorIndex(validator)] = types.Slot(a.Data.Slot)
+				if block.AttestationDuties[types.ValidatorIndex(validator)] == nil {
+					block.AttestationDuties[types.ValidatorIndex(validator)] = []types.Slot{types.Slot(a.Data.Slot)}
+				} else {
+					block.AttestationDuties[types.ValidatorIndex(validator)] = append(block.AttestationDuties[types.ValidatorIndex(validator)], types.Slot(a.Data.Slot))
+				}
+
 			}
 		}
 
