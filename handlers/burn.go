@@ -24,7 +24,7 @@ func Burn(w http.ResponseWriter, r *http.Request) {
 
 	currency := GetCurrency(r)
 
-	if currency == utils.Config.Frontend.ClCurrency {
+	if currency == utils.Config.Frontend.ElCurrency {
 		currency = "USD"
 	}
 
