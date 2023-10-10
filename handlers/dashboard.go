@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"html/template"
 	"math"
-	"math/big"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -313,7 +312,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
+func getNextWithdrawalRow(queryValidators []uint64, currency string) ([][]interface{}, error) {
 	if len(queryValidators) == 0 {
 		return nil, nil
 	}
@@ -440,7 +439,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), utils.Config.Frontend.ElCurrency, 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false))),
 	})
 
 	return nextData, nil
@@ -661,7 +660,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 	var tableData [][]interface{}
 
 	// check if there is a NextWithdrawal and append
-	NextWithdrawalRow, err := getNextWithdrawalRow(validatorIndices)
+	NextWithdrawalRow, err := getNextWithdrawalRow(validatorIndices, reqCurrency)
 	if err != nil {
 		utils.LogError(err, "error calculating next withdrawal row", 0, errFieldMap)
 		tableData = make([][]interface{}, 0, len(withdrawals))

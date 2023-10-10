@@ -487,22 +487,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 					}
 
-					var withdrawalAmont uint64
+					var withdrawalAmount uint64
 					if isFullWithdrawal {
-						withdrawalAmont = validatorPageData.CurrentBalance
+						withdrawalAmount = validatorPageData.CurrentBalance
 					} else {
-						withdrawalAmont = validatorPageData.CurrentBalance - utils.Config.Chain.ClConfig.MaxEffectiveBalance
+						withdrawalAmount = validatorPageData.CurrentBalance - utils.Config.Chain.ClConfig.MaxEffectiveBalance
 					}
 
 					if latestEpoch == lastWithdrawalsEpoch {
-						withdrawalAmont = 0
+						withdrawalAmount = 0
 					}
 					tableData = append(tableData, []interface{}{
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmont, currency, 6, true, false, false))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
