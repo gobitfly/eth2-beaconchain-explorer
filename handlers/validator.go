@@ -1988,7 +1988,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// spew.Dump(syncDuties[validatorIndex])
 		// Search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
 		slotsRange := slots[endIndex : startIndex+1]
 
