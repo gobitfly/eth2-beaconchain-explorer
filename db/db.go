@@ -15,13 +15,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	"github.com/patrickmn/go-cache"
 	"github.com/pressly/goose/v3"
 	prysm_deposit "github.com/prysmaticlabs/prysm/v3/contracts/deposit"
 	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
@@ -42,9 +40,6 @@ var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
 
 var logger = logrus.StandardLogger().WithField("module", "db")
-
-var epochsCache = cache.New(time.Hour, time.Minute)
-var saveValidatorsMux = &sync.Mutex{}
 
 var farFutureEpoch = uint64(18446744073709551615)
 var maxSqlNumber = uint64(9223372036854775807)
@@ -958,13 +953,13 @@ func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client) e
 	return nil
 }
 
-func SaveGraffitiwall(block *types.Block) error {
+func saveGraffitiwall(block *types.Block, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_graffitiwall").Observe(time.Since(start).Seconds())
 	}()
 
-	stmtGraffitiwall, err := WriterDb.Prepare(`
+	stmtGraffitiwall, err := tx.Prepare(`
 		INSERT INTO graffitiwall (
             x,
             y,
@@ -1324,31 +1319,6 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 	return tx.Commit()
 }
 
-func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sqlx.Tx) error {
-	start := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_save_proposal_assignments").Observe(time.Since(start).Seconds())
-	}()
-
-	stmt, err := tx.Prepare(`
-		INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (epoch, validatorindex, proposerslot) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for slot, validator := range assignments {
-		_, err := stmt.Exec(epoch, validator, slot, 0)
-		if err != nil {
-			return fmt.Errorf("error executing save validator proposal assignment statement: %w", err)
-		}
-	}
-
-	return nil
-}
-
 func GetRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.Hash]types.RelaysData, error) {
 	var execBlockHashes [][]byte
 	var relaysData []types.RelaysData
@@ -1701,6 +1671,14 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %w", b.Slot, err)
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposalAssignments")
+
+			// save the graffitiwall data of the block the the db
+			t = time.Now()
+			err = saveGraffitiwall(b, tx)
+			if err != nil {
+				return fmt.Errorf("error saving graffitiwall data to the db: %v", err)
+			}
+			blockLog.WithField("duration", time.Since(t)).Tracef("saveGraffitiwall")
 
 			blockLog.Infof("! export of block completed, took %v", time.Since(start))
 		}

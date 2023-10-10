@@ -7,7 +7,7 @@
         "cl_client_type": "lighthouse",
         "cl_client_image": "sigp/lighthouse:latest",
         "cl_client_log_level": "",
-        "beacon_extra_params": [],
+        "beacon_extra_params": ["--reconstruct-historic-states"],
         "el_extra_params": ["--http.api='admin,eth,net,debug,txpool' --syncmode full --gcmode archive"],
         "validator_extra_params": [],
         "builder_network_params": null,

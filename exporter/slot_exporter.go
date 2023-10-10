@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"bytes"
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
@@ -11,47 +12,54 @@ import (
 	"strings"
 )
 
-func StartSlotExporter(client rpc.Client) error {
-	// next get all slots we currently have in the database
-	dbSlots, err := db.GetAllSlots()
-	if err != nil {
-		return fmt.Errorf("error retrieving all db slots: %w", err)
-	}
+func RunSlotExporter(client rpc.Client, firstRun bool) error {
 
-	lastDbSlot := uint64(0)
-	for slotIndex := 1; slotIndex < len(dbSlots); slotIndex++ {
-		previousSlot := dbSlots[slotIndex-1]
-		currentSlot := dbSlots[slotIndex]
+	if firstRun {
+		// next get all slots we currently have in the database
+		dbSlots, err := db.GetAllSlots()
+		if err != nil {
+			return fmt.Errorf("error retrieving all db slots: %w", err)
+		}
 
-		if previousSlot.Slot != currentSlot.Slot-1 {
-			logger.Info("slots between %v and %v are missing, exporting them", previousSlot.Slot, currentSlot.Slot)
-			for slot := previousSlot.Slot + 1; slot <= currentSlot.Slot-1; slot++ {
-				err := ExportSlot(client, slot, false)
+		for slotIndex := 1; slotIndex < len(dbSlots); slotIndex++ {
+			previousSlot := dbSlots[slotIndex-1]
+			currentSlot := dbSlots[slotIndex]
 
-				if err != nil {
-					return fmt.Errorf("error exporting slot %v: %w", slot, err)
+			if previousSlot.Slot != currentSlot.Slot-1 {
+				logger.Info("slots between %v and %v are missing, exporting them", previousSlot.Slot, currentSlot.Slot)
+				for slot := previousSlot.Slot + 1; slot <= currentSlot.Slot-1; slot++ {
+					err := ExportSlot(client, slot, false)
+
+					if err != nil {
+						return fmt.Errorf("error exporting slot %v: %w", slot, err)
+					}
 				}
 			}
 		}
 	}
 
-	if len(dbSlots) != 0 {
-		lastDbSlot = dbSlots[len(dbSlots)-1].Slot
-	}
-
 	// at this point we know that we have a coherent list of slots in the database without any gaps
 	// get the current chain head
+
 	head, err := client.GetChainHead()
 
 	if err != nil {
 		return fmt.Errorf("error retrieving chain head: %w", err)
 	}
 
-	if len(dbSlots) == 0 {
-		logger.Infof("db is empty, export genesis slot")
-		err := ExportSlot(client, 0, utils.EpochOfSlot(0) == head.HeadEpoch)
-		if err != nil {
-			return fmt.Errorf("error exporting slot %v: %w", 0, err)
+	lastDbSlot := uint64(0)
+	err = db.WriterDb.Get(&lastDbSlot, "SELECT slot FROM blocks ORDER BY slot DESC limit 1")
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			logger.Infof("db is empty, export genesis slot")
+			err := ExportSlot(client, 0, utils.EpochOfSlot(0) == head.HeadEpoch)
+			if err != nil {
+				return fmt.Errorf("error exporting slot %v: %w", 0, err)
+			}
+			lastDbSlot = 0
+		} else {
+			return fmt.Errorf("error retrieving last slot from the db: %w", err)
 		}
 	}
 
@@ -82,27 +90,38 @@ func StartSlotExporter(client rpc.Client) error {
 		nodeSlotFinalized := dbSlot.Slot <= head.FinalizedSlot
 
 		if nodeSlotFinalized != dbSlot.Finalized {
-			// block has finalized, mark it in the db
+			// slot has finalized, mark it in the db
 			if header != nil && bytes.Equal(dbSlot.BlockRoot, utils.MustParseHex(header.Data.Root)) {
-				// no reorg happened, simply mark the block as final
-				logger.Infof("setting block %v as finalized (proposed)", dbSlot.Slot)
+				// no reorg happened, simply mark the slot as final
+				logger.Infof("setting slot %v as finalized (proposed)", dbSlot.Slot)
 				err := db.SetSlotFinalizationAndStatus(dbSlot.Slot, nodeSlotFinalized, dbSlot.Status)
 				if err != nil {
-					return fmt.Errorf("error setting block %v as finalized (proposed): %w", dbSlot.Slot, err)
+					return fmt.Errorf("error setting slot %v as finalized (proposed): %w", dbSlot.Slot, err)
 				}
 			} else if header == nil && len(dbSlot.BlockRoot) < 32 {
-				// no reorg happened, mark the block as missed
-				logger.Infof("setting block %v as finalized (missed)", dbSlot.Slot)
+				// no reorg happened, mark the slot as missed
+				logger.Infof("setting slot %v as finalized (missed)", dbSlot.Slot)
 				err := db.SetSlotFinalizationAndStatus(dbSlot.Slot, nodeSlotFinalized, "2")
 				if err != nil {
-					return fmt.Errorf("error setting block %v as finalized (missed): %w", dbSlot.Slot, err)
+					return fmt.Errorf("error setting slot %v as finalized (missed): %w", dbSlot.Slot, err)
 				}
 			} else if header == nil && len(dbSlot.BlockRoot) == 32 {
-				// block has been orphaned, mark the block as orphaned
-				logger.Infof("setting block %v as finalized (orphaned)", dbSlot.Slot)
+				// slot has been orphaned, mark the slot as orphaned
+				logger.Infof("setting slot %v as finalized (orphaned)", dbSlot.Slot)
 				err := db.SetSlotFinalizationAndStatus(dbSlot.Slot, nodeSlotFinalized, "3")
 				if err != nil {
 					return fmt.Errorf("error setting block %v as finalized (orphaned): %w", dbSlot.Slot, err)
+				}
+			} else if header != nil && !bytes.Equal(utils.MustParseHex(header.Data.Root), dbSlot.BlockRoot) {
+				// we have a different block root for the slot in the db, mark the currently present one as orphaned and write the new one
+				logger.Infof("setting slot %v as orphaned and exporting new slot", dbSlot.Slot)
+				err := db.SetSlotFinalizationAndStatus(dbSlot.Slot, nodeSlotFinalized, "3")
+				if err != nil {
+					return fmt.Errorf("error setting block %v as finalized (orphaned): %w", dbSlot.Slot, err)
+				}
+				err = ExportSlot(client, dbSlot.Slot, utils.EpochOfSlot(dbSlot.Slot) == head.HeadEpoch)
+				if err != nil {
+					return fmt.Errorf("error exporting slot %v: %w", dbSlot.Slot, err)
 				}
 			}
 
@@ -121,11 +140,11 @@ func StartSlotExporter(client rpc.Client) error {
 					}
 				}
 			}
-		} else { // check if the slot has been proposed in the meantime
-			if len(dbSlot.BlockRoot) < 32 && header != nil { // we have no block in the db, but the node has a block, export it
+		} else { // check if a late slot has been proposed in the meantime
+			if len(dbSlot.BlockRoot) < 32 && header != nil { // we have no slot in the db, but the node has a slot, export it
 				err := ExportSlot(client, dbSlot.Slot, utils.EpochOfSlot(dbSlot.Slot) == head.HeadEpoch)
 				if err != nil {
-					return fmt.Errorf("error exporting block %v: %w", dbSlot.Slot, err)
+					return fmt.Errorf("error exporting slot %v: %w", dbSlot.Slot, err)
 				}
 			}
 		}
@@ -139,6 +158,8 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 
 	logger.Infof("exporting slot %v", slot)
 
+	// retrieve the data for the slot from the node
+	// the first slot of an epoch will also contain all validator duties for the whole epoch
 	block, err := client.GetBlockBySlot(slot)
 	if err != nil {
 		return fmt.Errorf("error retrieving data for slot %v: %w", slot, err)
@@ -146,6 +167,8 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 
 	if block.EpochAssignments != nil { // export the epoch assignments as they are included in the first slot of an epoch
 		epoch := slot / utils.Config.Chain.ClConfig.SlotsPerEpoch
+
+		// prepare the duties for export to bigtable
 		syncDutiesEpoch := make(map[types.Slot]map[types.ValidatorIndex]bool)
 		attDutiesEpoch := make(map[types.Slot]map[types.ValidatorIndex][]types.Slot)
 		for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch-1; slot++ {
@@ -172,28 +195,33 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 			attDutiesEpoch[types.Slot(attestedSlot)][types.ValidatorIndex(validatorIndex)] = []types.Slot{}
 		}
 
+		// save all duties to bigtable
 		err = db.BigtableClient.SaveAttestationDuties(attDutiesEpoch)
 		if err != nil {
-			return fmt.Errorf("error exporting attestation assignments to bigtable for block %v: %v", block.Slot, err)
+			return fmt.Errorf("error exporting attestation assignments to bigtable for slot %v: %v", block.Slot, err)
 		}
 		err = db.BigtableClient.SaveSyncComitteeDuties(syncDutiesEpoch)
 		if err != nil {
-			return fmt.Errorf("error exporting sync committee assignments to bigtable for block %v: %v", block.Slot, err)
+			return fmt.Errorf("error exporting sync committee assignments to bigtable for slot %v: %v", block.Slot, err)
 		}
 		err = db.BigtableClient.SaveProposalAssignments(epoch, block.EpochAssignments.ProposerAssignments)
 		if err != nil {
 			return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
 		}
+
+		// save the validator balances to bigtable
 		err = db.BigtableClient.SaveValidatorBalances(epoch, block.Validators)
 		if err != nil {
-			return fmt.Errorf("error exporting validator balances to bigtable for block %v: %v", block.Slot, err)
+			return fmt.Errorf("error exporting validator balances to bigtable for slot %v: %v", block.Slot, err)
 		}
 
+		// save the epoch metadata to the database
 		err = db.SaveEpoch(epoch, block.Validators, client)
 		if err != nil {
 			return fmt.Errorf("error saving epoch data: %w", err)
 		}
 
+		// retrieve & update the epoch participation stats
 		if epoch > 0 {
 			epochParticipationStats, err := client.GetValidatorParticipation(epoch - 1)
 			if err != nil {
@@ -208,12 +236,14 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 			}
 		}
 
+		// if we are exporting the head epoch, update the validator db table
 		if isHeadEpoch {
 			err = db.SaveValidators(epoch, block.Validators, client, 10000)
 			if err != nil {
 				return fmt.Errorf("error saving validators for epoch %v: %w", epoch, err)
 			}
 
+			// also update the queue deposit table once every epoch
 			err = db.UpdateQueueDeposits()
 			if err != nil {
 				return fmt.Errorf("error updating queue deposits cache: %w", err)
@@ -221,7 +251,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 		}
 	}
 
-	// save the duties to bigtable
+	// for the slot itself start by preparing the duties for export to bigtable
 	syncDuties := make(map[types.Slot]map[types.ValidatorIndex]bool)
 	syncDuties[types.Slot(block.Slot)] = make(map[types.ValidatorIndex]bool)
 
@@ -239,23 +269,27 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 		}
 		attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
 	}
+
+	// save sync & attestation duties to bigtable
 	err = db.BigtableClient.SaveAttestationDuties(attDuties)
 	if err != nil {
-		return fmt.Errorf("error exporting attestations to bigtable for block %v: %v", block.Slot, err)
+		return fmt.Errorf("error exporting attestations to bigtable for slot %v: %v", block.Slot, err)
 	}
 	err = db.BigtableClient.SaveSyncComitteeDuties(syncDuties)
 	if err != nil {
-		return fmt.Errorf("error exporting sync committee duties to bigtable for block %v: %v", block.Slot, err)
+		return fmt.Errorf("error exporting sync committee duties to bigtable for slot %v: %v", block.Slot, err)
+	}
+
+	// save the proposal to bigtable
+	err = db.BigtableClient.SaveProposal(block)
+	if err != nil {
+		return fmt.Errorf("error exporting proposal to bigtable for slot %v: %v", block.Slot, err)
 	}
 
 	// save the block data to the db
-	err = db.SaveGraffitiwall(block)
-	if err != nil {
-		logger.Errorf("error saving block to the db: %v", err)
-	}
 	err = db.SaveBlock(block, false)
 	if err != nil {
-		logger.Errorf("error saving block to the db: %v", err)
+		logger.Errorf("error saving slot to the db: %v", err)
 	}
 
 	return nil

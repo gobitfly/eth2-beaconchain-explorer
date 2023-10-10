@@ -1182,31 +1182,22 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 		return nil, err
 	}
 
-	if LighthouseLatestHeadEpoch == 0 || epoch >= LighthouseLatestHeadEpoch-1 {
-		// update LighthouseLatestHeadEpoch to make sure we are continuing with the latest data
-		// we need to check when epoch = head and epoch head - 1 so our following logic acts correctly when we are close to the head
-		logger.Infof("Updating LighthouseLatestHeadEpoch to %v", head.HeadEpoch)
-		LighthouseLatestHeadEpoch = head.HeadEpoch
-	}
-
-	if epoch > LighthouseLatestHeadEpoch {
+	if epoch > head.HeadEpoch {
 		return nil, fmt.Errorf("epoch %v is newer than the latest head %v", epoch, LighthouseLatestHeadEpoch)
 	}
-	if epoch == LighthouseLatestHeadEpoch {
+	if epoch == head.HeadEpoch {
 		// participation stats are calculated at the end of an epoch,
 		// making it impossible to retrieve stats of an currently ongoing epoch
 		return nil, fmt.Errorf("epoch %v can't be retrieved as it hasn't finished yet", epoch)
 	}
 
 	request_epoch := epoch
-	if epoch < LighthouseLatestHeadEpoch-1 && LighthouseLatestHeadEpoch > 0 {
-		// we offset the request epoch by one for older epochs so we get the complete participation numbers
-		// this is required as votes can be include up to one epoch after their intended inclusion
-		// we also have to make sure we don't attempt to request the current head epoch,
-		// since requesting it is impossible – see above error about it
-		// ref: https://lighthouse-book.sigmaprime.io/validator-inclusion.html#global
+
+	if epoch+1 < head.HeadEpoch {
 		request_epoch += 1
 	}
+
+	logger.Infof("requesting validator inclusion data for epoch %v", request_epoch)
 
 	resp, err := lc.get(fmt.Sprintf("%s/lighthouse/validator_inclusion/%d/global", lc.endpoint, request_epoch))
 	if err != nil {
