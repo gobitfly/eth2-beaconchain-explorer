@@ -65,6 +65,7 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 		setPrice(elCurrency, elCurrency, 1)
 		setPrice(clCurrency, clCurrency, 1)
 		logger.Warnf("chainId not supported for fetching prices: %v", chainId)
+		runOnce.Do(func() { runOnceWg.Done() })
 		return
 	}
 
@@ -188,6 +189,7 @@ func updatePrices() {
 	setPrice(elCurrency, elCurrency, 1)
 	setPrice(clCurrency, clCurrency, 1)
 	// fmt.Printf("prices: %+v\n", prices)
+
 	runOnce.Do(func() { runOnceWg.Done() })
 }
 
