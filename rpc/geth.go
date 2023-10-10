@@ -382,12 +382,12 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 
 	oracle, err := oneinchoracle.NewOneInchOracleByChainID(client.GetChainID(), client.ethClient)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error initializing oneinchoracle.NewOneInchOracleByChainID: %w", err)
 	}
 
 	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting token-contract: erc20.NewErc20: %w", err)
 	}
 
 	g := new(errgroup.Group)
@@ -404,7 +404,7 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 				return nil
 			}
 
-			return fmt.Errorf("error retrieving symbol: %w", err)
+			return fmt.Errorf("error retrieving token symbol: %w", err)
 		}
 
 		ret.Symbol = symbol
@@ -414,7 +414,7 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	g.Go(func() error {
 		totalSupply, err := contract.TotalSupply(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving total supply: %w", err)
+			return fmt.Errorf("error retrieving token total supply: %w", err)
 		}
 		ret.TotalSupply = totalSupply.Bytes()
 		return nil
@@ -423,7 +423,7 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	g.Go(func() error {
 		decimals, err := contract.Decimals(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving decimals: %w", err)
+			return fmt.Errorf("error retrieving token decimals: %w", err)
 		}
 		ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		return nil

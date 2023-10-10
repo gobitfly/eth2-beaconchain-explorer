@@ -54,6 +54,7 @@ func init() {
 }
 
 func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string) {
+	fmt.Printf("DEBUG: price.Init: %v %v %v %v\n", chainId, eth1Endpoint, clCurrencyParam, elCurrencyParam)
 	if atomic.AddUint64(&didInit, 1) > 1 {
 		logrus.Warnf("price.Init called multiple times")
 		return
