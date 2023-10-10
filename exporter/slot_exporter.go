@@ -15,12 +15,13 @@ import (
 func RunSlotExporter(client rpc.Client, firstRun bool) error {
 
 	if firstRun {
-		// next get all slots we currently have in the database
+		// get all slots we currently have in the database
 		dbSlots, err := db.GetAllSlots()
 		if err != nil {
 			return fmt.Errorf("error retrieving all db slots: %w", err)
 		}
 
+		// export any gaps we might have (for whatever reason)
 		for slotIndex := 1; slotIndex < len(dbSlots); slotIndex++ {
 			previousSlot := dbSlots[slotIndex-1]
 			currentSlot := dbSlots[slotIndex]
