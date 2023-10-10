@@ -188,7 +188,6 @@ func updatePrices() {
 	}
 	setPrice(elCurrency, elCurrency, 1)
 	setPrice(clCurrency, clCurrency, 1)
-	// fmt.Printf("prices: %+v\n", prices)
 
 	runOnce.Do(func() { runOnceWg.Done() })
 }
