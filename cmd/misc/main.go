@@ -171,14 +171,15 @@ func main() {
 		logrus.Infof("bigtable schema initialization completed")
 	case "epoch-export":
 		logrus.Infof("exporting epochs %v - %v", opts.StartEpoch, opts.EndEpoch)
-
 		for epoch := opts.StartEpoch; epoch <= opts.EndEpoch; epoch++ {
-			err = exporter.ExportEpoch(epoch, rpcClient)
+			for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
+				err = exporter.ExportSlot(rpcClient, slot, false)
 
-			if err != nil {
-				logrus.Errorf("error exporting epoch: %v", err)
+				if err != nil {
+					logrus.Errorf("error exporting slot %v: %v", slot, err)
+				}
+				logrus.Printf("finished export for slot %v", slot)
 			}
-			logrus.Printf("finished export for epoch %v", epoch)
 		}
 	case "export-epoch-missed-slots":
 		logrus.Infof("exporting epochs with missed slots")
@@ -211,11 +212,14 @@ func main() {
 
 		logrus.Infof("Found %v epochs with missing slot status", len(epochs))
 		for _, epoch := range epochs {
-			err = exporter.ExportEpoch(epoch, rpcClient)
-			if err != nil {
-				logrus.Errorf("error exporting epoch: %v", err)
+			for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
+				err = exporter.ExportSlot(rpcClient, slot, false)
+
+				if err != nil {
+					logrus.Errorf("error exporting slot %v: %v", slot, err)
+				}
+				logrus.Printf("finished export for slot %v", slot)
 			}
-			logrus.Printf("finished export for epoch %v", epoch)
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)

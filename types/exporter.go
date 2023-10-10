@@ -141,7 +141,7 @@ type Block struct {
 	ExcessBlobGas              uint64
 	BlobKZGCommitments         [][]byte
 	BlobKZGProofs              [][]byte
-	AttestationDuties          map[ValidatorIndex]Slot
+	AttestationDuties          map[ValidatorIndex][]Slot
 	SyncDuties                 map[ValidatorIndex]bool
 	Finalized                  bool
 	EpochAssignments           *EpochAssignments

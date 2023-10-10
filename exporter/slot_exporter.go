@@ -260,14 +260,17 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 	}
 
 	attDuties := make(map[types.Slot]map[types.ValidatorIndex][]types.Slot)
-	for validator, attestedSlot := range block.AttestationDuties {
-		if attDuties[types.Slot(attestedSlot)] == nil {
-			attDuties[types.Slot(attestedSlot)] = make(map[types.ValidatorIndex][]types.Slot)
+	for validator, attestedSlots := range block.AttestationDuties {
+
+		for _, attestedSlot := range attestedSlots {
+			if attDuties[types.Slot(attestedSlot)] == nil {
+				attDuties[types.Slot(attestedSlot)] = make(map[types.ValidatorIndex][]types.Slot)
+			}
+			if attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] == nil {
+				attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = make([]types.Slot, 0, 10)
+			}
+			attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
 		}
-		if attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] == nil {
-			attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = []types.Slot{}
-		}
-		attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)] = append(attDuties[types.Slot(attestedSlot)][types.ValidatorIndex(validator)], types.Slot(block.Slot))
 	}
 
 	// save sync & attestation duties to bigtable
