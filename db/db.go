@@ -2382,7 +2382,7 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 		return 0, 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
 	}
 	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
-	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.Config.SlotsPerEpoch) + 1
+	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.ClConfig.SlotsPerEpoch) + 1
 
 	err = ReaderDb.Get(&res, `
 		WITH today AS (
