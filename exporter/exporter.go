@@ -48,13 +48,19 @@ func Start(client rpc.Client) error {
 	}
 
 	firstRun := true
+
+	minWaitTimeBetweenRuns := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
 	for {
+		start := time.Now()
 		err := RunSlotExporter(client, firstRun)
 		if err != nil {
 			logrus.Errorf("error during slot export run: %w", err)
 		}
-		time.Sleep(time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot))
 		logrus.Info("update run completed")
+		elapsed := time.Since(start)
+		if elapsed < minWaitTimeBetweenRuns {
+			time.Sleep(minWaitTimeBetweenRuns - elapsed)
+		}
 		firstRun = false
 	}
 	return nil

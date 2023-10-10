@@ -250,6 +250,8 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 				return fmt.Errorf("error updating queue deposits cache: %w", err)
 			}
 		}
+
+		// time.Sleep(time.Minute)
 	}
 
 	// for the slot itself start by preparing the duties for export to bigtable
@@ -295,6 +297,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 	if err != nil {
 		logger.Errorf("error saving slot to the db: %v", err)
 	}
+	// time.Sleep(time.Second)
 
 	return nil
 }
