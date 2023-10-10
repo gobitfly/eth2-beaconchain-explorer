@@ -2384,7 +2384,7 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
 	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.Config.SlotsPerEpoch) + 1
 
-	err = ReaderDb.Get(&count, `
+	err = ReaderDb.Get(&res, `
 		WITH today AS (
 			SELECT
 				COALESCE(SUM(w.amount), 0) as sum,
