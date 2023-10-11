@@ -1235,13 +1235,13 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 
 	if updates > 0 {
 		updateStart := time.Now()
-		logger.Infof("applying %v update queries", updates)
+		logger.Infof("applying %v validator table update queries", updates)
 		_, err = tx.Exec(queries.String())
 		if err != nil {
 			logger.Errorf("error executing validator update query: %v", err)
 			return err
 		}
-		logger.Infof("update completed, took %v", time.Since(updateStart))
+		logger.Infof("validator table update completed, took %v", time.Since(updateStart))
 	}
 
 	s := time.Now()

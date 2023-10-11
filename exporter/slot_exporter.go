@@ -135,7 +135,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 				epoch := utils.EpochOfSlot(dbSlot.Slot)
 				epochParticipationStats, err := client.GetValidatorParticipation(epoch - 1)
 				if err != nil {
-					logger.Printf("error retrieving epoch participation statistics: %v", err)
+					logger.Printf("error retrieving epoch participation statistics: %w", err)
 				} else {
 					logger.Printf("updating epoch %v with participation rate %v", epoch, epochParticipationStats.GlobalParticipationRate)
 					err := db.UpdateEpochStatus(epochParticipationStats)
@@ -161,7 +161,13 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 
 func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 
-	logger.Infof("exporting slot %v", slot)
+	isFirstSlotOfEpoch := slot%utils.Config.Chain.ClConfig.SlotsPerEpoch == 0
+
+	if isFirstSlotOfEpoch {
+		logger.Infof("exporting slot %v (epoch transition into epoch %v)", slot, utils.EpochOfSlot(slot))
+	} else {
+		logger.Infof("exporting slot %v", slot)
+	}
 	start := time.Now()
 
 	// retrieve the data for the slot from the node
@@ -192,7 +198,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 			attestedSlot, err := strconv.ParseUint(keySplit[0], 10, 64)
 
 			if err != nil {
-				return fmt.Errorf("error parsing attested slot from attestation key: %v", err)
+				return fmt.Errorf("error parsing attested slot from attestation key: %w", err)
 			}
 
 			if attDutiesEpoch[types.Slot(attestedSlot)] == nil {
@@ -208,21 +214,21 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 		g.Go(func() error {
 			err = db.BigtableClient.SaveAttestationDuties(attDutiesEpoch)
 			if err != nil {
-				return fmt.Errorf("error exporting attestation assignments to bigtable for slot %v: %v", block.Slot, err)
+				return fmt.Errorf("error exporting attestation assignments to bigtable for slot %v: %w", block.Slot, err)
 			}
 			return nil
 		})
 		g.Go(func() error {
 			err = db.BigtableClient.SaveSyncComitteeDuties(syncDutiesEpoch)
 			if err != nil {
-				return fmt.Errorf("error exporting sync committee assignments to bigtable for slot %v: %v", block.Slot, err)
+				return fmt.Errorf("error exporting sync committee assignments to bigtable for slot %v: %w", block.Slot, err)
 			}
 			return nil
 		})
 		g.Go(func() error {
 			err = db.BigtableClient.SaveProposalAssignments(epoch, block.EpochAssignments.ProposerAssignments)
 			if err != nil {
-				return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+				return fmt.Errorf("error exporting proposal assignments to bigtable: %w", err)
 			}
 			return nil
 		})
@@ -231,7 +237,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 		g.Go(func() error {
 			err = db.BigtableClient.SaveValidatorBalances(epoch, block.Validators)
 			if err != nil {
-				return fmt.Errorf("error exporting validator balances to bigtable for slot %v: %v", block.Slot, err)
+				return fmt.Errorf("error exporting validator balances to bigtable for slot %v: %w", block.Slot, err)
 			}
 			return nil
 		})
@@ -312,23 +318,23 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 	// save sync & attestation duties to bigtable
 	err = db.BigtableClient.SaveAttestationDuties(attDuties)
 	if err != nil {
-		return fmt.Errorf("error exporting attestations to bigtable for slot %v: %v", block.Slot, err)
+		return fmt.Errorf("error exporting attestations to bigtable for slot %v: %w", block.Slot, err)
 	}
 	err = db.BigtableClient.SaveSyncComitteeDuties(syncDuties)
 	if err != nil {
-		return fmt.Errorf("error exporting sync committee duties to bigtable for slot %v: %v", block.Slot, err)
+		return fmt.Errorf("error exporting sync committee duties to bigtable for slot %v: %w", block.Slot, err)
 	}
 
 	// save the proposal to bigtable
 	err = db.BigtableClient.SaveProposal(block)
 	if err != nil {
-		return fmt.Errorf("error exporting proposal to bigtable for slot %v: %v", block.Slot, err)
+		return fmt.Errorf("error exporting proposal to bigtable for slot %v: %w", block.Slot, err)
 	}
 
 	// save the block data to the db
 	err = db.SaveBlock(block, false)
 	if err != nil {
-		logger.Errorf("error saving slot to the db: %v", err)
+		logger.Errorf("error saving slot to the db: %w", err)
 	}
 	// time.Sleep(time.Second)
 
