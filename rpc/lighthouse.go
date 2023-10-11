@@ -806,7 +806,7 @@ func (lc *LighthouseClient) GetBlockBySlot(slot uint64) (*types.Block, error) {
 
 		if ok {
 			logger.Infof("retrieved slot %v (0x%x) from in memory cache", block.Slot, block.BlockRoot)
-			return nil, nil
+			return block, nil
 		} else {
 			logger.Errorf("unable to convert cached block to block type")
 		}
