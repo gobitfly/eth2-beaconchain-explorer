@@ -1679,8 +1679,6 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 				return fmt.Errorf("error saving graffitiwall data to the db: %v", err)
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("saveGraffitiwall")
-
-			blockLog.Infof("! export of block completed, took %v", time.Since(start))
 		}
 	}
 

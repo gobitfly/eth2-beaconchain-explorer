@@ -10,6 +10,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 func RunSlotExporter(client rpc.Client, firstRun bool) error {
@@ -27,7 +31,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 			currentSlot := dbSlots[slotIndex]
 
 			if previousSlot.Slot != currentSlot.Slot-1 {
-				logger.Info("slots between %v and %v are missing, exporting them", previousSlot.Slot, currentSlot.Slot)
+				logger.Infof("slots between %v and %v are missing, exporting them", previousSlot.Slot, currentSlot.Slot)
 				for slot := previousSlot.Slot + 1; slot <= currentSlot.Slot-1; slot++ {
 					err := ExportSlot(client, slot, false)
 
@@ -158,6 +162,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 
 	logger.Infof("exporting slot %v", slot)
+	start := time.Now()
 
 	// retrieve the data for the slot from the node
 	// the first slot of an epoch will also contain all validator duties for the whole epoch
@@ -167,6 +172,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 	}
 
 	if block.EpochAssignments != nil { // export the epoch assignments as they are included in the first slot of an epoch
+		logger.Infof("exporting duties & balances for epoch %v", utils.EpochOfSlot(slot))
 		epoch := slot / utils.Config.Chain.ClConfig.SlotsPerEpoch
 
 		// prepare the duties for export to bigtable
@@ -196,24 +202,59 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 			attDutiesEpoch[types.Slot(attestedSlot)][types.ValidatorIndex(validatorIndex)] = []types.Slot{}
 		}
 
+		g := errgroup.Group{}
+
 		// save all duties to bigtable
-		err = db.BigtableClient.SaveAttestationDuties(attDutiesEpoch)
-		if err != nil {
-			return fmt.Errorf("error exporting attestation assignments to bigtable for slot %v: %v", block.Slot, err)
-		}
-		err = db.BigtableClient.SaveSyncComitteeDuties(syncDutiesEpoch)
-		if err != nil {
-			return fmt.Errorf("error exporting sync committee assignments to bigtable for slot %v: %v", block.Slot, err)
-		}
-		err = db.BigtableClient.SaveProposalAssignments(epoch, block.EpochAssignments.ProposerAssignments)
-		if err != nil {
-			return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
-		}
+		g.Go(func() error {
+			err = db.BigtableClient.SaveAttestationDuties(attDutiesEpoch)
+			if err != nil {
+				return fmt.Errorf("error exporting attestation assignments to bigtable for slot %v: %v", block.Slot, err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			err = db.BigtableClient.SaveSyncComitteeDuties(syncDutiesEpoch)
+			if err != nil {
+				return fmt.Errorf("error exporting sync committee assignments to bigtable for slot %v: %v", block.Slot, err)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			err = db.BigtableClient.SaveProposalAssignments(epoch, block.EpochAssignments.ProposerAssignments)
+			if err != nil {
+				return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+			}
+			return nil
+		})
 
 		// save the validator balances to bigtable
-		err = db.BigtableClient.SaveValidatorBalances(epoch, block.Validators)
+		g.Go(func() error {
+			err = db.BigtableClient.SaveValidatorBalances(epoch, block.Validators)
+			if err != nil {
+				return fmt.Errorf("error exporting validator balances to bigtable for slot %v: %v", block.Slot, err)
+			}
+			return nil
+		})
+		// if we are exporting the head epoch, update the validator db table
+		if isHeadEpoch {
+			g.Go(func() error {
+				err = db.SaveValidators(epoch, block.Validators, client, 10000)
+				if err != nil {
+					return fmt.Errorf("error saving validators for epoch %v: %w", epoch, err)
+				}
+
+				// also update the queue deposit table once every epoch
+				err = db.UpdateQueueDeposits()
+				if err != nil {
+					return fmt.Errorf("error updating queue deposits cache: %w", err)
+				}
+				return nil
+			})
+		}
+
+		err := g.Wait()
 		if err != nil {
-			return fmt.Errorf("error exporting validator balances to bigtable for slot %v: %v", block.Slot, err)
+			return err
 		}
 
 		// save the epoch metadata to the database
@@ -236,21 +277,6 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 				}
 			}
 		}
-
-		// if we are exporting the head epoch, update the validator db table
-		if isHeadEpoch {
-			err = db.SaveValidators(epoch, block.Validators, client, 10000)
-			if err != nil {
-				return fmt.Errorf("error saving validators for epoch %v: %w", epoch, err)
-			}
-
-			// also update the queue deposit table once every epoch
-			err = db.UpdateQueueDeposits()
-			if err != nil {
-				return fmt.Errorf("error updating queue deposits cache: %w", err)
-			}
-		}
-
 		// time.Sleep(time.Minute)
 	}
 
@@ -298,6 +324,13 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 		logger.Errorf("error saving slot to the db: %v", err)
 	}
 	// time.Sleep(time.Second)
+
+	logger.WithFields(
+		logrus.Fields{
+			"slot":      block.Slot,
+			"blockRoot": fmt.Sprintf("%x", block.BlockRoot),
+		},
+	).Infof("! export of slot completed, took %v", time.Since(start))
 
 	return nil
 }

@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-ALTER TABLE blocks ADD COLUMN finalized bool not null default false;
+ALTER TABLE blocks ADD COLUMN IF NOT EXISTS finalized bool not null default false;
 -- +goose StatementEnd
 
 -- +goose Down

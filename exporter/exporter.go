@@ -3,6 +3,7 @@ package exporter
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"time"
@@ -62,6 +63,8 @@ func Start(client rpc.Client) error {
 			time.Sleep(minWaitTimeBetweenRuns - elapsed)
 		}
 		firstRun = false
+
+		services.ReportStatus("epochExporter", "Running", nil)
 	}
 	return nil
 }
