@@ -682,9 +682,27 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Frontend.Keywords = "open source ethereum block explorer, ethereum block explorer, beacon chain explorer, ethereum blockchain explorer"
 	}
 
+	if cfg.Chain.Id != 0 {
+		switch cfg.Chain.Name {
+		case "mainnet", "ethereum":
+			cfg.Chain.Id = 1
+		case "prater", "goerli":
+			cfg.Chain.Id = 5
+		case "holesky":
+			cfg.Chain.Id = 17000
+		case "sepolia":
+			cfg.Chain.Id = 11155111
+		case "gnosis":
+			cfg.Chain.Id = 100
+		}
+	}
+
+	// we check for maching chain id just for safety
 	if cfg.Chain.Id != 0 && cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID {
 		logrus.Fatalf("cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID: %v != %v", cfg.Chain.Id, cfg.Chain.ClConfig.DepositChainID)
 	}
+
+	cfg.Chain.Id = cfg.Chain.ClConfig.DepositChainID
 
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
