@@ -768,8 +768,6 @@ func SaveBlock(block *types.Block, forceSlotUpdate bool) error {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
 	defer tx.Rollback()
-
-	logger.Infof("exporting block data")
 	err = saveBlocks(blocksMap, tx, forceSlotUpdate)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)

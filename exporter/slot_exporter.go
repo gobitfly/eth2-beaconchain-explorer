@@ -252,6 +252,18 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 			})
 		}
 
+		var epochParticipationStats *types.ValidatorParticipation
+		if epoch > 0 {
+			g.Go(func() error {
+				// retrieve the epoch participation stats
+				var err error
+				epochParticipationStats, err = client.GetValidatorParticipation(epoch - 1)
+				if err != nil {
+					return fmt.Errorf("error retrieving epoch participation statistics: %w", err)
+				}
+				return nil
+			})
+		}
 		err := g.Wait()
 		if err != nil {
 			return err
@@ -263,20 +275,15 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 			return fmt.Errorf("error saving epoch data: %w", err)
 		}
 
-		// retrieve & update the epoch participation stats
-		if epoch > 0 {
-			epochParticipationStats, err := client.GetValidatorParticipation(epoch - 1)
-			if err != nil {
-				logger.Printf("error retrieving epoch participation statistics: %v", err)
-			} else {
-				logger.Printf("updating epoch %v with participation rate %v", epoch, epochParticipationStats.GlobalParticipationRate)
-				err := db.UpdateEpochStatus(epochParticipationStats)
+		if epoch > 0 && epochParticipationStats != nil {
+			logger.Printf("updating epoch %v with participation rate %v", epoch, epochParticipationStats.GlobalParticipationRate)
+			err := db.UpdateEpochStatus(epochParticipationStats)
 
-				if err != nil {
-					return err
-				}
+			if err != nil {
+				return err
 			}
 		}
+
 		// time.Sleep(time.Minute)
 	}
 

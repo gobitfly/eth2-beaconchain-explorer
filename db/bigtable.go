@@ -687,7 +687,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 
 	if len(mutsInclusionSlot) > 0 {
 		// logger.Infof("exporting remaining %v attestation mutations", len(mutsInclusionSlot))
-		attstart := time.Now()
+		// attstart := time.Now()
 		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 		if err != nil {
 			return err
@@ -695,7 +695,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		for _, err := range errs {
 			return err
 		}
-		logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
+		// logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
 	}
 
 	if mutLastAttestationSlotCount > 0 {
