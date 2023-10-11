@@ -129,6 +129,10 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	filterByState := q.Get("filterByState")
 	var qryStateFilter string
 	switch filterByState {
+	case "online":
+		qryStateFilter = "WHERE validators.status LIKE '%online'"
+	case "offline":
+		qryStateFilter = "WHERE validators.status LIKE '%offline'"
 	case "pending":
 		qryStateFilter = "WHERE validators.status = 'pending'"
 	case "active":
