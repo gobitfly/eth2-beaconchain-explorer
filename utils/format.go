@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/shopspring/decimal"
@@ -254,9 +255,11 @@ func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 }
 
 // FormatBlockStatus will return an html status for a block.
-func FormatBlockStatus(status uint64) template.HTML {
+func FormatBlockStatus(status, slot uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
-	if status == 0 {
+	if status == 0 && SlotToTime(slot).Before(time.Now().Add(time.Minute*-1)) {
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Missed</span>`
+	} else if status == 0 {
 		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
 	} else if status == 1 {
 		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Proposed</span>`
@@ -270,9 +273,11 @@ func FormatBlockStatus(status uint64) template.HTML {
 }
 
 // FormatBlockStatusShort will return an html status for a block.
-func FormatBlockStatusShort(status uint64) template.HTML {
+func FormatBlockStatusShort(status, slot uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
-	if status == 0 {
+	if status == 0 && SlotToTime(slot).Before(time.Now().Add(time.Minute*-1)) {
+		return `<span title="Scheduled" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Miss.</span>`
+	} else if status == 0 {
 		return `<span title="Scheduled" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
 	} else if status == 1 {
 		return `<span title="Proposed" data-toggle="tooltip" class="mx-1 badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Prop.</span>`

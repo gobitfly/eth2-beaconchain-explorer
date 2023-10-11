@@ -191,7 +191,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		status := template.HTML("-")
 		proposer := template.HTML("-")
 		if sData != nil {
-			status = utils.FormatBlockStatus(sData.Status)
+			status = utils.FormatBlockStatus(sData.Status, sData.Slot)
 			proposer = utils.FormatValidatorWithName(sData.Proposer, sData.ProposerName)
 
 			posActive := true

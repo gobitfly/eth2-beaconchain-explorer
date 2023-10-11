@@ -850,7 +850,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	for _, block := range data.Blocks {
-		block.StatusFormatted = utils.FormatBlockStatus(block.Status)
+		block.StatusFormatted = utils.FormatBlockStatus(block.Status, block.Slot)
 		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
 

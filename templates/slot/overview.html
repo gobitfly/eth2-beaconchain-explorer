@@ -65,7 +65,7 @@
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
         <div class="col-md-10">
           {{ if ne .Slot 0 }}
-            {{ formatBlockStatus .Status }}
+            {{ formatBlockStatus .Status .Slot }}
 
             {{ if .EpochFinalized }}
               {{ if eq .Status 1 }}
