@@ -3405,23 +3405,24 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		}, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
 	cacheKey := fmt.Sprintf("%s:ERC20:%#x", bigtable.chainId, address)
 	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*1, new(types.ERC20Metadata)); err == nil {
 		return cached.(*types.ERC20Metadata), nil
 	}
 
-	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
-	filter := gcp_bigtable.FamilyFilter(ERC20_METADATA_FAMILY)
+	// this function actually does not use bigtable right now, but it will in the future (see BIDS-1846, BIDS-1234)
 
-	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return nil, err
-	}
+	var row gcp_bigtable.Row
+	var err error
 
-	row = nil
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	// defer cancel()
+	// rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
+	// filter := gcp_bigtable.FamilyFilter(ERC20_METADATA_FAMILY)
+	// row, err = bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
+	// if err != nil {
+	// 	 return nil, err
+	// }
 
 	if row == nil { // Retrieve token metadata from Ethplorer and store it for later usage
 		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
@@ -3439,10 +3440,10 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 			return metadata, nil
 		}
 
-		err = bigtable.SaveERC20Metadata(address, metadata)
-		if err != nil {
-			return nil, err
-		}
+		// err = bigtable.SaveERC20Metadata(address, metadata)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
 		err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*1)
 		if err != nil {

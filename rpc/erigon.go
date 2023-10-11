@@ -667,8 +667,6 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 
 	g := new(errgroup.Group)
 
-	var ethRate *big.Int
-
 	ret := &types.ERC20Metadata{}
 
 	g.Go(func() error {
@@ -709,7 +707,7 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 		if err != nil {
 			return fmt.Errorf("error calling oneinchoracle.GetRateToEth: %w", err)
 		}
-		ethRate = rate
+		ret.Price = rate.Bytes()
 		return nil
 	})
 
@@ -717,11 +715,6 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 	if err != nil {
 		return ret, err
 	}
-
-	num := new(big.Int).Exp(big.NewInt(10), new(big.Int).SetBytes(ret.Decimals), nil)
-	den := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	price := new(big.Int).Quo(new(big.Int).Mul(ethRate, num), den)
-	ret.Price = price.Bytes()
 
 	if err == nil && len(ret.Decimals) == 0 && ret.Symbol == "" && len(ret.TotalSupply) == 0 {
 		// it's possible that a token contract implements the ERC20 interfaces but does not return any values; we use a backup in this case

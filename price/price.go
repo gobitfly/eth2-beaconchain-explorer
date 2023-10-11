@@ -2,13 +2,14 @@ package price
 
 import (
 	"context"
-	"eth2-exporter/price/chainlink_feed"
+	"eth2-exporter/contracts/chainlink_feed"
 	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/shopspring/decimal"
@@ -54,7 +55,6 @@ func init() {
 }
 
 func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string) {
-	fmt.Printf("DEBUG: price.Init: %v %v %v %v\n", chainId, eth1Endpoint, clCurrencyParam, elCurrencyParam)
 	if atomic.AddUint64(&didInit, 1) > 1 {
 		logrus.Warnf("price.Init called multiple times")
 		return
@@ -237,7 +237,7 @@ func GetPrice(a, b string) float64 {
 
 func getPriceFromFeed(feed *chainlink_feed.Feed) (float64, error) {
 	decimals := decimal.NewFromInt(1e8) // 8 decimal places for the Chainlink feeds
-	res, err := feed.LatestRoundData(nil)
+	res, err := feed.LatestRoundData(&bind.CallOpts{})
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch latest chainlink eth/usd price feed data: %v", err)
 	}

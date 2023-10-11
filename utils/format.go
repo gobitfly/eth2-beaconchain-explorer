@@ -579,7 +579,8 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 
 func FormatEtherValue(symbol string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
 	p := message.NewPrinter(language.English)
-	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/%s</span>`, symbol, ethPrice.InexactFloat64(), currentPrice, Config.Frontend.ElCurrency))
+	currencySymbol := price.GetCurrencySymbol(symbol)
+	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/%s</span>`, currencySymbol, ethPrice.InexactFloat64(), currentPrice, Config.Frontend.ElCurrency))
 }
 
 // FormatGraffiti will return the graffiti formated as html
@@ -1175,26 +1176,30 @@ func FormatBlockReward(blockNumber int64) template.HTML {
 }
 
 func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
-	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0))
-	num := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0)
 	p := message.NewPrinter(language.English)
 
-	price := decimal.New(0, 0)
+	tokenDecimals := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Decimals), 0)
+	ethDiv := decimal.NewFromInt(Config.Frontend.ElCurrencyDivisor)
+	tokenDiv := decimal.NewFromInt(10).Pow(tokenDecimals)
+
+	tokenBalance := decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Balance), 0).DivRound(tokenDiv, 18)
+
+	tokenPriceEth := decimal.New(0, 0)
 	if len(balance.Metadata.Price) > 0 {
-		price = decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Price), 0).DivRound(decimal.NewFromInt(Config.Frontend.ElCurrencyDivisor), 18)
+		tokenPriceEth = decimal.NewFromBigInt(new(big.Int).SetBytes(balance.Metadata.Price), 0).DivRound(decimal.NewFromInt(Config.Frontend.ElCurrencyDivisor), 18)
 	}
 
-	// numPrice := num.Div(mul).Mul(price)
+	ethPriceUsd := decimal.NewFromFloat(price.GetPrice(Config.Frontend.ElCurrency, "USD"))
+	tokenPriceUsd := ethPriceUsd.Mul(tokenPriceEth).Mul(tokenDiv).DivRound(ethDiv, 18)
+	tokenBalanceUsd := tokenBalance.Mul(tokenPriceUsd)
 
+	symbolTitle := FormatTokenSymbolTitle(balance.Metadata.Symbol)
+	symbol := FormatTokenSymbol(balance.Metadata.Symbol)
 	logo := ""
 	if len(balance.Metadata.Logo) != 0 {
 		logo = fmt.Sprintf(`<img class="mr-1" style="height: 1.2rem;" src="data:image/png;base64, %s">`, base64.StdEncoding.EncodeToString(balance.Metadata.Logo))
 	}
-	symbolTitle := FormatTokenSymbolTitle(balance.Metadata.Symbol)
-	symbol := FormatTokenSymbol(balance.Metadata.Symbol)
-	pflt := price.InexactFloat64()
-	flt := num.Div(mul).Round(5).InexactFloat64()
-	bflt := price.Mul(num.Div(mul)).InexactFloat64()
+
 	return template.HTML(p.Sprintf(`
 	<div class="token-balance-col token-name text-truncate d-flex align-items-center justify-content-between flex-wrap">
 		<div class="token-icon p-1">
@@ -1203,7 +1208,7 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 			</a> 
 		</div>
 		<div class="token-price-balance p-1">
-			<span class="text-muted" style="font-size: 90%%;">$%.2f</span>
+			<span class="text-muted" style="font-size: 90%%;">$ %s</span>
 		</div>
 	</div> 
 	<div class="token-balance-col token-balance d-flex align-items-center justify-content-between flex-wrap">
@@ -1211,9 +1216,9 @@ func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 			<span class="token-holdings">%s</span>
 		</div>
 		<div class="token-price p-1">
-			<span class="text-muted" style="font-size: 90%%;">@ $%.2f</span>
+			<span class="text-muted" style="font-size: 90%%;">$ %s</span>
 		</div>
-	</div>`, balance.Token, balance.Address, logo, symbolTitle, symbol, bflt, FormatThousandsEnglish(strconv.FormatFloat(flt, 'f', -1, 64)), pflt))
+	</div>`, balance.Token, balance.Address, logo, symbolTitle, symbol, tokenPriceUsd.StringFixed(2), FormatThousandsEnglish(tokenBalance.String()), tokenBalanceUsd.StringFixed(2)))
 }
 
 func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
