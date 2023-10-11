@@ -3357,3 +3357,28 @@ func GetBlockStatus(block int64, latestFinalizedEpoch uint64, epochInfo *types.E
 				AND blocks.status='1'`,
 		block, latestFinalizedEpoch)
 }
+
+func GetSyncParticipationBySlotRange(startSlot, endSlot uint64) (map[uint64]uint64, error) {
+
+	rows := []struct {
+		Slot         uint64
+		Participated uint64
+	}{}
+
+	err := ReaderDb.Select(&rows, `SELECT slot, syncaggregate_participation * $1 AS participated FROM blocks WHERE slot >= $2 AND slot <= $3 AND status = '1'`,
+		utils.Config.Chain.ClConfig.SyncCommitteeSize,
+		startSlot,
+		endSlot)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make(map[uint64]uint64)
+
+	for _, row := range rows {
+		ret[row.Slot] = row.Participated
+	}
+
+	return ret, nil
+}

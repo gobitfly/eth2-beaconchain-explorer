@@ -1993,7 +1993,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		// Search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
 		slotsRange := slots[endIndex : startIndex+1]
 
-		participations, err := db.BigtableClient.GetSyncParticipationBySlotRange(startSlot, endSlot)
+		participations, err := db.GetSyncParticipationBySlotRange(startSlot, endSlot)
 		if err != nil {
 			utils.LogError(fmt.Errorf("error retrieving validator [%v] sync participation data from bigtable for slots [%v-%v]: %w", validatorIndex, startSlot, endSlot, err), "", 0)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
