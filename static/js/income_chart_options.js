@@ -52,12 +52,12 @@ function getIncomeChartOptions(clIncomeHistory, elIncomeHistory, title, height) 
     yAxis: [
       {
         title: {
-          text: `Income [${currency}]`,
+          text: `Income [${selectedCurrency}]`,
         },
         opposite: false,
         labels: {
           formatter: function () {
-            return currency === "ETH" ? trimToken(this.value) : trimCurrency(this.value)
+            return selectedCurrency === "ETH" ? trimToken(this.value) : trimCurrency(this.value)
           },
         },
       },
@@ -101,10 +101,10 @@ function getIncomeChartOptions(clIncomeHistory, elIncomeHistory, title, height) 
           const value = tooltip.chart.hoverPoints[i].y
           const series = tooltip.chart.hoverPoints[i].series
           var price = clPrice
-          var currency = clCurrency
+          var selectedCurrency = clCurrency
           if (series.name == "Execution Income") {
             price = elPrice
-            currency = elCurrency
+            selectedCurrency = elCurrency
           }
 
           text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, selectedCurrency, price)}<br/>`
