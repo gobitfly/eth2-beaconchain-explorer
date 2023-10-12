@@ -142,9 +142,13 @@ func main() {
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveProposals(data.Blocks)
-				if err != nil {
-					return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+				for _, blocks := range data.Blocks {
+					for _, block := range blocks {
+						err = db.BigtableClient.SaveProposal(block)
+						if err != nil {
+							return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+						}
+					}
 				}
 				return nil
 			})
@@ -195,7 +199,8 @@ func monitor(configPath string) {
 
 	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 
-	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
+	var rpcClient rpc.Client
+	rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
 		utils.LogFatal(err, "new bigtable lighthouse client in monitor error", 0)
 	}
@@ -216,7 +221,10 @@ func monitor(configPath string) {
 
 		for i := head.FinalizedEpoch; i <= head.HeadEpoch; i++ {
 			logrus.Infof("exporting epoch %v", i)
-			exporter.ExportEpoch(i, rpcClient)
+			for slot := i * cfg.Chain.ClConfig.SlotsPerEpoch; i <= (i+1)*cfg.Chain.ClConfig.SlotsPerEpoch-1; i++ {
+
+				exporter.ExportSlot(rpcClient, slot, false)
+			}
 		}
 		current = head.HeadEpoch
 	}

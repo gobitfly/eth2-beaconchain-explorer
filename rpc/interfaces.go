@@ -16,7 +16,6 @@ type Client interface {
 	GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error)
 	GetNewBlockChan() chan *types.Block
 	GetBlockStatusByEpoch(slot uint64) ([]*types.CanonBlock, error)
-	GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error)
 	GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error)
 	GetBalancesForEpoch(epoch int64) (map[uint64]uint64, error)
 	GetValidatorState(epoch uint64) (*StandardValidatorsResponse, error)

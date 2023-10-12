@@ -151,34 +151,6 @@ func ApplyEmbeddedDbSchema(version int64) error {
 	return nil
 }
 
-func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {
-	deposits := []*types.EthOneDepositsData{}
-
-	err := ReaderDb.Select(&deposits, `
-	SELECT 
-		tx_hash,
-		tx_input,
-		tx_index,
-		block_number,
-		block_ts as block_ts,
-		from_address,
-		publickey,
-		withdrawal_credentials,
-		amount,
-		signature,
-		merkletree_index
-	FROM 
-		eth1_deposits
-	ORDER BY block_ts DESC
-	LIMIT $1
-	OFFSET $2`, length, start)
-	if err != nil {
-		return nil, err
-	}
-
-	return deposits, nil
-}
-
 var searchLikeHash = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
 
 func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
@@ -301,15 +273,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	}
 
 	return deposits, totalCount, nil
-}
-
-func GetEth1DepositsCount() (uint64, error) {
-	deposits := uint64(0)
-	err := ReaderDb.Get(&deposits, `SELECT COUNT(*) FROM eth1_deposits`)
-	if err != nil {
-		return 0, err
-	}
-	return deposits, nil
 }
 
 func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
@@ -500,18 +463,6 @@ func GetLatestEpoch() (uint64, error) {
 	return epoch, nil
 }
 
-// GetAllEpochs will return a collection of all of the epochs from the database
-func GetAllEpochs() ([]uint64, error) {
-	var epochs []uint64
-	err := WriterDb.Select(&epochs, "SELECT epoch FROM epochs ORDER BY epoch")
-
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving all epochs from DB: %w", err)
-	}
-
-	return epochs, nil
-}
-
 type GetAllSlotsRow struct {
 	Slot      uint64 `db:"slot"`
 	BlockRoot []byte `db:"blockroot"`
@@ -573,40 +524,6 @@ func GetLatestFinalizedEpoch() (uint64, error) {
 	return latestFinalized, nil
 }
 
-// GetLastPendingAndProposedBlocks will return all proposed and pending blocks (ignores missed slots) from the database
-func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
-	var blocks []*types.MinimalBlock
-
-	err := WriterDb.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
-
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %w", startEpoch, endEpoch, err)
-	}
-
-	return blocks, nil
-}
-
-// GetBlocks will return all blocks for a range of epochs from the database
-func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
-	var blocks []*types.MinimalBlock
-
-	err := ReaderDb.Select(&blocks, "SELECT epoch, slot, blockroot, parentroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND length(blockroot) = 32 ORDER BY slot DESC", startEpoch, endEpoch)
-
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving blocks for epoch %v to %v from DB: %v", startEpoch, endEpoch, err)
-	}
-
-	return blocks, nil
-}
-
-// GetValidatorPublicKey will return the public key for a specific validator from the database
-func GetValidatorPublicKey(index uint64) ([]byte, error) {
-	var publicKey []byte
-	err := ReaderDb.Get(&publicKey, "SELECT pubkey FROM validators WHERE validatorindex = $1", index)
-
-	return publicKey, err
-}
-
 // GetValidatorPublicKeys will return the public key for a list of validator indices and or public keys
 func GetValidatorPublicKeys(indices []uint64, keys [][]byte) ([][]byte, error) {
 	var publicKeys [][]byte
@@ -653,17 +570,6 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 		return nil, err
 	}
 	return deposits, nil
-}
-
-// UpdateMissedBlocks will update the missed blocks for an epoch range in the database
-func UpdateMissedBlocks(startEpoch, endEpoch uint64) error {
-	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2', blockroot = '\x01' WHERE status = '0' AND epoch >= $1 AND epoch <= $2`, startEpoch, endEpoch)
-	return err
-}
-
-func UpdateMissedBlocksInEpochWithSlotCutoff(slot uint64) error {
-	_, err := WriterDb.Exec(`UPDATE blocks SET status = '2', blockroot = '\x01' WHERE status = '0' AND epoch = $1 AND slot < $2`, slot/utils.Config.Chain.ClConfig.SlotsPerEpoch, slot)
-	return err
 }
 
 // UpdateCanonicalBlocks will update the blocks for an epoch range in the database
@@ -776,49 +682,6 @@ func SaveBlock(block *types.Block, forceSlotUpdate bool) error {
 
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("error committing db transaction: %w", err)
-	}
-
-	return nil
-}
-
-// DeleteEpoch will delete all epoch data from the database
-func DeleteEpoch(epoch uint64) error {
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		return fmt.Errorf("error starting db transactions when deleting epoch %v: %w", epoch, err)
-	}
-	defer tx.Rollback()
-
-	startSlot := utils.Config.Chain.ClConfig.SlotsPerEpoch * epoch
-	endSlot := utils.Config.Chain.ClConfig.SlotsPerEpoch*(epoch+1) - 1
-	for _, stmt := range []string{
-		"DELETE FROM blocks WHERE slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_withdrawals WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_bls_change WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_proposerslashings WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_attesterslashings WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_attestations WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_deposits WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_blob_sidecars WHERE block_slot BETWEEN $1 AND $2",
-		"DELETE FROM blocks_voluntaryexits WHERE block_slot BETWEEN $1 AND $2",
-	} {
-		_, err = tx.Exec(stmt, startSlot, endSlot)
-		if err != nil {
-			return fmt.Errorf("error executing db statement when deleting epoch %v: %v: %w", epoch, stmt, err)
-		}
-	}
-
-	for _, stmt := range []string{
-		"DELETE FROM proposal_assignments WHERE epoch = $1",
-	} {
-		_, err = tx.Exec(stmt, epoch)
-		if err != nil {
-			return fmt.Errorf("error executing db statement when deleting epoch %v: %v: %w", epoch, stmt, err)
-		}
-	}
-
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("error committing db transaction when deleting epoch %v: %w", epoch, err)
 	}
 
 	return nil
@@ -1904,31 +1767,6 @@ func GetTotalEligibleEther() (uint64, error) {
 		return 0, err
 	}
 	return total / 1e9, nil
-}
-
-func GetDepositThresholdTime() (*time.Time, error) {
-	var threshold *time.Time
-	err := ReaderDb.Get(&threshold, `
-	select min(block_ts) from (
-		select block_ts, block_number, sum(amount) over (order by block_ts) as totalsum
-			from (
-				SELECT
-					publickey,
-					32e9 AS amount,
-					MAX(block_ts) as block_ts,
-					MAX(block_number) as block_number
-				FROM eth1_deposits
-				WHERE valid_signature = true
-				GROUP BY publickey
-				HAVING SUM(amount) >= 32e9
-			) a
-		) b
-		where totalsum > $1;
-		 `, utils.Config.Chain.ClConfig.MinGenesisActiveValidatorCount*32e9)
-	if err != nil {
-		return nil, err
-	}
-	return threshold, nil
 }
 
 // GetValidatorsGotSlashed returns the validators that got slashed after `epoch` either by an attestation violation or a proposer violation
@@ -3037,27 +2875,6 @@ func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, 
 	}
 
 	return change, nil
-}
-
-func GetValidatorsInitialWithdrawalCredentials(validators []uint64) ([][]byte, error) {
-	var withdrawalCredentials [][]byte
-
-	err := ReaderDb.Select(&withdrawalCredentials, `
-	SELECT 
-		withdrawalcredentials 
-	FROM 
-		blocks_deposits d
-	LEFT JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'
-	WHERE
-		validatorindex = ANY($1)`, pq.Array(validators))
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("error getting validator initial withdrawal credentials: %w", err)
-	}
-
-	return withdrawalCredentials, nil
 }
 
 func GetWithdrawableValidatorCount(epoch uint64) (uint64, error) {

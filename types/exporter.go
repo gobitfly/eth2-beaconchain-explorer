@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
@@ -49,12 +48,6 @@ type Slot uint64
 type Epoch uint64
 type ValidatorIndex uint64
 
-type EpochWriteCacheEntry struct {
-	Balance          uint64
-	EffectiveBalance uint64
-	Attestations     map[Slot]Slot
-}
-
 // EpochData is a struct to hold epoch data
 type EpochData struct {
 	Epoch                   uint64
@@ -75,11 +68,6 @@ type ValidatorParticipation struct {
 	VotedEther              uint64
 	EligibleEther           uint64
 	Finalized               bool
-}
-
-// BeaconCommitteItem is a struct to hold beacon committee data
-type BeaconCommitteItem struct {
-	ValidatorIndices []uint64
 }
 
 // Validator is a struct to hold validator data
@@ -290,14 +278,6 @@ type VoluntaryExit struct {
 	Signature      []byte
 }
 
-// BlockContainer is a struct to hold block container data
-type BlockContainer struct {
-	Status   uint64
-	Proposer uint64
-
-	Block *ethpb.BeaconBlockContainer
-}
-
 // MinimalBlock is a struct to hold minimal block data
 type MinimalBlock struct {
 	Epoch      uint64 `db:"epoch"`
@@ -312,13 +292,6 @@ type CanonBlock struct {
 	BlockRoot []byte `db:"blockroot"`
 	Slot      uint64 `db:"slot"`
 	Canonical bool   `db:"-"`
-}
-
-// BlockComparisonContainer is a struct to hold block comparison data
-type BlockComparisonContainer struct {
-	Epoch uint64
-	Db    *MinimalBlock
-	Node  *MinimalBlock
 }
 
 // EpochAssignments is a struct to hold epoch assignment data
@@ -559,26 +532,6 @@ type RelayBlock struct {
 	BuilderPubkey        string `db:"builder_pubkey" json:"builder_pubkey"`
 	ProposerPubkey       string `db:"proposer_pubkey" json:"proposer_pubkey"`
 	ProposerFeeRecipient string `db:"proposer_fee_recipient" json:"proposer_fee_recipient"`
-}
-
-type RelayBlockSlice []RelayBlock
-
-func (s *RelayBlockSlice) Scan(src interface{}) error {
-	switch v := src.(type) {
-	case []byte:
-		err := json.Unmarshal(v, s)
-		if err != nil {
-			return err
-		}
-		// if no tags were found we will get back an empty struct, we don't want that
-		if len(*s) == 1 && (*s)[0].ID == "" {
-			*s = nil
-		}
-		return nil
-	case string:
-		return json.Unmarshal([]byte(v), s)
-	}
-	return errors.New("type assertion failed")
 }
 
 type BlockTag struct {

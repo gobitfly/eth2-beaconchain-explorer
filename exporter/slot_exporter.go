@@ -270,7 +270,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 				return nil
 			})
 		}
-		err := g.Wait()
+		err = g.Wait()
 		if err != nil {
 			return err
 		}

@@ -731,9 +731,6 @@ func (bigtable *Bigtable) SaveProposal(block *types.Block) error {
 
 	start := time.Now()
 
-	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
-
 	if len(block.BlockRoot) != 32 { // skip dummy blocks
 		return nil
 	}
@@ -741,35 +738,13 @@ func (bigtable *Bigtable) SaveProposal(block *types.Block) error {
 	mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-block.Slot)*1000), []byte{})
 	key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(block.Proposer), PROPOSALS_FAMILY, bigtable.reversedPaddedEpoch(utils.EpochOfSlot(block.Slot)), bigtable.reversedPaddedSlot(block.Slot))
 
-	muts = append(muts, mut)
-	keys = append(keys, key)
+	err := bigtable.tableValidatorsHistory.Apply(ctx, key, mut)
 
-	if len(muts) == MAX_BATCH_MUTATIONS {
-		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-		if err != nil {
-			return err
-		}
-
-		for _, err := range errs {
-			return err
-		}
-		muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-		keys = make([]string, 0, MAX_BATCH_MUTATIONS)
+	if err != nil {
+		return err
 	}
 
-	if len(muts) > 0 {
-		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-		if err != nil {
-			return err
-		}
-
-		for _, err := range errs {
-			return err
-		}
-	}
-	logger.Infof("exported proposals to bigtable in %v", time.Since(start))
+	logger.Infof("exported proposal to bigtable in %v", time.Since(start))
 	return nil
 }
 
