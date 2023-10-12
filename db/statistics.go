@@ -148,6 +148,8 @@ func WriteValidatorStatisticsForDay(day uint64) error {
 		return err
 	}
 
+	logger.Infof("statistics data collection for day %v completed", day)
+
 	// calculate cl income data & update totals
 	for index, data := range validatorData {
 
@@ -610,7 +612,7 @@ func gatherValidatorElIcome(day uint64, data []*types.ValidatorStatsTableDbRow, 
 	}
 	mux.Unlock()
 
-	logger.Infof("gathering el rewards statistics completed, took %v", time.Since(exportStart))
+	logger.Infof("gathering mev & el rewards statistics completed, took %v", time.Since(exportStart))
 	return nil
 }
 
@@ -671,7 +673,7 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 		"lastSlot":  lastSlot,
 	})
 
-	logger.Infof("gathering withdrawals + deposits")
+	logger.Infof("gathering deposits + withdrawals")
 
 	type resRowDeposits struct {
 		ValidatorIndex uint64 `db:"validatorindex"`
@@ -810,6 +812,15 @@ func gatherValidatorFailedAttestationsStatisticsForDay(validators []uint64, day 
 }
 
 func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
+
+	logger := logger.WithFields(logrus.Fields{
+		"day": day,
+	})
+
+	start := time.Now()
+
+	logger.Infof("gathering statistics for day %v", day)
+
 	ret := make([]*types.ValidatorStatsTableDbRow, 0)
 
 	err := WriterDb.Select(&ret, `SELECT 
@@ -854,6 +865,7 @@ func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error
 		return nil, fmt.Errorf("error statistics for day %v data: %w", day, err)
 	}
 
+	logrus.Infof("gathering statistics completed, took %v", time.Since(start))
 	return ret, nil
 }
 
