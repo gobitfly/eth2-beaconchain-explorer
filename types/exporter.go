@@ -123,7 +123,6 @@ type Block struct {
 	VoluntaryExits             []*VoluntaryExit
 	SyncAggregate              *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
 	ExecutionPayload           *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
-	Canonical                  bool
 	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
 	BlobGasUsed                uint64
 	ExcessBlobGas              uint64

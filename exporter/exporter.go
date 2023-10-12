@@ -4,7 +4,6 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
-	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"time"
 
@@ -68,34 +67,6 @@ func Start(client rpc.Client) {
 
 		services.ReportStatus("slotExporter", "Running", nil)
 	}
-}
-
-// GetLastBlocks will get all blocks for a range of epochs
-func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.MinimalBlock, error) {
-	wrappedBlocks := make([]*types.MinimalBlock, 0)
-
-	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		startSlot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
-		endSlot := (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
-		for slot := startSlot; slot <= endSlot; slot++ {
-			block, err := client.GetBlockBySlot(slot)
-			if err != nil {
-				return nil, err
-			}
-
-			wrappedBlocks = append(wrappedBlocks, &types.MinimalBlock{
-				Epoch:      epoch,
-				Slot:       block.Slot,
-				BlockRoot:  block.BlockRoot,
-				ParentRoot: block.ParentRoot,
-				Canonical:  block.Canonical,
-			})
-		}
-
-		logger.Printf("retrieving all blocks for epoch %v. %v epochs remaining", epoch, endEpoch-epoch)
-	}
-
-	return wrappedBlocks, nil
 }
 
 func networkLivenessUpdater(client rpc.Client) {
