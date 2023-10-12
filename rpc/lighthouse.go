@@ -786,7 +786,6 @@ func (lc *LighthouseClient) GetBlockBySlot(slot uint64) (*types.Block, error) {
 				}
 			}
 
-			// no block found
 			return block, nil
 		}
 		return nil, fmt.Errorf("error retrieving headers at slot %v: %w", slot, err)

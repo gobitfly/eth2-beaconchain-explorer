@@ -16,7 +16,7 @@ var logger = logrus.New().WithField("module", "exporter")
 var Client *rpc.Client
 
 // Start will start the export of data from rpc into the database
-func Start(client rpc.Client) error {
+func Start(client rpc.Client) {
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
 	go genesisDepositsExporter(client)
@@ -56,17 +56,18 @@ func Start(client rpc.Client) error {
 		err := RunSlotExporter(client, firstRun)
 		if err != nil {
 			logrus.Errorf("error during slot export run: %w", err)
+		} else if err == nil && firstRun {
+			firstRun = false
 		}
+
 		logrus.Info("update run completed")
 		elapsed := time.Since(start)
 		if elapsed < minWaitTimeBetweenRuns {
 			time.Sleep(minWaitTimeBetweenRuns - elapsed)
 		}
-		firstRun = false
 
 		services.ReportStatus("slotExporter", "Running", nil)
 	}
-	return nil
 }
 
 // GetLastBlocks will get all blocks for a range of epochs

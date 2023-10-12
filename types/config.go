@@ -62,13 +62,8 @@ type Config struct {
 	TieredCacheProvider string `yaml:"tieredCacheProvider" envconfig:"CACHE_PROVIDER"`
 	ReportServiceStatus bool   `yaml:"reportServiceStatus" envconfig:"REPORT_SERVICE_STATUS"`
 	Indexer             struct {
-		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
-		FixCanonOnStartup           bool `yaml:"fixCanonOnStartup" envconfig:"INDEXER_FIX_CANON_ON_STARTUP"`
-		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup" envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
-		IndexMissingEpochsOnStartup bool `yaml:"indexMissingEpochsOnStartup" envconfig:"INDEXER_MISSING_INDEX_ON_STARTUP"`
-		CheckAllBlocksOnStartup     bool `yaml:"checkAllBlocksOnStartup" envconfig:"INDEXER_CHECK_ALL_BLOCKS_ON_STARTUP"`
-		UpdateAllEpochStatistics    bool `yaml:"updateAllEpochStatistics" envconfig:"INDEXER_UPDATE_ALL_EPOCH_STATISTICS"`
-		Node                        struct {
+		Enabled bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
+		Node    struct {
 			Port     string `yaml:"port" envconfig:"INDEXER_NODE_PORT"`
 			Host     string `yaml:"host" envconfig:"INDEXER_NODE_HOST"`
 			Type     string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`
