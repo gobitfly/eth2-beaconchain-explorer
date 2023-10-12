@@ -884,7 +884,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 	slot := uint64(parsedHeaders.Data.Header.Message.Slot)
 	block := &types.Block{
 		Status:       1,
-		Finalized:    parsedHeaders.Data.Finalized,
+		Finalized:    parsedHeaders.Finalized,
 		Proposer:     uint64(parsedBlock.Message.ProposerIndex),
 		BlockRoot:    utils.MustParseHex(parsedHeaders.Data.Root),
 		Slot:         slot,
@@ -1344,9 +1344,8 @@ func Uint64Unmarshal(v *uint64, b []byte) error {
 
 type StandardBeaconHeaderResponse struct {
 	Data struct {
-		Root      string `json:"root"`
-		Finalized bool   `json:"finalized"`
-		Header    struct {
+		Root   string `json:"root"`
+		Header struct {
 			Message struct {
 				Slot          uint64Str `json:"slot"`
 				ProposerIndex uint64Str `json:"proposer_index"`
@@ -1357,13 +1356,13 @@ type StandardBeaconHeaderResponse struct {
 			Signature string `json:"signature"`
 		} `json:"header"`
 	} `json:"data"`
+	Finalized bool `json:"finalized"`
 }
 
 type StandardBeaconHeadersResponse struct {
 	Data []struct {
-		Root      string `json:"root"`
-		Finalized bool   `json:"finalized"`
-		Header    struct {
+		Root   string `json:"root"`
+		Header struct {
 			Message struct {
 				Slot          uint64Str `json:"slot"`
 				ProposerIndex uint64Str `json:"proposer_index"`
@@ -1374,6 +1373,7 @@ type StandardBeaconHeadersResponse struct {
 			Signature string `json:"signature"`
 		} `json:"header"`
 	} `json:"data"`
+	Finalized bool `json:"finalized"`
 }
 
 type StandardFinalityCheckpointsResponse struct {
