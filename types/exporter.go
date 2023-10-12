@@ -48,6 +48,8 @@ type FinalityCheckpoints struct {
 type Slot uint64
 type Epoch uint64
 type ValidatorIndex uint64
+type SyncCommitteePeriod uint64
+type CommitteeIndex uint64
 
 type EpochWriteCacheEntry struct {
 	Balance          uint64

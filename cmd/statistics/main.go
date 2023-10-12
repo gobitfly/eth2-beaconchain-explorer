@@ -4,12 +4,14 @@ import (
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
+	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -118,6 +120,18 @@ func main() {
 		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
 	}
 
+	var rpcClient rpc.Client
+
+	chainID := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
+	if utils.Config.Indexer.Node.Type == "lighthouse" {
+		rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
+		if err != nil {
+			utils.LogFatal(err, "new explorer lighthouse client error", 0)
+		}
+	} else {
+		logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
+	}
+
 	if opt.statisticsDaysToExport != "" {
 		s := strings.Split(opt.statisticsDaysToExport, "-")
 		if len(s) < 2 {
@@ -140,7 +154,7 @@ func main() {
 					clearStatsStatusTable(d)
 				}
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d))
+				err = db.WriteValidatorStatisticsForDay(uint64(d), rpcClient)
 				if err != nil {
 					utils.LogError(err, fmt.Errorf("error exporting stats for day %v", d), 0)
 					break
@@ -182,7 +196,7 @@ func main() {
 				clearStatsStatusTable(uint64(opt.statisticsDayToExport))
 			}
 
-			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport))
+			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), rpcClient)
 			if err != nil {
 				utils.LogError(err, fmt.Errorf("error exporting stats for day %v", opt.statisticsDayToExport), 0)
 			}
@@ -209,14 +223,14 @@ func main() {
 		return
 	}
 
-	go statisticsLoop()
+	go statisticsLoop(rpcClient)
 
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
 }
 
-func statisticsLoop() {
+func statisticsLoop(client rpc.Client) {
 	for {
 
 		latestEpoch := services.LatestFinalizedEpoch()
@@ -252,7 +266,7 @@ func statisticsLoop() {
 			}
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
-					err := db.WriteValidatorStatisticsForDay(day)
+					err := db.WriteValidatorStatisticsForDay(day, client)
 					if err != nil {
 						utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
 						break
