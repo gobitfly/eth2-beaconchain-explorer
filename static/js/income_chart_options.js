@@ -100,14 +100,14 @@ function getIncomeChartOptions(clIncomeHistory, elIncomeHistory, title, height) 
         for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
           const value = tooltip.chart.hoverPoints[i].y
           const series = tooltip.chart.hoverPoints[i].series
-          var price = clPrice
-          var selectedCurrency = clCurrency
+          var iPrice = clPrice
+          var iCurrency = clCurrency
           if (series.name == "Execution Income") {
-            price = elPrice
-            selectedCurrency = elCurrency
+            iPrice = elPrice
+            iCurrency = elCurrency
           }
 
-          text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency, selectedCurrency, price)}<br/>`
+          text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, iCurrency, selectedCurrency, iPrice)}<br/>`
           total += value
         }
 
