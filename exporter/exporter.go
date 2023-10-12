@@ -55,7 +55,7 @@ func Start(client rpc.Client) {
 		start := time.Now()
 		err := RunSlotExporter(client, firstRun)
 		if err != nil {
-			logrus.Errorf("error during slot export run: %w", err)
+			logrus.Errorf("error during slot export run: %v", err)
 		} else if err == nil && firstRun {
 			firstRun = false
 		}

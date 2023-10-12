@@ -349,7 +349,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool) error {
 	// save the block data to the db
 	err = db.SaveBlock(block, false)
 	if err != nil {
-		logger.Errorf("error saving slot to the db: %w", err)
+		return fmt.Errorf("error saving slot to the db: %w", err)
 	}
 	// time.Sleep(time.Second)
 

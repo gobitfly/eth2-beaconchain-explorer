@@ -73,14 +73,14 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 				var parsed StreamedBlockEventData
 				err = json.Unmarshal([]byte(e.Data()), &parsed)
 				if err != nil {
-					logger.Warnf("failed to decode block event: %w", err)
+					logger.Warnf("failed to decode block event: %v", err)
 					continue
 				}
 
 				logger.Infof("retrieving data for slot %v", parsed.Slot)
 				block, err := lc.GetBlockBySlot(uint64(parsed.Slot))
 				if err != nil {
-					logger.Warnf("failed to fetch block for slot %d: %w", uint64(parsed.Slot), err)
+					logger.Warnf("failed to fetch block for slot %d: %v", uint64(parsed.Slot), err)
 					continue
 				}
 				logger.Infof("retrieved block for slot %v", parsed.Slot)
@@ -402,7 +402,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64, skipHistoricBalances bool
 			data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
 			if err != nil {
 				if strings.HasSuffix(err.Error(), "can't be retrieved as it hasn't finished yet") { // should no longer happen
-					logger.Warnf("error retrieving epoch participation statistics for epoch %v: %w", epoch, err)
+					logger.Warnf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
 				} else {
 					return fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %w", epoch, err)
 				}
@@ -631,7 +631,7 @@ func (lc *LighthouseClient) GetBlockByBlockroot(blockroot []byte) (*types.Block,
 	var parsedResponse StandardV2BlockResponse
 	err = json.Unmarshal(resp, &parsedResponse)
 	if err != nil {
-		logger.Errorf("error parsing block data at slot %v: %w", parsedHeaders.Data.Header.Message.Slot, err)
+		logger.Errorf("error parsing block data at slot %v: %v", parsedHeaders.Data.Header.Message.Slot, err)
 		return nil, fmt.Errorf("error parsing block-response at slot %v: %w", slot, err)
 	}
 
@@ -821,7 +821,7 @@ func (lc *LighthouseClient) GetBlockBySlot(slot uint64) (*types.Block, error) {
 	var parsedResponse StandardV2BlockResponse
 	err = json.Unmarshal(resp, &parsedResponse)
 	if err != nil {
-		logger.Errorf("error parsing block data at slot %v: %w", slot, err)
+		logger.Errorf("error parsing block data at slot %v: %v", slot, err)
 		return nil, fmt.Errorf("error parsing block-response at slot %v: %w", slot, err)
 	}
 
