@@ -916,11 +916,11 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				start := time.Now()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch)
-				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				currentSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
 					logger.Warnf("SyncPeriodOfEpoch(%v) took longer than 10 sec", epoch)
-					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
 				}
 				return err
 			})
@@ -929,11 +929,11 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				start := time.Now()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch) + 1
-				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				nextSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
 					logger.Warnf("SyncPeriodOfEpoch(%v) + 1 took longer than 10 sec", epoch)
-					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
 				}
 				return err
 			})
@@ -1019,15 +1019,13 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
-func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, error) {
+func getSyncCommitteeInfoForValidators(validators []uint64, period uint64) ([]interface{}, error) {
 	rows, err := db.ReaderDb.Query(
 		`SELECT 
 			period, 
-			GREATEST(period*$2, $3) AS start_epoch, 
-			(period+1)*$2-1 AS end_epoch, 
 			ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
 		FROM sync_committees 
-		WHERE period = $1 AND validatorindex = ANY($4)
+		WHERE period = $1 AND validatorindex = ANY($2)
 		GROUP BY period`,
 		period,
 		utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod,
