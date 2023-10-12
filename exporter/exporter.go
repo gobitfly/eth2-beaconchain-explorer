@@ -64,7 +64,7 @@ func Start(client rpc.Client) error {
 		}
 		firstRun = false
 
-		services.ReportStatus("epochExporter", "Running", nil)
+		services.ReportStatus("slotExporter", "Running", nil)
 	}
 	return nil
 }

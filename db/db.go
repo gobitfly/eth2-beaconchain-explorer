@@ -463,16 +463,9 @@ func GetLatestEpoch() (uint64, error) {
 	return epoch, nil
 }
 
-type GetAllSlotsRow struct {
-	Slot      uint64 `db:"slot"`
-	BlockRoot []byte `db:"blockroot"`
-	Finalized bool   `db:"finalized"`
-	Status    string `db:"status"`
-}
-
-func GetAllSlots() ([]*GetAllSlotsRow, error) {
-	var slots []*GetAllSlotsRow
-	err := WriterDb.Select(&slots, "SELECT slot, blockroot, finalized, status FROM blocks ORDER BY slot")
+func GetAllSlots() ([]uint64, error) {
+	var slots []uint64
+	err := WriterDb.Select(&slots, "SELECT slot FROM blocks ORDER BY slot")
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving all slots from the DB: %w", err)
