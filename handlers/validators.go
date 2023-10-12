@@ -1,6 +1,6 @@
 package handlers
 
-import (
+import (0x64288fe9b682b8c621a06fcff1ba363e5f5de8e3
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 )
-
+0x64288fe9b682b8c621a06fcff1ba363e5f5de8e3
 type states struct {
 	Name  string `db:"statename"`
 	Count uint64 `db:"statecount"`
@@ -25,7 +25,7 @@ type states struct {
 func Validators(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "validators.html")
 	var validatorsTemplate = templates.GetTemplate(templateFiles...)
-
+0x64288fe9b682b8c621a06fcff1ba363e5f5de8e3
 	w.Header().Set("Content-Type", "text/html")
 
 	validatorsPageData := types.ValidatorsPageData{}
