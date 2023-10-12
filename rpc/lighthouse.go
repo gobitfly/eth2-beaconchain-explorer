@@ -1641,11 +1641,6 @@ type StandardValidatorsResponse struct {
 	Data []StandardValidatorEntry `json:"data"`
 }
 
-func (pc *LighthouseClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock, error) {
-	blocks := make([]*types.CanonBlock, 0)
-	return blocks, nil
-}
-
 type StandardSyncingResponse struct {
 	Data struct {
 		IsSyncing    bool      `json:"is_syncing"`
