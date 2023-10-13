@@ -59,7 +59,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g := new(errgroup.Group)
-	g.SetLimit(9)
+	g.SetLimit(11)
 
 	isContract := false
 	txns := &types.DataTableResponse{}
@@ -126,7 +126,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "") // DIECE
 		if err != nil {
 			return fmt.Errorf("GetAddressErc1155TableData: %w", err)
 		}
