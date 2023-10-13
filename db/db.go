@@ -463,9 +463,9 @@ func GetLatestEpoch() (uint64, error) {
 	return epoch, nil
 }
 
-func GetAllSlots() ([]uint64, error) {
+func GetAllSlots(tx *sqlx.Tx) ([]uint64, error) {
 	var slots []uint64
-	err := WriterDb.Select(&slots, "SELECT slot FROM blocks ORDER BY slot")
+	err := tx.Select(&slots, "SELECT slot FROM blocks ORDER BY slot")
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving all slots from the DB: %w", err)
@@ -474,8 +474,8 @@ func GetAllSlots() ([]uint64, error) {
 	return slots, nil
 }
 
-func SetSlotFinalizationAndStatus(slot uint64, finalized bool, status string) error {
-	_, err := WriterDb.Exec("UPDATE blocks SET finalized = $1, status = $2 WHERE slot = $3", finalized, status, slot)
+func SetSlotFinalizationAndStatus(slot uint64, finalized bool, status string, tx *sqlx.Tx) error {
+	_, err := tx.Exec("UPDATE blocks SET finalized = $1, status = $2 WHERE slot = $3", finalized, status, slot)
 
 	if err != nil {
 		return fmt.Errorf("error setting slot finalization and status: %w", err)
@@ -654,7 +654,7 @@ func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 	return err
 }
 
-func SaveBlock(block *types.Block, forceSlotUpdate bool) error {
+func SaveBlock(block *types.Block, forceSlotUpdate bool, tx *sqlx.Tx) error {
 
 	blocksMap := make(map[uint64]map[string]*types.Block)
 	if blocksMap[block.Slot] == nil {
@@ -662,37 +662,22 @@ func SaveBlock(block *types.Block, forceSlotUpdate bool) error {
 	}
 	blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
-	}
-	defer tx.Rollback()
-	err = saveBlocks(blocksMap, tx, forceSlotUpdate)
+	err := saveBlocks(blocksMap, tx, forceSlotUpdate)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)
 		return fmt.Errorf("error saving blocks to db: %w", err)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
 	return nil
 }
 
 // SaveEpoch will save the epoch data into the database
-func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client) error {
+func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_epoch").Observe(time.Since(start).Seconds())
 		logger.WithFields(logrus.Fields{"epoch": epoch, "duration": time.Since(start)}).Info("completed saving epoch")
 	}()
-
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		return fmt.Errorf("error starting db transactions: %w", err)
-	}
-	defer tx.Rollback()
 
 	logger.WithFields(logrus.Fields{"chainEpoch": utils.TimeToEpoch(time.Now()), "exportEpoch": epoch}).Infof("starting export of epoch %v", epoch)
 
@@ -731,7 +716,7 @@ func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client) e
 
 	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(validatorsCount)))
 
-	_, err = tx.Exec(`
+	_, err := tx.Exec(`
 		INSERT INTO epochs (
 			epoch, 
 			blockscount, 
@@ -785,22 +770,18 @@ func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client) e
 		return fmt.Errorf("error executing save epoch statement: %w", err)
 	}
 
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("error committing db transaction: %w", err)
-	}
-
 	lookback := uint64(0)
 	if epoch > 3 {
 		lookback = epoch - 3
 	}
 	// delete duplicate scheduled slots
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", lookback, []byte{0x0})
+	_, err = tx.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", lookback, []byte{0x0})
 	if err != nil {
 		return fmt.Errorf("error cleaning up blocks table: %w", err)
 	}
 
 	// delete duplicate missed blocks
-	_, err = WriterDb.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", lookback, []byte{0x1})
+	_, err = tx.Exec("delete from blocks where slot in (select slot from blocks where epoch >= $1 group by slot having count(*) > 1) and blockroot = $2;", lookback, []byte{0x1})
 	if err != nil {
 		return fmt.Errorf("error cleaning up blocks table: %w", err)
 	}
@@ -867,17 +848,11 @@ func saveGraffitiwall(block *types.Block, tx *sqlx.Tx) error {
 	return nil
 }
 
-func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Client, activationBalanceBatchSize int) error {
+func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Client, activationBalanceBatchSize int, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
 	}()
-
-	tx, err := WriterDb.Beginx()
-	if err != nil {
-		return fmt.Errorf("error starting tx: %w", err)
-	}
-	defer tx.Rollback()
 
 	if activationBalanceBatchSize <= 0 {
 		activationBalanceBatchSize = 10000
@@ -905,7 +880,7 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 	}
 
 	var currentState []*types.Validator
-	err = tx.Select(&currentState, "SELECT validatorindex, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, status FROM validators;")
+	err := tx.Select(&currentState, "SELECT validatorindex, withdrawableepoch, withdrawalcredentials, slashed, activationeligibilityepoch, activationepoch, exitepoch, status FROM validators;")
 
 	if err != nil {
 		return fmt.Errorf("error retrieving current validator state set: %v", err)
@@ -1170,7 +1145,7 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 	}
 	logger.Infof("analyze of validators table completed, took %v", time.Since(s))
 
-	return tx.Commit()
+	return nil
 }
 
 func GetRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.Hash]types.RelaysData, error) {
@@ -1540,13 +1515,13 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 }
 
 // UpdateEpochStatus will update the epoch status in the database
-func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
+func UpdateEpochStatus(stats *types.ValidatorParticipation, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_epochs_status").Observe(time.Since(start).Seconds())
 	}()
 
-	_, err := WriterDb.Exec(`
+	_, err := tx.Exec(`
 		UPDATE epochs SET
 			eligibleether = $1,
 			globalparticipationrate = $2,
@@ -1586,7 +1561,7 @@ func GetActiveValidatorCount() (uint64, error) {
 	return count, err
 }
 
-func UpdateQueueDeposits() error {
+func UpdateQueueDeposits(tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		logger.Infof("took %v seconds to update queue deposits", time.Since(start).Seconds())
@@ -1594,7 +1569,7 @@ func UpdateQueueDeposits() error {
 	}()
 
 	// first we remove any validator that isn't queued anymore
-	_, err := WriterDb.Exec(`
+	_, err := tx.Exec(`
 		DELETE FROM validator_queue_deposits
 		WHERE validator_queue_deposits.validatorindex NOT IN (
 			SELECT validatorindex 
@@ -1606,7 +1581,7 @@ func UpdateQueueDeposits() error {
 	}
 
 	// then we add any new ones that are queued
-	_, err = WriterDb.Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO validator_queue_deposits
 		SELECT validatorindex FROM validators WHERE activationepoch=$1 and status='pending' ON CONFLICT DO NOTHING
 	`, maxSqlNumber)
@@ -1616,7 +1591,7 @@ func UpdateQueueDeposits() error {
 	}
 
 	// now we add the activationeligibilityepoch where it is missing
-	_, err = WriterDb.Exec(`
+	_, err = tx.Exec(`
 		UPDATE validator_queue_deposits 
 		SET 
 			activationeligibilityepoch=validators.activationeligibilityepoch
@@ -1631,7 +1606,7 @@ func UpdateQueueDeposits() error {
 	}
 
 	// efficiently collect the tnx that pushed each validator over 32 ETH.
-	_, err = WriterDb.Exec(`
+	_, err = tx.Exec(`
 		UPDATE validator_queue_deposits 
 		SET 
 			block_slot=data.block_slot,

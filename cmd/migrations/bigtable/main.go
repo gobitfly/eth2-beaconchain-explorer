@@ -206,7 +206,7 @@ func monitor(configPath string) {
 	}
 	current := uint64(0)
 
-	for {
+	for ; ; time.Sleep(time.Second * 12) {
 		head, err := rpcClient.GetChainHead()
 		if err != nil {
 			utils.LogFatal(err, "getting chain head from lighthouse in monitor error", 0)
@@ -215,17 +215,33 @@ func monitor(configPath string) {
 		logrus.Infof("current is %v, head is %v, finalized is %v", current, head.HeadEpoch, head.FinalizedEpoch)
 
 		if current == head.HeadEpoch {
-			time.Sleep(time.Second * 12)
+			continue
+		}
+
+		tx, err := db.WriterDb.Beginx()
+		if err != nil {
+			logrus.Errorf("error starting tx: %v", err)
 			continue
 		}
 
 		for i := head.FinalizedEpoch; i <= head.HeadEpoch; i++ {
 			logrus.Infof("exporting epoch %v", i)
 			for slot := i * cfg.Chain.ClConfig.SlotsPerEpoch; i <= (i+1)*cfg.Chain.ClConfig.SlotsPerEpoch-1; i++ {
-
-				exporter.ExportSlot(rpcClient, slot, false)
+				err := exporter.ExportSlot(rpcClient, slot, false, tx)
+				if err != nil {
+					logrus.Errorf("error exporting slot: %v", err)
+					tx.Rollback()
+					continue
+				}
 			}
 		}
+
+		err = tx.Commit()
+		if err != nil {
+			logrus.Errorf("error committing tx: %v", err)
+			continue
+		}
+
 		current = head.HeadEpoch
 	}
 }
