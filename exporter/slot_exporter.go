@@ -91,10 +91,23 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 
 	// check if any new slots have been added to the chain
 	if lastDbSlot != head.HeadSlot {
+		slotsExported := 0
 		for slot := lastDbSlot + 1; slot <= head.HeadSlot; slot++ { // export any new slots
 			err := ExportSlot(client, slot, utils.EpochOfSlot(slot) == head.HeadEpoch, tx)
 			if err != nil {
 				return fmt.Errorf("error exporting slot %v: %w", slot, err)
+			}
+			slotsExported++
+
+			// in case of large export runs, export at most 10 epochs per tx
+			if slotsExported == int(utils.Config.Chain.ClConfig.SlotsPerEpoch)*10 {
+				err := tx.Commit()
+
+				if err != nil {
+					return fmt.Errorf("error committing tx: %w", err)
+				}
+
+				return nil
 			}
 		}
 	}

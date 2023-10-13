@@ -284,6 +284,7 @@ func main() {
 		if err != nil {
 			logrus.Fatalf("error starting tx: %v", err)
 		}
+		defer tx.Rollback()
 
 		batchSize := 10000
 		for i := 0; i < len(validatorsArr); i += batchSize {
@@ -496,6 +497,8 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		defer tx.Rollback()
+
 		for _, bm := range data.Blocks {
 			for _, b := range bm {
 				block := b
