@@ -38,10 +38,12 @@
       <link rel="stylesheet" href="/css/layout/herofeed.css" />
       <script>
         var selectedCurrency = {{$.Rates.SelectedCurrency}}
+        var mainCurrency = {{config.Frontend.MainCurrency}}
         var elCurrency = {{config.Frontend.ElCurrency}}
         var clCurrency = {{config.Frontend.ClCurrency}}
         var elPrice = {{$.Rates.ElCurrencyPrice}}
         var clPrice = {{$.Rates.ClCurrencyPrice}}
+        var mainPrice = {{$.Rates.MainCurrencyPrice}}
 
         var mql = window.matchMedia("(prefers-color-scheme: light)")
         var lightScheme = mql.matches
