@@ -269,7 +269,7 @@
             <i class="fas fa-money-bill"></i>
             {{ .WithdrawalCount }}
           {{ else }}
-            <a href="{{if eq config.Chain.Id 100}}https://docs.gnosischain.com/node/management/withdrawals/#how-to-change-the-withdrawal-credential{{else}}https://launchpad.ethereum.org/en/withdrawals{{end}}">
+            <a href="{{ if eq config.Chain.Id 100 }}https://docs.gnosischain.com/node/management/withdrawals/#how-to-change-the-withdrawal-credential{{ else }}https://launchpad.ethereum.org/en/withdrawals{{ end }}">
               <i class="fas fa-money-bill" style="color:var(--body-color)"></i>
               <i class="text-warning fas fa-exclamation-triangle"></i>
               <i class="fas fa-external-link-alt"></i>
