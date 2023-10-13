@@ -121,32 +121,32 @@ func main() {
 			g := new(errgroup.Group)
 			g.SetLimit(6)
 			g.Go(func() error {
-				err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
+				err := db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 				if err != nil {
-					return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
+					return fmt.Errorf("error exporting validator balances to bigtable for epoch %v: %v", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
+				err := db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
 				if err != nil {
-					return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+					return fmt.Errorf("error exporting proposal assignments to bigtable for epoch %v: %v", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
+				err := db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
 				if err != nil {
-					return fmt.Errorf("error exporting attestations to bigtable: %v", err)
+					return fmt.Errorf("error exporting attestations to bigtable for epoch %v: %v", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
 				for _, blocks := range data.Blocks {
 					for _, block := range blocks {
-						err = db.BigtableClient.SaveProposal(block)
+						err := db.BigtableClient.SaveProposal(block)
 						if err != nil {
-							return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+							return fmt.Errorf("error exporting proposals to bigtable for slot %v: %v", block.Slot, err)
 						}
 					}
 				}
@@ -155,21 +155,21 @@ func main() {
 			g.Go(func() error {
 				err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
 				if err != nil {
-					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+					return fmt.Errorf("error exporting sync committee duties to bigtable for epoch %v: %v", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
 				err = db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
 				if err != nil {
-					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+					return fmt.Errorf("error migrating income data to v2 schema for epoch %v: %v", epoch, err)
 				}
 				return nil
 			})
 
 			err = g.Wait()
 			if err != nil {
-				return fmt.Errorf("error during bigtable export: %w", err)
+				return fmt.Errorf("error during bigtable export for epoch %v: %w", epoch, err)
 			}
 			logrus.WithFields(logrus.Fields{"duration": time.Since(start), "epoch": epoch}).Info("completed exporting epoch")
 			return nil
