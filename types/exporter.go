@@ -696,9 +696,24 @@ type ValidatorStatsTableDbRow struct {
 	ClRewardsGWei      int64 `db:"cl_rewards_gwei"`
 	ClRewardsGWeiTotal int64 `db:"cl_rewards_gwei_total"`
 
+	ClPerformance1d   int64 `db:"-"`
+	ClPerformance7d   int64 `db:"-"`
+	ClPerformance31d  int64 `db:"-"`
+	ClPerformance365d int64 `db:"-"`
+
 	ElRewardsWei      decimal.Decimal `db:"el_rewards_wei"`
 	ElRewardsWeiTotal decimal.Decimal `db:"el_rewards_wei_total"`
 
+	ElPerformance1d   decimal.Decimal `db:"-"`
+	ElPerformance7d   decimal.Decimal `db:"-"`
+	ElPerformance31d  decimal.Decimal `db:"-"`
+	ElPerformance365d decimal.Decimal `db:"-"`
+
 	MEVRewardsWei      decimal.Decimal `db:"mev_rewards_wei"`
 	MEVRewardsWeiTotal decimal.Decimal `db:"mev_rewards_wei_total"`
+
+	MEVPerformance1d   decimal.Decimal `db:"-"`
+	MEVPerformance7d   decimal.Decimal `db:"-"`
+	MEVPerformance31d  decimal.Decimal `db:"-"`
+	MEVPerformance365d decimal.Decimal `db:"-"`
 }

@@ -135,10 +135,37 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		return nil
 	})
 
-	var previousDayStatisticsData []*types.ValidatorStatsTableDbRow
+	var statisticsData1d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		previousDayStatisticsData, err = gatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
+		statisticsData1d, err = gatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
+		if err != nil {
+			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
+		}
+		return nil
+	})
+	var statisticsData7d []*types.ValidatorStatsTableDbRow
+	g.Go(func() error {
+		var err error
+		statisticsData7d, err = gatherStatisticsForDay(int64(day) - 7) // convert to int64 to avoid underflows
+		if err != nil {
+			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
+		}
+		return nil
+	})
+	var statisticsData31d []*types.ValidatorStatsTableDbRow
+	g.Go(func() error {
+		var err error
+		statisticsData31d, err = gatherStatisticsForDay(int64(day) - 31) // convert to int64 to avoid underflows
+		if err != nil {
+			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
+		}
+		return nil
+	})
+	var statisticsData365d []*types.ValidatorStatsTableDbRow
+	g.Go(func() error {
+		var err error
+		statisticsData31d, err = gatherStatisticsForDay(int64(day) - 365) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -159,8 +186,8 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 			ValidatorIndex: uint64(data.ValidatorIndex),
 		}
 
-		if index < len(previousDayStatisticsData) && day > 0 {
-			previousDayData = previousDayStatisticsData[index]
+		if index < len(statisticsData1d) && day > 0 {
+			previousDayData = statisticsData1d[index]
 		}
 
 		if data.ValidatorIndex != previousDayData.ValidatorIndex {
@@ -184,6 +211,43 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 
 		// update mev reward total
 		data.MEVRewardsWeiTotal = previousDayData.MEVRewardsWeiTotal.Add(data.MEVRewardsWei)
+
+		if statisticsData1d != nil && len(statisticsData1d) > index {
+			data.ClPerformance1d = data.ClRewardsGWeiTotal - statisticsData1d[index].ClRewardsGWeiTotal
+			data.ElPerformance1d = data.ElRewardsWeiTotal.Sub(statisticsData1d[index].ElRewardsWeiTotal)
+			data.MEVPerformance1d = data.MEVRewardsWeiTotal.Sub(statisticsData1d[index].MEVRewardsWeiTotal)
+		} else {
+			data.ClPerformance1d = data.ClRewardsGWeiTotal
+			data.ElPerformance1d = data.ElRewardsWeiTotal
+			data.MEVPerformance1d = data.MEVRewardsWeiTotal
+		}
+		if statisticsData7d != nil && len(statisticsData7d) > index {
+			data.ClPerformance7d = data.ClRewardsGWeiTotal - statisticsData7d[index].ClRewardsGWeiTotal
+			data.ElPerformance7d = data.ElRewardsWeiTotal.Sub(statisticsData7d[index].ElRewardsWeiTotal)
+			data.MEVPerformance7d = data.MEVRewardsWeiTotal.Sub(statisticsData7d[index].MEVRewardsWeiTotal)
+		} else {
+			data.ClPerformance7d = data.ClRewardsGWeiTotal
+			data.ElPerformance7d = data.ElRewardsWeiTotal
+			data.MEVPerformance7d = data.MEVRewardsWeiTotal
+		}
+		if statisticsData31d != nil && len(statisticsData31d) > index {
+			data.ClPerformance31d = data.ClRewardsGWeiTotal - statisticsData31d[index].ClRewardsGWeiTotal
+			data.ElPerformance31d = data.ElRewardsWeiTotal.Sub(statisticsData31d[index].ElRewardsWeiTotal)
+			data.MEVPerformance31d = data.MEVRewardsWeiTotal.Sub(statisticsData31d[index].MEVRewardsWeiTotal)
+		} else {
+			data.ClPerformance31d = data.ClRewardsGWeiTotal
+			data.ElPerformance31d = data.ElRewardsWeiTotal
+			data.MEVPerformance31d = data.MEVRewardsWeiTotal
+		}
+		if statisticsData365d != nil && len(statisticsData365d) > index {
+			data.ClPerformance365d = data.ClRewardsGWeiTotal - statisticsData365d[index].ClRewardsGWeiTotal
+			data.ElPerformance365d = data.ElRewardsWeiTotal.Sub(statisticsData365d[index].ElRewardsWeiTotal)
+			data.MEVPerformance365d = data.MEVRewardsWeiTotal.Sub(statisticsData365d[index].MEVRewardsWeiTotal)
+		} else {
+			data.ClPerformance365d = data.ClRewardsGWeiTotal
+			data.ElPerformance365d = data.ElRewardsWeiTotal
+			data.MEVPerformance365d = data.MEVRewardsWeiTotal
+		}
 	}
 
 	conn, err := WriterDb.Conn(context.Background())
@@ -204,6 +268,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 
 		defer tx.Rollback(context.Background())
 
+		logger.Infof("bulk inserting statistics data into the validator_stats table")
 		_, err = tx.Exec(context.Background(), "DELETE FROM validator_stats WHERE day = $1", day)
 		if err != nil {
 			return err
@@ -293,13 +358,89 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		}
 
 		if day > lastExportedStatsDay {
-			if err := WriteValidatorTotalPerformance(day, tx); err != nil {
-				return fmt.Errorf("error in WriteValidatorTotalPerformance: %w", err)
+			logger.Infof("updating validator_performance table")
+
+			logger.Infof("deleting validator_performance table contents")
+
+			_, err = tx.Exec(context.Background(), "TRUNCATE validator_performance")
+			if err != nil {
+				return err
+			}
+			logger.Infof("bulk loading new validator_performance table contents")
+
+			_, err = tx.CopyFrom(context.Background(), pgx.Identifier{"validator_performance"}, []string{
+				"validatorindex",
+				"balance",
+				"rank7d",
+
+				"cl_performance_1d",
+				"cl_performance_7d",
+				"cl_performance_31d",
+				"cl_performance_365d",
+				"cl_performance_total",
+
+				"el_performance_1d",
+				"el_performance_7d",
+				"el_performance_31d",
+				"el_performance_365d",
+				"el_performance_total",
+
+				"mev_performance_1d",
+				"mev_performance_7d",
+				"mev_performance_31d",
+				"mev_performance_365d",
+				"mev_performance_total",
+			}, pgx.CopyFromSlice(len(validatorData), func(i int) ([]interface{}, error) {
+				return []interface{}{
+					validatorData[i].ValidatorIndex,
+					validatorData[i].EndBalance,
+					0,
+
+					validatorData[i].ClPerformance1d,
+					validatorData[i].ClPerformance7d,
+					validatorData[i].ClPerformance31d,
+					validatorData[i].ClPerformance365d,
+					validatorData[i].ClRewardsGWeiTotal,
+
+					validatorData[i].ElPerformance1d,
+					validatorData[i].ElPerformance7d,
+					validatorData[i].ElPerformance31d,
+					validatorData[i].ElPerformance365d,
+					validatorData[i].ElRewardsWeiTotal,
+
+					validatorData[i].MEVPerformance1d,
+					validatorData[i].MEVPerformance7d,
+					validatorData[i].MEVPerformance31d,
+					validatorData[i].MEVPerformance365d,
+					validatorData[i].MEVRewardsWeiTotal,
+				}, nil
+			}))
+
+			if err != nil {
+				return fmt.Errorf("error writing to validator_performance table: %w", err)
+			}
+
+			logger.Infof("populate validator_performance rank7d")
+			_, err = tx.Exec(context.Background(), `
+				WITH ranked_performance AS (
+					SELECT
+						validatorindex, 
+						row_number() OVER (ORDER BY cl_performance_7d DESC) AS rank7d
+					FROM validator_performance
+				)
+				UPDATE validator_performance vp
+				SET rank7d = rp.rank7d
+				FROM ranked_performance rp
+				WHERE vp.validatorindex = rp.validatorindex
+				`)
+			if err != nil {
+				return fmt.Errorf("error updating rank7d while exporting day [%v]: %w", day, err)
 			}
 		} else {
 			logger.Infof("skipping total performance export as last exported day (%v) is greater than the exported day (%v)", lastExportedStatsDay, day)
 		}
 
+		logger.Infof("marking day %v as exported", day)
 		if err := WriteValidatorStatsExported(day, tx); err != nil {
 			return fmt.Errorf("error in WriteValidatorStatsExported: %w", err)
 		}
@@ -955,6 +1096,10 @@ func gatherValidatorMissedAttestationsStatisticsForDay(validators []uint64, day 
 }
 
 func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
+
+	if day < 0 {
+		return nil, nil
+	}
 
 	logger := logger.WithFields(logrus.Fields{
 		"day": day,
