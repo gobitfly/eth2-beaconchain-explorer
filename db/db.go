@@ -1287,7 +1287,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 
 			if !forceSlotUpdate {
 				var dbBlockRootHash []byte
-				err := WriterDb.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
+				err := tx.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
 				if err == nil && bytes.Equal(dbBlockRootHash, b.BlockRoot) {
 					blockLog.Infof("skipping export of block as it is already present in the db")
 					continue
