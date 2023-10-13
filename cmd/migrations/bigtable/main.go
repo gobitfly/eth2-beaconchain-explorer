@@ -153,14 +153,14 @@ func main() {
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
+				err := db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
 				if err != nil {
 					return fmt.Errorf("error exporting sync committee duties to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
+				err := db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
 				if err != nil {
 					return fmt.Errorf("error migrating income data to v2 schema for epoch %v: %w", epoch, err)
 				}
