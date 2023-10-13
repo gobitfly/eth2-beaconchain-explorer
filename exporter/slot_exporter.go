@@ -168,7 +168,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 			}
 		} else { // check if a late slot has been proposed in the meantime
 			if len(dbSlot.BlockRoot) < 32 && header != nil { // we have no slot in the db, but the node has a slot, export it
-				logger.Infof("setting slot %v as orphaned and exporting new slot", dbSlot.Slot)
+				logger.Infof("exporting new slot %v", dbSlot.Slot)
 				err := ExportSlot(client, dbSlot.Slot, utils.EpochOfSlot(dbSlot.Slot) == head.HeadEpoch, tx)
 				if err != nil {
 					return fmt.Errorf("error exporting slot %v: %w", dbSlot.Slot, err)
