@@ -77,6 +77,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 
+		var err error
 		isContract, err = eth1data.IsContract(ctx, common.BytesToAddress(addressBytes))
 		if err != nil {
 			return fmt.Errorf("IsContract: %w", err)
@@ -183,7 +184,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
-	if err := g.Wait(); err != nil {
+	if err = g.Wait(); err != nil {
 		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "g.Wait()", err) != nil {
 			return // an error has occurred and was processed
 		}
