@@ -123,21 +123,21 @@ func main() {
 			g.Go(func() error {
 				err := db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 				if err != nil {
-					return fmt.Errorf("error exporting validator balances to bigtable for epoch %v: %v", epoch, err)
+					return fmt.Errorf("error exporting validator balances to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
 				err := db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
 				if err != nil {
-					return fmt.Errorf("error exporting proposal assignments to bigtable for epoch %v: %v", epoch, err)
+					return fmt.Errorf("error exporting proposal assignments to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
 				err := db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
 				if err != nil {
-					return fmt.Errorf("error exporting attestations to bigtable for epoch %v: %v", epoch, err)
+					return fmt.Errorf("error exporting attestations to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
@@ -146,7 +146,7 @@ func main() {
 					for _, block := range blocks {
 						err := db.BigtableClient.SaveProposal(block)
 						if err != nil {
-							return fmt.Errorf("error exporting proposals to bigtable for slot %v: %v", block.Slot, err)
+							return fmt.Errorf("error exporting proposals to bigtable for slot %v: %w", block.Slot, err)
 						}
 					}
 				}
@@ -155,14 +155,14 @@ func main() {
 			g.Go(func() error {
 				err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
 				if err != nil {
-					return fmt.Errorf("error exporting sync committee duties to bigtable for epoch %v: %v", epoch, err)
+					return fmt.Errorf("error exporting sync committee duties to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
 				err = db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
 				if err != nil {
-					return fmt.Errorf("error migrating income data to v2 schema for epoch %v: %v", epoch, err)
+					return fmt.Errorf("error migrating income data to v2 schema for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
