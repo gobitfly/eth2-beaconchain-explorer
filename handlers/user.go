@@ -1314,8 +1314,8 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 
 	// check if email change request is ratelimited
 	now := time.Now()
-	if userData.ConfirmTs != nil && userData.ConfirmTs.Add(authConfirmEmailRateLimit).After(now) {
-		session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
+	if rateLimitDeadline := userData.ConfirmTs.Add(authConfirmEmailRateLimit); userData.ConfirmTs != nil && rateLimitDeadline.After(now) {
+		session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", rateLimitDeadline.Sub(now).Round(time.Second)))
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -1488,7 +1488,9 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = '', email_change_to_value = '' WHERE id = $2`, user.NewEmail, user.ID)
+	// TODO update stripe email
+
+	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = NULL, email_change_to_value = NULL WHERE id = $2`, user.NewEmail, user.ID)
 	if err != nil {
 		logger.Errorf("error: updating email for user: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
