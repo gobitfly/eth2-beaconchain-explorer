@@ -1345,7 +1345,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	batchSize := 1000
 	concurrency := 10
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
 	defer cancel()
 
 	res := make(map[uint64]map[uint64]*types.ValidatorSyncParticipation, len(validators))
@@ -1358,6 +1358,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 
 	for i := 0; i < len(validators); i += batchSize {
 
+		i := i
 		upperBound := i + batchSize
 		if len(validators) < upperBound {
 			upperBound = len(validators)
@@ -1372,6 +1373,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 			}
 			ranges := bigtable.getValidatorSlotRanges(vals, SYNC_COMMITTEES_FAMILY, startSlot, endSlot)
 
+			logger.Infof("processing GetValidatorSyncDutiesHistory validators batch %v", i)
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
