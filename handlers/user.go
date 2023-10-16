@@ -1290,6 +1290,13 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !user.Authenticated {
+		session.AddFlash("Error: You need to be logged in to change your email!")
+		session.Save(r, w)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	// get user data from db
 	userData := struct {
 		Email     string     `db:"email"`
@@ -1414,10 +1421,15 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
-	_, session, err := getUserSession(r)
+	sessionUser, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !sessionUser.Authenticated {
+		utils.SetFlash(w, r, authSessionName, "Error: You need to be logged in to update your email.")
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
@@ -1431,9 +1443,15 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed, email_change_to_value FROM users WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
-		logger.Errorf("error retrieving email for confirmation_hash %v %v", hash, err)
-		utils.SetFlash(w, r, authSessionName, "Error: This confirmation link is invalid / outdated.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		logger.Errorf("error retrieving user data for updating email; hash: %v; err: %v", hash, err)
+		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	// check if user is allowed to update email
+	if sessionUser.UserID != uint64(user.ID) {
+		http.Error(w, "Forbidden - You are not allowed to access this page", http.StatusForbidden)
 		return
 	}
 
@@ -1444,14 +1462,14 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.ConfirmTs.Add(time.Minute * 30).Before(time.Now()) {
-		utils.SetFlash(w, r, authSessionName, "Error: This confirmation link has expired.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
 	if !utils.IsValidEmail(user.NewEmail) {
 		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email because the new email is invalid, please try again.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1460,13 +1478,13 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.LogError(err, "error checking if email exists", 0, map[string]interface{}{"email": user.NewEmail})
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
 	if emailExists {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1474,7 +1492,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error: updating email for user: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1486,7 +1504,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error: purging sessions for user %v: %v", user.ID, err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
