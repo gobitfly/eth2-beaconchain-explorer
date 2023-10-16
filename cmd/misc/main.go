@@ -387,9 +387,9 @@ func UpdateBlockFinalizationSequentially() error {
 		if err != nil {
 			return err
 		}
-		secondsPerEpoch := time.Now().Sub(t0).Seconds() / float64(stepSize)
-		timeLeftSeconds := time.Second * time.Duration(float64(finalizedEpoch-lastEpoch)*time.Now().Sub(t0).Seconds()/float64(stepSize))
-		logrus.WithFields(logrus.Fields{"finalizedEpoch": finalizedEpoch, "epochs": fmt.Sprintf("%v-%v", nextStartEpoch, lastEpoch), "estimatedTimeLeft": timeLeftSeconds, "secondsPerEpoch": secondsPerEpoch}).Infof("did set blocks to finalized")
+		secondsPerEpoch := time.Since(t0).Seconds() / float64(stepSize)
+		timeLeft := time.Second * time.Duration(float64(finalizedEpoch-lastEpoch)*time.Since(t0).Seconds()/float64(stepSize))
+		logrus.WithFields(logrus.Fields{"finalizedEpoch": finalizedEpoch, "epochs": fmt.Sprintf("%v-%v", nextStartEpoch, lastEpoch), "timeLeft": timeLeft, "secondsPerEpoch": secondsPerEpoch}).Infof("did set blocks to finalized")
 		if finalizedEpoch <= lastEpoch {
 			logrus.Infof("all relevant blocks have been set to finalized (up to epoch %v)", finalizedEpoch)
 			return nil

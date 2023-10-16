@@ -128,9 +128,9 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 		// feedAddrs["CHFUSD"] = "0xFb00261Af80ADb1629D3869E377ae1EEC7bE659F"
 		feedAddrs["ETH/USD"] = "0xa767f745331D267c7751297D982b050c93985627"
 
-		setPrice("mGNO", "GNO", 1/32)
+		setPrice("mGNO", "GNO", float64(1)/float64(32))
 		setPrice("GNO", "mGNO", 32)
-		setPrice("mGNO", "mGNO", 1/32)
+		setPrice("mGNO", "mGNO", float64(1)/float64(32))
 		setPrice("GNO", "GNO", 1)
 
 		calcPairs["GNO"] = true

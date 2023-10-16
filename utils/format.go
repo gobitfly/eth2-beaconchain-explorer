@@ -207,7 +207,7 @@ func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, dig
 	if showCurrencySymbol {
 		resStr = fmt.Sprintf("%s %s", valPriced.StringFixed(int32(digitsAfterComma)), price.GetCurrencySymbol(targetCurrency))
 	} else {
-		resStr = fmt.Sprintf("%s", valPriced.StringFixed(int32(digitsAfterComma)))
+		resStr = valPriced.StringFixed(int32(digitsAfterComma))
 	}
 
 	classes := ""
@@ -233,21 +233,21 @@ func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, dig
 func IfToDec(valIf interface{}) decimal.Decimal {
 	var err error
 	var val decimal.Decimal
-	switch valIf.(type) {
+	switch v := valIf.(type) {
 	case *float64:
-		val = decimal.NewFromFloat(*valIf.(*float64))
+		val = decimal.NewFromFloat(*v)
 	case *int64:
-		val = decimal.NewFromInt(*valIf.(*int64))
+		val = decimal.NewFromInt(*v)
 	case *uint64:
-		val, err = decimal.NewFromString(fmt.Sprintf("%v", *valIf.(*uint64)))
+		val, err = decimal.NewFromString(fmt.Sprintf("%v", *v))
 	case int, int64, float64, uint64, *big.Float:
 		val, err = decimal.NewFromString(fmt.Sprintf("%v", valIf))
 	case []uint8:
-		val = decimal.NewFromBigInt(new(big.Int).SetBytes(valIf.([]byte)), 0)
+		val = decimal.NewFromBigInt(new(big.Int).SetBytes(v), 0)
 	case *big.Int:
-		val = decimal.NewFromBigInt(valIf.(*big.Int), 0)
+		val = decimal.NewFromBigInt(v, 0)
 	case decimal.Decimal:
-		val = valIf.(decimal.Decimal)
+		val = v
 	default:
 		logger.WithFields(logrus.Fields{"type": reflect.TypeOf(valIf), "val": valIf}).Errorf("invalid value passed to IfToDec")
 	}
@@ -809,11 +809,11 @@ func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTM
 
 func FormatIncome(balance interface{}, currency string, includeCurrency bool) template.HTML {
 	var balanceFloat64 float64
-	switch balance.(type) {
+	switch b := balance.(type) {
 	case float64:
-		balanceFloat64 = balance.(float64)
+		balanceFloat64 = b
 	case int64:
-		balanceFloat64 = float64(balance.(int64))
+		balanceFloat64 = float64(b)
 	default:
 	}
 	var income string = exchangeAndTrim(Config.Frontend.ClCurrency, currency, balanceFloat64, true)
