@@ -201,51 +201,14 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	}
 
 	var totalCount uint64
+	var param interface{}
+	var searchQuery string
+	shouldSearch := true
 	var err error
 
 	deposistsCountQuery := `
 		SELECT COUNT(*) FROM eth1_deposits as eth1
 		%s`
-
-	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
-	var hash []byte
-	if len(trimmedQuery)%2 == 0 && utils.HashLikeRegex.MatchString(trimmedQuery) {
-		hash, err = hex.DecodeString(trimmedQuery)
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-
-	if trimmedQuery != "" {
-		if utils.IsHash(trimmedQuery) {
-			searchQuery := `WHERE eth1.publickey = $1`
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), hash)
-		} else if utils.IsEth1Tx(trimmedQuery) {
-			// Withdrawal credentials have the same length as a tx hash
-			searchQuery := ""
-			if utils.IsValidWithdrawalCredentials(trimmedQuery) {
-				searchQuery = `
-				WHERE 
-					eth1.tx_hash = $1
-					OR eth1.withdrawal_credentials = $1`
-			} else {
-				searchQuery = `WHERE eth1.tx_hash = $1`
-			}
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), hash)
-		} else if utils.IsEth1Address(trimmedQuery) {
-			searchQuery := `WHERE eth1.from_address = $1`
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), hash)
-		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
-			searchQuery := `WHERE eth1.block_number = $1`
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), uiQuery)
-		}
-	} else {
-		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, ""))
-	}
-
-	if err != nil {
-		return nil, 0, err
-	}
 
 	deposistsQuery := `
 		SELECT 
@@ -276,13 +239,21 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		LIMIT $1
 		OFFSET $2`
 
+	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
+	var hash []byte
+	if len(trimmedQuery)%2 == 0 && utils.HashLikeRegex.MatchString(trimmedQuery) {
+		hash, err = hex.DecodeString(trimmedQuery)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+
 	if trimmedQuery != "" {
+		param = hash
 		if utils.IsHash(trimmedQuery) {
-			searchQuery := `WHERE eth1.publickey = $3`
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, hash)
+			searchQuery = `WHERE eth1.publickey = $3`
 		} else if utils.IsEth1Tx(trimmedQuery) {
 			// Withdrawal credentials have the same length as a tx hash
-			searchQuery := ""
 			if utils.IsValidWithdrawalCredentials(trimmedQuery) {
 				searchQuery = `
 				WHERE 
@@ -291,20 +262,38 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			} else {
 				searchQuery = `WHERE eth1.tx_hash = $3`
 			}
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, hash)
 		} else if utils.IsEth1Address(trimmedQuery) {
-			searchQuery := `WHERE eth1.from_address = $3`
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, hash)
-		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
-			searchQuery := `WHERE eth1.block_number = $3`
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, uiQuery)
+			searchQuery = `WHERE eth1.from_address = $3`
+		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 31); parseErr == nil { // Limit to 31 bits to stay within math.MaxInt32
+			param = uiQuery
+			searchQuery = `WHERE eth1.block_number = $3`
+		} else {
+			// The query does not fulfill any of the requirements for a search
+			shouldSearch = false
 		}
-	} else {
-		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, "", orderBy, orderDir), length, start)
 	}
 
-	if err != nil && err != sql.ErrNoRows {
-		return nil, 0, err
+	if shouldSearch {
+		// The deposits count query only has one parameter for the search
+		countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
+
+		if param != nil {
+			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
+		} else {
+			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery))
+		}
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if param != nil {
+			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
+		} else {
+			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start)
+		}
+		if err != nil && err != sql.ErrNoRows {
+			return nil, 0, err
+		}
 	}
 
 	return deposits, totalCount, nil
@@ -390,6 +379,9 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 		orderBy = "block_slot"
 	}
 
+	var param interface{}
+	var searchQuery string
+	shouldSearch := true
 	var err error
 
 	deposistsQuery := `
@@ -418,27 +410,33 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	}
 
 	if trimmedQuery != "" {
+		param = hash
 		if utils.IsHash(trimmedQuery) {
-			searchQuery := `WHERE blocks_deposits.publickey = $3`
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, hash)
+			searchQuery = `WHERE blocks_deposits.publickey = $3`
 		} else if utils.IsValidWithdrawalCredentials(trimmedQuery) {
-			searchQuery := `WHERE blocks_deposits.withdrawalcredentials = $3`
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, hash)
+			searchQuery = `WHERE blocks_deposits.withdrawalcredentials = $3`
 		} else if utils.IsEth1Address(trimmedQuery) {
-			searchQuery := `
+			searchQuery = `
 				LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
 				WHERE eth1_deposits.from_address = $3`
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, hash)
-		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
-			searchQuery := `WHERE blocks_deposits.block_slot = $3`
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, uiQuery)
+		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 31); parseErr == nil { // Limit to 31 bits to stay within math.MaxInt32
+			param = uiQuery
+			searchQuery = `WHERE blocks_deposits.block_slot = $3`
+		} else {
+			// The query does not fulfill any of the requirements for a search
+			shouldSearch = false
 		}
-	} else {
-		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, "", orderBy, orderDir), length, start)
 	}
 
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+	if shouldSearch {
+		if param != nil {
+			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
+		} else {
+			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start)
+		}
+		if err != nil && err != sql.ErrNoRows {
+			return nil, err
+		}
 	}
 
 	return deposits, nil
@@ -446,7 +444,9 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 
 func GetEth2DepositsCount(query string) (uint64, error) {
 	totalCount := uint64(0)
-
+	var param interface{}
+	var searchQuery string
+	shouldSearch := true
 	var err error
 
 	deposistsCountQuery := `
@@ -465,27 +465,33 @@ func GetEth2DepositsCount(query string) (uint64, error) {
 	}
 
 	if trimmedQuery != "" {
+		param = hash
 		if utils.IsHash(trimmedQuery) {
-			searchQuery := `WHERE blocks_deposits.publickey = $1`
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), hash)
+			searchQuery = `WHERE blocks_deposits.publickey = $1`
 		} else if utils.IsValidWithdrawalCredentials(trimmedQuery) {
-			searchQuery := `WHERE blocks_deposits.withdrawalcredentials = $1`
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), hash)
+			searchQuery = `WHERE blocks_deposits.withdrawalcredentials = $1`
 		} else if utils.IsEth1Address(trimmedQuery) {
-			searchQuery := `
+			searchQuery = `
 				LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
 				WHERE eth1_deposits.from_address = $1`
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), hash)
-		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 64); parseErr == nil {
-			searchQuery := `WHERE blocks_deposits.block_slot = $1`
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), uiQuery)
+		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 31); parseErr == nil { // Limit to 31 bits to stay within math.MaxInt32
+			param = uiQuery
+			searchQuery = `WHERE blocks_deposits.block_slot = $1`
+		} else {
+			// The query does not fulfill any of the requirements for a search
+			shouldSearch = false
 		}
-	} else {
-		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, ""))
 	}
 
-	if err != nil {
-		return 0, err
+	if shouldSearch {
+		if param != nil {
+			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), param)
+		} else {
+			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery))
+		}
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return totalCount, nil
