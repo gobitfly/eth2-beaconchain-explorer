@@ -337,9 +337,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	timings.Receipts = time.Since(start)
 	start = time.Now()
 
-	for i := range receipts {
-		r := receipts[i]
-
+	for i, r := range receipts {
 		c.Transactions[i].ContractAddress = r.ContractAddress[:]
 		c.Transactions[i].CommulativeGasUsed = r.CumulativeGasUsed
 		c.Transactions[i].GasUsed = r.GasUsed
