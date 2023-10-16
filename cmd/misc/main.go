@@ -250,6 +250,8 @@ func main() {
 		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
+	case "update-block-finalization-sequentially":
+		err = UpdateBlockFinalizationSequentially()
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
@@ -358,6 +360,41 @@ func main() {
 		utils.LogFatal(err, "command returned error", 0)
 	} else {
 		logrus.Infof("command executed successfully")
+	}
+}
+
+func UpdateBlockFinalizationSequentially() error {
+	var minNonFinalizedSlot uint64
+	err := db.WriterDb.Get(&minNonFinalizedSlot, `select min(slot) from blocks where finalized = false`)
+	if err != nil {
+		return err
+	}
+	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("UpdateBlockFinalizationSequentially")
+	nextStartEpoch := minNonFinalizedSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
+	stepSize := uint64(100)
+	for ; ; time.Sleep(time.Millisecond * 50) {
+		t0 := time.Now()
+		var finalizedEpoch uint64
+		err = db.WriterDb.Get(&finalizedEpoch, `SELECT COALESCE(MAX(epoch) - 3, 0) FROM epochs WHERE finalized`)
+		if err != nil {
+			return err
+		}
+		lastEpoch := nextStartEpoch + stepSize - 1
+		if lastEpoch > finalizedEpoch {
+			lastEpoch = finalizedEpoch
+		}
+		_, err = db.WriterDb.Exec(`UPDATE blocks SET finalized = true WHERE epoch >= $1 AND epoch <= $2 AND NOT finalized;`, nextStartEpoch, lastEpoch)
+		if err != nil {
+			return err
+		}
+		secondsPerEpoch := time.Now().Sub(t0).Seconds() / float64(stepSize)
+		timeLeftSeconds := time.Second * time.Duration(float64(finalizedEpoch-lastEpoch)*time.Now().Sub(t0).Seconds()/float64(stepSize))
+		logrus.WithFields(logrus.Fields{"finalizedEpoch": finalizedEpoch, "epochs": fmt.Sprintf("%v-%v", nextStartEpoch, lastEpoch), "estimatedTimeLeft": timeLeftSeconds, "secondsPerEpoch": secondsPerEpoch}).Infof("did set blocks to finalized")
+		if finalizedEpoch <= lastEpoch {
+			logrus.Infof("all relevant blocks have been set to finalized (up to epoch %v)", finalizedEpoch)
+			return nil
+		}
+		nextStartEpoch = nextStartEpoch + stepSize
 	}
 }
 
