@@ -144,7 +144,6 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	}
 
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
-	reqs := make([]geth_rpc.BatchElem, len(block.Transactions()))
 
 	if len(block.Withdrawals()) > 0 {
 		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(block.Withdrawals()))
@@ -331,31 +330,16 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		return nil
 	})
 
-	for i := range reqs {
-		reqs[i] = geth_rpc.BatchElem{
-			Method: "eth_getTransactionReceipt",
-			Args:   []interface{}{txs[i].Hash().String()},
-			Result: &receipts[i],
-		}
+	if err := client.rpcClient.CallContext(ctx, &receipts, "eth_getBlockReceipts", fmt.Sprintf("0x%x", block.NumberU64())); err != nil {
+		return nil, nil, fmt.Errorf("error retrieving receipts for block %v: %v", block.Number(), err)
 	}
 
-	if len(reqs) > 0 {
-		if err := client.rpcClient.BatchCallContext(ctx, reqs); err != nil {
-			return nil, nil, fmt.Errorf("error retrieving receipts for block %v: %v", block.Number(), err)
-		}
-	}
 	timings.Receipts = time.Since(start)
 	start = time.Now()
 
-	for i := range reqs {
-		if reqs[i].Error != nil {
-			return nil, nil, fmt.Errorf("error retrieving receipt %v for block %v: %v", i, block.Number(), reqs[i].Error)
-		}
-		if receipts[i] == nil {
-			return nil, nil, fmt.Errorf("got null value for receipt %d of block %v", i, block.Number())
-		}
-
+	for i := range receipts {
 		r := receipts[i]
+
 		c.Transactions[i].ContractAddress = r.ContractAddress[:]
 		c.Transactions[i].CommulativeGasUsed = r.CumulativeGasUsed
 		c.Transactions[i].GasUsed = r.GasUsed

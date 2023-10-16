@@ -25,7 +25,7 @@
       "deneb_fork_epoch": 999999999
     },
     "global_client_log_level": "info",
-    "start_tx_spammer": false,
+    "start_tx_spammer": true,
     "start_blob_spammer": false
   }
   
