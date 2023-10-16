@@ -218,7 +218,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				if traceMode == "parity" {
 					return fmt.Errorf("error tracing block via parity style traces (%v), %v: %w", block.Number(), block.Hash(), err)
 				} else {
-					logger.Errorf("error tracing block via parity style traces (%v), %v: %w", block.Number(), block.Hash(), err)
+					logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
 
 				}
 				traceError = err
