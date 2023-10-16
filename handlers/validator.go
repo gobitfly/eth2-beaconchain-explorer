@@ -1056,7 +1056,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatBlockSlot(b.Slot),
-			utils.FormatBlockStatus(b.Status),
+			utils.FormatBlockStatus(b.Status, b.Slot),
 			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 			utils.FormatBlockRoot(b.BlockRoot),
 			b.Attestations,
@@ -1780,10 +1780,10 @@ func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdra
 	}
 
 	if income.ProposerAttestationInclusionReward > 0 {
-		block := utils.FormatBlockStatusShort(1)
+		block := utils.FormatBlockStatusShort(1, 0)
 		events += block
 	} else if income.ProposalsMissed > 0 {
-		block := utils.FormatBlockStatusShort(2)
+		block := utils.FormatBlockStatusShort(2, 0)
 		events += block
 	}
 
