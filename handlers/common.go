@@ -133,10 +133,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	}
 	currentDayClIncome := int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)
 
+	elClPrice := price.GetPrice(utils.Config.Frontend.ElCurrency, utils.Config.Frontend.ClCurrency)
+
 	// calculate combined el and cl earnings
-	earnings1d := income.ClIncome1d + income.ElIncome1d
-	earnings7d := income.ClIncome7d + income.ElIncome7d
-	earnings31d := income.ClIncome31d + income.ElIncome31d
+	earnings1d := float64(income.ClIncome1d) + elClPrice*float64(income.ElIncome1d)
+	earnings7d := float64(income.ClIncome7d) + elClPrice*float64(income.ElIncome7d)
+	earnings31d := float64(income.ClIncome31d) + elClPrice*float64(income.ElIncome31d)
 
 	if totalDeposits == 0 {
 		totalDeposits = utils.Config.Chain.ClConfig.MaxEffectiveBalance * uint64(len(validators))
@@ -193,7 +195,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	incomeToday := types.ClElInt64{
 		El:    0,
 		Cl:    currentDayClIncome,
-		Total: currentDayClIncome,
+		Total: float64(currentDayClIncome),
 	}
 
 	proposedToday := []uint64{}
@@ -275,13 +277,13 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			}
 		}
 		incomeToday.El = int64(eth.WeiToGwei(incomeTodayEl))
-		incomeToday.Total += incomeToday.El
+		incomeToday.Total += float64(incomeToday.El) * elClPrice
 	}
 
 	incomeTotal := types.ClElInt64{
 		El:    income.ElIncomeTotal + incomeToday.El,
 		Cl:    income.ClIncomeTotal + incomeToday.Cl,
-		Total: income.ClIncomeTotal + income.ElIncomeTotal + incomeToday.Total,
+		Total: float64(income.ClIncomeTotal+incomeToday.Cl) + elClPrice*float64(income.ElIncomeTotal+incomeToday.El),
 	}
 
 	return &types.ValidatorEarnings{
@@ -318,12 +320,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Total: clApr365d + elApr365d,
 		},
 		TotalDeposits:        int64(totalDeposits),
-		LastDayFormatted:     utils.FormatIncome(earnings1d, currency),
-		LastWeekFormatted:    utils.FormatIncome(earnings7d, currency),
-		LastMonthFormatted:   utils.FormatIncome(earnings31d, currency),
+		LastDayFormatted:     utils.FormatIncome(int64(earnings1d), currency, true),
+		LastWeekFormatted:    utils.FormatIncome(int64(earnings7d), currency, true),
+		LastMonthFormatted:   utils.FormatIncome(int64(earnings31d), currency, true),
 		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency),
-		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency),
+		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency, true),
+		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency, true),
 		ProposalData:         validatorProposalData,
 	}, balancesMap, nil
 }
@@ -477,15 +479,16 @@ func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.ClConfig.SecondsPerSlot)) // set local cache to the seconds per slot interval
-	currency := GetCurrency(r)
+
 	data := services.LatestState()
-	// data.Currency = currency
-	data.EthPrice = price.GetEthPrice(currency)
-	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
-	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
+	data.Rates = services.GetRates(GetCurrency(r))
+	userAgent := r.Header.Get("User-Agent")
+	userAgent = strings.ToLower(userAgent)
+	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
+		data.Rates.MainCurrencyPriceFormatted = utils.KFormatterEthPrice(uint64(data.Rates.MainCurrencyPrice))
+	}
 
 	err := json.NewEncoder(w).Encode(data)
-
 	if err != nil {
 		logger.Errorf("error sending latest index page data: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -497,47 +500,41 @@ func GetCurrency(r *http.Request) string {
 	if cookie, err := r.Cookie("currency"); err == nil {
 		return cookie.Value
 	}
-
-	return "ETH"
+	return utils.Config.Frontend.MainCurrency
 }
 
 func GetCurrencySymbol(r *http.Request) string {
-
 	cookie, err := r.Cookie("currency")
 	if err != nil {
+		logger.WithError(err).Errorf("error in handlers.GetCurrencySymbol")
 		return "$"
 	}
-
-	switch cookie.Value {
-	case "AUD":
-		return "A$"
-	case "CAD":
-		return "C$"
-	case "CNY":
-		return "¥"
-	case "EUR":
-		return "€"
-	case "GBP":
-		return "£"
-	case "JPY":
-		return "¥"
-	case "RUB":
-		return "₽"
-	default:
-		return "$"
+	if cookie.Value == utils.Config.Frontend.MainCurrency {
+		return "USD"
 	}
+	return price.GetCurrencySymbol(cookie.Value)
 }
 
 func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
-		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrency, "USD"))
 	}
+	if cookie.Value == utils.Config.Frontend.MainCurrency {
+		return uint64(price.GetPrice(utils.Config.Frontend.MainCurrency, "USD"))
+	}
+	return uint64(price.GetPrice(utils.Config.Frontend.MainCurrency, cookie.Value))
+}
 
-	if cookie.Value == "ETH" {
-		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+func GetCurrentElPrice(r *http.Request) uint64 {
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrency, "USD"))
 	}
-	return price.GetEthRoundPrice(price.GetEthPrice(cookie.Value))
+	if cookie.Value == utils.Config.Frontend.ElCurrency {
+		return uint64(price.GetPrice(utils.Config.Frontend.ElCurrency, "USD"))
+	}
+	return uint64(price.GetPrice(utils.Config.Frontend.ElCurrency, cookie.Value))
 }
 
 func GetCurrentPriceFormatted(r *http.Request) template.HTML {
@@ -763,7 +760,7 @@ func getExecutionChartData(indices []uint64, currency string, lowerBoundDay uint
 	}
 
 	// Now populate the chartData array using the dayRewardMap
-	exchangeRate := utils.ExchangeRateForCurrency(currency)
+	exchangeRate := price.GetPrice(utils.Config.Frontend.ElCurrency, currency)
 	for day, reward := range dayRewardMap {
 		ts := float64(utils.DayToTime(day).Unix() * 1000)
 		chartData = append(chartData, &types.ChartDataPoint{

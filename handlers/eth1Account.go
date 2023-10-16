@@ -10,7 +10,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -46,6 +45,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address = strings.Replace(address, "0x", "", -1)
 	address = strings.ToLower(address)
 
+	currency := GetCurrency(r)
 	price := GetCurrentPrice(r)
 	symbol := GetCurrencySymbol(r)
 
@@ -59,7 +59,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g := new(errgroup.Group)
-	g.SetLimit(9)
+	g.SetLimit(11)
 
 	isContract := false
 	txns := &types.DataTableResponse{}
@@ -77,6 +77,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 
+		var err error
 		isContract, err = eth1data.IsContract(ctx, common.BytesToAddress(addressBytes))
 		if err != nil {
 			return fmt.Errorf("IsContract: %w", err)
@@ -125,7 +126,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "") // DIECE
 		if err != nil {
 			return fmt.Errorf("GetAddressErc1155TableData: %w", err)
 		}
@@ -161,7 +162,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-				template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
+				template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
 			})
 		}
 
@@ -179,11 +180,11 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("GetAddressWithdrawalsTotal: %w", err)
 		}
-		withdrawalSummary = template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(sumWithdrawals), big.NewInt(1e9)), "Ether", 6)))
+		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false))
 		return nil
 	})
 
-	if err := g.Wait(); err != nil {
+	if err = g.Wait(); err != nil {
 		if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "g.Wait()", err) != nil {
 			return // an error has occurred and was processed
 		}
@@ -371,6 +372,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	currency := GetCurrency(r)
 	q := r.URL.Query()
 	address, err := lowerAddressFromRequest(w, r)
 	if err != nil {
@@ -391,7 +393,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
 		}
 	}
 

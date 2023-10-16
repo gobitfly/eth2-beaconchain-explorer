@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"eth2-exporter/types"
+	"math/big"
 
 	"github.com/sirupsen/logrus"
 )
@@ -24,6 +25,7 @@ type Client interface {
 type Eth1Client interface {
 	GetBlock(number uint64) (*types.Eth1Block, *types.GetBlockTimings, error)
 	GetLatestEth1BlockNumber() (uint64, error)
+	GetChainID() *big.Int
 	Close()
 }
 

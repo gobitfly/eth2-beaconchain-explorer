@@ -72,7 +72,7 @@
           yAxis: [
             {
               title: {
-                  text: '# of Possible Proposals'
+                text: '# of Possible Proposals'
               },
               opposite: false
             }
@@ -84,7 +84,7 @@
                 enabled: true,
                 forced: true,
                 units: [
-                    ['day', [1]]
+                  ['day', [1]]
                 ]
               }
             }
@@ -157,7 +157,7 @@
       <script type="text/javascript" src="/js/income_chart_options.js"></script>
       <script>
         var incomeChart;
-        const incomeChartOptions = getIncomeChartOptions({{.IncomeHistoryChartData}}, {{ .ExecutionIncomeHistoryData }}, 'Daily Income', 535, {{$.Rates.Currency}})
+        const incomeChartOptions = getIncomeChartOptions({{.IncomeHistoryChartData}}, {{ .ExecutionIncomeHistoryData }}, 'Daily Income', 535);
 
         document.addEventListener('DOMContentLoaded', function () {
           incomeChart = Highcharts.stockChart('income-chart', incomeChartOptions);

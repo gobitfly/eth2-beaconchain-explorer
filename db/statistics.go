@@ -1164,13 +1164,15 @@ func GetValidatorIncomeHistoryChart(validatorIndices []uint64, currency string, 
 	}
 	var clRewardsSeries = make([]*types.ChartDataPoint, len(incomeHistory))
 
+	p := price.GetPrice(utils.Config.Frontend.ClCurrency, currency)
+
 	for i := 0; i < len(incomeHistory); i++ {
 		color := "#7cb5ec"
 		if incomeHistory[i].ClRewards < 0 {
 			color = "#f7a35c"
 		}
 		balanceTs := utils.DayToTime(incomeHistory[i].Day)
-		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(incomeHistory[i].ClRewards) / 1e9), Color: color}
+		clRewardsSeries[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: p * (float64(incomeHistory[i].ClRewards)) / float64(utils.Config.Frontend.ClCurrencyDivisor), Color: color}
 	}
 	return clRewardsSeries, err
 }
@@ -1710,8 +1712,8 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	switch utils.Config.Chain.ClConfig.DepositChainID {
 	case 1:
 		crowdSale := 72009990.50
-		logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
-		err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetEthPrice("USD"))).String())
+		logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetPrice("ETH", "USD"))).String())
+		err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetPrice("ETH", "USD"))).String())
 		if err != nil {
 			return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
 		}

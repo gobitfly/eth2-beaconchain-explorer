@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/hex"
+	"eth2-exporter/contracts/oneinchoracle"
 	"eth2-exporter/erc20"
 	"eth2-exporter/types"
 	"fmt"
@@ -25,10 +26,10 @@ import (
 )
 
 type ErigonClient struct {
-	endpoint  string
-	rpcClient *geth_rpc.Client
-	ethClient *ethclient.Client
-
+	endpoint     string
+	rpcClient    *geth_rpc.Client
+	ethClient    *ethclient.Client
+	chainID      *big.Int
 	multiChecker *Balance
 }
 
@@ -57,12 +58,24 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 		return nil, fmt.Errorf("error initiation balance checker contract: %w", err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	chainID, err := client.ethClient.ChainID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting chainid of rpcclient: %w", err)
+	}
+	client.chainID = chainID
+
 	return client, nil
 }
 
 func (client *ErigonClient) Close() {
 	client.rpcClient.Close()
 	client.ethClient.Close()
+}
+
+func (client *ErigonClient) GetChainID() *big.Int {
+	return client.chainID
 }
 
 func (client *ErigonClient) GetNativeClient() *ethclient.Client {
@@ -622,10 +635,14 @@ func (client *ErigonClient) GetERC20TokenBalance(address string, token string) (
 }
 
 func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metadata, error) {
-
 	logger.Infof("retrieving metadata for token %x", token)
-	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 
+	oracle, err := oneinchoracle.NewOneInchOracleByChainID(client.GetChainID(), client.ethClient)
+	if err != nil {
+		return nil, err
+	}
+
+	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -666,7 +683,20 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 		ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		return nil
 	})
+
+	g.Go(func() error {
+		rate, err := oracle.GetRateToEth(nil, common.BytesToAddress(token), false)
+		if err != nil {
+			return fmt.Errorf("error calling oneinchoracle.GetRateToEth: %w", err)
+		}
+		ret.Price = rate.Bytes()
+		return nil
+	})
+
 	err = g.Wait()
+	if err != nil {
+		return ret, err
+	}
 
 	if err == nil && len(ret.Decimals) == 0 && ret.Symbol == "" && len(ret.TotalSupply) == 0 {
 		// it's possible that a token contract implements the ERC20 interfaces but does not return any values; we use a backup in this case

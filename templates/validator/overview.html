@@ -84,11 +84,11 @@
         <div class="px-2 mx-auto" style="max-width: 50rem;">
           <span>
             {{ if eq .InclusionDelay 0 }}
-              An ETH deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to 32 ETH.
+              A deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to {{ config.Chain.ClConfig.MaxEffectiveBalance }} {{ config.Frontend.ClCurrency }}.
             {{ else }}
               <!-- The last ETH deposit was made  {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a>  until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 32 ETH. 
                             -->
-              The last deposit to the Ethereum Deposit contract was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 32 ETH.
+              The last deposit to the Deposit contract was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to {{ config.Chain.ClConfig.MaxEffectiveBalance }} {{ config.Frontend.ClCurrency }}.
               <br />
               Join our <a href="https://dsc.gg/beaconchain">Discord server</a> for support, questions and suggestions.
             {{ end }}
@@ -153,9 +153,9 @@
       <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
         <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
         <div class="d-flex flex-column">
-          <span style="font-weight: bold; font-size:18px;">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</span>
+          <span style="font-weight: bold; font-size:18px;">{{ formatClCurrency .CurrentBalance $.Rates.SelectedCurrency 5 true false false }}</span>
           <span style="font-size: 0.8rem; color: gray"
-            >{{ formatEffectiveBalance .EffectiveBalance "ETH" }}
+            >{{ formatEffectiveBalance .EffectiveBalance config.Frontend.MainCurrency }}
             <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
               ><a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
           ></span>
@@ -183,9 +183,9 @@
       <div class="m-3 position-relative">
         <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
         <div style="width: 8.32rem" class="d-flex flex-column">
-          <span style="font-weight: bold; font-size:18px;">{{ formatCurrentBalance .CurrentBalance $.Rates.Currency }}</span>
+          <span style="font-weight: bold; font-size:18px;">{{ formatClCurrency .CurrentBalance $.Rates.SelectedCurrency 5 true false false }}</span>
           <span
-            >{{ formatEffectiveBalance .EffectiveBalance "ETH" }}
+            >{{ formatEffectiveBalance .EffectiveBalance config.Frontend.MainCurrency }}
             <span style="font-size:0.8rem; color:gray" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"
               ><a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span
           ></span>
@@ -269,7 +269,7 @@
             <i class="fas fa-money-bill"></i>
             {{ .WithdrawalCount }}
           {{ else }}
-            <a href="https://launchpad.ethereum.org/en/withdrawals">
+            <a href="{{ if eq config.Chain.Id 100 }}https://docs.gnosischain.com/node/management/withdrawals/#how-to-change-the-withdrawal-credential{{ else }}https://launchpad.ethereum.org/en/withdrawals{{ end }}">
               <i class="fas fa-money-bill" style="color:var(--body-color)"></i>
               <i class="text-warning fas fa-exclamation-triangle"></i>
               <i class="fas fa-external-link-alt"></i>

@@ -2160,7 +2160,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), utils.Config.Frontend.ElCurrency, 6),
 		}
 	}
 
@@ -2260,7 +2260,7 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 			utils.FormatBlockNumber(b.Number),
 			utils.FormatTimestamp(b.Time.AsTime().Unix()),
 			utils.FormatBlockUsage(b.GasUsed, b.GasLimit),
-			utils.FormatAmount(reward, "Ether", 6),
+			utils.FormatAmount(reward, utils.Config.Frontend.ElCurrency, 6),
 		}
 	}
 
@@ -2358,7 +2358,7 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 			utils.FormatBlockNumber(u.Number),
 			utils.FormatTimestamp(u.Time.AsTime().Unix()),
 			utils.FormatDifficulty(new(big.Int).SetBytes(u.Difficulty)),
-			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), "Ether", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), utils.Config.Frontend.ElCurrency, 6),
 		}
 	}
 
@@ -2586,7 +2586,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
 			to,
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), "Ether", 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), utils.Config.Frontend.ElCurrency, 6),
 			t.Type,
 		}
 	}
@@ -2678,7 +2678,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		data[i] = types.Transfer{
 			From:   from,
 			To:     to,
-			Amount: utils.FormatBytesAmount(t.Value, "Ether", 8),
+			Amount: utils.FormatBytesAmount(t.Value, utils.Config.Frontend.ElCurrency, 8),
 		}
 	}
 	return data, nil
@@ -3322,26 +3322,17 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	sort.Slice(ret.Balances, func(i, j int) bool {
 		priceI := decimal.New(0, 0)
 		priceJ := decimal.New(0, 0)
-		var err error
-
-		if string(ret.Balances[i].Metadata.Price) != "" {
-			priceI, err = decimal.NewFromString(string(ret.Balances[i].Metadata.Price))
-			if err != nil {
-				logger.WithError(err).Errorf("error parsing string price value, price: %s", ret.Balances[i].Metadata.Price)
-			}
+		if len(ret.Balances[i].Metadata.Price) > 0 {
+			priceI = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Price), 0)
 		}
-
-		if string(ret.Balances[j].Metadata.Price) != "" {
-			priceJ, err = decimal.NewFromString(string(ret.Balances[j].Metadata.Price))
-			if err != nil {
-				logger.WithError(err).Errorf("error parsing string price value, price: %s", ret.Balances[j].Metadata.Price)
-			}
+		if len(ret.Balances[j].Metadata.Price) > 0 {
+			priceJ = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Price), 0)
 		}
 
 		mulI := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Decimals), 0))
 		mulJ := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Decimals), 0))
-		mkI := priceI.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Balance), 0).Div(mulI))
-		mkJ := priceJ.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Balance), 0).Div(mulJ))
+		mkI := priceI.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Balance), 0).DivRound(mulI, 18))
+		mkJ := priceJ.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Balance), 0).DivRound(mulJ, 18))
 
 		return mkI.Cmp(mkJ) >= 0
 	})
@@ -3409,32 +3400,32 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	if len(address) == 1 {
 		return &types.ERC20Metadata{
 			Decimals:    big.NewInt(18).Bytes(),
-			Symbol:      "Ether",
+			Symbol:      utils.Config.Frontend.ElCurrency,
 			TotalSupply: []byte{},
 		}, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	cacheKey := fmt.Sprintf("%s:ERC20:%s", bigtable.chainId, string(address))
-	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ERC20Metadata)); err == nil {
+	cacheKey := fmt.Sprintf("%s:ERC20:%#x", bigtable.chainId, address)
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*1, new(types.ERC20Metadata)); err == nil {
 		return cached.(*types.ERC20Metadata), nil
 	}
 
-	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
-	filter := gcp_bigtable.FamilyFilter(ERC20_METADATA_FAMILY)
+	// this function actually does not use bigtable right now, but it will in the future (see BIDS-1846, BIDS-1234)
 
-	row, err := bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
+	var row gcp_bigtable.Row
+	var err error
 
-	if err != nil {
-		return nil, err
-	}
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	// defer cancel()
+	// rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
+	// filter := gcp_bigtable.FamilyFilter(ERC20_METADATA_FAMILY)
+	// row, err = bigtable.tableMetadata.ReadRow(ctx, rowKey, gcp_bigtable.RowFilter(filter))
+	// if err != nil {
+	// 	 return nil, err
+	// }
 
 	if row == nil { // Retrieve token metadata from Ethplorer and store it for later usage
-		logger.Infof("retrieving metadata for token %x via rpc", address)
 		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
-
 		if err != nil {
 			logger.Warnf("error retrieving metadata for token %x: %v", address, err)
 			metadata = &types.ERC20Metadata{
@@ -3449,12 +3440,12 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 			return metadata, nil
 		}
 
-		err = bigtable.SaveERC20Metadata(address, metadata)
-		if err != nil {
-			return nil, err
-		}
+		// err = bigtable.SaveERC20Metadata(address, metadata)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
-		err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*24*365)
+		err = cache.TieredCache.Set(cacheKey, metadata, time.Hour*1)
 		if err != nil {
 			return nil, err
 		}
@@ -3486,7 +3477,7 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 		}
 	}
 
-	err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24*365)
+	err = cache.TieredCache.Set(cacheKey, ret, time.Hour*1)
 	if err != nil {
 		return nil, err
 	}

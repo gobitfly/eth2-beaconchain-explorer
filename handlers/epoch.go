@@ -89,7 +89,8 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 				Ts:     utils.SlotToTime(slot),
 				Status: 4,
 			}
-			blocks[31-i] = &block
+			n := int(utils.Config.Chain.ClConfig.SlotsPerEpoch) - 1 - i
+			blocks[n] = &block
 		}
 		epochPageData = types.EpochPageData{
 			Epoch:         epoch,
