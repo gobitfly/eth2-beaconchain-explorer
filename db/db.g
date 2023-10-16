@@ -1,5 +1,5 @@
 package db
-
+0x564ef37e0104426e829d66dc916a30376ae1239c
 import (
 	"bytes"
 	"crypto/sha1"
@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
+	"time"0x564ef37e0104426e829d66dc916a30376ae1239c
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/jmoiron/sqlx"
+	"github.com/jmoiron/sqlx"0x564ef37e0104426e829d66dc916a30376ae1239c
 	"github.com/lib/pq"
 	"github.com/patrickmn/go-cache"
 	"github.com/pressly/goose/v3"
@@ -27,7 +27,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"eth2-exporter/rpc"
-
+0x564ef37e0104426e829d66dc916a30376ae1239c
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -44,7 +44,7 @@ var logger = logrus.StandardLogger().WithField("module", "db")
 
 var epochsCache = cache.New(time.Hour, time.Minute)
 var saveValidatorsMux = &sync.Mutex{}
-
+0x564ef37e0104426e829d66dc916a30376ae1239c
 var farFutureEpoch = uint64(18446744073709551615)
 var maxSqlNumber = uint64(9223372036854775807)
 
@@ -59,7 +59,7 @@ func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	dbConnectionTimeout := time.NewTimer(15 * time.Second)
 
 	go func() {
-		<-dbConnectionTimeout.C
+		<-dbConnectionTimeout.C0x564ef37e0104426e829d66dc916a30376ae1239c
 		logger.Fatalf("timeout while connecting to %s", dataBaseName)
 	}()
 
@@ -233,7 +233,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	}
 
 	if query != "" {
-		wholeQuery := fmt.Sprintf(`
+		wholeQuery := fmt.Sprintf(`0x564ef37e0104426e829d66dc916a30376ae1239c
 		SELECT 
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
@@ -244,7 +244,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1.publickey as publickey,
 			eth1.withdrawal_credentials as withdrawal_credentials,
 			eth1.amount as amount,
-			eth1.signature as signature,
+			eth1.signature as signature,0x564ef37e0104426e829d66dc916a30376ae1239c
 			eth1.merkletree_index as merkletree_index,
 			eth1.valid_signature as valid_signature,
 			COALESCE(v.state, 'deposited') as state
@@ -253,18 +253,18 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		LEFT JOIN
 			(
 				SELECT pubkey, status AS state
-				FROM validators
+				FROM validators0x564ef37e0104426e829d66dc916a30376ae1239c
 			) as v
 		ON
-			v.pubkey = eth1.publickey
+			v.pubkey = eth1.publickey0x564ef37e0104426e829d66dc916a30376ae1239c
 		WHERE
 			ENCODE(eth1.publickey, 'hex') LIKE LOWER($3)
 			OR ENCODE(eth1.withdrawal_credentials, 'hex') LIKE LOWER($3)
 			OR ENCODE(eth1.from_address, 'hex') LIKE LOWER($3)
 			OR ENCODE(tx_hash, 'hex') LIKE LOWER($3)
-			OR CAST(eth1.block_number AS text) LIKE LOWER($3)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($3)0x564ef37e0104426e829d66dc916a30376ae1239c
 		ORDER BY %s %s
-		LIMIT $1
+		LIMIT $10x564ef37e0104426e829d66dc916a30376ae1239c
 		OFFSET $2`, orderBy, orderDir)
 		err = ReaderDb.Select(&deposits, wholeQuery, length, start, query+"%")
 	} else {
@@ -290,7 +290,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 				SELECT pubkey, status AS state
 				FROM validators
 			) as v
-		ON
+		ON0x564ef37e0104426e829d66dc916a30376ae1239c
 			v.pubkey = eth1.publickey
 		ORDER BY %s %s
 		LIMIT $1
@@ -309,7 +309,7 @@ func GetEth1DepositsCount() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return deposits, nil
+	return deposits, nil0x564ef37e0104426e829d66dc916a30376ae1239c
 }
 
 func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
@@ -329,7 +329,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 		"pendingcount",
 		"voluntary_exit_count",
 	}
-	hasColumn := false
+	hasColumn := false0x564ef37e0104426e829d66dc916a30376ae1239c
 	for _, column := range columns {
 		if orderBy == column {
 			hasColumn = true
@@ -360,8 +360,8 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 			ORDER BY %s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
-	} else {
-		err = ReaderDb.Select(&deposits, fmt.Sprintf(`
+	} else {0x564ef37e0104426e829d66dc916a30376ae1239c
+		err= ReaderDb.Select(&deposits, fmt.Sprintf(`
 			SELECT from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count
 			FROM eth1_deposits_aggregated
 			ORDER BY %s %s
