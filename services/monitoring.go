@@ -263,7 +263,7 @@ func startServicesMonitoringService() {
 		"ethstoreExporter":          time.Minute * 60,
 		"statsUpdater":              time.Minute * 30,
 		"poolsUpdater":              time.Minute * 30,
-		"epochExporter":             time.Minute * 15,
+		"slotExporter":              time.Minute * 15,
 		"statistics":                time.Minute * 90,
 		"ethStoreStatistics":        time.Minute * 15,
 		"lastExportedStatisticDay":  time.Minute * 15,

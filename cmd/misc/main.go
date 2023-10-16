@@ -172,14 +172,24 @@ func main() {
 		logrus.Infof("bigtable schema initialization completed")
 	case "epoch-export":
 		logrus.Infof("exporting epochs %v - %v", opts.StartEpoch, opts.EndEpoch)
-
 		for epoch := opts.StartEpoch; epoch <= opts.EndEpoch; epoch++ {
-			err = exporter.ExportEpoch(epoch, rpcClient)
-
+			tx, err := db.WriterDb.Beginx()
 			if err != nil {
-				logrus.Errorf("error exporting epoch: %v", err)
+				logrus.Fatalf("error starting tx: %v", err)
 			}
-			logrus.Printf("finished export for epoch %v", epoch)
+			for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
+				err = exporter.ExportSlot(rpcClient, slot, false, tx)
+
+				if err != nil {
+					tx.Rollback()
+					logrus.Fatalf("error exporting slot %v: %v", slot, err)
+				}
+				logrus.Printf("finished export for slot %v", slot)
+			}
+			err = tx.Commit()
+			if err != nil {
+				logrus.Fatalf("error committing tx: %v", err)
+			}
 		}
 	case "export-epoch-missed-slots":
 		logrus.Infof("exporting epochs with missed slots")
@@ -212,11 +222,23 @@ func main() {
 
 		logrus.Infof("Found %v epochs with missing slot status", len(epochs))
 		for _, epoch := range epochs {
-			err = exporter.ExportEpoch(epoch, rpcClient)
+			tx, err := db.WriterDb.Beginx()
 			if err != nil {
-				logrus.Errorf("error exporting epoch: %v", err)
+				logrus.Fatalf("error starting tx: %v", err)
 			}
-			logrus.Printf("finished export for epoch %v", epoch)
+			for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
+				err = exporter.ExportSlot(rpcClient, slot, false, tx)
+
+				if err != nil {
+					tx.Rollback()
+					logrus.Fatalf("error exporting slot %v: %v", slot, err)
+				}
+				logrus.Printf("finished export for slot %v", slot)
+			}
+			err = tx.Commit()
+			if err != nil {
+				logrus.Fatalf("error committing tx: %v", err)
+			}
 		}
 	case "debug-rewards":
 		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
@@ -259,6 +281,12 @@ func main() {
 			})
 		}
 
+		tx, err := db.WriterDb.Beginx()
+		if err != nil {
+			logrus.Fatalf("error starting tx: %v", err)
+		}
+		defer tx.Rollback()
+
 		batchSize := 10000
 		for i := 0; i < len(validatorsArr); i += batchSize {
 			data := &types.EpochData{
@@ -285,13 +313,8 @@ func main() {
 			data.Validators = append(data.Validators, validatorsArr[start:end]...)
 
 			logrus.Infof("saving validators %v-%v", data.Validators[0].Index, data.Validators[len(data.Validators)-1].Index)
-			tx := db.WriterDb.MustBegin()
 
-			err = db.SaveValidators(data, tx, rpcClient, len(data.Validators))
-			if err != nil {
-				logrus.Fatal(err)
-			}
-			err = tx.Commit()
+			err = db.SaveValidators(0, data.Validators, rpcClient, len(data.Validators), tx)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -299,7 +322,7 @@ func main() {
 
 		for _, validator := range validators.Data {
 			logrus.Infof("exporting deposit data for genesis validator %v", validator.Index)
-			_, err = db.WriterDb.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
+			_, err = tx.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
 			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
 				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},
 			)
@@ -310,7 +333,7 @@ func main() {
 			}
 		}
 
-		_, err = db.WriterDb.Exec(`
+		_, err = tx.Exec(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, syncaggregate_participation, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, proposer, status, exec_transactions_count, eth1data_depositcount)
 		VALUES (0, 0, '\x'::bytea, '\x'::bytea, '\x'::bytea, '\x'::bytea, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 		ON CONFLICT (slot, blockroot) DO NOTHING`)
@@ -319,6 +342,11 @@ func main() {
 		}
 
 		err = db.BigtableClient.SaveValidatorBalances(0, validatorsArr)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = tx.Commit()
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -466,6 +494,12 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 		g, gCtx := errgroup.WithContext(ctx)
 		g.SetLimit(int(concurency))
 
+		tx, err := db.WriterDb.Beginx()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		defer tx.Rollback()
+
 		for _, bm := range data.Blocks {
 			for _, b := range bm {
 				block := b
@@ -482,7 +516,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 						}
 
 						// if we have some obsolete attestations we clean them from the db
-						rows, err := db.WriterDb.Exec(`
+						rows, err := tx.Exec(`
 								DELETE FROM blocks_attestations
 								WHERE
 									block_slot=$1
@@ -502,7 +536,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 				}
 
 				status := uint64(0)
-				err := db.ReaderDb.Get(&status, `
+				err := tx.Get(&status, `
 				SELECT status
 				FROM blocks WHERE 
 					slot=$1`, block.Slot)
@@ -522,7 +556,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 					}
 				} else if len(block.Attestations) > 0 {
 					count := 0
-					err := db.ReaderDb.Get(&count, `
+					err := tx.Get(&count, `
 						SELECT COUNT(*)
 						FROM 
 							blocks_attestations 
@@ -540,7 +574,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 				}
 
 				if importWholeBlock {
-					err := db.SaveBlock(block, true)
+					err := db.SaveBlock(block, true, tx)
 					if err != nil {
 						utils.LogError(err, fmt.Errorf("error saving Slot [%v]", block.Slot), 0)
 						return
@@ -560,7 +594,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 						var aggregationbits *[]byte
 
 						// block_slot and block_index are already unique, but to be sure we use the correct index we also check the signature
-						err := db.ReaderDb.Get(&aggregationbits, `
+						err := tx.Get(&aggregationbits, `
 							SELECT aggregationbits
 							FROM blocks_attestations WHERE 
 								block_slot=$1 AND
@@ -571,7 +605,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 						}
 
 						if !bytes.Equal(*aggregationbits, att.AggregationBits) {
-							_, err = db.WriterDb.Exec(`
+							_, err = tx.Exec(`
 								UPDATE blocks_attestations
 								SET
 									aggregationbits=$1
@@ -598,6 +632,12 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 
 		if err != nil {
 			utils.LogError(err, fmt.Sprintf("error updating aggregationbits for epoch [%v]", epoch), 0)
+			return
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			utils.LogError(err, fmt.Sprintf("error committing tx for epoch [%v]", epoch), 0)
 			return
 		}
 		logrus.Infof("Update of Epoch[%v] complete", epoch)

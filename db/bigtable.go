@@ -70,9 +70,6 @@ type Bigtable struct {
 	lastAttestationCache    map[uint64]uint64
 	lastAttestationCacheMux *sync.Mutex
 
-	epochWriteCache    map[types.Epoch]map[types.ValidatorIndex]*types.EpochWriteCacheEntry
-	epochWriteCacheMux *sync.RWMutex
-
 	chainId string
 
 	v2SchemaCutOffEpoch uint64
@@ -126,114 +123,10 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 		redisCache:              rdc,
 		lastAttestationCacheMux: &sync.Mutex{},
 		v2SchemaCutOffEpoch:     utils.Config.Bigtable.V2SchemaCutOffEpoch,
-		epochWriteCache:         make(map[types.Epoch]map[types.ValidatorIndex]*types.EpochWriteCacheEntry),
-		epochWriteCacheMux:      &sync.RWMutex{},
 	}
-
-	go bt.gcWriteCache()
 
 	BigtableClient = bt
 	return bt, nil
-}
-
-func (bigtable *Bigtable) gcWriteCache() {
-	for ; ; time.Sleep(time.Minute) {
-		logger.Infof("cleaning up write cache")
-		bigtable.epochWriteCacheMux.Lock()
-		for len(bigtable.epochWriteCache) > 5 {
-			minEpoch := types.Epoch(math.MaxUint64)
-
-			for epoch := range bigtable.epochWriteCache {
-				if epoch < types.Epoch(minEpoch) {
-					minEpoch = epoch
-				}
-			}
-			logrus.Infof("purging epoch %v from write cache", minEpoch)
-			delete(bigtable.epochWriteCache, minEpoch)
-		}
-		bigtable.epochWriteCacheMux.Unlock()
-
-	}
-}
-
-func (bigtable *Bigtable) clearEpochfromWriteCache(epoch types.Epoch) {
-	bigtable.epochWriteCacheMux.Lock()
-	defer bigtable.epochWriteCacheMux.Unlock()
-
-	delete(bigtable.epochWriteCache, epoch)
-}
-
-func (bigtable *Bigtable) setBalanceWritten(epoch types.Epoch, validator types.ValidatorIndex, effectiveBalance uint64, balance uint64) {
-	bigtable.epochWriteCacheMux.Lock()
-	defer bigtable.epochWriteCacheMux.Unlock()
-
-	_, ok := bigtable.epochWriteCache[epoch]
-	if !ok {
-		bigtable.epochWriteCache[epoch] = make(map[types.ValidatorIndex]*types.EpochWriteCacheEntry)
-	}
-
-	_, ok = bigtable.epochWriteCache[epoch][validator]
-	if !ok {
-		bigtable.epochWriteCache[epoch][validator] = &types.EpochWriteCacheEntry{
-			Attestations: make(map[types.Slot]types.Slot),
-		}
-	}
-
-	bigtable.epochWriteCache[epoch][validator].EffectiveBalance = effectiveBalance
-	bigtable.epochWriteCache[epoch][validator].Balance = balance
-}
-
-func (bigtable *Bigtable) getBalanceWritten(epoch types.Epoch, validator types.ValidatorIndex, effectiveBalance uint64, balance uint64) bool {
-	bigtable.epochWriteCacheMux.RLock()
-	defer bigtable.epochWriteCacheMux.RUnlock()
-
-	_, ok := bigtable.epochWriteCache[epoch]
-	if !ok {
-		return false
-	}
-
-	_, ok = bigtable.epochWriteCache[epoch][validator]
-	if !ok {
-		return false
-	}
-
-	return bigtable.epochWriteCache[epoch][validator].Balance == balance && bigtable.epochWriteCache[epoch][validator].EffectiveBalance == effectiveBalance
-}
-
-func (bigtable *Bigtable) setAttestationWritten(epoch types.Epoch, validator types.ValidatorIndex, inclusionSlot, targetSlot types.Slot) {
-	bigtable.epochWriteCacheMux.Lock()
-	defer bigtable.epochWriteCacheMux.Unlock()
-
-	_, ok := bigtable.epochWriteCache[epoch]
-	if !ok {
-		bigtable.epochWriteCache[epoch] = make(map[types.ValidatorIndex]*types.EpochWriteCacheEntry)
-	}
-
-	_, ok = bigtable.epochWriteCache[epoch][validator]
-	if !ok {
-		bigtable.epochWriteCache[epoch][validator] = &types.EpochWriteCacheEntry{
-			Attestations: make(map[types.Slot]types.Slot),
-		}
-	}
-
-	bigtable.epochWriteCache[epoch][validator].Attestations[inclusionSlot] = targetSlot
-}
-
-func (bigtable *Bigtable) getAttestationWritten(epoch types.Epoch, validator types.ValidatorIndex, inclusionSlot, targetSlot types.Slot) bool {
-	bigtable.epochWriteCacheMux.RLock()
-	defer bigtable.epochWriteCacheMux.RUnlock()
-
-	_, ok := bigtable.epochWriteCache[epoch]
-	if !ok {
-		return false
-	}
-
-	_, ok = bigtable.epochWriteCache[epoch][validator]
-	if !ok {
-		return false
-	}
-
-	return bigtable.epochWriteCache[epoch][validator].Attestations[inclusionSlot] == targetSlot
 }
 
 func (bigtable *Bigtable) Close() {
@@ -597,20 +490,11 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	highestActiveIndex := uint64(0)
 	epochKey := bigtable.reversedPaddedEpoch(epoch)
 
-	skipped := 0
-
 	for _, validator := range validators {
 
 		if validator.Balance > 0 && validator.Index > highestActiveIndex {
 			highestActiveIndex = validator.Index
 		}
-
-		if bigtable.getBalanceWritten(types.Epoch(epoch), types.ValidatorIndex(validator.Index), validator.EffectiveBalance, validator.Balance) {
-			// logrus.Infof("balance %v already written for validator %v in epoch %v", validator.Balance, validator.Index, epoch)
-			skipped++
-			continue
-		}
-		bigtable.setBalanceWritten(types.Epoch(epoch), types.ValidatorIndex(validator.Index), validator.EffectiveBalance, validator.Balance)
 
 		balanceEncoded := make([]byte, 8)
 		binary.LittleEndian.PutUint64(balanceEncoded, validator.Balance)
@@ -630,12 +514,10 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 			errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
 
 			if err != nil {
-				bigtable.clearEpochfromWriteCache(types.Epoch(epoch))
 				return err
 			}
 
 			for _, err := range errs {
-				bigtable.clearEpochfromWriteCache(types.Epoch(epoch))
 				return err
 			}
 			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
@@ -647,12 +529,10 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
 
 		if err != nil {
-			bigtable.clearEpochfromWriteCache(types.Epoch(epoch))
 			return err
 		}
 
 		for _, err := range errs {
-			bigtable.clearEpochfromWriteCache(types.Epoch(epoch))
 			return err
 		}
 	}
@@ -666,11 +546,8 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, epochKey)
 	err := bigtable.tableValidatorsHistory.Apply(ctx, key, mut)
 	if err != nil {
-		bigtable.clearEpochfromWriteCache(types.Epoch(epoch))
 		return err
 	}
-
-	logger.Infof("skipped %v writes while writing balance entries", skipped)
 	return nil
 }
 
@@ -727,8 +604,6 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 
 func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.ValidatorIndex][]types.Slot) error {
 
-	skipped := 0
-
 	// Initialize in memory last attestation cache lazily
 	bigtable.lastAttestationCacheMux.Lock()
 	if bigtable.lastAttestationCache == nil {
@@ -767,14 +642,6 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 				inclusions = append(inclusions, MAX_CL_BLOCK_NUMBER)
 			}
 			for _, inclusionSlot := range inclusions {
-
-				if bigtable.getAttestationWritten(types.Epoch(epoch), types.ValidatorIndex(validator), inclusionSlot, attestedSlot) {
-					// logrus.Infof("attestation %d-%d already written for validator %v in epoch %v", inclusionSlot, attestedSlot, validator, epoch)
-					skipped++
-					continue
-				}
-				bigtable.setAttestationWritten(types.Epoch(epoch), types.ValidatorIndex(validator), inclusionSlot, attestedSlot)
-
 				key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(uint64(validator)), ATTESTATIONS_FAMILY, bigtable.reversedPaddedEpoch(epoch))
 
 				mutInclusionSlot := gcp_bigtable.NewMutation()
@@ -825,7 +692,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 
 	if len(mutsInclusionSlot) > 0 {
 		// logger.Infof("exporting remaining %v attestation mutations", len(mutsInclusionSlot))
-		attstart := time.Now()
+		// attstart := time.Now()
 		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 		if err != nil {
 			return err
@@ -833,7 +700,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		for _, err := range errs {
 			return err
 		}
-		logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
+		// logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
 	}
 
 	if mutLastAttestationSlotCount > 0 {
@@ -843,7 +710,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		}
 	}
 
-	logger.Infof("exported %v attestations to bigtable in %v (skipped %v writes)", writes, time.Since(start), skipped)
+	logger.Infof("exported %v attestations to bigtable in %v", writes, time.Since(start))
 	return nil
 }
 
@@ -862,65 +729,27 @@ func (bigtable *Bigtable) SetLastAttestationSlot(validator uint64, lastAttestati
 	return nil
 }
 
-func (bigtable *Bigtable) SaveProposals(blocks map[uint64]map[string]*types.Block) error {
+func (bigtable *Bigtable) SaveProposal(block *types.Block) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	start := time.Now()
 
-	slots := make([]uint64, 0, len(blocks))
-	for slot := range blocks {
-		slots = append(slots, slot)
+	if len(block.BlockRoot) != 32 { // skip dummy blocks
+		return nil
 	}
-	sort.Slice(slots, func(i, j int) bool {
-		return slots[i] < slots[j]
-	})
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-block.Slot)*1000), []byte{})
+	key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(block.Proposer), PROPOSALS_FAMILY, bigtable.reversedPaddedEpoch(utils.EpochOfSlot(block.Slot)), bigtable.reversedPaddedSlot(block.Slot))
 
-	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
+	err := bigtable.tableValidatorsHistory.Apply(ctx, key, mut)
 
-	for _, slot := range slots {
-		for _, b := range blocks[slot] {
-
-			if len(b.BlockRoot) != 32 { // skip dummy blocks
-				continue
-			}
-			mut := gcp_bigtable.NewMutation()
-			mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-b.Slot)*1000), []byte{})
-			key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(b.Proposer), PROPOSALS_FAMILY, bigtable.reversedPaddedEpoch(utils.EpochOfSlot(b.Slot)), bigtable.reversedPaddedSlot(b.Slot))
-
-			muts = append(muts, mut)
-			keys = append(keys, key)
-
-			if len(muts) == MAX_BATCH_MUTATIONS {
-				errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-				if err != nil {
-					return err
-				}
-
-				for _, err := range errs {
-					return err
-				}
-				muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-				keys = make([]string, 0, MAX_BATCH_MUTATIONS)
-			}
-		}
+	if err != nil {
+		return err
 	}
 
-	if len(muts) > 0 {
-		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-		if err != nil {
-			return err
-		}
-
-		for _, err := range errs {
-			return err
-		}
-	}
-	logger.Infof("exported proposals to bigtable in %v", time.Since(start))
+	logger.Infof("exported proposal to bigtable in %v", time.Since(start))
 	return nil
 }
 
@@ -1850,7 +1679,7 @@ func (bigtable *Bigtable) getValidatorSyncDutiesHistoryV2(validators []uint64, s
 	batchSize := 1000
 	concurrency := 10
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*5))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*20))
 	defer cancel()
 
 	res := make(map[uint64]map[uint64]*types.ValidatorSyncParticipation, len(validators))
@@ -1863,6 +1692,7 @@ func (bigtable *Bigtable) getValidatorSyncDutiesHistoryV2(validators []uint64, s
 
 	for i := 0; i < len(validators); i += batchSize {
 
+		i := i
 		upperBound := i + batchSize
 		if len(validators) < upperBound {
 			upperBound = len(validators)
@@ -1877,6 +1707,7 @@ func (bigtable *Bigtable) getValidatorSyncDutiesHistoryV2(validators []uint64, s
 			}
 			ranges := bigtable.getValidatorSlotRanges(vals, SYNC_COMMITTEES_FAMILY, startSlot, endSlot)
 
+			logger.Infof("processing GetValidatorSyncDutiesHistory validators batch %v", i)
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
