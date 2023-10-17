@@ -1262,7 +1262,7 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 				firstEpochOfPeriod = utils.Config.Chain.ClConfig.AltairForkEpoch
 			}
 			if lastEpochOfPeriod >= services.LatestEpoch() {
-				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
+				syncStats.ScheduledSlots += utils.GetRemainingScheduledSyncDuties(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
 			}
 			// add sync stats for validators in previous returned period
 			utils.AddSyncStats(vs[latestPeriodCount:], res, &syncStats)

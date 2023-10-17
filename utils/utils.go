@@ -1498,25 +1498,43 @@ func GetSigningDomain() ([]byte, error) {
 }
 
 // SlotsPerSyncCommittee returns the count of slots per sync committee period
+// (might be wrong for the first sync period at atlair which might be shorter, see https://eth2book.info/capella/annotated-spec/#sync-committee-updates)
 func SlotsPerSyncCommittee() uint64 {
 	return Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod * Config.Chain.ClConfig.SlotsPerEpoch
 }
 
-// GetRemainingScheduledSync returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
+// GetRemainingScheduledSyncDuties returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
 //
 // Parameters:
 //   - validatorCount: the count of validators associated with the stats.
 //   - stats: the current sync committee stats of the validators
 //   - lastExportedEpoch: the last epoch that was exported into the validator_stats table
 //   - firstEpochOfPeriod: the first epoch of the current sync committee period
-func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesStats, lastExportedEpoch, firstEpochOfPeriod uint64) uint64 {
-	var exportedEpochs uint64
+func GetRemainingScheduledSyncDuties(validatorCount int, stats types.SyncCommitteesStats, lastExportedEpoch, firstEpochOfPeriod uint64) uint64 {
+	// check how many sync duties remain in the current sync committee based on firstEpochOfPeriod
+	slotsPerSyncCommittee := SlotsPerSyncCommittee()
+	if firstEpochOfPeriod <= Config.Chain.ClConfig.AltairForkEpoch {
+		if firstEpochOfPeriod+SlotsPerSyncCommittee() < Config.Chain.ClConfig.AltairForkEpoch {
+			// not a valid sync committee as altair comes after the complete sync committee period
+			return 0
+		}
+
+		// the first sync period at altair might be shorter, see https://eth2book.info/capella/annotated-spec/#sync-committee-updates
+		firstEpochOfNextSyncPeriod := FirstEpochOfSyncPeriod(SyncPeriodOfEpoch(Config.Chain.ClConfig.AltairForkEpoch) + 1)
+		slotsPerSyncCommittee = (firstEpochOfNextSyncPeriod - Config.Chain.ClConfig.AltairForkEpoch) * Config.Chain.ClConfig.SlotsPerEpoch
+	}
+	dutiesPerSyncCommittee := slotsPerSyncCommittee * uint64(validatorCount)
+
+	// check how many duties are already exported
+	exportedEpochs := uint64(0)
 	if lastExportedEpoch >= firstEpochOfPeriod {
 		exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
 	}
-	exportedSlots := exportedEpochs * Config.Chain.ClConfig.SlotsPerEpoch * uint64(validatorCount)
-	slotsPerSyncCommittee := SlotsPerSyncCommittee() * uint64(validatorCount)
-	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
+	exportedDuties := exportedEpochs * Config.Chain.ClConfig.SlotsPerEpoch * uint64(validatorCount)
+
+	// calculate how many duties are remaining i.e. are scheduled
+	totalStats := stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots
+	return (dutiesPerSyncCommittee - ((exportedDuties + totalStats) % dutiesPerSyncCommittee)) % dutiesPerSyncCommittee
 }
 
 // AddSyncStats adds the sync stats of a set of validators from a given syncDutiesHistory to the given stats, if stats is nil a new stats object is created.

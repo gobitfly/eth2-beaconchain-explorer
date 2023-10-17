@@ -748,7 +748,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				syncStatsBt := utils.AddSyncStats([]uint64{index}, res, nil)
 				// if last sync period is the current one, add remaining scheduled slots
 				if lastSyncPeriod.LastEpoch >= latestEpoch {
-					syncStatsBt.ScheduledSlots += utils.GetRemainingScheduledSync(1, syncStatsBt, lastExportedEpoch, lastSyncPeriod.FirstEpoch)
+					syncStatsBt.ScheduledSlots += utils.GetRemainingScheduledSyncDuties(1, syncStatsBt, lastExportedEpoch, lastSyncPeriod.FirstEpoch)
 				}
 
 				syncStats.MissedSlots += syncStatsBt.MissedSlots
