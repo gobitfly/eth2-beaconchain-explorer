@@ -1285,7 +1285,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	// get current user session
 	user, session, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
+		utils.LogError(err, "error retrieving session", 0)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -1378,7 +1378,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 
 	err = sendEmailUpdateConfirmation(user.UserID, newEmail)
 	if err != nil {
-		logger.Errorf("error sending confirmation-email: %v", err)
+		utils.LogError(err, "error sending email-change confirmation email", 0, map[string]interface{}{"userID": user.UserID, "newEmail": newEmail})
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1423,7 +1423,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	sessionUser, session, err := getUserSession(r)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
+		utils.LogError(err, "error retrieving session for email update confirmation", 0, map[string]interface{}{"hash": hash})
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -1443,7 +1443,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed, email_change_to_value FROM users WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
-		logger.Errorf("error retrieving user data for updating email; hash: %v; err: %v", hash, err)
+		utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash, "userID": sessionUser.UserID})
 		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -1492,7 +1492,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = NULL, email_change_to_value = NULL WHERE id = $2`, user.NewEmail, user.ID)
 	if err != nil {
-		logger.Errorf("error: updating email for user: %v", err)
+		utils.LogError(err, "error updating email for user", 0, map[string]interface{}{"userID": user.ID, "newEmail": user.NewEmail})
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -1504,7 +1504,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	err = purgeAllSessionsForUser(r.Context(), uint64(user.ID))
 	if err != nil {
-		logger.Errorf("error: purging sessions for user %v: %v", user.ID, err)
+		utils.LogError(err, "error purging sessions for user", 0, map[string]interface{}{"userID": user.ID})
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
