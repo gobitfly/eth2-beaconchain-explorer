@@ -51,7 +51,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, generate-config-from-testnet-stub, export-genesis-validators")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
