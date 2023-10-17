@@ -63,16 +63,9 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 
 	orderDir := q.Get("order[0][dir]")
 
-	depositCount, err := db.GetEth2DepositsCount(search)
+	deposits, depositCount, err := db.GetEth2Deposits(search, length, start, orderBy, orderDir)
 	if err != nil {
-		logger.Errorf("error retrieving eth2_deposit count: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-
-	deposits, err := db.GetEth2Deposits(search, length, start, orderBy, orderDir)
-	if err != nil {
-		logger.Errorf("error retrieving eth2_deposit data: %v", err)
+		logger.Errorf("error retrieving eth2_deposit data or count: %v", err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

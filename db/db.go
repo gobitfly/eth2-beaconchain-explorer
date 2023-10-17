@@ -183,7 +183,9 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 }
 
 func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
+	// Initialize the return values
 	deposits := []*types.EthOneDepositsData{}
+	totalCount := uint64(0)
 
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
@@ -200,12 +202,12 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		orderBy = "block_ts"
 	}
 
-	var totalCount uint64
 	var param interface{}
-	var searchQuery string
 	shouldSearch := true
+	var searchQuery string
 	var err error
 
+	// Define the base queries
 	deposistsCountQuery := `
 		SELECT COUNT(*) FROM eth1_deposits as eth1
 		%s`
@@ -239,6 +241,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		LIMIT $1
 		OFFSET $2`
 
+	// Get the search query and parameter for it
 	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
 	var hash []byte
 	if len(trimmedQuery)%2 == 0 && utils.HashLikeRegex.MatchString(trimmedQuery) {
@@ -247,7 +250,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			return nil, 0, err
 		}
 	}
-
 	if trimmedQuery != "" {
 		param = hash
 		if utils.IsHash(trimmedQuery) {
@@ -273,10 +275,11 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		}
 	}
 
-	if shouldSearch {
-		// The deposits count query only has one parameter for the search
-		countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
+	// The deposits count query only has one parameter for the search
+	countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
 
+	// Get the deposits and the total count
+	if shouldSearch {
 		if param != nil {
 			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
 		} else {
@@ -361,9 +364,11 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	return deposits, totalCount, nil
 }
 
-func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, error) {
+func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, uint64, error) {
+	// Initialize the return values
 	deposits := []*types.EthTwoDepositData{}
-	// ENCODE(publickey, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials, 'hex') LIKE $3 OR
+	totalCount := uint64(0)
+
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
@@ -380,9 +385,16 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	}
 
 	var param interface{}
-	var searchQuery string
 	shouldSearch := true
+	var searchQuery string
 	var err error
+
+	// Define the base queries
+	deposistsCountQuery := `
+		SELECT COUNT(*)
+		FROM blocks_deposits
+		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
+		%s`
 
 	deposistsQuery := `
 			SELECT 
@@ -400,22 +412,24 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 			LIMIT $1
 			OFFSET $2`
 
+	// Get the search query and parameter for it
 	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
 	var hash []byte
 	if len(trimmedQuery)%2 == 0 && utils.HashLikeRegex.MatchString(trimmedQuery) {
 		hash, err = hex.DecodeString(trimmedQuery)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 	}
-
 	if trimmedQuery != "" {
-		param = hash
 		if utils.IsHash(trimmedQuery) {
+			param = hash
 			searchQuery = `WHERE blocks_deposits.publickey = $3`
 		} else if utils.IsValidWithdrawalCredentials(trimmedQuery) {
+			param = hash
 			searchQuery = `WHERE blocks_deposits.withdrawalcredentials = $3`
 		} else if utils.IsEth1Address(trimmedQuery) {
+			param = hash
 			searchQuery = `
 				LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
 				WHERE eth1_deposits.from_address = $3`
@@ -428,74 +442,33 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 		}
 	}
 
+	// The deposits count query only has one parameter for the search
+	countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
+
+	// Get the deposits and the total count
 	if shouldSearch {
+		if param != nil {
+			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
+		} else {
+			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery))
+		}
+		if err != nil {
+			return nil, 0, err
+		}
+
 		if param != nil {
 			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
 		} else {
 			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start)
 		}
 		if err != nil && err != sql.ErrNoRows {
-			return nil, err
+			return nil, 0, err
 		}
 	}
 
-	return deposits, nil
+	return deposits, totalCount, nil
 }
 
-func GetEth2DepositsCount(query string) (uint64, error) {
-	totalCount := uint64(0)
-	var param interface{}
-	var searchQuery string
-	shouldSearch := true
-	var err error
-
-	deposistsCountQuery := `
-		SELECT COUNT(*)
-		FROM blocks_deposits
-		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-		%s`
-
-	trimmedQuery := strings.ToLower(strings.TrimPrefix(query, "0x"))
-	var hash []byte
-	if len(trimmedQuery)%2 == 0 && utils.HashLikeRegex.MatchString(trimmedQuery) {
-		hash, err = hex.DecodeString(trimmedQuery)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	if trimmedQuery != "" {
-		param = hash
-		if utils.IsHash(trimmedQuery) {
-			searchQuery = `WHERE blocks_deposits.publickey = $1`
-		} else if utils.IsValidWithdrawalCredentials(trimmedQuery) {
-			searchQuery = `WHERE blocks_deposits.withdrawalcredentials = $1`
-		} else if utils.IsEth1Address(trimmedQuery) {
-			searchQuery = `
-				LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
-				WHERE eth1_deposits.from_address = $1`
-		} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 31); parseErr == nil { // Limit to 31 bits to stay within math.MaxInt32
-			param = uiQuery
-			searchQuery = `WHERE blocks_deposits.block_slot = $1`
-		} else {
-			// The query does not fulfill any of the requirements for a search
-			shouldSearch = false
-		}
-	}
-
-	if shouldSearch {
-		if param != nil {
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery), param)
-		} else {
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, searchQuery))
-		}
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	return totalCount, nil
-}
 func GetSlashingCount() (uint64, error) {
 	slashings := uint64(0)
 
