@@ -364,11 +364,34 @@ func main() {
 }
 
 func UpdateBlockFinalizationSequentially() error {
-	var minNonFinalizedSlot uint64
-	err := db.WriterDb.Get(&minNonFinalizedSlot, `select min(slot) from blocks where finalized = false`)
+	var err error
+
+	var maxSlot uint64
+	err = db.WriterDb.Get(&maxSlot, `select max(slot) from blocks`)
 	if err != nil {
 		return err
 	}
+
+	lookback := uint64(0)
+	if maxSlot > 1e4 {
+		lookback = maxSlot - 1e4
+	}
+	var minNonFinalizedSlot uint64
+	for {
+		err = db.WriterDb.Get(&minNonFinalizedSlot, `select coalesce(min(slot),0) from blocks where finalized = false and slot >= $1`, lookback)
+		if err != nil {
+			return err
+		}
+		if minNonFinalizedSlot == 0 {
+			break
+		}
+		if minNonFinalizedSlot == lookback {
+			lookback -= 1e4
+			continue
+		}
+		break
+	}
+
 	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("UpdateBlockFinalizationSequentially")
 	nextStartEpoch := minNonFinalizedSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
 	stepSize := uint64(100)
