@@ -258,9 +258,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	if err != nil {
 		return nil, 0, err
 	}
-	if param != nil {
-		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
-	}
+	err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
