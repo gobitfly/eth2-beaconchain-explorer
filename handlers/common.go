@@ -547,8 +547,22 @@ func GetCurrentPriceFormatted(r *http.Request) template.HTML {
 	return utils.FormatAddCommas(uint64(price))
 }
 
+func GetCurrentElPriceFormatted(r *http.Request) template.HTML {
+	userAgent := r.Header.Get("User-Agent")
+	userAgent = strings.ToLower(userAgent)
+	price := GetCurrentElPrice(r)
+	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
+		return utils.KFormatterEthPrice(price)
+	}
+	return utils.FormatAddCommas(uint64(price))
+}
+
 func GetCurrentPriceKFormatted(r *http.Request) template.HTML {
 	return utils.KFormatterEthPrice(GetCurrentPrice(r))
+}
+
+func GetCurrentElPriceKFormatted(r *http.Request) template.HTML {
+	return utils.KFormatterEthPrice(GetCurrentElPrice(r))
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {

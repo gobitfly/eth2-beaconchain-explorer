@@ -16,7 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
-	"github.com/shopspring/decimal"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -46,8 +45,10 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address = strings.ToLower(address)
 
 	currency := GetCurrency(r)
-	price := GetCurrentPrice(r)
-	symbol := GetCurrencySymbol(r)
+	// price := GetCurrentPrice(r)
+	// symbol := GetCurrencySymbol(r)
+	// symbol := price.GetCurrencySymbol(currency)
+	// elPrice := price.GetPrice(utils.Config.Frontend.ElCurrency, currency)
 
 	addressBytes := common.FromHex(address)
 	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes), templateFiles)
@@ -196,7 +197,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Errorf("error generating qr code for address %v", address)
 	}
 
-	ethPrice := utils.WeiBytesToEther(metadata.EthBalance.Balance).Mul(decimal.NewFromInt(int64(price)))
 	tabs := []types.Eth1AddressPageTabs{}
 
 	if blobs != nil && len(blobs.Data) != 0 {
@@ -264,6 +264,8 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// ethBalanceUsd := utils.WeiBytesToEther(metadata.EthBalance.Balance).Mul(decimal.NewFromInt(int64(elPrice)))
+
 	data.Data = types.Eth1AddressPageData{
 		Address:            address,
 		EnsName:            ensData.Domain,
@@ -281,8 +283,9 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		WithdrawalsTable:   withdrawals,
 		BlocksMinedTable:   blocksMined,
 		UnclesMinedTable:   unclesMined,
-		EtherValue:         utils.FormatEtherValue(symbol, ethPrice, GetCurrentPriceFormatted(r)),
-		Tabs:               tabs,
+		EtherValue:         utils.FormatPricedValue(utils.WeiBytesToEther(metadata.EthBalance.Balance), utils.Config.Frontend.ElCurrency, currency),
+		// EtherValue:         utils.FormatEtherValue(currency, ethBalanceUsd, GetCurrentElPriceFormatted(r)),
+		Tabs: tabs,
 	}
 
 	if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "Done", eth1AddressTemplate.ExecuteTemplate(w, "layout", data)) != nil {

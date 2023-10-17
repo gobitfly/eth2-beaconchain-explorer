@@ -582,10 +582,21 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	return template.HTML(p.Sprintf(tpl, float64(e)/float64(Config.Frontend.ClCurrencyDivisor)*price.GetPrice(Config.Frontend.ClCurrency, currency), rr))
 }
 
-func FormatEtherValue(symbol string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
+func FormatEtherValue(currency string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
 	p := message.NewPrinter(language.English)
-	currencySymbol := price.GetCurrencySymbol(symbol)
-	return template.HTML(p.Sprintf(`<span>%s %.2f</span> <span class="text-muted">@ %s/%s</span>`, currencySymbol, ethPrice.InexactFloat64(), currentPrice, Config.Frontend.ElCurrency))
+	currencySymbol := price.GetCurrencySymbol(currency)
+	return template.HTML(p.Sprintf(`<span>%[1]s %[2]s</span> <span class="text-muted">@ %[1]s%[3]s/%[4]s</span>`, currencySymbol, ethPrice.StringFixed(2), currentPrice, Config.Frontend.ElCurrency))
+}
+
+func FormatPricedValue(val interface{}, valueCurrency, targetCurrency string) template.HTML {
+	p := message.NewPrinter(language.English)
+	pp := IfToDec(price.GetPrice(valueCurrency, targetCurrency))
+	v := IfToDec(val)
+	targetBalance := v.Mul(pp)
+	valueSymbol := price.GetCurrencySymbol(valueCurrency)
+	targetSymbol := price.GetCurrencySymbol(targetCurrency)
+
+	return template.HTML(p.Sprintf(`<span>%[1]s %[2]s</span> <span class="text-muted">@ %[3]s %[4]s/%[5]s`, targetSymbol, targetBalance.StringFixed(2), valueSymbol, pp.StringFixed(2), targetSymbol))
 }
 
 // FormatGraffiti will return the graffiti formated as html
@@ -1239,7 +1250,7 @@ func FormatAddressEthBalance(balance *types.Eth1AddressBalance) template.HTML {
 				<use xlink:href="#ethereum-diamond-logo"/>
 			</svg> 
 			<span class="token-holdings">%v %v</span>
-		</div>`, balEth, Config.Frontend.ClCurrency))
+		</div>`, balEth, Config.Frontend.ElCurrency))
 }
 
 func FormatTokenValue(balance *types.Eth1AddressBalance, fullAmountTooltip bool) template.HTML {
