@@ -595,7 +595,6 @@ func FormatPricedValue(val interface{}, valueCurrency, targetCurrency string) te
 	targetBalance := v.Mul(pp)
 	valueSymbol := price.GetCurrencySymbol(valueCurrency)
 	targetSymbol := price.GetCurrencySymbol(targetCurrency)
-
 	return template.HTML(p.Sprintf(`<span>%[1]s %[2]s</span> <span class="text-muted">@ %[3]s %[4]s/%[5]s`, targetSymbol, targetBalance.StringFixed(2), valueSymbol, pp.StringFixed(2), targetSymbol))
 }
 

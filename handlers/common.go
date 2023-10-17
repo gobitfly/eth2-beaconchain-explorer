@@ -498,7 +498,9 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 
 func GetCurrency(r *http.Request) string {
 	if cookie, err := r.Cookie("currency"); err == nil {
-		return cookie.Value
+		if price.IsAvailableCurrency(cookie.Value) {
+			return cookie.Value
+		}
 	}
 	return utils.Config.Frontend.MainCurrency
 }

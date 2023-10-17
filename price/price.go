@@ -230,7 +230,8 @@ func GetPrice(a, b string) float64 {
 	}
 	price, exists := prices[a+"/"+b]
 	if !exists {
-		return 0
+		logrus.WithFields(logrus.Fields{"pair": a + "/" + b}).Warnf("price pair not found")
+		return 1
 	}
 	return price
 }
@@ -246,6 +247,15 @@ func getPriceFromFeed(feed *chainlink_feed.Feed) (float64, error) {
 
 func GetAvailableCurrencies() []string {
 	return availableCurrencies
+}
+
+func IsAvailableCurrency(currency string) bool {
+	for _, c := range availableCurrencies {
+		if c == currency {
+			return true
+		}
+	}
+	return false
 }
 
 func GetCurrencyLabel(currency string) string {
