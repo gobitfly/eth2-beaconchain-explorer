@@ -1166,20 +1166,6 @@ func FormatNotificationChannel(ch types.NotificationChannel) template.HTML {
 	return label
 }
 
-func FormatBlockReward(blockNumber int64) template.HTML {
-	var reward *big.Int
-
-	if blockNumber < 4370000 {
-		reward = big.NewInt(5e+18)
-	} else if blockNumber < 7280000 {
-		reward = big.NewInt(3e+18)
-	} else {
-		reward = big.NewInt(2e+18)
-	}
-
-	return FormatAmount(reward, Config.Frontend.ElCurrency, 5)
-}
-
 func FormatTokenBalance(balance *types.Eth1AddressBalance) template.HTML {
 	p := message.NewPrinter(language.English)
 
