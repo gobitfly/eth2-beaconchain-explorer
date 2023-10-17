@@ -19,7 +19,6 @@ import (
 )
 
 func Eth1Block(w http.ResponseWriter, r *http.Request) {
-
 	blockTemplateFiles := append(layoutTemplateFiles,
 		"slot/slot.html",
 		"slot/transactions.html",

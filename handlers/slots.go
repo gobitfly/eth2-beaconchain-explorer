@@ -254,7 +254,7 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 			tableData[i] = []interface{}{
 				utils.FormatEpoch(b.Epoch),
 				utils.FormatBlockSlot(b.Slot),
-				utils.FormatBlockStatus(b.Status),
+				utils.FormatBlockStatus(b.Status, b.Slot),
 				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 				utils.FormatValidatorWithName(b.Proposer, b.ProposerName),
 				b.Attestations,

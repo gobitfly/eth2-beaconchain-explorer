@@ -302,12 +302,12 @@
                       {{ end }}
                     </span>
                   </div>
-                  {{ if .Data.Metadata.Price }}
+                  {{ if .Data.Price }}
                     <div class="overview-col">
                       <span>Price</span>
                     </div>
                     <div class="overview-col">
-                      <span style="max-width: 200px;" class="text-truncate d-inline-block">${{ .Data.Metadata.Price | byteToString }}</span>
+                      <span style="max-width: 200px;" class="text-truncate d-inline-block">{{ .Data.Price }}</span>
                     </div>
                     <div class="overview-col">
                       <span>Market Cap</span>
@@ -427,7 +427,7 @@
           <span>Supply</span>
         </div>
         <div class="overview-col">
-          <span data-toggle="tooltip" title="{{ (bigDecimalShift .Data.Metadata.TotalSupply .Data.Metadata.Decimals) | trimTrailingZero | formatStringThousands }}" style="max-width: 200px;" class="text-truncate d-inline-block">{{ (bigDecimalShift .Data.Metadata.TotalSupply .Data.Metadata.Decimals) | trimTrailingZero | formatStringThousands }}</span>
+          <span data-toggle="tooltip" title="{{ .Data.Supply }}" style="max-width: 200px;" class="text-truncate d-inline-block">{{ .Data.Supply }}</span>
         </div>
         <div class="overview-col">
           <span>Decimals</span>
