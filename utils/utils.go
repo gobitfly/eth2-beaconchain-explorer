@@ -655,10 +655,12 @@ func ReadConfig(cfg *types.Config, path string) error {
 		case "gnosis":
 			cfg.Frontend.MainCurrency = "GNO"
 			cfg.Frontend.ClCurrency = "mGNO"
+			cfg.Frontend.ClCurrencyDecimals = 18
 			cfg.Frontend.ClCurrencyDivisor = 1e9
 		default:
 			cfg.Frontend.MainCurrency = "ETH"
 			cfg.Frontend.ClCurrency = "ETH"
+			cfg.Frontend.ClCurrencyDecimals = 18
 			cfg.Frontend.ClCurrencyDivisor = 1e9
 		}
 	}
@@ -667,9 +669,11 @@ func ReadConfig(cfg *types.Config, path string) error {
 		switch cfg.Chain.Name {
 		case "gnosis":
 			cfg.Frontend.ElCurrency = "xDAI"
+			cfg.Frontend.ElCurrencyDecimals = 18
 			cfg.Frontend.ElCurrencyDivisor = 1e18
 		default:
 			cfg.Frontend.ElCurrency = "ETH"
+			cfg.Frontend.ElCurrencyDecimals = 18
 			cfg.Frontend.ElCurrencyDivisor = 1e18
 		}
 	}

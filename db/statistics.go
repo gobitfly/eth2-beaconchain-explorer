@@ -1245,7 +1245,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 		g.Go(func() error {
 			latestBalances, err := BigtableClient.GetValidatorBalanceHistory(validatorIndices, lastFinalizedEpoch, lastFinalizedEpoch)
 			if err != nil {
-				logger.Errorf("error getting validator balance data in GetValidatorEarnings: %v", err)
+				logger.Errorf("error in GetValidatorIncomeHistory calling BigtableClient.GetValidatorBalanceHistory: %v", err)
 				return err
 			}
 

@@ -791,6 +791,30 @@ func FormatParticipation(v float64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span>%.2f %%</span>", v*100.0))
 }
 
+func FormatIncomeClEl(income types.ClEl, currency string) template.HTML {
+	className := "text-success"
+	if income.Total.Cmp(decimal.Zero) < 0 {
+		className = "text-danger"
+	}
+
+	if income.Cl.Cmp(decimal.Zero) != 0 || income.El.Cmp(decimal.Zero) != 0 {
+		return template.HTML(fmt.Sprintf(`
+		<span class="%s" data-toggle="tooltip"
+			data-html="true"
+			title="
+			CL: %s <br> 
+			EL: %s">
+			<b>%s</b>
+		</span>`,
+			className,
+			FormatElCurrency(income.Cl, currency, 5, true, true, false),
+			FormatElCurrency(income.El, currency, 5, true, true, false), // we use FormatElCurrency here because all values in income-struct are in el-currency
+			FormatElCurrency(income.Total, currency, 5, true, true, false)))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span><b>%s</b></span>`, FormatElCurrency(income.Total, currency, 5, true, true, false)))
+	}
+}
+
 func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTML {
 	var incomeTrimmed string = exchangeAndTrim(Config.Frontend.ClCurrency, currency, income.Total, true)
 	className := "text-success"
@@ -818,15 +842,8 @@ func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTM
 }
 
 func FormatIncome(balance interface{}, currency string, includeCurrency bool) template.HTML {
-	var balanceFloat64 float64
-	switch b := balance.(type) {
-	case float64:
-		balanceFloat64 = b
-	case int64:
-		balanceFloat64 = float64(b)
-	default:
-	}
-	var income string = exchangeAndTrim(Config.Frontend.ClCurrency, currency, balanceFloat64, true)
+	balanceFloat64 := IfToDec(balance).InexactFloat64()
+	var income string = exchangeAndTrim(Config.Frontend.ElCurrency, currency, balanceFloat64, true)
 
 	if includeCurrency {
 		currency = " " + currency

@@ -4,6 +4,7 @@ import (
 	"context"
 	"eth2-exporter/contracts/chainlink_feed"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -65,6 +66,7 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 	default:
 		setPrice(elCurrency, elCurrency, 1)
 		setPrice(clCurrency, clCurrency, 1)
+		availableCurrencies = []string{clCurrency, elCurrency}
 		logger.Warnf("chainId not supported for fetching prices: %v", chainId)
 		runOnce.Do(func() { runOnceWg.Done() })
 		return
@@ -226,10 +228,11 @@ func GetPrice(a, b string) float64 {
 		a = "DAI"
 	}
 	if b == "xDAI" {
-		a = "DAI"
+		b = "DAI"
 	}
 	price, exists := prices[a+"/"+b]
 	if !exists {
+		debug.PrintStack()
 		logrus.WithFields(logrus.Fields{"pair": a + "/" + b}).Warnf("price pair not found")
 		return 1
 	}

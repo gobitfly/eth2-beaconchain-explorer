@@ -1179,6 +1179,11 @@ func LatestState() *types.LatestState {
 func GetRates(selectedCurrency string) *types.Rates {
 	r := types.Rates{}
 
+	if !price.IsAvailableCurrency(selectedCurrency) {
+		logrus.Warnf("setting selectedCurrency to mainCurrency since selected is not available: %v", selectedCurrency)
+		selectedCurrency = utils.Config.Frontend.MainCurrency
+	}
+
 	r.SelectedCurrency = selectedCurrency
 	r.SelectedCurrencySymbol = price.GetCurrencySymbol(r.SelectedCurrency)
 
@@ -1188,6 +1193,9 @@ func GetRates(selectedCurrency string) *types.Rates {
 	r.TickerCurrency = selectedCurrency
 	if r.TickerCurrency == utils.Config.Frontend.MainCurrency {
 		r.TickerCurrency = "USD"
+		if !price.IsAvailableCurrency(r.TickerCurrency) {
+			r.TickerCurrency = utils.Config.Frontend.MainCurrency
+		}
 	}
 
 	r.MainCurrencySymbol = price.GetCurrencySymbol(utils.Config.Frontend.MainCurrency)

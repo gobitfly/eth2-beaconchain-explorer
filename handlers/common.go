@@ -24,7 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
-	"github.com/rocket-pool/rocketpool-go/utils/eth"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -43,7 +43,7 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 	return validatorOnlineThresholdSlot
 }
 
-// GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators, including proposal and statisic information - infused with data from the current b. day
+// GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators, including proposal and statisic information - infused with data from the current day. all values are
 func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, map[uint64]*types.Validator, error) {
 	if len(validators) == 0 {
 		return nil, nil, errors.New("no validators provided")
@@ -131,20 +131,14 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	if err != nil {
 		return nil, nil, err
 	}
-	currentDayClIncome := int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)
 
-	elClPrice := price.GetPrice(utils.Config.Frontend.ElCurrency, utils.Config.Frontend.ClCurrency)
-
-	// calculate combined el and cl earnings
-	earnings1d := float64(income.ClIncome1d) + elClPrice*float64(income.ElIncome1d)
-	earnings7d := float64(income.ClIncome7d) + elClPrice*float64(income.ElIncome7d)
-	earnings31d := float64(income.ClIncome31d) + elClPrice*float64(income.ElIncome31d)
+	clElPrice := price.GetPrice(utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
 
 	if totalDeposits == 0 {
 		totalDeposits = utils.Config.Chain.ClConfig.MaxEffectiveBalance * uint64(len(validators))
 	}
 
-	clApr7d := ((float64(income.ClIncome7d) / float64(totalDeposits)) * 365) / 7
+	clApr7d := income.ClIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
 	if clApr7d < float64(-1) {
 		clApr7d = float64(-1)
 	}
@@ -152,7 +146,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr7d = float64(0)
 	}
 
-	elApr7d := ((float64(income.ElIncome7d) / float64(totalDeposits)) * 365) / 7
+	elApr7d := income.ElIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
 	if elApr7d < float64(-1) {
 		elApr7d = float64(-1)
 	}
@@ -160,7 +154,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		elApr7d = float64(0)
 	}
 
-	clApr31d := ((float64(income.ClIncome31d) / float64(totalDeposits)) * 365) / 31
+	clApr31d := income.ClIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
 	if clApr31d < float64(-1) {
 		clApr31d = float64(-1)
 	}
@@ -168,7 +162,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr31d = float64(0)
 	}
 
-	elApr31d := ((float64(income.ElIncome31d) / float64(totalDeposits)) * 365) / 31
+	elApr31d := income.ElIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
 	if elApr31d < float64(-1) {
 		elApr31d = float64(-1)
 	}
@@ -176,7 +170,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		elApr31d = float64(0)
 	}
 
-	clApr365d := (float64(income.ClIncome365d) / float64(totalDeposits))
+	clApr365d := income.ClIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).InexactFloat64()
 	if clApr365d < float64(-1) {
 		clApr365d = float64(-1)
 	}
@@ -184,18 +178,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr365d = float64(0)
 	}
 
-	elApr365d := (float64(income.ElIncome365d) / float64(totalDeposits))
+	elApr365d := income.ElIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).InexactFloat64()
 	if elApr365d < float64(-1) {
 		elApr365d = float64(-1)
 	}
 	if math.IsNaN(elApr365d) {
 		elApr365d = float64(0)
-	}
-
-	incomeToday := types.ClElInt64{
-		El:    0,
-		Cl:    currentDayClIncome,
-		Total: float64(currentDayClIncome),
 	}
 
 	proposedToday := []uint64{}
@@ -249,6 +237,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		validatorProposalData.ProposalEstimate = &nextSlotEstimate
 	}
 
+	currentDayClIncome := decimal.NewFromInt(int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals)).Mul(decimal.NewFromInt(1e9))
+	incomeToday := types.ClEl{
+		El:    decimal.NewFromInt(0),
+		Cl:    currentDayClIncome.Mul(decimal.NewFromFloat(clElPrice)),
+		Total: currentDayClIncome.Mul(decimal.NewFromFloat(clElPrice)),
+	}
 	if len(proposedToday) > 0 {
 		// get el data
 		execBlocks, err := db.BigtableClient.GetBlocksIndexedMultiple(proposedToday, 10000)
@@ -276,34 +270,32 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 				incomeTodayEl = new(big.Int).Add(incomeTodayEl, new(big.Int).SetBytes(execBlock.GetTxReward()))
 			}
 		}
-		incomeToday.El = int64(eth.WeiToGwei(incomeTodayEl))
-		incomeToday.Total += float64(incomeToday.El) * elClPrice
+		incomeToday.El = decimal.NewFromBigInt(incomeTodayEl, 0)
+		incomeToday.Total = incomeToday.Total.Add(incomeToday.El)
 	}
 
-	incomeTotal := types.ClElInt64{
-		El:    income.ElIncomeTotal + incomeToday.El,
-		Cl:    income.ClIncomeTotal + incomeToday.Cl,
-		Total: float64(income.ClIncomeTotal+incomeToday.Cl) + elClPrice*float64(income.ElIncomeTotal+incomeToday.El),
-	}
-
-	return &types.ValidatorEarnings{
-		Income1d: types.ClElInt64{
-			El:    income.ElIncome1d,
-			Cl:    income.ClIncome1d,
-			Total: earnings1d,
-		},
-		Income7d: types.ClElInt64{
-			El:    income.ElIncome7d,
-			Cl:    income.ClIncome7d,
-			Total: earnings7d,
-		},
-		Income31d: types.ClElInt64{
-			El:    income.ElIncome31d,
-			Cl:    income.ClIncome31d,
-			Total: earnings31d,
-		},
+	earnings := &types.ValidatorEarnings{
 		IncomeToday: incomeToday,
-		IncomeTotal: incomeTotal,
+		Income1d: types.ClEl{
+			El:    income.ElIncomeWei1d,
+			Cl:    income.ClIncomeWei1d.Mul(decimal.NewFromFloat(clElPrice)),
+			Total: income.ElIncomeWei1d.Add(income.ClIncomeWei1d.Mul(decimal.NewFromFloat(clElPrice))),
+		},
+		Income7d: types.ClEl{
+			El:    income.ElIncomeWei7d,
+			Cl:    income.ClIncomeWei7d.Mul(decimal.NewFromFloat(clElPrice)),
+			Total: income.ElIncomeWei7d.Add(income.ClIncomeWei7d.Mul(decimal.NewFromFloat(clElPrice))),
+		},
+		Income31d: types.ClEl{
+			El:    income.ElIncomeWei31d,
+			Cl:    income.ClIncomeWei31d.Mul(decimal.NewFromFloat(clElPrice)),
+			Total: income.ElIncomeWei31d.Add(income.ClIncomeWei31d.Mul(decimal.NewFromFloat(clElPrice))),
+		},
+		IncomeTotal: types.ClEl{
+			El:    income.ElIncomeWeiTotal.Add(incomeToday.El),
+			Cl:    income.ClIncomeWeiTotal.Add(incomeToday.Cl).Mul(decimal.NewFromFloat(clElPrice)),
+			Total: income.ElIncomeWeiTotal.Add(incomeToday.El).Add(income.ClIncomeWeiTotal.Add(incomeToday.Cl).Mul(decimal.NewFromFloat(clElPrice))),
+		},
 		Apr7d: types.ClElFloat64{
 			El:    elApr7d,
 			Cl:    clApr7d,
@@ -319,15 +311,16 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 			Cl:    clApr365d,
 			Total: clApr365d + elApr365d,
 		},
-		TotalDeposits:        int64(totalDeposits),
-		LastDayFormatted:     utils.FormatIncome(int64(earnings1d), currency, true),
-		LastWeekFormatted:    utils.FormatIncome(int64(earnings7d), currency, true),
-		LastMonthFormatted:   utils.FormatIncome(int64(earnings31d), currency, true),
-		TotalFormatted:       utils.FormatIncomeClElInt64(incomeTotal, currency),
-		TotalChangeFormatted: utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency, true),
-		TotalBalance:         utils.FormatIncome(int64(totalBalance), currency, true),
-		ProposalData:         validatorProposalData,
-	}, balancesMap, nil
+		TotalDeposits: int64(totalDeposits),
+		ProposalData:  validatorProposalData,
+	}
+	earnings.LastDayFormatted = utils.FormatElCurrency(earnings.Income1d.Total, currency, 5, true, true, true)
+	earnings.LastWeekFormatted = utils.FormatElCurrency(earnings.Income7d.Total, currency, 5, true, true, true)
+	earnings.LastMonthFormatted = utils.FormatElCurrency(earnings.Income31d.Total, currency, 5, true, true, true)
+	earnings.TotalFormatted = utils.FormatIncomeClEl(earnings.IncomeTotal, currency)
+	// earnings.TotalChangeFormatted = utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency, true)
+	earnings.TotalBalance = utils.FormatElCurrency(totalBalance, currency, 5, true, false, false)
+	return earnings, balancesMap, nil
 }
 
 // Timeframe constants

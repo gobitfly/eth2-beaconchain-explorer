@@ -2907,22 +2907,23 @@ func GetLastExportedStatisticDay() (uint64, error) {
 	return uint64(lastStatsDay.Int64), nil
 }
 
+// GetValidatorIncomePerformance gets all rewards of a validator in WEI for 1d, 7d, 365d and total
 func GetValidatorIncomePerformance(validators []uint64, incomePerformance *types.ValidatorIncomePerformance) error {
 	validatorsPQArray := pq.Array(validators)
-	// el rewards are converted from wei to gwei
 	return ReaderDb.Get(incomePerformance, `
 		SELECT 
-		COALESCE(SUM(cl_performance_1d), 0) AS cl_performance_1d,
-		COALESCE(SUM(cl_performance_7d), 0) AS cl_performance_7d,
-		COALESCE(SUM(cl_performance_31d), 0) AS cl_performance_31d,
-		COALESCE(SUM(cl_performance_365d), 0) AS cl_performance_365d,
-		COALESCE(SUM(cl_performance_total), 0) AS cl_performance_total,
-		CAST(COALESCE(SUM(mev_performance_1d), 0) / 1e9 AS bigint) AS el_performance_1d,
-		CAST(COALESCE(SUM(mev_performance_7d), 0) / 1e9 AS bigint) AS el_performance_7d,
-		CAST(COALESCE(SUM(mev_performance_31d), 0) / 1e9 AS bigint) AS el_performance_31d,
-		CAST(COALESCE(SUM(mev_performance_365d), 0) / 1e9 AS bigint) AS el_performance_365d,
-		CAST(COALESCE(SUM(mev_performance_total), 0) / 1e9 AS bigint) AS el_performance_total
-		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
+			COALESCE(SUM(cl_performance_1d    ), 0)*1e9 AS cl_performance_wei_1d,
+			COALESCE(SUM(cl_performance_7d    ), 0)*1e9 AS cl_performance_wei_7d,
+			COALESCE(SUM(cl_performance_31d   ), 0)*1e9 AS cl_performance_wei_31d,
+			COALESCE(SUM(cl_performance_365d  ), 0)*1e9 AS cl_performance_wei_365d,
+			COALESCE(SUM(cl_performance_total ), 0)*1e9 AS cl_performance_wei_total,
+			COALESCE(SUM(mev_performance_1d   ), 0)     AS el_performance_wei_1d,
+			COALESCE(SUM(mev_performance_7d   ), 0)     AS el_performance_wei_7d,
+			COALESCE(SUM(mev_performance_31d  ), 0)     AS el_performance_wei_31d,
+			COALESCE(SUM(mev_performance_365d ), 0)     AS el_performance_wei_365d,
+			COALESCE(SUM(mev_performance_total), 0)     AS el_performance_wei_total
+		FROM validator_performance 
+		WHERE validatorindex = ANY($1)`, validatorsPQArray)
 }
 
 func GetTotalValidatorDeposits(validators []uint64, totalDeposits *uint64) error {

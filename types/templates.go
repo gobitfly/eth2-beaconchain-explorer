@@ -17,6 +17,7 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 )
 
 // PageData is a struct to hold web page data
@@ -366,12 +367,13 @@ type ValidatorPageData struct {
 	ParticipatedSyncCountSlots               uint64
 	MissedSyncCountSlots                     uint64
 	OrphanedSyncCountSlots                   uint64
-	UnmissedSyncPercentage                   float64       // participated/(participated+missed)
-	IncomeToday                              ClElInt64     `json:"incomeToday"`
-	Income1d                                 ClElInt64     `json:"income1d"`
-	Income7d                                 ClElInt64     `json:"income7d"`
-	Income31d                                ClElInt64     `json:"income31d"`
-	IncomeTotal                              ClElInt64     `json:"incomeTotal"`
+	UnmissedSyncPercentage                   float64 // participated/(participated+missed)
+	Income                                   *ValidatorEarnings
+	IncomeToday                              ClEl          `json:"incomeToday"`
+	Income1d                                 ClEl          `json:"income1d"`
+	Income7d                                 ClEl          `json:"income7d"`
+	Income31d                                ClEl          `json:"income31d"`
+	IncomeTotal                              ClEl          `json:"incomeTotal"`
 	IncomeTotalFormatted                     template.HTML `json:"incomeTotalFormatted"`
 	Apr7d                                    ClElFloat64   `json:"apr7d"`
 	Apr31d                                   ClElFloat64   `json:"apr31d"`
@@ -1001,6 +1003,12 @@ type DashboardValidatorBalanceHistory struct {
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
 
+type ClEl struct {
+	El    decimal.Decimal
+	Cl    decimal.Decimal
+	Total decimal.Decimal
+}
+
 type ClElInt64 struct {
 	El    int64
 	Cl    int64
@@ -1028,11 +1036,11 @@ type ValidatorProposalData struct {
 }
 
 type ValidatorEarnings struct {
-	Income1d                ClElInt64     `json:"income1d"`
-	Income7d                ClElInt64     `json:"income7d"`
-	Income31d               ClElInt64     `json:"income31d"`
-	IncomeToday             ClElInt64     `json:"incomeToday"`
-	IncomeTotal             ClElInt64     `json:"incomeTotal"`
+	Income1d                ClEl          `json:"income1d"`
+	Income7d                ClEl          `json:"income7d"`
+	Income31d               ClEl          `json:"income31d"`
+	IncomeToday             ClEl          `json:"incomeToday"`
+	IncomeTotal             ClEl          `json:"incomeTotal"`
 	Apr7d                   ClElFloat64   `json:"apr"`
 	Apr31d                  ClElFloat64   `json:"apr31d"`
 	Apr365d                 ClElFloat64   `json:"apr365d"`
@@ -2078,16 +2086,16 @@ type BroadcastStatusPageData struct {
 }
 
 type ValidatorIncomePerformance struct {
-	ClIncome1d    int64 `db:"cl_performance_1d"`
-	ClIncome7d    int64 `db:"cl_performance_7d"`
-	ClIncome31d   int64 `db:"cl_performance_31d"`
-	ClIncome365d  int64 `db:"cl_performance_365d"`
-	ClIncomeTotal int64 `db:"cl_performance_total"`
-	ElIncome1d    int64 `db:"el_performance_1d"`
-	ElIncome7d    int64 `db:"el_performance_7d"`
-	ElIncome31d   int64 `db:"el_performance_31d"`
-	ElIncome365d  int64 `db:"el_performance_365d"`
-	ElIncomeTotal int64 `db:"el_performance_total"`
+	ClIncomeWei1d    decimal.Decimal `db:"cl_performance_wei_1d"`
+	ClIncomeWei7d    decimal.Decimal `db:"cl_performance_wei_7d"`
+	ClIncomeWei31d   decimal.Decimal `db:"cl_performance_wei_31d"`
+	ClIncomeWei365d  decimal.Decimal `db:"cl_performance_wei_365d"`
+	ClIncomeWeiTotal decimal.Decimal `db:"cl_performance_wei_total"`
+	ElIncomeWei1d    decimal.Decimal `db:"el_performance_wei_1d"`
+	ElIncomeWei7d    decimal.Decimal `db:"el_performance_wei_7d"`
+	ElIncomeWei31d   decimal.Decimal `db:"el_performance_wei_31d"`
+	ElIncomeWei365d  decimal.Decimal `db:"el_performance_wei_365d"`
+	ElIncomeWeiTotal decimal.Decimal `db:"el_performance_wei_total"`
 }
 
 type ValidatorProposalInfo struct {

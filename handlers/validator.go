@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
-	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
@@ -406,16 +405,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("error retrieving validator earnings: %w", err)
 		}
-		// each income and apr variable is a struct of 3 fields: cl, el and total
-		validatorPageData.Income1d = earnings.Income1d
-		validatorPageData.Income7d = earnings.Income7d
-		validatorPageData.Income31d = earnings.Income31d
-		validatorPageData.Apr7d = earnings.Apr7d
-		validatorPageData.Apr31d = earnings.Apr31d
-		validatorPageData.Apr365d = earnings.Apr365d
-		validatorPageData.IncomeTotal = earnings.IncomeTotal
-		validatorPageData.IncomeTotalFormatted = earnings.TotalFormatted
-		validatorPageData.IncomeToday = earnings.IncomeToday
+		validatorPageData.Income = earnings
+
 		validatorPageData.ValidatorProposalData = earnings.ProposalData
 
 		if latestEpoch < earnings.ProposalData.LastScheduledSlot/data.ChainConfig.SlotsPerEpoch {
@@ -835,7 +826,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.IncomeToday.Total = float64(validatorPageData.IncomeToday.Cl) + price.GetPrice(utils.Config.Frontend.ElCurrency, utils.Config.Frontend.ClCurrency)*float64(validatorPageData.IncomeToday.El)
+	// validatorPageData.IncomeToday.Total = float64(validatorPageData.IncomeToday.Cl) + price.GetPrice(utils.Config.Frontend.ElCurrency, utils.Config.Frontend.ClCurrency)*float64(validatorPageData.IncomeToday.El)
 	validatorPageData.FutureDutiesEpoch = protomath.MaxU64(futureProposalEpoch, futureSyncDutyEpoch)
 
 	data.Data = validatorPageData
