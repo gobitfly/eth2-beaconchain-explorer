@@ -239,27 +239,30 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			// The query does not fulfill any of the requirements for a search
 			shouldSearch = false
 		}
-	}
-
-	// The deposits count query only has one parameter for the search
-	countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
-
-	// Get the deposits and the total count
-	if shouldSearch {
-		if param != nil {
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
-		} else {
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery))
-		}
+	} else {
+		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, ""))
 		if err != nil {
 			return nil, 0, err
 		}
 
-		if param != nil {
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
-		} else {
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start)
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, "", orderBy, orderDir), length, start)
+		if err != nil && err != sql.ErrNoRows {
+			return nil, 0, err
 		}
+
+		return deposits, totalCount, nil
+	}
+
+	if shouldSearch {
+		// The deposits count query only has one parameter for the search
+		countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
+
+		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, 0, err
 		}
@@ -406,27 +409,30 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 			// The query does not fulfill any of the requirements for a search
 			shouldSearch = false
 		}
-	}
-
-	// The deposits count query only has one parameter for the search
-	countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
-
-	// Get the deposits and the total count
-	if shouldSearch {
-		if param != nil {
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
-		} else {
-			err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery))
-		}
+	} else {
+		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, ""))
 		if err != nil {
 			return nil, 0, err
 		}
 
-		if param != nil {
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
-		} else {
-			err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start)
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, "", orderBy, orderDir), length, start)
+		if err != nil && err != sql.ErrNoRows {
+			return nil, 0, err
 		}
+
+		return deposits, totalCount, nil
+	}
+
+	if shouldSearch {
+		// The deposits count query only has one parameter for the search
+		countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
+
+		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, 0, err
 		}
