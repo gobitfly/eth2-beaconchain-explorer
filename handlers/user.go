@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -1428,35 +1429,40 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !sessionUser.Authenticated {
-		utils.SetFlash(w, r, authSessionName, "Error: You need to be logged in to update your email.")
+		utils.SetFlash(w, r, authSessionName, "Error: You need to be logged in to update your email. Please login and try again.")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
 	user := struct {
-		ID        int64     `db:"id"`
-		Email     string    `db:"email"`
-		ConfirmTs time.Time `db:"email_confirmation_ts"`
-		Confirmed bool      `db:"email_confirmed"`
-		NewEmail  string    `db:"email_change_to_value"`
+		ID                 int64     `db:"id"`
+		Email              string    `db:"email"`
+		ConfirmTs          time.Time `db:"email_confirmation_ts"`
+		Confirmed          bool      `db:"email_confirmed"`
+		NewEmail           string    `db:"email_change_to_value"`
+		stripe_customer_id string    `db:"stripe_customer_id"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, email_confirmation_ts, email_confirmed, email_change_to_value FROM users WHERE email_confirmation_hash = $1", hash)
+	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, COALESCE(email_confirmation_ts, '399-01-01 BC'::timestamp), email_confirmed, COALESCE(email_change_to_value, ''), COALESCE(stripe_customer_id, '') FROM users WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
-		utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash, "userID": sessionUser.UserID})
+		if err != sql.ErrNoRows {
+			utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash, "userID": sessionUser.UserID})
+		}
 		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
-	// check if user is allowed to update email
+	// validate data
+
 	if sessionUser.UserID != uint64(user.ID) {
-		http.Error(w, "Forbidden - You are not allowed to access this page", http.StatusForbidden)
+		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
 	if !user.Confirmed {
-		utils.SetFlash(w, r, authSessionName, "Error: Cannot update email for an unconfirmed address.")
+		utils.SetFlash(w, r, authSessionName, "Error: Cannot update email for an unconfirmed address. Please confirm your email first.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -1477,23 +1483,34 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendWriterDB.Get(&emailExists, "SELECT EXISTS (SELECT email FROM users WHERE email = $1)", user.NewEmail)
 	if err != nil {
 		utils.LogError(err, "error checking if email exists", 0, map[string]interface{}{"email": user.NewEmail})
-		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update email. Please try again later.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
 	if emailExists {
-		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update email. The new email already exists, please send a new update request with a different email.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
-	// TODO update stripe email
+	// everything is fine, update email
+	// update users email in Stripe, if user has a subscription
+	if user.stripe_customer_id != "" {
+		err = updateStripeCustomerEmail(user.stripe_customer_id, user.NewEmail)
+		if err != nil {
+			utils.LogError(err, "error updating user email in stripe", 0, map[string]interface{}{"customerID": user.stripe_customer_id, "newEmail": user.NewEmail})
+			utils.SetFlash(w, r, authSessionName, "Error: Could not update email. Please try again. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>.")
+			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		}
+	}
 
+	// update users email in DB
+	// if this fails, the user will not be able to log in with the new email but stripe will have the new email
 	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = NULL, email_change_to_value = NULL WHERE id = $2`, user.NewEmail, user.ID)
 	if err != nil {
 		utils.LogError(err, "error updating email for user", 0, map[string]interface{}{"userID": user.ID, "newEmail": user.NewEmail})
-		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update email. Please try again. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1505,13 +1522,41 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	err = purgeAllSessionsForUser(r.Context(), uint64(user.ID))
 	if err != nil {
 		utils.LogError(err, "error purging sessions for user", 0, map[string]interface{}{"userID": user.ID})
-		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+func updateStripeCustomerEmail(stripeCustomerId, newEmail string) error {
+	// see https://stripe.com/docs/api/customers/update
+	apiEndpoint := "https://api.stripe.com/v1/customers/" + stripeCustomerId
+
+	data := url.Values{}
+	data.Set("email", newEmail)
+	req, err := http.NewRequest(http.MethodPost, apiEndpoint, bytes.NewBufferString(data.Encode()))
+	if err != nil {
+		return fmt.Errorf("error creating email change request for stripe: %w", err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", utils.Config.Frontend.Stripe.SecretKey))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending request to stripe: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error updating email in stripe, also could not read body: %w", err)
+		}
+		return fmt.Errorf("error updating email in stripe: %w; body: %v", err, string(body))
+	}
+	return nil
 }
 
 // UserValidatorWatchlistAdd godoc
