@@ -263,8 +263,3 @@ func GetCurrencySymbol(currency string) string {
 	}
 	return x.Symbol
 }
-
-func GetEthRoundPrice(currency float64) uint64 {
-	ethRoundPrice := uint64(currency)
-	return ethRoundPrice
-}
