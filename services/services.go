@@ -456,8 +456,7 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	err := db.ReaderDb.Select(&poolData.PoolInfos, `
 	select pool as name, validators as count, apr * 100 as avg_performance_1d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 7) * 100 as avg_performance_7d, (select avg(apr) from historical_pool_performance as hpp1 where hpp1.pool = hpp.pool AND hpp1.day > hpp.day - 31) * 100 as avg_performance_31d from historical_pool_performance hpp where day = (select max(day) from historical_pool_performance) order by validators desc;
 	`)
-
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
@@ -465,7 +464,7 @@ func getPoolsPageData() (*types.PoolsResp, error) {
 	err = db.ReaderDb.Get(ethstoreData, `
 	select 'ETH.STORE' as name, -1 as count, apr * 100 as avg_performance_1d, (select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 7) * 100 as avg_performance_7d, (select avg(apr) from eth_store_stats as e1 where e1.validator = -1 AND e1.day > e.day - 31) * 100 as avg_performance_31d from eth_store_stats e where day = (select max(day) from eth_store_stats) LIMIT 1;
 	`)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
@@ -518,7 +517,7 @@ func indexPageDataUpdater(wg *sync.WaitGroup) {
 			time.Sleep(time.Second * 10)
 			continue
 		}
-		logger.Infof("index page data update completed in %v", time.Since(start))
+		logger.WithFields(logrus.Fields{"genesis": data.Genesis, "currentEpoch": data.CurrentEpoch, "networkName": data.NetworkName, "networkStartTs": data.NetworkStartTs}).Infof("index page data update completed in %v", time.Since(start))
 
 		cacheKey := fmt.Sprintf("%d:frontend:indexPageData", utils.Config.Chain.ClConfig.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
@@ -642,7 +641,7 @@ func getEthStoreStatisticsData() (*types.EthStoreStatistics, error) {
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
-	currency := "ETH"
+	currency := utils.Config.Frontend.MainCurrency
 
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.ClConfig.ConfigName == "mainnet"
@@ -790,7 +789,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	latestFinalizedEpoch := LatestFinalizedEpoch()
 	var epochs []*types.IndexPageDataEpochs
-	err = db.ReaderDb.Select(&epochs, `SELECT epoch, (epoch <= $1) AS finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`, latestFinalizedEpoch)
+	err = db.ReaderDb.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
 	}
@@ -850,7 +849,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	for _, block := range data.Blocks {
-		block.StatusFormatted = utils.FormatBlockStatus(block.Status)
+		block.StatusFormatted = utils.FormatBlockStatus(block.Status, block.Slot)
 		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
 
@@ -861,7 +860,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				Finalized:                        false,
 				FinalizedFormatted:               utils.FormatYesNo(false),
 				EligibleEther:                    0,
-				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, "ETH"),
+				EligibleEtherFormatted:           utils.FormatEligibleBalance(0, currency),
 				GlobalParticipationRate:          0,
 				GlobalParticipationRateFormatted: utils.FormatGlobalParticipationRate(0, 1, ""),
 				VotedEther:                       0,
@@ -931,10 +930,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.StakedEtherChartData = make([][]float64, len(epochHistory))
 	data.ActiveValidatorsChartData = make([][]float64, len(epochHistory))
 	for i, history := range epochHistory {
-		data.StakedEtherChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.EligibleEther) / 1000000000}
+		data.StakedEtherChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), utils.ClToMainCurrency(history.EligibleEther).InexactFloat64()}
 		data.ActiveValidatorsChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.ValidatorsCount)}
 	}
 
+	data.Title = template.HTML(utils.Config.Frontend.SiteTitle)
 	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
 	return data, nil
@@ -1088,6 +1088,7 @@ func LatestIndexPageData() *types.IndexPageData {
 		Epochs:                    []*types.IndexPageDataEpochs{},
 		StakedEtherChartData:      [][]float64{},
 		ActiveValidatorsChartData: [][]float64{},
+		Title:                     "",
 		Subtitle:                  "",
 		Genesis:                   false,
 		GenesisPeriod:             false,
@@ -1170,24 +1171,56 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = LatestProposedSlot()
 	data.FinalityDelay = FinalizationDelay()
 	data.IsSyncing = IsSyncing()
-	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
-	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)
-	data.EurRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("EUR"))
-	data.EurTruncPrice = utils.KFormatterEthPrice(data.EurRoundPrice)
-	data.GbpRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("GBP"))
-	data.GbpTruncPrice = utils.KFormatterEthPrice(data.GbpRoundPrice)
-	data.CnyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CNY"))
-	data.CnyTruncPrice = utils.KFormatterEthPrice(data.CnyRoundPrice)
-	data.RubRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("RUB"))
-	data.RubTruncPrice = utils.KFormatterEthPrice(data.RubRoundPrice)
-	data.CadRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CAD"))
-	data.CadTruncPrice = utils.KFormatterEthPrice(data.CadRoundPrice)
-	data.AudRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("AUD"))
-	data.AudTruncPrice = utils.KFormatterEthPrice(data.AudRoundPrice)
-	data.JpyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("JPY"))
-	data.JpyTruncPrice = utils.KFormatterEthPrice(data.JpyRoundPrice)
+	data.Rates = GetRates(utils.Config.Frontend.MainCurrency)
 
 	return data
+}
+
+func GetRates(selectedCurrency string) *types.Rates {
+	r := types.Rates{}
+
+	r.SelectedCurrency = selectedCurrency
+	r.SelectedCurrencySymbol = price.GetCurrencySymbol(r.SelectedCurrency)
+
+	r.MainCurrency = utils.Config.Frontend.MainCurrency
+	r.ClCurrency = utils.Config.Frontend.ClCurrency
+	r.ElCurrency = utils.Config.Frontend.ElCurrency
+	r.TickerCurrency = selectedCurrency
+	if r.TickerCurrency == utils.Config.Frontend.MainCurrency {
+		r.TickerCurrency = "USD"
+	}
+
+	r.MainCurrencySymbol = price.GetCurrencySymbol(utils.Config.Frontend.MainCurrency)
+	r.ElCurrencySymbol = price.GetCurrencySymbol(utils.Config.Frontend.ElCurrency)
+	r.ClCurrencySymbol = price.GetCurrencySymbol(utils.Config.Frontend.ClCurrency)
+	r.TickerCurrencySymbol = price.GetCurrencySymbol(r.TickerCurrency)
+
+	r.MainCurrencyPrice = price.GetPrice(utils.Config.Frontend.MainCurrency, r.SelectedCurrency)
+	r.ClCurrencyPrice = price.GetPrice(utils.Config.Frontend.ClCurrency, r.SelectedCurrency)
+	r.ElCurrencyPrice = price.GetPrice(utils.Config.Frontend.ElCurrency, r.SelectedCurrency)
+	r.MainCurrencyTickerPrice = price.GetPrice(utils.Config.Frontend.MainCurrency, r.TickerCurrency)
+
+	r.MainCurrencyPriceFormatted = utils.FormatAddCommas(uint64(r.MainCurrencyPrice))
+	r.ClCurrencyPriceFormatted = utils.FormatAddCommas(uint64(r.ClCurrencyPrice))
+	r.ElCurrencyPriceFormatted = utils.FormatAddCommas(uint64(r.ElCurrencyPrice))
+	r.MainCurrencyTickerPriceFormatted = utils.FormatAddCommas(uint64(r.MainCurrencyTickerPrice))
+
+	r.MainCurrencyPriceKFormatted = utils.KFormatterEthPrice(uint64(r.MainCurrencyPrice))
+	r.ClCurrencyPriceKFormatted = utils.KFormatterEthPrice(uint64(r.ClCurrencyPrice))
+	r.ElCurrencyPriceKFormatted = utils.KFormatterEthPrice(uint64(r.ElCurrencyPrice))
+	r.MainCurrencyTickerPriceKFormatted = utils.FormatAddCommas(uint64(r.MainCurrencyTickerPrice))
+
+	r.MainCurrencyPrices = map[string]types.RatesPrice{}
+	for _, c := range price.GetAvailableCurrencies() {
+		p := types.RatesPrice{}
+		p.Symbol = price.GetCurrencySymbol(c)
+		cPrice := price.GetPrice(utils.Config.Frontend.MainCurrency, c)
+		p.RoundPrice = uint64(cPrice)
+		p.TruncPrice = utils.KFormatterEthPrice(uint64(cPrice))
+		r.MainCurrencyPrices[c] = p
+	}
+
+	return &r
 }
 
 func GetLatestStats() *types.Stats {
@@ -1368,7 +1401,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		logrus.WithError(err).Error("error updating gas now history")
 	}
 
-	gpoData.Data.Price = price.GetEthPrice("USD")
+	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, "USD")
 	gpoData.Data.Currency = "USD"
 
 	// gpoData.RapidUSD = gpoData.Rapid * 21000 * params.GWei / params.Ether * usd

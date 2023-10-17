@@ -1,4 +1,4 @@
-function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, height, currency) {
+function getIncomeChartOptions(clIncomeHistory, elIncomeHistory, title, height) {
   return {
     colors: ["#90ed7d", "#7cb5ec"],
     exporting: {
@@ -52,12 +52,12 @@ function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, hei
     yAxis: [
       {
         title: {
-          text: `Income [${currency}]`,
+          text: `Income [${selectedCurrency}]`,
         },
         opposite: false,
         labels: {
           formatter: function () {
-            return currency === "ETH" ? trimToken(this.value) : trimCurrency(this.value)
+            return selectedCurrency === "ETH" ? trimToken(this.value) : trimCurrency(this.value)
           },
         },
       },
@@ -65,7 +65,7 @@ function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, hei
     series: [
       {
         name: "Execution Income",
-        data: executionIncomeHistory,
+        data: elIncomeHistory,
         showInNavigator: false,
         dataGrouping: {
           enabled: false,
@@ -73,7 +73,7 @@ function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, hei
       },
       {
         name: "Consensus Income",
-        data: incomeHistory,
+        data: clIncomeHistory,
         showInNavigator: true,
         dataGrouping: {
           enabled: false,
@@ -99,13 +99,21 @@ function getIncomeChartOptions(incomeHistory, executionIncomeHistory, title, hei
         // income
         for (var i = 0; i < tooltip.chart.hoverPoints.length; i++) {
           const value = tooltip.chart.hoverPoints[i].y
-          text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, currency)}<br/>`
+          const series = tooltip.chart.hoverPoints[i].series
+          var iPrice = clPrice
+          var iCurrency = clCurrency
+          if (series.name == "Execution Income") {
+            iPrice = elPrice
+            iCurrency = elCurrency
+          }
+
+          text += `<span style="color:${tooltip.chart.hoverPoints[i].series.color}">\u25CF</span>  <b>${tooltip.chart.hoverPoints[i].series.name}:</b> ${getIncomeChartValueString(value, iCurrency, selectedCurrency, iPrice)}<br/>`
           total += value
         }
 
         // add total if hovered point contains rewards for both EL and CL
         if (tooltip.chart.hoverPoints.length > 1) {
-          text += `<b>Total:</b> ${getIncomeChartValueString(total, currency)}`
+          text += `<b>Total:</b> ${getIncomeChartValueString(total, selectedCurrency, selectedCurrency, clPrice)}`
         }
 
         return text

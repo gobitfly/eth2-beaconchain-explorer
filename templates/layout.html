@@ -4,7 +4,7 @@
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-      <meta name="keywords" content="open source ethereum block explorer, ethereum block explorer, beacon chain explorer, ethereum blockchain explorer" />
+      <meta name="keywords" content="config.Frontend.Keywords" />
       <meta name="description" content="{{ .Meta.Description }}" />
       <meta property="og:title" content="{{ .Meta.Title }}" />
       <meta property="og:type" content="website" />
@@ -37,6 +37,14 @@
       <link rel="stylesheet" href="/css/layout/banner.css" />
       <link rel="stylesheet" href="/css/layout/herofeed.css" />
       <script>
+        var selectedCurrency = {{$.Rates.SelectedCurrency}}
+        var mainCurrency = {{config.Frontend.MainCurrency}}
+        var elCurrency = {{config.Frontend.ElCurrency}}
+        var clCurrency = {{config.Frontend.ClCurrency}}
+        var elPrice = {{$.Rates.ElCurrencyPrice}}
+        var clPrice = {{$.Rates.ClCurrencyPrice}}
+        var mainPrice = {{$.Rates.MainCurrencyPrice}}
+
         var mql = window.matchMedia("(prefers-color-scheme: light)")
         var lightScheme = mql.matches
         var currentTheme = localStorage.getItem("theme")
@@ -98,7 +106,7 @@
               </div>
             </div>
             {{ if .Mainnet }}
-              <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
+              <div data-toggle="tooltip" title="" data-original-title="Price: 1 {{ .Rates.MainCurrencySymbol }} = {{ .Rates.MainCurrencyTickerPriceKFormatted }} {{ .Rates.TickerCurrencySymbol }}" id="banner-eth-price">
                 <div class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
                     <span class="item-icon"><i class="fas fa-cubes"></i></span>
@@ -106,9 +114,9 @@
                   </div>
                   <div class="info-item-body">
                     <a id="banner-eth-price-data">
-                      <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
-                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.CurrentPriceKFormatted }}</span>
-                      <span id="currentCurrencyPrice" class="price">{{ .Rates.CurrentPriceFormatted }}</span>
+                      <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.TickerCurrencySymbol }}</span>
+                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.MainCurrencyTickerPriceKFormatted }}</span>
+                      <span id="currentCurrencyPrice" class="price">{{ .Rates.MainCurrencyTickerPriceFormatted }}</span>
                     </a>
                   </div>
                 </div>
@@ -156,16 +164,16 @@
               <div class="dropdown">
                 <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <div id="currencyFlagDropdown">
-                    <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.Currency }}.svg" />
+                    <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.SelectedCurrency }}.svg" />
                   </div>
-                  <div id="currencyDropdown">{{ .Rates.Currency }}</div>
+                  <div id="currencyDropdown">{{ .Rates.SelectedCurrency }}</div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
                   {{ range .AvailableCurrencies }}
                     <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
                       <img class="currency-flag-option" src="/img/{{ . }}.svg" />
                       <span class="currency-name">{{ getCurrencyLabel . }}</span>
-                      {{ . }}
+                      <span class="currency-symbol">{{ . }}</span>
                     </a>
                   {{ end }}
                 </div>
@@ -343,8 +351,7 @@
       <script src="/js/layout.js"></script>
       <script src="/js/banner.js"></script>
         <script>
-            var currency = {{.Rates.Currency}}
-            var exchangeRate = {{.Rates.ExchangeRate}}
+            var currency = {{.Rates.SelectedCurrency}}
 
             function slotToTime(slot) {
                 var gts = {{.ChainGenesisTimestamp}}

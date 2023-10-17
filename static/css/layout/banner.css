@@ -355,6 +355,7 @@ color: var(--banner-text);
   font-weight: 500;
 }
 
+
 @media (min-width: 900px) {
   .currency-name {
     display: inline-block;

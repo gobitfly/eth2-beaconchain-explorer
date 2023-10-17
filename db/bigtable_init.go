@@ -22,7 +22,6 @@ func InitBigtableSchema() error {
 		ATTESTATIONS_FAMILY:                   nil,
 		PROPOSALS_FAMILY:                      nil,
 		SYNC_COMMITTEES_FAMILY:                nil,
-		SYNC_COMMITTEES_PARTICIPATION_FAMILY:  nil,
 		INCOME_DETAILS_COLUMN_FAMILY:          nil,
 		STATS_COLUMN_FAMILY:                   nil,
 	}

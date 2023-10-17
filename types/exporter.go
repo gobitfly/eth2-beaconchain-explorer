@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
@@ -48,12 +47,8 @@ type FinalityCheckpoints struct {
 type Slot uint64
 type Epoch uint64
 type ValidatorIndex uint64
-
-type EpochWriteCacheEntry struct {
-	Balance          uint64
-	EffectiveBalance uint64
-	Attestations     map[Slot]Slot
-}
+type SyncCommitteePeriod uint64
+type CommitteeIndex uint64
 
 // EpochData is a struct to hold epoch data
 type EpochData struct {
@@ -77,11 +72,6 @@ type ValidatorParticipation struct {
 	Finalized               bool
 }
 
-// BeaconCommitteItem is a struct to hold beacon committee data
-type BeaconCommitteItem struct {
-	ValidatorIndices []uint64
-}
-
 // Validator is a struct to hold validator data
 type Validator struct {
 	Index                      uint64 `db:"validatorindex"`
@@ -100,7 +90,6 @@ type Validator struct {
 	Status            string        `db:"status"`
 
 	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
-	LastProposalSlot    sql.NullInt64 `db:"lastproposalslot"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data
@@ -136,14 +125,16 @@ type Block struct {
 	VoluntaryExits             []*VoluntaryExit
 	SyncAggregate              *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
 	ExecutionPayload           *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
-	Canonical                  bool
 	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
 	BlobGasUsed                uint64
 	ExcessBlobGas              uint64
 	BlobKZGCommitments         [][]byte
 	BlobKZGProofs              [][]byte
-	AttestationDuties          map[ValidatorIndex]Slot
+	AttestationDuties          map[ValidatorIndex][]Slot
 	SyncDuties                 map[ValidatorIndex]bool
+	Finalized                  bool
+	EpochAssignments           *EpochAssignments
+	Validators                 []*Validator
 }
 
 type SignedBLSToExecutionChange struct {
@@ -288,14 +279,6 @@ type VoluntaryExit struct {
 	Signature      []byte
 }
 
-// BlockContainer is a struct to hold block container data
-type BlockContainer struct {
-	Status   uint64
-	Proposer uint64
-
-	Block *ethpb.BeaconBlockContainer
-}
-
 // MinimalBlock is a struct to hold minimal block data
 type MinimalBlock struct {
 	Epoch      uint64 `db:"epoch"`
@@ -310,13 +293,6 @@ type CanonBlock struct {
 	BlockRoot []byte `db:"blockroot"`
 	Slot      uint64 `db:"slot"`
 	Canonical bool   `db:"-"`
-}
-
-// BlockComparisonContainer is a struct to hold block comparison data
-type BlockComparisonContainer struct {
-	Epoch uint64
-	Db    *MinimalBlock
-	Node  *MinimalBlock
 }
 
 // EpochAssignments is a struct to hold epoch assignment data
@@ -559,26 +535,6 @@ type RelayBlock struct {
 	ProposerFeeRecipient string `db:"proposer_fee_recipient" json:"proposer_fee_recipient"`
 }
 
-type RelayBlockSlice []RelayBlock
-
-func (s *RelayBlockSlice) Scan(src interface{}) error {
-	switch v := src.(type) {
-	case []byte:
-		err := json.Unmarshal(v, s)
-		if err != nil {
-			return err
-		}
-		// if no tags were found we will get back an empty struct, we don't want that
-		if len(*s) == 1 && (*s)[0].ID == "" {
-			*s = nil
-		}
-		return nil
-	case string:
-		return json.Unmarshal([]byte(v), s)
-	}
-	return errors.New("type assertion failed")
-}
-
 type BlockTag struct {
 	ID        string `db:"tag_id"`
 	BlockSlot uint64 `db:"slot"`
@@ -694,9 +650,24 @@ type ValidatorStatsTableDbRow struct {
 	ClRewardsGWei      int64 `db:"cl_rewards_gwei"`
 	ClRewardsGWeiTotal int64 `db:"cl_rewards_gwei_total"`
 
+	ClPerformance1d   int64 `db:"-"`
+	ClPerformance7d   int64 `db:"-"`
+	ClPerformance31d  int64 `db:"-"`
+	ClPerformance365d int64 `db:"-"`
+
 	ElRewardsWei      decimal.Decimal `db:"el_rewards_wei"`
 	ElRewardsWeiTotal decimal.Decimal `db:"el_rewards_wei_total"`
 
+	ElPerformance1d   decimal.Decimal `db:"-"`
+	ElPerformance7d   decimal.Decimal `db:"-"`
+	ElPerformance31d  decimal.Decimal `db:"-"`
+	ElPerformance365d decimal.Decimal `db:"-"`
+
 	MEVRewardsWei      decimal.Decimal `db:"mev_rewards_wei"`
 	MEVRewardsWeiTotal decimal.Decimal `db:"mev_rewards_wei_total"`
+
+	MEVPerformance1d   decimal.Decimal `db:"-"`
+	MEVPerformance7d   decimal.Decimal `db:"-"`
+	MEVPerformance31d  decimal.Decimal `db:"-"`
+	MEVPerformance365d decimal.Decimal `db:"-"`
 }

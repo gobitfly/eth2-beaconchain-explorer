@@ -606,11 +606,11 @@ func getMachineStatsGap(resultCount uint64) int {
 }
 
 func GetHistoricalPrice(chainId uint64, currency string, day uint64) (float64, error) {
-	if chainId != 1 {
+	if chainId != 1 && chainId != 100 {
 		// Don't show a historical price for testnets
 		return 0.0, nil
 	}
-	if currency == "ETH" {
+	if currency == utils.Config.Frontend.ClCurrency {
 		currency = "USD"
 	}
 	currency = strings.ToLower(currency)

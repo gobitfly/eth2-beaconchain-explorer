@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -72,51 +73,35 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Errorf("error generating qr code for address %v", token)
 	}
 
-	if len(metadata.Price) == 0 {
-		metadata.Price = []byte("32.523423")
-	}
-
-	marketCap := float64(0)
-	ethExchangeRate := float64(0)
-	if len(metadata.Price) > 0 && len(metadata.TotalSupply) > 0 {
-		mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Decimals), 0))
-		num := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0)
-
-		priceS := string(metadata.Price)
-		tokenPrice := decimal.New(0, 0)
-		if priceS != "" {
-			var err error
-			tokenPrice, err = decimal.NewFromString(priceS)
-			if err != nil {
-				logger.WithError(err).Errorf("error getting price from string - FormatTokenBalance price: %v", priceS)
-			}
-		}
-
-		marketCap, _ = tokenPrice.Mul(num.Div(mul)).Float64()
-
-		ethUsdRate := decimal.NewFromFloat(price.GetEthPrice("USD"))
-		logger.Infof("usd rate %s", ethUsdRate)
-		if !ethUsdRate.IsZero() {
-			ethExchangeRate, _ = tokenPrice.Div(ethUsdRate).Float64()
-		}
-	}
-
 	data := InitPageData(w, r, "blockchain", "/token", fmt.Sprintf("Token 0x%x", token), templateFiles)
 
+	tokenDecimals := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Decimals), 0)
+
+	ethDiv := decimal.NewFromInt(utils.Config.Frontend.ElCurrencyDivisor)
+	tokenDiv := decimal.NewFromInt(10).Pow(tokenDecimals)
+
+	_ = ethDiv
+	_ = tokenDiv
+
+	ethPriceUsd := decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.ElCurrency, "USD"))
+	tokenPriceEth := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.Price), 0).DivRound(ethDiv, 18)
+	tokenPriceUsd := ethPriceUsd.Mul(tokenPriceEth).Mul(tokenDiv).DivRound(ethDiv, 18)
+	tokenSupply := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0).DivRound(tokenDiv, 18)
+	tokenMarketCapUsd := tokenPriceUsd.Mul(tokenSupply)
+
+	logrus.WithFields(logrus.Fields{"tokenRate": new(big.Int).SetBytes(metadata.Price), "ethPriceUsd": ethPriceUsd, "tokenPriceEth": tokenPriceEth, "tokenPriceUsd": tokenPriceUsd, "tokenSupply": tokenSupply}).Infof("DEBUG: Eth1Token")
+
 	data.Data = types.Eth1TokenPageData{
-		Token:            fmt.Sprintf("%x", token),
-		Address:          fmt.Sprintf("%x", address),
-		TransfersTable:   txns,
-		Metadata:         metadata,
-		Balance:          balance,
-		QRCode:           pngStr,
-		QRCodeInverse:    pngStrInverse,
-		MarketCap:        template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
-		SocialProfiles:   template.HTML(``),
-		Holders:          template.HTML(`<span>500</span>`),
-		Transfers:        template.HTML(`<span>10,000</span>`),
-		DilutedMarketCap: template.HTML("$" + utils.FormatThousandsEnglish(fmt.Sprintf("%.2f", marketCap))),
-		Price:            template.HTML(fmt.Sprintf("<span>$%s</span><span>@ %.6f</span>", string(metadata.Price), ethExchangeRate)),
+		Token:          fmt.Sprintf("%x", token),
+		Address:        fmt.Sprintf("%x", address),
+		TransfersTable: txns,
+		Metadata:       metadata,
+		Balance:        balance,
+		QRCode:         pngStr,
+		QRCodeInverse:  pngStrInverse,
+		MarketCap:      template.HTML("$" + utils.FormatThousandsEnglish(tokenMarketCapUsd.StringFixed(2))),
+		Supply:         template.HTML(utils.FormatThousandsEnglish(tokenSupply.StringFixed(6))),
+		Price:          template.HTML("$" + utils.FormatThousandsEnglish(tokenPriceUsd.StringFixed(6))),
 	}
 
 	if handleTemplateError(w, r, "eth1Token.go", "Eth1Token", "Done", eth1TokenTemplate.ExecuteTemplate(w, "layout", data)) != nil {
