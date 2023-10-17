@@ -265,6 +265,10 @@ func FormatBalanceChangeFormated(balance *int64, currencyName string, details *i
 		currencyFunc = ClToCurrency
 	}
 
+	if balance == nil || *balance == 0 {
+		return template.HTML(fmt.Sprintf("<span class=\"float-right\">0 %s</span>", currencySymbol))
+	}
+
 	maxDigits := uint(6)
 
 	income := ""
@@ -308,9 +312,6 @@ func FormatBalanceChangeFormated(balance *int64, currencyName string, details *i
 		income += fmt.Sprintf("Total: %s %s", FormatAddCommasFormated(currencyFunc(details.TotalClRewards(), currencyName).InexactFloat64(), maxDigits), currencySymbol)
 	}
 
-	if balance == nil || *balance == 0 {
-		return template.HTML(fmt.Sprintf("<span class=\"float-right\">0 %s</span>", currencySymbol))
-	}
 	if *balance < 0 {
 		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s %s</span>", income, FormatAddCommasFormated(currencyFunc(*balance, currencyName).InexactFloat64(), maxDigits), currencySymbol))
 	}
