@@ -378,14 +378,14 @@ func UpdateBlockFinalizationSequentially() error {
 	}
 	var minNonFinalizedSlot uint64
 	for {
-		err = db.WriterDb.Get(&minNonFinalizedSlot, `select coalesce(min(slot),0) from blocks where finalized = false and slot >= $1`, lookback)
+		err = db.WriterDb.Get(&minNonFinalizedSlot, `select coalesce(min(slot),0) from blocks where finalized = false and slot >= $1 and slot <= $1+1e4`, lookback)
 		if err != nil {
 			return err
 		}
 		if minNonFinalizedSlot == 0 {
 			break
 		}
-		if minNonFinalizedSlot == lookback {
+		if minNonFinalizedSlot == lookback && lookback > 1e4 {
 			lookback -= 1e4
 			continue
 		}
