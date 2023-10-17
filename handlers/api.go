@@ -387,24 +387,27 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
 
 	blockSlot := int64(-1)
-	blockRootHash := []byte{}
+	blockInfo := struct {
+		BlockRootHash []byte `db:"blockroot"`
+		Status        string `db:"status"`
+	}{}
 
 	if slotOrHash == "latest" {
 		// simply check the latest slot (might be empty which causes an error)
 		blockSlot = int64(services.LatestSlot())
 	} else if slotOrHash == "head" {
 		// retrieve the slot containing the head block of the chain
-		blockRootHash = services.Eth1HeadBlockRootHash()
-		if len(blockRootHash) != 32 {
+		blockInfo.BlockRootHash = services.Eth1HeadBlockRootHash()
+		if len(blockInfo.BlockRootHash) != 32 {
 			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 			return
 		}
 	} else {
 		var err error
-		blockRootHash, err = hex.DecodeString(slotOrHash)
+		blockInfo.BlockRootHash, err = hex.DecodeString(slotOrHash)
 		if err != nil || len(slotOrHash) != 64 {
 			// not a valid root hash, try to parse as slot number instead
-			blockRootHash = []byte{}
+			blockInfo.BlockRootHash = []byte{}
 			blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 			if err != nil {
 				sendErrorResponse(w, r.URL.String(), "could not parse slot number")
@@ -413,13 +416,17 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(blockRootHash) != 32 {
-		err := db.ReaderDb.Get(&blockRootHash, `SELECT blockroot FROM blocks WHERE slot = $1`, blockSlot)
+	err := db.ReaderDb.Get(&blockInfo, `SELECT blockroot, status FROM blocks WHERE slot = $1`, blockSlot)
 
-		if err != nil || len(blockRootHash) != 32 {
-			sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
-			return
-		}
+	if err != nil {
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	// status 2 = missed slots
+	if len(blockInfo.BlockRootHash) != 32 && blockInfo.Status != "2" {
+		sendErrorResponse(w, r.URL.String(), "could not retrieve db resultsyy")
+		return
 	}
 
 	rows, err := db.ReaderDb.Query(`
@@ -467,7 +474,7 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 	LEFT JOIN
 		(SELECT beaconblockroot, sum(array_length(validators, 1)) AS votes FROM blocks_attestations GROUP BY beaconblockroot) ba ON (blocks.blockroot = ba.beaconblockroot)
 	WHERE
-		blocks.blockroot = $1`, blockRootHash)
+		blocks.blockroot = $1`, blockInfo.BlockRootHash)
 
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
