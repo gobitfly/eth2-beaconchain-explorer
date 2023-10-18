@@ -62,7 +62,7 @@ func IndexPageData(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error sending latest index page data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

@@ -73,6 +73,6 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 	err := notFoundTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing not-found template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }

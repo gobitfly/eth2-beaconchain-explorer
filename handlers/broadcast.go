@@ -28,7 +28,7 @@ func Broadcast(w http.ResponseWriter, r *http.Request) {
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "info_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for broadcast %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -98,7 +98,7 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 		if err != sql.ErrNoRows {
 			logger.Errorf("error retrieving job %v", err)
 		}
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -111,7 +111,7 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 	validators, err := db.GetNodeJobValidatorInfos(job)
 	if err != nil {
 		logger.WithError(err).Errorf("error retrieving validator infos")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

@@ -104,7 +104,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "No monitoring data available", http.StatusServiceUnavailable)
+			http.Error(w, "No monitoring data available", http.StatusInternalServerError)
 			return
 		} else {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -165,7 +165,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 	lastEpoch, err := db.GetLatestEpoch()
 
 	if err != nil {
-		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", http.StatusInternalServerError)
 		return
 	}
 
@@ -3965,7 +3965,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryValidatorIndices, latestEpoch-queryOffsetEpoch, latestEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	dataMap := make(map[uint64]*types.DashboardValidatorBalanceHistory)

@@ -143,7 +143,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -197,7 +197,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(services.GeneratePdfReport(hist, currency))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -260,7 +260,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -304,7 +304,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -339,7 +339,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
