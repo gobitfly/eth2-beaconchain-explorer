@@ -1544,7 +1544,8 @@ func updateStripeCustomerEmail(stripeCustomerId, newEmail string) error {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", utils.Config.Frontend.Stripe.SecretKey))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := http.DefaultClient.Do(req)
+	httpClient := http.Client{Timeout: time.Second * 10}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("error sending request to stripe: %w", err)
 	}
