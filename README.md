@@ -16,7 +16,8 @@ The explorer is built using golang and utilizes a PostgreSQL database for storin
 ### Ethereum Testnet Explorers
 
 [Goerli](https://goerli.beaconcha.in)<br>
-[Sepolia](https://sepolia.beaconcha.in)
+[Sepolia](https://sepolia.beaconcha.in)<br>
+[Holesky](https://holesky.beaconcha.in)
 
 **Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the Ethereum ecosystem matures we will be able to provide stronger guarantees about the updatability of the explorer.
 
