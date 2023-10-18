@@ -310,6 +310,7 @@ type Eth1Deposit struct {
 	BlockNumber           uint64 `db:"block_number"`
 	BlockTs               int64  `db:"block_ts"`
 	FromAddress           []byte `db:"from_address"`
+	FromName              string
 	PublicKey             []byte `db:"publickey"`
 	WithdrawalCredentials []byte `db:"withdrawal_credentials"`
 	Amount                uint64 `db:"amount"`

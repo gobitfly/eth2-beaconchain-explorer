@@ -3034,7 +3034,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			to,
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			utils.FormatAddressAsLink(t.TokenAddress, "", true),
 			new(big.Int).SetBytes(t.TokenId).String(),
 		}
 	}
@@ -3149,7 +3149,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			to,
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			utils.FormatAddressAsLink(t.TokenAddress, "", true),
 			new(big.Int).SetBytes(t.TokenId).String(),
 			new(big.Int).SetBytes(t.Value).String(),
 		}
