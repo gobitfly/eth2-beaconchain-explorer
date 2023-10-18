@@ -1265,6 +1265,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				EventName:      eventName,
 				Reward:         event.ExecRewardETH,
 				EventFilter:    hex.EncodeToString(pubkey),
+				Slot:           event.Slot,
 			}
 			if _, exists := notificationsByUserID[*sub.UserID]; !exists {
 				notificationsByUserID[*sub.UserID] = map[types.EventName][]types.Notification{}
