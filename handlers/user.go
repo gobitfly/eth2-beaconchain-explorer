@@ -1435,12 +1435,12 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := struct {
-		ID                 int64     `db:"id"`
-		Email              string    `db:"email"`
-		ConfirmTs          time.Time `db:"email_confirmation_ts"`
-		Confirmed          bool      `db:"email_confirmed"`
-		NewEmail           string    `db:"email_change_to_value"`
-		stripe_customer_id string    `db:"stripe_customer_id"`
+		ID               int64     `db:"id"`
+		Email            string    `db:"email"`
+		ConfirmTs        time.Time `db:"email_confirmation_ts"`
+		Confirmed        bool      `db:"email_confirmed"`
+		NewEmail         string    `db:"email_change_to_value"`
+		StripeCustomerId string    `db:"stripe_customer_id"`
 	}{}
 
 	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, COALESCE(email_confirmation_ts, '399-01-01 BC'::timestamp), email_confirmed, COALESCE(email_change_to_value, ''), COALESCE(stripe_customer_id, '') FROM users WHERE email_confirmation_hash = $1", hash)
@@ -1496,10 +1496,10 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	// everything is fine, update email
 	// update users email in Stripe, if user has a subscription
-	if user.stripe_customer_id != "" {
-		err = updateStripeCustomerEmail(user.stripe_customer_id, user.NewEmail)
+	if user.StripeCustomerId != "" {
+		err = updateStripeCustomerEmail(user.StripeCustomerId, user.NewEmail)
 		if err != nil {
-			utils.LogError(err, "error updating user email in stripe", 0, map[string]interface{}{"customerID": user.stripe_customer_id, "newEmail": user.NewEmail})
+			utils.LogError(err, "error updating user email in stripe", 0, map[string]interface{}{"customerID": user.StripeCustomerId, "newEmail": user.NewEmail})
 			utils.SetFlash(w, r, authSessionName, "Error: Could not update email. Please try again. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>.")
 			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		}
