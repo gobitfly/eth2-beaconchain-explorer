@@ -1028,8 +1028,6 @@ func getSyncCommitteeInfoForValidators(validators []uint64, period uint64) ([]in
 		WHERE period = $1 AND validatorindex = ANY($2)
 		GROUP BY period`,
 		period,
-		utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod,
-		utils.Config.Chain.ClConfig.AltairForkEpoch,
 		pq.Array(validators),
 	)
 	if err != nil {
