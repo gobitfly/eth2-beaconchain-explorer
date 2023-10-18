@@ -70,7 +70,7 @@ func WriteHistoricPricesForDay(ts time.Time) error {
 func updateHistoricPrices() error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("service_historic_prices").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("services_updateHistoricPrices").Observe(time.Since(start).Seconds())
 	}()
 	var dates []time.Time
 

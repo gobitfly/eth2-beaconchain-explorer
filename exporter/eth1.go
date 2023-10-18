@@ -376,7 +376,7 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 func aggregateDeposits() error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("exporter_aggregate_eth1_deposits").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("exporter_aggregateDeposits").Observe(time.Since(start).Seconds())
 	}()
 	_, err := db.WriterDb.Exec(`
 		INSERT INTO eth1_deposits_aggregated (from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count)

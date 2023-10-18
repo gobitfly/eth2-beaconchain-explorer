@@ -185,7 +185,7 @@ func ImportSignatures(bt *db.Bigtable, st types.SignatureType) {
 				sleepTime = time.Minute
 			}
 		}
-		metrics.TaskDuration.WithLabelValues(fmt.Sprintf("%v_signatures_page_imported", st)).Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues(fmt.Sprintf("%v_signatures_page_imported", st)).Observe(time.Since(start).Seconds())
 		services.ReportStatus(fmt.Sprintf("%v_signatures", st), "Running", nil)
 	}
 }

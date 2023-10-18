@@ -24,6 +24,26 @@ var (
 		Name: "version",
 		Help: "Gauge with version-string in label",
 	}, []string{"version"})
+
+	Service = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "service",
+		Help: "Gauge with labels of service: name, network, version",
+	}, []string{"name", "network", "version"})
+
+	Counter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "generic_counter",
+		Help: "Generic counter with vectors",
+	}, []string{"name"})
+	Gauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "generic_gauge",
+		Help: "Generic counter with vectors",
+	}, []string{"name"})
+	Histogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "generic_histogram",
+		Help:    "Generic histogram",
+		Buckets: []float64{.05, .1, .5, 1, 5, 10, 20, 60, 90, 120, 180, 300},
+	}, []string{"name"})
+
 	HttpRequestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "http_requests_total",
 		Help: "Total number of requests by path, method and status_code.",
@@ -36,15 +56,7 @@ var (
 		Name: "http_requests_duration",
 		Help: "Duration of HTTP requests in seconds by path and method.",
 	}, []string{"path", "method"})
-	Tasks = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "task_counter",
-		Help: "Counter of tasks with name in labels",
-	}, []string{"name"})
-	TaskDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "task_duration",
-		Help:    "Duration of tasks",
-		Buckets: []float64{.05, .1, .5, 1, 5, 10, 20, 60, 90, 120, 180, 300},
-	}, []string{"task"})
+
 	DBSLongRunningQueries = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "db_long_running_queries",
 		Help: "Counter of long-running-queries with database and query in labels",
@@ -150,7 +162,8 @@ func Serve(addr string) error {
 <h1>prometheus-metrics</h1>
 <p><a href='/metrics'>metrics</a></p>
 </body>
-</html>`))
+</html>
+`))
 	}))
 
 	if utils.Config.Metrics.Pprof {

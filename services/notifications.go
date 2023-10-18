@@ -128,7 +128,7 @@ func notificationCollector() {
 				WithField("epoch", epoch).
 				Info("notifications completed")
 
-			metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
+			metrics.Histogram.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
 		}
 
 		ReportStatus("notification-collector", "Running", nil)
@@ -171,7 +171,7 @@ func notificationSender() {
 			logger.WithError(err).Errorf("error garbage collecting the notification queue")
 		}
 		logger.WithField("duration", time.Since(start)).Info("notifications dispatched and garbage collected")
-		metrics.TaskDuration.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("service_notifications_sender").Observe(time.Since(start).Seconds())
 
 		unlocked := false
 		rows, err := conn.QueryContext(ctx, `SELECT pg_advisory_unlock(500)`)

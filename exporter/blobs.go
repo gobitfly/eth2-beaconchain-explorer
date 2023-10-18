@@ -204,7 +204,7 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 		}
 		return err
 	}
-	metrics.TaskDuration.WithLabelValues("blobindexer_get_blob_sidecars").Observe(time.Since(tGetBlobSidcar).Seconds())
+	metrics.Histogram.WithLabelValues("exporter_get_blob_sidecars").Observe(time.Since(tGetBlobSidcar).Seconds())
 
 	if len(blobSidecar.Data) <= 0 {
 		return nil
@@ -240,7 +240,7 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 				Bucket: &utils.Config.BlobIndexer.S3.Bucket,
 				Key:    &key,
 			})
-			metrics.TaskDuration.WithLabelValues("blobindexer_check_blob").Observe(time.Since(tS3HeadObj).Seconds())
+			metrics.Histogram.WithLabelValues("blobindexer_check_blob").Observe(time.Since(tS3HeadObj).Seconds())
 			if err != nil {
 				// Only put the object if it does not exist yet
 				var httpResponseErr *awshttp.ResponseError
@@ -261,7 +261,7 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 							"kzg_proof":         d.KzgProof,
 						},
 					})
-					metrics.TaskDuration.WithLabelValues("blobindexer_put_blob").Observe(time.Since(tS3PutObj).Seconds())
+					metrics.Histogram.WithLabelValues("blobindexer_put_blob").Observe(time.Since(tS3PutObj).Seconds())
 					if putErr != nil {
 						return fmt.Errorf("error putting object: %s (%v/%v): %w", key, d.Slot, d.Index, putErr)
 					}
@@ -283,7 +283,7 @@ func (bi *BlobIndexer) IndexBlobsAtSlot(slot uint64) error {
 func (bi *BlobIndexer) GetIndexerStatus() (*BlobIndexerStatus, error) {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("blobindexer_get_indexer_status").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("blobindexer_get_indexer_status").Observe(time.Since(start).Seconds())
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -308,7 +308,7 @@ func (bi *BlobIndexer) GetIndexerStatus() (*BlobIndexerStatus, error) {
 func (bi *BlobIndexer) PutIndexerStatus(status BlobIndexerStatus) error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("blobindexer_put_indexer_status").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("blobindexer_put_indexer_status").Observe(time.Since(start).Seconds())
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()

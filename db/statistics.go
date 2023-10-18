@@ -29,7 +29,7 @@ import (
 func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_WriteValidatorStatisticsForDay").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
@@ -493,7 +493,7 @@ func WriteValidatorStatsExported(day uint64, tx pgx.Tx) error {
 func WriteValidatorTotalPerformance(day uint64, tx pgx.Tx) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_total_performance_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_WriteValidatorTotalPerformance").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	start := time.Now()
@@ -609,7 +609,7 @@ func WriteValidatorTotalPerformance(day uint64, tx pgx.Tx) error {
 func gatherValidatorBlockStats(day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_block_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_gatherValidatorBlockStats").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
@@ -679,7 +679,7 @@ func gatherValidatorBlockStats(day uint64, data []*types.ValidatorStatsTableDbRo
 func gatherValidatorElIcome(day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_el_income_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_gatherValidatorElIcome").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
@@ -762,7 +762,7 @@ func gatherValidatorElIcome(day uint64, data []*types.ValidatorStatsTableDbRow, 
 func gatherValidatorBalances(client rpc.Client, day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_balances_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_gatherValidatorBalances").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
@@ -802,7 +802,7 @@ func gatherValidatorBalances(client rpc.Client, day uint64, data []*types.Valida
 func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_deposit_withdrawal_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_gatherValidatorDepositWithdrawals").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	// The end_balance of a day is the balance after the first slot of the last epoch of that day.
@@ -879,7 +879,7 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 func gatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_sync_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_gatherValidatorSyncDutiesForDay").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
@@ -973,7 +973,7 @@ func gatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*ty
 func gatherValidatorMissedAttestationsStatisticsForDay(validators []uint64, day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_validator_failed_att_stats").Observe(time.Since(exportStart).Seconds())
+		metrics.Histogram.WithLabelValues("db_gatherValidatorMissedAttestationsStatisticsForDay").Observe(time.Since(exportStart).Seconds())
 	}()
 
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)

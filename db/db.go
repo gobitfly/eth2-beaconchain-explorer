@@ -572,7 +572,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalB
 	}
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_canonical_blocks").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("db_update_canonical_blocks").Observe(time.Since(start).Seconds())
 	}()
 
 	tx, err := WriterDb.Begin()
@@ -675,7 +675,7 @@ func SaveBlock(block *types.Block, forceSlotUpdate bool, tx *sqlx.Tx) error {
 func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_save_epoch").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("db_SaveEpoch").Observe(time.Since(start).Seconds())
 		logger.WithFields(logrus.Fields{"epoch": epoch, "duration": time.Since(start)}).Info("completed saving epoch")
 	}()
 
@@ -791,7 +791,7 @@ func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client, t
 func saveGraffitiwall(block *types.Block, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_save_graffitiwall").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("db_saveGraffitiwall").Observe(time.Since(start).Seconds())
 	}()
 
 	stmtGraffitiwall, err := tx.Prepare(`
@@ -851,7 +851,7 @@ func saveGraffitiwall(block *types.Block, tx *sqlx.Tx) error {
 func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Client, activationBalanceBatchSize int, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("db_SaveValidators").Observe(time.Since(start).Seconds())
 	}()
 
 	if activationBalanceBatchSize <= 0 {
@@ -1174,7 +1174,7 @@ func GetRelayDataForIndexedBlocks(blocks []*types.Eth1BlockIndexed) (map[common.
 func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlotUpdate bool) error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_save_blocks").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("db_saveBlocks").Observe(time.Since(start).Seconds())
 	}()
 
 	domain, err := utils.GetSigningDomain()
@@ -1518,7 +1518,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 func UpdateEpochStatus(stats *types.ValidatorParticipation, tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("db_update_epochs_status").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("db_UpdateEpochStatus").Observe(time.Since(start).Seconds())
 	}()
 
 	_, err := tx.Exec(`
@@ -1565,7 +1565,7 @@ func UpdateQueueDeposits(tx *sqlx.Tx) error {
 	start := time.Now()
 	defer func() {
 		logger.Infof("took %v seconds to update queue deposits", time.Since(start).Seconds())
-		metrics.TaskDuration.WithLabelValues("update_queue_deposits").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("db_UpdateQueueDeposits").Observe(time.Since(start).Seconds())
 	}()
 
 	// first we remove any validator that isn't queued anymore

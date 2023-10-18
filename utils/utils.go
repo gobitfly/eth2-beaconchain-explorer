@@ -48,6 +48,8 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
 	"github.com/mvdan/xurls"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
 	prysm_params "github.com/prysmaticlabs/prysm/v3/config/params"
 	"github.com/shopspring/decimal"
@@ -59,6 +61,13 @@ import (
 var Config *types.Config
 
 var ErrRateLimit = errors.New("## RATE LIMIT ##")
+
+const ErrorCounterMetricLabelName = "label"
+
+var ErrorCounterMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "error_counter",
+	Help: "Error counter",
+}, []string{"name"})
 
 var localiser *i18n.I18n
 
@@ -1465,11 +1474,25 @@ func logErrorInfo(err error, callerSkip int, additionalInfos ...map[string]inter
 		logFields = logFields.WithField("errType", fmt.Sprintf("%T", err)).WithError(err)
 	}
 
+	metricLabel := ""
+
 	for _, infoMap := range additionalInfos {
 		for name, info := range infoMap {
 			logFields = logFields.WithField(name, info)
+			if name == ErrorCounterMetricLabelName {
+				switch v := info.(type) {
+				case string:
+					metricLabel = v
+				}
+			}
 		}
 	}
+
+	if metricLabel == "" {
+		metricLabel = "unnamed_" + runtime.FuncForPC(pc).Name()
+	}
+
+	ErrorCounterMetric.WithLabelValues(metricLabel).Inc()
 
 	return logFields
 }

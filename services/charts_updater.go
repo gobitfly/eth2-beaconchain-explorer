@@ -100,7 +100,7 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		metrics.TaskDuration.WithLabelValues("service_charts_updater").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("services_getChartsPageData").Observe(time.Since(start).Seconds())
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(start)).Info("chartPageData update completed")
 
 		cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.ClConfig.DepositChainID)

@@ -34,7 +34,7 @@ func UpdatePubkeyTag() {
 		tx.Rollback()
 
 		logger.Infof("Updating Pubkey Tags took %v sec.", time.Since(start).Seconds())
-		metrics.TaskDuration.WithLabelValues("validator_pubkey_tag_updater").Observe(time.Since(start).Seconds())
+		metrics.Histogram.WithLabelValues("exporter_pubkey_tag_updater").Observe(time.Since(start).Seconds())
 
 		time.Sleep(time.Minute * 10)
 	}

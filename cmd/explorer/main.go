@@ -221,6 +221,8 @@ func main() {
 	logrus.Infof("database connection established")
 
 	if utils.Config.Indexer.Enabled {
+		metrics.Service.WithLabelValues("indexer", utils.Config.Chain.Name, version.Version).Set(1)
+
 		var rpcClient rpc.Client
 
 		chainID := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
@@ -238,6 +240,7 @@ func main() {
 	}
 
 	if cfg.Frontend.Enabled {
+		metrics.Service.WithLabelValues("frontend", utils.Config.Chain.Name, version.Version).Set(1)
 
 		if cfg.Frontend.OnlyAPI {
 			services.ReportStatus("api", "Running", nil)
