@@ -283,6 +283,11 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 					}
 
 					c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+					if len(trace.TraceAddress) == 0 {
+						// can be used until an erigon version is used which fixes https://github.com/ledgerwatch/erigon/issues/7831
+						// afterwards, use the geth approach as shown below
+						c.Transactions[trace.TransactionPosition].InvokesContract = trace.Result.GasUsed != "0x0"
+					}
 				}
 			}
 		}
@@ -333,6 +338,14 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				logger.Tracef("appending trace %v to tx %x from %v to %v value %v", trace.TransactionPosition, c.Transactions[trace.TransactionPosition].Hash, trace.From, trace.To, trace.Value)
 
 				c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+			}
+
+			gethOpcountData, err := client.Opcount(block.Hash())
+			if err != nil {
+				return fmt.Errorf("error tracing block via geth style traces with opcountTracer (%v), %v: %v", block.Number(), block.Hash(), err)
+			}
+			for idx, countData := range gethOpcountData {
+				c.Transactions[idx].InvokesContract = countData.Count > 0
 			}
 		}
 
@@ -430,6 +443,15 @@ var gethTracerArg = map[string]string{
 	"tracer": "callTracer",
 }
 
+type GethOpcountTraceCallResult struct {
+	TxHash string `json:"txHash"`
+	Count  int    `json:"result"`
+}
+
+var gethOpcountTracerArg = map[string]string{
+	"tracer": "opcountTracer",
+}
+
 func extractCalls(r *GethTraceCallResult, d *[]*GethTraceCallResult) {
 	if r == nil {
 		return
@@ -460,6 +482,17 @@ func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallRe
 	}
 
 	return data, nil
+}
+
+func (client *ErigonClient) Opcount(blockHash common.Hash) ([]*GethOpcountTraceCallResult, error) {
+	var res []*GethOpcountTraceCallResult
+
+	err := client.rpcClient.Call(&res, "debug_traceBlockByHash", blockHash, gethOpcountTracerArg)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 type ParityTraceResult struct {

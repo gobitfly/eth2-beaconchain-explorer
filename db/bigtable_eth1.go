@@ -1055,10 +1055,6 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			isContract = true
 		}
 		// logger.Infof("sending to: %x", to)
-		invokesContract := false
-		if len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != "" {
-			invokesContract = true
-		}
 		method := make([]byte, 0)
 		if len(tx.GetData()) > 3 {
 			method = tx.GetData()[:4]
@@ -1080,7 +1076,7 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			BlobTxFee:          blobFee,
 			BlobGasPrice:       tx.GetBlobGasPrice(),
 			IsContractCreation: isContract,
-			InvokesContract:    invokesContract,
+			InvokesContract:    tx.GetInvokesContract(),
 			ErrorMsg:           tx.GetErrorMsg(),
 		}
 		// Mark Sender and Recipient for balance update
@@ -2133,9 +2129,12 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 	for i, t := range transactions {
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
+		if t.IsContractCreation {
+			toName = "Contract Creation"
+		}
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
-		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
+		to := utils.FormatAddress(t.To, nil, toName, false, t.IsContractCreation || t.InvokesContract, !bytes.Equal(t.To, address))
 
 		method := bigtable.GetMethodLabel(t.MethodId, t.InvokesContract)
 
