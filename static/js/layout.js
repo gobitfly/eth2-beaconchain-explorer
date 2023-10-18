@@ -573,6 +573,8 @@ $(document).ready(function () {
     } else if (sug.index !== undefined) {
       if (sug.index === "deposited") window.location = "/validator/" + sug.pubkey
       else window.location = "/validator/" + sug.index
+    } else if (sug.pubkey !== undefined) {
+      window.location = "/validator/" + sug.pubkey
     } else if (sug.epoch !== undefined) {
       window.location = "/epoch/" + sug.epoch
     } else if (sug.address !== undefined) {
