@@ -268,12 +268,13 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 
 		defer tx.Rollback(context.Background())
 
-		logger.Infof("bulk inserting statistics data into the validator_stats table")
+		logger.Infof("deleting stats for day %v from the validator_stats table", day)
 		_, err = tx.Exec(context.Background(), "DELETE FROM validator_stats WHERE day = $1", day)
 		if err != nil {
 			return err
 		}
 
+		logger.Infof("bulk inserting statistics data into the validator_stats table")
 		_, err = tx.CopyFrom(context.Background(), pgx.Identifier{"validator_stats"}, []string{
 			"validatorindex",
 			"day",
@@ -310,6 +311,9 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 			"mev_rewards_wei",
 			"mev_rewards_wei_total",
 		}, pgx.CopyFromSlice(len(validatorData), func(i int) ([]interface{}, error) {
+			if i%1e4 == 0 {
+				logrus.Infof("inserting stats for validator %v of %v", i, len(validatorData))
+			}
 			return []interface{}{
 				validatorData[i].ValidatorIndex,
 				validatorData[i].Day,
