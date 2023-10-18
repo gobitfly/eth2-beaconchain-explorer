@@ -127,7 +127,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "") // DIECE
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc1155TableData: %w", err)
 		}
@@ -401,9 +401,6 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.DataTableResponse{
-		// Draw: draw,
-		// RecordsTotal:    ,
-		// RecordsFiltered: ,
 		Data:        tableData,
 		PagingToken: nextPageToken,
 	}
@@ -435,8 +432,6 @@ func Eth1AddressBlobTransactions(w http.ResponseWriter, r *http.Request) {
 		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
-	// logger.Infof("GOT TX: %+v", data)
-
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
@@ -464,8 +459,6 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
 
-	// logger.Infof("GOT TX: %+v", data)
-
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
@@ -487,13 +480,10 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	pageToken := q.Get("pageToken")
 
 	search := ""
-	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressErc20TableData(addressBytes, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 internal transactions table data")
 	}
-
-	// logger.Infof("GOT TX: %+v", data)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
@@ -514,13 +504,10 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 
 	pageToken := q.Get("pageToken")
 	search := ""
-	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressErc721TableData(address, search, pageToken)
 	if err != nil {
 		utils.LogError(err, "error getting eth1 block table data", 0)
 	}
-
-	// logger.Infof("GOT TX: %+v", data)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
@@ -541,13 +528,10 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	pageToken := q.Get("pageToken")
 
 	search := ""
-	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
 	data, err := db.BigtableClient.GetAddressErc1155TableData(address, search, pageToken)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting eth1 internal transactions table data")
 	}
-
-	// logger.Infof("GOT TX: %+v", data)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {

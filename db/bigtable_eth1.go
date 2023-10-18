@@ -2458,6 +2458,7 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string,
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
@@ -2582,6 +2583,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
@@ -2911,6 +2913,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
@@ -3004,7 +3007,6 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:ERC721:%s:%s:", bigtable.chainId, address, FILTER_TIME)
-		// pageToken = fmt.Sprintf("%s:I:ERC721:%s:%s:9999999999999999999:9999:99999", bigtable.chainId, address, FILTER_TIME)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC721ForAddress(pageToken, 25)
@@ -3031,6 +3033,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			to,
@@ -3146,6 +3149,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			to,
