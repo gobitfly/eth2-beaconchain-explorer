@@ -1246,8 +1246,8 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			}
 
 			// get sync stats from bigtable
-			startSlot := (lastExportedEpoch + 1) * utils.Config.Chain.Config.SlotsPerEpoch
-			endSlot := epoch*utils.Config.Chain.Config.SlotsPerEpoch + utils.Config.Chain.Config.SlotsPerEpoch - 1
+			startSlot := (lastExportedEpoch + 1) * utils.Config.Chain.ClConfig.SlotsPerEpoch
+			endSlot := epoch*utils.Config.Chain.ClConfig.SlotsPerEpoch + utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 
 			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, startSlot, endSlot)
 			if err != nil {
