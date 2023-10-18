@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"github.com/shopspring/decimal"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -88,8 +87,6 @@ func Eth1Token(w http.ResponseWriter, r *http.Request) {
 	tokenPriceUsd := ethPriceUsd.Mul(tokenPriceEth).Mul(tokenDiv).DivRound(ethDiv, 18)
 	tokenSupply := decimal.NewFromBigInt(new(big.Int).SetBytes(metadata.TotalSupply), 0).DivRound(tokenDiv, 18)
 	tokenMarketCapUsd := tokenPriceUsd.Mul(tokenSupply)
-
-	logrus.WithFields(logrus.Fields{"tokenRate": new(big.Int).SetBytes(metadata.Price), "ethPriceUsd": ethPriceUsd, "tokenPriceEth": tokenPriceEth, "tokenPriceUsd": tokenPriceUsd, "tokenSupply": tokenSupply}).Infof("DEBUG: Eth1Token")
 
 	data.Data = types.Eth1TokenPageData{
 		Token:          fmt.Sprintf("%x", token),

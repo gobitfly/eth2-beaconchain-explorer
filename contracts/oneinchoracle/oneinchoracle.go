@@ -16,6 +16,11 @@ var OracleAddressesByChainID = map[string]common.Address{
 	"100": common.HexToAddress("0x3Ce81621e674Db129033548CbB9FF31AEDCc1BF6"),
 }
 
+func SupportedChainId(chainIDif interface{}) bool {
+	_, exists := OracleAddressesByChainID[fmt.Sprintf("%v", chainIDif)]
+	return exists
+}
+
 func NewOneInchOracleByChainID(chainIDif interface{}, backend bind.ContractBackend) (*OneinchOracle, error) {
 	chainID := fmt.Sprintf("%v", chainIDif)
 	addr, exists := OracleAddressesByChainID[chainID]
