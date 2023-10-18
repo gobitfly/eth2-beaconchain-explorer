@@ -66,7 +66,7 @@ function showValidatorHist(index) {
     details: false,
     pagingType: "simple",
     pageLength: 10,
-    ajax: "/validator/" + index + "/history",
+    ajax: dataTableLoader("/validator/" + index + "/history"),
     language: {
       searchPlaceholder: "Search by Epoch Number",
       search: "",

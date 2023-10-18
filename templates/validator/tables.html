@@ -36,7 +36,7 @@
                 order: [[0, 'desc']],
                 lengthChange: false,
                 searching: false,
-                ajax: '/validator/' + index + '/proposedblocks',
+                ajax: dataTableLoader('/validator/' + index + '/proposedblocks'),
                 pagingType: 'input',
                 pageLength: 10,
                 language: {
@@ -127,7 +127,7 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
-                    ajax: '/validator/' + index + '/attestations',
+                    ajax: dataTableLoader('/validator/' + index + '/attestations'),
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
@@ -196,19 +196,16 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
-                    ajax: {
-                      url: `/validator/${index}/withdrawals`,
-                      dataSrc: function ( { data } ) {
+                    ajax: dataTableLoader(`/validator/${index}/withdrawals`, "", function ( {data} ) {
                         // add the estimate row if it exists
                         {{ if .NextWithdrawalRow }}
                           let row = {{.NextWithdrawalRow}}
                           if (row && row.length) {
-                            data = row.concat(data)
+                            data.data = row.concat(data.data)
                           }
                         {{ end }}
                         return data
-                      },
-                    },
+                      }),
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
@@ -279,7 +276,7 @@
                       return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                     },
                     searching: false,
-                    ajax: '/validator/' + index + '/sync',
+                    ajax: dataTableLoader('/validator/' + index + '/sync'),
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
@@ -358,7 +355,7 @@
                   return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                 },
                 searching: false,
-                ajax: '/validator/' + index + '/slashings',
+                ajax: dataTableLoader('/validator/' + index + '/slashings'),
                 pagingType: 'input',
                 pageLength: 10,
                 language: {
@@ -639,7 +636,7 @@
                 stateLoadCallback: function (settings) {
                   return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                 },
-                ajax: '/validator/' + index + '/history',
+                ajax: dataTableLoader('/validator/' + index + '/history'),
                 pagingType: 'input',
                 pageLength: 10,
                 language: {
