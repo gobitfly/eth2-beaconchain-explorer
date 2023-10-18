@@ -243,7 +243,7 @@ func getPriceFromFeed(feed *chainlink_feed.Feed) (float64, error) {
 	decimals := decimal.NewFromInt(1e8) // 8 decimal places for the Chainlink feeds
 	res, err := feed.LatestRoundData(&bind.CallOpts{})
 	if err != nil {
-		return 0, fmt.Errorf("failed to fetch latest chainlink eth/usd price feed data: %v", err)
+		return 0, fmt.Errorf("failed to fetch latest chainlink eth/usd price feed data: %w", err)
 	}
 	return decimal.NewFromBigInt(res.Answer, 0).Div(decimals).InexactFloat64(), nil
 }
@@ -275,9 +275,4 @@ func GetCurrencySymbol(currency string) string {
 		return ""
 	}
 	return x.Symbol
-}
-
-func GetEthRoundPrice(currency float64) uint64 {
-	ethRoundPrice := uint64(currency)
-	return ethRoundPrice
 }
