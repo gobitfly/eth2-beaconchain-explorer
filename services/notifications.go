@@ -212,14 +212,14 @@ func collectNotifications(epoch uint64) (map[uint64]map[types.EventName][]types.
 	var dbIsCoherent bool
 
 	err = db.WriterDb.Get(&dbIsCoherent, `
-		select 
-			not (array[false] && array_agg(is_coherent)) as is_coherent
-		from (
-			select 
-				epoch - 1 = lead(epoch) over (order by epoch desc) as is_coherent
-			from epochs
-			order by epoch desc 
-			limit 2^14
+		SELECT 
+			NOT (array[false] && array_agg(is_coherent)) AS is_coherent
+		FROM (
+			SELECT 
+				epoch - 1 = lead(epoch) OVER (ORDER BY epoch DESC) AS is_coherent
+			FROM epochs
+			ORDER BY epoch DESC
+			LIMIT 2^14
 		) coherency`)
 
 	if err != nil {
@@ -502,7 +502,7 @@ func dispatchNotifications(useDB *sqlx.DB) error {
 // garbageCollectNotificationQueue deletes entries from the notification queue that have been processed
 func garbageCollectNotificationQueue(useDB *sqlx.DB) error {
 
-	rows, err := useDB.Exec(`DELETE FROM notification_queue where (sent < now() - INTERVAL '30 minutes') OR (created < now() - INTERVAL '1 hour')`)
+	rows, err := useDB.Exec(`DELETE FROM notification_queue WHERE (sent < now() - INTERVAL '30 minutes') OR (created < now() - INTERVAL '1 hour')`)
 	if err != nil {
 		return fmt.Errorf("error deleting from notification_queue %w", err)
 	}
@@ -594,7 +594,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 		sent,
 		channel,
 		content
-	FROM notification_queue where sent is null and channel = 'push' order by created asc`)
+	FROM notification_queue WHERE sent IS null AND channel = 'push' ORDER BY created ASC`)
 	if err != nil {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
@@ -618,7 +618,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 				metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
 			}
 
-			_, err = useDB.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
+			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() WHERE id = $1`, n.Id)
 			if err != nil {
 				return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
 			}
@@ -707,7 +707,7 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 						raw := fmt.Sprintf("%v%v%v%v", sub.ID, sub.UserID, sub.EventName, sub.CreatedTime)
 						digest := sha256.Sum256([]byte(raw))
 
-						_, err = tx.Exec("UPDATE users_subscriptions set unsubscribe_hash = $1 where id = $2", digest[:], id)
+						_, err = tx.Exec("UPDATE users_subscriptions set unsubscribe_hash = $1 WHERE id = $2", digest[:], id)
 						if err != nil {
 							logger.WithError(err).Error("error updating users subscriptions table with unsubscribe hash")
 							tx.Rollback()
@@ -776,7 +776,7 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 		sent,
 		channel,
 		content
-	FROM notification_queue where sent is null and channel = 'email' order by created asc`)
+	FROM notification_queue WHERE sent IS null AND channel = 'email' ORDER BY created ASC`)
 	if err != nil {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
@@ -789,23 +789,9 @@ func sendEmailNotifications(useDb *sqlx.DB) error {
 			if !strings.Contains(err.Error(), "rate limit has been exceeded") {
 				metrics.Errors.WithLabelValues("notifications_send_email").Inc()
 				logger.WithError(err).Error("error sending email notification")
-				// 	_, err := tx.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
-				// 	if err != nil {
-				// 		return fmt.Errorf("error deleting from notification queue: %w", err)
-				// 	}
-				// 	err = tx.Commit()
-				// 	if err != nil {
-				// 		tx.Rollback()
-				// 		return fmt.Errorf("error committing transaction")
-				// 	}
-				// 	continue
 			} else {
 				metrics.NotificationsSent.WithLabelValues("email", "200").Inc()
 			}
-			//else {
-			// 	tx.Rollback()
-			// 	return fmt.Errorf("error sending notification-email: %w", err)
-			// }
 		}
 		_, err = useDb.Exec(`UPDATE notification_queue set sent = now() where id = $1`, n.Id)
 		if err != nil {
@@ -965,7 +951,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 		sent,
 		channel,
 		content
-	FROM notification_queue where sent is null and channel = 'webhook' order by created asc`)
+	FROM notification_queue WHERE sent IS null AND channel = 'webhook' ORDER BY created ASC`)
 	if err != nil {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
@@ -973,23 +959,14 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 	logger.Infof("processing %v webhook notifications", len(notificationQueueItem))
 
-	// now := time.Now()
 	for _, n := range notificationQueueItem {
 		// do not retry after 5 attempts
 		if n.Content.Webhook.Retries > 5 {
-			// if n.Content.Webhook.LastSent.Valid && n.Content.Webhook.LastSent.Time.Add(time.Hour*1).Before(now) {
-			// 	_, err = useDB.Exec(`UPDATE users_webhooks SET retries = 0 WHERE id = $1;`, n.Content.Webhook.ID)
-			// 	if err != nil {
-			// 		logger.WithError(err).Errorf("error updating users_webhooks table; setting retries to zero")
-			// 		continue
-			// 	}
-			// } else {
-			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue WHERE id = $1`, n.Id)
 			if err != nil {
 				return fmt.Errorf("error deleting from notification queue: %w", err)
 			}
 			continue
-			// }
 		}
 
 		reqBody := new(bytes.Buffer)
@@ -1001,7 +978,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 
 		_, err = url.Parse(n.Content.Webhook.Url)
 		if err != nil {
-			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue where id = $1`, n.Id)
+			_, err := db.FrontendWriterDB.Exec(`DELETE FROM notification_queue WHERE id = $1`, n.Id)
 			if err != nil {
 				return fmt.Errorf("error deleting from notification queue: %w", err)
 			}
@@ -1019,7 +996,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 				metrics.NotificationsSent.WithLabelValues("webhook", resp.Status).Inc()
 			}
 
-			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() where id = $1`, n.Id)
+			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() WHERE id = $1`, n.Id)
 			if err != nil {
 				logger.WithError(err).Errorf("error updating notification_queue table")
 				return
@@ -1065,7 +1042,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 		sent,
 		channel,
 		content
-	FROM notification_queue where sent is null and channel = 'webhook_discord' order by created asc`)
+	FROM notification_queue WHERE sent IS null AND channel = 'webhook_discord' ORDER BY created ASC`)
 	if err != nil {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
@@ -1900,7 +1877,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	query := ""
 	resultsLen := len(dbResult)
 	for i, event := range dbResult {
-		query += fmt.Sprintf(`SELECT %d as ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%x'`, i, event.SlashedValidatorPubkey)
+		query += fmt.Sprintf(`SELECT %d AS ref, id, user_id, ENCODE(unsubscribe_hash, 'hex') AS unsubscribe_hash from users_subscriptions where event_name = $1 AND event_filter = '%x'`, i, event.SlashedValidatorPubkey)
 		if i < resultsLen-1 {
 			query += " UNION "
 		}
@@ -2190,7 +2167,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') AS unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE 
 				us.event_name=$1 
@@ -2323,10 +2300,10 @@ func collectMonitoringMachine(
 	err := db.FrontendWriterDB.Select(&allSubscribed,
 		`SELECT 
 			us.user_id,
-			max(us.id) as id,
-			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') as unsubscribe_hash,
-			event_filter as machine,
-			COALESCE(event_threshold, 0) as event_threshold
+			max(us.id) AS id,
+			ENCODE((array_agg(us.unsubscribe_hash))[1], 'hex') AS unsubscribe_hash,
+			event_filter AS machine,
+			COALESCE(event_threshold, 0) AS event_threshold
 		FROM users_subscriptions us 
 		WHERE us.event_name = $1 AND us.created_epoch <= $2 
 		AND (us.last_sent_epoch < ($2 - $3) OR us.last_sent_epoch IS NULL)
@@ -2621,7 +2598,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 	}
 
 	err = db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') AS unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts < $2 OR (us.last_sent_ts IS NULL AND us.created_ts < $2));
 			`,
@@ -2708,7 +2685,7 @@ func (n *networkNotification) GetInfoMarkdown() string {
 func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	count := 0
 	err := db.WriterDb.Get(&count, `
-		select count(ts) from network_liveness where (headepoch-finalizedepoch) > 3 AND ts > now() - interval '60 minutes';
+		SELECT count(ts) FROM network_liveness WHERE (headepoch-finalizedepoch) > 3 AND ts > now() - interval '60 minutes';
 	`)
 
 	if err != nil {
@@ -2725,7 +2702,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') AS unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL);
 			`,
@@ -2869,7 +2846,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') AS unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND (us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2));
 			`,
@@ -2924,7 +2901,7 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 		}
 
 		err := db.FrontendWriterDB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') as unsubscribe_hash
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter, ENCODE(us.unsubscribe_hash, 'hex') AS unsubscribe_hash
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '5 hours' OR us.last_sent_ts IS NULL);
 			`,
@@ -3132,7 +3109,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		PubKey string `db:"pubkey"`
 		Index  uint64 `db:"validatorindex"`
 	}
-	err := db.WriterDb.Select(&validators, `SELECT encode(pubkey, 'hex') as pubkey, validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
+	err := db.WriterDb.Select(&validators, `SELECT ENCODE(pubkey, 'hex') AS pubkey, validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
 
 	if err != nil {
 		return err
