@@ -2220,11 +2220,9 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
 		to := utils.FormatAddress(t.To, nil, BigtableClient.GetAddressLabel(names[string(t.To)], isContractInteraction), false, isContractInteraction != types.CONTRACT_NONE, !bytes.Equal(t.To, address))
 
-		method := bigtable.GetMethodLabel(t.MethodId, isContractInteraction != types.CONTRACT_NONE)
-
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
-			utils.FormatMethod(method),
+			utils.FormatMethod(bigtable.GetMethodLabel(t.MethodId, t.InvokesContract, t.IsContractCreation)),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
@@ -4467,23 +4465,29 @@ func (bigtable *Bigtable) GetSignature(hex string, st types.SignatureType) (*str
 }
 
 // get a method label for its byte signature with defaults
-func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string {
-	method := "Transfer"
-	if len(id) > 0 {
-		if invokesContract {
-			method = fmt.Sprintf("0x%x", id)
-			cacheKey := fmt.Sprintf("M:H2L:%s", method)
-			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
-				sig, err := bigtable.GetSignature(method, types.MethodSignature)
-				if err == nil {
-					if sig != nil {
-						method = utils.RemoveRoundBracketsIncludingContent(*sig)
-					}
-					cache.TieredCache.Set(cacheKey, method, time.Hour)
+func (bigtable *Bigtable) GetMethodLabel(data []byte, invokesContract bool, createsContract bool) string {
+	if createsContract {
+		return "Constructor"
+	}
+	if !invokesContract {
+		return "Transfer"
+	}
+
+	id := data
+	if len(data) > 3 {
+		id = data[:4]
+	}
+
+	method := fmt.Sprintf("0x%x", id)
+	if len(id) == 4 {
+		cacheKey := fmt.Sprintf("M:H2L:%s", method)
+		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
+			if sig, err := bigtable.GetSignature(method, types.MethodSignature); err == nil {
+				cache.TieredCache.Set(cacheKey, method, time.Hour)
+				if sig != nil {
+					return utils.RemoveRoundBracketsIncludingContent(*sig)
 				}
 			}
-		} else {
-			method = "Transfer*"
 		}
 	}
 	return method

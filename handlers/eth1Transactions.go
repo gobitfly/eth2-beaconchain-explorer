@@ -89,15 +89,6 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 		var wg errgroup.Group
 		for i, v := range t {
 			wg.Go(func() error {
-				method := "Transfer"
-				{
-					d := v.GetData()
-					if len(d) > 3 {
-						m := d[:4]
-						invokesContract := len(v.GetItx()) > 0 || v.GetGasUsed() > 21000 || v.GetErrorMsg() != ""
-						method = db.BigtableClient.GetMethodLabel(m, invokesContract)
-					}
-				}
 				if v.GetTo() == nil {
 					v.To = v.ContractAddress
 				}
@@ -107,7 +98,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				}
 				tableData = append(tableData, []interface{}{
 					utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
-					utils.FormatMethod(method),
+					utils.FormatMethod(db.BigtableClient.GetMethodLabel(v.GetData(), v.GetInvokesContract(), v.GetTo() == nil)),
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
