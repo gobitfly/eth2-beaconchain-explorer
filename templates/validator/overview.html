@@ -78,30 +78,30 @@
 {{ end }}
 
 {{ define "validatorOverviewDeposited" }}
-  <div class="text-justify row justify-content-center mb-2">
-    <div class="col">
-      <div class="px-2">
-        <div class="px-2 mx-auto" style="max-width: 50rem;">
-          <span>
-            {{ if eq .InclusionDelay 0 }}
-              A deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to {{ config.Chain.ClConfig.MaxEffectiveBalance }} {{ config.Frontend.ClCurrency }}.
-            {{ else }}
-              <!-- The last ETH deposit was made  {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{ .InclusionDelay }} hours</a>  until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to 32 ETH. 
-                            -->
-              The last deposit to the Deposit contract was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to {{ config.Chain.ClConfig.MaxEffectiveBalance }} {{ config.Frontend.ClCurrency }}.
+  {{ with .Data }}
+    <div class="text-justify row justify-content-center mb-2">
+      <div class="col">
+        <div class="px-2">
+          <div class="px-2 mx-auto" style="max-width: 50rem;">
+            <span>
+              {{ if eq .InclusionDelay 0 }}
+                A deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to {{ formatClCurrency config.Chain.ClConfig.MaxEffectiveBalance $.Rates.ClCurrency 0 true false false }}.
+              {{ else }}
+                The last deposit to the Deposit contract was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to {{ formatClCurrency config.Chain.ClConfig.MaxEffectiveBalance $.Rates.ClCurrency 0 true false false }}.
+              {{ end }}
               <br />
               Join our <a href="https://dsc.gg/beaconchain">Discord server</a> for support, questions and suggestions.
-            {{ end }}
-          </span>
+            </span>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  <script>
-    window.addEventListener("load", function () {
-      $("#deposits-tab").tab("show")
-    })
-  </script>
+    <script>
+      window.addEventListener("load", function () {
+        $("#deposits-tab").tab("show")
+      })
+    </script>
+  {{ end }}
 {{ end }}
 
 {{ define "validatorOverviewPending" }}
