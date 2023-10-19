@@ -1542,12 +1542,12 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation, tx *sqlx.Tx) error {
 			votedether = $3,
 			finalized = $4,
 			blockscount = (SELECT COUNT(*) FROM blocks WHERE epoch = $5 AND status = '1'),
-			proposerslashingscount = (SELECT SUM(proposerslashingscount) FROM blocks WHERE epoch = $5 AND status = '1'),
-			attesterslashingscount = (SELECT SUM(attesterslashingscount) FROM blocks WHERE epoch = $5 AND status = '1'),
-			attestationscount = (SELECT SUM(attestationscount) FROM blocks WHERE epoch = $5 AND status = '1'),
-			depositscount = (SELECT SUM(depositscount) FROM blocks WHERE epoch = $5 AND status = '1'),
-			withdrawalcount = (SELECT SUM(withdrawalcount) FROM blocks WHERE epoch = $5 AND status = '1'),
-			voluntaryexitscount = (SELECT SUM(voluntaryexitscount) FROM blocks WHERE epoch = $5 AND status = '1')
+			proposerslashingscount = (SELECT COALESCE(SUM(proposerslashingscount),0) FROM blocks WHERE epoch = $5 AND status = '1'),
+			attesterslashingscount = (SELECT COALESCE(SUM(attesterslashingscount),0) FROM blocks WHERE epoch = $5 AND status = '1'),
+			attestationscount = (SELECT COALESCE(SUM(attestationscount),0) FROM blocks WHERE epoch = $5 AND status = '1'),
+			depositscount = (SELECT COALESCE(SUM(depositscount),0) FROM blocks WHERE epoch = $5 AND status = '1'),
+			withdrawalcount = (SELECT COALESCE(SUM(withdrawalcount),0) FROM blocks WHERE epoch = $5 AND status = '1'),
+			voluntaryexitscount = (SELECT COALESCE(SUM(voluntaryexitscount),0) FROM blocks WHERE epoch = $5 AND status = '1')
 		WHERE epoch = $5`,
 		stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Finalized, stats.Epoch)
 
