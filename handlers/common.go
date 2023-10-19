@@ -314,9 +314,9 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		TotalDeposits: int64(totalDeposits),
 		ProposalData:  validatorProposalData,
 	}
-	earnings.LastDayFormatted = utils.FormatElCurrency(earnings.Income1d.Total, currency, 5, true, true, true)
-	earnings.LastWeekFormatted = utils.FormatElCurrency(earnings.Income7d.Total, currency, 5, true, true, true)
-	earnings.LastMonthFormatted = utils.FormatElCurrency(earnings.Income31d.Total, currency, 5, true, true, true)
+	earnings.LastDayFormatted = utils.FormatIncomeClEl(earnings.Income1d, currency)
+	earnings.LastWeekFormatted = utils.FormatIncomeClEl(earnings.Income7d, currency)
+	earnings.LastMonthFormatted = utils.FormatIncomeClEl(earnings.Income31d, currency)
 	earnings.TotalFormatted = utils.FormatIncomeClEl(earnings.IncomeTotal, currency)
 	// earnings.TotalChangeFormatted = utils.FormatIncome(income.ClIncomeTotal+currentDayClIncome+int64(totalDeposits), currency, true)
 	earnings.TotalBalance = utils.FormatElCurrency(totalBalance, currency, 5, true, false, false)
