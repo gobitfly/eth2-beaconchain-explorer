@@ -322,8 +322,11 @@ func main() {
 			}
 		}
 
-		for _, validator := range validators.Data {
-			logrus.Infof("exporting deposit data for genesis validator %v", validator.Index)
+		logrus.Infof("exporting deposit data for genesis %v validators", len(validators.Data))
+		for i, validator := range validators.Data {
+			if i%1000 == 0 {
+				logrus.Infof("exporting deposit data for genesis validator %v (of %v/%v)", validator.Index, i, len(validators.Data))
+			}
 			_, err = tx.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
 			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
 				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},
