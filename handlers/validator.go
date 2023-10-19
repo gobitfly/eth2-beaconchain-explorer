@@ -52,7 +52,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	currency := GetCurrency(r)
 
-	//start := time.Now()
 	timings := struct {
 		Start         time.Time
 		BasicInfo     time.Duration
@@ -131,6 +130,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
+			if err != sql.ErrNoRows {
+				logger.Errorf("error retrieving index for validator pubkey %v: %v", pubKey, err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
 			// the validator might only have a public key but no index yet
 			var name string
 			err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
@@ -255,13 +260,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// GetAvgOptimalInclusionDistance(index)
-
 	SetPageDataTitle(data, fmt.Sprintf("Validator %v", index))
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
-
-	// logger.Infof("retrieving data, elapsed: %v", time.Since(start))
-	// start = time.Now()
 
 	// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
 	err = db.ReaderDb.Get(&validatorPageData, `
@@ -606,7 +606,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// add attestationStats that are not yet in validator_stats
 			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
 			if lookback > 0 {
-				// logger.Infof("retrieving attestations not yet in stats, lookback is %v", lookback)
 				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
 				if err != nil {
 					return fmt.Errorf("error retrieving validator attestations not in stats from bigtable: %w", err)
@@ -826,7 +825,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// validatorPageData.IncomeToday.Total = float64(validatorPageData.IncomeToday.Cl) + price.GetPrice(utils.Config.Frontend.ElCurrency, utils.Config.Frontend.ClCurrency)*float64(validatorPageData.IncomeToday.El)
 	validatorPageData.FutureDutiesEpoch = protomath.MaxU64(futureProposalEpoch, futureSyncDutyEpoch)
 
 	data.Data = validatorPageData
@@ -1389,9 +1387,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/*
-Function checks if the generated ECDSA signature has correct lentgth and if needed sets recovery byte to 0 or 1
-*/
+// Function checks if the generated ECDSA signature has correct lentgth and if needed sets recovery byte to 0 or 1
 func sanitizeSignature(sig string) ([]byte, error) {
 	sig = strings.Replace(sig, "0x", "", -1)
 	decodedSig, _ := hex.DecodeString(sig)
@@ -1404,11 +1400,11 @@ func sanitizeSignature(sig string) ([]byte, error) {
 	return []byte(decodedSig), nil
 }
 
-/*
-Function tries to find the substring.
-If successful it turns string into []byte value and returns it
-If it fails, it will try to decode `msg`value from Hexadecimal to string and retry search again
-*/
+// Function tries to find the substring.
+//
+// If successful it turns string into []byte value and returns it
+//
+// If it fails, it will try to decode `msg`value from Hexadecimal to string and retry search again
 func sanitizeMessage(msg string) ([]byte, error) {
 	subString := "beaconcha.in"
 
@@ -1872,10 +1868,6 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if validatorStatsTablePageData.Rows[len(validatorStatsTablePageData.Rows)-1].Day == -1 {
-	// 	validatorStatsTablePageData.Rows = validatorStatsTablePageData.Rows[:len(validatorStatsTablePageData.Rows)-1]
-	// }
-
 	data.Data = validatorStatsTablePageData
 	if handleTemplateError(w, r, "validator.go", "ValidatorStatsTable", "", validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
@@ -1917,7 +1909,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
-	// descOrdering := q.Get("order[0][dir]") == "desc"
 
 	// retrieve all sync periods for this validator
 	var syncPeriods []uint64 = []uint64{}
@@ -1951,7 +1942,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 			lastSlot := (lastEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 
-			// logger.Infof("processing sync period %v epoch (%v/%v) slots (%v/%v)", period, firstEpoch, lastEpoch, firstSlot, lastSlot)
 			for slot := lastSlot; slot >= firstSlot && (slot <= lastSlot /* guards against underflows */); slot-- {
 				if slot > latestProposedSlot || utils.EpochOfSlot(slot) < utils.Config.Chain.ClConfig.AltairForkEpoch {
 					continue
@@ -1972,7 +1962,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		endSlot := slots[endIndex]
 		startSlot := slots[startIndex]
 
-		// logger.Infof("retrieving sync duty history for validator %v and slots %v-%v (%v-%v)", validatorIndex, startSlot, endSlot, startIndex, endIndex)
 		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startSlot, endSlot)
 
 		if err != nil {
