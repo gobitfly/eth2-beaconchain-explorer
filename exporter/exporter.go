@@ -157,7 +157,7 @@ func genesisDepositsExporter(client rpc.Client) {
 			continue
 		}
 
-		logger.Infof("exporting deposit data for genesis %v validators %v", len(genesisValidators.Data))
+		logger.Infof("exporting deposit data for %v genesis validators", len(genesisValidators.Data))
 		for i, validator := range genesisValidators.Data {
 			if i%1000 == 0 {
 				logger.Infof("exporting deposit data for genesis validator %v (%v/%v)", validator.Index, i, len(genesisValidators.Data))
