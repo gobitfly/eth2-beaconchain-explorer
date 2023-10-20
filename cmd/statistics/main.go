@@ -234,6 +234,7 @@ func main() {
 func statisticsLoop(client rpc.Client) {
 	for {
 
+		var loopError error
 		latestEpoch := services.LatestFinalizedEpoch()
 		if latestEpoch == 0 {
 			logrus.Errorf("error retreiving latest finalized epoch from cache")
@@ -270,6 +271,7 @@ func statisticsLoop(client rpc.Client) {
 					err := db.WriteValidatorStatisticsForDay(day, client)
 					if err != nil {
 						utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
+						loopError = err
 						break
 					}
 				}
@@ -293,6 +295,7 @@ func statisticsLoop(client rpc.Client) {
 					err = db.WriteChartSeriesForDay(int64(day))
 					if err != nil {
 						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+						loopError = err
 						break
 					}
 				}
@@ -313,7 +316,11 @@ func statisticsLoop(client rpc.Client) {
 			}
 		}
 
-		services.ReportStatus("statistics", "Running", nil)
+		if loopError == nil {
+			services.ReportStatus("statistics", "Running", nil)
+		} else {
+			services.ReportStatus("statistics", loopError.Error(), nil)
+		}
 		time.Sleep(time.Minute)
 	}
 }

@@ -1002,12 +1002,14 @@ func gatherValidatorMissedAttestationsStatisticsForDay(validators []uint64, day 
 
 	firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 	lastSlot := ((lastEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+	lastQuerySlot := ((lastEpoch+2)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+
 	rows, err := ReaderDb.Query(`SELECT 
 	blocks_attestations.slot, 
 	validators 
 	FROM blocks_attestations 
 	LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
-	blocks.epoch >= $1 AND blocks.epoch <= $2 AND blocks.status = '1' ORDER BY block_slot`, firstEpoch, lastEpoch+1)
+	blocks_attestations.block_slot >= $1 AND blocks_attestations.block_slot <= $2 AND blocks.status = '1' ORDER BY block_slot`, firstSlot, lastQuerySlot)
 	if err != nil {
 		return fmt.Errorf("error retrieving attestation data from the db: %w", err)
 	}
