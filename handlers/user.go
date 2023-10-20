@@ -1300,11 +1300,17 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 
 	// get user data from db
 	userData := struct {
-		Email     string     `db:"email"`
-		Password  string     `db:"password"`
-		ConfirmTs *time.Time `db:"email_confirmation_ts"`
+		Email     string    `db:"email"`
+		Password  string    `db:"password"`
+		ConfirmTs time.Time `db:"email_confirmation_ts"`
 	}{}
-	err = db.FrontendWriterDB.Get(&userData, "SELECT email, password, email_confirmation_ts FROM users WHERE users.id = $1", user.UserID)
+	err = db.FrontendWriterDB.Get(&userData, `
+		SELECT
+			email,
+			password,
+			COALESCE(email_confirmation_ts, TO_TIMESTAMP(0)) as email_confirmation_ts
+		FROM users
+		WHERE users.id = $1`, user.UserID)
 	if err != nil {
 		utils.LogError(err, "error user data for email change request", 0, map[string]interface{}{"userID": user.UserID})
 		session.AddFlash("Error: Error processing request, please try again later.")
@@ -1315,7 +1321,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 
 	// check if email change request is ratelimited
 	now := time.Now()
-	if rateLimitDeadline := userData.ConfirmTs.Add(authConfirmEmailRateLimit); userData.ConfirmTs != nil && rateLimitDeadline.After(now) {
+	if rateLimitDeadline := userData.ConfirmTs.Add(authConfirmEmailRateLimit); rateLimitDeadline.After(now) {
 		session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", rateLimitDeadline.Sub(now).Round(time.Second)))
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1437,13 +1443,22 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	user := struct {
 		ID               int64     `db:"id"`
 		Email            string    `db:"email"`
-		ConfirmTs        time.Time `db:"email_confirmation_ts"`
 		Confirmed        bool      `db:"email_confirmed"`
+		ConfirmTs        time.Time `db:"email_confirmation_ts"`
 		NewEmail         string    `db:"email_change_to_value"`
 		StripeCustomerId string    `db:"stripe_customer_id"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&user, "SELECT id, email, COALESCE(email_confirmation_ts, '399-01-01 BC'::timestamp), email_confirmed, COALESCE(email_change_to_value, ''), COALESCE(stripe_customer_id, '') FROM users WHERE email_confirmation_hash = $1", hash)
+	err = db.FrontendWriterDB.Get(&user, `
+		SELECT
+			id,
+			email,
+			email_confirmed,
+			COALESCE(email_confirmation_ts, TO_TIMESTAMP(0)	) as email_confirmation_ts,
+			COALESCE(email_change_to_value, '') as email_change_to_value,
+			COALESCE(stripe_customer_id, '') as stripe_customer_id
+		FROM users
+		WHERE email_confirmation_hash = $1`, hash)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash, "userID": sessionUser.UserID})
