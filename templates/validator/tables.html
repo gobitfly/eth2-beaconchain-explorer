@@ -752,7 +752,7 @@
                   CL: 1d: {{ formatElCurrency .Income1d.Cl $.Rates.SelectedCurrency 5 false true true }} | 7d: {{ formatElCurrency .Income.Income7d.Cl $.Rates.SelectedCurrency 5 false true true }} | 31d: {{ formatElCurrency .Income.Income31d.Cl $.Rates.SelectedCurrency 5 true true true }} <br /> 
                   EL: 1d: {{ formatElCurrency .Income1d.El $.Rates.SelectedCurrency 5 false true true }} | 7d: {{ formatElCurrency .Income.Income7d.El $.Rates.SelectedCurrency 5 false true true }} | 31d: {{ formatElCurrency .Income.Income31d.El $.Rates.SelectedCurrency 5 true true true }} <br /> 
                   All: 1d: {{ formatElCurrency .Income1d.Total $.Rates.SelectedCurrency 5 false true true }} | 7d: {{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 false true true }} | 31d: {{ formatElCurrency .Income.Income31d.Total $.Rates.SelectedCurrency 5 true true true }}">
-              {{ formatIncome .Income.Income7d.Total $.Rates.SelectedCurrency true }}
+              <b>{{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 true true true }}</b>
               <i class="far fa-question-circle"></i>
             </span>
           </td>
