@@ -47,6 +47,11 @@ var rpEth1Client *ethclient.Client
 const GethEventLogInterval = 25000
 
 var RP_CONFIG *smartnodeCfg.SmartnodeConfig
+var firstBlockOfRedstone = map[string]uint64{
+	"mainnet": 15451165,
+	"prater":  7287326,
+	"holesky": 0,
+}
 
 var leb16, _ = big.NewInt(0).SetString("16000000000000000000", 10)
 
@@ -82,6 +87,8 @@ func initRPConfig() *smartnodeCfg.SmartnodeConfig {
 		config.Network.Value = smartnodeNetwork.Network_Mainnet
 	} else if utils.Config.Chain.Name == "prater" {
 		config.Network.Value = smartnodeNetwork.Network_Prater
+	} else if utils.Config.Chain.Name == "holesky" {
+		config.Network.Value = smartnodeNetwork.Network_Holesky
 	} else {
 		logrus.Warnf("unknown network")
 	}
@@ -287,6 +294,7 @@ func (rp *RocketpoolExporter) DownloadMissingRewardTrees() error {
 				IsNativeMode: true,
 			},
 			interval,
+			nil,
 		)
 		if err != nil {
 			if strings.Contains(err.Error(), "found") { // could not be found && not found
@@ -1582,12 +1590,14 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 	// RPLTokensClaimed(address clamingContract, address claimingAddress, uint256 amount, uint256 time)
 	topicFilter := [][]common.Hash{{rocketRewardsPool.ABI.Events["RPLTokensClaimed"].ID}, {rocketClaimNode.Address.Hash()}}
 
-	prerecordedIntervals := RP_CONFIG.GetRewardsSubmissionBlockMaps()
+	sumMap := make(map[string]*big.Int)
+	prerecordedIntervals, exists := firstBlockOfRedstone[utils.Config.Chain.Name]
 	var maxBlockNumber *big.Int = nil
-	if len(prerecordedIntervals) > 0 {
-		// only look for legacy lifetime rewards before the new rewards system went live
-		maxBlockNumber = big.NewInt(0).SetUint64(prerecordedIntervals[0])
+	if prerecordedIntervals == 0 || !exists {
+		return sumMap, nil
 	}
+	// only look for legacy lifetime rewards before the new rewards system went live
+	maxBlockNumber = big.NewInt(0).SetUint64(prerecordedIntervals)
 
 	// Get the event logs
 	logs, err := eth.GetLogs(rp, addressFilter, topicFilter, intervalSize, nil, maxBlockNumber, nil)
@@ -1596,7 +1606,6 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 	}
 
 	// Iterate over the logs and sum the amount
-	sumMap := make(map[string]*big.Int)
 	for _, log := range logs {
 		values := make(map[string]interface{})
 		// Decode the event
