@@ -355,16 +355,13 @@
         {{ template "hero" . }}
       {{ end }}
       <div id="r-banner" info="{{ .Meta.Templates }}"></div>
-      {{ with .Data }}
-        {{ if and (not .Genesis) (not .GenesisPeriod) }}
-          {{ template "preGenesis" $ }}
-        {{ else if .GenesisPeriod }}
-          {{ template "genesis" . }}
-        {{ else }}
-          {{ template "postGenesis" . }}
-        {{ end }}
+      {{ if and (not .Data.Genesis) (not .Data.GenesisPeriod) }}
+        {{ template "preGenesis" $ }}
+      {{ else if .Data.GenesisPeriod }}
+        {{ template "genesis" . }}
+      {{ else }}
+        {{ template "postGenesis" .Data }}
       {{ end }}
     </div>
   </div>
-  {{ if .Data.SlotVizData }}{{ template "SlotViz" . }}{{ end }}
 {{ end }}
