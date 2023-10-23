@@ -1,4 +1,4 @@
-parse_input = import_module("github.com/kurtosis-tech/ethereum-package/src/package_io/parse_input.star")
+input_parser = import_module("github.com/kurtosis-tech/ethereum-package/src/package_io/input_parser.star")
 eth_network_module = import_module("github.com/kurtosis-tech/eth-network-package/main.star")
 transaction_spammer = import_module("github.com/kurtosis-tech/ethereum-package/src/transaction_spammer/transaction_spammer.star")
 blob_spammer = import_module("github.com/kurtosis-tech/ethereum-package/src/blob_spammer/blob_spammer.star")
@@ -17,7 +17,7 @@ LITTLE_BIGTABLE_PORT_ID = "littlebigtable"
 EXPLORER_CONFIG_FILENAME = "config.yml"
 
 def run(plan, args):
-	args_with_right_defaults = parse_input.parse_input(plan, args)
+	args_with_right_defaults = input_parser.input_parser(plan, args)
 	network_params = args_with_right_defaults.network_params
 
 	db_services = plan.add_services(
