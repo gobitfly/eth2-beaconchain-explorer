@@ -975,6 +975,7 @@ $(document).ready(function () {
       fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
         method: "GET",
       }).then((res) => {
+        if (res.status !== 200) return
         res.json().then((data) => {
           let sum = 0.0
           for (let eff of data) {

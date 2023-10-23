@@ -988,7 +988,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(activeValidators) == 0 {
-		http.Error(w, "Invalid query", http.StatusBadRequest)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
