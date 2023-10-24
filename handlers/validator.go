@@ -1781,12 +1781,17 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (map[uint64]*types.ValidatorWithdrawal, map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
 	g := new(errgroup.Group)
 
+	errFields := map[string]interface{}{
+		"index":      index,
+		"startEpoch": startEpoch,
+		"endEpoch":   endEpoch}
+
 	var withdrawals []*types.WithdrawalsByEpoch
 	g.Go(func() error {
 		var err error
 		withdrawals, err = db.GetValidatorsWithdrawalsByEpoch([]uint64{index}, startEpoch, endEpoch)
 		if err != nil {
-			logger.Errorf("error getting validator withdrawals by epoch: %v", err)
+			utils.LogError(err, "error getting validator withdrawals by epoch", 0, errFields)
 			return err
 		}
 		return nil
@@ -1797,7 +1802,7 @@ func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (m
 		var err error
 		incomeDetails, err = db.BigtableClient.GetValidatorIncomeDetailsHistory([]uint64{index}, startEpoch, endEpoch)
 		if err != nil {
-			logger.Errorf("error getting validator income details history from bigtable: %v", err)
+			utils.LogError(err, "error getting validator income details history from bigtable", 0, errFields)
 			return err
 		}
 		return nil
@@ -1866,14 +1871,16 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	if utils.IsHash(vars["index"]) {
 		pubKey, err := hex.DecodeString(strings.TrimPrefix(vars["index"], "0x"))
 		if err != nil {
-			utils.LogError(err, "error decoding validator index", 0, errFields)
+			utils.LogError(err, "error decoding validator pubkey", 0, errFields)
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
-			errFields["pubkey"] = pubKey
-			utils.LogError(err, "error getting validator index from db", 0, errFields)
+			if err != sql.ErrNoRows {
+				errFields["pubkey"] = pubKey
+				utils.LogError(err, "error getting validator index from db", 0, errFields)
+			}
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
 		}
