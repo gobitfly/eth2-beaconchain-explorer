@@ -988,7 +988,8 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(activeValidators) == 0 {
-		w.WriteHeader(http.StatusNoContent)
+		// valid 200 response with empty data
+		w.Write([]byte(`{}`))
 		return
 	}
 
