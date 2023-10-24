@@ -575,7 +575,7 @@ func lowerAddressFromRequest(w http.ResponseWriter, r *http.Request) (string, er
 }
 
 func handleNotFoundJson(address string, w http.ResponseWriter, r *http.Request, err error) {
-	logger.Errorf("error getting addres for ENS name [%v] not found for %v route: %v", address, r.URL.String(), err)
+	logger.Errorf("error getting address for ENS name [%v] not found for %v route: %v", address, r.URL.String(), err)
 	http.Error(w, "Invalid ENS name", http.StatusServiceUnavailable)
 }
 

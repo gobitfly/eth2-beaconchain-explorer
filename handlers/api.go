@@ -708,7 +708,7 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the sync-committee for a sync-period
 // @Tags SyncCommittee
 // @Description Returns the sync-committee for a sync-period. Validators are sorted by sync-committee-index.
-// @Description Sync committees where introduced in the Altair hardfork. Peroids before the hardfork do not contain sync-committees.
+// @Description Sync committees where introduced in the Altair hardfork. Periods before the hardfork do not contain sync-committees.
 // @Description For mainnet sync-committes first started after epoch 74240 (period 290) and each sync-committee is active for 256 epochs.
 // @Produce json
 // @Param period path string true "Period ('latest' for latest period or 'next' for next period in the future)"
@@ -820,7 +820,7 @@ func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-Combined validator get, performance, attestation efficency, sync committee statistics, epoch, historic epoch and rpl
+Combined validator get, performance, attestation efficiency, sync committee statistics, epoch, historic epoch and rpl
 Not public documented
 */
 func ApiDashboard(w http.ResponseWriter, r *http.Request) {
@@ -2013,7 +2013,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 		epoch = services.LatestEpoch()
 	}
 
-	// startEpoch and endEpoch are both inclusive, so substracting 99 here will result in a limit of 100 epochs
+	// startEpoch and endEpoch are both inclusive, so subtracting 99 here will result in a limit of 100 epochs
 	endEpoch := epoch - 99
 	if epoch < 99 {
 		endEpoch = 0
@@ -3514,7 +3514,7 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 
 	system, err := db.BigtableClient.GetMachineMetricsSystem(claims.UserID, int(limit), int(offset))
 	if err != nil {
-		logger.Errorf("sytem stat error : %v", err)
+		logger.Errorf("system stat error : %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve system stats from db")
 		return
 	}
