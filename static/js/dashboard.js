@@ -976,6 +976,9 @@ $(document).ready(function () {
         method: "GET",
       }).then((res) => {
         res.json().then((data) => {
+          if (Object.keys(data).length === 0) {
+            return
+          }
           let sum = 0.0
           for (let eff of data) {
             sum += eff
