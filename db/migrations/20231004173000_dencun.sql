@@ -1,12 +1,16 @@
 -- +goose Up
 -- +goose StatementBegin
+SELECT 'drop table blocks_transactions';
 DROP TABLE IF EXISTS blocks_transactions;
+SELECT 'drop table validator_balances_recent';
 DROP TABLE IF EXISTS validator_balances_recent;
 
+SELECT 'alter blocks table';
 ALTER TABLE blocks ADD COLUMN IF NOT EXISTS exec_blob_gas_used INT NOT NULL DEFAULT 0;
 ALTER TABLE blocks ADD COLUMN IF NOT EXISTS exec_excess_blob_gas INT NOT NULL DEFAULT 0;
 ALTER TABLE blocks ADD COLUMN IF NOT EXISTS exec_blob_transactions_count INT NOT NULL DEFAULt 0;
 
+SELECT 'create table blocks_blob_sidecars';
 CREATE TABLE IF NOT EXISTS
     blocks_blob_sidecars (
         block_slot INT NOT NULL,
@@ -21,6 +25,7 @@ CREATE TABLE IF NOT EXISTS
 
 -- +goose Down
 -- +goose StatementBegin
+SELECT 'create table blocks_transactions';
 CREATE TABLE IF NOT EXISTS
     blocks_transactions (
         block_slot INT NOT NULL,
@@ -40,6 +45,7 @@ CREATE TABLE IF NOT EXISTS
         PRIMARY KEY (block_slot, block_index)
     );
 
+SELECT 'create table validator_balances_recent';
 CREATE TABLE IF NOT EXISTS
     validator_balances_recent (
         epoch INT NOT NULL,
@@ -48,6 +54,7 @@ CREATE TABLE IF NOT EXISTS
         PRIMARY KEY (epoch, validatorindex)
     );
 
+SELECT 'alter table blocks';
 ALTER TABLE blocks DROP COLUMN IF EXISTS exec_blob_gas_used;
 ALTER TABLE blocks DROP COLUMN IF EXISTS exec_excess_blob_gas;
 ALTER TABLE blocks DROP COLUMN IF EXISTS exec_blob_transactions_count;
