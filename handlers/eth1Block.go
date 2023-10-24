@@ -52,7 +52,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 	var number uint64
 	var err error
 	if len(numberString) == 64 {
-		number, err = rpc.CurrentErigonClient.GetBlockNumberByHash(numberString)
+		number, err = rpc.CurrentEth1RpcClient.GetBlockNumberByHash(numberString)
 	} else {
 		number, err = strconv.ParseUint(numberString, 10, 64)
 	}
@@ -120,7 +120,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageData, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
 	if diffToHead := int64(services.LatestEth1BlockNumber()) - int64(number); err != nil && diffToHead < 0 && diffToHead >= -5 {
-		block, _, err = rpc.CurrentErigonClient.GetBlock(int64(number), "parity/geth")
+		block, _, err = rpc.CurrentEth1RpcClient.GetBlock(int64(number), "parity/geth")
 	}
 	if err != nil {
 		return nil, err

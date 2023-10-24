@@ -45,7 +45,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		}
 		return data, nil
 	}
-	tx, pending, err := rpc.CurrentErigonClient.GetNativeClient().TransactionByHash(ctx, hash)
+	tx, pending, err := rpc.CurrentEth1RpcClient.GetNativeClient().TransactionByHash(ctx, hash)
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving data for tx %v: %w", hash, err)
@@ -133,7 +133,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 	}
 
 	if receipt.Status != 1 {
-		data, err := rpc.CurrentErigonClient.TraceParityTx(tx.Hash().Hex())
+		data, err := rpc.CurrentEth1RpcClient.TraceParityTx(tx.Hash().Hex())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get parity trace for revert reason: %v", err)
 		}
@@ -300,7 +300,7 @@ func IsContract(ctx context.Context, address common.Address) (bool, error) {
 		return wanted, nil
 	}
 
-	code, err := rpc.CurrentErigonClient.GetNativeClient().CodeAt(ctx, address, nil)
+	code, err := rpc.CurrentEth1RpcClient.GetNativeClient().CodeAt(ctx, address, nil)
 	if err != nil {
 		return false, fmt.Errorf("error retrieving code data for address %v: %v", address, err)
 	}
@@ -322,7 +322,7 @@ func GetBlockHeaderByHash(ctx context.Context, hash common.Hash) (*geth_types.He
 	// 	return wanted.(*geth_types.Header), nil
 	// }
 
-	header, err := rpc.CurrentErigonClient.GetNativeClient().HeaderByHash(ctx, hash)
+	header, err := rpc.CurrentEth1RpcClient.GetNativeClient().HeaderByHash(ctx, hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block header data for tx %v: %v", hash, err)
 	}
@@ -343,7 +343,7 @@ func GetTransactionReceipt(ctx context.Context, hash common.Hash) (*geth_types.R
 		return wanted.(*geth_types.Receipt), nil
 	}
 
-	receipt, err := rpc.CurrentErigonClient.GetNativeClient().TransactionReceipt(ctx, hash)
+	receipt, err := rpc.CurrentEth1RpcClient.GetNativeClient().TransactionReceipt(ctx, hash)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving receipt data for tx %v: %v", hash, err)
 	}

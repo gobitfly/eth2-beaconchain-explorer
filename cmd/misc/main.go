@@ -101,9 +101,9 @@ func main() {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
 
-	erigonClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	eth1RpcClient, err := rpc.NewEth1RpcClient(utils.Config.Eth1RpcEndpoint)
 	if err != nil {
-		logrus.Fatalf("error initializing erigon client: %v", err)
+		logrus.Fatalf("error initializing eth1 rpc client: %v", err)
 	}
 
 	db.MustInitDB(&types.DatabaseConfig{
@@ -247,7 +247,7 @@ func main() {
 	case "clear-bigtable":
 		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
-		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
+		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, eth1RpcClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "update-block-finalization-sequentially":
@@ -255,7 +255,7 @@ func main() {
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
-		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
+		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, eth1RpcClient)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
 	case "export-genesis-validators":
@@ -426,7 +426,7 @@ func UpdateBlockFinalizationSequentially() error {
 
 func DebugBlocks() error {
 
-	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+	client, err := rpc.NewEth1RpcClient(utils.Config.Eth1RpcEndpoint)
 	if err != nil {
 		return err
 	}
@@ -824,7 +824,7 @@ func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.
 }
 
 // Let's find blocks that are missing in bt and index them.
-func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient) {
+func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Eth1RpcClient) {
 
 	if end == 0 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
@@ -881,7 +881,7 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 	}
 }
 
-func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
+func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.Eth1RpcClient) {
 	if endBlock > 0 && endBlock < startBlock {
 		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
 		return

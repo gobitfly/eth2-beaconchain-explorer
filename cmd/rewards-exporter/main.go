@@ -77,11 +77,11 @@ func main() {
 	}
 
 	if enAddress == nil || *enAddress == "" {
-		if utils.Config.Eth1ErigonEndpoint == "" {
+		if utils.Config.Eth1RpcEndpoint == "" {
 			utils.LogFatal(nil, "no execution node url provided", 0)
 		} else {
 			logrus.Info("applying execution node endpoint from config")
-			*enAddress = utils.Config.Eth1ErigonEndpoint
+			*enAddress = utils.Config.Eth1RpcEndpoint
 		}
 	}
 

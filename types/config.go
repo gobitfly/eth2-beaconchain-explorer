@@ -55,8 +55,7 @@ type Config struct {
 		ClConfig                   ClChainConfig
 		ElConfig                   *params.ChainConfig
 	} `yaml:"chain"`
-	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
-	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
+	Eth1RpcEndpoint     string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	EtherscanAPIKey     string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
 	EtherscanAPIBaseURL string `yaml:"etherscanApiBaseUrl" envconfig:"ETHERSCAN_API_BASEURL"`
 	RedisCacheEndpoint  string `yaml:"redisCacheEndpoint" envconfig:"REDIS_CACHE_ENDPOINT"`

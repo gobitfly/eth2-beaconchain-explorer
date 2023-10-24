@@ -140,28 +140,18 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 
-		rpc.CurrentErigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+		rpc.CurrentEth1RpcClient, err = rpc.NewEth1RpcClient(utils.Config.Eth1RpcEndpoint)
 		if err != nil {
-			logrus.Fatalf("error initializing erigon client: %v", err)
+			logrus.Fatalf("error initializing eth1 rpc client: %v", err)
 		}
 
-		erigonChainId, err := rpc.CurrentErigonClient.GetNativeClient().ChainID(ctx)
+		eth1RpcChainId, err := rpc.CurrentEth1RpcClient.GetNativeClient().ChainID(ctx)
 		if err != nil {
-			logrus.Fatalf("error retrieving erigon chain id: %v", err)
+			logrus.Fatalf("error retrieving eth1 rpc chain id: %v", err)
 		}
 
-		rpc.CurrentGethClient, err = rpc.NewGethClient(utils.Config.Eth1GethEndpoint)
-		if err != nil {
-			logrus.Fatalf("error initializing geth client: %v", err)
-		}
-
-		gethChainId, err := rpc.CurrentGethClient.GetNativeClient().ChainID(ctx)
-		if err != nil {
-			logrus.Fatalf("error retrieving geth chain id: %v", err)
-		}
-
-		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID)) {
-			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
+		if !(eth1RpcChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID)) {
+			logrus.Fatalf("chain id mismatch: eth1 rpc chain id %v, requested chain id %v", eth1RpcChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
 		}
 	}()
 
@@ -348,7 +338,7 @@ func main() {
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
 		logrus.Infof("initializing prices")
-		price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
+		price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1RpcEndpoint, utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
 
 		logrus.Infof("prices initialized")
 		if !utils.Config.Frontend.Debug {
