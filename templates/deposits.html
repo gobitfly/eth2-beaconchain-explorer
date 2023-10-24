@@ -21,7 +21,7 @@
               stateLoadCallback: function (settings) {
                 return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
               },
-              order: [[4, 'desc']],
+              order: [[6, 'desc']],
               searching: true,
               ajax: dataTableLoader('/validators/initiated-deposits/data'),
               pagingType: 'input',
