@@ -573,6 +573,8 @@ $(document).ready(function () {
     } else if (sug.index !== undefined) {
       if (sug.index === "deposited") window.location = "/validator/" + sug.pubkey
       else window.location = "/validator/" + sug.index
+    } else if (sug.pubkey !== undefined) {
+      window.location = "/validator/" + sug.pubkey
     } else if (sug.epoch !== undefined) {
       window.location = "/epoch/" + sug.epoch
     } else if (sug.address !== undefined) {
@@ -817,12 +819,47 @@ function trimCurrency(value) {
   return trimPrice(value, 2)
 }
 
-function getIncomeChartValueString(value, currency) {
-  if (this.currency === "ETH") {
-    return `${trimToken(value)} ETH`
+function getIncomeChartValueString(value, currency, priceCurrency, price) {
+  if (currency == priceCurrency || (currency == "xDAI" && priceCurrency == "DAI")) {
+    return `${trimToken(value)} ${currency}`
   }
 
-  return `${trimCurrency(value)} ${currency}`
+  return `${trimToken(value / price)} ${currency} (${trimCurrency(value)} ${priceCurrency})`
+}
+
+$("[data-truncate-middle]").each(function (item) {
+  truncateMiddle(this)
+  addEventListener("resize", (event) => {
+    truncateMiddle(this)
+  })
+  addEventListener("copy", (event) => {
+    copyDots(event, this)
+  })
+})
+
+// function for trimming an placing ellipsis in the middle when text is overflowing
+function truncateMiddle(element) {
+  element.innerHTML = element.getAttribute("data-truncate-middle")
+  const parent = element.parentElement
+  // get ratio of visible width to full width
+  const ratio = parent.offsetWidth / parent.scrollWidth
+  if (ratio < 1) {
+    const removeCount = Math.ceil((parent.innerText.length * (1 - ratio)) / 2) + 1
+    const originalText = element.getAttribute("data-truncate-middle")
+    element.innerHTML = originalText.substr(0, originalText.length / 2 - removeCount) + "…" + originalText.substr(originalText.length / 2 + removeCount)
+  }
+}
+
+// function for inserting correct text into clipboard when copying ellipsis of text truncated with 'truncateMiddle()'
+function copyDots(event, element) {
+  const selection = document.getSelection()
+  if (selection.toString().includes("…")) {
+    const originalText = element.getAttribute("data-truncate-middle")
+    const diff = originalText.length - (element.innerText.length - 1)
+    const replaceText = selection.toString().replace("…", originalText.substr(originalText.length / 2 - diff / 2, diff))
+    event.clipboardData.setData("text/plain", replaceText)
+    event.preventDefault()
+  }
 }
 
 $("[data-tooltip-date=true]").each(function (item) {

@@ -71,7 +71,19 @@ func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
 		return cached.(*types.UserWithPremium), nil
 	}
 	data := &types.UserWithPremium{}
-	row := FrontendWriterDB.QueryRow("SELECT id, (SELECT product_id from users_app_subscriptions WHERE user_id = users.id AND active = true order by id desc limit 1) FROM users WHERE api_key = $1", apiKey)
+	row := FrontendWriterDB.QueryRow(`
+		SELECT id, (
+			SELECT product_id 
+			from users_app_subscriptions 
+			WHERE user_id = users.id AND active = true 
+			order by CASE product_id
+				WHEN 'whale' THEN 1
+				WHEN 'goldfish' THEN 2
+				WHEN 'plankton' THEN 3
+				ELSE 4  -- For any other product_id values
+			END, id desc limit 1
+		) FROM users 
+		WHERE api_key = $1`, apiKey)
 	err := row.Scan(&data.ID, &data.Product)
 	if err != nil {
 		return nil, err
@@ -428,8 +440,16 @@ type PremiumResult struct {
 
 func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 	var pkg PremiumResult
-	err := FrontendWriterDB.Get(&pkg,
-		"SELECT COALESCE(product_id, '') as product_id, COALESCE(store, '') as store from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+	err := FrontendWriterDB.Get(&pkg, `
+		SELECT COALESCE(product_id, '') as product_id, COALESCE(store, '') as store 
+		from users_app_subscriptions 
+		WHERE user_id = $1 AND active = true 
+		order by CASE product_id
+			WHEN 'whale' THEN 1
+			WHEN 'goldfish' THEN 2
+			WHEN 'plankton' THEN 3
+			ELSE 4  -- For any other product_id values
+		END, id desc`,
 		userID,
 	)
 	return pkg, err
@@ -437,7 +457,20 @@ func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 
 func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error) {
 	userSub := types.UserPremiumSubscription{}
-	err := FrontendWriterDB.Get(&userSub, "SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active desc, id desc LIMIT 1", id)
+	err := FrontendWriterDB.Get(&userSub, `
+	SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason 
+	FROM users_app_subscriptions 
+	WHERE user_id = $1 
+	ORDER BY 
+		active desc, 
+		CASE product_id
+			WHEN 'whale' THEN 1
+			WHEN 'goldfish' THEN 2
+			WHEN 'plankton' THEN 3
+			ELSE 4  -- For any other product_id values
+		END, 
+		id desc
+	LIMIT 1`, id)
 	return userSub, err
 }
 
@@ -606,11 +639,11 @@ func getMachineStatsGap(resultCount uint64) int {
 }
 
 func GetHistoricalPrice(chainId uint64, currency string, day uint64) (float64, error) {
-	if chainId != 1 {
+	if chainId != 1 && chainId != 100 {
 		// Don't show a historical price for testnets
 		return 0.0, nil
 	}
-	if currency == "ETH" {
+	if currency == utils.Config.Frontend.ClCurrency {
 		currency = "USD"
 	}
 	currency = strings.ToLower(currency)

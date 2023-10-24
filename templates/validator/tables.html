@@ -36,7 +36,7 @@
                 order: [[0, 'desc']],
                 lengthChange: false,
                 searching: false,
-                ajax: '/validator/' + index + '/proposedblocks',
+                ajax: dataTableLoader('/validator/' + index + '/proposedblocks'),
                 pagingType: 'input',
                 pageLength: 10,
                 language: {
@@ -127,7 +127,7 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
-                    ajax: '/validator/' + index + '/attestations',
+                    ajax: dataTableLoader('/validator/' + index + '/attestations'),
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
@@ -196,19 +196,16 @@
                     order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
-                    ajax: {
-                      url: `/validator/${index}/withdrawals`,
-                      dataSrc: function ( { data } ) {
+                    ajax: dataTableLoader(`/validator/${index}/withdrawals`, "", function ( {data} ) {
                         // add the estimate row if it exists
                         {{ if .NextWithdrawalRow }}
                           let row = {{.NextWithdrawalRow}}
                           if (row && row.length) {
-                            data = row.concat(data)
+                            data.data = row.concat(data.data)
                           }
                         {{ end }}
                         return data
-                      },
-                    },
+                      }),
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
@@ -279,7 +276,7 @@
                       return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                     },
                     searching: false,
-                    ajax: '/validator/' + index + '/sync',
+                    ajax: dataTableLoader('/validator/' + index + '/sync'),
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
@@ -358,7 +355,7 @@
                   return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                 },
                 searching: false,
-                ajax: '/validator/' + index + '/slashings',
+                ajax: dataTableLoader('/validator/' + index + '/slashings'),
                 pagingType: 'input',
                 pageLength: 10,
                 language: {
@@ -416,7 +413,7 @@
           <tbody>
             {{ range $i, $deposit := .Deposits.Eth1Deposits }}
               <tr>
-                <td>{{ formatEth1Address $deposit.FromAddress }}</td>
+                <td>{{ formatAddressAsLink $deposit.FromAddress $deposit.FromName false }}</td>
                 <td>{{ formatEth1TxHash $deposit.TxHash }}</td>
                 <td>{{ formatEth1Block $deposit.BlockNumber }}</td>
                 <td>{{ formatTimestamp $deposit.BlockTs }}</td>
@@ -426,7 +423,7 @@
                   {{ end }}
                   {{ formatWithdawalCredentials $deposit.WithdrawalCredentials true }}
                 </td>
-                <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
+                <td>{{ formatDepositAmount $deposit.Amount $.Rates.SelectedCurrency }}</td>
                 <td>
                   {{ if $deposit.ValidSignature }}
                     <span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span>
@@ -586,7 +583,7 @@
                     {{ end }}
                     {{ formatWithdawalCredentials $deposit.Withdrawalcredentials true }}
                   </td>
-                  <td>{{ formatDepositAmount $deposit.Amount $.Rates.Currency }}</td>
+                  <td>{{ formatDepositAmount $deposit.Amount $.Rates.SelectedCurrency }}</td>
                   <!-- <td>{{ formatHash $deposit.Proof }}</td> -->
                   <td>
                     {{ formatHash $deposit.Signature }}
@@ -639,7 +636,7 @@
                 stateLoadCallback: function (settings) {
                   return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                 },
-                ajax: '/validator/' + index + '/history',
+                ajax: dataTableLoader('/validator/' + index + '/history'),
                 pagingType: 'input',
                 pageLength: 10,
                 language: {
@@ -686,7 +683,14 @@
         <tr>
           <th scope="row">Total Rewards</th>
           <td class="pl-0">
-            {{ .IncomeTotalFormatted }}
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatElCurrency .Income.IncomeTotal.Cl $.Rates.SelectedCurrency 5 true true true }} <br /> 
+                EL: {{ formatElCurrency .Income.IncomeTotal.El $.Rates.SelectedCurrency 5 true true true }}">
+              <b>{{ formatElCurrency .Income.IncomeTotal.Total $.Rates.SelectedCurrency 5 true true true }}</b>
+            </span>
           </td>
         </tr>
         <tr class="">
@@ -696,9 +700,9 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatIncome .IncomeToday.Cl $.Rates.Currency }} <br> 
-                EL: {{ formatIncome .IncomeToday.El $.Rates.Currency }}">
-              {{ formatIncome .IncomeToday.Total $.Rates.Currency }}
+                CL: {{ formatElCurrency .Income.IncomeToday.Cl $.Rates.SelectedCurrency 5 true true true }} <br /> 
+                EL: {{ formatElCurrency .Income.IncomeToday.El $.Rates.SelectedCurrency 5 true true true }}">
+              <b>{{ formatElCurrency .Income.IncomeToday.Total $.Rates.SelectedCurrency 5 true true true }}</b>
             </span>
           </td>
         </tr>
@@ -710,10 +714,13 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatIncome .Income1d.Cl $.Rates.Currency }} | {{ formatIncome .Income7d.Cl $.Rates.Currency }} | {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br> 
-                EL: {{ formatIncome .Income1d.El $.Rates.Currency }} | {{ formatIncome .Income7d.El $.Rates.Currency }} | {{ formatIncome .Income31d.El $.Rates.Currency }}">
-              {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} |
-              {{ formatIncomeNoCurrency .Income31d.Total $.Rates.Currency }}
+                CL: {{ formatElCurrency .Income.Income1d.Cl $.Rates.SelectedCurrency 5 true true true }} | {{ formatElCurrency .Income.Income7d.Cl $.Rates.SelectedCurrency 5 true true true }} | {{ formatElCurrency .Income.Income31d.Cl $.Rates.SelectedCurrency 5 true true true }} <br> 
+                EL: {{ formatElCurrency .Income.Income1d.El $.Rates.SelectedCurrency 5 true true true }} | {{ formatElCurrency .Income.Income7d.El $.Rates.SelectedCurrency 5 true true true }} | {{ formatElCurrency .Income.Income31d.El $.Rates.SelectedCurrency 5 true true true }}">
+              <b>{{ formatElCurrency .Income.Income1d.Total $.Rates.SelectedCurrency 5 false true true }}</b>
+              |
+              <b>{{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 false true true }}</b>
+              |
+              <b>{{ formatElCurrency .Income.Income31d.Total $.Rates.SelectedCurrency 5 false true true }}</b>
             </span>
           </td>
         </tr>
@@ -724,13 +731,13 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
-                El: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Apr365d.El 2 }}%">
-              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+                CL: {{ formatPercentageWithPrecision .Income.Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Income.Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Income.Apr365d.Cl 2 }}% <br> 
+                El: {{ formatPercentageWithPrecision .Income.Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr365d.El 2 }}%">
+              <span class="{{ if gtf .Income.Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr7d.Total 2 }}%</b></span>
               |
-              <span class="{{ if gtf .Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr31d.Total 2 }}%</b></span>
+              <span class="{{ if gtf .Income.Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr31d.Total 2 }}%</b></span>
               |
-              <span class="{{ if gtf .Apr365d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr365d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr365d.Total 2 }}%</b></span>
+              <span class="{{ if gtf .Income.Apr365d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr365d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr365d.Total 2 }}%</b></span>
             </span>
           </td>
         </tr>
@@ -742,10 +749,10 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                  CL: 1d: {{ formatIncomeNoCurrency .Income1d.Cl $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Cl $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Cl $.Rates.Currency }} <br /> 
-                  EL: 1d: {{ formatIncomeNoCurrency .Income1d.El $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.El $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.El $.Rates.Currency }} <br /> 
-                  All: 1d: {{ formatIncomeNoCurrency .Income1d.Total $.Rates.Currency }} | 7d: {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }} | 31d: {{ formatIncome .Income31d.Total $.Rates.Currency }}">
-              {{ formatIncomeNoCurrency .Income7d.Total $.Rates.Currency }}
+                  CL: 1d: {{ formatElCurrency .Income1d.Cl $.Rates.SelectedCurrency 5 false true true }} | 7d: {{ formatElCurrency .Income.Income7d.Cl $.Rates.SelectedCurrency 5 false true true }} | 31d: {{ formatElCurrency .Income.Income31d.Cl $.Rates.SelectedCurrency 5 true true true }} <br /> 
+                  EL: 1d: {{ formatElCurrency .Income1d.El $.Rates.SelectedCurrency 5 false true true }} | 7d: {{ formatElCurrency .Income.Income7d.El $.Rates.SelectedCurrency 5 false true true }} | 31d: {{ formatElCurrency .Income.Income31d.El $.Rates.SelectedCurrency 5 true true true }} <br /> 
+                  All: 1d: {{ formatElCurrency .Income1d.Total $.Rates.SelectedCurrency 5 false true true }} | 7d: {{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 false true true }} | 31d: {{ formatElCurrency .Income.Income31d.Total $.Rates.SelectedCurrency 5 true true true }}">
+              <b>{{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 true true true }}</b>
               <i class="far fa-question-circle"></i>
             </span>
           </td>
@@ -757,10 +764,10 @@
               data-toggle="tooltip"
               data-html="true"
               title="
-                CL: 7d: {{ formatPercentageWithPrecision .Apr7d.Cl 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Cl 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Cl 2 }}% <br> 
-                El: 7d: {{ formatPercentageWithPrecision .Apr7d.El 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.El 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.El 2 }}% <br>
-                All: 7d: {{ formatPercentageWithPrecision .Apr7d.Total 2 }}% | 31d: {{ formatPercentageWithPrecision .Apr31d.Total 2 }}% | 365d: {{ formatPercentageWithPrecision .Apr365d.Total 2 }}%">
-              <span class="{{ if gtf .Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Apr7d.Total 2 }}%</b></span>
+                CL: 7d: {{ formatPercentageWithPrecision .Income.Apr7d.Cl 2 }}% | 31d: {{ formatPercentageWithPrecision .Income.Apr31d.Cl 2 }}% | 365d: {{ formatPercentageWithPrecision .Income.Apr365d.Cl 2 }}% <br> 
+                El: 7d: {{ formatPercentageWithPrecision .Income.Apr7d.El 2 }}% | 31d: {{ formatPercentageWithPrecision .Income.Apr31d.El 2 }}% | 365d: {{ formatPercentageWithPrecision .Income.Apr365d.El 2 }}% <br>
+                All: 7d: {{ formatPercentageWithPrecision .Income.Apr7d.Total 2 }}% | 31d: {{ formatPercentageWithPrecision .Income.Apr31d.Total 2 }}% | 365d: {{ formatPercentageWithPrecision .Income.Apr365d.Total 2 }}%">
+              <span class="{{ if gtf .Income.Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr7d.Total 2 }}%</b></span>
               <i class="far fa-question-circle"></i>
             </span>
           </td>

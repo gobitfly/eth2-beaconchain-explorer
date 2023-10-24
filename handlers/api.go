@@ -732,7 +732,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 		period = utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
 	}
 
-	rows, err := db.ReaderDb.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod)
+	rows, err := db.ReaderDb.Query(`SELECT period, GREATEST(period*$2, $3) AS start_epoch, ((period+1)*$2)-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, utils.Config.Chain.ClConfig.AltairForkEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -754,7 +754,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM  epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1 ")
+	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1")
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -916,11 +916,11 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				start := time.Now()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch)
-				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				currentSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
 					logger.Warnf("SyncPeriodOfEpoch(%v) took longer than 10 sec", epoch)
-					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
 				}
 				return err
 			})
@@ -929,11 +929,11 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				start := time.Now()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch) + 1
-				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				nextSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
 					logger.Warnf("SyncPeriodOfEpoch(%v) + 1 took longer than 10 sec", epoch)
-					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
 				}
 				return err
 			})
@@ -1019,18 +1019,15 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
-func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, error) {
+func getSyncCommitteeInfoForValidators(validators []uint64, period uint64) ([]interface{}, error) {
 	rows, err := db.ReaderDb.Query(
 		`SELECT 
 			period, 
-			period*$2 AS start_epoch, 
-			(period+1)*$2-1 AS end_epoch, 
 			ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
 		FROM sync_committees 
-		WHERE period = $1 AND validatorindex = ANY($3)
+		WHERE period = $1 AND validatorindex = ANY($2)
 		GROUP BY period`,
 		period,
-		utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod,
 		pq.Array(validators),
 	)
 	if err != nil {
@@ -1172,6 +1169,11 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 }
 
 func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.SyncCommitteesStats, error) {
+	if epoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
+		// no sync committee duties before altair fork
+		return types.SyncCommitteesStats{}, nil
+	}
+
 	// collect aggregated sync committee stats from validator_stats table for all validators
 	var syncStats struct {
 		Participated int64 `db:"participated"`
@@ -1242,7 +1244,10 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			}
 
 			// get sync stats from bigtable
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch+1, epoch)
+			startSlot := (lastExportedEpoch + 1) * utils.Config.Chain.ClConfig.SlotsPerEpoch
+			endSlot := epoch*utils.Config.Chain.ClConfig.SlotsPerEpoch + utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
+
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, startSlot, endSlot)
 			if err != nil {
 				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
@@ -1252,8 +1257,13 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			// if latest returned period is the active one, add remaining scheduled slots
 			firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(syncCommitteeValidators[0].Period)
 			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
+			if firstEpochOfPeriod < utils.Config.Chain.ClConfig.AltairForkEpoch {
+				// the first actual sync period starts at the altair fork epoch and might be shorter than all others
+				// https://eth2book.info/capella/annotated-spec/#sync-committee-updates
+				firstEpochOfPeriod = utils.Config.Chain.ClConfig.AltairForkEpoch
+			}
 			if lastEpochOfPeriod >= services.LatestEpoch() {
-				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
+				syncStats.ScheduledSlots += utils.GetRemainingScheduledSyncDuties(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
 			}
 			// add sync stats for validators in previous returned period
 			utils.AddSyncStats(vs[latestPeriodCount:], res, &syncStats)
@@ -3984,11 +3994,12 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	})
 
 	balanceHistoryChartData := make([][4]float64, len(data))
+	clPrice := price.GetPrice(utils.Config.Frontend.ClCurrency, currency)
 	for i, item := range data {
 		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
 		balanceHistoryChartData[i][1] = item.ValidatorCount
-		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * price.GetEthPrice(currency)
-		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * price.GetEthPrice(currency)
+		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * clPrice
+		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * clPrice
 	}
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)

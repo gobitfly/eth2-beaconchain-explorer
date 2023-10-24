@@ -12,6 +12,7 @@
   {{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") }}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
+    <script type="text/javascript" src="/js/datatable_loader.js"></script>
     <script src="/js/highcharts/highstock.min.js"></script>
     <script src="/js/highcharts/exporting.min.js"></script>
     <script src="/js/highcharts/offline-exporting.min.js"></script>
@@ -93,7 +94,7 @@
             </div>
             <div class="d-flex flex-column justify-content-center">
               {{ if $deposited }}
-                {{ template "validatorOverviewDeposited" . }}
+                {{ template "validatorOverviewDeposited" $ }}
               {{ end }}
               {{ if $pending }}
                 {{ template "validatorOverviewPending" . }}
@@ -149,11 +150,9 @@
               <li class="nav-item">
                 <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
               </li>
-              {{ if .CappellaHasHappened }}
-                <li class="nav-item">
-                  <a class="nav-link {{ if not .IsWithdrawableAddress }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
-                </li>
-              {{ end }}
+              <li class="nav-item">
+                <a class="nav-link {{ if or (not .IsWithdrawableAddress) (not .CappellaHasHappened) }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
+              </li>
               {{ if .IsRocketpool }}
                 <li class="nav-item">
                   <a class="nav-link" id="rocketpool-tab" data-toggle="tab" href="#rocketpool" role="tab" aria-controls="rocketpool" aria-selected="false">

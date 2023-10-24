@@ -79,9 +79,9 @@
           {{ range .Rows }}
             <tr>
               <td data-order="{{ .Day }}">{{ (dayToTime .Day).Format "02 Jan 2006" }}</td>
-              <td>{{ formatIncome .Income $.Rates.Currency }}</td>
-              <td>{{ formatBalanceSql .StartBalance $.Rates.Currency }}</td>
-              <td>{{ formatBalanceSql .EndBalance $.Rates.Currency }}</td>
+              <td>{{ formatIncome .Income $.Rates.SelectedCurrency true }}</td>
+              <td>{{ formatBalanceSql .StartBalance $.Rates.SelectedCurrency }}</td>
+              <td>{{ formatBalanceSql .EndBalance $.Rates.SelectedCurrency }}</td>
               <td>{{ formatSqlInt64 .MissedAttestations }}</td>
               <td>{{ formatSqlInt64 .ProposedBlocks }}</td>
               <td>{{ formatSqlInt64 .MissedBlocks }}</td>
@@ -89,7 +89,7 @@
               <td>{{ formatSqlInt64 .AttesterSlashings }}</td>
               <td>{{ formatSqlInt64 .ProposerSlashings }}</td>
               <td>{{ formatSqlInt64 .Deposits }}</td>
-              <td>{{ formatIncomeSql .DepositsAmount $.Rates.Currency }}</td>
+              <td>{{ formatIncomeSql .DepositsAmount $.Rates.SelectedCurrency }}</td>
             </tr>
           {{ end }}
         </tbod>

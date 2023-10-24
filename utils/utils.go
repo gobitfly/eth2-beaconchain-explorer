@@ -86,6 +86,9 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatNotificationChannel":               FormatNotificationChannel,
 		"formatBalanceSql":                        FormatBalanceSql,
 		"formatCurrentBalance":                    FormatCurrentBalance,
+		"formatCurrency":                          FormatCurrency,
+		"formatElCurrency":                        FormatElCurrency,
+		"formatClCurrency":                        FormatClCurrency,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
 		"formatBlockStatus":                       FormatBlockStatus,
 		"formatBlockSlot":                         FormatBlockSlot,
@@ -108,7 +111,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
-		"formatIncomeNoCurrency":                  FormatIncomeNoCurrency,
 		"formatIncomeSql":                         FormatIncomeSql,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
@@ -132,7 +134,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatETH":                               FormatETH,
 		"formatFloat":                             FormatFloat,
 		"formatAmount":                            FormatAmount,
-		"formatExchangedAmount":                   FormatExchangedAmount,
 		"formatBytes":                             FormatBytes,
 		"formatBlobVersionedHash":                 FormatBlobVersionedHash,
 		"formatBigAmount":                         FormatBigAmount,
@@ -302,6 +303,13 @@ func SyncPeriodOfEpoch(epoch uint64) uint64 {
 	return epoch / Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod
 }
 
+// FirstEpochOfSyncPeriod returns the first epoch of a given sync period.
+//
+// Please note that it will return the calculated first epoch of the sync period even if it is pre ALTAIR.
+//
+// Furthermore, for the very first actual sync period, it may return an epoch pre ALTAIR even though that is inccorect.
+//
+// For more information: https://eth2book.info/capella/annotated-spec/#sync-committee-updates
 func FirstEpochOfSyncPeriod(syncPeriod uint64) uint64 {
 	return syncPeriod * Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod
 }
@@ -422,6 +430,10 @@ func ReadConfig(cfg *types.Config, path string) error {
 	err := readConfigSecrets(cfg)
 	if err != nil {
 		return err
+	}
+
+	if cfg.Frontend.SiteBrand == "" {
+		cfg.Frontend.SiteBrand = "beaconcha.in"
 	}
 
 	if cfg.Chain.ClConfigPath == "" {
@@ -645,9 +657,63 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Chain.DomainVoluntaryExit = "0x04000000"
 	}
 
+	if cfg.Frontend.ClCurrency == "" {
+		switch cfg.Chain.Name {
+		case "gnosis":
+			cfg.Frontend.MainCurrency = "GNO"
+			cfg.Frontend.ClCurrency = "mGNO"
+			cfg.Frontend.ClCurrencyDecimals = 18
+			cfg.Frontend.ClCurrencyDivisor = 1e9
+		default:
+			cfg.Frontend.MainCurrency = "ETH"
+			cfg.Frontend.ClCurrency = "ETH"
+			cfg.Frontend.ClCurrencyDecimals = 18
+			cfg.Frontend.ClCurrencyDivisor = 1e9
+		}
+	}
+
+	if cfg.Frontend.ElCurrency == "" {
+		switch cfg.Chain.Name {
+		case "gnosis":
+			cfg.Frontend.ElCurrency = "xDAI"
+			cfg.Frontend.ElCurrencyDecimals = 18
+			cfg.Frontend.ElCurrencyDivisor = 1e18
+		default:
+			cfg.Frontend.ElCurrency = "ETH"
+			cfg.Frontend.ElCurrencyDecimals = 18
+			cfg.Frontend.ElCurrencyDivisor = 1e18
+		}
+	}
+
+	if cfg.Frontend.SiteTitle == "" {
+		cfg.Frontend.SiteTitle = "Open Source Ethereum Explorer"
+	}
+
+	if cfg.Frontend.Keywords == "" {
+		cfg.Frontend.Keywords = "open source ethereum block explorer, ethereum block explorer, beacon chain explorer, ethereum blockchain explorer"
+	}
+
+	if cfg.Chain.Id != 0 {
+		switch cfg.Chain.Name {
+		case "mainnet", "ethereum":
+			cfg.Chain.Id = 1
+		case "prater", "goerli":
+			cfg.Chain.Id = 5
+		case "holesky":
+			cfg.Chain.Id = 17000
+		case "sepolia":
+			cfg.Chain.Id = 11155111
+		case "gnosis":
+			cfg.Chain.Id = 100
+		}
+	}
+
+	// we check for maching chain id just for safety
 	if cfg.Chain.Id != 0 && cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID {
 		logrus.Fatalf("cfg.Chain.Id != cfg.Chain.ClConfig.DepositChainID: %v != %v", cfg.Chain.Id, cfg.Chain.ClConfig.DepositChainID)
 	}
+
+	cfg.Chain.Id = cfg.Chain.ClConfig.DepositChainID
 
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
@@ -656,6 +722,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 		"depositChainID":         cfg.Chain.ClConfig.DepositChainID,
 		"depositNetworkID":       cfg.Chain.ClConfig.DepositNetworkID,
 		"depositContractAddress": cfg.Chain.ClConfig.DepositContractAddress,
+		"clCurrency":             cfg.Frontend.ClCurrency,
+		"elCurrency":             cfg.Frontend.ElCurrency,
+		"mainCurrency":           cfg.Frontend.MainCurrency,
 	}).Infof("did init config")
 
 	return nil
@@ -952,10 +1021,6 @@ func GenerateRandomAPIKey() (string, error) {
 
 	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
-}
-
-func ExchangeRateForCurrency(currency string) float64 {
-	return price.GetEthPrice(currency)
 }
 
 // Glob walks through a directory and returns files with a given extension
@@ -1437,32 +1502,50 @@ func GetSigningDomain() ([]byte, error) {
 }
 
 // SlotsPerSyncCommittee returns the count of slots per sync committee period
+// (might be wrong for the first sync period at atlair which might be shorter, see https://eth2book.info/capella/annotated-spec/#sync-committee-updates)
 func SlotsPerSyncCommittee() uint64 {
 	return Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod * Config.Chain.ClConfig.SlotsPerEpoch
 }
 
-// GetRemainingScheduledSync returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
+// GetRemainingScheduledSyncDuties returns the remaining count of scheduled slots given the stats of the current period, while also accounting for exported slots.
 //
 // Parameters:
-//   - `validatorCount` : the count of validators associated with the stats.
-//   - `stats` : the current sync committee stats of the validators
-//   - `lastExportedEpoch` : the last epoch that was exported into the validator_stats table
-//   - `firstEpochOfPeriod` : the first epoch of the current sync committee period
-func GetRemainingScheduledSync(validatorCount int, stats types.SyncCommitteesStats, lastExportedEpoch, firstEpochOfPeriod uint64) uint64 {
-	var exportedEpochs uint64
+//   - validatorCount: the count of validators associated with the stats.
+//   - stats: the current sync committee stats of the validators
+//   - lastExportedEpoch: the last epoch that was exported into the validator_stats table
+//   - firstEpochOfPeriod: the first epoch of the current sync committee period
+func GetRemainingScheduledSyncDuties(validatorCount int, stats types.SyncCommitteesStats, lastExportedEpoch, firstEpochOfPeriod uint64) uint64 {
+	// check how many sync duties remain in the current sync committee based on firstEpochOfPeriod
+	slotsPerSyncCommittee := SlotsPerSyncCommittee()
+	if firstEpochOfPeriod <= Config.Chain.ClConfig.AltairForkEpoch {
+		if firstEpochOfPeriod+SlotsPerSyncCommittee() < Config.Chain.ClConfig.AltairForkEpoch {
+			// not a valid sync committee as altair comes after the complete sync committee period
+			return 0
+		}
+
+		// the first sync period at altair might be shorter, see https://eth2book.info/capella/annotated-spec/#sync-committee-updates
+		firstEpochOfNextSyncPeriod := FirstEpochOfSyncPeriod(SyncPeriodOfEpoch(Config.Chain.ClConfig.AltairForkEpoch) + 1)
+		slotsPerSyncCommittee = (firstEpochOfNextSyncPeriod - Config.Chain.ClConfig.AltairForkEpoch) * Config.Chain.ClConfig.SlotsPerEpoch
+	}
+	dutiesPerSyncCommittee := slotsPerSyncCommittee * uint64(validatorCount)
+
+	// check how many duties are already exported
+	exportedEpochs := uint64(0)
 	if lastExportedEpoch >= firstEpochOfPeriod {
 		exportedEpochs = lastExportedEpoch - firstEpochOfPeriod + 1
 	}
-	exportedSlots := exportedEpochs * Config.Chain.ClConfig.SlotsPerEpoch * uint64(validatorCount)
-	slotsPerSyncCommittee := SlotsPerSyncCommittee() * uint64(validatorCount)
-	return (slotsPerSyncCommittee - ((exportedSlots + stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots) % slotsPerSyncCommittee)) % slotsPerSyncCommittee
+	exportedDuties := exportedEpochs * Config.Chain.ClConfig.SlotsPerEpoch * uint64(validatorCount)
+
+	// calculate how many duties are remaining i.e. are scheduled
+	totalStats := stats.MissedSlots + stats.ParticipatedSlots + stats.ScheduledSlots
+	return (dutiesPerSyncCommittee - ((exportedDuties + totalStats) % dutiesPerSyncCommittee)) % dutiesPerSyncCommittee
 }
 
 // AddSyncStats adds the sync stats of a set of validators from a given syncDutiesHistory to the given stats, if stats is nil a new stats object is created.
 // Parameters:
-//   - `validators` : the validators to add the stats for
-//   - `syncDutiesHistory` : the sync duties history of all queried validators
-//   - `stats` : the stats object to add the stats to, if nil a new stats object is created
+//   - validators: the validators to add the stats for
+//   - syncDutiesHistory: the sync duties history of all queried validators
+//   - stats: the stats object to add the stats to, if nil a new stats object is created
 func AddSyncStats(validators []uint64, syncDutiesHistory map[uint64]map[uint64]*types.ValidatorSyncParticipation, stats *types.SyncCommitteesStats) types.SyncCommitteesStats {
 	if stats == nil {
 		stats = &types.SyncCommitteesStats{}

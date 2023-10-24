@@ -136,7 +136,7 @@
       </div>
     </figure>
     <script>
-        {{if .DepositDistribution}}
+        {{if and .DepositDistribution .DepositDistribution.Data}}
         var drill = {{.DepositDistribution.Data.Drilldown}}
         for (let i=0; i<drill.series.length; i++){
           for (let j=0; j<drill.series[i].data.length; j++){
