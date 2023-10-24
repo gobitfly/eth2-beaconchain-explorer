@@ -364,5 +364,5 @@
       {{ end }}
     </div>
   </div>
-  {{ if or .Data.SlotVizData .Data.GenesisPeriod }}{{ template "SlotViz" . }}{{ end }}
+  {{ if .Data.SlotVizData }}{{ template "SlotViz" . }}{{ end }}
 {{ end }}
