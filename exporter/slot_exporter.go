@@ -177,7 +177,19 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 					if err != nil {
 						return err
 					}
+
+					logger.Infof("exporting validation queue")
+					queue, err := client.GetValidatorQueue()
+					if err != nil {
+						return fmt.Errorf("error retrieving validator queue data: %w", err)
+					}
+
+					err = db.SaveValidatorQueue(queue, tx)
+					if err != nil {
+						return fmt.Errorf("error saving validator queue data: %w", err)
+					}
 				}
+
 			}
 		} else { // check if a late slot has been proposed in the meantime
 			if len(dbSlot.BlockRoot) < 32 && header != nil { // we have no slot in the db, but the node has a slot, export it
