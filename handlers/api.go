@@ -3768,7 +3768,10 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	limit := parseUintWithDefault(limitQuery, 10)
 
 	// We set a max limit to limit the request call time.
-	const maxLimit uint64 = 200
+	var maxLimit uint64 = uint64(getUserPremium(r).MaxValidators)
+	if maxLimit < 200 {
+		maxLimit = 200
+	}
 	limit = utilMath.MinU64(limit, maxLimit)
 
 	result := []struct {
