@@ -181,12 +181,12 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 					logger.Infof("exporting validation queue")
 					queue, err := client.GetValidatorQueue()
 					if err != nil {
-						return fmt.Errorf("error retrieving validator queue data: %v", err)
+						return fmt.Errorf("error retrieving validator queue data: %w", err)
 					}
 
 					err = db.SaveValidatorQueue(queue, tx)
 					if err != nil {
-						return err
+						return fmt.Errorf("error saving validator queue data: %w", err)
 					}
 				}
 
