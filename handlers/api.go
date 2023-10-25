@@ -848,6 +848,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	epoch := services.LatestEpoch()
 
 	g, _ := errgroup.WithContext(context.Background())
+	g.SetLimit(5) // limit concurrency
 	var validatorsData []interface{}
 	var validatorEffectivenessData []*types.ValidatorEffectiveness
 	var rocketpoolData []interface{}
@@ -919,7 +920,6 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				currentSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
-					logger.Warnf("SyncPeriodOfEpoch(%v) took longer than 10 sec", epoch)
 					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
 				}
 				return err
@@ -1179,18 +1179,6 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 		Participated int64 `db:"participated"`
 		Missed       int64 `db:"missed"`
 	}
-	query, args, err := sqlx.In(`SELECT COALESCE(SUM(participated_sync), 0) AS participated, COALESCE(SUM(missed_sync), 0) AS missed FROM validator_stats WHERE validatorindex IN (?)`, validators)
-	if err != nil {
-		return types.SyncCommitteesStats{}, err
-	}
-	err = db.ReaderDb.Get(&syncStats, db.ReaderDb.Rebind(query), args...)
-	if err != nil {
-		return types.SyncCommitteesStats{}, err
-	}
-
-	retv := types.SyncCommitteesStats{}
-	retv.ParticipatedSlots = uint64(syncStats.Participated)
-	retv.MissedSlots = uint64(syncStats.Missed)
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
@@ -1202,6 +1190,15 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 	} else if err == nil {
 		lastExportedEpoch = ((lastExportedDay + 1) * epochsPerDay) - 1
 	}
+
+	err = db.ReaderDb.Get(&syncStats, `SELECT COALESCE(participated_sync_total, 0) AS participated, COALESCE(missed_sync_total, 0) AS missed FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastExportedDay, pq.Array(validators))
+	if err != nil {
+		return types.SyncCommitteesStats{}, err
+	}
+
+	retv := types.SyncCommitteesStats{}
+	retv.ParticipatedSlots = uint64(syncStats.Participated)
+	retv.MissedSlots = uint64(syncStats.Missed)
 
 	// if epoch is not yet exported, we may need to collect the data from bigtable
 	if lastExportedEpoch < epoch {
