@@ -188,7 +188,7 @@ func startApiMonitoringService() {
 		resp, err := client.Get(url)
 		if err != nil {
 			utils.LogError(err, "getting client error", 0, errFields)
-			ReportStatus(name, err.Error(), nil)
+			ReportStatus(name, strings.ReplaceAll(err.Error(), utils.Config.Monitoring.ApiKey, ""), nil)
 			continue
 		}
 
@@ -227,7 +227,7 @@ func startAppMonitoringService() {
 		resp, err := client.Post(url, "application/json", strings.NewReader(`{"indicesOrPubkey": "1,2"}`))
 		if err != nil {
 			utils.LogError(err, "POST to dashboard URL error", 0, errFields)
-			ReportStatus(name, err.Error(), nil)
+			ReportStatus(name, strings.ReplaceAll(err.Error(), utils.Config.Monitoring.ApiKey, ""), nil)
 			continue
 		}
 
