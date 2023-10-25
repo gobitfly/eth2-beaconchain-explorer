@@ -657,8 +657,8 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 }
 
 // SaveValidatorQueue will save the validator queue into the database
-func SaveValidatorQueue(validators *types.ValidatorQueue) error {
-	_, err := WriterDb.Exec(`
+func SaveValidatorQueue(validators *types.ValidatorQueue, tx *sqlx.Tx) error {
+	_, err := tx.Exec(`
 		INSERT INTO queue (ts, entering_validators_count, exiting_validators_count)
 		VALUES (date_trunc('hour', now()), $1, $2)
 		ON CONFLICT (ts) DO UPDATE SET
