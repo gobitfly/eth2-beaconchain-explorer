@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +57,14 @@ func init() {
 }
 
 func main() {
+
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		for range ticker.C {
+			fmt.Println(runtime.NumGoroutine())
+		}
+	}()
+
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
