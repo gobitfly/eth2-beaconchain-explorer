@@ -1887,8 +1887,9 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
-		// Request is not a valid index number
+
 		if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+			// Request is not a valid index number
 			logger.Warnf("error parsing validator index: %v", err)
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
@@ -1896,6 +1897,17 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errFields["index"] = index
+
+	// Check if validator index is available
+	var dbIndex uint64
+	err = db.ReaderDb.Get(&dbIndex, "SELECT validatorindex FROM validators WHERE validatorindex = $1", index)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			utils.LogError(err, "error checking for index in validators table", 0, errFields)
+		}
+		validatorNotFound(data, w, r, vars, "/stats")
+		return
+	}
 
 	SetPageDataTitle(data, fmt.Sprintf("Validator %v Daily Statistics", index))
 	data.Meta.Path = fmt.Sprintf("/validator/%v/stats", index)
