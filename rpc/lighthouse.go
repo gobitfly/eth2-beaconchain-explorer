@@ -33,8 +33,6 @@ type LighthouseClient struct {
 	endpoint            string
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
-	slotsCache          *lru.Cache
-	slotsCacheMux       *sync.Mutex
 	signer              gtypes.Signer
 }
 
@@ -44,11 +42,9 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
-		slotsCacheMux:       &sync.Mutex{},
 		signer:              signer,
 	}
 	client.assignmentsCache, _ = lru.New(10)
-	client.slotsCache, _ = lru.New(128) // cache at most 128 slots
 
 	return client, nil
 }
@@ -796,21 +792,6 @@ func (lc *LighthouseClient) GetBlockBySlot(slot uint64) (*types.Block, error) {
 		}
 	}
 
-	lc.slotsCacheMux.Lock()
-	cachedBlock, ok := lc.slotsCache.Get(parsedHeaders.Data.Root)
-	if ok {
-		lc.slotsCacheMux.Unlock()
-		block, ok := cachedBlock.(*types.Block)
-
-		if ok {
-			logger.Infof("retrieved slot %v (0x%x) from in memory cache", block.Slot, block.BlockRoot)
-			return block, nil
-		} else {
-			logger.Errorf("unable to convert cached block to block type")
-		}
-	}
-	lc.slotsCacheMux.Unlock()
-
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v2/beacon/blocks/%s", lc.endpoint, parsedHeaders.Data.Root))
 	if err != nil && slot == 0 {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %w", slot, err)
@@ -869,10 +850,6 @@ func (lc *LighthouseClient) GetBlockBySlot(slot uint64) (*types.Block, error) {
 			})
 		}
 	}
-
-	lc.slotsCacheMux.Lock()
-	lc.slotsCache.Add(parsedHeaders.Data.Root, block)
-	lc.slotsCacheMux.Unlock()
 
 	return block, nil
 }
