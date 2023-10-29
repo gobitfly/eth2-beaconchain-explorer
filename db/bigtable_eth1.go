@@ -3219,7 +3219,8 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address))
+	filter := gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY)
+	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), gcp_bigtable.RowFilter(filter))
 
 	if err != nil {
 		return nil, err
@@ -3235,8 +3236,14 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	}
 
 	g := new(errgroup.Group)
+	g.SetLimit(10)
+
 	mux := sync.Mutex{}
 	for _, ri := range row {
+		if len(ri) > 5000 {
+			return nil, fmt.Errorf("retrieved an unusually large amount of token balances for address 0x%x: %v", address, len(ri))
+		}
+
 		for _, column := range ri {
 			if strings.HasPrefix(column.Column, ACCOUNT_METADATA_FAMILY+":B:") {
 				column := column
