@@ -125,7 +125,7 @@ func Eth1BlocksHighest(w http.ResponseWriter, r *http.Request) {
 
 func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.DataTableResponse, error) {
 	if recordsTotal == 0 {
-		recordsTotal = services.LatestEth1BlockNumber()
+		recordsTotal = services.LatestEth1BlockNumber() + 1 // +1 to include block 0
 	}
 
 	displayStart := start
@@ -135,8 +135,8 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		start = recordsTotal - start
 	}
 
-	if length > start {
-		length = start
+	if length > start+1 {
+		length = start + 1
 	}
 
 	blocks, err := db.BigtableClient.GetBlocksDescending(start, length)
