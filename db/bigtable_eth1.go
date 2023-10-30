@@ -542,7 +542,8 @@ func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit 
 //
 //	start: highest block number to be returned
 //	limit: amount of blocks to be returned
-//		limit must be > 0 and <= start + 1:
+//		limit must be <= start + 1:
+//		- if limit > stat + 1, limit will be set to start + 1
 //		- if limit = start, block 0 will of course not be included
 //		- if limit = start + 1, block 0 will be included as last block (special handling for broken padding is implemented)
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
@@ -555,8 +556,13 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	})
 	defer tmr.Stop()
 
-	if limit == 0 || limit > start+1 {
-		return nil, fmt.Errorf("error invalid parameter combination of start [%v] and limit [%v]", start, limit)
+	if limit == 0 {
+		return nil, fmt.Errorf("error limit is set to 0 which would not fetch any blocks")
+	}
+
+	// clamp limit
+	if limit > start+1 {
+		limit = start + 1
 	}
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
