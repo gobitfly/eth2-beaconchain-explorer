@@ -8,24 +8,44 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/gtuk/discordwebhook"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+	"google.golang.org/api/option"
+
+	gcp_bigtable "cloud.google.com/go/bigtable"
 )
+
+const MAX_EL_BLOCK_NUMBER = 1_000_000_000_000 - 1
 
 func main() {
 
 	url := flag.String("url", "http://localhost:8545", "")
+
+	discordWebhookReportUrl := flag.String("discord-url", "", "")
+	discordWebhookUser := flag.String("discord-user", "", "")
 	blockNumber := flag.Int("block-number", -1, "")
-	startBlockNumber := flag.Int("start-block-number", -1, "")
-	step := flag.Int("step", 1, "")
+	startBlockNumber := flag.Int("start-block-number", 0, "")
 
 	flag.Parse()
+
+	btClient, err := gcp_bigtable.NewClient(context.Background(), "etherchain", "beaconchain-node-data-storage", option.WithGRPCConnectionPool(50))
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	tableBlocksRaw := btClient.Open("blocks-raw")
 
 	client, err := ethclient.Dial(*url)
 
@@ -34,13 +54,16 @@ func main() {
 	}
 
 	// retrieve the latest block number
-	if *startBlockNumber == -1 {
-		latestBlockNumber, err := client.BlockNumber(context.Background())
-		if err != nil {
-			logrus.Fatalf("error retrieving latest block number: %v", err)
-		}
-		*startBlockNumber = int(latestBlockNumber)
+	latestBlockNumber, err := client.BlockNumber(context.Background())
+	if err != nil {
+		logrus.Fatalf("error retrieving latest block number: %v", err)
 	}
+
+	chainId, err := client.ChainID(context.Background())
+	if err != nil {
+		logrus.Fatalf("error retrieving chain id from node: %v", err)
+	}
+	chainIdUint64 := chainId.Uint64()
 
 	httpClient := &http.Client{
 		Timeout: time.Second * 10,
@@ -52,128 +75,198 @@ func main() {
 		logrus.Info("OK")
 		return
 	}
+
 	gOuter := &errgroup.Group{}
 	gOuter.SetLimit(10)
 
+	muts := []*gcp_bigtable.Mutation{}
+	keys := []string{}
+	mux := &sync.Mutex{}
+
 	blocksProcessed := int64(0)
 
-	for i := *startBlockNumber; i >= 0; i = i - *step {
+	p := message.NewPrinter(language.English)
+
+	for i := *startBlockNumber; i <= int(latestBlockNumber); i++ {
 
 		i := i
 
-		gOuter.Go(
-			func() error {
+		gOuter.Go(func() error {
+			for ; ; time.Sleep(time.Second) {
+
 				g := &errgroup.Group{}
 
 				var block, receipts, traces []byte
 
 				g.Go(func() error {
-					block = getBlock(*url, httpClient, i)
-					return nil
+					var err error
+					block, err = getBlock(*url, httpClient, i)
+					return err
 				})
 				g.Go(func() error {
-					receipts = getReceipts(*url, httpClient, i)
-					return nil
+					var err error
+					receipts, err = getReceipts(*url, httpClient, i)
+					return err
 				})
 				g.Go(func() error {
-					traces = getTraces(*url, httpClient, i)
-					return nil
+					var err error
+					traces, err = getTraces(*url, httpClient, i)
+					return err
 				})
 
-				g.Wait()
+				err := g.Wait()
 
-				logrus.Infof("block: %v bytes, receipts: %v bytes, traces: %v bytes, total: %v bytes", len(block), len(receipts), len(traces), len(block)+len(receipts)+len(traces))
-				new := atomic.AddInt64(&blocksProcessed, 1)
-
-				if new%1000 == 0 {
-					logrus.Infof("scanning blocks for unknown rpc fields, currently at: %v", i)
+				if err != nil {
+					logrus.Errorf("error processing block %v: %v", i, err)
+					continue
 				}
 
-				return nil
-			})
+				mux.Lock()
+				mut := gcp_bigtable.NewMutation()
+				mut.Set("b", "b", gcp_bigtable.Timestamp(0), block)
+				mut.Set("r", "r", gcp_bigtable.Timestamp(0), receipts)
+				mut.Set("t", "t", gcp_bigtable.Timestamp(0), traces)
 
-		// if i%100 == 0 || *step > 1 {
-		// }
+				muts = append(muts, mut)
+				key := getBlockKey(i, chainIdUint64)
+				keys = append(keys, key)
 
-		// logrus.Infof("retrieved block with number %v and hash %v", blockData.Result.Number, blockData.Result.Hash)
+				if len(keys) == 1000 {
+					ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+					errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
 
+					if err != nil {
+						logrus.Fatalf("error writing data to bigtable: %v", err)
+					}
+
+					for _, err := range errs {
+						logrus.Fatalf("error writing data to bigtable: %v", err)
+					}
+					cancel()
+					logrus.Infof("completed processing block %v (block: %v bytes, receipts: %v bytes, traces: %v bytes, total: %v bytes)", i, len(block), len(receipts), len(traces), len(block)+len(receipts)+len(traces))
+
+					muts = []*gcp_bigtable.Mutation{}
+					keys = []string{}
+
+				}
+				mux.Unlock()
+
+				if atomic.AddInt64(&blocksProcessed, 1)%100000 == 0 {
+					sendMessage(p.Sprintf("OP MAINNET NODE EXPORT: currently at block %v of %v (%.1f%%)", i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
+				}
+				break
+
+			}
+			return nil
+		})
 	}
+
+	gOuter.Wait()
 
 }
 
-func getBlock(url string, httpClient *http.Client, number int) []byte {
+func sendMessage(content, webhookUrl, username string) {
+
+	message := discordwebhook.Message{
+		Username: &username,
+		Content:  &content,
+	}
+
+	err := discordwebhook.SendMessage(webhookUrl, message)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+func getBlock(url string, httpClient *http.Client, number int) ([]byte, error) {
 	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":1}`, number))
 
 	r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		logrus.Fatalf("error creating post request: %v", err)
+		return nil, fmt.Errorf("error creating post request: %v", err)
 	}
 
 	r.Header.Add("Content-Type", "application/json")
 
 	res, err := httpClient.Do(r)
 	if err != nil {
-		logrus.Fatalf("error executing post request: %v", err)
+		return nil, fmt.Errorf("error executing post request: %v", err)
 	}
 
 	defer res.Body.Close()
 
 	resString, err := io.ReadAll(res.Body)
 	if err != nil {
-		logrus.Fatalf("error reading request body: %v", err)
+		return nil, fmt.Errorf("error reading request body: %v", err)
 	}
 
-	return compress(resString)
+	if strings.Contains(string(resString), `"error":{"code"`) {
+		return nil, fmt.Errorf("rpc error: %s", resString)
+	}
+
+	return compress(resString), nil
 }
 
-func getReceipts(url string, httpClient *http.Client, number int) []byte {
+func getReceipts(url string, httpClient *http.Client, number int) ([]byte, error) {
 	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockReceipts","params":["0x%x"],"id":1}`, number))
 
 	r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		logrus.Fatalf("error creating post request: %v", err)
+		return nil, fmt.Errorf("error creating post request: %v", err)
 	}
 
 	r.Header.Add("Content-Type", "application/json")
 
 	res, err := httpClient.Do(r)
 	if err != nil {
-		logrus.Fatalf("error executing post request: %v", err)
+		return nil, fmt.Errorf("error executing post request: %v", err)
 	}
 
 	defer res.Body.Close()
 
 	resString, err := io.ReadAll(res.Body)
 	if err != nil {
-		logrus.Fatalf("error reading request body: %v", err)
+		return nil, fmt.Errorf("error reading request body: %v", err)
 	}
 
-	return compress(resString)
+	if strings.Contains(string(resString), `"error":{"code"`) {
+		return nil, fmt.Errorf("rpc error: %s", resString)
+	}
+
+	return compress(resString), nil
 }
 
-func getTraces(url string, httpClient *http.Client, number int) []byte {
+func getTraces(url string, httpClient *http.Client, number int) ([]byte, error) {
+
+	if number == 0 { // genesis block can't be traced
+		return []byte{}, nil
+	}
+
 	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"debug_traceBlockByNumber","params":["0x%x", {"tracer": "callTracer"}],"id":1}`, number))
 
 	r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		logrus.Fatalf("error creating post request: %v", err)
+		return nil, fmt.Errorf("error creating post request: %v", err)
 	}
 
 	r.Header.Add("Content-Type", "application/json")
 
 	res, err := httpClient.Do(r)
 	if err != nil {
-		logrus.Fatalf("error executing post request: %v", err)
+		return nil, fmt.Errorf("error executing post request: %v", err)
 	}
 
 	defer res.Body.Close()
 
 	resString, err := io.ReadAll(res.Body)
 	if err != nil {
-		logrus.Fatalf("error reading request body: %v", err)
+		return nil, fmt.Errorf("error reading request body: %v", err)
 	}
 
-	return compress(resString)
+	if strings.Contains(string(resString), `"error":{"code"`) {
+		return nil, fmt.Errorf("rpc error: %s", resString)
+	}
+
+	return compress(resString), nil
 }
 
 func printCall(calls []types.Eth1RpcTraceCall, txHash string) {
@@ -199,4 +292,8 @@ func compress(src []byte) []byte {
 		logrus.Fatalf("error closing gzip writer: %v", err)
 	}
 	return buf.Bytes()
+}
+
+func getBlockKey(blockNumber int, chainId uint64) string {
+	return fmt.Sprintf("%d:%12d", chainId, MAX_EL_BLOCK_NUMBER-blockNumber)
 }
