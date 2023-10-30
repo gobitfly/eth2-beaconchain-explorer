@@ -136,7 +136,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 }
 
 // Return given block, next block number and error
-// If block doesn't exists nil, 0, nil is returned
+// If nextBlock doesn't exists nil, 0, nil is returned
 func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
 	if err != nil {
@@ -144,6 +144,10 @@ func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	}
 	if block == nil {
 		return nil, 0, fmt.Errorf("block %d not found", number)
+	}
+
+	if number == 0 {
+		return block, 0, nil
 	}
 
 	nextBlock := uint64(0)
