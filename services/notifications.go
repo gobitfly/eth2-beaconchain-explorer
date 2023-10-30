@@ -1299,20 +1299,29 @@ func (n *validatorProposalNotification) GetEventName() types.EventName {
 }
 
 func (n *validatorProposalNotification) GetInfo(includeUrl bool) string {
-	var generalPart = ""
-	switch n.Status {
-	case 0:
-		generalPart = fmt.Sprintf(`New scheduled block proposal at slot <a href="https://%[1]v/slot/%[3]v">%[3]v</a> for Validator <a href="https://%[1]v/validator/%[2]v">%[2]v</a>.`, utils.Config.Frontend.SiteDomain, n.ValidatorIndex, n.Slot)
-	case 1:
-		generalPart = fmt.Sprintf(`Validator <a href="https://%[1]v/validator/%[2]v">%[2]v</a> proposed block at slot <a href="https://%[1]v/slot/%[3]v">%[3]v</a> with %[4]v %[5]v execution reward.`, utils.Config.Frontend.SiteDomain, n.ValidatorIndex, n.Slot, n.Reward, utils.Config.Frontend.ElCurrency)
-	case 2:
-		generalPart = fmt.Sprintf(`Validator <a href="https://%[1]v/validator/%[2]v">%[2]v</a> missed a block proposal at slot <a href="https://%[1]v/slot/%[3]v">%[3]v</a>.`, utils.Config.Frontend.SiteDomain, n.ValidatorIndex, n.Slot)
-	}
-
 	if includeUrl {
+		var generalPart = ""
+		switch n.Status {
+		case 0:
+			generalPart = fmt.Sprintf(`New scheduled block proposal at slot <a href="https://%[1]v/slot/%[3]v">%[3]v</a> for Validator <a href="https://%[1]v/validator/%[2]v">%[2]v</a>.`, utils.Config.Frontend.SiteDomain, n.ValidatorIndex, n.Slot)
+		case 1:
+			generalPart = fmt.Sprintf(`Validator <a href="https://%[1]v/validator/%[2]v">%[2]v</a> proposed block at slot <a href="https://%[1]v/slot/%[3]v">%[3]v</a> with %[4]v %[5]v execution reward.`, utils.Config.Frontend.SiteDomain, n.ValidatorIndex, n.Slot, n.Reward, utils.Config.Frontend.ElCurrency)
+		case 2:
+			generalPart = fmt.Sprintf(`Validator <a href="https://%[1]v/validator/%[2]v">%[2]v</a> missed a block proposal at slot <a href="https://%[1]v/slot/%[3]v">%[3]v</a>.`, utils.Config.Frontend.SiteDomain, n.ValidatorIndex, n.Slot)
+		}
 		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
-	return generalPart
+
+	switch n.Status {
+	case 0:
+		return fmt.Sprintf(`New scheduled block proposal at slot %[2]v for Validator %[1]v.`, n.ValidatorIndex, n.Slot)
+	case 1:
+		return fmt.Sprintf(`Validator %[1]v proposed block at slot %[2]v with %[3]v %[4]v execution reward.`, n.ValidatorIndex, n.Slot, n.Reward, utils.Config.Frontend.ElCurrency)
+	case 2:
+		return fmt.Sprintf(`Validator %[1]v missed a block proposal at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+	}
+
+	return "" // should never happen
 }
 
 func (n *validatorProposalNotification) GetTitle() string {
