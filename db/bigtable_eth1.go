@@ -424,14 +424,15 @@ func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) b
 		if !strings.Contains(row.Key(), ":B:") {
 			return false
 		}
-		// startTime := time.Now()
+
 		block := types.Eth1BlockIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, &block)
 		if err != nil {
 			logger.Errorf("error could not unmarschal proto object, err: %v", err)
+			return false
 		}
+
 		*blocks = append(*blocks, &block)
-		// logger.Infof("finished processing row from table blocks: %v", time.Since(startTime))
 		return true
 	}
 }
@@ -439,9 +440,9 @@ func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) b
 // GetFullBlocksDescending streams blocks ranging from high to low (both borders are inclusive) in the correct order via a channel.
 // Special handling for block 0 is implemented.
 //
-//	stream: channel the function will use for streaming
-//	high: highest (max) block number
-//	low: lowest (min) block number
+// stream: channel the function will use for streaming
+// high: highest (max) block number
+// low: lowest (min) block number
 func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block, high, low uint64) error {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
@@ -537,7 +538,13 @@ func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit 
 	return blocks, nil
 }
 
-// GetBlocksDescending gets blocks starting at block start
+// GetBlocksDescending gets a given amount of Eth1BlockIndexed starting at block start from tableData
+//
+//	start: highest block number to be returned
+//	limit: amount of blocks to be returned
+//		limit must be > 0 and <= start + 1:
+//		- if limit = start, block 0 will of course not be included
+//		- if limit = start + 1, block 0 will be included as last block (special handling for broken padding is implemented)
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
@@ -548,40 +555,47 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	})
 	defer tmr.Stop()
 
-	if start < 1 || limit < 1 || limit > start {
-		return nil, fmt.Errorf("invalid block range provided (start: %v, limit: %v)", start, limit)
+	if limit == 0 || limit > start+1 {
+		return nil, fmt.Errorf("error invalid parameter combination of start [%v] and limit [%v]", start, limit)
 	}
 
-	startPadded := reversedPaddedBlockNumber(start)
-	endPadded := reversedPaddedBlockNumber(start - limit)
-
-	// logger.Info(start, start-limit)
-	// logger.Info(startPadded, " ", endPadded)
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	startKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, startPadded)
-	endKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, endPadded)
-
-	rowRange := gcp_bigtable.NewRange(startKey, endKey) //gcp_bigtable.PrefixRange("1:1000000000")
-
-	if limit >= start { // handle retrieval of the first blocks
-		rowRange = gcp_bigtable.InfiniteRange(startKey)
-	}
-
-	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
-
-	blocks := make([]*types.Eth1BlockIndexed, 0, 100)
+	blocks := make([]*types.Eth1BlockIndexed, 0, limit)
 
 	rowHandler := getBlockHandler(&blocks)
+	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
 
-	// startTime := time.Now()
-	err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
-	if err != nil {
-		return nil, err
+	if start > 0 {
+		startKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(start))
+		endKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(start-limit))
+		if limit >= start {
+			// don't include the broken block 0 in the range
+			endKey = fmt.Sprintf("%s:B:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(1)) // add \x00 to make the range inclusive
+		}
+
+		rowRange := gcp_bigtable.NewRange(startKey, endKey)
+
+		err := bigtable.tableData.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// logger.Infof("finished getting blocks from table data: %v", time.Since(startTime))
+	if start == 0 || limit == start+1 {
+		// special handling for block 0 with broken padding (see reversedPaddedBlockNumber)
+		row, err := bigtable.tableData.ReadRow(ctx, fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(0)), rowFilter)
+		if err != nil {
+			return nil, err
+		}
+
+		// rowHandler will add block 0 to blocks if it is found
+		if !rowHandler(row) {
+			return nil, fmt.Errorf("error could not read block 0")
+		}
+	}
+
 	return blocks, nil
 }
 
