@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/donovanhide/eventsource"
 	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"golang.org/x/sync/errgroup"
 
@@ -47,45 +46,6 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 	client.assignmentsCache, _ = lru.New(10)
 
 	return client, nil
-}
-
-func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
-	blkCh := make(chan *types.Block, 10)
-	go func() {
-		stream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
-
-		if err != nil {
-			utils.LogFatal(err, "getting eventsource stream error", 0)
-		}
-		defer stream.Close()
-
-		for {
-			select {
-			// It is important to register to Errors, otherwise the stream does not reconnect if the connection was lost
-			case err := <-stream.Errors:
-				utils.LogError(err, "Lighthouse connection error (will automatically retry to connect)", 0)
-			case e := <-stream.Events:
-				// logger.Infof("retrieved %v via event stream", e.Data())
-				var parsed StreamedBlockEventData
-				err = json.Unmarshal([]byte(e.Data()), &parsed)
-				if err != nil {
-					logger.Warnf("failed to decode block event: %v", err)
-					continue
-				}
-
-				logger.Infof("retrieving data for slot %v", parsed.Slot)
-				block, err := lc.GetBlockBySlot(uint64(parsed.Slot))
-				if err != nil {
-					logger.Warnf("failed to fetch block for slot %d: %v", uint64(parsed.Slot), err)
-					continue
-				}
-				logger.Infof("retrieved block for slot %v", parsed.Slot)
-				// logger.Infof("pushing block %v", blk.Slot)
-				blkCh <- block
-			}
-		}
-	}()
-	return blkCh
 }
 
 // GetChainHead gets the chain head from Lighthouse
