@@ -43,6 +43,7 @@ var opts = struct {
 	DataConcurrency     uint64
 	Transformers        string
 	Table               string
+	Columns             string
 	Family              string
 	Key                 string
 	ValidatorNameRanges string
@@ -51,7 +52,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -68,6 +69,7 @@ func main() {
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
+	flag.StringVar(&opts.Columns, "columns", "", "Comma separated list of columns that should be affected by the command")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -355,6 +357,8 @@ func main() {
 		if err != nil {
 			logrus.Fatal(err)
 		}
+	case "export-stats-totals":
+		exportStatsTotals(opts.Columns, opts.StartDay, opts.EndDay, opts.DataConcurrency)
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -1001,4 +1005,118 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 	}
 
 	logrus.Info("historic price update run completed")
+}
+
+func exportStatsTotals(columns string, dayStart, dayEnd, concurrency uint64) {
+	start := time.Now()
+	logrus.Infof("exporting stats totals for columns '%v'", columns)
+
+	// validate columns input
+	columnsSlice := strings.Split(columns, ",")
+	validColumns := []string{
+		"cl_rewards_gwei_total",
+		"el_rewards_wei_total",
+		"mev_rewards_wei_total",
+		"missed_attestations_total",
+		"participated_sync_total",
+		"missed_sync_total",
+		"orphaned_sync_total",
+		"withdrawals_total",
+		"withdrawals_amount_total",
+	}
+
+OUTER:
+	for _, c := range columnsSlice {
+		for _, vc := range validColumns {
+			if c == vc {
+				// valid column found, continue to next column from input
+				continue OUTER
+			}
+		}
+		// no valid column matched, exit with error
+		utils.LogFatal(nil, "invalid column provided, please use a valid one", 0, map[string]interface{}{
+			"usedColumn":   c,
+			"validColumns": validColumns,
+		})
+	}
+
+	// build insert query from input columns
+	var totalClauses []string
+	var conflictClauses []string
+
+	for _, col := range columnsSlice {
+		totalClause := fmt.Sprintf("COALESCE(vs1.%s, 0) + COALESCE(vs2.%s, 0)", strings.TrimSuffix(col, "_total"), col)
+		totalClauses = append(totalClauses, totalClause)
+
+		conflictClause := fmt.Sprintf("%s = excluded.%s", col, col)
+		conflictClauses = append(conflictClauses, conflictClause)
+	}
+
+	insertQuery := fmt.Sprintf(`
+		INSERT INTO validator_stats (validatorindex, day, %s)
+		SELECT
+			vs1.validatorindex,
+			vs1.day,
+			%s
+		FROM validator_stats vs1
+		LEFT JOIN validator_stats vs2
+		ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex
+		WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex < $3
+		ON CONFLICT (validatorindex, day) DO UPDATE SET %s;`,
+		strings.Join(columnsSlice, ",\n\t"),
+		strings.Join(totalClauses, ",\n\t\t"),
+		strings.Join(conflictClauses, ",\n\t"))
+
+	for day := dayStart; day <= dayEnd; day++ {
+		timeDay := time.Now()
+		logrus.Infof("exporting total sync and for columns %v for day %v", columns, day)
+
+		// get max validator index for day
+		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(day + 1)
+		maxValidatorIndex, err := db.BigtableClient.GetMaxValidatorindexForEpoch(firstEpoch)
+		if err != nil {
+			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: could not get max validator index", 0, map[string]interface{}{
+				"epoch": firstEpoch,
+			})
+		} else if maxValidatorIndex == uint64(0) {
+			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: no validator found", 0, map[string]interface{}{
+				"epoch": firstEpoch,
+			})
+		}
+
+		ctx := context.Background()
+		g, gCtx := errgroup.WithContext(ctx)
+		g.SetLimit(int(concurrency))
+
+		batchSize := 1000
+
+		// insert stats totals for each batch of validators
+		for b := 0; b <= int(maxValidatorIndex); b += batchSize {
+			start := b
+			end := b + batchSize // exclusive
+			if int(maxValidatorIndex) < end {
+				end = int(maxValidatorIndex)
+			}
+
+			g.Go(func() error {
+				select {
+				case <-gCtx.Done():
+					return gCtx.Err()
+				default:
+				}
+
+				_, err = db.WriterDb.Exec(insertQuery, day, start, end)
+				return err
+			})
+		}
+		if err = g.Wait(); err != nil {
+			utils.LogFatal(err, "error exporting stats totals", 0, map[string]interface{}{
+				"day":     day,
+				"columns": columns,
+			})
+		}
+		logrus.Infof("finished exporting stats totals for columns '%v for day %v, took %v", columns, day, time.Since(timeDay))
+	}
+
+	logrus.Infof("finished all exporting stats totals for columns '%v' for days %v - %v, took %v", columns, dayStart, dayEnd, time.Since(start))
 }
