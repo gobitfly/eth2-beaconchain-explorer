@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -823,10 +824,12 @@ func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.
 	logrus.Info("delete completed")
 }
 
-// Let's find blocks that are missing in bt and index them.
+// Goes through the tableData table and checks what blocks in the given range from [start] to [end] are missing and exports/indexes the missing ones
+//
+//	Both [start] and [end] are inclusive
+//	Pass math.MaxInt64 as [end] to export from [start] to the last block in the blocks table
 func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient) {
-
-	if end == 0 {
+	if end == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
 			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
@@ -835,48 +838,65 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 		end = uint64(lastBlockFromBlocksTable)
 	}
 
-	batchSize := uint64(10000)
-	if start == 0 {
-		start = 1
-	}
-	for i := start; i < end; i += batchSize {
-		targetCount := batchSize
-		if i+targetCount >= end {
-			targetCount = end - i
-		}
-		to := i + targetCount - 1
+	errFields := map[string]interface{}{
+		"start": start,
+		"end":   end}
 
-		list, err := bt.GetBlocksDescending(uint64(to), uint64(targetCount))
+	batchSize := uint64(10000)
+	for from := start; from < end; from += batchSize {
+		targetCount := batchSize
+		if from+targetCount >= end {
+			targetCount = end - from + 1
+		}
+		to := from + targetCount - 1
+
+		errFields["from"] = from
+		errFields["to"] = to
+		errFields["targetCount"] = targetCount
+
+		list, err := bt.GetBlocksDescending(to, targetCount)
 		if err != nil {
-			utils.LogError(err, "can not retrieve blocks via GetBlocksDescending from bigtable", 0)
+			utils.LogError(err, "error retrieving blocks from tableData", 0, errFields)
 			return
 		}
-		if uint64(len(list)) == targetCount {
-			logrus.Infof("found all blocks [%v]->[%v]", i, to)
-		} else {
-			logrus.Infof("oh no we are missing some blocks [%v]->[%v]", i, to)
-			blocksMap := make(map[uint64]bool)
-			for _, item := range list {
-				blocksMap[item.Number] = true
-			}
-			for j := uint64(i); j <= uint64(to); j++ {
-				if !blocksMap[j] {
-					logrus.Infof("block [%v] not found so we need to index it", j)
-					if _, err := db.BigtableClient.GetBlockFromBlocksTable(j); err != nil {
-						logrus.Infof("could not load [%v] from blocks table so we need to fetch it from the node and save it", j)
-						bc, _, err := client.GetBlock(int64(j), "parity/geth")
-						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error getting block: %v from ethereum node", j), 0)
-						}
-						err = bt.SaveBlock(bc)
-						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error saving block: %v ", j), 0)
-						}
-					}
 
-					IndexOldEth1Blocks(j, j, 1, 1, "all", bt, client)
+		receivedLen := uint64(len(list))
+		if receivedLen == targetCount {
+			logrus.Infof("found all blocks [%v]->[%v], skipping batch", from, to)
+			continue
+		}
+
+		logrus.Infof("%v blocks are missing from [%v]->[%v]", targetCount-receivedLen, from, to)
+
+		blocksMap := make(map[uint64]bool)
+		for _, item := range list {
+			blocksMap[item.Number] = true
+		}
+
+		for block := from; block <= to; block++ {
+			if blocksMap[block] {
+				// block already saved, skip
+				continue
+			}
+
+			logrus.Infof("block [%v] not found, will index it", block)
+			if _, err := db.BigtableClient.GetBlockFromBlocksTable(block); err != nil {
+				logrus.Infof("could not load [%v] from blocks table, will try to fetch it from the node and save it", block)
+
+				bc, _, err := client.GetBlock(int64(block), "parity/geth")
+				if err != nil {
+					utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0)
+					return
+				}
+
+				err = bt.SaveBlock(bc)
+				if err != nil {
+					utils.LogError(err, fmt.Sprintf("error saving block: %v ", block), 0)
+					return
 				}
 			}
+
+			IndexOldEth1Blocks(block, block, 1, 1, "all", bt, client)
 		}
 	}
 }
