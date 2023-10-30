@@ -67,6 +67,10 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			return nil
 		}
 		t := b.GetTransactions()
+		txIsContractList, err := db.BigtableClient.GetAddressIsContractAtBlock(b)
+		if err != nil {
+			utils.LogError(err, "error getting contract states", 0)
+		}
 
 		// retrieve metadata
 		names := make(map[string]string)
@@ -83,7 +87,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 		}
 
 		var wg errgroup.Group
-		for _, v := range t {
+		for i, v := range t {
 			wg.Go(func() error {
 				method := "Transfer"
 				{
@@ -96,7 +100,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				}
 				if v.GetTo() == nil {
 					v.To = v.ContractAddress
-					names[string(v.To)] = "Contract Creation"
+					names[string(v.GetTo())] = "Contract Creation"
 				}
 				tableData = append(tableData, []interface{}{
 					utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
@@ -104,7 +108,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
-					utils.FormatAddressWithLimits(v.GetTo(), names[string(v.GetTo())], v.GetInvokesContract(), "address", 15, 20, true),
+					utils.FormatAddressWithLimits(v.GetTo(), names[string(v.GetTo())], names[string(v.GetTo())] == "Contract Creation" || txIsContractList[i], "address", 15, 20, true),
 					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 				})

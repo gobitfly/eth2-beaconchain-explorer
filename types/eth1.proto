@@ -49,7 +49,6 @@ message Eth1Transaction {
     uint64 gas = 6;
     bytes value = 7;
     bytes data = 8;
-    bool invokes_contract = 9;
     bytes to = 12;
     bytes from = 13;
 
@@ -77,6 +76,18 @@ message Eth1Transaction {
     // EIP 4844 receipt
     bytes blob_gas_price = 27;
     uint64 blob_gas_used = 28;
+}
+
+message IsContractUpdate {
+    bool is_contract = 1;
+    google.protobuf.Timestamp time = 2;
+    uint64 block_number = 3;
+    uint64 transaction_index = 4;
+    uint64 trace_index = 5;
+}
+
+message IsContractHistory {
+    repeated IsContractUpdate contract_state_updates = 1;
 }
 
 message AccessList {
@@ -162,6 +173,7 @@ message Eth1TransactionIndexed {
     bytes tx_fee = 8;
     bytes gas_price = 9;
     bool is_contract_creation = 10;
+    // unused, should mark reserved!
     bool invokes_contract = 11;
     string error_msg = 12;
 
@@ -192,6 +204,7 @@ message Eth1BlobTransactionIndexed {
     bytes gas_price = 8;
     bytes blob_tx_fee = 9;
     bytes blob_gas_price = 10;
+    // unused, should mark reserved!
     bool invokes_contract = 11;
     string error_msg = 12;
     repeated bytes blob_versioned_hashes = 13;

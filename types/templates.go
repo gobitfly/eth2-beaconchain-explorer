@@ -1594,6 +1594,13 @@ type Eth1AddressPageData struct {
 	Tabs               []Eth1AddressPageTabs
 }
 
+type IsContractAtRequest struct {
+	Address  string
+	Block    int64
+	TxIdx    int64
+	TraceIdx int64
+}
+
 type Eth1AddressPageTabs struct {
 	Id   string
 	Href string

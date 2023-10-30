@@ -314,7 +314,6 @@ type Eth1Transaction struct {
 	Gas                  uint64        `protobuf:"varint,6,opt,name=gas,proto3" json:"gas,omitempty"`
 	Value                []byte        `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
 	Data                 []byte        `protobuf:"bytes,8,opt,name=data,proto3" json:"data,omitempty"`
-	InvokesContract      bool          `protobuf:"varint,9,opt,name=invokes_contract,json=invokesContract,proto3" json:"invokes_contract,omitempty"`
 	To                   []byte        `protobuf:"bytes,12,opt,name=to,proto3" json:"to,omitempty"`
 	From                 []byte        `protobuf:"bytes,13,opt,name=from,proto3" json:"from,omitempty"`
 	ChainId              []byte        `protobuf:"bytes,14,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
@@ -424,13 +423,6 @@ func (x *Eth1Transaction) GetData() []byte {
 		return x.Data
 	}
 	return nil
-}
-
-func (x *Eth1Transaction) GetInvokesContract() bool {
-	if x != nil {
-		return x.InvokesContract
-	}
-	return false
 }
 
 func (x *Eth1Transaction) GetTo() []byte {
@@ -552,6 +544,132 @@ func (x *Eth1Transaction) GetBlobGasUsed() uint64 {
 	return 0
 }
 
+type IsContractUpdate struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	IsContract       bool                 `protobuf:"varint,1,opt,name=is_contract,json=isContract,proto3" json:"is_contract,omitempty"`
+	Time             *timestamp.Timestamp `protobuf:"bytes,2,opt,name=time,proto3" json:"time,omitempty"`
+	BlockNumber      uint64               `protobuf:"varint,3,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
+	TransactionIndex uint64               `protobuf:"varint,4,opt,name=transaction_index,json=transactionIndex,proto3" json:"transaction_index,omitempty"`
+	TraceIndex       uint64               `protobuf:"varint,5,opt,name=trace_index,json=traceIndex,proto3" json:"trace_index,omitempty"`
+}
+
+func (x *IsContractUpdate) Reset() {
+	*x = IsContractUpdate{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_eth1_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *IsContractUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IsContractUpdate) ProtoMessage() {}
+
+func (x *IsContractUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_eth1_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IsContractUpdate.ProtoReflect.Descriptor instead.
+func (*IsContractUpdate) Descriptor() ([]byte, []int) {
+	return file_eth1_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *IsContractUpdate) GetIsContract() bool {
+	if x != nil {
+		return x.IsContract
+	}
+	return false
+}
+
+func (x *IsContractUpdate) GetTime() *timestamp.Timestamp {
+	if x != nil {
+		return x.Time
+	}
+	return nil
+}
+
+func (x *IsContractUpdate) GetBlockNumber() uint64 {
+	if x != nil {
+		return x.BlockNumber
+	}
+	return 0
+}
+
+func (x *IsContractUpdate) GetTransactionIndex() uint64 {
+	if x != nil {
+		return x.TransactionIndex
+	}
+	return 0
+}
+
+func (x *IsContractUpdate) GetTraceIndex() uint64 {
+	if x != nil {
+		return x.TraceIndex
+	}
+	return 0
+}
+
+type IsContractHistory struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ContractStateUpdates []*IsContractUpdate `protobuf:"bytes,1,rep,name=contract_state_updates,json=contractStateUpdates,proto3" json:"contract_state_updates,omitempty"`
+}
+
+func (x *IsContractHistory) Reset() {
+	*x = IsContractHistory{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_eth1_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *IsContractHistory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IsContractHistory) ProtoMessage() {}
+
+func (x *IsContractHistory) ProtoReflect() protoreflect.Message {
+	mi := &file_eth1_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IsContractHistory.ProtoReflect.Descriptor instead.
+func (*IsContractHistory) Descriptor() ([]byte, []int) {
+	return file_eth1_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *IsContractHistory) GetContractStateUpdates() []*IsContractUpdate {
+	if x != nil {
+		return x.ContractStateUpdates
+	}
+	return nil
+}
+
 type AccessList struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -564,7 +682,7 @@ type AccessList struct {
 func (x *AccessList) Reset() {
 	*x = AccessList{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[3]
+		mi := &file_eth1_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -577,7 +695,7 @@ func (x *AccessList) String() string {
 func (*AccessList) ProtoMessage() {}
 
 func (x *AccessList) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[3]
+	mi := &file_eth1_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +708,7 @@ func (x *AccessList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccessList.ProtoReflect.Descriptor instead.
 func (*AccessList) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{3}
+	return file_eth1_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AccessList) GetAddress() []byte {
@@ -621,7 +739,7 @@ type Eth1Log struct {
 func (x *Eth1Log) Reset() {
 	*x = Eth1Log{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[4]
+		mi := &file_eth1_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -634,7 +752,7 @@ func (x *Eth1Log) String() string {
 func (*Eth1Log) ProtoMessage() {}
 
 func (x *Eth1Log) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[4]
+	mi := &file_eth1_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -647,7 +765,7 @@ func (x *Eth1Log) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1Log.ProtoReflect.Descriptor instead.
 func (*Eth1Log) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{4}
+	return file_eth1_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Eth1Log) GetAddress() []byte {
@@ -694,7 +812,7 @@ type Eth1InternalTransaction struct {
 func (x *Eth1InternalTransaction) Reset() {
 	*x = Eth1InternalTransaction{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[5]
+		mi := &file_eth1_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -707,7 +825,7 @@ func (x *Eth1InternalTransaction) String() string {
 func (*Eth1InternalTransaction) ProtoMessage() {}
 
 func (x *Eth1InternalTransaction) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[5]
+	mi := &file_eth1_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -720,7 +838,7 @@ func (x *Eth1InternalTransaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1InternalTransaction.ProtoReflect.Descriptor instead.
 func (*Eth1InternalTransaction) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{5}
+	return file_eth1_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Eth1InternalTransaction) GetType() string {
@@ -800,7 +918,7 @@ type Eth1BlockIndexed struct {
 func (x *Eth1BlockIndexed) Reset() {
 	*x = Eth1BlockIndexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[6]
+		mi := &file_eth1_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -813,7 +931,7 @@ func (x *Eth1BlockIndexed) String() string {
 func (*Eth1BlockIndexed) ProtoMessage() {}
 
 func (x *Eth1BlockIndexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[6]
+	mi := &file_eth1_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -826,7 +944,7 @@ func (x *Eth1BlockIndexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1BlockIndexed.ProtoReflect.Descriptor instead.
 func (*Eth1BlockIndexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{6}
+	return file_eth1_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Eth1BlockIndexed) GetHash() []byte {
@@ -994,7 +1112,7 @@ type Eth1UncleIndexed struct {
 func (x *Eth1UncleIndexed) Reset() {
 	*x = Eth1UncleIndexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[7]
+		mi := &file_eth1_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1007,7 +1125,7 @@ func (x *Eth1UncleIndexed) String() string {
 func (*Eth1UncleIndexed) ProtoMessage() {}
 
 func (x *Eth1UncleIndexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[7]
+	mi := &file_eth1_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1020,7 +1138,7 @@ func (x *Eth1UncleIndexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1UncleIndexed.ProtoReflect.Descriptor instead.
 func (*Eth1UncleIndexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{7}
+	return file_eth1_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Eth1UncleIndexed) GetBlockNumber() uint64 {
@@ -1095,7 +1213,7 @@ type Eth1WithdrawalIndexed struct {
 func (x *Eth1WithdrawalIndexed) Reset() {
 	*x = Eth1WithdrawalIndexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[8]
+		mi := &file_eth1_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1108,7 +1226,7 @@ func (x *Eth1WithdrawalIndexed) String() string {
 func (*Eth1WithdrawalIndexed) ProtoMessage() {}
 
 func (x *Eth1WithdrawalIndexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[8]
+	mi := &file_eth1_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1121,7 +1239,7 @@ func (x *Eth1WithdrawalIndexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1WithdrawalIndexed.ProtoReflect.Descriptor instead.
 func (*Eth1WithdrawalIndexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{8}
+	return file_eth1_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Eth1WithdrawalIndexed) GetBlockNumber() uint64 {
@@ -1181,8 +1299,9 @@ type Eth1TransactionIndexed struct {
 	TxFee              []byte               `protobuf:"bytes,8,opt,name=tx_fee,json=txFee,proto3" json:"tx_fee,omitempty"`
 	GasPrice           []byte               `protobuf:"bytes,9,opt,name=gas_price,json=gasPrice,proto3" json:"gas_price,omitempty"`
 	IsContractCreation bool                 `protobuf:"varint,10,opt,name=is_contract_creation,json=isContractCreation,proto3" json:"is_contract_creation,omitempty"`
-	InvokesContract    bool                 `protobuf:"varint,11,opt,name=invokes_contract,json=invokesContract,proto3" json:"invokes_contract,omitempty"`
-	ErrorMsg           string               `protobuf:"bytes,12,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
+	// unused, should mark reserved!
+	InvokesContract bool   `protobuf:"varint,11,opt,name=invokes_contract,json=invokesContract,proto3" json:"invokes_contract,omitempty"`
+	ErrorMsg        string `protobuf:"bytes,12,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
 	// EIP 4844
 	BlobTxFee    []byte `protobuf:"bytes,13,opt,name=blob_tx_fee,json=blobTxFee,proto3" json:"blob_tx_fee,omitempty"`
 	BlobGasPrice []byte `protobuf:"bytes,14,opt,name=blob_gas_price,json=blobGasPrice,proto3" json:"blob_gas_price,omitempty"`
@@ -1191,7 +1310,7 @@ type Eth1TransactionIndexed struct {
 func (x *Eth1TransactionIndexed) Reset() {
 	*x = Eth1TransactionIndexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[9]
+		mi := &file_eth1_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1204,7 +1323,7 @@ func (x *Eth1TransactionIndexed) String() string {
 func (*Eth1TransactionIndexed) ProtoMessage() {}
 
 func (x *Eth1TransactionIndexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[9]
+	mi := &file_eth1_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1217,7 +1336,7 @@ func (x *Eth1TransactionIndexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1TransactionIndexed.ProtoReflect.Descriptor instead.
 func (*Eth1TransactionIndexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{9}
+	return file_eth1_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Eth1TransactionIndexed) GetHash() []byte {
@@ -1335,7 +1454,7 @@ type Eth1InternalTransactionIndexed struct {
 func (x *Eth1InternalTransactionIndexed) Reset() {
 	*x = Eth1InternalTransactionIndexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[10]
+		mi := &file_eth1_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1348,7 +1467,7 @@ func (x *Eth1InternalTransactionIndexed) String() string {
 func (*Eth1InternalTransactionIndexed) ProtoMessage() {}
 
 func (x *Eth1InternalTransactionIndexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[10]
+	mi := &file_eth1_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1361,7 +1480,7 @@ func (x *Eth1InternalTransactionIndexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1InternalTransactionIndexed.ProtoReflect.Descriptor instead.
 func (*Eth1InternalTransactionIndexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{10}
+	return file_eth1_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Eth1InternalTransactionIndexed) GetParentHash() []byte {
@@ -1419,25 +1538,26 @@ type Eth1BlobTransactionIndexed struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Hash                []byte               `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
-	BlockNumber         uint64               `protobuf:"varint,2,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
-	Time                *timestamp.Timestamp `protobuf:"bytes,3,opt,name=time,proto3" json:"time,omitempty"`
-	From                []byte               `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`
-	To                  []byte               `protobuf:"bytes,5,opt,name=to,proto3" json:"to,omitempty"`
-	Value               []byte               `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
-	TxFee               []byte               `protobuf:"bytes,7,opt,name=tx_fee,json=txFee,proto3" json:"tx_fee,omitempty"`
-	GasPrice            []byte               `protobuf:"bytes,8,opt,name=gas_price,json=gasPrice,proto3" json:"gas_price,omitempty"`
-	BlobTxFee           []byte               `protobuf:"bytes,9,opt,name=blob_tx_fee,json=blobTxFee,proto3" json:"blob_tx_fee,omitempty"`
-	BlobGasPrice        []byte               `protobuf:"bytes,10,opt,name=blob_gas_price,json=blobGasPrice,proto3" json:"blob_gas_price,omitempty"`
-	InvokesContract     bool                 `protobuf:"varint,11,opt,name=invokes_contract,json=invokesContract,proto3" json:"invokes_contract,omitempty"`
-	ErrorMsg            string               `protobuf:"bytes,12,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
-	BlobVersionedHashes [][]byte             `protobuf:"bytes,13,rep,name=blob_versioned_hashes,json=blobVersionedHashes,proto3" json:"blob_versioned_hashes,omitempty"`
+	Hash         []byte               `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
+	BlockNumber  uint64               `protobuf:"varint,2,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
+	Time         *timestamp.Timestamp `protobuf:"bytes,3,opt,name=time,proto3" json:"time,omitempty"`
+	From         []byte               `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`
+	To           []byte               `protobuf:"bytes,5,opt,name=to,proto3" json:"to,omitempty"`
+	Value        []byte               `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
+	TxFee        []byte               `protobuf:"bytes,7,opt,name=tx_fee,json=txFee,proto3" json:"tx_fee,omitempty"`
+	GasPrice     []byte               `protobuf:"bytes,8,opt,name=gas_price,json=gasPrice,proto3" json:"gas_price,omitempty"`
+	BlobTxFee    []byte               `protobuf:"bytes,9,opt,name=blob_tx_fee,json=blobTxFee,proto3" json:"blob_tx_fee,omitempty"`
+	BlobGasPrice []byte               `protobuf:"bytes,10,opt,name=blob_gas_price,json=blobGasPrice,proto3" json:"blob_gas_price,omitempty"`
+	// unused, should mark reserved!
+	InvokesContract     bool     `protobuf:"varint,11,opt,name=invokes_contract,json=invokesContract,proto3" json:"invokes_contract,omitempty"`
+	ErrorMsg            string   `protobuf:"bytes,12,opt,name=error_msg,json=errorMsg,proto3" json:"error_msg,omitempty"`
+	BlobVersionedHashes [][]byte `protobuf:"bytes,13,rep,name=blob_versioned_hashes,json=blobVersionedHashes,proto3" json:"blob_versioned_hashes,omitempty"`
 }
 
 func (x *Eth1BlobTransactionIndexed) Reset() {
 	*x = Eth1BlobTransactionIndexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[11]
+		mi := &file_eth1_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1450,7 +1570,7 @@ func (x *Eth1BlobTransactionIndexed) String() string {
 func (*Eth1BlobTransactionIndexed) ProtoMessage() {}
 
 func (x *Eth1BlobTransactionIndexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[11]
+	mi := &file_eth1_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1463,7 +1583,7 @@ func (x *Eth1BlobTransactionIndexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1BlobTransactionIndexed.ProtoReflect.Descriptor instead.
 func (*Eth1BlobTransactionIndexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{11}
+	return file_eth1_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Eth1BlobTransactionIndexed) GetHash() []byte {
@@ -1574,7 +1694,7 @@ type Eth1ERC20Indexed struct {
 func (x *Eth1ERC20Indexed) Reset() {
 	*x = Eth1ERC20Indexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[12]
+		mi := &file_eth1_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1587,7 +1707,7 @@ func (x *Eth1ERC20Indexed) String() string {
 func (*Eth1ERC20Indexed) ProtoMessage() {}
 
 func (x *Eth1ERC20Indexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[12]
+	mi := &file_eth1_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1600,7 +1720,7 @@ func (x *Eth1ERC20Indexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1ERC20Indexed.ProtoReflect.Descriptor instead.
 func (*Eth1ERC20Indexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{12}
+	return file_eth1_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Eth1ERC20Indexed) GetParentHash() []byte {
@@ -1669,7 +1789,7 @@ type Eth1ERC721Indexed struct {
 func (x *Eth1ERC721Indexed) Reset() {
 	*x = Eth1ERC721Indexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[13]
+		mi := &file_eth1_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1682,7 +1802,7 @@ func (x *Eth1ERC721Indexed) String() string {
 func (*Eth1ERC721Indexed) ProtoMessage() {}
 
 func (x *Eth1ERC721Indexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[13]
+	mi := &file_eth1_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1695,7 +1815,7 @@ func (x *Eth1ERC721Indexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Eth1ERC721Indexed.ProtoReflect.Descriptor instead.
 func (*Eth1ERC721Indexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{13}
+	return file_eth1_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Eth1ERC721Indexed) GetParentHash() []byte {
@@ -1768,7 +1888,7 @@ type ETh1ERC1155Indexed struct {
 func (x *ETh1ERC1155Indexed) Reset() {
 	*x = ETh1ERC1155Indexed{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_eth1_proto_msgTypes[14]
+		mi := &file_eth1_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1781,7 +1901,7 @@ func (x *ETh1ERC1155Indexed) String() string {
 func (*ETh1ERC1155Indexed) ProtoMessage() {}
 
 func (x *ETh1ERC1155Indexed) ProtoReflect() protoreflect.Message {
-	mi := &file_eth1_proto_msgTypes[14]
+	mi := &file_eth1_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1794,7 +1914,7 @@ func (x *ETh1ERC1155Indexed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ETh1ERC1155Indexed.ProtoReflect.Descriptor instead.
 func (*ETh1ERC1155Indexed) Descriptor() ([]byte, []int) {
-	return file_eth1_proto_rawDescGZIP(), []int{14}
+	return file_eth1_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ETh1ERC1155Indexed) GetParentHash() []byte {
@@ -1918,7 +2038,7 @@ var file_eth1_proto_rawDesc = []byte{
 	0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73,
 	0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12,
 	0x16, 0x0a, 0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0xf5, 0x06, 0x0a, 0x0f, 0x45, 0x74, 0x68, 0x31,
+	0x06, 0x61, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0xca, 0x06, 0x0a, 0x0f, 0x45, 0x74, 0x68, 0x31,
 	0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x74,
 	0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12,
 	0x14, 0x0a, 0x05, 0x6e, 0x6f, 0x6e, 0x63, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05,
@@ -1933,47 +2053,64 @@ var file_eth1_proto_rawDesc = []byte{
 	0x73, 0x12, 0x10, 0x0a, 0x03, 0x67, 0x61, 0x73, 0x18, 0x06, 0x20, 0x01, 0x28, 0x04, 0x52, 0x03,
 	0x67, 0x61, 0x73, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x07, 0x20, 0x01,
 	0x28, 0x0c, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61, 0x74,
-	0x61, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x12, 0x29, 0x0a,
-	0x10, 0x69, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x73, 0x5f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63,
-	0x74, 0x18, 0x09, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0f, 0x69, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x73,
-	0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x74, 0x6f, 0x18, 0x0c,
-	0x20, 0x01, 0x28, 0x0c, 0x52, 0x02, 0x74, 0x6f, 0x12, 0x12, 0x0a, 0x04, 0x66, 0x72, 0x6f, 0x6d,
-	0x18, 0x0d, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x66, 0x72, 0x6f, 0x6d, 0x12, 0x19, 0x0a, 0x08,
-	0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07,
-	0x63, 0x68, 0x61, 0x69, 0x6e, 0x49, 0x64, 0x12, 0x32, 0x0a, 0x0b, 0x61, 0x63, 0x63, 0x65, 0x73,
-	0x73, 0x5f, 0x6c, 0x69, 0x73, 0x74, 0x18, 0x0f, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x74,
-	0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4c, 0x69, 0x73, 0x74, 0x52,
-	0x0a, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x68,
-	0x61, 0x73, 0x68, 0x18, 0x10, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x68, 0x61, 0x73, 0x68, 0x12,
-	0x29, 0x0a, 0x10, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x5f, 0x61, 0x64, 0x64, 0x72,
-	0x65, 0x73, 0x73, 0x18, 0x11, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0f, 0x63, 0x6f, 0x6e, 0x74, 0x72,
-	0x61, 0x63, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x30, 0x0a, 0x14, 0x63, 0x6f,
-	0x6d, 0x6d, 0x75, 0x6c, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x75, 0x73,
-	0x65, 0x64, 0x18, 0x12, 0x20, 0x01, 0x28, 0x04, 0x52, 0x12, 0x63, 0x6f, 0x6d, 0x6d, 0x75, 0x6c,
-	0x61, 0x74, 0x69, 0x76, 0x65, 0x47, 0x61, 0x73, 0x55, 0x73, 0x65, 0x64, 0x12, 0x19, 0x0a, 0x08,
-	0x67, 0x61, 0x73, 0x5f, 0x75, 0x73, 0x65, 0x64, 0x18, 0x13, 0x20, 0x01, 0x28, 0x04, 0x52, 0x07,
-	0x67, 0x61, 0x73, 0x55, 0x73, 0x65, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x6c, 0x6f, 0x67, 0x73, 0x5f,
-	0x62, 0x6c, 0x6f, 0x6f, 0x6d, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x6c, 0x6f, 0x67,
-	0x73, 0x42, 0x6c, 0x6f, 0x6f, 0x6d, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
-	0x18, 0x15, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x1b,
-	0x0a, 0x09, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f, 0x6d, 0x73, 0x67, 0x18, 0x16, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x08, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67, 0x12, 0x22, 0x0a, 0x04, 0x6c,
-	0x6f, 0x67, 0x73, 0x18, 0x17, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x74, 0x79, 0x70, 0x65,
-	0x73, 0x2e, 0x45, 0x74, 0x68, 0x31, 0x4c, 0x6f, 0x67, 0x52, 0x04, 0x6c, 0x6f, 0x67, 0x73, 0x12,
-	0x30, 0x0a, 0x03, 0x69, 0x74, 0x78, 0x18, 0x18, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x74,
-	0x79, 0x70, 0x65, 0x73, 0x2e, 0x45, 0x74, 0x68, 0x31, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61,
-	0x6c, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x03, 0x69, 0x74,
-	0x78, 0x12, 0x2e, 0x0a, 0x14, 0x6d, 0x61, 0x78, 0x5f, 0x66, 0x65, 0x65, 0x5f, 0x70, 0x65, 0x72,
-	0x5f, 0x62, 0x6c, 0x6f, 0x62, 0x5f, 0x67, 0x61, 0x73, 0x18, 0x19, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x10, 0x6d, 0x61, 0x78, 0x46, 0x65, 0x65, 0x50, 0x65, 0x72, 0x42, 0x6c, 0x6f, 0x62, 0x47, 0x61,
-	0x73, 0x12, 0x32, 0x0a, 0x15, 0x62, 0x6c, 0x6f, 0x62, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f,
-	0x6e, 0x65, 0x64, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x65, 0x73, 0x18, 0x1a, 0x20, 0x03, 0x28, 0x0c,
-	0x52, 0x13, 0x62, 0x6c, 0x6f, 0x62, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x65, 0x64, 0x48,
-	0x61, 0x73, 0x68, 0x65, 0x73, 0x12, 0x24, 0x0a, 0x0e, 0x62, 0x6c, 0x6f, 0x62, 0x5f, 0x67, 0x61,
-	0x73, 0x5f, 0x70, 0x72, 0x69, 0x63, 0x65, 0x18, 0x1b, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0c, 0x62,
-	0x6c, 0x6f, 0x62, 0x47, 0x61, 0x73, 0x50, 0x72, 0x69, 0x63, 0x65, 0x12, 0x22, 0x0a, 0x0d, 0x62,
-	0x6c, 0x6f, 0x62, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x75, 0x73, 0x65, 0x64, 0x18, 0x1c, 0x20, 0x01,
-	0x28, 0x04, 0x52, 0x0b, 0x62, 0x6c, 0x6f, 0x62, 0x47, 0x61, 0x73, 0x55, 0x73, 0x65, 0x64, 0x22,
+	0x61, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x12, 0x0e, 0x0a,
+	0x02, 0x74, 0x6f, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x02, 0x74, 0x6f, 0x12, 0x12, 0x0a,
+	0x04, 0x66, 0x72, 0x6f, 0x6d, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x66, 0x72, 0x6f,
+	0x6d, 0x12, 0x19, 0x0a, 0x08, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x0e, 0x20,
+	0x01, 0x28, 0x0c, 0x52, 0x07, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x49, 0x64, 0x12, 0x32, 0x0a, 0x0b,
+	0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x5f, 0x6c, 0x69, 0x73, 0x74, 0x18, 0x0f, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x11, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73,
+	0x4c, 0x69, 0x73, 0x74, 0x52, 0x0a, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4c, 0x69, 0x73, 0x74,
+	0x12, 0x12, 0x0a, 0x04, 0x68, 0x61, 0x73, 0x68, 0x18, 0x10, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04,
+	0x68, 0x61, 0x73, 0x68, 0x12, 0x29, 0x0a, 0x10, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74,
+	0x5f, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x11, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0f,
+	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12,
+	0x30, 0x0a, 0x14, 0x63, 0x6f, 0x6d, 0x6d, 0x75, 0x6c, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x67,
+	0x61, 0x73, 0x5f, 0x75, 0x73, 0x65, 0x64, 0x18, 0x12, 0x20, 0x01, 0x28, 0x04, 0x52, 0x12, 0x63,
+	0x6f, 0x6d, 0x6d, 0x75, 0x6c, 0x61, 0x74, 0x69, 0x76, 0x65, 0x47, 0x61, 0x73, 0x55, 0x73, 0x65,
+	0x64, 0x12, 0x19, 0x0a, 0x08, 0x67, 0x61, 0x73, 0x5f, 0x75, 0x73, 0x65, 0x64, 0x18, 0x13, 0x20,
+	0x01, 0x28, 0x04, 0x52, 0x07, 0x67, 0x61, 0x73, 0x55, 0x73, 0x65, 0x64, 0x12, 0x1d, 0x0a, 0x0a,
+	0x6c, 0x6f, 0x67, 0x73, 0x5f, 0x62, 0x6c, 0x6f, 0x6f, 0x6d, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0c,
+	0x52, 0x09, 0x6c, 0x6f, 0x67, 0x73, 0x42, 0x6c, 0x6f, 0x6f, 0x6d, 0x12, 0x16, 0x0a, 0x06, 0x73,
+	0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x15, 0x20, 0x01, 0x28, 0x04, 0x52, 0x06, 0x73, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x12, 0x1b, 0x0a, 0x09, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x5f, 0x6d, 0x73, 0x67,
+	0x18, 0x16, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67,
+	0x12, 0x22, 0x0a, 0x04, 0x6c, 0x6f, 0x67, 0x73, 0x18, 0x17, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0e,
+	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x45, 0x74, 0x68, 0x31, 0x4c, 0x6f, 0x67, 0x52, 0x04,
+	0x6c, 0x6f, 0x67, 0x73, 0x12, 0x30, 0x0a, 0x03, 0x69, 0x74, 0x78, 0x18, 0x18, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x1e, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x45, 0x74, 0x68, 0x31, 0x49, 0x6e,
+	0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f,
+	0x6e, 0x52, 0x03, 0x69, 0x74, 0x78, 0x12, 0x2e, 0x0a, 0x14, 0x6d, 0x61, 0x78, 0x5f, 0x66, 0x65,
+	0x65, 0x5f, 0x70, 0x65, 0x72, 0x5f, 0x62, 0x6c, 0x6f, 0x62, 0x5f, 0x67, 0x61, 0x73, 0x18, 0x19,
+	0x20, 0x01, 0x28, 0x0c, 0x52, 0x10, 0x6d, 0x61, 0x78, 0x46, 0x65, 0x65, 0x50, 0x65, 0x72, 0x42,
+	0x6c, 0x6f, 0x62, 0x47, 0x61, 0x73, 0x12, 0x32, 0x0a, 0x15, 0x62, 0x6c, 0x6f, 0x62, 0x5f, 0x76,
+	0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x65, 0x64, 0x5f, 0x68, 0x61, 0x73, 0x68, 0x65, 0x73, 0x18,
+	0x1a, 0x20, 0x03, 0x28, 0x0c, 0x52, 0x13, 0x62, 0x6c, 0x6f, 0x62, 0x56, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x65, 0x64, 0x48, 0x61, 0x73, 0x68, 0x65, 0x73, 0x12, 0x24, 0x0a, 0x0e, 0x62, 0x6c,
+	0x6f, 0x62, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x70, 0x72, 0x69, 0x63, 0x65, 0x18, 0x1b, 0x20, 0x01,
+	0x28, 0x0c, 0x52, 0x0c, 0x62, 0x6c, 0x6f, 0x62, 0x47, 0x61, 0x73, 0x50, 0x72, 0x69, 0x63, 0x65,
+	0x12, 0x22, 0x0a, 0x0d, 0x62, 0x6c, 0x6f, 0x62, 0x5f, 0x67, 0x61, 0x73, 0x5f, 0x75, 0x73, 0x65,
+	0x64, 0x18, 0x1c, 0x20, 0x01, 0x28, 0x04, 0x52, 0x0b, 0x62, 0x6c, 0x6f, 0x62, 0x47, 0x61, 0x73,
+	0x55, 0x73, 0x65, 0x64, 0x22, 0xd4, 0x01, 0x0a, 0x10, 0x49, 0x73, 0x43, 0x6f, 0x6e, 0x74, 0x72,
+	0x61, 0x63, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x69, 0x73, 0x5f,
+	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0a,
+	0x69, 0x73, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x12, 0x2e, 0x0a, 0x04, 0x74, 0x69,
+	0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c,
+	0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73,
+	0x74, 0x61, 0x6d, 0x70, 0x52, 0x04, 0x74, 0x69, 0x6d, 0x65, 0x12, 0x21, 0x0a, 0x0c, 0x62, 0x6c,
+	0x6f, 0x63, 0x6b, 0x5f, 0x6e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04,
+	0x52, 0x0b, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x4e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x12, 0x2b, 0x0a,
+	0x11, 0x74, 0x72, 0x61, 0x6e, 0x73, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x6e, 0x64,
+	0x65, 0x78, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x52, 0x10, 0x74, 0x72, 0x61, 0x6e, 0x73, 0x61,
+	0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x12, 0x1f, 0x0a, 0x0b, 0x74, 0x72,
+	0x61, 0x63, 0x65, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x05, 0x20, 0x01, 0x28, 0x04, 0x52,
+	0x0a, 0x74, 0x72, 0x61, 0x63, 0x65, 0x49, 0x6e, 0x64, 0x65, 0x78, 0x22, 0x62, 0x0a, 0x11, 0x49,
+	0x73, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79,
+	0x12, 0x4d, 0x0a, 0x16, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x5f, 0x73, 0x74, 0x61,
+	0x74, 0x65, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x17, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x49, 0x73, 0x43, 0x6f, 0x6e, 0x74, 0x72,
+	0x61, 0x63, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x14, 0x63, 0x6f, 0x6e, 0x74, 0x72,
+	0x61, 0x63, 0x74, 0x53, 0x74, 0x61, 0x74, 0x65, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x73, 0x22,
 	0x49, 0x0a, 0x0a, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x18, 0x0a,
 	0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07,
 	0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x21, 0x0a, 0x0c, 0x73, 0x74, 0x6f, 0x72, 0x61,
@@ -2207,47 +2344,51 @@ func file_eth1_proto_rawDescGZIP() []byte {
 	return file_eth1_proto_rawDescData
 }
 
-var file_eth1_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_eth1_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_eth1_proto_goTypes = []interface{}{
 	(*Eth1Block)(nil),                      // 0: types.Eth1Block
 	(*Eth1Withdrawal)(nil),                 // 1: types.Eth1Withdrawal
 	(*Eth1Transaction)(nil),                // 2: types.Eth1Transaction
-	(*AccessList)(nil),                     // 3: types.AccessList
-	(*Eth1Log)(nil),                        // 4: types.Eth1Log
-	(*Eth1InternalTransaction)(nil),        // 5: types.Eth1InternalTransaction
-	(*Eth1BlockIndexed)(nil),               // 6: types.Eth1BlockIndexed
-	(*Eth1UncleIndexed)(nil),               // 7: types.Eth1UncleIndexed
-	(*Eth1WithdrawalIndexed)(nil),          // 8: types.Eth1WithdrawalIndexed
-	(*Eth1TransactionIndexed)(nil),         // 9: types.Eth1TransactionIndexed
-	(*Eth1InternalTransactionIndexed)(nil), // 10: types.Eth1InternalTransactionIndexed
-	(*Eth1BlobTransactionIndexed)(nil),     // 11: types.Eth1BlobTransactionIndexed
-	(*Eth1ERC20Indexed)(nil),               // 12: types.Eth1ERC20Indexed
-	(*Eth1ERC721Indexed)(nil),              // 13: types.Eth1ERC721Indexed
-	(*ETh1ERC1155Indexed)(nil),             // 14: types.ETh1ERC1155Indexed
-	(*timestamp.Timestamp)(nil),            // 15: google.protobuf.Timestamp
+	(*IsContractUpdate)(nil),               // 3: types.IsContractUpdate
+	(*IsContractHistory)(nil),              // 4: types.IsContractHistory
+	(*AccessList)(nil),                     // 5: types.AccessList
+	(*Eth1Log)(nil),                        // 6: types.Eth1Log
+	(*Eth1InternalTransaction)(nil),        // 7: types.Eth1InternalTransaction
+	(*Eth1BlockIndexed)(nil),               // 8: types.Eth1BlockIndexed
+	(*Eth1UncleIndexed)(nil),               // 9: types.Eth1UncleIndexed
+	(*Eth1WithdrawalIndexed)(nil),          // 10: types.Eth1WithdrawalIndexed
+	(*Eth1TransactionIndexed)(nil),         // 11: types.Eth1TransactionIndexed
+	(*Eth1InternalTransactionIndexed)(nil), // 12: types.Eth1InternalTransactionIndexed
+	(*Eth1BlobTransactionIndexed)(nil),     // 13: types.Eth1BlobTransactionIndexed
+	(*Eth1ERC20Indexed)(nil),               // 14: types.Eth1ERC20Indexed
+	(*Eth1ERC721Indexed)(nil),              // 15: types.Eth1ERC721Indexed
+	(*ETh1ERC1155Indexed)(nil),             // 16: types.ETh1ERC1155Indexed
+	(*timestamp.Timestamp)(nil),            // 17: google.protobuf.Timestamp
 }
 var file_eth1_proto_depIdxs = []int32{
-	15, // 0: types.Eth1Block.time:type_name -> google.protobuf.Timestamp
+	17, // 0: types.Eth1Block.time:type_name -> google.protobuf.Timestamp
 	0,  // 1: types.Eth1Block.uncles:type_name -> types.Eth1Block
 	2,  // 2: types.Eth1Block.transactions:type_name -> types.Eth1Transaction
 	1,  // 3: types.Eth1Block.withdrawals:type_name -> types.Eth1Withdrawal
-	3,  // 4: types.Eth1Transaction.access_list:type_name -> types.AccessList
-	4,  // 5: types.Eth1Transaction.logs:type_name -> types.Eth1Log
-	5,  // 6: types.Eth1Transaction.itx:type_name -> types.Eth1InternalTransaction
-	15, // 7: types.Eth1BlockIndexed.time:type_name -> google.protobuf.Timestamp
-	15, // 8: types.Eth1UncleIndexed.time:type_name -> google.protobuf.Timestamp
-	15, // 9: types.Eth1WithdrawalIndexed.time:type_name -> google.protobuf.Timestamp
-	15, // 10: types.Eth1TransactionIndexed.time:type_name -> google.protobuf.Timestamp
-	15, // 11: types.Eth1InternalTransactionIndexed.time:type_name -> google.protobuf.Timestamp
-	15, // 12: types.Eth1BlobTransactionIndexed.time:type_name -> google.protobuf.Timestamp
-	15, // 13: types.Eth1ERC20Indexed.time:type_name -> google.protobuf.Timestamp
-	15, // 14: types.Eth1ERC721Indexed.time:type_name -> google.protobuf.Timestamp
-	15, // 15: types.ETh1ERC1155Indexed.time:type_name -> google.protobuf.Timestamp
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	5,  // 4: types.Eth1Transaction.access_list:type_name -> types.AccessList
+	6,  // 5: types.Eth1Transaction.logs:type_name -> types.Eth1Log
+	7,  // 6: types.Eth1Transaction.itx:type_name -> types.Eth1InternalTransaction
+	17, // 7: types.IsContractUpdate.time:type_name -> google.protobuf.Timestamp
+	3,  // 8: types.IsContractHistory.contract_state_updates:type_name -> types.IsContractUpdate
+	17, // 9: types.Eth1BlockIndexed.time:type_name -> google.protobuf.Timestamp
+	17, // 10: types.Eth1UncleIndexed.time:type_name -> google.protobuf.Timestamp
+	17, // 11: types.Eth1WithdrawalIndexed.time:type_name -> google.protobuf.Timestamp
+	17, // 12: types.Eth1TransactionIndexed.time:type_name -> google.protobuf.Timestamp
+	17, // 13: types.Eth1InternalTransactionIndexed.time:type_name -> google.protobuf.Timestamp
+	17, // 14: types.Eth1BlobTransactionIndexed.time:type_name -> google.protobuf.Timestamp
+	17, // 15: types.Eth1ERC20Indexed.time:type_name -> google.protobuf.Timestamp
+	17, // 16: types.Eth1ERC721Indexed.time:type_name -> google.protobuf.Timestamp
+	17, // 17: types.ETh1ERC1155Indexed.time:type_name -> google.protobuf.Timestamp
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_eth1_proto_init() }
@@ -2293,7 +2434,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AccessList); i {
+			switch v := v.(*IsContractUpdate); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2305,7 +2446,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1Log); i {
+			switch v := v.(*IsContractHistory); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2317,7 +2458,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1InternalTransaction); i {
+			switch v := v.(*AccessList); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2329,7 +2470,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1BlockIndexed); i {
+			switch v := v.(*Eth1Log); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2341,7 +2482,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1UncleIndexed); i {
+			switch v := v.(*Eth1InternalTransaction); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2353,7 +2494,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1WithdrawalIndexed); i {
+			switch v := v.(*Eth1BlockIndexed); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2365,7 +2506,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1TransactionIndexed); i {
+			switch v := v.(*Eth1UncleIndexed); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2377,7 +2518,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1InternalTransactionIndexed); i {
+			switch v := v.(*Eth1WithdrawalIndexed); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2389,7 +2530,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1BlobTransactionIndexed); i {
+			switch v := v.(*Eth1TransactionIndexed); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2401,7 +2542,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1ERC20Indexed); i {
+			switch v := v.(*Eth1InternalTransactionIndexed); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2413,7 +2554,7 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Eth1ERC721Indexed); i {
+			switch v := v.(*Eth1BlobTransactionIndexed); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2425,6 +2566,30 @@ func file_eth1_proto_init() {
 			}
 		}
 		file_eth1_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Eth1ERC20Indexed); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_eth1_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Eth1ERC721Indexed); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_eth1_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ETh1ERC1155Indexed); i {
 			case 0:
 				return &v.state
@@ -2443,7 +2608,7 @@ func file_eth1_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_eth1_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
