@@ -500,7 +500,7 @@ func GetCurrency(r *http.Request) string {
 func GetCurrencySymbol(r *http.Request) string {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
-		logger.WithError(err).Errorf("error in handlers.GetCurrencySymbol")
+		logger.WithError(err).Tracef("error in handlers.GetCurrencySymbol")
 		return "$"
 	}
 	if cookie.Value == utils.Config.Frontend.MainCurrency {
