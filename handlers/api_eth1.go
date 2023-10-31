@@ -345,8 +345,8 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the ERC20 token balances for a given Ethereum address. Supports pagination.
 // @Produce json
 // @Param address path string true "provide an Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
-// @Param offset path int false "data offset" default(0)
-// @Param limit path int false "data limit (ranging from 1 to 200)" default(200)
+// @Param offset query int false "data offset" default(0)
+// @Param limit query int false "data limit (ranging from 1 to 200)" default(200)
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/address/{address}/erc20tokens [get]
@@ -381,7 +381,7 @@ func ApiEth1AddressERC20Tokens(w http.ResponseWriter, r *http.Request) {
 	limit, err := strconv.ParseInt(limitQuery, 10, 64)
 	if err != nil {
 		limit = int64(db.ECR20TokensPerAddressLimit)
-	} else if limit > int64(db.ECR20TokensPerAddressLimit) {
+	} else if limit < 0 || limit > int64(db.ECR20TokensPerAddressLimit) {
 		limit = int64(db.ECR20TokensPerAddressLimit)
 	}
 
