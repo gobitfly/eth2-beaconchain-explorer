@@ -3272,11 +3272,6 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 						offset--
 						continue
 					}
-
-					// check if token limit is reached (requires that ETH balance is always first)
-					if tokenCount >= limit {
-						break
-					}
 				}
 
 				g.Go(func() error {
@@ -3305,6 +3300,11 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 
 				if !isNativeEth {
 					tokenCount++
+
+					// check if token limit is reached (requires that ETH balance is always first)
+					if tokenCount >= limit {
+						break
+					}
 				}
 			} else if column.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
 				ret.Name = string(column.Value)
