@@ -311,11 +311,6 @@ func main() {
 		apiV1Router.HandleFunc("/execution/{addressIndexOrPubkey}/produced", handlers.ApiETH1AccountProducedBlocks).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/execution/address/{address}", handlers.ApiEth1Address).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/transactions", handlers.ApiEth1AddressTx).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/internalTx", handlers.ApiEth1AddressItx).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/blocks", handlers.ApiEth1AddressBlocks).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/uncles", handlers.ApiEth1AddressUncles).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/tokens", handlers.ApiEth1AddressTokens).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/widget", handlers.GetMobileWidgetStatsGet).Methods("GET")
 		apiV1Router.HandleFunc("/dashboard/widget", handlers.GetMobileWidgetStatsPost).Methods("POST")

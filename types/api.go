@@ -224,11 +224,6 @@ type ApiEth1AddressResponse struct {
 	} `json:"tokens"`
 }
 
-type APIEth1AddressTxResponse struct {
-	Transactions []Eth1TransactionParsed `json:"transactions"`
-	Page         string                  `json:"page"`
-}
-
 type Eth1TransactionParsed struct {
 	Hash               string    `json:"hash,omitempty"`
 	BlockNumber        uint64    `json:"block,omitempty"`
@@ -243,11 +238,6 @@ type Eth1TransactionParsed struct {
 	InvokesContract    bool      `json:"invokes_contract,omitempty"`
 }
 
-type APIEth1AddressItxResponse struct {
-	InternalTransactions []Eth1InternalTransactionParsed `json:"internal_transactions"`
-	Page                 string                          `json:"page"`
-}
-
 type Eth1InternalTransactionParsed struct {
 	ParentHash  string    `json:"parent"`
 	BlockNumber uint64    `json:"block"`
@@ -256,11 +246,6 @@ type Eth1InternalTransactionParsed struct {
 	From        string    `json:"from"`
 	To          string    `json:"to"`
 	Value       string    `json:"value"`
-}
-
-type APIEth1AddressBlockResponse struct {
-	ProducedBlocks []Eth1BlockParsed `json:"blocks"`
-	Page           string            `json:"page"`
 }
 
 type Eth1BlockParsed struct {
@@ -287,11 +272,6 @@ type Eth1BlockParsed struct {
 	// BlockUtilizationChange string `json:"block_utilization_change,omitempty"`
 }
 
-type APIEth1AddressUncleResponse struct {
-	ProducedUncles []Eth1UncleParsed `json:"uncles"`
-	Page           string            `json:"page"`
-}
-
 type Eth1UncleParsed struct {
 	BlockNumber uint64    `json:"block,omitempty"`
 	Number      uint64    `json:"number,omitempty"`
@@ -301,11 +281,6 @@ type Eth1UncleParsed struct {
 	Difficulty  string    `json:"difficulty,omitempty"`
 	Time        time.Time `json:"time,omitempty"`
 	Reward      string    `json:"reward,omitempty"`
-}
-
-type APIEth1TokenResponse struct {
-	TokenTxs []*Eth1TokenTxParsed `json:"transactions"`
-	Page     string               `json:"page"`
 }
 
 type Eth1TokenTxParsed struct {
