@@ -3235,6 +3235,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 		EthBalance: &types.Eth1AddressBalance{
 			Metadata: &types.ERC20Metadata{},
 		},
+		ERC20TokenLimit: ECR20TokensPerAddressLimit,
 	}
 
 	if limit == 0 || limit > ECR20TokensPerAddressLimit {
@@ -3248,6 +3249,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 
 	mux := sync.Mutex{}
 	for _, ri := range row {
+		ret.ERC20TokenLimitExceeded = uint64(len(ri))-1 > ECR20TokensPerAddressLimit // -1 as ETH is not included in the count
 		for _, column := range ri {
 			if strings.HasPrefix(column.Column, ACCOUNT_METADATA_FAMILY+":B:") {
 				column := column
