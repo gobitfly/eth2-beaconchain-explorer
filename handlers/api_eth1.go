@@ -277,11 +277,11 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEth1Address godoc
-// @Summary Gets information about an ethereum address.
+// @Summary Gets information about an Ethereum address.
 // @Tags Execution
-// @Description Returns the ether balance and any token balances for a given ethereum address.
+// @Description Returns the ether balance and any token balances for a given Ethereum address. Amount of different ECR20 tokens is limited to 200. If you need more, use the /execution/address/{address}/erc20tokens endpoint.
 // @Produce json
-// @Param address path string true "provide an ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
+// @Param address path string true "provide an Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
 // @Param token query string false "filter for a specific token by providing a ethereum token contract address"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
@@ -298,7 +298,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	address = strings.ToLower(address)
 
 	if !utils.IsEth1Address(address) {
-		sendErrorResponse(w, r.URL.String(), "error invalid address. A ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		sendErrorResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 		return
 	}
 	token := q.Get("token")
@@ -314,7 +314,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 
 	response := types.ApiEth1AddressResponse{}
 
-	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address))
+	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address), 0, 200)
 	if err != nil {
 		logger.Errorf("error retrieving metadata for address: %v route: %v err: %v", address, r.URL.String(), err)
 		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
@@ -323,28 +323,82 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 
 	response.Ether = utils.WeiBytesToEther(metadata.EthBalance.Balance).String()
 	response.Address = fmt.Sprintf("0x%x", metadata.EthBalance.Address)
-	response.Tokens = []struct {
-		Address  string  `json:"address"`
-		Balance  string  `json:"balance"`
-		Symbol   string  `json:"symbol"`
-		Decimals string  `json:"decimals,omitempty"`
-		Price    float64 `json:"price,omitempty"`
-		Currency string  `json:"currency,omitempty"`
-	}{}
 	for _, m := range metadata.Balances {
 		// if there is a token filter and we are currently not on the right value, skip to the next loop iteration
 		if len(token) > 0 && token != fmt.Sprintf("%x", m.Token) {
 			continue
 		}
 
-		response.Tokens = append(response.Tokens, struct {
-			Address  string  `json:"address"`
-			Balance  string  `json:"balance"`
-			Symbol   string  `json:"symbol"`
-			Decimals string  `json:"decimals,omitempty"`
-			Price    float64 `json:"price,omitempty"`
-			Currency string  `json:"currency,omitempty"`
-		}{
+		response.Tokens = append(response.Tokens, types.ApiEth1AddressERC20TokenResponse{
+			Address: fmt.Sprintf("0x%x", m.Token),
+			Balance: decimal.NewFromBigInt(new(big.Int).SetBytes(m.Balance), 0).Div(decimal.NewFromBigInt(big.NewInt(1), int32(new(big.Int).SetBytes(m.Metadata.Decimals).Int64()))).String(),
+			Symbol:  m.Metadata.Symbol,
+		})
+	}
+
+	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
+}
+
+// ApiEth1AddressERC20Tokens godoc
+// @Summary Returns the ERC20 token balances for a given Ethereum address.
+// @Tags Execution
+// @Description Returns the ERC20 token balances for a given Ethereum address. Supports pagination.
+// @Produce json
+// @Param address path string true "provide an Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
+// @Param limit query string false "Limit the number of results"
+// @Param offset query string false "Offset the number of results"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/execution/address/{address}/erc20tokens [get]
+func ApiEth1AddressERC20Tokens(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
+	vars := mux.Vars(r)
+
+	address := ReplaceEnsNameWithAddress(vars["address"])
+	address = strings.Replace(address, "0x", "", -1)
+	address = strings.ToLower(address)
+
+	if !utils.IsEth1Address(address) {
+		sendErrorResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		return
+	}
+
+	q := r.URL.Query()
+
+	offsetQuery := q.Get("offset")
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	} else if offset < 0 {
+		offset = 0
+	}
+
+	limitQuery := q.Get("limit")
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = int64(db.ECR20TokensPerAddressLimit)
+	} else if limit > int64(db.ECR20TokensPerAddressLimit) {
+		limit = int64(db.ECR20TokensPerAddressLimit)
+	}
+
+	errFields["address"] = address
+	errFields["offset"] = offset
+	errFields["limit"] = limit
+
+	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address), uint64(offset), uint64(limit))
+	if err != nil {
+		utils.LogError(err, "error could not get metadata for address", 0, errFields)
+		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
+		return
+	}
+
+	response := make([]types.ApiEth1AddressERC20TokenResponse, 0, len(metadata.Balances))
+	for _, m := range metadata.Balances {
+		response = append(response, types.ApiEth1AddressERC20TokenResponse{
 			Address: fmt.Sprintf("0x%x", m.Token),
 			Balance: decimal.NewFromBigInt(new(big.Int).SetBytes(m.Balance), 0).Div(decimal.NewFromBigInt(big.NewInt(1), int32(new(big.Int).SetBytes(m.Metadata.Decimals).Int64()))).String(),
 			Symbol:  m.Metadata.Symbol,

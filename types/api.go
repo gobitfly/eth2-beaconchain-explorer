@@ -148,6 +148,10 @@ type ExecutionPerformanceResponse struct {
 	ValidatorIndex   uint64   `json:"validatorindex"`
 }
 
+type ExecutionAddressERC20Response struct {
+	Address string `json:"address"`
+}
+
 type ExecutionBlockApiResponse struct {
 	Hash               string                `json:"blockHash"`
 	BlockNumber        uint64                `json:"blockNumber"`
@@ -211,17 +215,16 @@ func (a DiscordReq) Value() (driver.Value, error) {
 	return json.Marshal(a)
 }
 
-type ApiEth1AddressResponse struct {
+type ApiEth1AddressERC20TokenResponse struct {
 	Address string `json:"address"`
-	Ether   string `json:"ether"`
-	Tokens  []struct {
-		Address  string  `json:"address"`
-		Balance  string  `json:"balance"`
-		Symbol   string  `json:"symbol"`
-		Decimals string  `json:"decimals,omitempty"`
-		Price    float64 `json:"price,omitempty"`
-		Currency string  `json:"currency,omitempty"`
-	} `json:"tokens"`
+	Balance string `json:"balance"`
+	Symbol  string `json:"symbol"`
+}
+
+type ApiEth1AddressResponse struct {
+	Address string                             `json:"address"`
+	Ether   string                             `json:"ether"`
+	Tokens  []ApiEth1AddressERC20TokenResponse `json:"tokens"`
 }
 
 type Eth1TransactionParsed struct {
