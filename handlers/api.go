@@ -1023,12 +1023,14 @@ func getSyncCommitteeInfoForValidators(validators []uint64, period uint64) ([]in
 	rows, err := db.ReaderDb.Query(
 		`SELECT 
 			period, 
+			GREATEST(period*$3, $4) AS start_epoch, 
+			((period+1)*$3)-1 AS end_epoch, 
 			ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
 		FROM sync_committees 
 		WHERE period = $1 AND validatorindex = ANY($2)
 		GROUP BY period`,
-		period,
-		pq.Array(validators),
+		period, pq.Array(validators),
+		utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, utils.Config.Chain.ClConfig.AltairForkEpoch,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not get sync committee for period %d: %w", period, err)
