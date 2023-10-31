@@ -34,10 +34,12 @@ import (
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-redis/redis/v8"
 
-	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
+
+// when changing this, you will have to update the swagger docu for func ApiEth1Address too
+var ECR20TokensPerAddressLimit = uint64(200)
 
 var ErrBlockNotFound = errors.New("block not found")
 
@@ -3207,7 +3209,7 @@ func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, [
 	return keys, pairs, err
 }
 
-func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1AddressMetadata, error) {
+func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, limit uint64) (*types.Eth1AddressMetadata, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -3219,7 +3221,8 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address))
+	filter := gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY)
+	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), gcp_bigtable.RowFilter(filter))
 
 	if err != nil {
 		return nil, err
@@ -3234,23 +3237,47 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 		},
 	}
 
+	if limit == 0 || limit > ECR20TokensPerAddressLimit {
+		limit = ECR20TokensPerAddressLimit
+	}
+
+	tokenCount := uint64(0)
+
 	g := new(errgroup.Group)
+	g.SetLimit(10)
+
 	mux := sync.Mutex{}
 	for _, ri := range row {
 		for _, column := range ri {
 			if strings.HasPrefix(column.Column, ACCOUNT_METADATA_FAMILY+":B:") {
 				column := column
 
-				if bytes.Equal(address, ZERO_ADDRESS) && column.Column != ACCOUNT_METADATA_FAMILY+":B:00" { //do not return token balances for the zero address
+				if bytes.Equal(address, ZERO_ADDRESS) && column.Column != ACCOUNT_METADATA_FAMILY+":B:00" {
+					//do not return token balances for the zero address
 					continue
 				}
 
-				g.Go(func() error {
-					token := common.FromHex(strings.TrimPrefix(column.Column, "a:B:"))
+				token := common.FromHex(strings.TrimPrefix(column.Column, "a:B:"))
+
+				isNativeEth := bytes.Equal([]byte{0x00}, token)
+				if !isNativeEth {
+					// token is not ETH, handle pagination
 					if len(column.Value) == 0 && len(token) > 1 {
-						return nil
+						continue
 					}
 
+					if offset > 0 {
+						offset--
+						continue
+					}
+
+					// check if token limit is reached (requires that ETH balance is always first)
+					if tokenCount >= limit {
+						break
+					}
+				}
+
+				g.Go(func() error {
 					balance := &types.Eth1AddressBalance{
 						Address: address,
 						Token:   token,
@@ -3264,7 +3291,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 					balance.Metadata = metadata
 
 					mux.Lock()
-					if bytes.Equal([]byte{0x00}, token) {
+					if isNativeEth {
 						ret.EthBalance = balance
 					} else {
 						ret.Balances = append(ret.Balances, balance)
@@ -3273,9 +3300,11 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 
 					return nil
 				})
-			}
 
-			if column.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
+				if !isNativeEth {
+					tokenCount++
+				}
+			} else if column.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
 				ret.Name = string(column.Value)
 			}
 		}
@@ -3286,22 +3315,9 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 		return nil, err
 	}
 
+	// sort balances based on token address (required for proper pagination)
 	sort.Slice(ret.Balances, func(i, j int) bool {
-		priceI := decimal.New(0, 0)
-		priceJ := decimal.New(0, 0)
-		if len(ret.Balances[i].Metadata.Price) > 0 {
-			priceI = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Price), 0)
-		}
-		if len(ret.Balances[j].Metadata.Price) > 0 {
-			priceJ = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Price), 0)
-		}
-
-		mulI := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Decimals), 0))
-		mulJ := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Decimals), 0))
-		mkI := priceI.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Balance), 0).DivRound(mulI, 18))
-		mkJ := priceJ.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Balance), 0).DivRound(mulJ, 18))
-
-		return mkI.Cmp(mkJ) >= 0
+		return bytes.Compare(ret.Balances[i].Token, ret.Balances[j].Token) < 0
 	})
 
 	return ret, nil

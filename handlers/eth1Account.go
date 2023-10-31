@@ -45,15 +45,11 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	address = strings.ToLower(address)
 
 	currency := GetCurrency(r)
-	// price := GetCurrentPrice(r)
-	// symbol := GetCurrencySymbol(r)
-	// symbol := price.GetCurrencySymbol(currency)
-	// elPrice := price.GetPrice(utils.Config.Frontend.ElCurrency, currency)
 
 	addressBytes := common.FromHex(address)
 	data := InitPageData(w, r, "blockchain", "/address", fmt.Sprintf("Address 0x%x", addressBytes), templateFiles)
 
-	metadata, err := db.BigtableClient.GetMetadataForAddress(addressBytes)
+	metadata, err := db.BigtableClient.GetMetadataForAddress(addressBytes, 0, db.ECR20TokensPerAddressLimit)
 	if err != nil {
 		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
@@ -264,8 +260,6 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// ethBalanceUsd := utils.WeiBytesToEther(metadata.EthBalance.Balance).Mul(decimal.NewFromInt(int64(elPrice)))
-
 	data.Data = types.Eth1AddressPageData{
 		Address:            address,
 		EnsName:            ensData.Domain,
@@ -284,8 +278,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		BlocksMinedTable:   blocksMined,
 		UnclesMinedTable:   unclesMined,
 		EtherValue:         utils.FormatPricedValue(utils.WeiBytesToEther(metadata.EthBalance.Balance), utils.Config.Frontend.ElCurrency, currency),
-		// EtherValue:         utils.FormatEtherValue(currency, ethBalanceUsd, GetCurrentElPriceFormatted(r)),
-		Tabs: tabs,
+		Tabs:               tabs,
 	}
 
 	if handleTemplateError(w, r, "eth1Account.go", "Eth1Address", "Done", eth1AddressTemplate.ExecuteTemplate(w, "layout", data)) != nil {
