@@ -1594,12 +1594,14 @@ type Eth1AddressPageData struct {
 	Tabs               []Eth1AddressPageTabs
 }
 
-type IsContractAtRequest struct {
-	Address  string
-	Block    int64
-	TxIdx    int64
-	TraceIdx int64
-}
+type ContractInteractionType uint8
+
+const (
+	CONTRACT_NONE        ContractInteractionType = 0
+	CONTRACT_CREATION    ContractInteractionType = 1
+	CONTRACT_INVOCATION  ContractInteractionType = 2
+	CONTRACT_DESTRUCTION ContractInteractionType = 3
+)
 
 type Eth1AddressPageTabs struct {
 	Id   string

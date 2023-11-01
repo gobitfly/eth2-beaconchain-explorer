@@ -55,7 +55,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			}
 		}
 	}
-	if pageTokenId == 0 {
+	if pageToken != "0" && pageTokenId == 0 {
 		pageTokenId = services.LatestEth1BlockNumber()
 	}
 
@@ -102,13 +102,17 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 					v.To = v.ContractAddress
 					names[string(v.GetTo())] = "Contract Creation"
 				}
+				isContractInteraction := false
+				if len(txIsContractList) > i {
+					isContractInteraction = txIsContractList[i] != types.CONTRACT_NONE
+				}
 				tableData = append(tableData, []interface{}{
 					utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
 					utils.FormatMethod(method),
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
-					utils.FormatAddressWithLimits(v.GetTo(), names[string(v.GetTo())], names[string(v.GetTo())] == "Contract Creation" || txIsContractList[i], "address", 15, 20, true),
+					utils.FormatAddressWithLimits(v.GetTo(), names[string(v.GetTo())], isContractInteraction, "address", 15, 20, true),
 					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 				})

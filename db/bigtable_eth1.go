@@ -550,8 +550,12 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	})
 	defer tmr.Stop()
 
-	if start < 1 || limit < 1 || limit > start {
+	if start < 1 || limit < 1 {
 		return nil, fmt.Errorf("invalid block range provided (start: %v, limit: %v)", start, limit)
+	}
+
+	if limit > start {
+		limit = start
 	}
 
 	startPadded := reversedPaddedBlockNumber(start)
@@ -1213,6 +1217,44 @@ func (bigtable *Bigtable) TransformBlobTx(blk *types.Eth1Block, cache *freecache
 	return bulkData, bulkMetadataUpdates, nil
 }
 
+// custom timestamp
+func encodeIsContractUpdateTs(block_number, tx_idx, trace_idx uint64) (gcp_bigtable.Timestamp, error) {
+	var res uint64
+
+	// 64 - 10 - 14 - 10 = 30 bits left; with a block time of 12s, that's enough for 50+ years
+	if block_number >= 1<<30 {
+		return 0, fmt.Errorf("error encoding IsContractTimestamp: trace index %d is greater than max value of %d", trace_idx, 1<<30)
+	}
+	res += block_number
+
+	// 30m gas / 21.000 gas per transfer = 1428, but very unlikely - save 1 bit
+	if tx_idx >= 1<<10 {
+		return 0, fmt.Errorf("error encoding IsContractTimestamp: transaction index %d is greater than max value of %d", tx_idx, 1<<10)
+	}
+	res <<= 10
+	res += tx_idx
+
+	// tests showed it's possible to have 36900+ subcalls per tx, but very unlikely - save another 2 bits
+	if trace_idx >= 1<<14 {
+		return 0, fmt.Errorf("error encoding IsContractTimestamp: trace index %d is greater than max value of %d", trace_idx, 1<<14)
+	}
+	res <<= 14
+	res += trace_idx
+
+	// 10 bits
+	return gcp_bigtable.Timestamp(res * 1000), nil
+}
+
+func decodeIsContractUpdateTs(ts gcp_bigtable.Timestamp) (block_number, tx_idx, trace_idx uint64) {
+	n := uint64(ts)
+	n /= 1000
+	trace_idx = n % (1 << 14)
+	n >>= 14
+	tx_idx = n % (1 << 10)
+	block_number = n >> 10
+	return block_number, tx_idx, trace_idx
+}
+
 // TransformItx extracts internal transactions from bigtable more specifically from the table blocks.
 // It transforms the internal transactions contained within a block and strips any information that is not necessary for our frontend views
 // It writes internal transactions to table data:
@@ -1242,6 +1284,11 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
+	ContractUpdateWrites := &types.BulkMutations{
+		Keys: make([]string, 0),
+		Muts: make([]*gcp_bigtable.Mutation, 0),
+	}
+
 	for i, tx := range blk.GetTransactions() {
 		if i > 9999 {
 			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
@@ -1256,28 +1303,26 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 
 			if idx.GetType() == "create" || idx.GetType() == "suicide" {
 				contractUpdate := &types.IsContractUpdate{
-					IsContract:       idx.GetType() == "create",
-					Time:             blk.GetTime(),
-					BlockNumber:      blk.GetNumber(),
-					TransactionIndex: uint64(i),
-					TraceIndex:       uint64(j),
+					IsContract: idx.GetType() == "create",
 				}
 				b, err := proto.Marshal(contractUpdate)
 				if err != nil {
 					return nil, nil, err
 				}
-				mut := gcp_bigtable.NewMutation()
-				mut.Set(DEFAULT_FAMILY, "CONTRACT", gcp_bigtable.Timestamp(0), b)
-
 				address := idx.GetTo()
 				if idx.GetType() == "suicide" {
 					address = idx.GetFrom()
 				}
 
-				isContractUpdateKey := fmt.Sprintf("%s:C:%x", bigtable.chainId, address) // format is C: for contract state update as chainid:prefix:address
-
-				bulkMetadataUpdates.Keys = append(bulkMetadataUpdates.Keys, isContractUpdateKey)
-				bulkMetadataUpdates.Muts = append(bulkMetadataUpdates.Muts, mut)
+				mutWrite := gcp_bigtable.NewMutation()
+				ts, err := encodeIsContractUpdateTs(blk.GetNumber(), uint64(i), uint64(j))
+				if err != nil {
+					utils.LogError(err, "error generating bigtable isContract timestamp", 0)
+				} else {
+					mutWrite.Set(ACCOUNT_METADATA_FAMILY, ACCOUNT_IS_CONTRACT, ts, b)
+					ContractUpdateWrites.Keys = append(ContractUpdateWrites.Keys, fmt.Sprintf("%s:%x", bigtable.chainId, address))
+					ContractUpdateWrites.Muts = append(ContractUpdateWrites.Muts, mutWrite)
+				}
 			}
 
 			if idx.Path == "[]" || bytes.Equal(idx.Value, []byte{0x0}) { // skip top level and empty calls
@@ -1344,7 +1389,8 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 		}
 	}
 
-	return bulkData, bulkMetadataUpdates, nil
+	err = bigtable.WriteBulk(ContractUpdateWrites, bigtable.tableMetadata)
+	return bulkData, bulkMetadataUpdates, err
 }
 
 // https://etherscan.io/tx/0xb10588bde42cb8eb14e72d24088bd71ad3903857d23d50b3ba4187c0cb7d3646#eventlog
@@ -2159,7 +2205,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		}
 		invokesContract := false
 		if len(txIsContractList) > i {
-			invokesContract = txIsContractList[i]
+			invokesContract = txIsContractList[i] != types.CONTRACT_NONE
 		}
 
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, !bytes.Equal(t.From, address))
@@ -3203,42 +3249,6 @@ func (bigtable *Bigtable) GetMetadataUpdates(prefix string, startToken string, l
 	return keys, pairs, err
 }
 
-func (bigtable *Bigtable) GetMetadataContractUpdates(prefix string, limit int) ([]string, []*types.IsContractUpdate, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
-		logger.WithFields(logrus.Fields{
-			"prefix": prefix,
-		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
-
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
-	defer cancel()
-
-	keys := make([]string, 0, limit)
-	data := make([]*types.IsContractUpdate, 0, limit)
-
-	err := bigtable.tableMetadataUpdates.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(row gcp_bigtable.Row) bool {
-		keys = append(keys, row.Key())
-
-		b := &types.IsContractUpdate{}
-		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
-
-		if err != nil {
-			utils.LogError(err, "error parsing IsContractUpdate data", 0)
-		}
-		data = append(data, b)
-
-		return true
-	}, gcp_bigtable.LimitRows(int64(limit)))
-
-	if err == context.DeadlineExceeded && len(keys) > 0 {
-		return keys, data, nil
-	}
-	return keys, data, err
-}
-
 func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, []*types.Eth1AddressBalance, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
@@ -3658,7 +3668,19 @@ func (bigtable *Bigtable) GetAddressNames(addresses map[string]string) error {
 	return err
 }
 
-func (bigtable *Bigtable) getAddressIsContractHistories(histories map[string]*types.IsContractHistory) error {
+type isContractInfo struct {
+	update bool
+	ts     gcp_bigtable.Timestamp
+}
+
+type isContractAtRequest struct {
+	address  string
+	block    int64
+	txIdx    int64
+	traceIdx int64
+}
+
+func (bigtable *Bigtable) getAddressIsContractHistories(histories map[string][]isContractInfo) error {
 	if len(histories) == 0 {
 		return nil
 	}
@@ -3680,15 +3702,15 @@ func (bigtable *Bigtable) getAddressIsContractHistories(histories map[string]*ty
 
 	keyPrefix := fmt.Sprintf("%s:", bigtable.chainId)
 	err := bigtable.tableMetadata.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
-		b := &types.IsContractHistory{}
-		err := proto.Unmarshal(row[ACCOUNT_METADATA_FAMILY][0].Value, b)
-
-		if err != nil {
-			utils.LogError(err, "error parsing IsContractHistory data", 0)
-		}
+		b := &types.IsContractUpdate{}
 		address := strings.TrimPrefix(row.Key(), keyPrefix)
-		addressBytes, _ := hex.DecodeString(address)
-		histories[fmt.Sprintf("%x", string(addressBytes))] = b
+		for _, v := range row[ACCOUNT_METADATA_FAMILY] {
+			err := proto.Unmarshal(v.Value, b)
+			if err != nil {
+				utils.LogError(err, "error parsing IsContractUpdate data", 0)
+			}
+			histories[address] = append(histories[address], isContractInfo{update: b.IsContract, ts: v.Timestamp})
+		}
 
 		return true
 	}, gcp_bigtable.RowFilter(filter))
@@ -3701,87 +3723,86 @@ func (bigtable *Bigtable) getAddressIsContractHistories(histories map[string]*ty
 }
 
 // returns whether an account was a contract after the given execution state
-// -1 is latest (e.g. "TxIdx" = -1 returns the contract state after execution of "Block", "Block" = -1 returns the state at chain head)
-func (bigtable *Bigtable) GetAddressIsContractAt(requests []types.IsContractAtRequest) ([]bool, error) {
-	results := make([]bool, len(requests))
+// -1 is latest (e.g. "txIdx" = -1 returns the contract state after execution of "block", "block" = -1 returns the state at chain head)
+func (bigtable *Bigtable) GetAddressIsContractAt(requests []isContractAtRequest) ([]types.ContractInteractionType, error) {
+	results := make([]types.ContractInteractionType, len(requests))
 	if len(requests) == 0 {
 		return results, nil
 	}
 
 	// get histories
-	histories := make(map[string]*types.IsContractHistory, 0)
+	histories := make(map[string][]isContractInfo, 0)
 	for _, request := range requests {
-		histories[request.Address] = nil
+		histories[request.address] = nil
 	}
 	err := bigtable.getAddressIsContractHistories(histories)
 	if err != nil {
 		return nil, err
 	}
 
-	// evaluate requests
+	// evaluate requests; CONTRACT_NONE is default
 	for i, request := range requests {
-		if _, ok := histories[request.Address]; !ok {
+		if _, ok := histories[request.address]; !ok {
 			continue
 		}
-		if histories[request.Address] == nil {
+		if histories[request.address] == nil {
 			continue
 		}
-		history := histories[request.Address].ContractStateUpdates
+		history := histories[request.address]
 		if len(history) == 0 {
 			continue
 		}
-		// history is sorted; find first change after request, then use state of the change before
 		k := sort.Search(len(history), func(j int) bool {
-			if request.Block == -1 {
-				return false
-			}
-			if request.Block != int64(history[j].BlockNumber) {
-				return request.Block < int64(history[j].BlockNumber)
-			}
-			if request.TxIdx == -1 {
-				// leads to returning true for first change in greater block, so prev index of that one is latest update in this one
-				return false
-			}
-			if request.TxIdx != int64(history[j].TransactionIndex) {
-				return request.TxIdx < int64(history[j].TransactionIndex)
-			}
-			if request.TraceIdx == -1 {
-				// analog
-				return false
-			}
-			return request.TraceIdx < int64(history[j].TraceIndex)
+			b, tx, trace := decodeIsContractUpdateTs(history[j].ts)
+			return request.block == -1 || request.block >= int64(b) && (request.txIdx == -1 || request.txIdx >= int64(tx) && (request.traceIdx == -1 || request.traceIdx >= int64(trace)))
 		})
-		results[i] = history[k-1].IsContract
+		if len(history) == k {
+			continue
+		}
+
+		b, tx, trace := decodeIsContractUpdateTs(history[k].ts)
+		exact_match := request.block == -1 || request.block == int64(b) && (request.txIdx == -1 || request.txIdx == int64(tx) && (request.traceIdx == -1 || request.traceIdx == int64(trace)))
+
+		if exact_match {
+			results[i] = types.CONTRACT_DESTRUCTION
+			if history[k].update {
+				results[i] = types.CONTRACT_CREATION
+			}
+		} else if history[k].update {
+			results[i] = types.CONTRACT_INVOCATION
+		}
 	}
 	return results, nil
 }
 
 // convenience function to get contract interaction status per transaction of a block
-func (bigtable *Bigtable) GetAddressIsContractAtBlock(block *types.Eth1Block) ([]bool, error) {
-	requests := make([]types.IsContractAtRequest, len(block.GetTransactions()))
+func (bigtable *Bigtable) GetAddressIsContractAtBlock(block *types.Eth1Block) ([]types.ContractInteractionType, error) {
+	requests := make([]isContractAtRequest, len(block.GetTransactions()))
 	for i, tx := range block.GetTransactions() {
-		if tx.GetTo() == nil {
-			tx.To = tx.ContractAddress
+		address := tx.GetTo()
+		if len(address) == 0 {
+			address = tx.GetContractAddress()
 		}
-		requests[i] = types.IsContractAtRequest{
-			Address:  fmt.Sprintf("%x", tx.GetTo()),
-			Block:    int64(block.GetNumber()),
-			TxIdx:    int64(i),
-			TraceIdx: -1,
+		requests[i] = isContractAtRequest{
+			address:  fmt.Sprintf("%x", address),
+			block:    int64(block.GetNumber()),
+			txIdx:    int64(i),
+			traceIdx: -1,
 		}
 	}
+
 	return bigtable.GetAddressIsContractAt(requests)
 }
 
 // convenience function to get contract interaction status per subtransaction of a transaction
-func (bigtable *Bigtable) GetAddressIsContractAtTransactions(transactions []*types.Eth1TransactionIndexed) ([]bool, error) {
-	requests := make([]types.IsContractAtRequest, len(transactions))
+func (bigtable *Bigtable) GetAddressIsContractAtTransactions(transactions []*types.Eth1TransactionIndexed) ([]types.ContractInteractionType, error) {
+	requests := make([]isContractAtRequest, len(transactions))
 	for i, tx := range transactions {
-		requests[i] = types.IsContractAtRequest{
-			Address: fmt.Sprintf("%x", tx.GetTo()),
-			Block:   int64(tx.GetBlockNumber()),
+		requests[i] = isContractAtRequest{
+			address: fmt.Sprintf("%x", tx.GetTo()),
+			block:   int64(tx.GetBlockNumber()),
 			// unfortunately we don't know the tx index (without querying it for each tx first)
-			TxIdx: -1,
+			txIdx: int64(-1),
 		}
 	}
 	return bigtable.GetAddressIsContractAt(requests)
@@ -3941,79 +3962,6 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, del
 	}
 
 	return nil
-}
-
-func (bigtable *Bigtable) UpdateContractStates(isContract_updates []*types.IsContractUpdate, deleteKeys []string) error {
-	if len(isContract_updates) == 0 {
-		return nil
-	}
-
-	if len(isContract_updates) != len(deleteKeys) {
-		return fmt.Errorf("size mismatch of contract history update data: %d contract updates, %d keys", len(isContract_updates), len(deleteKeys))
-	}
-
-	addresses := make([]string, 0, len(deleteKeys))
-	histories := make(map[string]*types.IsContractHistory, 0)
-	for _, key := range deleteKeys {
-		addresses = append(addresses, strings.Split(key, ":")[2])
-		histories[strings.Split(key, ":")[2]] = nil
-	}
-
-	// read old histories
-	err := bigtable.getAddressIsContractHistories(histories)
-	if err != nil {
-		return fmt.Errorf("error getting contract histories: %v", err)
-	}
-
-	// update histories
-	for i, isContract_update := range isContract_updates {
-		if v, ok := histories[addresses[i]]; !ok || v == nil {
-			histories[addresses[i]] = &types.IsContractHistory{}
-		}
-		histories[addresses[i]].ContractStateUpdates = append(histories[addresses[i]].ContractStateUpdates, isContract_update)
-	}
-
-	// write new histories
-	mutsWrite := &types.BulkMutations{
-		Keys: make([]string, 0, len(histories)),
-		Muts: make([]*gcp_bigtable.Mutation, 0, len(histories)),
-	}
-
-	for address, history := range histories {
-		mutWrite := gcp_bigtable.NewMutation()
-		b, err := proto.Marshal(history)
-		if err != nil {
-			return fmt.Errorf("error marshalling proto object err: %w", err)
-		}
-
-		mutWrite.Set(ACCOUNT_METADATA_FAMILY, ACCOUNT_IS_CONTRACT, gcp_bigtable.Timestamp(0), b)
-		mutsWrite.Keys = append(mutsWrite.Keys, fmt.Sprintf("%s:%s", bigtable.chainId, address))
-		mutsWrite.Muts = append(mutsWrite.Muts, mutWrite)
-	}
-
-	err = bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata)
-	if err != nil {
-		return err
-	}
-
-	// delete keys
-	if len(deleteKeys) == 0 {
-		return nil
-	}
-	mutsDelete := &types.BulkMutations{
-		Keys: make([]string, 0, len(deleteKeys)),
-		Muts: make([]*gcp_bigtable.Mutation, 0, len(deleteKeys)),
-	}
-	for _, key := range deleteKeys {
-		mutDelete := gcp_bigtable.NewMutation()
-		mutDelete.DeleteRow()
-		mutsDelete.Keys = append(mutsDelete.Keys, key)
-		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-	}
-
-	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates)
-
-	return err
 }
 
 func (bigtable *Bigtable) SaveERC20TokenPrices(prices []*types.ERC20TokenPrice) error {

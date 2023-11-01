@@ -60,10 +60,6 @@ func main() {
 	enableFullBalanceUpdater := flag.Bool("balances.full.enabled", false, "Enable full balance update process")
 	balanceUpdaterBatchSize := flag.Int("balances.batch", 1000, "Batch size for balance updates")
 
-	enableIsContractUpdater := flag.Bool("iscontract.enabled", false, "Enable is contract update process")
-	enableFullIsContractUpdater := flag.Bool("iscontract.full.enabled", false, "Enable full is contract update process")
-	isContractUpdaterBatchSize := flag.Int("iscontract.batch", 1000, "Batch size for is contract updates")
-
 	tokenPriceExport := flag.Bool("token.price.enabled", false, "Enable token export process")
 	tokenPriceExportList := flag.String("token.price.list", "", "Tokenlist path to use for the token price export")
 	tokenPriceExportFrequency := flag.Duration("token.price.frequency", time.Hour, "Token price export interval")
@@ -139,7 +135,6 @@ func main() {
 	chainId := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
 
 	balanceUpdaterPrefix := chainId + ":B:"
-	isContractUpdaterPrefix := chainId + ":C:"
 
 	nodeChainId, err := client.GetNativeClient().ChainID(context.Background())
 	if err != nil {
@@ -171,11 +166,6 @@ func main() {
 
 	if *enableFullBalanceUpdater {
 		ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
-		return
-	}
-
-	if *enableFullIsContractUpdater {
-		ProcessMetadataUpdates(bt, client, isContractUpdaterPrefix, *isContractUpdaterBatchSize, -1)
 		return
 	}
 
@@ -354,10 +344,6 @@ func main() {
 			ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
 		}
 
-		if *enableIsContractUpdater {
-			ProcessMetadataUpdates(bt, client, isContractUpdaterPrefix, *balanceUpdaterBatchSize, 10)
-		}
-
 		if *enableEnsUpdater {
 			err := bt.ImportEnsUpdates(client.GetNativeClient())
 			if err != nil {
@@ -519,29 +505,6 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 }
 
 func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string, batchSize int, iterations int) {
-	if strings.Contains(prefix, ":C:") {
-
-		for i := 0; iterations == -1 || i < iterations; i++ {
-			start := time.Now()
-			keys, updates, err := bt.GetMetadataContractUpdates(prefix, batchSize)
-			if err != nil {
-				utils.LogError(err, "error retrieving isContract metadata updates from bigtable", 0)
-				return
-			}
-			if len(keys) == 0 {
-				return
-			}
-
-			err = bt.UpdateContractStates(updates, keys)
-			if err != nil {
-				utils.LogError(err, "error saving isContract updates to bigtable", 0)
-				return
-			}
-
-			logrus.Infof("retrieved %v contract state updates in %v", len(updates), time.Since(start))
-		}
-		return
-	}
 	lastKey := prefix
 
 	its := 0

@@ -80,14 +80,6 @@ message Eth1Transaction {
 
 message IsContractUpdate {
     bool is_contract = 1;
-    google.protobuf.Timestamp time = 2;
-    uint64 block_number = 3;
-    uint64 transaction_index = 4;
-    uint64 trace_index = 5;
-}
-
-message IsContractHistory {
-    repeated IsContractUpdate contract_state_updates = 1;
 }
 
 message AccessList {
