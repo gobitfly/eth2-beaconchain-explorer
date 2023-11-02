@@ -325,7 +325,7 @@
           <li style="margin: 0; border-bottom: none;" class="nav-item d-lg-none" role="presentation">
             <a href="#tokensTab" class="nav-link border-bottom-radius-0 border-bottom-0" id="tokenTab-tab" data-toggle="tab" role="tab" aria-controls="tokensTab" aria-selected="true">Tokens</a>
             {{ if .Data.Metadata.ERC20TokenLimitExceeded }}
-              <i class="text-warning fas fa-exclamation-triangle" data-toggle="tooltip" title="Only the first {.Data.Metadata.ERC20TokenLimit} are shown, determined by their alphabetical order."></i>
+              <i class="text-warning fas fa-exclamation-triangle" data-toggle="tooltip" title="Only the first {.Data.Metadata.ERC20TokenLimit} are shown, determined by their order of address."></i>
             {{ end }}
           </li>
         </ul>
@@ -379,7 +379,7 @@
             <span class="nav-link border-bottom-radius-0 border-bottom-0 active" data-toggle="tab" role="tab" aria-controls="tokensTab" aria-selected="true"
               >Tokens
               {{ if .Data.Metadata.ERC20TokenLimitExceeded }}
-                <i class="text-warning fas fa-exclamation-triangle" data-toggle="tooltip" title="Only the first {{ .Data.Metadata.ERC20TokenLimit }} are shown, determined by their alphabetical order."></i>
+                <i class="text-warning fas fa-exclamation-triangle" data-toggle="tooltip" title="Only the first {{ .Data.Metadata.ERC20TokenLimit }} are shown, determined by their order of address."></i>
               {{ end }}
             </span>
           </li>
