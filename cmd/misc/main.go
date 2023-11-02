@@ -1061,7 +1061,7 @@ OUTER:
 		FROM validator_stats vs1
 		LEFT JOIN validator_stats vs2
 		ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex
-		WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex < $3
+		WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex <= $3
 		ON CONFLICT (validatorindex, day) DO UPDATE SET %s;`,
 		strings.Join(columnsSlice, ",\n\t"),
 		strings.Join(totalClauses, ",\n\t\t"),
@@ -1093,7 +1093,7 @@ OUTER:
 		// insert stats totals for each batch of validators
 		for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 			start := b
-			end := b + batchSize // exclusive
+			end := b + batchSize - 1
 			if int(maxValidatorIndex) < end {
 				end = int(maxValidatorIndex)
 			}
