@@ -3249,7 +3249,6 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 
 	mux := sync.Mutex{}
 	for _, ri := range row {
-		ret.ERC20TokenLimitExceeded = uint64(len(ri))-1 > ECR20TokensPerAddressLimit // -1 as ETH is not included in the count
 		for _, column := range ri {
 			if strings.HasPrefix(column.Column, ACCOUNT_METADATA_FAMILY+":B:") {
 				column := column
@@ -3263,7 +3262,13 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 
 				isNativeEth := bytes.Equal([]byte{0x00}, token)
 				if !isNativeEth {
-					// token is not ETH, handle pagination
+					// token is not ETH, check if token limit is reached
+					if tokenCount >= limit {
+						ret.ERC20TokenLimitExceeded = true
+						continue
+					}
+
+					// handle pagination
 					if len(column.Value) == 0 && len(token) > 1 {
 						continue
 					}
@@ -3272,6 +3277,9 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 						offset--
 						continue
 					}
+
+					// at this point, token will be added
+					tokenCount++
 				}
 
 				g.Go(func() error {
@@ -3297,15 +3305,6 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 
 					return nil
 				})
-
-				if !isNativeEth {
-					tokenCount++
-
-					// check if token limit is reached (requires that ETH balance is always first)
-					if tokenCount >= limit {
-						break
-					}
-				}
 			} else if column.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
 				ret.Name = string(column.Value)
 			}
