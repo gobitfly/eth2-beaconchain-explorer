@@ -317,7 +317,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address), 0, 200)
 	if err != nil {
 		logger.Errorf("error retrieving metadata for address: %v route: %v err: %v", address, r.URL.String(), err)
-		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
+		sendServerErrorResponse(w, r.URL.String(), "error could not get metadata for address")
 		return
 	}
 
