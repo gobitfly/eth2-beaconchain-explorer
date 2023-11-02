@@ -1076,7 +1076,7 @@ OUTER:
 		FROM validator_stats vs1
 		LEFT JOIN validator_stats vs2
 		ON vs2.day = vs1.day - 1 AND vs2.validatorindex = vs1.validatorindex
-		WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex < $3
+		WHERE vs1.day = $1 AND vs1.validatorindex >= $2 AND vs1.validatorindex <= $3
 		ON CONFLICT (validatorindex, day) DO UPDATE SET %s;`,
 		strings.Join(columnsSlice, ",\n\t"),
 		strings.Join(totalClauses, ",\n\t\t"),
@@ -1088,13 +1088,14 @@ OUTER:
 
 		// get max validator index for day
 		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(day + 1)
-		maxValidatorIndex, err := db.BigtableClient.GetMaxValidatorindexForEpoch(firstEpoch)
+		var maxValidatorIndex uint64
+		err := db.ReaderDb.Get(&maxValidatorIndex, `SELECT MAX(validatorindex) FROM validator_stats WHERE day = $1`, day)
 		if err != nil {
-			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: could not get max validator index", 0, map[string]interface{}{
+			utils.LogFatal(err, "error: could not get max validator index", 0, map[string]interface{}{
 				"epoch": firstEpoch,
 			})
 		} else if maxValidatorIndex == uint64(0) {
-			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: no validator found", 0, map[string]interface{}{
+			utils.LogFatal(err, "error: no validator found", 0, map[string]interface{}{
 				"epoch": firstEpoch,
 			})
 		}
@@ -1108,7 +1109,7 @@ OUTER:
 		// insert stats totals for each batch of validators
 		for b := 0; b <= int(maxValidatorIndex); b += batchSize {
 			start := b
-			end := b + batchSize // exclusive
+			end := b + batchSize - 1
 			if int(maxValidatorIndex) < end {
 				end = int(maxValidatorIndex)
 			}
