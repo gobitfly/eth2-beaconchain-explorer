@@ -1073,13 +1073,14 @@ OUTER:
 
 		// get max validator index for day
 		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(day + 1)
-		maxValidatorIndex, err := db.BigtableClient.GetMaxValidatorindexForEpoch(firstEpoch)
+		var maxValidatorIndex uint64
+		err := db.ReaderDb.Get(&maxValidatorIndex, `SELECT MAX(validatorindex) FROM validator_stats WHERE day = $1`, day)
 		if err != nil {
-			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: could not get max validator index", 0, map[string]interface{}{
+			utils.LogFatal(err, "error: could not get max validator index", 0, map[string]interface{}{
 				"epoch": firstEpoch,
 			})
 		} else if maxValidatorIndex == uint64(0) {
-			utils.LogFatal(err, "error in GetMaxValidatorindexForEpoch: no validator found", 0, map[string]interface{}{
+			utils.LogFatal(err, "error: no validator found", 0, map[string]interface{}{
 				"epoch": firstEpoch,
 			})
 		}
