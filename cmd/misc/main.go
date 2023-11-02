@@ -150,12 +150,12 @@ func main() {
 
 	switch opts.Command {
 	case "nameValidatorsByRanges":
-		err := NameValidatorsByRanges(opts.ValidatorNameRanges)
+		err := nameValidatorsByRanges(opts.ValidatorNameRanges)
 		if err != nil {
 			logrus.WithError(err).Fatal("error naming validators by ranges")
 		}
 	case "updateAPIKey":
-		err := UpdateAPIKey(opts.User)
+		err := updateAPIKey(opts.User)
 		if err != nil {
 			logrus.WithError(err).Fatal("error updating API key")
 		}
@@ -244,17 +244,17 @@ func main() {
 			}
 		}
 	case "debug-rewards":
-		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
+		compareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
 	case "debug-blocks":
-		err = DebugBlocks()
+		err = debugBlocks()
 	case "clear-bigtable":
-		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
+		clearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
 		indexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "update-block-finalization-sequentially":
-		err = UpdateBlockFinalizationSequentially()
+		err = updateBlockFinalizationSequentially()
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
@@ -371,7 +371,7 @@ func main() {
 	}
 }
 
-func UpdateBlockFinalizationSequentially() error {
+func updateBlockFinalizationSequentially() error {
 	var err error
 
 	var maxSlot uint64
@@ -429,7 +429,7 @@ func UpdateBlockFinalizationSequentially() error {
 	}
 }
 
-func DebugBlocks() error {
+func debugBlocks() error {
 
 	client, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
@@ -479,7 +479,7 @@ func DebugBlocks() error {
 	return nil
 }
 
-func NameValidatorsByRanges(rangesUrl string) error {
+func nameValidatorsByRanges(rangesUrl string) error {
 	ranges := struct {
 		Ranges map[string]string `json:"ranges"`
 	}{}
@@ -713,7 +713,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 }
 
 // Updates a users API key
-func UpdateAPIKey(user uint64) error {
+func updateAPIKey(user uint64) error {
 	type User struct {
 		PHash  string `db:"password"`
 		Email  string `db:"email"`
@@ -767,7 +767,7 @@ func UpdateAPIKey(user uint64) error {
 }
 
 // Debugging function to compare Rewards from the Statistic Table with the onces from the Big Table
-func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
+func compareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
 
 	for day := dayStart; day <= dayEnd; day++ {
 		startEpoch := day * utils.EpochsPerDay()
@@ -797,7 +797,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 
 }
 
-func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
+func clearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
 
 	if !dryRun {
 		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
