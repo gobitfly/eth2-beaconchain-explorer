@@ -561,7 +561,7 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 		return `<span class="text-small text-muted">Calculating...</span>`
 	}
 	p := message.NewPrinter(language.English)
-	rr := fmt.Sprintf("%.2f%%", r*100)
+	rr := fmt.Sprintf("%v%%", math.Round(r*10000)/100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
 	  %.0[1]f <small class="text-muted ml-3">(%[2]v)</small>
