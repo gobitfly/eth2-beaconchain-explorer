@@ -250,7 +250,7 @@ func main() {
 	case "clear-bigtable":
 		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
-		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
+		indexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "update-block-finalization-sequentially":
@@ -900,12 +900,12 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 				}
 			}
 
-			IndexOldEth1Blocks(block, block, 1, 1, "all", bt, client)
+			indexOldEth1Blocks(block, block, 1, 1, "all", bt, client)
 		}
 	}
 }
 
-func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
+func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
 	if endBlock > 0 && endBlock < startBlock {
 		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
 		return
@@ -965,20 +965,15 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
-	if startBlock == 0 && endBlock == 0 {
-		utils.LogFatal(nil, "no start+end block defined", 0)
-		return
-	}
+	to := endBlock
+	if endBlock == math.MaxInt64 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			utils.LogError(err, "error retrieving last blocks from blocks table", 0)
+			return
+		}
 
-	lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
-	if err != nil {
-		utils.LogError(err, "error retrieving last blocks from blocks table", 0)
-		return
-	}
-
-	to := uint64(lastBlockFromBlocksTable)
-	if endBlock > 0 {
-		to = utilMath.MinU64(to, endBlock)
+		to = uint64(lastBlockFromBlocksTable)
 	}
 	blockCount := utilMath.MaxU64(1, batchSize)
 
@@ -987,7 +982,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		toBlock := utilMath.MinU64(to, from+blockCount-1)
 
 		logrus.Infof("indexing blocks %v to %v in data table ...", from, toBlock)
-		err = bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, int64(concurrency), cache)
+		err := bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, int64(concurrency), cache)
 		if err != nil {
 			utils.LogError(err, "error indexing from bigtable", 0)
 		}
@@ -996,7 +991,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	}
 
 	if importENSChanges {
-		if err = bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
+		if err := bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
 			utils.LogError(err, "error importing ens from events", 0)
 			return
 		}

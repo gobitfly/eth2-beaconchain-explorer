@@ -101,18 +101,6 @@ var (
 	ERC1155Topic []byte
 )
 
-func (bigtable *Bigtable) GetDataTable() *gcp_bigtable.Table {
-	return bigtable.tableData
-}
-
-func (bigtable *Bigtable) GetMetadataUpdatesTable() *gcp_bigtable.Table {
-	return bigtable.tableMetadataUpdates
-}
-
-func (bigtable *Bigtable) GetMetadatTable() *gcp_bigtable.Table {
-	return bigtable.tableMetadata
-}
-
 func (bigtable *Bigtable) SaveBlock(block *types.Eth1Block) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -458,44 +446,37 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
 
-	if high < 1 || high < low {
+	if high < low {
 		return fmt.Errorf("invalid block range provided (high: %v, low: %v)", high, low)
 	}
 
-	// row key for block 0 is padded incorrectly, so we need to handle it separately
-	returnBlock0 := false
-	if low == 0 {
-		returnBlock0 = true
-		low = 1
-	}
+	if low > 0 && high > 0 {
+		highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
+		lowKey := fmt.Sprintf("%s:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(low)) // add \x00 to make the range inclusive
 
-	highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
-	lowKey := fmt.Sprintf("%s:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(low)) // add \x00 to make the range inclusive
+		limit := high - low + 1
 
-	limit := high - low + 1
-	// the low key will have a higher reverse padded number
-	rowRange := gcp_bigtable.NewRange(highKey, lowKey)
-
-	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
-
-	rowHandler := func(row gcp_bigtable.Row) bool {
-		block := types.Eth1Block{}
-		err := proto.Unmarshal(row[DEFAULT_FAMILY_BLOCKS][0].Value, &block)
-		if err != nil {
-			logger.Errorf("error could not unmarschal proto object, err: %v", err)
-			return false
+		rowRange := gcp_bigtable.NewRange(highKey, lowKey)
+		rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
+		rowHandler := func(row gcp_bigtable.Row) bool {
+			block := types.Eth1Block{}
+			err := proto.Unmarshal(row[DEFAULT_FAMILY_BLOCKS][0].Value, &block)
+			if err != nil {
+				logger.Errorf("error could not unmarschal proto object, err: %v", err)
+				return false
+			}
+			stream <- &block
+			return true
 		}
-		stream <- &block
-		return true
+
+		err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
+		if err != nil {
+			return err
+		}
 	}
 
-	err := bigtable.tableBlocks.ReadRows(ctx, rowRange, rowHandler, rowFilter, gcp_bigtable.LimitRows(int64(limit)))
-	if err != nil {
-		return err
-	}
-
-	if returnBlock0 {
-		// special handling for block 0
+	if low == 0 {
+		// special handling for block 0 which is padded incorrectly
 		b, err := BigtableClient.GetBlockFromBlocksTable(0)
 		if err != nil {
 			return fmt.Errorf("could not retreive block 0:  %v", err)
@@ -597,9 +578,11 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 			return nil, err
 		}
 
-		// rowHandler will add block 0 to blocks if it is found
-		if !rowHandler(row) {
-			return nil, fmt.Errorf("error could not read block 0")
+		if row != nil {
+			// rowHandler will add block 0 to blocks if it is found
+			if !rowHandler(row) {
+				return nil, fmt.Errorf("error could not read block 0")
+			}
 		}
 	}
 
@@ -788,7 +771,6 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 			for b := range blocksChan {
 				block := b
 				subG.Go(func() error {
-
 					bulkMutsData := types.BulkMutations{}
 					bulkMutsMetadataUpdate := types.BulkMutations{}
 					for _, transform := range transforms {
@@ -812,14 +794,14 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", block.Number, err)
 						}
 
-						err = bigtable.WriteBulk(&bulkMutsData, bigtable.GetDataTable())
+						err = bigtable.WriteBulk(&bulkMutsData, bigtable.tableData)
 						if err != nil {
 							return fmt.Errorf("error writing block [%v] to bigtable data table: %w", block.Number, err)
 						}
 					}
 
 					if len(bulkMutsMetadataUpdate.Keys) > 0 {
-						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.GetMetadataUpdatesTable())
+						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.tableMetadataUpdates)
 						if err != nil {
 							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", block.Number, err)
 						}
