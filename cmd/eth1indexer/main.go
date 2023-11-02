@@ -263,11 +263,11 @@ func main() {
 		continueAfterError := false
 		if lastBlockFromNode > 0 {
 			if lastBlockFromBlocksTable < int(lastBlockFromNode) {
-				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
+				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable+1, lastBlockFromNode)
 
-				startBlock := int64(lastBlockFromBlocksTable) - *offsetBlocks
+				startBlock := int64(lastBlockFromBlocksTable+1) - *offsetBlocks
 				if startBlock < 0 {
-					startBlock = int64(lastBlockFromBlocksTable) + 1
+					startBlock = 0
 				}
 
 				if *bulkBlocks <= 0 || *bulkBlocks > int64(lastBlockFromNode)-startBlock+1 {
@@ -308,9 +308,9 @@ func main() {
 			if lastBlockFromDataTable < int(lastBlockFromNode) {
 				logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable+1, lastBlockFromNode)
 
-				startBlock := int64(lastBlockFromDataTable) - *offsetData
+				startBlock := int64(lastBlockFromDataTable+1) - *offsetData
 				if startBlock < 0 {
-					startBlock = int64(lastBlockFromDataTable) + 1
+					startBlock = 0
 				}
 
 				if *bulkData <= 0 || *bulkData > int64(lastBlockFromNode)-startBlock+1 {

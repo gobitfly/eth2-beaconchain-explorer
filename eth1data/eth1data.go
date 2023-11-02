@@ -149,7 +149,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error loading token transfers from tx: %w", err)
 		}
-		txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes())
+		txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes(), txPageData.TxnPosition)
 		if err != nil {
 			return nil, fmt.Errorf("error loading internal transfers from tx: %w", err)
 		}

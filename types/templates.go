@@ -1599,7 +1599,7 @@ type ContractInteractionType uint8
 const (
 	CONTRACT_NONE        ContractInteractionType = 0
 	CONTRACT_CREATION    ContractInteractionType = 1
-	CONTRACT_INVOCATION  ContractInteractionType = 2
+	CONTRACT_PRESENT     ContractInteractionType = 2
 	CONTRACT_DESTRUCTION ContractInteractionType = 3
 )
 
