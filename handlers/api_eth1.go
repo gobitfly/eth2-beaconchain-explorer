@@ -392,7 +392,7 @@ func ApiEth1AddressERC20Tokens(w http.ResponseWriter, r *http.Request) {
 	metadata, err := db.BigtableClient.GetMetadataForAddress(common.FromHex(address), uint64(offset), uint64(limit))
 	if err != nil {
 		utils.LogError(err, "error could not get metadata for address", 0, errFields)
-		sendErrorResponse(w, r.URL.String(), "error could not get metadata for address")
+		sendServerErrorResponse(w, r.URL.String(), "error could not get metadata for address")
 		return
 	}
 
