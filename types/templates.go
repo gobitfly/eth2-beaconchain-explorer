@@ -1602,11 +1602,13 @@ type Eth1AddressPageTabs struct {
 }
 
 type Eth1AddressMetadata struct {
-	Balances   []*Eth1AddressBalance
-	ERC20      *ERC20Metadata
-	Name       string
-	Tags       []template.HTML
-	EthBalance *Eth1AddressBalance
+	Balances                []*Eth1AddressBalance
+	ERC20TokenLimit         uint64
+	ERC20TokenLimitExceeded bool
+	ERC20                   *ERC20Metadata
+	Name                    string
+	Tags                    []template.HTML
+	EthBalance              *Eth1AddressBalance
 }
 
 type Eth1AddressBalance struct {
