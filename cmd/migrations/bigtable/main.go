@@ -12,6 +12,8 @@ import (
 	"math/big"
 	"time"
 
+	eth_rewards "github.com/gobitfly/eth-rewards"
+	"github.com/gobitfly/eth-rewards/beacon"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -160,9 +162,21 @@ func main() {
 				return nil
 			})
 			g.Go(func() error {
-				err := db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
+				logrus.Infof("retrieving rewards details for epoch %v", epoch)
+
+				client := beacon.NewClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, time.Minute*5)
+
+				rewards, err := eth_rewards.GetRewardsForEpoch(epoch, client, utils.Config.Eth1ErigonEndpoint)
+
 				if err != nil {
-					return fmt.Errorf("error migrating income data to v2 schema for epoch %v: %w", epoch, err)
+					return fmt.Errorf("error retrieving reward details for epoch %v: %v", epoch, err)
+				} else {
+					logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), epoch, time.Since(start))
+				}
+
+				err = bt.SaveValidatorIncomeDetails(uint64(epoch), rewards)
+				if err != nil {
+					return fmt.Errorf("error saving reward details to bigtable: %v", err)
 				}
 				return nil
 			})
