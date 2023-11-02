@@ -3268,11 +3268,12 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 						continue
 					}
 
-					// handle pagination
+					// skip token without value
 					if len(column.Value) == 0 && len(token) > 1 {
 						continue
 					}
 
+					// handle pagination
 					if offset > 0 {
 						offset--
 						continue
