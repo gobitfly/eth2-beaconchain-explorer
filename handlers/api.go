@@ -1581,8 +1581,6 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 
 	data := make([]*ApiValidatorResponse, 0)
 
-	cutoffDay := utils.Config.Chain.ClConfig.CappellaForkEpoch/utils.EpochsPerDay() - 1
-
 	err = db.ReaderDb.Select(&data, `
 		WITH today AS (
 			SELECT
@@ -1596,10 +1594,9 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		stats AS (
 			SELECT
 				vs.validatorindex,
-				COALESCE(SUM(vs.withdrawals_amount), 0) as total_amount
+				COALESCE(vs.withdrawals_amount_total, 0) as total_amount
 			FROM validator_stats vs
-			WHERE vs.validatorindex = ANY($1) AND vs.day >= $3
-			GROUP BY vs.validatorindex
+			WHERE vs.validatorindex = ANY($1) AND vs.day = $3
 		),
 		withdrawals_summary AS (
 			SELECT
@@ -1623,7 +1620,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
 		WHERE v.validatorindex = ANY($1)
 		ORDER BY v.validatorindex;
-	`, pq.Array(queryIndices), cutoffSlot, cutoffDay)
+	`, pq.Array(queryIndices), cutoffSlot, lastExportedDay)
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
