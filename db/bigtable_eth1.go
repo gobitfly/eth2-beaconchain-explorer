@@ -2222,7 +2222,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
-			utils.FormatMethod(bigtable.GetMethodLabel(t.MethodId, t.InvokesContract, t.IsContractCreation)),
+			utils.FormatMethod(bigtable.GetMethodLabel(t.MethodId, isContractInteraction)),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
@@ -4465,30 +4465,33 @@ func (bigtable *Bigtable) GetSignature(hex string, st types.SignatureType) (*str
 }
 
 // get a method label for its byte signature with defaults
-func (bigtable *Bigtable) GetMethodLabel(data []byte, invokesContract bool, createsContract bool) string {
-	if createsContract {
-		return "Constructor"
-	}
-	if !invokesContract {
-		return "Transfer"
-	}
-
+func (bigtable *Bigtable) GetMethodLabel(data []byte, interaction types.ContractInteractionType) string {
 	id := data
 	if len(data) > 3 {
 		id = data[:4]
 	}
-
 	method := fmt.Sprintf("0x%x", id)
-	if len(id) == 4 {
-		cacheKey := fmt.Sprintf("M:H2L:%s", method)
-		if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
-			if sig, err := bigtable.GetSignature(method, types.MethodSignature); err == nil {
-				cache.TieredCache.Set(cacheKey, method, time.Hour)
-				if sig != nil {
-					return utils.RemoveRoundBracketsIncludingContent(*sig)
+
+	switch interaction {
+	case types.CONTRACT_NONE:
+		return "Transfer"
+	case types.CONTRACT_CREATION:
+		return "Constructor"
+	case types.CONTRACT_DESTRUCTION:
+	case types.CONTRACT_PRESENT:
+		if len(id) == 4 {
+			cacheKey := fmt.Sprintf("M:H2L:%s", method)
+			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
+				if sig, err := bigtable.GetSignature(method, types.MethodSignature); err == nil {
+					cache.TieredCache.Set(cacheKey, method, time.Hour)
+					if sig != nil {
+						return utils.RemoveRoundBracketsIncludingContent(*sig)
+					}
 				}
 			}
 		}
+	default:
+		utils.LogError(nil, "unknown contract interaction type", 0, map[string]interface{}{"type": interaction})
 	}
 	return method
 }

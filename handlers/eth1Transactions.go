@@ -98,7 +98,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				}
 				tableData = append(tableData, []interface{}{
 					utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
-					utils.FormatMethod(db.BigtableClient.GetMethodLabel(v.GetData(), v.GetInvokesContract(), v.GetTo() == nil)),
+					utils.FormatMethod(db.BigtableClient.GetMethodLabel(v.GetData(), isContractInteraction)),
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
