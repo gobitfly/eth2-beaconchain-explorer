@@ -493,7 +493,7 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 	// get latest block from the node
 	latestNodeBlock, err := client.GetNativeClient().BlockByNumber(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("error in HandleChainReorgs calling client.GetNativeClient().BlockByNumber(nil): %w", err)
 	}
 	latestNodeBlockNumber := latestNodeBlock.NumberU64()
 
@@ -501,7 +501,7 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 	for i := latestNodeBlockNumber - uint64(depth); i <= latestNodeBlockNumber; i++ {
 		nodeBlock, err := client.GetNativeClient().HeaderByNumber(ctx, big.NewInt(int64(i)))
 		if err != nil {
-			return err
+			return fmt.Errorf("error in HandleChainReorgs calling client.GetNativeClient().HeaderByNumber(%v): %w", i, err)
 		}
 
 		dbBlock, err := bt.GetBlockFromBlocksTable(i)
@@ -509,7 +509,7 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 			if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
 				return nil
 			}
-			return err
+			return fmt.Errorf("error in HandleChainReorgs calling bt.GetBlockFromBlocksTable(%v): %w", i, err)
 		}
 
 		if !bytes.Equal(nodeBlock.Hash().Bytes(), dbBlock.Hash) {
@@ -522,12 +522,12 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 					if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
 						return nil
 					}
-					return err
+					return fmt.Errorf("error in HandleChainReorgs calling bt.GetBlockFromBlocksTable(%v): %w", j, err)
 				}
 				logrus.Infof("deleting block at height %v with hash %x", dbBlock.Number, dbBlock.Hash)
 				err = bt.DeleteBlock(dbBlock.Number, dbBlock.Hash)
 				if err != nil {
-					return err
+					return fmt.Errorf("error in HandleChainReorgs calling bt.DeleteBlock(%v, %v): %w", dbBlock.Number, dbBlock.Hash, err)
 				}
 			}
 		} else {
