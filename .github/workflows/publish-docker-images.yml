@@ -18,3 +18,4 @@ jobs:
           name: gobitfly/eth2-beaconchain-explorer
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+          Slay6693
