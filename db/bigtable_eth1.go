@@ -1300,6 +1300,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 			if idx.GetType() == "create" || idx.GetType() == "suicide" {
 				contractUpdate := &types.IsContractUpdate{
 					IsContract: idx.GetType() == "create",
+					Success:    idx.GetErrorMsg() == "" && idx.GetTo() != nil,
 				}
 				b, err := proto.Marshal(contractUpdate)
 				if err != nil {
@@ -1308,6 +1309,8 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				address := idx.GetTo()
 				if idx.GetType() == "suicide" {
 					address = idx.GetFrom()
+				} else if idx.GetTo() == nil {
+					address = tx.GetContractAddress()
 				}
 
 				mutWrite := gcp_bigtable.NewMutation()
@@ -2767,12 +2770,14 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	keys := make([]int, 0, len(transfers))
 	itransactions := make([]*types.Eth1InternalTransactionIndexed, 0, len(transfers))
 	idxs := make([][2]int64, 0, len(transfers))
-	for k, v := range transfers {
+	for k := range transfers {
 		keys = append(keys, k)
-		itransactions = append(itransactions, v)
-		idxs = append(idxs, [2]int64{int64(txIdx), int64(k)})
 	}
 	sort.Ints(keys)
+	for _, i := range keys {
+		itransactions = append(itransactions, transfers[i])
+		idxs = append(idxs, [2]int64{int64(txIdx), int64(i)})
+	}
 
 	txIsContractList, err := BigtableClient.GetAddressIsContractAtTransaction(itransactions, idxs)
 	if err != nil {
@@ -3730,7 +3735,7 @@ func (bigtable *Bigtable) GetAddressNames(addresses map[string]string) error {
 }
 
 type isContractInfo struct {
-	update bool
+	update *types.IsContractUpdate
 	ts     gcp_bigtable.Timestamp
 }
 
@@ -3763,14 +3768,14 @@ func (bigtable *Bigtable) getAddressIsContractHistories(histories map[string][]i
 
 	keyPrefix := fmt.Sprintf("%s:", bigtable.chainId)
 	err := bigtable.tableMetadata.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
-		b := &types.IsContractUpdate{}
 		address := strings.TrimPrefix(row.Key(), keyPrefix)
 		for _, v := range row[ACCOUNT_METADATA_FAMILY] {
+			b := &types.IsContractUpdate{}
 			err := proto.Unmarshal(v.Value, b)
 			if err != nil {
 				utils.LogError(err, "error parsing IsContractUpdate data", 0)
 			}
-			histories[address] = append(histories[address], isContractInfo{update: b.IsContract, ts: v.Timestamp})
+			histories[address] = append(histories[address], isContractInfo{update: b, ts: v.Timestamp})
 		}
 
 		return true
@@ -3826,11 +3831,19 @@ func (bigtable *Bigtable) GetAddressIsContractAt(requests []isContractAtRequest)
 
 		if exact_match {
 			results[i] = types.CONTRACT_DESTRUCTION
-			if history[k].update {
+			if history[k].update.IsContract {
 				results[i] = types.CONTRACT_CREATION
 			}
-		} else if history[k].update {
-			results[i] = types.CONTRACT_PRESENT
+		} else {
+			// find first successful prev update
+			for j := k; j >= 0; j-- {
+				if history[j].update.Success {
+					if history[j].update.IsContract {
+						results[i] = types.CONTRACT_PRESENT
+					}
+					break
+				}
+			}
 		}
 	}
 	return results, nil

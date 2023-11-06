@@ -80,6 +80,7 @@ message Eth1Transaction {
 
 message IsContractUpdate {
     bool is_contract = 1;
+    bool success = 2;
 }
 
 message AccessList {
