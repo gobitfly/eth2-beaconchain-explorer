@@ -1523,7 +1523,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey} [get]
 func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
-	apiValidator(w, r)
+	getApiValidator(w, r)
 }
 
 // ApiValidator godoc
@@ -1536,11 +1536,11 @@ func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator [post]
 func ApiValidatorPost(w http.ResponseWriter, r *http.Request) {
-	apiValidator(w, r)
+	getApiValidator(w, r)
 }
 
 // This endpoint supports both GET and POST but requires different swagger descriptions based on the type
-func apiValidator(w http.ResponseWriter, r *http.Request) {
+func getApiValidator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -1585,7 +1585,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		WITH today AS (
 			SELECT
 				w.validatorindex,
-				COALESCE(SUM(w.amount), 0) as amount_today
+				COALESCE(SUM(w.amount), 0) as amount
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
@@ -1594,14 +1594,15 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		stats AS (
 			SELECT
 				vs.validatorindex,
-				COALESCE(vs.withdrawals_amount_total, 0) as total_amount
+				COALESCE(vs.withdrawals_amount, 0) as amount
 			FROM validator_stats vs
 			WHERE vs.validatorindex = ANY($1) AND vs.day = $3
+			GROUP BY vs.validatorindex
 		),
 		withdrawals_summary AS (
 			SELECT
 				COALESCE(t.validatorindex, s.validatorindex) as validatorindex,
-				COALESCE(t.amount_today, 0) + COALESCE(s.total_amount, 0) as total
+				COALESCE(t.amount, 0) + COALESCE(s.amount, 0) as total
 			FROM today t
 			FULL JOIN stats s ON t.validatorindex = s.validatorindex
 		)
