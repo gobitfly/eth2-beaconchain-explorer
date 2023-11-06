@@ -100,7 +100,6 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 				}
 				if v.GetTo() == nil {
 					v.To = v.ContractAddress
-					names[string(v.GetTo())] = "Contract Creation"
 				}
 				var isContractInteraction types.ContractInteractionType
 				if len(txIsContractList) > i {
@@ -112,7 +111,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
-					utils.FormatAddressWithLimits(v.GetTo(), names[string(v.GetTo())], isContractInteraction != types.CONTRACT_NONE, "address", 15, 20, true),
+					utils.FormatAddressWithLimits(v.GetTo(), db.BigtableClient.GetAddressLabel(names[string(v.GetTo())], isContractInteraction), isContractInteraction != types.CONTRACT_NONE, "address", 15, 20, true),
 					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 				})

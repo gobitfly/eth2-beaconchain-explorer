@@ -176,7 +176,6 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		// set tx to if tx is contract creation
 		if contractCreation {
 			tx.To = tx.ContractAddress
-			names[string(tx.To)] = "Contract Creation"
 		}
 
 		method := "Transfer"
@@ -200,7 +199,7 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 			From:          fmt.Sprintf("%#x", tx.From),
 			FromFormatted: utils.FormatAddressWithLimits(tx.From, names[string(tx.From)], false, "address", 15, 20, true),
 			To:            fmt.Sprintf("%#x", tx.To),
-			ToFormatted:   utils.FormatAddressWithLimits(tx.To, names[string(tx.To)], isContractInteraction != types.CONTRACT_NONE, "address", 15, 20, true),
+			ToFormatted:   utils.FormatAddressWithLimits(tx.To, db.BigtableClient.GetAddressLabel(names[string(tx.To)], isContractInteraction), isContractInteraction != types.CONTRACT_NONE, "address", 15, 20, true),
 			Value:         new(big.Int).SetBytes(tx.Value),
 			Fee:           txFee,
 			GasPrice:      effectiveGasPrice,
