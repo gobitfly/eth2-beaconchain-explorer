@@ -1886,9 +1886,9 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Request came with a validator index number
-		index, err = strconv.ParseUint(vars["index"], 10, 64)
+		index, err = strconv.ParseUint(vars["index"], 10, 31)
 
-		if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		if err != nil {
 			// Request is not a valid index number
 			logger.Warnf("error parsing validator index: %v", err)
 			validatorNotFound(data, w, r, vars, "/stats")
@@ -1899,10 +1899,10 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	errFields["index"] = index
 
 	// Check if validator index is available
-	var dbIndex uint64
-	err = db.ReaderDb.Get(&dbIndex, "SELECT validatorindex FROM validators WHERE validatorindex = $1", index)
-	if err != nil {
-		if err != sql.ErrNoRows {
+	var doesIndexExist bool
+	err = db.ReaderDb.Get(&doesIndexExist, "SELECT EXISTS (SELECT validatorindex FROM validators WHERE validatorindex = $1)", index)
+	if err != nil || !doesIndexExist {
+		if err != nil {
 			utils.LogError(err, "error checking for index in validators table", 0, errFields)
 		}
 		validatorNotFound(data, w, r, vars, "/stats")
