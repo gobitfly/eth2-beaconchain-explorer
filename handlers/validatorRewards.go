@@ -208,7 +208,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	user := getUser(r)
 	if !user.Authenticated {
 		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
-		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusUnauthorized)
 		return
 	}
 
@@ -220,7 +220,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil || count >= 5 {
 		logger.WithField("route", r.URL.String()).Info(fmt.Sprintf("User Subscription limit (%v) reached %v", count, err))
-		http.Error(w, "Internal server error, User Subscription limit reached", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, User Subscription limit reached", http.StatusConflict)
 		return
 	}
 
@@ -239,7 +239,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if validatorArr == "" || !isValidCurrency(currency) {
 		logger.WithField("route", r.URL.String()).Error("Bad Query")
-		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, Bad Query", http.StatusBadRequest)
 		return
 	}
 
@@ -271,7 +271,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	user := getUser(r)
 	if !user.Authenticated {
 		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
-		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusUnauthorized)
 		return
 	}
 
@@ -283,7 +283,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	if validatorArr == "" || !isValidCurrency(currency) {
 		logger.WithField("route", r.URL.String()).Error("Bad Query")
-		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, Bad Query", http.StatusBadRequest)
 		return
 	}
 
@@ -314,7 +314,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	user := getUser(r)
 	if !user.Authenticated {
 		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
-		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusUnauthorized)
 		return
 	}
 

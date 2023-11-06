@@ -104,7 +104,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "No monitoring data available", http.StatusInternalServerError)
+			http.Error(w, "No monitoring data available", http.StatusNotFound)
 			return
 		} else {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -3038,7 +3038,7 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 
 	localSignature := hmacSign(fmt.Sprintf("ETHPOOL %v %v", pkg, ethpoolUserID))
 	if signature != localSignature {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		logger.Errorf("signature mismatch %v | %v", signature, localSignature)
 		sendErrorResponse(w, r.URL.String(), "Unauthorized: signature not valid")
 		return
@@ -3048,7 +3048,7 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 
 	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
 	if err != nil || subscriptionCount >= 5 {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusConflict)
 		sendErrorResponse(w, r.URL.String(), "reached max subscription limit")
 		return
 	}
