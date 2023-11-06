@@ -1594,10 +1594,9 @@ func getApiValidator(w http.ResponseWriter, r *http.Request) {
 		stats AS (
 			SELECT
 				vs.validatorindex,
-				COALESCE(vs.withdrawals_amount, 0) as amount
+				COALESCE(vs.withdrawals_amount_total, 0) as amount
 			FROM validator_stats vs
 			WHERE vs.validatorindex = ANY($1) AND vs.day = $3
-			GROUP BY vs.validatorindex
 		),
 		withdrawals_summary AS (
 			SELECT
