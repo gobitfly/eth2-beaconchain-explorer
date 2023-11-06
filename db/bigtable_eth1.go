@@ -2140,7 +2140,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 		method := bigtable.GetMethodLabel(t.MethodId, t.InvokesContract)
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash),
+			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
 			utils.FormatMethod(method),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
@@ -2439,7 +2439,7 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string,
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash),
+			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
@@ -2562,7 +2562,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 		to := utils.FormatAddress(t.To, nil, toName, false, false, !bytes.Equal(t.To, address))
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
@@ -2888,7 +2888,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
@@ -3006,7 +3006,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 		to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, fmt.Sprintf("%x", t.To) != address)
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
@@ -3120,7 +3120,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 		to := utils.FormatAddress(t.To, t.TokenAddress, toName, false, false, fmt.Sprintf("%x", t.To) != address)
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
@@ -3962,7 +3962,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
