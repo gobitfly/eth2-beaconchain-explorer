@@ -1511,7 +1511,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 
 			_, err = stmtProposalAssignments.Exec(b.Slot/utils.Config.Chain.ClConfig.SlotsPerEpoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
-				return fmt.Errorf("error executing stmtProposalAssignments for block %v index %v: %w", b.Slot, i, err)
+				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %w", b.Slot, err)
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposalAssignments")
 
