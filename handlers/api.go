@@ -1619,7 +1619,7 @@ func getApiValidator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN validator_names n ON n.publickey = v.pubkey
 		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
 		WHERE v.validatorindex = ANY($1)
-		ORDER BY v.validatorindex;
+		ORDER BY v.validatorindex
 	`, pq.Array(queryIndices), cutoffSlot, lastExportedDay)
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)

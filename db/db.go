@@ -2146,7 +2146,7 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 		SELECT
 			today.sum + stats.sum as sum,
 			today.count + stats.count as count
-		FROM today, stats;`, cutoffSlot, lastExportedDay)
+		FROM today, stats`, cutoffSlot, lastExportedDay)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, 0, nil
@@ -2430,7 +2430,7 @@ func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
 			WHERE validatorindex = ANY($1) AND day = $3
 		)
 		SELECT today.count + stats.count
-		FROM today, stats;`, validatorFilter, cutoffSlot, lastExportedDay)
+		FROM today, stats`, validatorFilter, cutoffSlot, lastExportedDay)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
