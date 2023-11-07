@@ -237,7 +237,7 @@ func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, dig
 		classes = ` class="text-success"`
 	}
 
-	return template.HTML(fmt.Sprintf(`<span%s>%s%s</span>`, classes, result))
+	return template.HTML(fmt.Sprintf(`<span%s>%s</span>`, classes, result))
 }
 
 // IfToDec trys to parse given parameter to decimal.Decimal, it only logs on error
