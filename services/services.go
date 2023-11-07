@@ -83,6 +83,9 @@ func Init() {
 	ready.Add(1)
 	go latestExportedStatisticDayUpdater(ready)
 
+	ready.Add(1)
+	go stripeEmailUpdater(ready)
+
 	ready.Wait()
 }
 

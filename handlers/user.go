@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -1349,7 +1348,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// validate new email
-	newEmail := r.FormValue("email")
+	newEmail := strings.ToLower(r.FormValue("email"))
 
 	if userData.Email == newEmail {
 		session.Save(r, w)
@@ -1375,7 +1374,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if emailExists {
-		session.AddFlash("Error: Email already exists, please choose a unique email")
+		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -1392,7 +1391,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.AddFlash("Verification link sent to your new email " + newEmail)
+	session.AddFlash("An email has been sent, please click the link in the email to confirm your email change. The link will expire in 30 minutes.")
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 }
@@ -1434,11 +1433,6 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	if !sessionUser.Authenticated {
-		utils.SetFlash(w, r, authSessionName, "Error: You need to be logged in to update your email. Please login and try again.")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
 
 	user := struct {
 		ID               int64     `db:"id"`
@@ -1470,12 +1464,6 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	// validate data
 
-	if sessionUser.UserID != uint64(user.ID) {
-		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
-		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-		return
-	}
-
 	if !user.Confirmed {
 		utils.SetFlash(w, r, authSessionName, "Error: Cannot update email for an unconfirmed address. Please confirm your email first.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
@@ -1504,25 +1492,13 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if emailExists {
-		utils.SetFlash(w, r, authSessionName, "Error: Could not update email. The new email already exists, please send a new update request with a different email.")
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update email. The new email already exists, please send a request with a different email.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
-	// everything is fine, update email
-	// update users email in Stripe, if user has a subscription
-	if user.StripeCustomerId != "" {
-		err = updateStripeCustomerEmail(user.StripeCustomerId, user.NewEmail)
-		if err != nil {
-			utils.LogError(err, "error updating user email in stripe", 0, map[string]interface{}{"customerID": user.StripeCustomerId, "newEmail": user.NewEmail})
-			utils.SetFlash(w, r, authSessionName, "Error: Could not update email. Please try again. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>.")
-			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-		}
-	}
-
-	// update users email in DB
-	// if this fails, the user will not be able to log in with the new email but stripe will have the new email
-	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = NULL, email_change_to_value = NULL WHERE id = $2`, user.NewEmail, user.ID)
+	// update users email in DB and set stripe email pending flag
+	_, err = db.FrontendWriterDB.Exec(`UPDATE users SET email = $1, email_confirmation_hash = NULL, email_change_to_value = NULL, stripe_email_pending = $2 WHERE id = $3`, user.NewEmail, user.StripeCustomerId != "", user.ID)
 	if err != nil {
 		utils.LogError(err, "error updating email for user", 0, map[string]interface{}{"userID": user.ID, "newEmail": user.NewEmail})
 		utils.SetFlash(w, r, authSessionName, "Error: Could not update email. Please try again. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>.")
@@ -1530,9 +1506,11 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.SetValue("subscription", "")
-	session.SetValue("authenticated", false)
-	session.DeleteValue("user_id")
+	if sessionUser.UserID == uint64(user.ID) {
+		session.SetValue("subscription", "")
+		session.SetValue("authenticated", false)
+		session.DeleteValue("user_id")
+	}
 
 	err = purgeAllSessionsForUser(r.Context(), uint64(user.ID))
 	if err != nil {
@@ -1544,35 +1522,6 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
-}
-
-func updateStripeCustomerEmail(stripeCustomerId, newEmail string) error {
-	// see https://stripe.com/docs/api/customers/update
-	apiEndpoint := "https://api.stripe.com/v1/customers/" + stripeCustomerId
-
-	data := url.Values{}
-	data.Set("email", newEmail)
-	req, err := http.NewRequest(http.MethodPost, apiEndpoint, bytes.NewBufferString(data.Encode()))
-	if err != nil {
-		return fmt.Errorf("error creating email change request for stripe: %w", err)
-	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", utils.Config.Frontend.Stripe.SecretKey))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	httpClient := http.Client{Timeout: time.Second * 10}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("error sending request to stripe: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("error updating email in stripe, also could not read body: %w", err)
-		}
-		return fmt.Errorf("error updating email in stripe: %w; body: %v", err, string(body))
-	}
-	return nil
 }
 
 // UserValidatorWatchlistAdd godoc
