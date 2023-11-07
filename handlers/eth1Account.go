@@ -83,7 +83,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", "")
+		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressTransactionsTableData: %w", err)
 		}
@@ -91,7 +91,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		blobs, err = db.BigtableClient.GetAddressBlobTableData(addressBytes, "", "")
+		blobs, err = db.BigtableClient.GetAddressBlobTableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressBlobTableData: %w", err)
 		}
@@ -99,7 +99,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "", "")
+		internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressInternalTableData: %w", err)
 		}
@@ -107,7 +107,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc20, err = db.BigtableClient.GetAddressErc20TableData(addressBytes, "", "")
+		erc20, err = db.BigtableClient.GetAddressErc20TableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc20TableData: %w", err)
 		}
@@ -115,7 +115,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "", "")
+		erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc721TableData: %w", err)
 		}
@@ -123,7 +123,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "", "")
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc1155TableData: %w", err)
 		}
@@ -131,7 +131,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		blocksMined, err = db.BigtableClient.GetAddressBlocksMinedTableData(address, "", "")
+		blocksMined, err = db.BigtableClient.GetAddressBlocksMinedTableData(address, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressBlocksMinedTableData: %w", err)
 		}
@@ -139,7 +139,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		unclesMined, err = db.BigtableClient.GetAddressUnclesMinedTableData(address, "", "")
+		unclesMined, err = db.BigtableClient.GetAddressUnclesMinedTableData(address, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressUnclesMinedTableData: %w", err)
 		}
@@ -296,21 +296,20 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	addressBytes := common.FromHex(address)
 
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
 	pageToken := q.Get("pageToken")
 
-	search := ""
-	// logger.Infof("GETTING TRANSACTION table data for address: %v search: %v draw: %v start: %v length: %v", address, search, draw, start, length)
-	data, err := db.BigtableClient.GetAddressTransactionsTableData(addressBytes, search, pageToken)
+	data, err := db.BigtableClient.GetAddressTransactionsTableData(addressBytes, pageToken)
 	if err != nil {
-		utils.LogError(err, "error getting eth1 block table data", 0)
+		utils.LogError(err, "error getting eth1 tx table data", 0, errFields)
 	}
-
-	// logger.Infof("GOT TX: %+v", data)
 
 	err = json.NewEncoder(w).Encode(data)
 
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -324,17 +323,20 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
 	pageToken := q.Get("pageToken")
 
-	search := ""
-	data, err := db.BigtableClient.GetAddressBlocksMinedTableData(address, search, pageToken)
+	data, err := db.BigtableClient.GetAddressBlocksMinedTableData(address, pageToken)
 	if err != nil {
-		utils.LogError(err, "error getting eth1 block table data", 0)
+		utils.LogError(err, "error getting eth1 blocks mined table data", 0, errFields)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -349,17 +351,19 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
 	pageToken := q.Get("pageToken")
 
-	search := ""
-	data, err := db.BigtableClient.GetAddressUnclesMinedTableData(address, search, pageToken)
+	data, err := db.BigtableClient.GetAddressUnclesMinedTableData(address, pageToken)
 	if err != nil {
-		utils.LogError(err, "error getting eth1 block table data", 0)
+		utils.LogError(err, "error getting eth1 uncles mined data", 0, errFields)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -375,9 +379,12 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
 	withdrawals, nextPageToken, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, q.Get("pageToken"))
 	if err != nil {
-		logger.WithError(err).Errorf("error getting address withdrawals data")
+		utils.LogError(err, "error getting address withdrawals data", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -400,7 +407,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -416,18 +423,18 @@ func Eth1AddressBlobTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	addressBytes := common.FromHex(address)
 
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
 	pageToken := q.Get("pageToken")
-
-	search := ""
-
-	data, err := db.BigtableClient.GetAddressBlobTableData(addressBytes, search, pageToken)
+	data, err := db.BigtableClient.GetAddressBlobTableData(addressBytes, pageToken)
 	if err != nil {
-		utils.LogError(err, "error getting eth1 block table data", 0)
+		utils.LogError(err, "error getting eth1 blob table data", 0, errFields)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -443,18 +450,18 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	addressBytes := common.FromHex(address)
 
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
 	pageToken := q.Get("pageToken")
-
-	search := ""
-
-	data, err := db.BigtableClient.GetAddressInternalTableData(addressBytes, search, pageToken)
+	data, err := db.BigtableClient.GetAddressInternalTableData(addressBytes, pageToken)
 	if err != nil {
-		utils.LogError(err, "error getting eth1 block table data", 0)
+		utils.LogError(err, "error getting eth1 internal tx table data", 0, errFields)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -468,19 +475,20 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-
 	addressBytes := common.FromHex(address)
-	pageToken := q.Get("pageToken")
 
-	search := ""
-	data, err := db.BigtableClient.GetAddressErc20TableData(addressBytes, search, pageToken)
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
+	pageToken := q.Get("pageToken")
+	data, err := db.BigtableClient.GetAddressErc20TableData(addressBytes, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 internal transactions table data")
+		utils.LogError(err, "error getting eth1 ERC20 transactions table data", 0, errFields)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -495,16 +503,18 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
 	pageToken := q.Get("pageToken")
-	search := ""
-	data, err := db.BigtableClient.GetAddressErc721TableData(address, search, pageToken)
+	data, err := db.BigtableClient.GetAddressErc721TableData(address, pageToken)
 	if err != nil {
-		utils.LogError(err, "error getting eth1 block table data", 0)
+		utils.LogError(err, "error getting eth1 ERC721 transactions table data", 0, errFields)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}
@@ -518,17 +528,19 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	pageToken := q.Get("pageToken")
 
-	search := ""
-	data, err := db.BigtableClient.GetAddressErc1155TableData(address, search, pageToken)
+	errFields := map[string]interface{}{
+		"route": r.URL.String()}
+
+	pageToken := q.Get("pageToken")
+	data, err := db.BigtableClient.GetAddressErc1155TableData(address, pageToken)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting eth1 internal transactions table data")
+		utils.LogError(err, "error getting eth1 ERC1155 transactions table data", 0, errFields)
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
 		return
 	}

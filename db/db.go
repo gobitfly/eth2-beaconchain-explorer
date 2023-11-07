@@ -1429,17 +1429,17 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 			for i, c := range b.BlobKZGCommitments {
 				_, err := stmtBlobs.Exec(b.Slot, b.BlockRoot, i, c, b.BlobKZGProofs[i], utils.VersionedBlobHash(c).Bytes())
 				if err != nil {
-					return fmt.Errorf("error executing stmtBlobs for block at slot %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtBlobs for block at slot %v index %v: %w", b.Slot, i, err)
 				}
 			}
 			logger.Tracef("done, took %v", time.Since(t))
 			t = time.Now()
 			logger.Tracef("writing transactions and withdrawal data")
 			if payload := b.ExecutionPayload; payload != nil {
-				for _, w := range payload.Withdrawals {
+				for i, w := range payload.Withdrawals {
 					_, err := stmtWithdrawals.Exec(b.Slot, b.BlockRoot, w.Index, w.ValidatorIndex, w.Address, w.Amount)
 					if err != nil {
-						return fmt.Errorf("error executing stmtWithdrawals for block at slot %v: %w", b.Slot, err)
+						return fmt.Errorf("error executing stmtWithdrawals for block at slot %v index %v: %w", b.Slot, i, err)
 					}
 				}
 			}
@@ -1449,16 +1449,16 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 			for i, ps := range b.ProposerSlashings {
 				_, err := stmtProposerSlashing.Exec(b.Slot, i, b.BlockRoot, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtProposerSlashing for block at slot %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtProposerSlashing for block at slot %v index %v: %w", b.Slot, i, err)
 				}
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposerSlashing")
 			t = time.Now()
 			logger.Tracef("writing bls change data")
-			for _, bls := range b.SignedBLSToExecutionChange {
+			for i, bls := range b.SignedBLSToExecutionChange {
 				_, err := stmtBLSChange.Exec(b.Slot, b.BlockRoot, bls.Message.Validatorindex, bls.Signature, bls.Message.BlsPubkey, bls.Message.Address)
 				if err != nil {
-					return fmt.Errorf("error executing stmtBLSChange for block %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtBLSChange for block %v index %v: %w", b.Slot, i, err)
 				}
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtBLSChange")
@@ -1467,7 +1467,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 			for i, as := range b.AttesterSlashings {
 				_, err := stmtAttesterSlashing.Exec(b.Slot, i, b.BlockRoot, pq.Array(as.Attestation1.AttestingIndices), as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, pq.Array(as.Attestation2.AttestingIndices), as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
 				if err != nil {
-					return fmt.Errorf("error executing stmtAttesterSlashing for block %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtAttesterSlashing for block %v index %v: %w", b.Slot, i, err)
 				}
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtAttesterSlashing")
@@ -1475,7 +1475,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 			for i, a := range b.Attestations {
 				_, err = stmtAttestations.Exec(b.Slot, i, b.BlockRoot, a.AggregationBits, pq.Array(a.Attesters), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 				if err != nil {
-					return fmt.Errorf("error executing stmtAttestations for block %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtAttestations for block %v index %v: %w", b.Slot, i, err)
 				}
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("attestations")
@@ -1494,7 +1494,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 
 				_, err = stmtDeposits.Exec(b.Slot, i, b.BlockRoot, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, signatureValid)
 				if err != nil {
-					return fmt.Errorf("error executing stmtDeposits for block %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtDeposits for block %v index %v: %w", b.Slot, i, err)
 				}
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("deposits")
@@ -1503,7 +1503,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 			for i, ve := range b.VoluntaryExits {
 				_, err := stmtVoluntaryExits.Exec(b.Slot, i, b.BlockRoot, ve.Epoch, ve.ValidatorIndex, ve.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtVoluntaryExits for block %v: %w", b.Slot, err)
+					return fmt.Errorf("error executing stmtVoluntaryExits for block %v index %v: %w", b.Slot, i, err)
 				}
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("exits")
