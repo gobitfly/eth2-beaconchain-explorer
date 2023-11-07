@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"eth2-exporter/db"
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -56,7 +55,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Rates:                 services.GetRates(GetCurrency(r)),
 		Mainnet:               utils.Config.Chain.ClConfig.ConfigName == "mainnet" || utils.Config.Chain.ClConfig.ConfigName == "gnosis",
 		DepositContract:       utils.Config.Chain.ClConfig.DepositContractAddress,
-		ClientsUpdated:        ethclients.ClientsUpdated(),
 		ChainConfig:           utils.Config.Chain.ClConfig,
 		Lang:                  "en-US",
 		NoAds:                 user.Authenticated && user.Subscription != "",
