@@ -249,7 +249,7 @@
                   <div class="col-md-9">{{ formatBytesAmount .Gas.BlobTxFee config.Frontend.ElCurrency 8 }} <span class="text-secondary">(Used</span> <span class="text-black">{{ .Gas.BlobGasUsed }}</span> <span class="text-secondary">@</span> <span class="text-black">{{ formatBytesAmount .Gas.BlobGasPrice "GWei" 8 }}</span><span class="text-secondary">)</span></div>
                 </div>
                 <div class="row border-bottom p-3 mx-0">
-                  <div class="col-md-3">Blob VersionedHashes:</div>
+                  <div class="col-md-3">Blob Versioned Hashes:</div>
                   <div class="col-md-9">
                     <ul>
                       {{ range $i, $h := .BlobHashes }}<li>{{ $i }}: {{ formatBlobVersionedHash $h }}</li>{{ end }}
