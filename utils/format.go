@@ -627,9 +627,12 @@ func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", FormatHashRaw(hash, trunc_opt...)))
 }
 
-// FormatHashRaw will return a hash formated
-// hash is required, trunc is optional.
-// Only the first value in trunc_opt will be used.
+/*
+  - FormatHashRaw will return a hash formated
+    hash is required, trunc is optional.
+    Only the first value in trunc_opt will be used.
+    ATTENTION: IT TRUNCATES BY DEFAULT, PASS FALSE TO trunc_opt TO DISABLE
+*/
 func FormatHashRaw(hash []byte, trunc_opt ...bool) string {
 	s := fmt.Sprintf("%#x", hash)
 	if len(s) == 42 { // if it's an address, we checksum it (0x + 40)

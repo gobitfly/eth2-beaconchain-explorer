@@ -1989,7 +1989,7 @@ func (n *validatorWithdrawalNotification) GetEventFilter() string {
 }
 
 func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
-	generalPart := fmt.Sprintf(`An automatic withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/%[4]v).`, n.ValidatorIndex, utils.FormatClCurrencyString(n.Amount, utils.Config.Frontend.MainCurrency, 6, true, false), n.Slot, utils.FormatHashRaw(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
+	generalPart := fmt.Sprintf(`An automatic withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/0x%[5]x).`, n.ValidatorIndex, utils.FormatClCurrencyString(n.Amount, utils.Config.Frontend.MainCurrency, 6, true, false), n.Slot, utils.FormatHashRaw(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
 	return generalPart
 }
 
