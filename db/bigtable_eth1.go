@@ -2129,7 +2129,8 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 	}
 
 	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
+	for i := len(transactions) - 1; i >= 0; i-- {
+		t := transactions[i]
 		fromName := names[string(t.From)]
 		var contractInteraction types.ContractInteractionType
 		if len(contractInteractionTypes) > i {
@@ -2440,7 +2441,8 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken stri
 	}
 
 	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
+	for i := len(transactions) - 1; i >= 0; i-- {
+		t := transactions[i]
 
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
@@ -2898,7 +2900,8 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken str
 
 	tableData := make([][]interface{}, len(transactions))
 
-	for i, t := range transactions {
+	for i := len(transactions) - 1; i >= 0; i-- {
+		t := transactions[i]
 
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
@@ -3021,7 +3024,8 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken st
 	}
 
 	tableData := make([][]interface{}, len(transactions))
-	for i, t := range transactions {
+	for i := len(transactions) - 1; i >= 0; i-- {
+		t := transactions[i]
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
 
@@ -3132,7 +3136,8 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken s
 		return nil, err
 	}
 
-	for i, t := range transactions {
+	for i := len(transactions) - 1; i >= 0; i-- {
+		t := transactions[i]
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
 
