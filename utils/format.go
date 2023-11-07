@@ -140,11 +140,6 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	return FormatBalanceChange(balance, currency)
 }
 
-func CurrencyToCl(valIf interface{}, currency string) decimal.Decimal {
-	val := IfToDec(valIf)
-	return val.Mul(decimal.NewFromFloat(price.GetPrice(Config.Frontend.ClCurrency, currency)))
-}
-
 func ClToMainCurrency(valIf interface{}) decimal.Decimal {
 	val := IfToDec(valIf)
 	res := val.DivRound(decimal.NewFromInt(Config.Frontend.ClCurrencyDivisor), 18)
