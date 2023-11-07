@@ -2120,12 +2120,40 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 		Sum   uint64 `db:"sum"`
 		Count uint64 `db:"count"`
 	}{}
+	lastExportedDay, err := GetLastExportedStatisticDay()
+	if err != nil {
+		return 0, 0, fmt.Errorf("error getting latest exported statistic day for withdrawals count: %w", err)
+	}
+	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
+	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.ClConfig.SlotsPerEpoch) + 1
+
 	err = ReaderDb.Get(&res, `
-	SELECT 
-		COALESCE(sum(w.amount), 0) as sum,
-		COALESCE(count(*), 0) as count
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'`)
+		WITH today AS (
+			SELECT
+				COALESCE(SUM(w.amount), 0) as sum,
+				COUNT(*) as count
+			FROM blocks_withdrawals w
+			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
+			WHERE w.block_slot >= $1
+		),
+		stats AS (
+			SELECT
+				COALESCE(SUM(withdrawals_amount_total), 0) as sum,
+				COALESCE(SUM(withdrawals_total), 0) as count
+			FROM validator_stats
+			WHERE day = $2
+		)
+		SELECT
+			today.sum + stats.sum as sum,
+			today.count + stats.count as count
+		FROM today, stats`, cutoffSlot, lastExportedDay)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, 0, nil
+		}
+		return 0, 0, fmt.Errorf("error fetching total withdrawal count and amount: %w", err)
+	}
+
 	return res.Sum, res.Count, err
 }
 
@@ -2391,18 +2419,18 @@ func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
 
 	err = ReaderDb.Get(&count, `
 		WITH today AS (
-			SELECT COUNT(*) as count_today
+			SELECT COUNT(*) as count
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
 		),
 		stats AS (
-			SELECT COALESCE(SUM(withdrawals), 0) as total_count
+			SELECT COALESCE(SUM(withdrawals_total), 0) as count
 			FROM validator_stats
-			WHERE validatorindex = ANY($1)
+			WHERE validatorindex = ANY($1) AND day = $3
 		)
-		SELECT today.count_today + stats.total_count
-		FROM today, stats;`, validatorFilter, cutoffSlot)
+		SELECT today.count + stats.count
+		FROM today, stats`, validatorFilter, cutoffSlot, lastExportedDay)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
