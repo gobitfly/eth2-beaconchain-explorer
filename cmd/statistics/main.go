@@ -39,7 +39,7 @@ func main() {
 	flag.BoolVar(&opt.statisticsValidatorToggle, "validators.enabled", false, "Toggle exporting validator statistics")
 	flag.BoolVar(&opt.statisticsChartToggle, "charts.enabled", false, "Toggle exporting chart series")
 	flag.BoolVar(&opt.statisticsGraffitiToggle, "graffiti.enabled", false, "Toggle exporting graffiti statistics")
-	flag.BoolVar(&opt.resetStatus, "validators.reset", false, "Export stats independet if they have already been exported previously")
+	flag.BoolVar(&opt.resetStatus, "validators.reset", false, "Export stats independent if they have already been exported previously")
 
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
