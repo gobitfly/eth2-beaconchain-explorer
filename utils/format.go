@@ -443,8 +443,9 @@ func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 
 // FormatBlockStatus will return an html status for a block.
 func FormatBlockStatus(status, slot uint64) template.HTML {
-	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
-	if status == 0 && SlotToTime(slot).Before(time.Now().Add(time.Minute*-1)) {
+	if slot == 0 {
+		return `<span class="badge badge-pill text-dark" style="background: rgba(179, 159, 70, 0.8); font-size: 12px; font-weight: 500;">Genesis</span>`
+	} else if status == 0 && SlotToTime(slot).Before(time.Now().Add(time.Minute*-1)) {
 		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 0 {
 		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`

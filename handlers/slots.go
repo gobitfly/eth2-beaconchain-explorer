@@ -239,7 +239,7 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 			tableData[i] = []interface{}{
 				utils.FormatEpoch(b.Epoch),
 				utils.FormatBlockSlot(b.Slot),
-				template.HTML("<span class=\"badge text-dark\" style=\"background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;\">Genesis</span>"),
+				utils.FormatBlockStatus(b.Status, b.Slot),
 				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 				template.HTML("N/A"),
 				b.Attestations,
