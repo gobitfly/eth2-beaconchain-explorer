@@ -484,7 +484,7 @@ func updateBlockFinalizationSequentially() error {
 		break
 	}
 
-	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("UpdateBlockFinalizationSequentially")
+	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("updateBlockFinalizationSequentially")
 	nextStartEpoch := minNonFinalizedSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
 	stepSize := uint64(100)
 	for ; ; time.Sleep(time.Millisecond * 50) {
