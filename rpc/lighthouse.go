@@ -994,6 +994,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 					tx.BlobVersionedHashes = append(tx.BlobVersionedHashes, h.Bytes())
 				}
 			}
+			txs = append(txs, tx)
 		}
 		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
 		for _, w := range payload.Withdrawals {
