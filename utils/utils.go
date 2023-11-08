@@ -1735,3 +1735,10 @@ func GetCurrentFuncName() string {
 	pc, _, _, _ := runtime.Caller(1)
 	return runtime.FuncForPC(pc).Name()
 }
+
+func IsGenesisBlock0(number uint64, ts int64) bool {
+	if number == 0 {
+		return time.Unix(int64(Config.Chain.ClConfig.MinGenesisTime), 0).UTC().Equal(time.Unix(ts, 0))
+	}
+	return false
+}

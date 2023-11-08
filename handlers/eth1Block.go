@@ -77,13 +77,18 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// execute template based on whether block is pre or post merge
-	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 {
-		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number), blockTemplateFiles)
-		// Post Merge PoS Block
+	// special handling for networks that launch with genesis on block 0
+	isGenesisBlock0 := utils.IsGenesisBlock0(number, eth1BlockPageData.Ts.Unix())
 
-		// calculate PoS slot number based on block timestamp
-		blockSlot := (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
+	// execute template based on whether block is pre or post merge
+	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 || isGenesisBlock0 {
+		// Post Merge PoS Block
+		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number), blockTemplateFiles)
+
+		blockSlot := uint64(0)
+		if !isGenesisBlock0 {
+			blockSlot = (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
+		}
 
 		// retrieve consensus data
 		blockPageData, err := GetSlotPageData(blockSlot)
