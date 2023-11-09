@@ -112,7 +112,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 			return // an error has occurred and was processed
 		}
 	} else {
-		// Pre  Merge PoW Block
+		// Pre Merge PoW Block
 		data := InitPageData(w, r, "block", "/block", fmt.Sprintf("Block %d", eth1BlockPageData.Number), preMergeTemplateFiles)
 		data.Data = eth1BlockPageData
 
