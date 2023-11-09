@@ -1736,6 +1736,7 @@ func GetCurrentFuncName() string {
 	return runtime.FuncForPC(pc).Name()
 }
 
+// Returns true if the given block number is 0 and the timestamp matches MinGenesisTime
 func IsPoSBlock0(number uint64, ts int64) bool {
 	if number == 0 {
 		return time.Unix(int64(Config.Chain.ClConfig.MinGenesisTime), 0).UTC().Equal(time.Unix(ts, 0))
