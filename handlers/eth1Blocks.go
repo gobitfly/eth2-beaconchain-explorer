@@ -180,6 +180,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		blockNumber := b.GetNumber()
 		ts := b.GetTime().AsTime().Unix()
 
+		// special handling for networks that launch with PoS on block 0
 		isPoSBlock0 := utils.IsPoSBlock0(blockNumber, ts)
 
 		var sData *additionalSlotData
