@@ -75,6 +75,8 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v)", p, firstEpoch, lastEpoch)
 
+	// Note that the order we receive the validators from the node in is crucial
+	// and determines which bit reflects them in the block sync aggregate bits
 	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", stateID), epoch)
 	if err != nil {
 		return err
@@ -87,17 +89,6 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 			return err
 		}
 		validatorsU64[i] = idxU64
-	}
-
-	dedupMap := make(map[uint64]bool)
-
-	for _, validator := range validatorsU64 {
-		dedupMap[validator] = true
-	}
-
-	validatorsU64 = make([]uint64, 0, len(dedupMap))
-	for validator := range dedupMap {
-		validatorsU64 = append(validatorsU64, validator)
 	}
 
 	// start := time.Now()
