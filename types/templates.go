@@ -887,7 +887,7 @@ type SearchAheadSlotsResult []struct {
 
 // SearchAheadBlockssResult is a struct to hold the search ahead block results
 type SearchAheadBlocksResult []struct {
-	Block uint64 `json:"block,omitempty"`
+	Block string `json:"block,omitempty"`
 	Hash  string `json:"hash,omitempty"`
 }
 
