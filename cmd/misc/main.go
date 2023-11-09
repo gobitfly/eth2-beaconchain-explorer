@@ -959,7 +959,7 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 		"end":   end}
 
 	batchSize := uint64(10000)
-	for from := start; from < end; from += batchSize {
+	for from := start; from <= end; from += batchSize {
 		targetCount := batchSize
 		if from+targetCount >= end {
 			targetCount = end - from + 1
