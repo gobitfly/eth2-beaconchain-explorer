@@ -380,6 +380,7 @@ func main() {
 			router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
 			router.HandleFunc("/launchMetrics", handlers.SlotVizMetrics).Methods("GET")
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
+			router.HandleFunc("/index/pageData", handlers.PageData).Methods("GET")
 			router.HandleFunc("/slot/{slotOrHash}", handlers.Slot).Methods("GET")
 			router.HandleFunc("/slot/{slotOrHash}/deposits", handlers.SlotDepositData).Methods("GET")
 			router.HandleFunc("/slot/{slotOrHash}/votes", handlers.SlotVoteData).Methods("GET")
