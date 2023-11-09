@@ -180,11 +180,11 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		blockNumber := b.GetNumber()
 		ts := b.GetTime().AsTime().Unix()
 
-		isGenesisBlock0 := utils.IsGenesisBlock0(blockNumber, ts)
+		isPoSBlock0 := utils.IsPoSBlock0(blockNumber, ts)
 
 		var sData *additionalSlotData
 		if slotData != nil {
-			if uint64(ts) >= utils.Config.Chain.GenesisTimestamp || isGenesisBlock0 {
+			if uint64(ts) >= utils.Config.Chain.GenesisTimestamp || isPoSBlock0 {
 				slot := uint64(0)
 				if uint64(ts) >= utils.Config.Chain.GenesisTimestamp {
 					slot = (uint64(ts) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
@@ -205,7 +205,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 			status = utils.FormatBlockStatus(sData.Status, sData.Slot)
 
 			posActive := true
-			if !isGenesisBlock0 {
+			if !isPoSBlock0 {
 				proposer = utils.FormatValidatorWithName(sData.Proposer, sData.ProposerName)
 				for _, v := range b.GetDifficulty() {
 					if v != 0 {

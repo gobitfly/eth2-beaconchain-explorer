@@ -77,16 +77,16 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// special handling for networks that launch with genesis on block 0
-	isGenesisBlock0 := utils.IsGenesisBlock0(number, eth1BlockPageData.Ts.Unix())
+	// special handling for networks that launch with PoS on block 0
+	isPosBlock0 := utils.IsPoSBlock0(number, eth1BlockPageData.Ts.Unix())
 
-	// execute template based on whether block is pre or post merge
-	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 || isGenesisBlock0 {
+	// execute template based on whether block is PoW or PoS
+	if eth1BlockPageData.Difficulty.Cmp(big.NewInt(0)) == 0 || isPosBlock0 {
 		// Post Merge PoS Block
 		data := InitPageData(w, r, "blockchain", "/block", fmt.Sprintf("Block %d", number), blockTemplateFiles)
 
 		blockSlot := uint64(0)
-		if !isGenesisBlock0 {
+		if !isPosBlock0 {
 			blockSlot = (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
 		}
 
