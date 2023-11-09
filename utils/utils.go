@@ -1737,6 +1737,7 @@ func GetCurrentFuncName() string {
 }
 
 // Returns true if the given block number is 0 and the timestamp matches MinGenesisTime
+// This is only true for networks that launch with PoS at block 0
 func IsPoSBlock0(number uint64, ts int64) bool {
 	if number == 0 {
 		return time.Unix(int64(Config.Chain.ClConfig.MinGenesisTime), 0).UTC().Equal(time.Unix(ts, 0))
