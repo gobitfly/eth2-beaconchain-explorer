@@ -77,13 +77,32 @@ func main() {
 	}
 
 	gOuter := &errgroup.Group{}
-	gOuter.SetLimit(10)
+	gOuter.SetLimit(25)
 
 	muts := []*gcp_bigtable.Mutation{}
 	keys := []string{}
 	mux := &sync.Mutex{}
 
-	blocksProcessed := int64(0)
+	blocksProcessedTotal := atomic.Int64{}
+	blocksProcessedIntv := atomic.Int64{}
+	exportStart := time.Now()
+
+	t := time.NewTicker(time.Second * 10)
+
+	go func() {
+		for {
+			<-t.C
+
+			remainingBlocks := int64(latestBlockNumber) - int64(*startBlockNumber) - blocksProcessedTotal.Load()
+			blocksPerSecond := float64(blocksProcessedIntv.Load()) / time.Since(exportStart).Seconds()
+			secondsRemaining := float64(remainingBlocks) / float64(blocksPerSecond)
+
+			durationRemaining := time.Second * time.Duration(secondsRemaining)
+			logrus.Infof("current speed: %0.1f blocks/sec, %d blocks processed, %d blocks remaining (%0.1f days to go)", blocksPerSecond, blocksProcessedIntv.Load(), remainingBlocks, durationRemaining.Hours()/24)
+			blocksProcessedIntv.Store(0)
+			exportStart = time.Now()
+		}
+	}()
 
 	p := message.NewPrinter(language.English)
 
@@ -96,21 +115,27 @@ func main() {
 
 				g := &errgroup.Group{}
 
+				start := time.Now()
+
 				var block, receipts, traces []byte
+				var blockDuration, receiptsDuration, tracesDuration time.Duration
 
 				g.Go(func() error {
 					var err error
 					block, err = getBlock(*url, httpClient, i)
+					blockDuration = time.Since(start)
 					return err
 				})
 				g.Go(func() error {
 					var err error
 					receipts, err = getReceipts(*url, httpClient, i)
+					receiptsDuration = time.Since(start)
 					return err
 				})
 				g.Go(func() error {
 					var err error
 					traces, err = getTraces(*url, httpClient, i)
+					tracesDuration = time.Since(start)
 					return err
 				})
 
@@ -136,14 +161,18 @@ func main() {
 					errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
 
 					if err != nil {
-						logrus.Fatalf("error writing data to bigtable: %v", err)
+						logrus.Errorf("error writing data to bigtable: %v", err)
+						cancel()
+						continue
 					}
 
 					for _, err := range errs {
-						logrus.Fatalf("error writing data to bigtable: %v", err)
+						logrus.Errorf("error writing data to bigtable: %v", err)
+						cancel()
+						continue
 					}
 					cancel()
-					logrus.Infof("completed processing block %v (block: %v bytes, receipts: %v bytes, traces: %v bytes, total: %v bytes)", i, len(block), len(receipts), len(traces), len(block)+len(receipts)+len(traces))
+					logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(block)+len(receipts)+len(traces))
 
 					muts = []*gcp_bigtable.Mutation{}
 					keys = []string{}
@@ -151,9 +180,12 @@ func main() {
 				}
 				mux.Unlock()
 
-				if atomic.AddInt64(&blocksProcessed, 1)%100000 == 0 {
+				if blocksProcessedTotal.Add(1)%100000 == 0 {
 					sendMessage(p.Sprintf("OP MAINNET NODE EXPORT: currently at block %v of %v (%.1f%%)", i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
 				}
+
+				blocksProcessedIntv.Add(1)
+
 				break
 
 			}
@@ -192,6 +224,10 @@ func getBlock(url string, httpClient *http.Client, number int) ([]byte, error) {
 		return nil, fmt.Errorf("error executing post request: %v", err)
 	}
 
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
+	}
+
 	defer res.Body.Close()
 
 	resString, err := io.ReadAll(res.Body)
@@ -223,6 +259,10 @@ func getReceipts(url string, httpClient *http.Client, number int) ([]byte, error
 
 	defer res.Body.Close()
 
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
+	}
+
 	resString, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading request body: %v", err)
@@ -231,6 +271,8 @@ func getReceipts(url string, httpClient *http.Client, number int) ([]byte, error
 	if strings.Contains(string(resString), `"error":{"code"`) {
 		return nil, fmt.Errorf("rpc error: %s", resString)
 	}
+
+	// fmt.Println(string(resString))
 
 	return compress(resString), nil
 }
@@ -253,6 +295,10 @@ func getTraces(url string, httpClient *http.Client, number int) ([]byte, error) 
 	res, err := httpClient.Do(r)
 	if err != nil {
 		return nil, fmt.Errorf("error executing post request: %v", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
 	}
 
 	defer res.Body.Close()
