@@ -75,7 +75,6 @@ type Bigtable struct {
 	v2SchemaCutOffEpoch uint64
 
 	machineMetricsQueuedWritesChan chan (types.BulkMutation)
-	machineMetricsQueuedWritesMux  *sync.RWMutex
 }
 
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
