@@ -129,6 +129,8 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 		machineMetricsQueuedWritesChan: make(chan types.BulkMutation, MAX_BATCH_MUTATIONS),
 	}
 
+	go bt.commitQueuedMachineMetricWrites()
+
 	BigtableClient = bt
 	return bt, nil
 }
