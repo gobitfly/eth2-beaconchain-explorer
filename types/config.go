@@ -30,6 +30,7 @@ type Config struct {
 	Bigtable struct {
 		Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
 		Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+		AppProfile          string `yaml:"appProfile" envconfig:"BIGTABLE_APP_PROFILE"`
 		Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
 		EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
 		EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`

@@ -78,7 +78,6 @@ type Bigtable struct {
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
 
 	if utils.Config.Bigtable.Emulator {
-
 		if utils.Config.Bigtable.EmulatorHost == "" {
 			utils.Config.Bigtable.EmulatorHost = "127.0.0.1"
 		}
@@ -89,11 +88,16 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 			logger.Fatalf("unable to set bigtable emulator environment variable: %v", err)
 		}
 	}
+
+	if utils.Config.Bigtable.AppProfile == "" { // set default app profile if empty
+		utils.Config.Bigtable.AppProfile = "default"
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	poolSize := 50
-	btClient, err := gcp_bigtable.NewClient(ctx, project, instance, option.WithGRPCConnectionPool(poolSize))
+	btClient, err := gcp_bigtable.NewClientWithConfig(ctx, project, instance, gcp_bigtable.ClientConfig{AppProfile: utils.Config.Bigtable.AppProfile}, option.WithGRPCConnectionPool(poolSize))
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 
 	if err != nil {
