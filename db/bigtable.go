@@ -73,6 +73,9 @@ type Bigtable struct {
 	chainId string
 
 	v2SchemaCutOffEpoch uint64
+
+	machineMetricsQueuedWritesChan chan (types.BulkMutation)
+	machineMetricsQueuedWritesMux  *sync.RWMutex
 }
 
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
@@ -110,26 +113,80 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 	}
 
 	bt := &Bigtable{
-		client:                  btClient,
-		tableData:               btClient.Open("data"),
-		tableBlocks:             btClient.Open("blocks"),
-		tableMetadataUpdates:    btClient.Open("metadata_updates"),
-		tableMetadata:           btClient.Open("metadata"),
-		tableBeaconchain:        btClient.Open("beaconchain"),
-		tableMachineMetrics:     btClient.Open("machine_metrics"),
-		tableValidators:         btClient.Open("beaconchain_validators"),
-		tableValidatorsHistory:  btClient.Open("beaconchain_validators_history"),
-		chainId:                 chainId,
-		redisCache:              rdc,
-		lastAttestationCacheMux: &sync.Mutex{},
-		v2SchemaCutOffEpoch:     utils.Config.Bigtable.V2SchemaCutOffEpoch,
+		client:                         btClient,
+		tableData:                      btClient.Open("data"),
+		tableBlocks:                    btClient.Open("blocks"),
+		tableMetadataUpdates:           btClient.Open("metadata_updates"),
+		tableMetadata:                  btClient.Open("metadata"),
+		tableBeaconchain:               btClient.Open("beaconchain"),
+		tableMachineMetrics:            btClient.Open("machine_metrics"),
+		tableValidators:                btClient.Open("beaconchain_validators"),
+		tableValidatorsHistory:         btClient.Open("beaconchain_validators_history"),
+		chainId:                        chainId,
+		redisCache:                     rdc,
+		lastAttestationCacheMux:        &sync.Mutex{},
+		v2SchemaCutOffEpoch:            utils.Config.Bigtable.V2SchemaCutOffEpoch,
+		machineMetricsQueuedWritesChan: make(chan types.BulkMutation, MAX_BATCH_MUTATIONS),
 	}
 
 	BigtableClient = bt
 	return bt, nil
 }
 
+func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
+
+	// copy the pending mutations over and commit them
+
+	batchSize := 10000
+
+	muts := &types.BulkMutations{
+		Keys: make([]string, 0, batchSize),
+		Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
+	}
+
+	tmr := time.NewTicker(time.Second * 10)
+	for {
+		select {
+		case mut, ok := <-bigtable.machineMetricsQueuedWritesChan:
+
+			if ok {
+				muts.Keys = append(muts.Keys, mut.Key)
+				muts.Muts = append(muts.Muts, mut.Mut)
+			}
+
+			if len(muts.Keys) >= batchSize || !ok { // commit when batch size is reached or on channel close
+				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
+
+				if err == nil {
+					muts = &types.BulkMutations{
+						Keys: make([]string, 0, batchSize),
+						Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
+					}
+				} else {
+					logger.Errorf("error writing queued machine metrics to bigtable: %v", err)
+				}
+			}
+
+		case <-tmr.C:
+			if len(muts.Keys) > 0 {
+				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
+
+				if err == nil {
+					muts = &types.BulkMutations{
+						Keys: make([]string, 0, batchSize),
+						Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
+					}
+				} else {
+					logger.Errorf("error writing queued machine metrics to bigtable: %v", err)
+				}
+			}
+		}
+	}
+
+}
+
 func (bigtable *Bigtable) Close() {
+	close(bigtable.machineMetricsQueuedWritesChan)
 	bigtable.client.Close()
 }
 
@@ -167,14 +224,12 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	dataMut := gcp_bigtable.NewMutation()
 	dataMut.Set(MACHINE_METRICS_COLUMN_FAMILY, "v1", ts, data)
 
-	err = bigtable.tableMachineMetrics.Apply(
-		ctx,
-		rowKeyData,
-		dataMut,
-	)
-	if err != nil {
-		return err
+	bulkMut := types.BulkMutation{ // schedule the mutation for writing
+		Key: rowKeyData,
+		Mut: dataMut,
 	}
+
+	bigtable.machineMetricsQueuedWritesChan <- bulkMut
 
 	return nil
 }
