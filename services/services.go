@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
+	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -96,6 +97,8 @@ func InitNotificationCollector(pubkeyCachePath string) {
 	if err != nil {
 		logger.Fatalf("error initializing pubkey cache path for notifications: %v", err)
 	}
+
+	go ethclients.Init()
 
 	go notificationCollector()
 }

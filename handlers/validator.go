@@ -1592,8 +1592,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	maxPages := 10
 
 	vars := mux.Vars(r)
-	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+	index, err := strconv.ParseUint(vars["index"], 10, 31)
+	if err != nil {
 		logger.Warnf("error parsing validator index: %v", err)
 		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
@@ -1709,7 +1709,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			} else if len(tableData) >= pageLength {
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+			tableData = append(tableData, incomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
 		}
 	}
 
@@ -1750,7 +1750,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
+			tableData = append(tableData, incomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
 
 		}
 	}
@@ -1821,7 +1821,7 @@ func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (m
 	return withdrawalMap, incomeDetails, err
 }
 
-func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
+func incomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
 	events := template.HTML("")
 	if income.AttestationSourcePenalty > 0 && income.AttestationTargetPenalty > 0 {
 		events += utils.FormatAttestationStatusShort(2)
@@ -1845,7 +1845,7 @@ func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdra
 	rewards := income.TotalClRewards()
 	return []interface{}{
 		utils.FormatEpoch(epoch),
-		utils.FormatBalanceChangeFormated(&rewards, currency, income),
+		utils.FormatBalanceChangeFormatted(&rewards, currency, income),
 		template.HTML(""),
 		template.HTML(events),
 	}
