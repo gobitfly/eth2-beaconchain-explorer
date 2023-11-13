@@ -1123,8 +1123,6 @@ func (bigtable *Bigtable) getValidatorAttestationHistoryV2(validators []uint64, 
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
 	resMux := &sync.Mutex{}
 
-	filter := gcp_bigtable.LatestNFilter(32)
-
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
@@ -1145,6 +1143,7 @@ func (bigtable *Bigtable) getValidatorAttestationHistoryV2(validators []uint64, 
 			default:
 			}
 			ranges := bigtable.getValidatorsEpochRanges(vals, ATTESTATIONS_FAMILY, startEpoch, endEpoch)
+			filter := gcp_bigtable.LimitRows(int64(endEpoch-startEpoch+1) * int64(len(vals))) // max is one row per epoch
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
@@ -1186,7 +1185,7 @@ func (bigtable *Bigtable) getValidatorAttestationHistoryV2(validators []uint64, 
 
 				}
 				return true
-			}, gcp_bigtable.RowFilter(filter))
+			}, filter)
 
 			return err
 		})
@@ -1534,8 +1533,6 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV2(validators []ui
 
 	resMux := &sync.Mutex{}
 
-	filter := gcp_bigtable.LatestNFilter(32)
-
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
@@ -1554,6 +1551,9 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV2(validators []ui
 			default:
 			}
 			ranges := bigtable.getValidatorsEpochRanges(vals, ATTESTATIONS_FAMILY, startEpoch, endEpoch)
+
+			filter := gcp_bigtable.LimitRows(int64(endEpoch-startEpoch+1) * int64(len(vals))) // max is one row per epoch
+
 			err = bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
@@ -1597,7 +1597,7 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV2(validators []ui
 					resMux.Unlock()
 				}
 				return true
-			}, gcp_bigtable.RowFilter(filter))
+			}, filter)
 
 			return err
 		})
@@ -1990,7 +1990,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch uint64) ([]*types.ValidatorEffectiveness, error) {
 	end := epoch
 	start := uint64(0)
-	lookback := uint64(99)
+	lookback := uint64(9)
 	if end > lookback {
 		start = end - lookback
 	}
