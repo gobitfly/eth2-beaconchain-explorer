@@ -3155,19 +3155,25 @@ func GetValidatorAttestationHistoryForNotifications(validators []uint64, startEp
 		return nil, fmt.Errorf("error retrieving activation & exit epoch for validators: %w", err)
 	}
 
+	logger.Info("retrieved activation & exit epochs")
+
 	// next retrieve all attestation data from the db (need to retrieve data for the endEpoch+1 epoch as that could still contain attestations for the endEpoch)
 	firstSlot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 	lastSlot := ((endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+	lastQuerySlot := ((endEpoch+2)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+
 	rows, err := ReaderDb.Query(`SELECT 
-		blocks_attestations.slot, 
-		validators 
-		FROM blocks_attestations 
-		LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
-		blocks.epoch >= $1 AND blocks.epoch <= $2 AND blocks.status = '1' ORDER BY block_slot`, startEpoch, endEpoch+1)
+	blocks_attestations.slot, 
+	validators 
+	FROM blocks_attestations 
+	LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
+	blocks_attestations.block_slot >= $1 AND blocks_attestations.block_slot <= $2 AND blocks.status = '1' ORDER BY block_slot`, firstSlot, lastQuerySlot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving attestation data from the db: %w", err)
 	}
 	defer rows.Close()
+
+	logger.Info("retrieved attestation raw data")
 
 	// next process the data and fill up the epoch participation
 	// validators that participated in an epoch will have the flag set to true

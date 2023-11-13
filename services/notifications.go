@@ -1634,6 +1634,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
+
 	return nil
 }
 
