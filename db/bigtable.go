@@ -128,7 +128,9 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 		machineMetricsQueuedWritesChan: make(chan types.BulkMutation, MAX_BATCH_MUTATIONS),
 	}
 
-	go bt.commitQueuedMachineMetricWrites()
+	if utils.Config.Frontend.Enabled { // Only activate machine metrics inserts on frontend / api instances
+		go bt.commitQueuedMachineMetricWrites()
+	}
 
 	BigtableClient = bt
 	return bt, nil
@@ -156,6 +158,7 @@ func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
 			}
 
 			if len(muts.Keys) >= batchSize || !ok { // commit when batch size is reached or on channel close
+				logger.Infof("committing %v queued machine metric inserts (trigger=batchSize, ok=%v)", len(muts.Keys), ok)
 				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
 
 				if err == nil {
@@ -168,8 +171,15 @@ func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
 				}
 			}
 
+			if !ok { // insert chan is closed, stop the timer and exit
+				tmr.Stop()
+				logger.Infof("stopping batched machine metrics insert")
+				return
+			}
+
 		case <-tmr.C:
 			if len(muts.Keys) > 0 {
+				logger.Infof("committing %v queued machine metric inserts (trigger=timeout)", len(muts.Keys))
 				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
 
 				if err == nil {
