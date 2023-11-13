@@ -75,6 +75,8 @@ var ethClientsMux = &sync.RWMutex{}
 var bannerClients = []clientUpdateInfo{}
 var bannerClientsMux = &sync.RWMutex{}
 
+var httpClient = &http.Client{Timeout: time.Second * 10}
+
 // Init starts a go routine to update the ETH Clients Info
 func Init() {
 	go update()
@@ -82,7 +84,7 @@ func Init() {
 
 func fetchClientData(repo string) *gitAPIResponse {
 	var gitAPI = new(gitAPIResponse)
-	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
+	resp, err := httpClient.Get("https://api.github.com/repos" + repo + "/releases/latest")
 	// resp, err := http.Get("http://localhost:5000/repos" + repo)
 
 	if err != nil {
@@ -91,6 +93,11 @@ func fetchClientData(repo string) *gitAPIResponse {
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Errorf("error retrieving ETH Client Data, status code: %v", resp.StatusCode)
+		return nil
+	}
 
 	err = json.NewDecoder(resp.Body).Decode(&gitAPI)
 
@@ -156,6 +163,8 @@ func getRepoTime(date string, dTime string) (time.Time, error) {
 
 func prepareEthClientData(repo string, name string, curTime time.Time) (string, template.HTML) {
 	client := fetchClientData(repo)
+	time.Sleep(time.Millisecond * 250) // consider github rate limit
+
 	if client == nil {
 		return "Github", "searching"
 	}
@@ -166,6 +175,12 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		if err != nil {
 			logger.Errorf("error parsing git repo. time: %v", err)
 			return client.Name, "GitHub" // client.Name is client version from github api
+		}
+		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
+
+		if timeDiff < 1 { // add recent releases for notification collector to be collected
+			update := clientUpdateInfo{Name: name, Date: rTime}
+			bannerClients = append(bannerClients, update)
 		}
 		return client.Name, utils.FormatTimestamp(rTime.Unix())
 	}
@@ -240,13 +255,6 @@ func GetEthClientData() EthClientServicesPageData {
 	ethClientsMux.Lock()
 	defer ethClientsMux.Unlock()
 	return ethClients
-}
-
-// ClientsUpdated returns a boolean indicating if clients are updated
-func ClientsUpdated() bool {
-	bannerClientsMux.Lock()
-	defer bannerClientsMux.Unlock()
-	return len(bannerClients) != 0
 }
 
 // GetUpdatedClients returns a slice of latest updated clients or empty slice if no updates
