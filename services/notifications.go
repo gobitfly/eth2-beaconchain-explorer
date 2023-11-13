@@ -1501,7 +1501,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 			offlineValidators = append(offlineValidators, &indexPubkeyPair{Index: validator, Pubkey: pubkey})
 		}
 
-		if !participationPerEpoch[epochNMinus3][types.ValidatorIndex(validator)] && participationPerEpoch[epochNMinus2][types.ValidatorIndex(validator)] && participationPerEpoch[epochNMinus1][types.ValidatorIndex(validator)] && participationPerEpoch[types.Epoch(epoch)][types.ValidatorIndex(validator)] {
+		if !participationPerEpoch[epochNMinus3][types.ValidatorIndex(validator)] && !participationPerEpoch[epochNMinus2][types.ValidatorIndex(validator)] && !participationPerEpoch[epochNMinus1][types.ValidatorIndex(validator)] && participationPerEpoch[types.Epoch(epoch)][types.ValidatorIndex(validator)] {
 			logger.Infof("validator %v detected as online in epoch %v (attested again in epoch %v)", validator, epoch, epoch)
 			pubkey, err := GetGetPubkeyForIndex(validator)
 			if err != nil {
@@ -1634,7 +1634,6 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 			metrics.NotificationsCollected.WithLabelValues(string(n.GetEventName())).Inc()
 		}
 	}
-
 	return nil
 }
 
