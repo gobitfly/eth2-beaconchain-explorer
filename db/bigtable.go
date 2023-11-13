@@ -157,7 +157,7 @@ func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
 				muts.Muts = append(muts.Muts, mut.Mut)
 			}
 
-			if len(muts.Keys) >= batchSize || !ok { // commit when batch size is reached or on channel close
+			if len(muts.Keys) >= batchSize || !ok && len(muts.Keys) > 0 { // commit when batch size is reached or on channel close
 				logger.Infof("committing %v queued machine metric inserts (trigger=batchSize, ok=%v)", len(muts.Keys), ok)
 				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
 
@@ -198,6 +198,7 @@ func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
 
 func (bigtable *Bigtable) Close() {
 	close(bigtable.machineMetricsQueuedWritesChan)
+	time.Sleep(time.Second * 5)
 	bigtable.client.Close()
 }
 
@@ -1760,7 +1761,6 @@ func (bigtable *Bigtable) getValidatorSyncDutiesHistoryV2(validators []uint64, s
 			}
 			ranges := bigtable.getValidatorSlotRanges(vals, SYNC_COMMITTEES_FAMILY, startSlot, endSlot)
 
-			logger.Infof("processing GetValidatorSyncDutiesHistory validators batch %v", i)
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
