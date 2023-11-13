@@ -66,7 +66,7 @@ function showValidatorHist(index) {
     details: false,
     pagingType: "simple",
     pageLength: 10,
-    ajax: "/validator/" + index + "/history",
+    ajax: dataTableLoader("/validator/" + index + "/history"),
     language: {
       searchPlaceholder: "Search by Epoch Number",
       search: "",
@@ -976,6 +976,9 @@ $(document).ready(function () {
         method: "GET",
       }).then((res) => {
         res.json().then((data) => {
+          if (Object.keys(data).length === 0) {
+            return
+          }
           let sum = 0.0
           for (let eff of data) {
             sum += eff

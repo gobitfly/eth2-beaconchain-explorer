@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script src="/js/highcharts/highcharts.min.js"></script>
   <script src="/js/highcharts/annotations.min.js"></script>
   <script src="/js/highcharts/data.min.js"></script>
@@ -147,7 +148,7 @@
                   ordering: true,
                   order: [[1, 'desc']],
                   searching: true,
-                  ajax: '/validators/deposit-leaderboard/data',
+                  ajax: dataTableLoader('/validators/deposit-leaderboard/data'),
                   pagingType: 'input',
                   preDrawCallback: function () {
                         // this does not always work.. not sure how to solve the staying tooltip

@@ -310,6 +310,7 @@ type Eth1Deposit struct {
 	BlockNumber           uint64 `db:"block_number"`
 	BlockTs               int64  `db:"block_ts"`
 	FromAddress           []byte `db:"from_address"`
+	FromName              string
 	PublicKey             []byte `db:"publickey"`
 	WithdrawalCredentials []byte `db:"withdrawal_credentials"`
 	Amount                uint64 `db:"amount"`
@@ -644,8 +645,10 @@ type ValidatorStatsTableDbRow struct {
 	Deposits       int64 `db:"deposits"`
 	DepositsAmount int64 `db:"deposits_amount"`
 
-	Withdrawals       int64 `db:"withdrawals"`
-	WithdrawalsAmount int64 `db:"withdrawals_amount"`
+	Withdrawals            int64 `db:"withdrawals"`
+	WithdrawalsTotal       int64 `db:"withdrawals_total"`
+	WithdrawalsAmount      int64 `db:"withdrawals_amount"`
+	WithdrawalsAmountTotal int64 `db:"withdrawals_amount_total"`
 
 	ClRewardsGWei      int64 `db:"cl_rewards_gwei"`
 	ClRewardsGWeiTotal int64 `db:"cl_rewards_gwei_total"`

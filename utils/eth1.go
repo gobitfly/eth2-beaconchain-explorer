@@ -217,17 +217,13 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 	return template.HTML(ret)
 }
 
-func FormatAddressAsLink(address []byte, name string, verified bool, isContract bool) template.HTML {
+func FormatAddressAsLink(address []byte, name string, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)
 	addressString := FixAddressCasing(fmt.Sprintf("%x", address))
 
 	if len(name) > 0 {
-		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">✔ %s (%s…%s)</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
-		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s %s…%s</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
-		}
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s</a> %v", addressString, name, CopyButton(addressString))
 	} else {
 		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s…%s</a> %v", addressString, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 	}
@@ -277,7 +273,7 @@ func FormatHashLong(hash common.Hash) template.HTML {
 
 func FormatAddressLong(address string) template.HTML {
 	if IsValidEnsDomain(address) {
-		return template.HTML(address)
+		return template.HTML(fmt.Sprintf(`<span data-truncate-middle="%s"></span>.eth`, strings.TrimSuffix(address, ".eth")))
 	}
 	address = FixAddressCasing(address)
 	if len(address) > 4 {

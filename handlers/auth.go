@@ -241,7 +241,23 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = db.FrontendWriterDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active, COALESCE(user_group, '') AS user_group FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
+	err = db.FrontendWriterDB.Get(&user, `
+		WITH
+			latest_and_greatest_sub AS (
+				SELECT user_id, product_id, active, created_at FROM users_app_subscriptions 
+				left join users on users.id = user_id 
+				WHERE users.email = $1 AND active = true
+				ORDER BY CASE product_id
+					WHEN 'whale' THEN 1
+					WHEN 'goldfish' THEN 2
+					WHEN 'plankton' THEN 3
+					ELSE 4  -- For any other product_id values
+				END, users_app_subscriptions.created_at DESC LIMIT 1
+			)
+		SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active, COALESCE(user_group, '') AS user_group 
+		FROM users 
+		left join latest_and_greatest_sub on latest_and_greatest_sub.user_id = users.id  
+		WHERE email = $1`, email)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			logger.Errorf("error retrieving password for user %v: %v", email, err)
@@ -373,7 +389,23 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		ProductID      string `db:"product_id"`
 		Active         bool   `db:"active"`
 	}{}
-	err = db.FrontendWriterDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
+	err = db.FrontendWriterDB.Get(&dbUser, `
+		WITH
+			latest_and_greatest_sub AS (
+				SELECT user_id, product_id, active, created_at FROM users_app_subscriptions 
+				left join users on users.id = user_id 
+				WHERE users.password_reset_hash = $1 AND active = true
+				ORDER BY CASE product_id
+					WHEN 'whale' THEN 1
+					WHEN 'goldfish' THEN 2
+					WHEN 'plankton' THEN 3
+					ELSE 4  -- For any other product_id values
+				END, users_app_subscriptions.created_at DESC LIMIT 1
+			)
+		SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active
+		FROM users 
+		left join latest_and_greatest_sub on latest_and_greatest_sub.user_id = users.id  
+		WHERE password_reset_hash = $1`, hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			session.AddFlash("Error: Invalid reset link, please retry.")

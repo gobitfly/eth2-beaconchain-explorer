@@ -34,10 +34,12 @@ import (
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-redis/redis/v8"
 
-	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
+
+// when changing this, you will have to update the swagger docu for func ApiEth1Address too
+const ECR20TokensPerAddressLimit = uint64(200)
 
 var ErrBlockNotFound = errors.New("block not found")
 
@@ -134,14 +136,12 @@ func (bigtable *Bigtable) SaveBlock(block *types.Eth1Block) error {
 }
 
 func (bigtable *Bigtable) GetBlockFromBlocksTable(number uint64) (*types.Eth1Block, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"validators": number,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -208,12 +208,10 @@ func (bigtable *Bigtable) CheckForGapsInBlocksTable(lookback int) (gapFound bool
 }
 
 func (bigtable *Bigtable) GetLastBlockInBlocksTable() (int, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -290,12 +288,10 @@ func (bigtable *Bigtable) CheckForGapsInDataTable(lookback int) error {
 }
 
 func (bigtable *Bigtable) GetLastBlockInDataTable() (int, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -387,12 +383,10 @@ func (bigtable *Bigtable) SetLastBlockInDataTable(lastBlock int64) error {
 }
 
 func (bigtable *Bigtable) GetMostRecentBlockFromDataTable() (*types.Eth1BlockIndexed, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -451,15 +445,14 @@ func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) b
 //	high: highest (max) block number
 //	low: lowest (min) block number
 func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block, high, low uint64) error {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"high": high,
 			"low":  low,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
 	defer cancel()
@@ -513,15 +506,14 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 }
 
 func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit uint64) ([]*types.Eth1BlockIndexed, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"blockNumbers": blockNumbers,
 			"limit":        limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	rowList := gcp_bigtable.RowList{}
 	for _, block := range blockNumbers {
@@ -549,15 +541,14 @@ func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit 
 
 // GetBlocksDescending gets blocks starting at block start
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"start": start,
 			"limit": limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if start < 1 || limit < 1 || limit > start {
 		return nil, fmt.Errorf("invalid block range provided (start: %v, limit: %v)", start, limit)
@@ -1970,15 +1961,14 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 }
 
 func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2029,15 +2019,14 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 }
 
 func (bigtable *Bigtable) GetAddressesNamesArMetadata(names *map[string]string, inputMetadata *map[string]*types.ERC20Metadata) (map[string]string, map[string]*types.ERC20Metadata, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"names":         names,
 			"inputMetadata": inputMetadata,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	outputMetadata := make(map[string]*types.ERC20Metadata)
 
@@ -2080,14 +2069,13 @@ func (bigtable *Bigtable) GetAddressesNamesArMetadata(names *map[string]string, 
 }
 
 func (bigtable *Bigtable) GetIndexedEth1Transaction(txHash []byte) (*types.Eth1TransactionIndexed, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"txHash": txHash,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2110,17 +2098,15 @@ func (bigtable *Bigtable) GetIndexedEth1Transaction(txHash []byte) (*types.Eth1T
 	}
 }
 
-func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address":   address,
-			"search":    search,
 			"pageToken": pageToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:TX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
@@ -2173,15 +2159,14 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, search
 }
 
 func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([]*types.Eth1BlockIndexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2231,17 +2216,15 @@ func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address":   address,
-			"search":    search,
 			"pageToken": pageToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:B:%s:", bigtable.chainId, address)
@@ -2273,15 +2256,14 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, search 
 }
 
 func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([]*types.Eth1UncleIndexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2331,17 +2313,15 @@ func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address":   address,
-			"search":    search,
 			"pageToken": pageToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:U:%s:", bigtable.chainId, address)
@@ -2371,15 +2351,14 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, search 
 }
 
 func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*types.Eth1BlobTransactionIndexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2426,7 +2405,16 @@ func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*t
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
+		logger.WithFields(logrus.Fields{
+			"address":   address,
+			"pageToken": pageToken,
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+	})
+	defer tmr.Stop()
+
 	// defaults to most recent
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:BTX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
@@ -2458,6 +2446,7 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string,
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
@@ -2477,15 +2466,14 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, search string,
 }
 
 func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*types.Eth1InternalTransactionIndexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2539,17 +2527,15 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*t
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address":   address,
-			"search":    search,
 			"pageToken": pageToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	// defaults to most recent
 	if pageToken == "" {
@@ -2582,6 +2568,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
@@ -2600,15 +2587,14 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, search str
 }
 
 func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte) ([]types.Transfer, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"transaction": transaction,
 			"from":        from,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2686,14 +2672,13 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 
 // currently only erc20
 func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction []byte) ([]*types.Transfer, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"transaction": transaction,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2804,15 +2789,14 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 }
 
 func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2860,17 +2844,15 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string, pageToken string) (*types.DataTableResponse, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address":   address,
-			"search":    search,
 			"pageToken": pageToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s:", bigtable.chainId, address, FILTER_TIME)
@@ -2911,6 +2893,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
@@ -2930,15 +2913,14 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, search string
 }
 
 func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([]*types.Eth1ERC721Indexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -2990,21 +2972,18 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressErc721TableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetAddressErc721TableData(address string, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address":   address,
-			"search":    search,
 			"pageToken": pageToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:ERC721:%s:%s:", bigtable.chainId, address, FILTER_TIME)
-		// pageToken = fmt.Sprintf("%s:I:ERC721:%s:%s:9999999999999999999:9999:99999", bigtable.chainId, address, FILTER_TIME)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC721ForAddress(pageToken, 25)
@@ -3031,10 +3010,11 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			to,
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			utils.FormatAddressAsLink(t.TokenAddress, "", true),
 			new(big.Int).SetBytes(t.TokenId).String(),
 		}
 	}
@@ -3048,15 +3028,14 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address string, search strin
 }
 
 func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) ([]*types.ETh1ERC1155Indexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -3105,17 +3084,15 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) (
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search string, pageToken string) (*types.DataTableResponse, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetAddressErc1155TableData(address string, pageToken string) (*types.DataTableResponse, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address":   address,
-			"search":    search,
 			"pageToken": pageToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if pageToken == "" {
 		pageToken = fmt.Sprintf("%s:I:ERC1155:%s:%s:", bigtable.chainId, address, FILTER_TIME)
@@ -3146,10 +3123,11 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			to,
-			utils.FormatAddressAsLink(t.TokenAddress, "", false, true),
+			utils.FormatAddressAsLink(t.TokenAddress, "", true),
 			new(big.Int).SetBytes(t.TokenId).String(),
 			new(big.Int).SetBytes(t.Value).String(),
 		}
@@ -3164,15 +3142,14 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address string, search stri
 }
 
 func (bigtable *Bigtable) GetMetadataUpdates(prefix string, startToken string, limit int) ([]string, []*types.Eth1AddressBalance, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix":     prefix,
 			"startToken": startToken,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
 	defer cancel()
@@ -3201,15 +3178,14 @@ func (bigtable *Bigtable) GetMetadataUpdates(prefix string, startToken string, l
 }
 
 func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, []*types.Eth1AddressBalance, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"startToken": startToken,
 			"limit":      limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
 	defer cancel()
@@ -3239,20 +3215,20 @@ func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, [
 	return keys, pairs, err
 }
 
-func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1AddressMetadata, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, limit uint64) (*types.Eth1AddressMetadata, error) {
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address": address,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
-	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address))
+	filter := gcp_bigtable.FamilyFilter(ACCOUNT_METADATA_FAMILY)
+	row, err := bigtable.tableMetadata.ReadRow(ctx, fmt.Sprintf("%s:%x", bigtable.chainId, address), gcp_bigtable.RowFilter(filter))
 
 	if err != nil {
 		return nil, err
@@ -3265,25 +3241,55 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 		EthBalance: &types.Eth1AddressBalance{
 			Metadata: &types.ERC20Metadata{},
 		},
+		ERC20TokenLimit: ECR20TokensPerAddressLimit,
 	}
 
+	if limit == 0 || limit > ECR20TokensPerAddressLimit {
+		limit = ECR20TokensPerAddressLimit
+	}
+
+	tokenCount := uint64(0)
+
 	g := new(errgroup.Group)
+	g.SetLimit(10)
+
 	mux := sync.Mutex{}
 	for _, ri := range row {
 		for _, column := range ri {
 			if strings.HasPrefix(column.Column, ACCOUNT_METADATA_FAMILY+":B:") {
 				column := column
 
-				if bytes.Equal(address, ZERO_ADDRESS) && column.Column != ACCOUNT_METADATA_FAMILY+":B:00" { //do not return token balances for the zero address
+				if bytes.Equal(address, ZERO_ADDRESS) && column.Column != ACCOUNT_METADATA_FAMILY+":B:00" {
+					//do not return token balances for the zero address
 					continue
 				}
 
-				g.Go(func() error {
-					token := common.FromHex(strings.TrimPrefix(column.Column, "a:B:"))
-					if len(column.Value) == 0 && len(token) > 1 {
-						return nil
+				token := common.FromHex(strings.TrimPrefix(column.Column, "a:B:"))
+
+				isNativeEth := bytes.Equal([]byte{0x00}, token)
+				if !isNativeEth {
+					// token is not ETH, check if token limit is reached
+					if tokenCount >= limit {
+						ret.ERC20TokenLimitExceeded = true
+						continue
 					}
 
+					// skip token without value
+					if len(column.Value) == 0 && len(token) > 1 {
+						continue
+					}
+
+					// handle pagination
+					if offset > 0 {
+						offset--
+						continue
+					}
+
+					// at this point, token will be added
+					tokenCount++
+				}
+
+				g.Go(func() error {
 					balance := &types.Eth1AddressBalance{
 						Address: address,
 						Token:   token,
@@ -3297,7 +3303,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 					balance.Metadata = metadata
 
 					mux.Lock()
-					if bytes.Equal([]byte{0x00}, token) {
+					if isNativeEth {
 						ret.EthBalance = balance
 					} else {
 						ret.Balances = append(ret.Balances, balance)
@@ -3306,9 +3312,7 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 
 					return nil
 				})
-			}
-
-			if column.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
+			} else if column.Column == ACCOUNT_METADATA_FAMILY+":"+ACCOUNT_COLUMN_NAME {
 				ret.Name = string(column.Value)
 			}
 		}
@@ -3319,37 +3323,23 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte) (*types.Eth1Addr
 		return nil, err
 	}
 
+	// sort balances based on token address (required for proper pagination)
 	sort.Slice(ret.Balances, func(i, j int) bool {
-		priceI := decimal.New(0, 0)
-		priceJ := decimal.New(0, 0)
-		if len(ret.Balances[i].Metadata.Price) > 0 {
-			priceI = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Price), 0)
-		}
-		if len(ret.Balances[j].Metadata.Price) > 0 {
-			priceJ = decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Price), 0)
-		}
-
-		mulI := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Metadata.Decimals), 0))
-		mulJ := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Metadata.Decimals), 0))
-		mkI := priceI.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[i].Balance), 0).DivRound(mulI, 18))
-		mkJ := priceJ.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(ret.Balances[j].Balance), 0).DivRound(mulJ, 18))
-
-		return mkI.Cmp(mkJ) >= 0
+		return bytes.Compare(ret.Balances[i].Token, ret.Balances[j].Token) < 0
 	})
 
 	return ret, nil
 }
 
 func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*types.Eth1AddressBalance, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address": address,
 			"token":   token,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -3388,14 +3378,13 @@ func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*t
 }
 
 func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC20Metadata, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address": address,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if len(address) == 1 {
 		return &types.ERC20Metadata{
@@ -3425,6 +3414,8 @@ func (bigtable *Bigtable) GetERC20MetadataForAddress(address []byte) (*types.ERC
 	// }
 
 	if row == nil { // Retrieve token metadata from Ethplorer and store it for later usage
+		logger.Infof("retrieving metadata for token %x via rpc", address)
+
 		metadata, err := rpc.CurrentGethClient.GetERC20TokenMetadata(address)
 		if err != nil {
 			logger.Warnf("error retrieving metadata for token %x: %v", address, err)
@@ -3524,14 +3515,13 @@ func (bigtable *Bigtable) SaveERC20Metadata(address []byte, metadata *types.ERC2
 }
 
 func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address": address,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -3566,14 +3556,13 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 }
 
 func (bigtable *Bigtable) GetAddressNames(addresses map[string]string) error {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"addresses": addresses,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	if len(addresses) == 0 {
 		return nil
@@ -3618,14 +3607,13 @@ func (bigtable *Bigtable) SaveAddressName(address []byte, name string) error {
 }
 
 func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMetadata, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"address": address,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -3806,15 +3794,14 @@ func (bigtable *Bigtable) SaveBlockKeys(blockNumber uint64, blockHash []byte, ke
 }
 
 func (bigtable *Bigtable) GetBlockKeys(blockNumber uint64, blockHash []byte) ([]string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"blockNumber": blockNumber,
 			"blockHash":   blockHash,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -3877,15 +3864,14 @@ func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, blockHash []byte) erro
 }
 
 func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*types.Eth1ERC20Indexed, string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"prefix": prefix,
 			"limit":  limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -3997,15 +3983,14 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 }
 
 func (bigtable *Bigtable) SearchForAddress(addressPrefix []byte, limit int) ([]*types.Eth1AddressSearchItem, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"addressPrefix": addressPrefix,
 			"limit":         limit,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -4051,14 +4036,13 @@ func getSignaturePrefix(st types.SignatureType) string {
 
 // Get the status of the last signature import run
 func (bigtable *Bigtable) GetSignatureImportStatus(st types.SignatureType) (*types.SignatureImportStatus, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"st": st,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -4141,15 +4125,14 @@ func (bigtable *Bigtable) SaveSignatures(signatures []types.Signature, st types.
 
 // get a signature by it's hex representation
 func (bigtable *Bigtable) GetSignature(hex string, st types.SignatureType) (*string, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"hex": hex,
 			"st":  st,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
@@ -4272,15 +4255,14 @@ func (bigtable *Bigtable) SaveGasNowHistory(slow, standard, rapid, fast *big.Int
 }
 
 func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNowHistory, error) {
-	tmr := time.NewTimer(REPORT_TIMEOUT)
-	defer tmr.Stop()
-	go func() {
-		<-tmr.C
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
 			"ts":     ts,
 			"pastTs": pastTs,
 		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	}()
+	})
+	defer tmr.Stop()
 
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
 	defer done()

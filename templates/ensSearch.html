@@ -6,8 +6,8 @@
 
 {{ define "content" }}
   <div class="container mt-2">
-    <div class="d-md-flex py-2 my-3 justify-content-md-between">
-      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-search mr-2 position-relative"></i>Ens Search for: {{ formatAddressLong .Data.Search }}</h1>
+    <div class="py-2 my-3 justify-content-md-between">
+      <h1 class="h4 mb-1 mb-md-0 text-nowrap"><i class="fas fa-search mr-2 position-relative"></i>ENS Search for: {{ formatAddressLong .Data.Search }}</h1>
     </div>
     <div class="card mt-3">
       {{ if gt (len .Data.Error) 0 }}

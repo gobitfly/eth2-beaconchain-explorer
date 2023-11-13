@@ -212,6 +212,10 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		// update mev reward total
 		data.MEVRewardsWeiTotal = previousDayData.MEVRewardsWeiTotal.Add(data.MEVRewardsWei)
 
+		// update withdrawal total
+		data.WithdrawalsTotal = previousDayData.WithdrawalsTotal + data.Withdrawals
+		data.WithdrawalsAmountTotal = previousDayData.WithdrawalsAmountTotal + data.WithdrawalsAmount
+
 		if statisticsData1d != nil && len(statisticsData1d) > index {
 			data.ClPerformance1d = data.ClRewardsGWeiTotal - statisticsData1d[index].ClRewardsGWeiTotal
 			data.ElPerformance1d = data.ElRewardsWeiTotal.Sub(statisticsData1d[index].ElRewardsWeiTotal)
@@ -302,7 +306,9 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 			"deposits",
 			"deposits_amount",
 			"withdrawals",
+			"withdrawals_total",
 			"withdrawals_amount",
+			"withdrawals_amount_total",
 			"cl_rewards_gwei",
 			"cl_rewards_gwei_total",
 			"el_rewards_wei",
@@ -338,7 +344,9 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 				validatorData[i].Deposits,
 				validatorData[i].DepositsAmount,
 				validatorData[i].Withdrawals,
+				validatorData[i].WithdrawalsTotal,
 				validatorData[i].WithdrawalsAmount,
+				validatorData[i].WithdrawalsAmountTotal,
 				validatorData[i].ClRewardsGWei,
 				validatorData[i].ClRewardsGWeiTotal,
 				validatorData[i].ElRewardsWei,
@@ -1002,12 +1010,14 @@ func gatherValidatorMissedAttestationsStatisticsForDay(validators []uint64, day 
 
 	firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 	lastSlot := ((lastEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+	lastQuerySlot := ((lastEpoch+2)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+
 	rows, err := ReaderDb.Query(`SELECT 
 	blocks_attestations.slot, 
 	validators 
 	FROM blocks_attestations 
 	LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
-	blocks.epoch >= $1 AND blocks.epoch <= $2 AND blocks.status = '1' ORDER BY block_slot`, firstEpoch, lastEpoch+1)
+	blocks_attestations.block_slot >= $1 AND blocks_attestations.block_slot <= $2 AND blocks.status = '1' ORDER BY block_slot`, firstSlot, lastQuerySlot)
 	if err != nil {
 		return fmt.Errorf("error retrieving attestation data from the db: %w", err)
 	}
@@ -1139,7 +1149,9 @@ func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error
 		COALESCE(deposits, 0) AS deposits,
 		COALESCE(deposits_amount, 0) AS deposits_amount,
 		COALESCE(withdrawals, 0) AS withdrawals,
+		COALESCE(withdrawals_total, 0) AS withdrawals_total,
 		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
+		COALESCE(withdrawals_amount_total, 0) AS withdrawals_amount_total,
 		COALESCE(cl_rewards_gwei, 0) AS cl_rewards_gwei,
 		COALESCE(cl_rewards_gwei_total, 0) AS cl_rewards_gwei_total,
 		COALESCE(el_rewards_wei, 0) AS el_rewards_wei,
@@ -1712,8 +1724,8 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	switch utils.Config.Chain.ClConfig.DepositChainID {
 	case 1:
 		crowdSale := 72009990.50
-		logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetPrice("ETH", "USD"))).String())
-		err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetPrice("ETH", "USD"))).String())
+		logger.Infof("Exporting MARKET_CAP: %v", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.MainCurrency, "USD"))).String())
+		err = SaveChartSeriesPoint(dateTrunc, "MARKET_CAP", newEmission.Div(decimal.NewFromInt(1e18)).Add(decimal.NewFromFloat(crowdSale)).Mul(decimal.NewFromFloat(price.GetPrice(utils.Config.Frontend.MainCurrency, "USD"))).String())
 		if err != nil {
 			return fmt.Errorf("error calculating MARKET_CAP chart_series: %w", err)
 		}

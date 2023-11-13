@@ -2,6 +2,7 @@
 
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
 
   <script>
     function getInfoElementAttestations (text, color) {
@@ -145,7 +146,7 @@
         serverSide: true,
         ordering: false,
         searching: false,
-        ajax: "/slot/" + slotNumber + "/deposits",
+        ajax: dataTableLoader("/slot/" + slotNumber + "/deposits"),
         pageLength: 10,
         pagingType: "input",
         language: {
@@ -199,7 +200,7 @@
           return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
         },
         searching: true,
-        ajax: "/slot/" + slotNumber + "/votes",
+        ajax: dataTableLoader("/slot/" + slotNumber + "/votes"),
         pageLength: 16,
         pagingType: "input",
         language: {
@@ -239,7 +240,7 @@
           info: false,
           // stateSave: true,
           searching: false,
-          ajax: "/slot/" + slotNumber + "/withdrawals",
+          ajax: dataTableLoader("/slot/" + slotNumber + "/withdrawals"),
           paging: false,
           // deferLoading: true,
           pageLength: 10,
@@ -265,7 +266,7 @@
           info: false,
           // stateSave: true,
           searching: false,
-          ajax: "/slot/" + slotNumber + "/blsChange",
+          ajax: dataTableLoader("/slot/" + slotNumber + "/blsChange"),
           paging: false,
           // deferLoading: true,
           pageLength: 10,

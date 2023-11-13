@@ -380,11 +380,6 @@ func (client *GethClient) GetERC20TokenBalance(address string, token string) ([]
 func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metadata, error) {
 	logger.Infof("retrieving metadata for token %x", token)
 
-	oracle, err := oneinchoracle.NewOneInchOracleByChainID(client.GetChainID(), client.ethClient)
-	if err != nil {
-		return nil, fmt.Errorf("error initializing oneinchoracle.NewOneInchOracleByChainID: %w", err)
-	}
-
 	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 	if err != nil {
 		return nil, fmt.Errorf("error getting token-contract: erc20.NewErc20: %w", err)
@@ -428,6 +423,13 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	})
 
 	g.Go(func() error {
+		if !oneinchoracle.SupportedChainId(client.GetChainID()) {
+			return nil
+		}
+		oracle, err := oneinchoracle.NewOneInchOracleByChainID(client.GetChainID(), client.ethClient)
+		if err != nil {
+			return fmt.Errorf("error initializing oneinchoracle.NewOneInchOracleByChainID: %w", err)
+		}
 		rate, err := oracle.GetRateToEth(nil, common.BytesToAddress(token), false)
 		if err != nil {
 			return fmt.Errorf("error calling oneinchoracle.GetRateToEth: %w", err)

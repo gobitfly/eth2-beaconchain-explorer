@@ -129,7 +129,7 @@
                         <td>
                           <span class="convertmetoutf8" id="slot_{{ .Slot }}" aria-hex-data="{{ .BlockExtraData }}"></span>
                         </td>
-                        <td>{{ formatAddressAsLink .ProposerFeeRecipient "" false false }}</td>
+                        <td>{{ formatAddressAsLink .ProposerFeeRecipient "" false }}</td>
                         <td>{{ formatBuilder .Builder }}</td>
                       </tr>
                     {{ end }}
@@ -165,7 +165,7 @@
                         <td>
                           <span class="convertmetoutf8" id="slot_{{ .Slot }}" aria-hex-data="{{ .BlockExtraData }}"></span>
                         </td>
-                        <td>{{ formatAddressAsLink .ProposerFeeRecipient "" false false }}</td>
+                        <td>{{ formatAddressAsLink .ProposerFeeRecipient "" false }}</td>
                         <td>{{ formatBuilder .Builder }}</td>
                       </tr>
                     {{ end }}

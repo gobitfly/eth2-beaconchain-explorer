@@ -157,8 +157,11 @@ func genesisDepositsExporter(client rpc.Client) {
 			continue
 		}
 
-		for _, validator := range genesisValidators.Data {
-			logger.Infof("exporting deposit data for genesis validator %v", validator.Index)
+		logger.Infof("exporting deposit data for %v genesis validators", len(genesisValidators.Data))
+		for i, validator := range genesisValidators.Data {
+			if i%1000 == 0 {
+				logger.Infof("exporting deposit data for genesis validator %v (%v/%v)", validator.Index, i, len(genesisValidators.Data))
+			}
 			_, err = tx.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
 			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
 				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},

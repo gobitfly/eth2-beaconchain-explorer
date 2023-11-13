@@ -80,8 +80,8 @@ type NavigationLink struct {
 }
 
 type Rates struct {
-	TickerCurrency                    string                `json:"trickerCurrency"`
-	TickerCurrencySymbol              string                `json:"trickerCurrencySymbol"`
+	TickerCurrency                    string                `json:"tickerCurrency"`
+	TickerCurrencySymbol              string                `json:"tickerCurrencySymbol"`
 	SelectedCurrency                  string                `json:"selectedCurrency"`
 	SelectedCurrencySymbol            string                `json:"selectedCurrencySymbol"`
 	MainCurrency                      string                `json:"mainCurrency"`
@@ -91,7 +91,7 @@ type Rates struct {
 	MainCurrencyPriceKFormatted       template.HTML         `json:"mainCurrencyKFormatted"`
 	MainCurrencyTickerPrice           float64               `json:"mainCurrencyTickerPrice"`
 	MainCurrencyTickerPriceFormatted  template.HTML         `json:"mainCurrencyTickerPriceFormatted"`
-	MainCurrencyTickerPriceKFormatted template.HTML         `json:"mainCurrencyTickerKFormatted"`
+	MainCurrencyTickerPriceKFormatted template.HTML         `json:"mainCurrencyTickerPriceKFormatted"`
 	ElCurrency                        string                `json:"elCurrency"`
 	ElCurrencySymbol                  string                `json:"elCurrencySymbol"`
 	ElCurrencyPrice                   float64               `json:"elCurrencyPrice"`
@@ -1602,11 +1602,13 @@ type Eth1AddressPageTabs struct {
 }
 
 type Eth1AddressMetadata struct {
-	Balances   []*Eth1AddressBalance
-	ERC20      *ERC20Metadata
-	Name       string
-	Tags       []template.HTML
-	EthBalance *Eth1AddressBalance
+	Balances                []*Eth1AddressBalance
+	ERC20TokenLimit         uint64
+	ERC20TokenLimitExceeded bool
+	ERC20                   *ERC20Metadata
+	Name                    string
+	Tags                    []template.HTML
+	EthBalance              *Eth1AddressBalance
 }
 
 type Eth1AddressBalance struct {

@@ -1065,42 +1065,8 @@ func LatestIndexPageData() *types.IndexPageData {
 	} else {
 		logger.Errorf("error retrieving indexPageData from cache: %v", err)
 	}
-	return &types.IndexPageData{
-		NetworkName:               "",
-		DepositContract:           "",
-		ShowSyncingMessage:        false,
-		CurrentEpoch:              0,
-		CurrentFinalizedEpoch:     0,
-		CurrentSlot:               0,
-		ScheduledCount:            0,
-		FinalityDelay:             0,
-		ActiveValidators:          0,
-		EnteringValidators:        0,
-		ExitingValidators:         0,
-		StakedEther:               "",
-		AverageBalance:            "",
-		DepositedTotal:            0,
-		DepositThreshold:          0,
-		ValidatorsRemaining:       0,
-		NetworkStartTs:            0,
-		MinGenesisTime:            0,
-		Blocks:                    []*types.IndexPageDataBlocks{},
-		Epochs:                    []*types.IndexPageDataEpochs{},
-		StakedEtherChartData:      [][]float64{},
-		ActiveValidatorsChartData: [][]float64{},
-		Title:                     "",
-		Subtitle:                  "",
-		Genesis:                   false,
-		GenesisPeriod:             false,
-		Mainnet:                   false,
-		DepositChart:              &types.ChartsPageDataChart{},
-		DepositDistribution:       &types.ChartsPageDataChart{},
-		Countdown:                 nil,
-		SlotVizData:               nil,
-		ValidatorsPerEpoch:        0,
-		ValidatorsPerDay:          0,
-		NewDepositProcessAfter:    "",
-	}
+
+	return &types.IndexPageData{}
 }
 
 // LatestPoolsPageData returns the latest pools page data
@@ -1238,7 +1204,7 @@ func GetLatestStats() *types.Stats {
 	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*5, wanted); err == nil {
 		return wanted.(*types.Stats)
 	} else {
-		logger.Errorf("error retrieving slotVizMetrics from cache: %v", err)
+		utils.LogError(err, "error retrieving latestStats from cache", 0)
 	}
 
 	// create an empty stats object if no stats exist (genesis)
