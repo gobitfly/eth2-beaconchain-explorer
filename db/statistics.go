@@ -165,7 +165,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData365d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData31d, err = gatherStatisticsForDay(int64(day) - 365) // convert to int64 to avoid underflows
+		statisticsData365d, err = gatherStatisticsForDay(int64(day) - 365) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
