@@ -2487,7 +2487,7 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 				rank7d, 
 				validatorindex
 			FROM validator_performance 
-			ORDER BY rank7d DESC LIMIT 100`)
+			ORDER BY rank7d ASC LIMIT 100`)
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
