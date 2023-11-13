@@ -13,7 +13,7 @@ import (
 
 func main() {
 	configFlag := flag.String("config", "config.yml", "path to config")
-	versionFlag := flag.Bool("version", false, "pring version and exit")
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 	if *versionFlag {
 		fmt.Println(version.Version)

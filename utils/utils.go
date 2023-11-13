@@ -810,7 +810,8 @@ func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
 }
 
-// IsEth1Address verifies whether a string represents an eth1-address. In contrast to IsValidEth1Address, this also returns true for the 0x0 address
+// IsEth1Address verifies whether a string represents an eth1-address.
+// In contrast to IsValidEth1Address, this also returns true for the 0x0 address
 func IsEth1Address(s string) bool {
 	return eth1AddressRE.MatchString(s)
 }
@@ -820,7 +821,13 @@ func IsValidEth1Tx(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1TxRE.MatchString(s)
 }
 
-// IsValidEth1Tx verifies whether a string represents a valid eth1-tx-hash.
+// IsEth1Tx verifies whether a string represents an eth1-tx-hash.
+// In contrast to IsValidEth1Tx, this also returns true for the 0x0 address
+func IsEth1Tx(s string) bool {
+	return eth1TxRE.MatchString(s)
+}
+
+// IsHash verifies whether a string represents an eth1-hash.
 func IsHash(s string) bool {
 	return hashRE.MatchString(s)
 }

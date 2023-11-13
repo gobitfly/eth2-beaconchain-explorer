@@ -73,13 +73,13 @@ func FormatAttestationStatus(status uint64) template.HTML {
 // FormatAttestationStatusShort will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatusShort(status uint64) template.HTML {
 	if status == 0 {
-		return `<span title="Scheduled" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
+		return `<span title="Scheduled Attestation" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
 	} else if status == 1 {
 		return `<span title="Attested" data-toggle="tooltip" class="mx-1 badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Att.</span>`
 	} else if status == 2 {
-		return `<span title="Missed" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
+		return `<span title="Missed Attestation" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
+		return `<span title="Missed Attestation (Orphaned)" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else if status == 4 {
 		return `<span title="Inactivity Leak" data-toggle="tooltip" class="mx-1 badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Leak</span>`
 	} else if status == 5 {
@@ -138,11 +138,6 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 		return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.0f GWei</span>", balanceF))
 	}
 	return FormatBalanceChange(balance, currency)
-}
-
-func CurrencyToCl(valIf interface{}, currency string) decimal.Decimal {
-	val := IfToDec(valIf)
-	return val.Mul(decimal.NewFromFloat(price.GetPrice(Config.Frontend.ClCurrency, currency)))
 }
 
 func ClToMainCurrency(valIf interface{}) decimal.Decimal {
@@ -257,7 +252,7 @@ func IfToDec(valIf interface{}) decimal.Decimal {
 	return val
 }
 
-func FormatBalanceChangeFormated(balance *int64, currencyName string, details *itypes.ValidatorEpochIncome) template.HTML {
+func FormatBalanceChangeFormatted(balance *int64, currencyName string, details *itypes.ValidatorEpochIncome) template.HTML {
 	currencySymbol := "GWei"
 	currencyFunc := ClToCurrencyGwei
 	if currencyName != Config.Frontend.MainCurrency {
@@ -273,49 +268,49 @@ func FormatBalanceChangeFormated(balance *int64, currencyName string, details *i
 
 	income := ""
 	if details != nil {
-		income += fmt.Sprintf("Att. Source: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.AttestationSourceReward-details.AttestationSourcePenalty, currencyName).InexactFloat64(), maxDigits), currencySymbol)
-		income += fmt.Sprintf("Att. Target: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.AttestationTargetReward-details.AttestationTargetPenalty, currencyName).InexactFloat64(), maxDigits), currencySymbol)
-		income += fmt.Sprintf("Att. Head Vote: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.AttestationHeadReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
+		income += fmt.Sprintf("Att. Source: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(IfToDec(details.AttestationSourceReward).Sub(IfToDec(details.AttestationSourcePenalty)), currencyName).InexactFloat64(), maxDigits), currencySymbol)
+		income += fmt.Sprintf("Att. Target: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(IfToDec(details.AttestationTargetReward).Sub(IfToDec(details.AttestationTargetPenalty)), currencyName).InexactFloat64(), maxDigits), currencySymbol)
+		income += fmt.Sprintf("Att. Head Vote: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.AttestationHeadReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
 
 		if details.FinalityDelayPenalty > 0 {
-			income += fmt.Sprintf("Finality Delay Penalty: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.FinalityDelayPenalty, currencyName).InexactFloat64()*-1, maxDigits), currencySymbol)
+			income += fmt.Sprintf("Finality Delay Penalty: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.FinalityDelayPenalty, currencyName).InexactFloat64()*-1, maxDigits), currencySymbol)
 		}
 
 		if details.ProposerSlashingInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.ProposerSlashingInclusionReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
+			income += fmt.Sprintf("Proposer Slashing Inc. Reward: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.ProposerSlashingInclusionReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
 		}
 
 		if details.ProposerAttestationInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Att. Inc. Reward: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.ProposerAttestationInclusionReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
+			income += fmt.Sprintf("Proposer Att. Inc. Reward: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.ProposerAttestationInclusionReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
 		}
 
 		if details.ProposerSyncInclusionReward > 0 {
-			income += fmt.Sprintf("Proposer Sync Inc. Reward: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.ProposerSyncInclusionReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
+			income += fmt.Sprintf("Proposer Sync Inc. Reward: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.ProposerSyncInclusionReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
 		}
 
 		if details.SyncCommitteeReward > 0 {
-			income += fmt.Sprintf("Sync Comm. Reward: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.SyncCommitteeReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
+			income += fmt.Sprintf("Sync Comm. Reward: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.SyncCommitteeReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
 		}
 
 		if details.SyncCommitteePenalty > 0 {
-			income += fmt.Sprintf("Sync Comm. Penalty: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.SyncCommitteePenalty, currencyName).InexactFloat64()*-1, maxDigits), currencySymbol)
+			income += fmt.Sprintf("Sync Comm. Penalty: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.SyncCommitteePenalty, currencyName).InexactFloat64()*-1, maxDigits), currencySymbol)
 		}
 
 		if details.SlashingReward > 0 {
-			income += fmt.Sprintf("Slashing Reward: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.SlashingReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
+			income += fmt.Sprintf("Slashing Reward: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.SlashingReward, currencyName).InexactFloat64(), maxDigits), currencySymbol)
 		}
 
 		if details.SlashingPenalty > 0 {
-			income += fmt.Sprintf("Slashing Penalty: %s %s<br/>", FormatAddCommasFormated(currencyFunc(details.SlashingPenalty, currencyName).InexactFloat64()*-1, maxDigits), currencySymbol)
+			income += fmt.Sprintf("Slashing Penalty: %s %s<br/>", FormatAddCommasFormatted(currencyFunc(details.SlashingPenalty, currencyName).InexactFloat64()*-1, maxDigits), currencySymbol)
 		}
 
-		income += fmt.Sprintf("Total: %s %s", FormatAddCommasFormated(currencyFunc(details.TotalClRewards(), currencyName).InexactFloat64(), maxDigits), currencySymbol)
+		income += fmt.Sprintf("Total: %s %s", FormatAddCommasFormatted(currencyFunc(details.TotalClRewards(), currencyName).InexactFloat64(), maxDigits), currencySymbol)
 	}
 
 	if *balance < 0 {
-		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s %s</span>", income, FormatAddCommasFormated(currencyFunc(*balance, currencyName).InexactFloat64(), maxDigits), currencySymbol))
+		return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-danger float-right\">%s %s</span>", income, FormatAddCommasFormatted(currencyFunc(*balance, currencyName).InexactFloat64(), maxDigits), currencySymbol))
 	}
-	return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s %s</span>", income, FormatAddCommasFormated(currencyFunc(*balance, currencyName).InexactFloat64(), maxDigits), currencySymbol))
+	return template.HTML(fmt.Sprintf("<span title='%s' data-html=\"true\" data-toggle=\"tooltip\" class=\"text-success float-right\">+%s %s</span>", income, FormatAddCommasFormatted(currencyFunc(*balance, currencyName).InexactFloat64(), maxDigits), currencySymbol))
 }
 
 // FormatBalanceChange will return a string for a balance change
@@ -325,9 +320,9 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 			return template.HTML("<span> 0 " + currency + "</span>")
 		}
 		if *balance < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormated(ClToCurrencyGwei(*balance, currency).InexactFloat64(), 0)))
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger float-right\">%s GWei</span>", FormatAddCommasFormatted(ClToCurrencyGwei(*balance, currency).InexactFloat64(), 0)))
 		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormated(ClToCurrencyGwei(*balance, currency).InexactFloat64(), 0)))
+		return template.HTML(fmt.Sprintf("<span class=\"text-success float-right\">+%s GWei</span>", FormatAddCommasFormatted(ClToCurrencyGwei(*balance, currency).InexactFloat64(), 0)))
 	}
 	if balance == nil {
 		return template.HTML("<span> 0 " + currency + "</span>")
@@ -384,7 +379,7 @@ func FormatFloatWithDigitsString(num float64, min, max int) string {
 	return b[0] + "." + b[1][:idx+min]
 }
 
-func FormatAddCommasFormated(num float64, precision uint) template.HTML {
+func FormatAddCommasFormatted(num float64, precision uint) template.HTML {
 	p := message.NewPrinter(language.English)
 	s := p.Sprintf(fmt.Sprintf("%%.%vf", precision), num)
 	if precision > 0 {
@@ -394,7 +389,7 @@ func FormatAddCommasFormated(num float64, precision uint) template.HTML {
 }
 
 func FormatBigNumberAddCommasFormated(val hexutil.Big, precision uint) template.HTML {
-	return FormatAddCommasFormated(float64(val.ToInt().Int64()), 0)
+	return FormatAddCommasFormatted(float64(val.ToInt().Int64()), 0)
 }
 
 func FormatAddCommas(n uint64) template.HTML {
@@ -468,15 +463,15 @@ func FormatBlockStatus(status, slot uint64) template.HTML {
 func FormatBlockStatusShort(status, slot uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 && SlotToTime(slot).Before(time.Now().Add(time.Minute*-1)) {
-		return `<span title="Scheduled" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Miss.</span>`
+		return `<span title="Scheduled Block" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 0 {
-		return `<span title="Scheduled" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
+		return `<span title="Scheduled Block" data-toggle="tooltip" class="mx-1 badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
 	} else if status == 1 {
-		return `<span title="Proposed" data-toggle="tooltip" class="mx-1 badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Prop.</span>`
+		return `<span title="Proposed Block" data-toggle="tooltip" class="mx-1 badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Prop.</span>`
 	} else if status == 2 {
-		return `<span title="Missed" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
+		return `<span title="Missed Block" data-toggle="tooltip" class="mx-1 badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return `<span title="Missed (Orphaned)" data-toggle="tooltip" class="mx-1 badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
+		return `<span title="Missed Block (Orphaned)" data-toggle="tooltip" class="mx-1 badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else {
 		return "Unknown"
 	}
