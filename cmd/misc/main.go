@@ -1246,7 +1246,7 @@ func exportSyncCommittee(rpcClient rpc.Client, bt *db.Bigtable, startDay, endDay
 
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
 	if endDay <= 0 {
-		currEpoch := services.LatestFinalizedEpoch()
+		currEpoch = services.LatestFinalizedEpoch()
 		if currEpoch > 0 { // guard against underflows
 			currEpoch = currEpoch - 1
 		}
