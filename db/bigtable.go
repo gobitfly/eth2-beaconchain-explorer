@@ -2635,6 +2635,58 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 	return resultContainer.res, nil
 }
 
+// GetTotalValidatorIncomeDetailsHistory returns the total validator income for a given range of epochs
+// It is considerably faster than fetching the individual income for each validator and aggregating it
+// startEpoch & endEpoch are inclusive
+func (bigtable *Bigtable) GetTotalValidatorIncomeDetailsHistory(startEpoch uint64, endEpoch uint64) (map[uint64]*itypes.ValidatorEpochIncome, error) {
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
+		logger.WithFields(logrus.Fields{
+			"startEpoch": startEpoch,
+			"endEpoch":   endEpoch,
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+	})
+	defer tmr.Stop()
+
+	if startEpoch > endEpoch {
+		startEpoch = 0
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	defer cancel()
+
+	res := make(map[uint64]*itypes.ValidatorEpochIncome, endEpoch-startEpoch+1)
+
+	filter := gcp_bigtable.LimitRows(int64(endEpoch - startEpoch + 1))
+
+	rowRange := bigtable.getTotalIncomeEpochRanges(startEpoch, endEpoch)
+	err := bigtable.tableValidatorsHistory.ReadRows(ctx, rowRange, func(r gcp_bigtable.Row) bool {
+		keySplit := strings.Split(r.Key(), ":")
+
+		epoch, err := strconv.ParseUint(keySplit[2], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing epoch from row key %v: %v", r.Key(), err)
+			return false
+		}
+
+		for _, ri := range r[STATS_COLUMN_FAMILY] {
+			incomeDetails := &itypes.ValidatorEpochIncome{}
+			err = proto.Unmarshal(ri.Value, incomeDetails)
+			if err != nil {
+				logger.Errorf("error decoding validator income data for row %v: %v", r.Key(), err)
+				return false
+			}
+
+			res[MAX_EPOCH-epoch] = incomeDetails
+		}
+		return true
+	}, filter)
+
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // Deletes all block data from bigtable
 func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 	// TOTO: Implement
@@ -2661,6 +2713,20 @@ func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, pr
 		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
 	}
 	return ranges
+}
+
+func (bigtable *Bigtable) getTotalIncomeEpochRanges(startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRange {
+	if endEpoch > math.MaxInt64 {
+		endEpoch = 0
+	}
+	if endEpoch < startEpoch { // handle overflows
+		startEpoch = 0
+	}
+
+	rangeEnd := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(startEpoch), "\x00")
+	rangeStart := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(endEpoch))
+
+	return gcp_bigtable.NewRange(rangeStart, rangeEnd)
 }
 
 func (bigtable *Bigtable) getValidatorsEpochSlotRanges(validatorIndices []uint64, prefix string, startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
