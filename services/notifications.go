@@ -1214,7 +1214,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 	}
 
 	for _, event := range events {
-		pubkey, err := GetGetPubkeyForIndex(event.Proposer)
+		pubkey, err := GetPubkeyForIndex(event.Proposer)
 		if err != nil {
 			utils.LogError(err, "error retrieving pubkey for validator", 0, map[string]interface{}{"validator": event.Proposer})
 			continue
@@ -1385,7 +1385,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 			epochTotal[currentEpoch] = epochTotal[currentEpoch] + 1 // count the total attestations for each epoch
 
 			if !participated {
-				pubkey, err := GetGetPubkeyForIndex(uint64(validatorIndex))
+				pubkey, err := GetPubkeyForIndex(uint64(validatorIndex))
 				if err == nil {
 					if currentEpoch != types.Epoch(epoch) || subMap[hex.EncodeToString(pubkey)] == nil {
 						continue
@@ -1494,7 +1494,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 	for _, validator := range validators {
 		if participationPerEpoch[epochNMinus3][types.ValidatorIndex(validator)] && !participationPerEpoch[epochNMinus2][types.ValidatorIndex(validator)] && !participationPerEpoch[epochNMinus1][types.ValidatorIndex(validator)] && !participationPerEpoch[types.Epoch(epoch)][types.ValidatorIndex(validator)] {
 			logger.Infof("validator %v detected as offline in epoch %v (did not attest since epoch %v)", validator, epoch, epochNMinus2)
-			pubkey, err := GetGetPubkeyForIndex(validator)
+			pubkey, err := GetPubkeyForIndex(validator)
 			if err != nil {
 				return err
 			}
@@ -1503,7 +1503,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 
 		if !participationPerEpoch[epochNMinus3][types.ValidatorIndex(validator)] && !participationPerEpoch[epochNMinus2][types.ValidatorIndex(validator)] && !participationPerEpoch[epochNMinus1][types.ValidatorIndex(validator)] && participationPerEpoch[types.Epoch(epoch)][types.ValidatorIndex(validator)] {
 			logger.Infof("validator %v detected as online in epoch %v (attested again in epoch %v)", validator, epoch, epoch)
-			pubkey, err := GetGetPubkeyForIndex(validator)
+			pubkey, err := GetPubkeyForIndex(validator)
 			if err != nil {
 				return err
 			}
