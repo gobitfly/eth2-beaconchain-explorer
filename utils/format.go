@@ -192,7 +192,15 @@ func FormatClCurrency(value interface{}, targetCurrency string, digitsAfterComma
 	return FormatCurrency(ClToCurrency(value, Config.Frontend.ClCurrency), Config.Frontend.ClCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, colored)
 }
 
-func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored bool) template.HTML {
+func FormatElCurrencyString(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign bool) string {
+	return FormatCurrencyString(ElToCurrency(value, Config.Frontend.ElCurrency), Config.Frontend.ElCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign)
+}
+
+func FormatClCurrencyString(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign bool) string {
+	return FormatCurrencyString(ClToCurrency(value, Config.Frontend.ClCurrency), Config.Frontend.ClCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign)
+}
+
+func FormatCurrencyString(valIf interface{}, valueCurrency, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign bool) string {
 	val := IfToDec(valIf)
 	valPriced := val
 	if valueCurrency != targetCurrency {
@@ -205,23 +213,26 @@ func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, dig
 		resStr = valPriced.StringFixed(int32(digitsAfterComma))
 	}
 
-	classes := ""
 	plusSign := ""
 
 	if valPriced.Cmp(decimal.NewFromInt(0)) >= 0 {
 		if showPlusSign {
 			plusSign = "+"
 		}
-		if colored {
-			classes = ` class="text-success"`
-		}
-	} else {
-		if colored {
-			classes = ` class="text-danger"`
-		}
 	}
 
-	return template.HTML(fmt.Sprintf(`<span%s>%s%s</span>`, classes, plusSign, resStr))
+	return fmt.Sprintf(`%s%s`, plusSign, resStr)
+}
+
+func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored bool) template.HTML {
+	result := FormatCurrencyString(valIf, valueCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign)
+	classes := ""
+
+	if colored {
+		classes = ` class="text-success"`
+	}
+
+	return template.HTML(fmt.Sprintf(`<span%s>%s</span>`, classes, result))
 }
 
 // IfToDec trys to parse given parameter to decimal.Decimal, it only logs on error
@@ -604,16 +615,22 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/slots?q=%s\">%s</a></span>", graffiti, u, h))
 }
 
-// FormatHash will return a hash formated as html
-// hash is required, trunc is optional.
-// Only the first value in trunc_opt will be used.
+/*
+  - FormatHash will return a hash formated as html
+    hash is required, trunc is optional.
+    Only the first value in trunc_opt will be used.
+    ATTENTION: IT TRUNCATES BY DEFAULT, PASS FALSE TO trunc_opt TO DISABLE
+*/
 func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", FormatHashRaw(hash, trunc_opt...)))
 }
 
-// FormatHashRaw will return a hash formated
-// hash is required, trunc is optional.
-// Only the first value in trunc_opt will be used.
+/*
+  - FormatHashRaw will return a hash formated
+    hash is required, trunc is optional.
+    Only the first value in trunc_opt will be used.
+    ATTENTION: IT TRUNCATES BY DEFAULT, PASS FALSE TO trunc_opt TO DISABLE
+*/
 func FormatHashRaw(hash []byte, trunc_opt ...bool) string {
 	s := fmt.Sprintf("%#x", hash)
 	if len(s) == 42 { // if it's an address, we checksum it (0x + 40)
