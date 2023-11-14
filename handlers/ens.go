@@ -34,7 +34,7 @@ func ResolveEnsDomain(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Warnf("failed to resolve ens %v: %v", search, err)
-		sendErrorResponse(w, r.URL.String(), "failed to resolve ens")
+		sendBadRequestResponse(w, r.URL.String(), "failed to resolve ens")
 		return
 	}
 
