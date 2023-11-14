@@ -2723,7 +2723,7 @@ func (bigtable *Bigtable) getTotalIncomeEpochRanges(startEpoch uint64, endEpoch 
 		startEpoch = 0
 	}
 
-	rangeEnd := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(startEpoch), "\x00")
+	rangeEnd := fmt.Sprintf("%s:%s:%s%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(startEpoch), "\x00")
 	rangeStart := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(endEpoch))
 
 	return gcp_bigtable.NewRange(rangeStart, rangeEnd)
