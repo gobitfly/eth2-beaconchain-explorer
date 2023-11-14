@@ -1536,13 +1536,7 @@ func UserDashboardWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 	WHERE validatorindex = ANY($1)
 	`, pq.Int64Array(indicesParsed))
 
-	pubkeys := []string{}
-
-	for _, key := range publicKeys {
-		pubkeys = append(pubkeys, key)
-	}
-
-	err = db.RemoveFromWatchlistBatch(user.UserID, pubkeys, utils.GetNetwork())
+	err = db.RemoveFromWatchlistBatch(user.UserID, publicKeys, utils.GetNetwork())
 	if err != nil {
 		logger.Errorf("error could not remove validators from watchlist: %v, %v", r.URL.String(), err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
