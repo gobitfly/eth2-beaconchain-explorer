@@ -1363,6 +1363,11 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 
 	// get attestations for all validators for the last 4 epochs
 
+	validators, err := db.GetValidatorIndices()
+	if err != nil {
+		return err
+	}
+
 	participationPerEpoch, err := db.GetValidatorAttestationHistoryForNotifications(epoch-3, epoch)
 	if err != nil {
 		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
@@ -1664,7 +1669,7 @@ func (n *validatorIsOfflineNotification) GetEpoch() uint64 {
 func (n *validatorIsOfflineNotification) GetInfo(includeUrl bool) string {
 	if n.IsOffline {
 		if includeUrl {
-			return fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> is offline since epoch <a href="https://%[3]v/epoch/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.EventEpoch, utils.Config.Frontend.SiteDomain)
+			return fmt.Sprintf(`Validator <a href="https://%[3]v/validator/%[1]v">%[1]v</a> is offline since epoch <a href="https://%[3]v/epoch/%[2]v">%[2]v</a>).`, n.ValidatorIndex, n.EventEpoch, utils.Config.Frontend.SiteDomain)
 		} else {
 			return fmt.Sprintf(`Validator %v is offline since epoch %v.`, n.ValidatorIndex, n.EventEpoch)
 		}
