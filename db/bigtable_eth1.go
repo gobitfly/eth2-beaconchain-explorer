@@ -611,11 +611,16 @@ func TimestampToBigtableTimeDesc(ts time.Time) string {
 	return fmt.Sprintf("%04d%02d%02d%02d%02d%02d", 9999-ts.Year(), 12-ts.Month(), 31-ts.Day(), 23-ts.Hour(), 59-ts.Minute(), 59-ts.Second())
 }
 
-func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_bigtable.Table) error {
+func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_bigtable.Table, batchSize int) error {
+
+	callingFunctionName := utils.GetParentFuncName()
+
 	ctx, done := context.WithTimeout(context.Background(), time.Minute*5)
 	defer done()
 
-	length := 10000
+	// pre-sort mutations for efficient bulk inserts
+	sort.Sort(mutations)
+	length := batchSize
 	numMutations := len(mutations.Muts)
 	numKeys := len(mutations.Keys)
 	iterations := numKeys / length
@@ -627,16 +632,15 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_b
 	for offset := 0; offset < iterations; offset++ {
 		start := offset * length
 		end := offset*length + length
-		// logger.Infof("writing from: %v to %v arr len:  %v", start, end, len(mutations.Keys))
 
-		// startTime := time.Now()
+		startTime := time.Now()
 		errs, err := table.ApplyBulk(ctx, mutations.Keys[start:end], mutations.Muts[start:end])
 		for _, e := range errs {
 			if e != nil {
 				return err
 			}
 		}
-		// logrus.Infof("wrote from %v to %v rows to bigtable in %.1f s", start, end, time.Since(startTime).Seconds())
+		logrus.Infof("%s: wrote from %v to %v rows to bigtable in %.1f s", callingFunctionName, start, end, time.Since(startTime).Seconds())
 		if err != nil {
 			return err
 		}
@@ -644,7 +648,7 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_b
 
 	if (iterations * length) < numKeys {
 		start := iterations * length
-		// startTime := time.Now()
+		startTime := time.Now()
 		errs, err := table.ApplyBulk(ctx, mutations.Keys[start:], mutations.Muts[start:])
 		if err != nil {
 			return err
@@ -654,7 +658,7 @@ func (bigtable *Bigtable) WriteBulk(mutations *types.BulkMutations, table *gcp_b
 				return e
 			}
 		}
-		// logrus.Infof("wrote from %v to %v rows to bigtable in %.1fs", start, numKeys, time.Since(startTime).Seconds())
+		logrus.Infof("%s: wrote from %v to %v rows to bigtable in %.1fs", callingFunctionName, start, numKeys, time.Since(startTime).Seconds())
 		if err != nil {
 			return err
 		}
@@ -793,14 +797,14 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", block.Number, err)
 						}
 
-						err = bigtable.WriteBulk(&bulkMutsData, bigtable.GetDataTable())
+						err = bigtable.WriteBulk(&bulkMutsData, bigtable.GetDataTable(), DEFAULT_BATCH_INSERTS)
 						if err != nil {
 							return fmt.Errorf("error writing block [%v] to bigtable data table: %w", block.Number, err)
 						}
 					}
 
 					if len(bulkMutsMetadataUpdate.Keys) > 0 {
-						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.GetMetadataUpdatesTable())
+						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.GetMetadataUpdatesTable(), DEFAULT_BATCH_INSERTS)
 						if err != nil {
 							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", block.Number, err)
 						}
@@ -3723,7 +3727,7 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, del
 		mutsWrite.Muts = append(mutsWrite.Muts, mutWrite)
 	}
 
-	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata)
+	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata, DEFAULT_BATCH_INSERTS)
 
 	if err != nil {
 		return err
@@ -3743,7 +3747,7 @@ func (bigtable *Bigtable) SaveBalances(balances []*types.Eth1AddressBalance, del
 		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 	}
 
-	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates)
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableMetadataUpdates, DEFAULT_BATCH_INSERTS)
 
 	if err != nil {
 		return err
@@ -3771,7 +3775,7 @@ func (bigtable *Bigtable) SaveERC20TokenPrices(prices []*types.ERC20TokenPrice) 
 		mutsWrite.Muts = append(mutsWrite.Muts, mut)
 	}
 
-	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata)
+	err := bigtable.WriteBulk(mutsWrite, bigtable.tableMetadata, DEFAULT_BATCH_INSERTS)
 
 	if err != nil {
 		return err
@@ -3842,7 +3846,7 @@ func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, blockHash []byte) erro
 		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 	}
 
-	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableData, DEFAULT_BATCH_INSERTS)
 	if err != nil {
 		return err
 	}
@@ -3855,7 +3859,7 @@ func (bigtable *Bigtable) DeleteBlock(blockNumber uint64, blockHash []byte) erro
 	mutDelete.DeleteRow()
 	mutsDelete.Keys = append(mutsDelete.Keys, fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(blockNumber)))
 	mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-	err = bigtable.WriteBulk(mutsDelete, bigtable.tableBlocks)
+	err = bigtable.WriteBulk(mutsDelete, bigtable.tableBlocks, DEFAULT_BATCH_INSERTS)
 	if err != nil {
 		return err
 	}
@@ -4087,7 +4091,7 @@ func (bigtable *Bigtable) SaveSignatureImportStatus(status types.SignatureImport
 	mutsWrite.Keys = append(mutsWrite.Keys, key)
 	mutsWrite.Muts = append(mutsWrite.Muts, mut)
 
-	err = bigtable.WriteBulk(mutsWrite, bigtable.tableData)
+	err = bigtable.WriteBulk(mutsWrite, bigtable.tableData, DEFAULT_BATCH_INSERTS)
 
 	if err != nil {
 		return err
@@ -4114,7 +4118,7 @@ func (bigtable *Bigtable) SaveSignatures(signatures []types.Signature, st types.
 		mutsWrite.Muts = append(mutsWrite.Muts, mut)
 	}
 
-	err := bigtable.WriteBulk(mutsWrite, bigtable.tableData)
+	err := bigtable.WriteBulk(mutsWrite, bigtable.tableData, DEFAULT_BATCH_INSERTS)
 
 	if err != nil {
 		return err
