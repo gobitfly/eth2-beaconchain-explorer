@@ -1990,7 +1990,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch uint64) ([]*types.ValidatorEffectiveness, error) {
 	end := epoch
 	start := uint64(0)
-	lookback := uint64(9)
+	lookback := uint64(99)
 	if end > lookback {
 		start = end - lookback
 	}
