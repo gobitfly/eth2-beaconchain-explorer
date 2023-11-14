@@ -3201,10 +3201,9 @@ func GetValidatorAttestationHistoryForNotifications(startEpoch uint64, endEpoch 
 			epochParticipation[epoch] = make(map[types.ValidatorIndex]bool)
 
 			// logger.Infof("seeding validator duties for epoch %v", epoch)
-			for i := 0; i <= len(activityData); i++ {
-				validatorIndex := activityData[i].ValidatorIndex
-				if activityData[validatorIndex].ActivationEpoch <= epoch && epoch < activityData[validatorIndex].ExitEpoch {
-					epochParticipation[epoch][validatorIndex] = false
+			for _, data := range activityData {
+				if data.ActivationEpoch <= epoch && epoch < data.ExitEpoch {
+					epochParticipation[epoch][types.ValidatorIndex(data.ValidatorIndex)] = false
 				}
 			}
 
