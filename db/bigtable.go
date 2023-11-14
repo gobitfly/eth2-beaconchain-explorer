@@ -73,6 +73,8 @@ type Bigtable struct {
 	chainId string
 
 	v2SchemaCutOffEpoch uint64
+
+	machineMetricsQueuedWritesChan chan (types.BulkMutation)
 }
 
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
@@ -110,26 +112,93 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 	}
 
 	bt := &Bigtable{
-		client:                  btClient,
-		tableData:               btClient.Open("data"),
-		tableBlocks:             btClient.Open("blocks"),
-		tableMetadataUpdates:    btClient.Open("metadata_updates"),
-		tableMetadata:           btClient.Open("metadata"),
-		tableBeaconchain:        btClient.Open("beaconchain"),
-		tableMachineMetrics:     btClient.Open("machine_metrics"),
-		tableValidators:         btClient.Open("beaconchain_validators"),
-		tableValidatorsHistory:  btClient.Open("beaconchain_validators_history"),
-		chainId:                 chainId,
-		redisCache:              rdc,
-		lastAttestationCacheMux: &sync.Mutex{},
-		v2SchemaCutOffEpoch:     utils.Config.Bigtable.V2SchemaCutOffEpoch,
+		client:                         btClient,
+		tableData:                      btClient.Open("data"),
+		tableBlocks:                    btClient.Open("blocks"),
+		tableMetadataUpdates:           btClient.Open("metadata_updates"),
+		tableMetadata:                  btClient.Open("metadata"),
+		tableBeaconchain:               btClient.Open("beaconchain"),
+		tableMachineMetrics:            btClient.Open("machine_metrics"),
+		tableValidators:                btClient.Open("beaconchain_validators"),
+		tableValidatorsHistory:         btClient.Open("beaconchain_validators_history"),
+		chainId:                        chainId,
+		redisCache:                     rdc,
+		lastAttestationCacheMux:        &sync.Mutex{},
+		v2SchemaCutOffEpoch:            utils.Config.Bigtable.V2SchemaCutOffEpoch,
+		machineMetricsQueuedWritesChan: make(chan types.BulkMutation, MAX_BATCH_MUTATIONS),
+	}
+
+	if utils.Config.Frontend.Enabled { // Only activate machine metrics inserts on frontend / api instances
+		go bt.commitQueuedMachineMetricWrites()
 	}
 
 	BigtableClient = bt
 	return bt, nil
 }
 
+func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
+
+	// copy the pending mutations over and commit them
+
+	batchSize := 10000
+
+	muts := &types.BulkMutations{
+		Keys: make([]string, 0, batchSize),
+		Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
+	}
+
+	tmr := time.NewTicker(time.Second * 10)
+	for {
+		select {
+		case mut, ok := <-bigtable.machineMetricsQueuedWritesChan:
+
+			if ok {
+				muts.Keys = append(muts.Keys, mut.Key)
+				muts.Muts = append(muts.Muts, mut.Mut)
+			}
+
+			if len(muts.Keys) >= batchSize || !ok && len(muts.Keys) > 0 { // commit when batch size is reached or on channel close
+				logger.Infof("committing %v queued machine metric inserts (trigger=batchSize, ok=%v)", len(muts.Keys), ok)
+				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
+
+				if err == nil {
+					muts = &types.BulkMutations{
+						Keys: make([]string, 0, batchSize),
+						Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
+					}
+				} else {
+					logger.Errorf("error writing queued machine metrics to bigtable: %v", err)
+				}
+			}
+
+			if !ok { // insert chan is closed, stop the timer and exit
+				tmr.Stop()
+				logger.Infof("stopping batched machine metrics insert")
+				return
+			}
+
+		case <-tmr.C:
+			if len(muts.Keys) > 0 {
+				logger.Infof("committing %v queued machine metric inserts (trigger=timeout)", len(muts.Keys))
+				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
+
+				if err == nil {
+					muts = &types.BulkMutations{
+						Keys: make([]string, 0, batchSize),
+						Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
+					}
+				} else {
+					logger.Errorf("error writing queued machine metrics to bigtable: %v", err)
+				}
+			}
+		}
+	}
+
+}
+
 func (bigtable *Bigtable) Close() {
+	close(bigtable.machineMetricsQueuedWritesChan)
+	time.Sleep(time.Second * 5)
 	bigtable.client.Close()
 }
 
@@ -167,14 +236,12 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	dataMut := gcp_bigtable.NewMutation()
 	dataMut.Set(MACHINE_METRICS_COLUMN_FAMILY, "v1", ts, data)
 
-	err = bigtable.tableMachineMetrics.Apply(
-		ctx,
-		rowKeyData,
-		dataMut,
-	)
-	if err != nil {
-		return err
+	bulkMut := types.BulkMutation{ // schedule the mutation for writing
+		Key: rowKeyData,
+		Mut: dataMut,
 	}
+
+	bigtable.machineMetricsQueuedWritesChan <- bulkMut
 
 	return nil
 }
@@ -1056,8 +1123,6 @@ func (bigtable *Bigtable) getValidatorAttestationHistoryV2(validators []uint64, 
 	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
 	resMux := &sync.Mutex{}
 
-	filter := gcp_bigtable.LatestNFilter(32)
-
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
@@ -1078,6 +1143,7 @@ func (bigtable *Bigtable) getValidatorAttestationHistoryV2(validators []uint64, 
 			default:
 			}
 			ranges := bigtable.getValidatorsEpochRanges(vals, ATTESTATIONS_FAMILY, startEpoch, endEpoch)
+			filter := gcp_bigtable.LimitRows(int64(endEpoch-startEpoch+1) * int64(len(vals))) // max is one row per epoch
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
@@ -1119,7 +1185,7 @@ func (bigtable *Bigtable) getValidatorAttestationHistoryV2(validators []uint64, 
 
 				}
 				return true
-			}, gcp_bigtable.RowFilter(filter))
+			}, filter)
 
 			return err
 		})
@@ -1467,8 +1533,6 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV2(validators []ui
 
 	resMux := &sync.Mutex{}
 
-	filter := gcp_bigtable.LatestNFilter(32)
-
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
@@ -1487,6 +1551,9 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV2(validators []ui
 			default:
 			}
 			ranges := bigtable.getValidatorsEpochRanges(vals, ATTESTATIONS_FAMILY, startEpoch, endEpoch)
+
+			filter := gcp_bigtable.LimitRows(int64(endEpoch-startEpoch+1) * int64(len(vals))) // max is one row per epoch
+
 			err = bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
@@ -1530,7 +1597,7 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV2(validators []ui
 					resMux.Unlock()
 				}
 				return true
-			}, gcp_bigtable.RowFilter(filter))
+			}, filter)
 
 			return err
 		})
@@ -1694,7 +1761,6 @@ func (bigtable *Bigtable) getValidatorSyncDutiesHistoryV2(validators []uint64, s
 			}
 			ranges := bigtable.getValidatorSlotRanges(vals, SYNC_COMMITTEES_FAMILY, startSlot, endSlot)
 
-			logger.Infof("processing GetValidatorSyncDutiesHistory validators batch %v", i)
 			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
 				keySplit := strings.Split(r.Key(), ":")
 
@@ -1924,7 +1990,7 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesStatistics(validators []uint64, 
 func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch uint64) ([]*types.ValidatorEffectiveness, error) {
 	end := epoch
 	start := uint64(0)
-	lookback := uint64(99)
+	lookback := uint64(9)
 	if end > lookback {
 		start = end - lookback
 	}
