@@ -1518,8 +1518,17 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	data := &types.BurnPageData{}
 	start := time.Now()
 
-	latestEpoch := LatestEpoch()
+	latestFinalizedEpoch := LatestFinalizedEpoch()
 	latestBlock := LatestEth1BlockNumber()
+
+	lookbackEpoch := latestFinalizedEpoch - 10
+	if lookbackEpoch > latestFinalizedEpoch {
+		lookbackEpoch = 0
+	}
+	lookbackDayEpoch := latestFinalizedEpoch - utils.EpochsPerDay()
+	if lookbackDayEpoch > latestFinalizedEpoch {
+		lookbackDayEpoch = 0
+	}
 
 	// Check db to have at least one entry (will error otherwise anyway)
 	burnedFeesCount := 0
@@ -1541,12 +1550,6 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	}
 
 	cutOffEpoch := utils.TimeToEpoch(cutOff)
-	// logger.Infof("cutoff epoch: %v", cutOffEpoch)
-	// var blockLastHour uint64
-	// db.ReaderDb.Get(&blockLastHour, "select ")
-
-	// var blockLastDay uint64
-	// db.ReaderDb.Get(&blockLastDay)
 
 	additionalBurned := float64(0)
 	err := db.ReaderDb.Get(&additionalBurned, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) AS burnedfees FROM blocks WHERE epoch > $1", cutOffEpoch)
@@ -1556,49 +1559,33 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// logger.Infof("additonal burn: %v", additionalBurned)
 	data.TotalBurned += additionalBurned
 
-	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", latestEpoch-10)
+	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", lookbackEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
 	}
 
-	// err = db.ReaderDb.Get(&data.Emission, "select total_rewards_wei as emission from eth_store_stats order by day desc limit 1")
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error retrieving emission (24h): %v", err)
-	// }
-
-	// swap this for GetEpochIncomeHistory in the future
-
-	validators, err := db.GetValidatorIndices()
-	if err != nil {
-		return nil, err
-	}
-
-	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, latestEpoch-10, latestEpoch)
+	income, err := db.BigtableClient.GetTotalValidatorIncomeDetailsHistory(lookbackEpoch, latestFinalizedEpoch)
 	if err != nil {
 		logger.WithError(err).Error("error getting validator income history")
 	}
 
 	total := &itypes.ValidatorEpochIncome{}
 
-	for _, epochs := range income {
-		// logger.Infof("epochs: %+v", epochs)
-		for _, details := range epochs {
-			// logger.Infof("income: %+v", details)
-			total.AttestationHeadReward += details.AttestationHeadReward
-			total.AttestationSourceReward += details.AttestationSourceReward
-			total.AttestationSourcePenalty += details.AttestationSourcePenalty
-			total.AttestationTargetReward += details.AttestationTargetReward
-			total.AttestationTargetPenalty += details.AttestationTargetPenalty
-			total.FinalityDelayPenalty += details.FinalityDelayPenalty
-			total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
-			total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
-			total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
-			total.SyncCommitteeReward += details.SyncCommitteeReward
-			total.SyncCommitteePenalty += details.SyncCommitteePenalty
-			total.SlashingReward += details.SlashingReward
-			total.SlashingPenalty += details.SlashingPenalty
-			total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
-		}
+	for _, details := range income {
+		total.AttestationHeadReward += details.AttestationHeadReward
+		total.AttestationSourceReward += details.AttestationSourceReward
+		total.AttestationSourcePenalty += details.AttestationSourcePenalty
+		total.AttestationTargetReward += details.AttestationTargetReward
+		total.AttestationTargetPenalty += details.AttestationTargetPenalty
+		total.FinalityDelayPenalty += details.FinalityDelayPenalty
+		total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
+		total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
+		total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
+		total.SyncCommitteeReward += details.SyncCommitteeReward
+		total.SyncCommitteePenalty += details.SyncCommitteePenalty
+		total.SlashingReward += details.SlashingReward
+		total.SlashingPenalty += details.SlashingPenalty
+		total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
 	}
 
 	rewards := decimal.NewFromBigInt(new(big.Int).SetBytes(total.TxFeeRewardWei), 0)
@@ -1627,12 +1614,12 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
 	// logger.Infof("calculated emission: %v", data.Emission)
 
-	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-utils.EpochsPerDay())
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", lookbackDayEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
 	}
 
-	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-utils.EpochsPerDay())
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", lookbackDayEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
 	}
@@ -1641,8 +1628,6 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// db.BigAdminClient
 
 	data.Blocks = make([]*types.BurnPageDataBlock, 0, 1000)
 	for _, blk := range blocks {
