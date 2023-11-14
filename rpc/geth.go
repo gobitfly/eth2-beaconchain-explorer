@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/hex"
+	"eth2-exporter/contracts/oneinchoracle"
 	"eth2-exporter/erc20"
 	"eth2-exporter/types"
 	"fmt"
@@ -13,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
@@ -24,10 +24,10 @@ import (
 )
 
 type GethClient struct {
-	endpoint  string
-	rpcClient *geth_rpc.Client
-	ethClient *ethclient.Client
-
+	endpoint     string
+	rpcClient    *geth_rpc.Client
+	ethClient    *ethclient.Client
+	chainID      *big.Int
 	multiChecker *Balance
 }
 
@@ -43,6 +43,7 @@ func NewGethClient(endpoint string) (*GethClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error dialing rpc node: %v", err)
 	}
+
 	client.rpcClient = rpcClient
 
 	ethClient, err := ethclient.Dial(client.endpoint)
@@ -56,12 +57,24 @@ func NewGethClient(endpoint string) (*GethClient, error) {
 		return nil, fmt.Errorf("error initiation balance checker contract: %v", err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	chainID, err := client.ethClient.ChainID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting chainid of rpcclient: %w", err)
+	}
+	client.chainID = chainID
+
 	return client, nil
 }
 
 func (client *GethClient) Close() {
 	client.rpcClient.Close()
 	client.ethClient.Close()
+}
+
+func (client *GethClient) GetChainID() *big.Int {
+	return client.chainID
 }
 
 func (client *GethClient) GetNativeClient() *ethclient.Client {
@@ -141,13 +154,12 @@ func (client *GethClient) GetBlock(number int64) (*types.Eth1Block, *types.GetBl
 	for _, tx := range txs {
 
 		var from []byte
-		msg, err := core.TransactionToMessage(tx, geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
+		sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
 		if err != nil {
 			from, _ = hex.DecodeString("abababababababababababababababababababab")
-
 			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
 		} else {
-			from = msg.From.Bytes()
+			from = sender.Bytes()
 		}
 
 		pbTx := &types.Eth1Transaction{
@@ -366,12 +378,11 @@ func (client *GethClient) GetERC20TokenBalance(address string, token string) ([]
 }
 
 func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metadata, error) {
-
 	logger.Infof("retrieving metadata for token %x", token)
-	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 
+	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting token-contract: erc20.NewErc20: %w", err)
 	}
 
 	g := new(errgroup.Group)
@@ -386,7 +397,7 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 				return nil
 			}
 
-			return fmt.Errorf("error retrieving symbol: %v", err)
+			return fmt.Errorf("error retrieving token symbol: %w", err)
 		}
 
 		ret.Symbol = symbol
@@ -396,7 +407,7 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	g.Go(func() error {
 		totalSupply, err := contract.TotalSupply(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving total supply: %v", err)
+			return fmt.Errorf("error retrieving token total supply: %w", err)
 		}
 		ret.TotalSupply = totalSupply.Bytes()
 		return nil
@@ -405,12 +416,32 @@ func (client *GethClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metad
 	g.Go(func() error {
 		decimals, err := contract.Decimals(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving decimals: %v", err)
+			return fmt.Errorf("error retrieving token decimals: %w", err)
 		}
 		ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		return nil
 	})
+
+	g.Go(func() error {
+		if !oneinchoracle.SupportedChainId(client.GetChainID()) {
+			return nil
+		}
+		oracle, err := oneinchoracle.NewOneInchOracleByChainID(client.GetChainID(), client.ethClient)
+		if err != nil {
+			return fmt.Errorf("error initializing oneinchoracle.NewOneInchOracleByChainID: %w", err)
+		}
+		rate, err := oracle.GetRateToEth(nil, common.BytesToAddress(token), false)
+		if err != nil {
+			return fmt.Errorf("error calling oneinchoracle.GetRateToEth: %w", err)
+		}
+		ret.Price = rate.Bytes()
+		return nil
+	})
+
 	err = g.Wait()
+	if err != nil {
+		return ret, err
+	}
 
 	if err == nil && len(ret.Decimals) == 0 && ret.Symbol == "" && len(ret.TotalSupply) == 0 {
 		// it's possible that a token contract implements the ERC20 interfaces but does not return any values; we use a backup in this case

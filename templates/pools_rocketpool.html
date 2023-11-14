@@ -2,9 +2,10 @@
   <script type="text/javascript" src="/js/datatablesNew.min.js"></script>
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script>
     $("#minipools").DataTable({
-      ajax: "/pools/rocketpool/data/minipools",
+      ajax: dataTableLoader("/pools/rocketpool/data/minipools"),
       language: {
         info: "_TOTAL_ entries",
         infoEmpty: "No entries match",
@@ -93,7 +94,7 @@
     })
 
     $("#nodes").DataTable({
-      ajax: "/pools/rocketpool/data/nodes",
+      ajax: dataTableLoader("/pools/rocketpool/data/nodes"),
       language: {
         info: "_TOTAL_ entries",
         infoEmpty: "No entries match",
@@ -194,7 +195,7 @@
     })
 
     $("#dao_members").DataTable({
-      ajax: "/pools/rocketpool/data/dao_members",
+      ajax: dataTableLoader("/pools/rocketpool/data/dao_members"),
       language: {
         info: "_TOTAL_ entries",
         infoEmpty: "No entries match",
@@ -271,7 +272,7 @@
     })
 
     $("#dao_proposals").DataTable({
-      ajax: "/pools/rocketpool/data/dao_proposals",
+      ajax: dataTableLoader("/pools/rocketpool/data/dao_proposals"),
       language: {
         info: "_TOTAL_ entries",
         infoEmpty: "No entries match",

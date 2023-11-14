@@ -7,28 +7,34 @@ type ForkVersion struct {
 }
 
 // https://github.com/ethereum/consensus-specs/blob/dev/configs/mainnet.yaml
-type ChainConfig struct {
-	PresetBase                       string `yaml:"PRESET_BASE"`
-	ConfigName                       string `yaml:"CONFIG_NAME"`
+type ClChainConfig struct {
+	PresetBase string `yaml:"PRESET_BASE"`
+	ConfigName string `yaml:"CONFIG_NAME"`
+	// transition
 	TerminalTotalDifficulty          string `yaml:"TERMINAL_TOTAL_DIFFICULTY"`
 	TerminalBlockHash                string `yaml:"TERMINAL_BLOCK_HASH"`
 	TerminalBlockHashActivationEpoch uint64 `yaml:"TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH"`
-	MinGenesisActiveValidatorCount   uint64 `yaml:"MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
-	MinGenesisTime                   int64  `yaml:"MIN_GENESIS_TIME"`
-	GenesisForkVersion               string `yaml:"GENESIS_FORK_VERSION"`
-	GenesisDelay                     uint64 `yaml:"GENESIS_DELAY"`
-	AltairForkVersion                string `yaml:"ALTAIR_FORK_VERSION"`
-	AltairForkEpoch                  uint64 `yaml:"ALTAIR_FORK_EPOCH"`
-	BellatrixForkVersion             string `yaml:"BELLATRIX_FORK_VERSION"`
-	BellatrixForkEpoch               uint64 `yaml:"BELLATRIX_FORK_EPOCH"`
-	ByzantiumForkBlock               uint64 `yaml:"BYZANTIUM_FORK_BLOCK"`
-	CappellaForkVersion              string `yaml:"CAPELLA_FORK_VERSION"`
-	CappellaForkEpoch                uint64 `yaml:"CAPELLA_FORK_EPOCH"`
-	ConstantinopleForkBlock          uint64 `yaml:"CONSTANTINOPLE_FORK_BLOCK"`
-	DenebForkVersion                 string `yaml:"DENEB_FORK_VERSION"`
-	DenebForkEpoch                   uint64 `yaml:"DENEB_FORK_EPOCH"`
-	ShardingForkVersion              string `yaml:"SHARDING_FORK_VERSION"`
-	ShardingForkEpoch                uint64 `yaml:"SHARDING_FORK_EPOCH"`
+	// genesis
+	MinGenesisActiveValidatorCount uint64 `yaml:"MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
+	MinGenesisTime                 int64  `yaml:"MIN_GENESIS_TIME"`
+	GenesisForkVersion             string `yaml:"GENESIS_FORK_VERSION"`
+	GenesisDelay                   uint64 `yaml:"GENESIS_DELAY"`
+	// forking
+	AltairForkVersion    string `yaml:"ALTAIR_FORK_VERSION"`
+	AltairForkEpoch      uint64 `yaml:"ALTAIR_FORK_EPOCH"`
+	BellatrixForkVersion string `yaml:"BELLATRIX_FORK_VERSION"`
+	BellatrixForkEpoch   uint64 `yaml:"BELLATRIX_FORK_EPOCH"`
+	CappellaForkVersion  string `yaml:"CAPELLA_FORK_VERSION"`
+	CappellaForkEpoch    uint64 `yaml:"CAPELLA_FORK_EPOCH"`
+	DenebForkVersion     string `yaml:"DENEB_FORK_VERSION"`
+	DenebForkEpoch       uint64 `yaml:"DENEB_FORK_EPOCH"`
+	Eip6110ForkVersion   string `yaml:"EIP6110_FORK_VERSION"`
+	Eip6110ForkEpoch     uint64 `yaml:"EIP6110_FORK_EPOCH"`
+	Eip7002ForkVersion   string `yaml:"EIP7002_FORK_VERSION"`
+	Eip7002ForkEpoch     uint64 `yaml:"EIP7002_FORK_EPOCH"`
+	WhiskForkVersion     string `yaml:"WHISK_FORK_VERSION"`
+	WhiskForkEpoch       uint64 `yaml:"WHISK_FORK_EPOCH"`
+	// time parameters
 	SecondsPerSlot                   uint64 `yaml:"SECONDS_PER_SLOT"`
 	SecondsPerEth1Block              uint64 `yaml:"SECONDS_PER_ETH1_BLOCK"`
 	MinValidatorWithdrawabilityDelay uint64 `yaml:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`
@@ -39,10 +45,33 @@ type ChainConfig struct {
 	EjectionBalance                  uint64 `yaml:"EJECTION_BALANCE"`
 	MinPerEpochChurnLimit            uint64 `yaml:"MIN_PER_EPOCH_CHURN_LIMIT"`
 	ChurnLimitQuotient               uint64 `yaml:"CHURN_LIMIT_QUOTIENT"`
-	ProposerScoreBoost               uint64 `yaml:"PROPOSER_SCORE_BOOST"`
-	DepositChainID                   uint64 `yaml:"DEPOSIT_CHAIN_ID"`
-	DepositNetworkID                 uint64 `yaml:"DEPOSIT_NETWORK_ID"`
-	DepositContractAddress           string `yaml:"DEPOSIT_CONTRACT_ADDRESS"`
+	// fork choice
+	ProposerScoreBoost uint64 `yaml:"PROPOSER_SCORE_BOOST"`
+	// deposit contract
+	DepositChainID         uint64 `yaml:"DEPOSIT_CHAIN_ID"`
+	DepositNetworkID       uint64 `yaml:"DEPOSIT_NETWORK_ID"`
+	DepositContractAddress string `yaml:"DEPOSIT_CONTRACT_ADDRESS"`
+	// networking
+	GossipMaxSize                   uint64 `yaml:"GOSSIP_MAX_SIZE"`
+	MaxRequestBlocks                uint64 `yaml:"MAX_REQUEST_BLOCKS"`
+	EpochsPerSubnetSubscription     uint64 `yaml:"EPOCHS_PER_SUBNET_SUBSCRIPTION"`
+	MinEpochsForBlockRequests       uint64 `yaml:"MIN_EPOCHS_FOR_BLOCK_REQUESTS"`
+	MaxChunkSize                    uint64 `yaml:"MAX_CHUNK_SIZE"`
+	TtfbTimeout                     uint64 `yaml:"TTFB_TIMEOUT"`
+	RespTimeout                     uint64 `yaml:"RESP_TIMEOUT"`
+	AttestationPropagationSlotRange uint64 `yaml:"ATTESTATION_PROPAGATION_SLOT_RANGE"`
+	MaximumGossipClockDisparity     uint64 `yaml:"MAXIMUM_GOSSIP_CLOCK_DISPARITY"`
+	MessageDomainInvalidSnappy      string `yaml:"MESSAGE_DOMAIN_INVALID_SNAPPY"`
+	MessageDomainValidSnappy        string `yaml:"MESSAGE_DOMAIN_VALID_SNAPPY"`
+	SubnetsPerNode                  uint64 `yaml:"SUBNETS_PER_NODE"`
+	AttestationSubnetCount          uint64 `yaml:"ATTESTATION_SUBNET_COUNT"`
+	AttestationSubnetExtraBits      uint64 `yaml:"ATTESTATION_SUBNET_EXTRA_BITS"`
+	AttestationSubnetPrefixBits     uint64 `yaml:"ATTESTATION_SUBNET_PREFIX_BITS"`
+	// deneb
+	MaxRequestBlocksDeneb            uint64 `yaml:"MAX_REQUEST_BLOCKS_DENEB"`
+	MaxRequestBlobSidecars           uint64 `yaml:"MAX_REQUEST_BLOB_SIDECARS"`
+	MinEpochsForBlobSidecarsRequests uint64 `yaml:"MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS"`
+	BlobSidecarSubnetCount           uint64 `yaml:"BLOB_SIDECAR_SUBNET_COUNT"`
 
 	// phase0
 	// https://github.com/ethereum/consensus-specs/blob/dev/presets/mainnet/phase0.yaml
@@ -100,8 +129,14 @@ type ChainConfig struct {
 	MaxExtraDataBytes                       uint64 `yaml:"MAX_EXTRA_DATA_BYTES"`
 
 	// capella
-	// https://github.com/ethereum/consensus-specs/blob/dev/presets/minimal/capella.yaml
+	// https://github.com/ethereum/consensus-specs/blob/dev/presets/mainnet/capella.yaml
 	MaxWithdrawalsPerPayload        uint64 `yaml:"MAX_WITHDRAWALS_PER_PAYLOAD"`
 	MaxValidatorsPerWithdrawalSweep uint64 `yaml:"MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP"`
 	MaxBlsToExecutionChange         uint64 `yaml:"MAX_BLS_TO_EXECUTION_CHANGES"`
+
+	// deneb
+	// https://github.com/ethereum/consensus-specs/blob/dev/presets/mainnet/deneb.yaml
+	FieldElementsPerBlob       uint64 `yaml:"FIELD_ELEMENTS_PER_BLOB"`
+	MaxBlobCommitmentsPerBlock uint64 `yaml:"MAX_BLOB_COMMITMENTS_PER_BLOCK"`
+	MaxBlobsPerBlock           uint64 `yaml:"MAX_BLOBS_PER_BLOCK"`
 }

@@ -72,7 +72,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.ExitingCount = validatorsPageData.ExitingOnlineCount + validatorsPageData.ExitingOfflineCount
 	validatorsPageData.ExitedCount = validatorsPageData.VoluntaryExitsCount + validatorsPageData.Slashed
 	validatorsPageData.TotalCount = validatorsPageData.ActiveCount + validatorsPageData.ExitingCount + validatorsPageData.ExitedCount + validatorsPageData.PendingCount + validatorsPageData.DepositedCount
-	validatorsPageData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	validatorsPageData.CappellaHasHappened = epoch >= (utils.Config.Chain.ClConfig.CappellaForkEpoch)
 
 	data := InitPageData(w, r, "validators", "/validators", "Validators", templateFiles)
 	data.Data = validatorsPageData
@@ -95,8 +95,8 @@ type ValidatorsDataQueryParams struct {
 	StateFilter       string
 }
 
-var searchPubkeyExactRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{96}`)  // only search for pubkeys if string consists of 96 hex-chars
-var searchPubkeyLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
+var searchPubkeyExactRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{96}`) // only search for pubkeys if string consists of 96 hex-chars
+var searchPubkeyLikeRE = regexp.MustCompile(`^(0x)?[0-9a-fA-F]{2,96}`)
 
 func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams, error) {
 	q := r.URL.Query()
@@ -129,6 +129,10 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	filterByState := q.Get("filterByState")
 	var qryStateFilter string
 	switch filterByState {
+	case "online":
+		qryStateFilter = "WHERE validators.status LIKE '%online'"
+	case "offline":
+		qryStateFilter = "WHERE validators.status LIKE '%offline'"
 	case "pending":
 		qryStateFilter = "WHERE validators.status = 'pending'"
 	case "active":
@@ -305,8 +309,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
-				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
+				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(utils.Config.Frontend.ClCurrencyDivisor)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
+				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(utils.Config.Frontend.ClCurrencyDivisor)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
 			},
 			v.State,
 			[]interface{}{

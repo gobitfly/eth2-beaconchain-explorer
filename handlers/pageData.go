@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"eth2-exporter/db"
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -29,7 +28,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		fullTitle = fmt.Sprintf("%v - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year())
 	}
 
-	isMainnet := utils.Config.Chain.Config.ConfigName == "mainnet"
+	isMainnet := utils.Config.Chain.ClConfig.ConfigName == "mainnet"
 	user := getUser(r)
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -40,57 +39,33 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			NoTrack:     false,
 			Templates:   strings.Join(mainTemplates, ","),
 		},
+
 		Active:                active,
 		Data:                  &types.Empty{},
 		User:                  user,
 		Version:               version.Version,
 		Year:                  time.Now().UTC().Year(),
-		ChainSlotsPerEpoch:    utils.Config.Chain.Config.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.Config.SecondsPerSlot,
+		ChainSlotsPerEpoch:    utils.Config.Chain.ClConfig.SlotsPerEpoch,
+		ChainSecondsPerSlot:   utils.Config.Chain.ClConfig.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
 		LatestFinalizedEpoch:  services.LatestFinalizedEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		Rates: types.PageRates{
-			EthPrice:               0,
-			EthRoundPrice:          0,
-			EthTruncPrice:          "",
-			UsdRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("USD")),
-			UsdTruncPrice:          "",
-			EurRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("EUR")),
-			EurTruncPrice:          "",
-			GbpRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("GBP")),
-			GbpTruncPrice:          "",
-			CnyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CNY")),
-			CnyTruncPrice:          "",
-			RubRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("RUB")),
-			RubTruncPrice:          "",
-			CadRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("CAD")),
-			CadTruncPrice:          "",
-			AudRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("AUD")),
-			AudTruncPrice:          "",
-			JpyRoundPrice:          price.GetEthRoundPrice(price.GetEthPrice("JPY")),
-			JpyTruncPrice:          "",
-			Currency:               GetCurrency(r),
-			CurrentPriceFormatted:  GetCurrentPriceFormatted(r),
-			CurrentPriceKFormatted: GetCurrentPriceKFormatted(r),
-			CurrentSymbol:          GetCurrencySymbol(r),
-		},
-		Mainnet:             utils.Config.Chain.Config.ConfigName == "mainnet",
-		DepositContract:     utils.Config.Chain.Config.DepositContractAddress,
-		ClientsUpdated:      ethclients.ClientsUpdated(),
-		ChainConfig:         utils.Config.Chain.Config,
-		Lang:                "en-US",
-		NoAds:               user.Authenticated && user.Subscription != "",
-		Debug:               utils.Config.Frontend.Debug,
-		GasNow:              services.LatestGasNowData(),
-		ShowSyncingMessage:  services.IsSyncing(),
-		GlobalNotification:  services.GlobalNotificationMessage(),
-		AvailableCurrencies: price.GetAvailableCurrencies(),
-		MainMenuItems:       createMenuItems(active, isMainnet),
-		TermsOfServiceUrl:   utils.Config.Frontend.Legal.TermsOfServiceUrl,
-		PrivacyPolicyUrl:    utils.Config.Frontend.Legal.PrivacyPolicyUrl,
+		Rates:                 services.GetRates(GetCurrency(r)),
+		Mainnet:               utils.Config.Chain.ClConfig.ConfigName == "mainnet" || utils.Config.Chain.ClConfig.ConfigName == "gnosis",
+		DepositContract:       utils.Config.Chain.ClConfig.DepositContractAddress,
+		ChainConfig:           utils.Config.Chain.ClConfig,
+		Lang:                  "en-US",
+		NoAds:                 user.Authenticated && user.Subscription != "",
+		Debug:                 utils.Config.Frontend.Debug,
+		GasNow:                services.LatestGasNowData(),
+		ShowSyncingMessage:    services.IsSyncing(),
+		GlobalNotification:    services.GlobalNotificationMessage(),
+		AvailableCurrencies:   price.GetAvailableCurrencies(),
+		MainMenuItems:         createMenuItems(active, isMainnet),
+		TermsOfServiceUrl:     utils.Config.Frontend.Legal.TermsOfServiceUrl,
+		PrivacyPolicyUrl:      utils.Config.Frontend.Legal.PrivacyPolicyUrl,
 	}
 
 	adConfigurations, err := db.GetAdConfigurationsForTemplate(mainTemplates, data.NoAds)
@@ -114,18 +89,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			data.DebugSession = jsn
 		}
 	}
-	data.Rates.EthPrice = price.GetEthPrice(data.Rates.Currency)
-	data.Rates.ExchangeRate = price.GetEthPrice(data.Rates.Currency)
-	data.Rates.EthRoundPrice = price.GetEthRoundPrice(data.Rates.EthPrice)
-	data.Rates.EthTruncPrice = utils.KFormatterEthPrice(data.Rates.EthRoundPrice)
-	data.Rates.UsdTruncPrice = utils.KFormatterEthPrice(data.Rates.UsdRoundPrice)
-	data.Rates.EurTruncPrice = utils.KFormatterEthPrice(data.Rates.EurRoundPrice)
-	data.Rates.GbpTruncPrice = utils.KFormatterEthPrice(data.Rates.GbpRoundPrice)
-	data.Rates.CnyTruncPrice = utils.KFormatterEthPrice(data.Rates.CnyRoundPrice)
-	data.Rates.RubTruncPrice = utils.KFormatterEthPrice(data.Rates.RubRoundPrice)
-	data.Rates.CadTruncPrice = utils.KFormatterEthPrice(data.Rates.CadRoundPrice)
-	data.Rates.AudTruncPrice = utils.KFormatterEthPrice(data.Rates.AudRoundPrice)
-	data.Rates.JpyTruncPrice = utils.KFormatterEthPrice(data.Rates.JpyRoundPrice)
 
 	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
 	if len(acceptedLangs) > 0 {
@@ -223,6 +186,10 @@ func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
 }
 
 func createMenuItems(active string, isMain bool) []types.MainMenuItem {
+	if utils.Config.Chain.Name == "gnosis" {
+		return createMenuItemsGnosis(active, isMain)
+	}
+
 	hiddenFor := []string{"confirmation", "login", "register"}
 
 	if utils.SliceContains(hiddenFor, active) {
@@ -358,7 +325,8 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Icon:  "fa-rocket",
 						},
 					},
-				}, {
+				},
+				{
 					Label: "Stats",
 					Links: []types.NavigationLink{
 						{
@@ -480,6 +448,204 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Label: "Report a scam",
 							Path:  "https://www.chainabuse.com/report?source=bitfly",
 							Icon:  "fa-flag",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
+	hiddenFor := []string{"confirmation", "login", "register"}
+
+	if utils.SliceContains(hiddenFor, active) {
+		return []types.MainMenuItem{}
+	}
+	return []types.MainMenuItem{
+		{
+			Label:    "Blockchain",
+			IsActive: active == "blockchain",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Epochs",
+							Path:  "/epochs",
+							Icon:  "fa-history",
+						},
+						{
+							Label: "Slots",
+							Path:  "/slots",
+							Icon:  "fa-cube",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Blocks",
+							Path:  "/blocks",
+							Icon:  "fa-cubes",
+						},
+						{
+							Label: "Txs",
+							Path:  "/transactions",
+							Icon:  "fa-credit-card",
+						},
+						{
+							Label: "Mempool",
+							Path:  "/mempool",
+							Icon:  "fa-upload",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Validators",
+			IsActive: active == "validators",
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Overview",
+							Path:  "/validators",
+							Icon:  "fa-table",
+						},
+						{
+							Label: "Slashings",
+							Path:  "/validators/slashings",
+							Icon:  "fa-user-slash",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Validator Leaderboard",
+							Path:  "/validators/leaderboard",
+							Icon:  "fa-medal",
+						},
+						{
+							Label: "Deposit Leaderboard",
+							Path:  "/validators/deposit-leaderboard",
+							Icon:  "fa-file-import",
+						},
+					},
+				}, {
+					Links: []types.NavigationLink{
+						{
+							Label: "Deposits",
+							Path:  "/validators/deposits",
+							Icon:  "fa-file-signature",
+						},
+						{
+							Label: "Withdrawals",
+							Path:  "/validators/withdrawals",
+							Icon:  "fa-money-bill",
+						},
+					},
+				},
+			},
+		},
+		{
+			Label:    "Dashboard",
+			IsActive: active == "dashboard",
+			Path:     "/dashboard",
+		},
+		{
+			Label:    "Notifications",
+			IsActive: false,
+			Path:     "/user/notifications",
+		},
+		{
+			Label:        "More",
+			IsActive:     active == "more",
+			HasBigGroups: true,
+			Groups: []types.NavigationGroup{
+				{
+					Label: "Stats",
+					Links: []types.NavigationLink{
+						{
+							Label: "Charts",
+							Path:  "/charts",
+							Icon:  "fa-chart-bar",
+						},
+						{
+							Label: "Income History",
+							Path:  "/rewards",
+							Icon:  "fa-money-bill-alt",
+						},
+						{
+							Label: "Block Viz",
+							Path:  "/vis",
+							Icon:  "fa-project-diagram",
+						},
+						{
+							Label:    "Correlations",
+							Path:     "/correlations",
+							Icon:     "fa-chart-line",
+							IsHidden: !isMain,
+						},
+					},
+				},
+				{
+					Label: "Tools",
+					Links: []types.NavigationLink{
+						{
+							Label: "beaconcha.in App",
+							Path:  "/mobile",
+							Icon:  "fa-mobile-alt",
+						},
+						{
+							Label: "beaconcha.in Premium",
+							Path:  "/premium",
+							Icon:  "fa-gem",
+						},
+						{
+							Label:      "Webhooks",
+							Path:       "/user/webhooks",
+							CustomIcon: "webhook_logo_svg",
+						},
+						{
+							Label: "API Docs",
+							Path:  "/api/v1/docs/index.html",
+							Icon:  "fa-book-reader",
+						},
+						{
+							Label: "API Pricing",
+							Path:  "/pricing",
+							Icon:  "fa-laptop-code",
+						},
+						{
+							Label: "Broadcast Signed Messages",
+							Path:  "/tools/broadcast",
+							Icon:  "fa-bullhorn",
+						},
+					},
+				},
+				{
+					Label: "Services",
+					Links: []types.NavigationLink{
+						{
+							Label:         "Eversteel",
+							Path:          "https://eversteel.io/",
+							CustomIcon:    "eversteel_logo_svg",
+							IsHighlighted: true,
+						},
+						{
+							Label: "Knowledge Base",
+							Path:  "https://kb.beaconcha.in",
+							Icon:  "fa-external-link-alt",
+						},
+						{
+							Label: "Notifications",
+							Path:  "/user/notifications",
+							Icon:  "fa-bell",
+						},
+						{
+							Label: "Graffiti Wall",
+							Path:  "/graffitiwall",
+							Icon:  "fa-paint-brush",
 						},
 					},
 				},

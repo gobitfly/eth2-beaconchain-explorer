@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script type="text/javascript" src="/js/highcharts/highstock.min.js"></script>
   <script type="text/javascript" src="/js/highcharts/highcharts-global-options.js"></script>
     <script>
@@ -20,9 +21,9 @@
               stateLoadCallback: function (settings) {
                 return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
               },
-              order: [[4, 'desc']],
+              order: [[6, 'desc']],
               searching: true,
-              ajax: '/validators/initiated-deposits/data',
+              ajax: dataTableLoader('/validators/initiated-deposits/data'),
               pagingType: 'input',
               preDrawCallback: function() {
                   // this does not always work.. not sure how to solve the staying tooltip
@@ -58,7 +59,7 @@
             },
             order: [[0, "desc"]],
             searching: true,
-            ajax: "/validators/included-deposits/data",
+            ajax: dataTableLoader("/validators/included-deposits/data"),
             pagingType: "input",
             language: {
               searchPlaceholder: "Slot | Validator Key | Withdrawal Credentials | ENS address",
@@ -214,7 +215,7 @@
       <div>
         {{ template "depositChart" . }}
       </div>
-      <h6 class="my-2 text-muted">This table displays the deposits made on Ethereum for validators who wish to join the Beacon Chain.</h6>
+      <h6 class="my-2 text-muted">This table displays the deposits made for validators who wish to join the Beacon Chain.</h6>
       <div class="card">
         <div class="card-body px-0 py-2">
           <div class="table-responsive pt-2">
@@ -247,7 +248,7 @@
       <h2 class="my-3 h4">
         <span class="nav-text">Included Deposits</span>
       </h2>
-      <h6>This table displays the deposits received by the Ethereum Beacon Chain.</h6>
+      <h6>This table displays the deposits received by the Beacon Chain.</h6>
       <div class="card">
         <div class="card-body px-0 py-2">
           <div class="table-responsive pt-2">

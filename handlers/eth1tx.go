@@ -19,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
 	"github.com/shopspring/decimal"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -40,6 +39,11 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 	title := fmt.Sprintf("Transaction %v", txHashString)
 	path := fmt.Sprintf("/tx/%v", txHashString)
 
+	errFields := map[string]interface{}{
+		"route":        r.URL.String(),
+		"txHashString": txHashString,
+	}
+
 	txHash, err := hex.DecodeString(strings.ReplaceAll(txHashString, "0x", ""))
 	if err != nil {
 		logger.Warnf("error parsing tx hash %v: %v", txHashString, err)
@@ -51,7 +55,6 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			mempool := services.LatestMempoolTransactions()
 			mempoolTx := mempool.FindTxByHash(txHashString)
 			if mempoolTx != nil {
-
 				data = InitPageData(w, r, "blockchain", path, title, mempoolTxTemplateFiles)
 				mempoolPageData := &types.MempoolTxPageData{RawMempoolTransaction: *mempoolTx}
 				txTemplate = mempoolTxTemplate
@@ -64,8 +67,8 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 				data.Data = mempoolPageData
 			} else {
-				if !errors.Is(err, ethereum.NotFound) {
-					logger.Errorf("error getting eth1 transaction data: %v", err)
+				if !errors.Is(err, ethereum.NotFound) && !errors.Is(err, eth1data.ErrTxIsPending) {
+					utils.LogError(err, "error getting eth1 transaction data", 0, errFields)
 				}
 				data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 				txTemplate = txNotFoundTemplate
@@ -83,9 +86,10 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			txData.HistoricalEtherPrice = ""
 			if txData.Timestamp.Unix() >= int64(utils.Config.Chain.GenesisTimestamp) {
 				txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
+				errFields["txDay"] = txDay
 				latestEpoch, err := db.GetLatestEpoch()
 				if err != nil {
-					logrus.Error(err)
+					utils.LogError(err, "error retrieving latest epoch from db", 0, errFields)
 				}
 
 				currentDay := latestEpoch / utils.EpochsPerDay()
@@ -93,9 +97,10 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 				if txDay < currentDay {
 					// Do not show the historical price if it is the current day
 					currency := GetCurrency(r)
-					price, err := db.GetHistoricalPrice(utils.Config.Chain.Config.DepositChainID, currency, txDay)
+					price, err := db.GetHistoricalPrice(utils.Config.Chain.ClConfig.DepositChainID, currency, txDay)
 					if err != nil {
-						utils.LogError(err, "error retrieving historical prices", 0, map[string]interface{}{"txDay": txDay, "currency": currency})
+						errFields["currency"] = currency
+						utils.LogError(err, "error retrieving historical prices", 0, errFields)
 					} else {
 						historicalEthPrice := etherValue.Mul(decimal.NewFromFloat(price))
 						txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, historicalEthPrice.InexactFloat64()))

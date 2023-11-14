@@ -4,12 +4,14 @@ import (
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
+	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"flag"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +46,7 @@ func main() {
 
 	if *versionFlag {
 		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
 		return
 	}
 
@@ -56,11 +59,11 @@ func main() {
 	}
 	utils.Config = cfg
 
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
-		utils.LogFatal(fmt.Errorf("error ether SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot), "", 0)
+	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
+		utils.LogFatal(fmt.Errorf("error ether SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.ClConfig.SlotsPerEpoch, utils.Config.Chain.ClConfig.SecondsPerSlot), "", 0)
 		return
 	} else {
-		logrus.Infof("Writing statistic with: SlotsPerEpoch [%v] or SecondsPerSlot [%v]", utils.Config.Chain.Config.SlotsPerEpoch, utils.Config.Chain.Config.SecondsPerSlot)
+		logrus.Infof("Writing statistic with: SlotsPerEpoch [%v] or SecondsPerSlot [%v]", utils.Config.Chain.ClConfig.SlotsPerEpoch, utils.Config.Chain.ClConfig.SecondsPerSlot)
 	}
 
 	db.MustInitDB(&types.DatabaseConfig{
@@ -103,12 +106,12 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
-	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 
-	price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
+	price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
 
 	if utils.Config.TieredCacheProvider != "redis" {
 		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis)")
@@ -116,6 +119,18 @@ func main() {
 
 	if utils.Config.TieredCacheProvider == "redis" || len(utils.Config.RedisCacheEndpoint) != 0 {
 		cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	}
+
+	var rpcClient rpc.Client
+
+	chainID := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
+	if utils.Config.Indexer.Node.Type == "lighthouse" {
+		rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
+		if err != nil {
+			utils.LogFatal(err, "new explorer lighthouse client error", 0)
+		}
+	} else {
+		logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
 	}
 
 	if opt.statisticsDaysToExport != "" {
@@ -140,7 +155,7 @@ func main() {
 					clearStatsStatusTable(d)
 				}
 
-				err = db.WriteValidatorStatisticsForDay(uint64(d))
+				err = db.WriteValidatorStatisticsForDay(uint64(d), rpcClient)
 				if err != nil {
 					utils.LogError(err, fmt.Errorf("error exporting stats for day %v", d), 0)
 					break
@@ -182,7 +197,7 @@ func main() {
 				clearStatsStatusTable(uint64(opt.statisticsDayToExport))
 			}
 
-			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport))
+			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), rpcClient)
 			if err != nil {
 				utils.LogError(err, fmt.Errorf("error exporting stats for day %v", opt.statisticsDayToExport), 0)
 			}
@@ -209,16 +224,17 @@ func main() {
 		return
 	}
 
-	go statisticsLoop()
+	go statisticsLoop(rpcClient)
 
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
 }
 
-func statisticsLoop() {
+func statisticsLoop(client rpc.Client) {
 	for {
 
+		var loopError error
 		latestEpoch := services.LatestFinalizedEpoch()
 		if latestEpoch == 0 {
 			logrus.Errorf("error retreiving latest finalized epoch from cache")
@@ -252,9 +268,10 @@ func statisticsLoop() {
 			}
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
-					err := db.WriteValidatorStatisticsForDay(day)
+					err := db.WriteValidatorStatisticsForDay(day, client)
 					if err != nil {
 						utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
+						loopError = err
 						break
 					}
 				}
@@ -278,6 +295,7 @@ func statisticsLoop() {
 					err = db.WriteChartSeriesForDay(int64(day))
 					if err != nil {
 						logrus.Errorf("error exporting chart series from day %v: %v", day, err)
+						loopError = err
 						break
 					}
 				}
@@ -298,7 +316,11 @@ func statisticsLoop() {
 			}
 		}
 
-		services.ReportStatus("statistics", "Running", nil)
+		if loopError == nil {
+			services.ReportStatus("statistics", "Running", nil)
+		} else {
+			services.ReportStatus("statistics", loopError.Error(), nil)
+		}
 		time.Sleep(time.Minute)
 	}
 }

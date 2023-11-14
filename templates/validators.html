@@ -1,10 +1,11 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
     <script>
         var validatorsDataTable;
         const totalCount = {{.TotalCount}};
-        const despositedCount = {{.DepositedCount}};
+        const depositedCount = {{.DepositedCount}};
         const pendingCount = {{.PendingCount}};
         const activeOnlineCount = {{.ActiveOnlineCount}};
         const activeOfflineCount = {{.ActiveOfflineCount}};
@@ -14,6 +15,9 @@
         const exitingOfflineCount = {{.ExitingOfflineCount}};
         const exitedCount = {{.ExitedCount}};
         const voluntaryExitsCount = {{.VoluntaryExitsCount}};
+        const onlineCount = {{.ActiveOnlineCount}} + {{.SlashingOnlineCount}} + {{.ExitingOnlineCount}}
+        const offlineCount = {{.ActiveOfflineCount}} + {{.SlashingOfflineCount}} + {{.ExitingOfflineCount}}
+
         var stateFilterDropDownHtml = `<div><label>
             <div class="dropdown" style="display:inline-block;">
             <button class="btn btn-primary dropdown-toggle text-white" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true"><span>All ${totalCount}</span></button>
@@ -21,10 +25,12 @@
             <h6 class="dropdown-header"><span>Filter state</span> <span><span class="text-success">online</span> | <span class="text-danger">offline</span></span></h6>
             <hr style="margin:0.5rem 0">
             <a class="dropdown-item" href="#all" data-filter-validators="all"><span>All</span> <span>${totalCount}</span></a>
-            <a class="dropdown-item" href="#deposited" data-filter-validators="deposited"><span>Deposited</span> <span>${despositedCount}</span></a>
-            <a class="dropdown-item" href="#pending" data-filter-validators="pending"><span>Pending</span> <span>${pendingCount}</span></a>
+            <a class="dropdown-item" href="#online" data-filter-validators="online"><span>Online</span> <span>${onlineCount}</span></a>
+            <a class="dropdown-item" href="#offline" data-filter-validators="offline"><span>Offline</span> <span>${offlineCount}</span></a>
             <a class="dropdown-item" href="#active" data-filter-validators="active"><span>Active</span><span> <span class="text-success">${activeOnlineCount}</span> | <span class="text-danger">${activeOfflineCount}</span></span></a>
             <a class="dropdown-item" href="#slashing" data-filter-validators="slashing"><span>Slashing</span><span> <span class="text-success">${slashingOnlineCount}</span> | <span class="text-danger">${slashingOfflineCount}</span></span></a>
+            <a class="dropdown-item" href="#deposited" data-filter-validators="deposited"><span>Deposited</span> <span>${depositedCount}</span></a>
+            <a class="dropdown-item" href="#pending" data-filter-validators="pending"><span>Pending</span> <span>${pendingCount}</span></a>
             <a class="dropdown-item" href="#exiting" data-filter-validators="exiting"><span>Exiting</span><span> <span class="text-success">${exitingOnlineCount}</span> | <span class="text-danger">${exitingOfflineCount}</span></span></a>
             <a class="dropdown-item" href="#exited" data-filter-validators="exited"><span>Exited</span> <span>${exitedCount}</span></a>
             <a class="dropdown-item" href="#voluntary" data-filter-validators="voluntary"><span>Vol. Exits</span> <span>${voluntaryExitsCount}</span></a>
@@ -37,7 +43,7 @@
             $(`.filter-by-status a[data-filter-validators=${state}]`).addClass('active');
             $('.filter-by-status .btn:first-child').html($(`.filter-by-status a[data-filter-validators=${state}]`).html());
             // 0pubkey, 1idx, 2bal, 3state, 4active, 5exit, 6withdraw, 7lastattest, 8slashed
-            if (state === "all") {
+            if (state === "all" || state === "offline" || state === "online") {
                 validatorsDataTable.column(3).visible(true);
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(true);
@@ -98,6 +104,7 @@
                 var hashState = window.location.hash.substring(1);
                 if (possibleStates[hashState]) state = hashState
             }
+            var urlSearchParams = new URLSearchParams([["filterByState", state]])
 
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
@@ -116,7 +123,7 @@
                 stateLoadCallback: function (settings) {
                   return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
                 },
-                ajax: '/validators/data?filterByState=' + state,
+                ajax: dataTableLoader('/validators/data', urlSearchParams),
                 pagingType: 'input',
                 language: {
                     paginate: {
@@ -135,7 +142,7 @@
                         .find('[data-filter-validators]')
                         .click(function() {
                             var f = $(this).data('filter-validators');
-                            validatorsDataTable.ajax.url(`/validators/data?filterByState=${f}`);
+                            urlSearchParams.set("filterByState", f)
                             validatorsDataTable.ajax.reload();
                             adaptTableToState(f)
                         });

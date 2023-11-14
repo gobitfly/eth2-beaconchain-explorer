@@ -145,10 +145,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatValidatorWithName(b.Index, b.Name),
 			utils.FormatPublicKey(b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),
-			utils.FormatIncome(b.Performance1d, currency),
-			utils.FormatIncome(b.Performance7d, currency),
-			utils.FormatIncome(b.Performance31d, currency),
-			utils.FormatIncome(b.Performance365d, currency),
+			utils.FormatClCurrency(b.Performance1d, currency, 5, true, true, true),
+			utils.FormatClCurrency(b.Performance7d, currency, 5, true, true, true),
+			utils.FormatClCurrency(b.Performance31d, currency, 5, true, true, true),
+			utils.FormatClCurrency(b.Performance365d, currency, 5, true, true, true),
 		}
 	}
 

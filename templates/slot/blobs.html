@@ -1,0 +1,30 @@
+{{ define "block_blobs" }}
+  <style>
+    #blobs_table td {
+      max-width: 200px;
+    }
+  </style>
+  <div class="row p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ len .BlobSidecars }} Blobs</b></div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm text-left">
+      <tbody id="blobs_table">
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Index</th>
+          <th class="border-0">KZG Commitment</th>
+          <th class="border-0">KZG Proof</th>
+          <th class="border-0">Blob Versioned Hash</th>
+        </tr>
+        {{ range .BlobSidecars }}
+          <tr class="border-bottom">
+            <td class="border-0">{{ .Index }}</td>
+            <td class="border-0">{{ formatBytes .KzgCommitment true "" }}</td>
+            <td class="border-0">{{ formatBytes .KzgProof true "" }}</td>
+            <td class="border-0">{{ formatBlobVersionedHash .BlobVersionedHash }}</td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+{{ end }}

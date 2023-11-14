@@ -74,6 +74,7 @@ func main() {
 
 	if *versionFlag {
 		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
 		return
 	}
 
@@ -83,7 +84,7 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
 	// enable pprof endpoint if requested
 	if utils.Config.Pprof.Enabled {
@@ -131,7 +132,7 @@ func main() {
 		utils.LogFatal(err, "erigon client creation error", 0)
 	}
 
-	chainId := strconv.FormatUint(utils.Config.Chain.Config.DepositChainID, 10)
+	chainId := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
 
 	balanceUpdaterPrefix := chainId + ":B:"
 
@@ -207,6 +208,7 @@ func main() {
 		bt.TransformBlock,
 		bt.TransformTx,
 		bt.TransformItx,
+		bt.TransformBlobTx,
 		bt.TransformERC20,
 		bt.TransformERC721,
 		bt.TransformERC1155,

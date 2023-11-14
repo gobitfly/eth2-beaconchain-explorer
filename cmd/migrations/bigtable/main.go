@@ -43,7 +43,7 @@ func main() {
 	}
 	utils.Config = cfg
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
@@ -88,7 +88,7 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 
 	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
@@ -121,51 +121,55 @@ func main() {
 			g := new(errgroup.Group)
 			g.SetLimit(6)
 			g.Go(func() error {
-				err = db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
+				err := db.BigtableClient.SaveValidatorBalances(epoch, data.Validators)
 				if err != nil {
-					return fmt.Errorf("error exporting validator balances to bigtable: %v", err)
+					return fmt.Errorf("error exporting validator balances to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
+				err := db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
 				if err != nil {
-					return fmt.Errorf("error exporting proposal assignments to bigtable: %v", err)
+					return fmt.Errorf("error exporting proposal assignments to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
+				err := db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
 				if err != nil {
-					return fmt.Errorf("error exporting attestations to bigtable: %v", err)
+					return fmt.Errorf("error exporting attestations to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveProposals(data.Blocks)
-				if err != nil {
-					return fmt.Errorf("error exporting proposals to bigtable: %v", err)
+				for _, blocks := range data.Blocks {
+					for _, block := range blocks {
+						err := db.BigtableClient.SaveProposal(block)
+						if err != nil {
+							return fmt.Errorf("error exporting proposals to bigtable for slot %v: %w", block.Slot, err)
+						}
+					}
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
+				err := db.BigtableClient.SaveSyncComitteeDuties(data.SyncDuties)
 				if err != nil {
-					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+					return fmt.Errorf("error exporting sync committee duties to bigtable for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 			g.Go(func() error {
-				err = db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
+				err := db.BigtableClient.MigrateIncomeDataV1V2Schema(epoch)
 				if err != nil {
-					return fmt.Errorf("error exporting sync committee duties to bigtable: %v", err)
+					return fmt.Errorf("error migrating income data to v2 schema for epoch %v: %w", epoch, err)
 				}
 				return nil
 			})
 
 			err = g.Wait()
 			if err != nil {
-				return fmt.Errorf("error during bigtable export: %w", err)
+				return fmt.Errorf("error during bigtable export for epoch %v: %w", epoch, err)
 			}
 			logrus.WithFields(logrus.Fields{"duration": time.Since(start), "epoch": epoch}).Info("completed exporting epoch")
 			return nil
@@ -187,21 +191,22 @@ func monitor(configPath string) {
 	}
 	utils.Config = cfg
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 
-	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
+	var rpcClient rpc.Client
+	rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
 	if err != nil {
 		utils.LogFatal(err, "new bigtable lighthouse client in monitor error", 0)
 	}
 	current := uint64(0)
 
-	for {
+	for ; ; time.Sleep(time.Second * 12) {
 		head, err := rpcClient.GetChainHead()
 		if err != nil {
 			utils.LogFatal(err, "getting chain head from lighthouse in monitor error", 0)
@@ -210,14 +215,33 @@ func monitor(configPath string) {
 		logrus.Infof("current is %v, head is %v, finalized is %v", current, head.HeadEpoch, head.FinalizedEpoch)
 
 		if current == head.HeadEpoch {
-			time.Sleep(time.Second * 12)
+			continue
+		}
+
+		tx, err := db.WriterDb.Beginx()
+		if err != nil {
+			logrus.Errorf("error starting tx: %v", err)
 			continue
 		}
 
 		for i := head.FinalizedEpoch; i <= head.HeadEpoch; i++ {
 			logrus.Infof("exporting epoch %v", i)
-			exporter.ExportEpoch(i, rpcClient)
+			for slot := i * cfg.Chain.ClConfig.SlotsPerEpoch; i <= (i+1)*cfg.Chain.ClConfig.SlotsPerEpoch-1; i++ {
+				err := exporter.ExportSlot(rpcClient, slot, false, tx)
+				if err != nil {
+					logrus.Errorf("error exporting slot: %v", err)
+					tx.Rollback()
+					continue
+				}
+			}
 		}
+
+		err = tx.Commit()
+		if err != nil {
+			logrus.Errorf("error committing tx: %v", err)
+			continue
+		}
+
 		current = head.HeadEpoch
 	}
 }

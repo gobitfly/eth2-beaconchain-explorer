@@ -3,6 +3,8 @@ package types
 import (
 	"html/template"
 	"time"
+
+	"github.com/ethereum/go-ethereum/params"
 )
 
 // Config is a struct to hold the configuration data
@@ -26,20 +28,32 @@ type Config struct {
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 	} `yaml:"writerDatabase"`
 	Bigtable struct {
-		Project      string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
-		Instance     string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
-		Emulator     bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
-		EmulatorPort int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
-		EmulatorHost string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
+		Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+		Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+		Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
+		EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
+		EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
+		V2SchemaCutOffEpoch uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
 	} `yaml:"bigtable"`
+	BlobIndexer struct {
+		S3 struct {
+			Endpoint        string `yaml:"endpoint" envconfig:"BLOB_INDEXER_S3_ENDPOINT"`
+			Bucket          string `yaml:"bucket" envconfig:"BLOB_INDEXER_S3_BUCKET"`
+			AccessKeyId     string `yaml:"accessKeyId" envconfig:"BLOB_INDEXER_S3_ACCESS_KEY_ID"`
+			AccessKeySecret string `yaml:"accessKeySecret" envconfig:"BLOB_INDEXER_S3_ACCESS_KEY_SECRET"`
+		} `yaml:"s3"`
+	} `yaml:"blobIndexer"`
 	Chain struct {
 		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
+		Id                         uint64 `yaml:"id" envconfig:"CHAIN_ID"`
 		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
 		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
 		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
-		ConfigPath                 string `yaml:"configPath" envconfig:"CHAIN_CONFIG_PATH"`
-		Config                     ChainConfig
+		ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
+		ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
+		ClConfig                   ClChainConfig
+		ElConfig                   *params.ChainConfig
 	} `yaml:"chain"`
 	Eth1ErigonEndpoint  string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	Eth1GethEndpoint    string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
@@ -49,26 +63,15 @@ type Config struct {
 	TieredCacheProvider string `yaml:"tieredCacheProvider" envconfig:"CACHE_PROVIDER"`
 	ReportServiceStatus bool   `yaml:"reportServiceStatus" envconfig:"REPORT_SERVICE_STATUS"`
 	Indexer             struct {
-		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
-		FixCanonOnStartup           bool `yaml:"fixCanonOnStartup" envconfig:"INDEXER_FIX_CANON_ON_STARTUP"`
-		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup" envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
-		IndexMissingEpochsOnStartup bool `yaml:"indexMissingEpochsOnStartup" envconfig:"INDEXER_MISSING_INDEX_ON_STARTUP"`
-		CheckAllBlocksOnStartup     bool `yaml:"checkAllBlocksOnStartup" envconfig:"INDEXER_CHECK_ALL_BLOCKS_ON_STARTUP"`
-		UpdateAllEpochStatistics    bool `yaml:"updateAllEpochStatistics" envconfig:"INDEXER_UPDATE_ALL_EPOCH_STATISTICS"`
-		Node                        struct {
+		Enabled bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
+		Node    struct {
 			Port     string `yaml:"port" envconfig:"INDEXER_NODE_PORT"`
 			Host     string `yaml:"host" envconfig:"INDEXER_NODE_HOST"`
 			Type     string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`
 			PageSize int32  `yaml:"pageSize" envconfig:"INDEXER_NODE_PAGE_SIZE"`
 		} `yaml:"node"`
 		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
-		OneTimeExport                 struct {
-			Enabled    bool     `yaml:"enabled" envconfig:"INDEXER_ONETIMEEXPORT_ENABLED"`
-			StartEpoch uint64   `yaml:"startEpoch" envconfig:"INDEXER_ONETIMEEXPORT_START_EPOCH"`
-			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
-			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
-		} `yaml:"onetimeexport"`
-		PubKeyTagsExporter struct {
+		PubKeyTagsExporter            struct {
 			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
 		} `yaml:"pubkeyTagsExporter"`
 		EnsTransformer struct {
@@ -86,6 +89,9 @@ type Config struct {
 		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
 		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
 		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`
+		SiteBrand                      string `yaml:"siteBrand" envconfig:"FRONTEND_SITE_BRAND"`
+		Keywords                       string `yaml:"keywords" envconfig:"FRONTEND_KEYWORDS"`
 		// Imprint is deprdecated place imprint file into the legal directory
 		Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		Legal   struct {
@@ -95,6 +101,7 @@ type Config struct {
 		} `yaml:"legal"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
 		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
+		SiteTitle    string `yaml:"siteTitle" envconfig:"FRONTEND_SITE_TITLE"`
 		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
 		Server       struct {
 			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
@@ -166,9 +173,16 @@ type Config struct {
 			Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
 			Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
 		} `yaml:"countdown"`
-		HttpReadTimeout  time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
-		HttpWriteTimeout time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
-		HttpIdleTimeout  time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
+		HttpReadTimeout    time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
+		HttpWriteTimeout   time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
+		HttpIdleTimeout    time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
+		ClCurrency         string        `yaml:"clCurrency" envconfig:"FRONTEND_CL_CURRENCY"`
+		ClCurrencyDivisor  int64         `yaml:"clCurrencyDivisor" envconfig:"FRONTEND_CL_CURRENCY_DIVISOR"`
+		ClCurrencyDecimals int64         `yaml:"clCurrencyDecimals" envconfig:"FRONTEND_CL_CURRENCY_DECIMALS"`
+		ElCurrency         string        `yaml:"elCurrency" envconfig:"FRONTEND_EL_CURRENCY"`
+		ElCurrencyDivisor  int64         `yaml:"elCurrencyDivisor" envconfig:"FRONTEND_EL_CURRENCY_DIVISOR"`
+		ElCurrencyDecimals int64         `yaml:"elCurrencyDecimals" envconfig:"FRONTEND_EL_CURRENCY_DECIMALS"`
+		MainCurrency       string        `yaml:"mainCurrency" envconfig:"FRONTEND_MAIN_CURRENCY"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
@@ -243,6 +257,8 @@ type ConfigJsonResponse struct {
 		BellatrixForkEpoch                      string `json:"BELLATRIX_FORK_EPOCH"`
 		CapellaForkVersion                      string `json:"CAPELLA_FORK_VERSION"`
 		CapellaForkEpoch                        string `json:"CAPELLA_FORK_EPOCH"`
+		DenebForkVersion                        string `yaml:"DENEB_FORK_VERSION"`
+		DenebForkEpoch                          string `yaml:"DENEB_FORK_EPOCH"`
 		SecondsPerSlot                          string `json:"SECONDS_PER_SLOT"`
 		SecondsPerEth1Block                     string `json:"SECONDS_PER_ETH1_BLOCK"`
 		MinValidatorWithdrawabilityDelay        string `json:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`

@@ -64,8 +64,8 @@ func toTableDataRow(tx *types.RawMempoolTransaction) []interface{} {
 		utils.FormatAddressWithLimits(tx.Hash.Bytes(), "", false, "tx", 15, 18, true),
 		utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", "", int(12), int(12), true),
 		_isContractCreation(tx.To),
-		utils.FormatAmount((*big.Int)(tx.Value), "Ether", 5),
-		utils.FormatAddCommasFormated(float64(tx.Gas.ToInt().Int64()), 0),
+		utils.FormatAmount((*big.Int)(tx.Value), utils.Config.Frontend.ElCurrency, 5),
+		utils.FormatAddCommasFormatted(float64(tx.Gas.ToInt().Int64()), 0),
 		utils.FormatAmountFormatted(tx.GasPrice.ToInt(), "GWei", 5, 0, true, true, false),
 		tx.Nonce.ToInt(),
 	}

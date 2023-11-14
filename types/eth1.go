@@ -16,3 +16,7 @@ type BulkMutations struct {
 	Keys []string
 	Muts []*gcp_bigtable.Mutation
 }
+type BulkMutation struct {
+	Key string
+	Mut *gcp_bigtable.Mutation
+}

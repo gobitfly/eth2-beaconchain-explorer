@@ -1,6 +1,7 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script>
     $(document).ready(function () {
       $("#epochs").DataTable({
@@ -8,7 +9,7 @@
         serverSide: true,
         ordering: false,
         searching: true,
-        ajax: "/epochs/data",
+        ajax: dataTableLoader("/epochs/data"),
         pagingType: "input",
         stateSave: true,
         stateSaveCallback: function (settings, data) {

@@ -11,7 +11,7 @@ import (
 )
 
 func statsUpdater(wg *sync.WaitGroup) {
-	sleepDuration := time.Duration(time.Duration(utils.Config.Chain.Config.SlotsPerEpoch*utils.Config.Chain.Config.SecondsPerSlot) * time.Second)
+	sleepDuration := time.Duration(time.Duration(utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.SecondsPerSlot) * time.Second)
 
 	logger.Infof("sleep duration is %v", sleepDuration)
 	firstrun := true
@@ -27,7 +27,7 @@ func statsUpdater(wg *sync.WaitGroup) {
 		}
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("stats update completed")
 
-		cacheKey := fmt.Sprintf("%d:frontend:latestStats", utils.Config.Chain.Config.DepositChainID)
+		cacheKey := fmt.Sprintf("%d:frontend:latestStats", utils.Config.Chain.ClConfig.DepositChainID)
 		err = cache.TieredCache.Set(cacheKey, statResult, time.Hour*24)
 		if err != nil {
 			logger.Errorf("error caching latestStats: %v", err)
@@ -200,11 +200,11 @@ func eth1UniqueValidatorsCount() (*uint64, error) {
 
 // GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
 func getValidatorChurnLimit(validatorCount uint64) (uint64, error) {
-	min := utils.Config.Chain.Config.MinPerEpochChurnLimit
+	min := utils.Config.Chain.ClConfig.MinPerEpochChurnLimit
 
 	adaptable := uint64(0)
 	if validatorCount > 0 {
-		adaptable = validatorCount / utils.Config.Chain.Config.ChurnLimitQuotient
+		adaptable = validatorCount / utils.Config.Chain.ClConfig.ChurnLimitQuotient
 	}
 
 	if min > adaptable {

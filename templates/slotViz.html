@@ -34,7 +34,7 @@
       // Define X axis
       var x = d3
         .scaleLinear()
-        .domain([0, 32])
+        .domain([0, slotsPerEpoch])
         .range([margin.left, width - margin.right])
         .interpolate(d3.interpolateRound)
 
@@ -403,7 +403,7 @@
           justified: false,
           justifying: false,
           participation: 0,
-          slots: Array(32).fill({}),
+          slots: Array(slotsPerEpoch).fill({}),
         })
       }
       vizChart?.update(data)

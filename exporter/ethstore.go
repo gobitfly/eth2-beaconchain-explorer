@@ -210,7 +210,8 @@ func (ese *EthStoreExporter) prepareExportDayTx(tx *sqlx.Tx, day string) error {
 
 func (ese *EthStoreExporter) getStoreDay(day string) (*ethstore.Day, map[uint64]*ethstore.Day, error) {
 	logger.Infof("retrieving eth.store for day %v", day)
-	return ethstore.Calculate(context.Background(), ese.BNAddress, ese.ENAddress, day, 1)
+	ethstore.SetDebugLevel(1000)
+	return ethstore.Calculate(context.Background(), ese.BNAddress, ese.ENAddress, day, 1, ethstore.RECEIPTS_MODE_SINGLE)
 }
 
 func (ese *EthStoreExporter) Run() {
@@ -231,7 +232,7 @@ DBCHECK:
 			time.Sleep(ese.ErrorInterval)
 			continue
 		}
-		latestDay := utils.DayOfSlot(latestFinalizedEpoch*utils.Config.Chain.Config.SlotsPerEpoch) - 1
+		latestDay := utils.DayOfSlot(latestFinalizedEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch) - 1
 
 		logger.Infof("latest day is %v", latestDay)
 		// count rows of eth.store days in db

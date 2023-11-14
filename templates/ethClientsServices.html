@@ -72,7 +72,6 @@
                     <th>Network share</th>
                     <th>Latest update</th>
                     <th>Social media</th>
-                    <th>Support</th>
                     {{ if $.User.Authenticated }}
                       <th>Subscribe</th>
                     {{ end }}
@@ -88,7 +87,6 @@
                       <a href="https://discord.gg/VNnEHqsHMr" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/go_ethereum" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="geth-checkbox" type="checkbox" data-toggle="toggle" {{ if .Geth.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('geth-checkbox', 'eth_client_update', 'geth')" /></td>
                     {{ end }}
@@ -102,7 +100,6 @@
                       <a href="https://discord.gg/RpaxqHRaYT" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/nethermindeth" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support"><a href="https://gitcoin.co/grants/142/nethermind">Gitcoin</a></td>
                     {{ if $.User.Authenticated }}
                       <td><input id="nethermind-checkbox" type="checkbox" data-toggle="toggle" {{ if .Nethermind.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('nethermind-checkbox', 'eth_client_update', 'nethermind')" /></td>
                     {{ end }}
@@ -116,7 +113,6 @@
                       <a href="https://discord.gg/invite/hyperledger" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://mobile.twitter.com/hyperledgerbesu" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="besu-checkbox" type="checkbox" data-toggle="toggle" {{ if .Besu.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('besu-checkbox', 'eth_client_update', 'besu')" /></td>
                     {{ end }}
@@ -129,7 +125,6 @@
                     <td data-column="Social media">
                       <a href="https://twitter.com/erigoneth" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="erigon-checkbox" type="checkbox" data-toggle="toggle" {{ if .Erigon.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('erigon-checkbox', 'eth_client_update', 'erigon')" /></td>
                     {{ end }}
@@ -154,7 +149,6 @@
                     <th>Language</th>
                     <th>Latest update</th>
                     <th>Social media</th>
-                    <th>Support</th>
                     {{ if $.User.Authenticated }}
                       <th>Subscribe</th>
                     {{ end }}
@@ -162,14 +156,13 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td data-column="Name"><a href="https://docs.teku.consensys.net/en/latest/">Teku</a></td>
+                    <td data-column="Name"><a href="https://docs.teku.consensys.net/">Teku</a></td>
                     <td data-column="Language">Java</td>
                     <td data-column="Latest update"><a href="https://github.com/ConsenSys/teku/releases">{{ .Teku.ClientReleaseVersion }}</a> - {{ .Teku.ClientReleaseDate }}</td>
                     <td data-column="Social media">
                       <a href="https://discord.gg/7hPv2T6" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/Teku_ConsenSys" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="teku-checkbox" type="checkbox" data-toggle="toggle" {{ if .Teku.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('teku-checkbox', 'eth_client_update', 'teku')" /></td>
                     {{ end }}
@@ -182,7 +175,6 @@
                       <a href="https://discord.gg/XkyZSSk4My" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/prylabs" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support"><a href="https://gitcoin.co/grants/24/prysm-by-prysmatic-labs">Gitcoin</a></td>
                     {{ if $.User.Authenticated }}
                       <td><input id="prysm-checkbox" type="checkbox" data-toggle="toggle" {{ if .Prysm.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('prysm-checkbox', 'eth_client_update', 'prysm')" /></td>
                     {{ end }}
@@ -195,7 +187,6 @@
                       <a href="https://discord.gg/XRxWahP" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/ethnimbus" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support"><a href="https://gitcoin.co/grants/137/nimbus">Gitcoin</a></td>
                     {{ if $.User.Authenticated }}
                       <td><input id="nimbus-checkbox" type="checkbox" data-toggle="toggle" {{ if .Nimbus.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('nimbus-checkbox', 'eth_client_update', 'nimbus')" /></td>
                     {{ end }}
@@ -208,7 +199,6 @@
                       <a href="https://discord.gg/cyAszAh" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/sigp_io" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support"><a href="https://gitcoin.co/grants/25/lighthouse-ethereum-20-client">Gitcoin</a></td>
                     {{ if $.User.Authenticated }}
                       <td><input id="lighthouse-checkbox" type="checkbox" data-toggle="toggle" {{ if .Lighthouse.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('lighthouse-checkbox', 'eth_client_update', 'lighthouse')" /></td>
                     {{ end }}
@@ -222,7 +212,6 @@
                       <a href="https://discord.gg/aMxzVcr" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/lodestar_eth" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support"><a href="https://gitcoin.co/grants/6034/lodestar-typescript-eth-consensus-client-by-chains">Gitcoin</a></td>
                     {{ if $.User.Authenticated }}
                       <td><input id="lodestar-checkbox" type="checkbox" data-toggle="toggle" {{ if .Lodestar.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('lodestar-checkbox', 'eth_client_update', 'lodestar')" /></td>
                     {{ end }}
@@ -247,7 +236,6 @@
                     <th>Language</th>
                     <th>Latest update</th>
                     <th>Social media</th>
-                    <th>Support</th>
                     {{ if $.User.Authenticated }}
                       <th>Subscribe</th>
                     {{ end }}
@@ -259,22 +247,20 @@
                     <td data-column="Language">Go</td>
                     <td data-column="Latest update"><a href="https://github.com/rocket-pool/smartnode-install/releases">{{ .RocketpoolSmartnode.ClientReleaseVersion }}</a> - {{ .RocketpoolSmartnode.ClientReleaseDate }}</td>
                     <td data-column="Social media">
-                      <a href="https://discordapp.com/invite/9mwXaDY" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
+                      <a href="https://discord.gg/rocketpool" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/Rocket_Pool" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="rocketpool-checkbox" type="checkbox" data-toggle="toggle" {{ if .RocketpoolSmartnode.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('rocketpool-checkbox', 'eth_client_update', 'rocketpool')" /></td>
                     {{ end }}
                   </tr>
                   <tr>
-                    <td data-column="Name"><a href="https://rocketpool.net">MEV-Boost</a></td>
+                    <td data-column="Name"><a href="https://boost.flashbots.net">MEV-Boost</a></td>
                     <td data-column="Language">Go</td>
                     <td data-column="Latest update"><a href="https://github.com/flashbots/mev-boost/releases">{{ .MevBoost.ClientReleaseVersion }}</a> - {{ .MevBoost.ClientReleaseDate }}</td>
                     <td data-column="Social media">
                       <a href="http://discord.gg/flashbots" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="mevboost-checkbox" type="checkbox" data-toggle="toggle" {{ if .MevBoost.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('mevboost-checkbox', 'eth_client_update', 'mev-boost')" /></td>
                     {{ end }}

@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"html/template"
 	"math"
-	"math/big"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -303,7 +302,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	dashboardData.ValidatorLimit = getUserPremium(r).MaxValidators
 
 	epoch := services.LatestEpoch()
-	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.Config.CappellaForkEpoch)
+	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.ClConfig.CappellaForkEpoch)
 
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard", templateFiles)
 	data.Data = dashboardData
@@ -313,7 +312,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
+func getNextWithdrawalRow(queryValidators []uint64, currency string) ([][]interface{}, error) {
 	if len(queryValidators) == 0 {
 		return nil, nil
 	}
@@ -372,7 +371,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		}
 
 		if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
-			(balance[0].EffectiveBalance == utils.Config.Chain.Config.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.Config.MaxEffectiveBalance) {
+			(balance[0].EffectiveBalance == utils.Config.Chain.ClConfig.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.ClConfig.MaxEffectiveBalance) {
 			// this validator is eligible for withdrawal, check if it is the next one
 			if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
 				nextValidator = v
@@ -426,10 +425,10 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		withdrawalAmount = nextValidator.Balance
 	} else {
 		// partial withdrawal
-		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.Config.MaxEffectiveBalance
+		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.ClConfig.MaxEffectiveBalance
 	}
 
-	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.Config.MaxEffectiveBalance {
+	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.ClConfig.MaxEffectiveBalance {
 		withdrawalAmount = 0
 	}
 
@@ -440,7 +439,7 @@ func getNextWithdrawalRow(queryValidators []uint64) ([][]interface{}, error) {
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(withdrawalAmount), big.NewInt(1e9)), "Ether", 6))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false))),
 	})
 
 	return nextData, nil
@@ -601,6 +600,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	reqCurrency := GetCurrency(r)
 	q := r.URL.Query()
 
 	validatorIndices, _, redirect, err := handleValidatorsQuery(w, r, true)
@@ -660,7 +660,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 	var tableData [][]interface{}
 
 	// check if there is a NextWithdrawal and append
-	NextWithdrawalRow, err := getNextWithdrawalRow(validatorIndices)
+	NextWithdrawalRow, err := getNextWithdrawalRow(validatorIndices, reqCurrency)
 	if err != nil {
 		utils.LogError(err, "error calculating next withdrawal row", 0, errFieldMap)
 		tableData = make([][]interface{}, 0, len(withdrawals))
@@ -681,7 +681,8 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
+			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false)),
+			// template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), utils.Config.Frontend.ElCurrency, 6))),
 		})
 	}
 
@@ -846,7 +847,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				// calculate dequeue epoch
 				estimatedActivationEpoch := latestEpoch + epochsToWait + 1
 				// add activation offset
-				estimatedActivationEpoch += utils.Config.Chain.Config.MaxSeedLookahead + 1
+				estimatedActivationEpoch += utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
 				estimatedActivationTs = utils.EpochToTime(estimatedActivationEpoch)
 			} else {
 				queueAhead = 0
@@ -858,8 +859,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			indexInfo,
 			[]interface{}{
-				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
-				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
+				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
+				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
 			},
 			[]interface{}{
 				v.ValidatorIndex,
@@ -910,7 +911,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			v.MissedProposals,
 		})
 
-		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency))
+		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency, true))
 
 		validatorDeposits := validatorsDepositsMap[hex.EncodeToString(v.PublicKey)]
 		if validatorDeposits != nil {
@@ -987,7 +988,8 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(activeValidators) == 0 {
-		http.Error(w, "Invalid query", http.StatusBadRequest)
+		// valid 200 response with empty data
+		w.Write([]byte(`{}`))
 		return
 	}
 

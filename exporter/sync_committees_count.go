@@ -32,7 +32,7 @@ func exportSyncCommitteesCount() error {
 	}
 
 	currentPeriod := utils.SyncPeriodOfEpoch(latestFinalizedEpoch)
-	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.Config.AltairForkEpoch)
+	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
 
 	dbPeriod := uint64(0)
 	countSoFar := float64(0)
@@ -79,7 +79,7 @@ func exportSyncCommitteesCountAtPeriod(period uint64, countSoFar float64) (float
 		if err != nil {
 			return 0, fmt.Errorf("error retrieving validatorscount for epoch %v: %v", e, err)
 		}
-		count = countSoFar + (float64(utils.Config.Chain.Config.SyncCommitteeSize) / float64(totalValidatorsCount))
+		count = countSoFar + (float64(utils.Config.Chain.ClConfig.SyncCommitteeSize) / float64(totalValidatorsCount))
 	}
 
 	tx, err := db.WriterDb.Beginx()

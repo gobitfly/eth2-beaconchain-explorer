@@ -732,7 +732,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 		period = utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
 	}
 
-	rows, err := db.ReaderDb.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod)
+	rows, err := db.ReaderDb.Query(`SELECT period, GREATEST(period*$2, $3) AS start_epoch, ((period+1)*$2)-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, utils.Config.Chain.ClConfig.AltairForkEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -754,7 +754,7 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM  epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1 ")
+	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1")
 	if err != nil {
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -848,6 +848,7 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	epoch := services.LatestEpoch()
 
 	g, _ := errgroup.WithContext(context.Background())
+	g.SetLimit(5) // limit concurrency
 	var validatorsData []interface{}
 	var validatorEffectivenessData []*types.ValidatorEffectiveness
 	var rocketpoolData []interface{}
@@ -916,11 +917,10 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				start := time.Now()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch)
-				currentSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				currentSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
-					logger.Warnf("SyncPeriodOfEpoch(%v) took longer than 10 sec", epoch)
-					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
 				}
 				return err
 			})
@@ -929,11 +929,11 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 				start := time.Now()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch) + 1
-				nextSyncCommittee, err = getSyncCommitteeFor(queryIndices, period)
+				nextSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
 				elapsed := time.Since(start)
 				if elapsed > 10*time.Second {
 					logger.Warnf("SyncPeriodOfEpoch(%v) + 1 took longer than 10 sec", epoch)
-					logger.Warnf("getSyncCommitteeFor(%v, %v) took longer than 10 sec", queryIndices, period)
+					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
 				}
 				return err
 			})
@@ -1019,19 +1019,18 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
-func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, error) {
+func getSyncCommitteeInfoForValidators(validators []uint64, period uint64) ([]interface{}, error) {
 	rows, err := db.ReaderDb.Query(
 		`SELECT 
 			period, 
-			period*$2 AS start_epoch, 
-			(period+1)*$2-1 AS end_epoch, 
+			GREATEST(period*$3, $4) AS start_epoch, 
+			((period+1)*$3)-1 AS end_epoch, 
 			ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
 		FROM sync_committees 
-		WHERE period = $1 AND validatorindex = ANY($3)
+		WHERE period = $1 AND validatorindex = ANY($2)
 		GROUP BY period`,
-		period,
-		utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod,
-		pq.Array(validators),
+		period, pq.Array(validators),
+		utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, utils.Config.Chain.ClConfig.AltairForkEpoch,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not get sync committee for period %d: %w", period, err)
@@ -1041,7 +1040,7 @@ func getSyncCommitteeFor(validators []uint64, period uint64) ([]interface{}, err
 }
 
 func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesInfo, error) {
-	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
+	if epoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
 		// no sync committee duties before altair fork
 		return &SyncCommitteesInfo{}, nil
 	}
@@ -1065,7 +1064,7 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 }
 
 func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
-	if epoch < utils.Config.Chain.Config.AltairForkEpoch {
+	if epoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
 		// no sync committee duties before altair fork
 		return 0, nil
 	}
@@ -1099,7 +1098,7 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	const noEpoch = uint64(9223372036854775807)
 	var validatorsInfo = make([]ValidatorInfo, 0, len(validatorsInfoFromDb))
 	for _, v := range validatorsInfoFromDb {
-		if v.ActivationEpoch != noEpoch && v.ActivationEpoch < epoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.Config.AltairForkEpoch) {
+		if v.ActivationEpoch != noEpoch && v.ActivationEpoch < epoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.ClConfig.AltairForkEpoch) {
 			validatorsInfo = append(validatorsInfo, v)
 		}
 	}
@@ -1114,8 +1113,8 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 	for i := range validatorsInfo {
 		// first epoch (activation epoch or Altair if Altair was later as there were no sync committees pre Altair)
 		firstSyncEpoch := validatorsInfo[i].ActivationEpoch
-		if validatorsInfo[i].ActivationEpoch < utils.Config.Chain.Config.AltairForkEpoch {
-			firstSyncEpoch = utils.Config.Chain.Config.AltairForkEpoch
+		if validatorsInfo[i].ActivationEpoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
+			firstSyncEpoch = utils.Config.Chain.ClConfig.AltairForkEpoch
 		}
 		validatorsInfo[i].FirstPossibleSyncCommittee = utils.SyncPeriodOfEpoch(firstSyncEpoch)
 		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
@@ -1172,23 +1171,16 @@ func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedS
 }
 
 func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.SyncCommitteesStats, error) {
+	if epoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
+		// no sync committee duties before altair fork
+		return types.SyncCommitteesStats{}, nil
+	}
+
 	// collect aggregated sync committee stats from validator_stats table for all validators
 	var syncStats struct {
 		Participated int64 `db:"participated"`
 		Missed       int64 `db:"missed"`
 	}
-	query, args, err := sqlx.In(`SELECT COALESCE(SUM(participated_sync), 0) AS participated, COALESCE(SUM(missed_sync), 0) AS missed FROM validator_stats WHERE validatorindex IN (?)`, validators)
-	if err != nil {
-		return types.SyncCommitteesStats{}, err
-	}
-	err = db.ReaderDb.Get(&syncStats, db.ReaderDb.Rebind(query), args...)
-	if err != nil {
-		return types.SyncCommitteesStats{}, err
-	}
-
-	retv := types.SyncCommitteesStats{}
-	retv.ParticipatedSlots = uint64(syncStats.Participated)
-	retv.MissedSlots = uint64(syncStats.Missed)
 
 	// validator_stats is updated only once a day, everything missing has to be collected from bigtable (which is slower than validator_stats)
 	// check when the last update to validator_stats was
@@ -1200,6 +1192,15 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 	} else if err == nil {
 		lastExportedEpoch = ((lastExportedDay + 1) * epochsPerDay) - 1
 	}
+
+	err = db.ReaderDb.Get(&syncStats, `SELECT SUM(COALESCE(participated_sync_total, 0)) AS participated, SUM(COALESCE(missed_sync_total, 0)) AS missed FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastExportedDay, pq.Array(validators))
+	if err != nil {
+		return types.SyncCommitteesStats{}, err
+	}
+
+	retv := types.SyncCommitteesStats{}
+	retv.ParticipatedSlots = uint64(syncStats.Participated)
+	retv.MissedSlots = uint64(syncStats.Missed)
 
 	// if epoch is not yet exported, we may need to collect the data from bigtable
 	if lastExportedEpoch < epoch {
@@ -1242,7 +1243,10 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			}
 
 			// get sync stats from bigtable
-			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, lastExportedEpoch+1, epoch)
+			startSlot := (lastExportedEpoch + 1) * utils.Config.Chain.ClConfig.SlotsPerEpoch
+			endSlot := epoch*utils.Config.Chain.ClConfig.SlotsPerEpoch + utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
+
+			res, err := db.BigtableClient.GetValidatorSyncDutiesHistory(vs, startSlot, endSlot)
 			if err != nil {
 				return retv, fmt.Errorf("error retrieving validator sync participations data from bigtable: %v", err)
 			}
@@ -1251,9 +1255,14 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			syncStats := utils.AddSyncStats(vs[:latestPeriodCount], res, nil)
 			// if latest returned period is the active one, add remaining scheduled slots
 			firstEpochOfPeriod := utils.FirstEpochOfSyncPeriod(syncCommitteeValidators[0].Period)
-			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.Config.EpochsPerSyncCommitteePeriod - 1
+			lastEpochOfPeriod := firstEpochOfPeriod + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
+			if firstEpochOfPeriod < utils.Config.Chain.ClConfig.AltairForkEpoch {
+				// the first actual sync period starts at the altair fork epoch and might be shorter than all others
+				// https://eth2book.info/capella/annotated-spec/#sync-committee-updates
+				firstEpochOfPeriod = utils.Config.Chain.ClConfig.AltairForkEpoch
+			}
 			if lastEpochOfPeriod >= services.LatestEpoch() {
-				syncStats.ScheduledSlots += utils.GetRemainingScheduledSync(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
+				syncStats.ScheduledSlots += utils.GetRemainingScheduledSyncDuties(latestPeriodCount, syncStats, lastExportedEpoch, firstEpochOfPeriod)
 			}
 			// add sync stats for validators in previous returned period
 			utils.AddSyncStats(vs[latestPeriodCount:], res, &syncStats)
@@ -1514,7 +1523,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey} [get]
 func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
-	apiValidator(w, r)
+	getApiValidator(w, r)
 }
 
 // ApiValidator godoc
@@ -1527,11 +1536,11 @@ func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator [post]
 func ApiValidatorPost(w http.ResponseWriter, r *http.Request) {
-	apiValidator(w, r)
+	getApiValidator(w, r)
 }
 
 // This endpoint supports both GET and POST but requires different swagger descriptions based on the type
-func apiValidator(w http.ResponseWriter, r *http.Request) {
+func getApiValidator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -1568,7 +1577,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, lastEpochOfDay := utils.GetFirstAndLastEpochForDay(lastExportedDay)
-	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.Config.SlotsPerEpoch) + 1
+	cutoffSlot := (lastEpochOfDay * utils.Config.Chain.ClConfig.SlotsPerEpoch) + 1
 
 	data := make([]*ApiValidatorResponse, 0)
 
@@ -1576,7 +1585,7 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		WITH today AS (
 			SELECT
 				w.validatorindex,
-				COALESCE(SUM(w.amount), 0) as amount_today
+				COALESCE(SUM(w.amount), 0) as amount
 			FROM blocks_withdrawals w
 			INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 			WHERE w.validatorindex = ANY($1) AND w.block_slot >= $2
@@ -1585,15 +1594,14 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		stats AS (
 			SELECT
 				vs.validatorindex,
-				COALESCE(SUM(vs.withdrawals_amount), 0) as total_amount
+				COALESCE(vs.withdrawals_amount_total, 0) as amount
 			FROM validator_stats vs
-			WHERE vs.validatorindex = ANY($1)
-			GROUP BY vs.validatorindex
+			WHERE vs.validatorindex = ANY($1) AND vs.day = $3
 		),
 		withdrawals_summary AS (
 			SELECT
 				COALESCE(t.validatorindex, s.validatorindex) as validatorindex,
-				COALESCE(t.amount_today, 0) + COALESCE(s.total_amount, 0) as total
+				COALESCE(t.amount, 0) + COALESCE(s.amount, 0) as total
 			FROM today t
 			FULL JOIN stats s ON t.validatorindex = s.validatorindex
 		)
@@ -1611,8 +1619,8 @@ func apiValidator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN validator_names n ON n.publickey = v.pubkey
 		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
 		WHERE v.validatorindex = ANY($1)
-		ORDER BY v.validatorindex;
-	`, pq.Array(queryIndices), cutoffSlot)
+		ORDER BY v.validatorindex
+	`, pq.Array(queryIndices), cutoffSlot, lastExportedDay)
 	if err != nil {
 		logger.Warnf("error retrieving validator data from db: %v", err)
 		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2019,7 +2027,7 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 	dataFormatted := make([]*types.ApiValidatorWithdrawalResponse, 0, len(data))
 	for _, w := range data {
 		dataFormatted = append(dataFormatted, &types.ApiValidatorWithdrawalResponse{
-			Epoch:          w.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
+			Epoch:          w.Slot / utils.Config.Chain.ClConfig.SlotsPerEpoch,
 			Slot:           w.Slot,
 			Index:          w.Index,
 			ValidatorIndex: w.ValidatorIndex,
@@ -2076,7 +2084,7 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 
 	for _, d := range data {
 		dataFormatted = append(dataFormatted, &types.ApiValidatorBlsChangeResponse{
-			Epoch:                    d.Slot / utils.Config.Chain.Config.SlotsPerEpoch,
+			Epoch:                    d.Slot / utils.Config.Chain.ClConfig.SlotsPerEpoch,
 			Slot:                     d.Slot,
 			BlockRoot:                fmt.Sprintf("0x%x", d.BlockRoot),
 			Validatorindex:           d.Validatorindex,
@@ -3761,7 +3769,8 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	limit := parseUintWithDefault(limitQuery, 10)
 
 	// We set a max limit to limit the request call time.
-	const maxLimit uint64 = 200
+	var maxLimit uint64 = utilMath.MaxU64(200, uint64(getUserPremium(r).MaxValidators))
+
 	limit = utilMath.MinU64(limit, maxLimit)
 
 	result := []struct {
@@ -3775,6 +3784,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 		pubkey
 	FROM validators
 	WHERE withdrawalcredentials = $1
+	ORDER BY validatorindex ASC
 	LIMIT $2
 	OFFSET $3
 	`, credentials, limit, offset)
@@ -3894,7 +3904,7 @@ func getProposalLuckStats(indices []uint64) (*types.ApiProposalLuckResponse, err
 	if len(slots) > 0 {
 		estimateLowerBoundSlot = &slots[len(slots)-1]
 	} else if len(indices) == 1 {
-		activationSlot := firstActivationEpoch * utils.Config.Chain.Config.SlotsPerEpoch
+		activationSlot := firstActivationEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 		estimateLowerBoundSlot = &activationSlot
 	}
 
@@ -3943,7 +3953,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	// get data from one week before latest epoch
 	latestEpoch := services.LatestEpoch()
-	oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.Config.SecondsPerSlot*utils.Config.Chain.Config.SlotsPerEpoch))
+	oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch))
 	queryOffsetEpoch := uint64(0)
 	if latestEpoch > oneWeekEpochs {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
@@ -3984,11 +3994,12 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	})
 
 	balanceHistoryChartData := make([][4]float64, len(data))
+	clPrice := price.GetPrice(utils.Config.Frontend.ClCurrency, currency)
 	for i, item := range data {
 		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
 		balanceHistoryChartData[i][1] = item.ValidatorCount
-		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * price.GetEthPrice(currency)
-		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * price.GetEthPrice(currency)
+		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * clPrice
+		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * clPrice
 	}
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)

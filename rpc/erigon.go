@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/hex"
+	"eth2-exporter/contracts/oneinchoracle"
 	"eth2-exporter/erc20"
 	"eth2-exporter/types"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethclient"
 	geth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
@@ -26,10 +26,10 @@ import (
 )
 
 type ErigonClient struct {
-	endpoint  string
-	rpcClient *geth_rpc.Client
-	ethClient *ethclient.Client
-
+	endpoint     string
+	rpcClient    *geth_rpc.Client
+	ethClient    *ethclient.Client
+	chainID      *big.Int
 	multiChecker *Balance
 }
 
@@ -43,20 +43,28 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 
 	rpcClient, err := geth_rpc.Dial(client.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("error dialing rpc node: %v", err)
+		return nil, fmt.Errorf("error dialing rpc node: %w", err)
 	}
 	client.rpcClient = rpcClient
 
 	ethClient, err := ethclient.Dial(client.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("error dialing rpc node: %v", err)
+		return nil, fmt.Errorf("error dialing rpc node: %w", err)
 	}
 	client.ethClient = ethClient
 
 	client.multiChecker, err = NewBalance(common.HexToAddress("0xb1F8e55c7f64D203C1400B9D8555d050F94aDF39"), client.ethClient)
 	if err != nil {
-		return nil, fmt.Errorf("error initiation balance checker contract: %v", err)
+		return nil, fmt.Errorf("error initiation balance checker contract: %w", err)
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	chainID, err := client.ethClient.ChainID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting chainid of rpcclient: %w", err)
+	}
+	client.chainID = chainID
 
 	return client, nil
 }
@@ -64,6 +72,10 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 func (client *ErigonClient) Close() {
 	client.rpcClient.Close()
 	client.ethClient.Close()
+}
+
+func (client *ErigonClient) GetChainID() *big.Int {
+	return client.chainID
 }
 
 func (client *ErigonClient) GetNativeClient() *ethclient.Client {
@@ -109,6 +121,14 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		Transactions: []*types.Eth1Transaction{},
 		Withdrawals:  []*types.Eth1Withdrawal{},
 	}
+	blobGasUsed := block.BlobGasUsed()
+	if blobGasUsed != nil {
+		c.BlobGasUsed = *blobGasUsed
+	}
+	excessBlobGas := block.ExcessBlobGas()
+	if excessBlobGas != nil {
+		c.ExcessBlobGas = *excessBlobGas
+	}
 
 	if block.BaseFee() != nil {
 		c.BaseFee = block.BaseFee().Bytes()
@@ -137,7 +157,6 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	}
 
 	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
-	reqs := make([]geth_rpc.BatchElem, len(block.Transactions()))
 
 	if len(block.Withdrawals()) > 0 {
 		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(block.Withdrawals()))
@@ -157,13 +176,12 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	for _, tx := range txs {
 
 		var from []byte
-		msg, err := core.TransactionToMessage(tx, geth_types.NewLondonSigner(tx.ChainId()), big.NewInt(1))
+		sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
 		if err != nil {
 			from, _ = hex.DecodeString("abababababababababababababababababababab")
-
 			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
 		} else {
-			from = msg.From.Bytes()
+			from = sender.Bytes()
 		}
 
 		pbTx := &types.Eth1Transaction{
@@ -180,11 +198,20 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			AccessList:           []*types.AccessList{},
 			Hash:                 tx.Hash().Bytes(),
 			Itx:                  []*types.Eth1InternalTransaction{},
+			BlobVersionedHashes:  [][]byte{},
+		}
+
+		if tx.BlobGasFeeCap() != nil {
+			pbTx.MaxFeePerBlobGas = tx.BlobGasFeeCap().Bytes()
+		}
+		for _, h := range tx.BlobHashes() {
+			pbTx.BlobVersionedHashes = append(pbTx.BlobVersionedHashes, h.Bytes())
 		}
 
 		if tx.To() != nil {
 			pbTx.To = tx.To().Bytes()
 		}
+
 		c.Transactions = append(c.Transactions, pbTx)
 
 	}
@@ -202,7 +229,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 
 			if err != nil {
 				if traceMode == "parity" {
-					return fmt.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+					return fmt.Errorf("error tracing block via parity style traces (%v), %v: %w", block.Number(), block.Hash(), err)
 				} else {
 					logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
 
@@ -265,7 +292,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			gethTraceData, err := client.TraceGeth(block.Hash())
 
 			if err != nil {
-				return fmt.Errorf("error tracing block via geth style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+				return fmt.Errorf("error tracing block via geth style traces (%v), %v: %w", block.Number(), block.Hash(), err)
 			}
 
 			// logger.Infof("retrieved %v calls via geth", len(gethTraceData))
@@ -291,8 +318,13 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				tracePb.To = trace.To.Bytes()
 				tracePb.Value = common.FromHex(trace.Value)
 				if trace.Type == "CREATE" {
+				} else if trace.Type == "SELFDESTRUCT" {
 				} else if trace.Type == "SUICIDE" {
 				} else if trace.Type == "CALL" || trace.Type == "DELEGATECALL" || trace.Type == "STATICCALL" {
+				} else if trace.Type == "" {
+					logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": block.Number(), "block.Hash": block.Hash()}).Errorf("geth style trace without type")
+					spew.Dump(trace)
+					continue
 				} else {
 					spew.Dump(trace)
 					logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
@@ -311,36 +343,24 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		return nil
 	})
 
-	for i := range reqs {
-		reqs[i] = geth_rpc.BatchElem{
-			Method: "eth_getTransactionReceipt",
-			Args:   []interface{}{txs[i].Hash().String()},
-			Result: &receipts[i],
-		}
+	if err = client.rpcClient.CallContext(ctx, &receipts, "eth_getBlockReceipts", fmt.Sprintf("0x%x", block.NumberU64())); err != nil {
+		return nil, nil, fmt.Errorf("error retrieving receipts for block %v: %w", block.Number(), err)
 	}
 
-	if len(reqs) > 0 {
-		if err := client.rpcClient.BatchCallContext(ctx, reqs); err != nil {
-			return nil, nil, fmt.Errorf("error retrieving receipts for block %v: %v", block.Number(), err)
-		}
-	}
 	timings.Receipts = time.Since(start)
 	start = time.Now()
 
-	for i := range reqs {
-		if reqs[i].Error != nil {
-			return nil, nil, fmt.Errorf("error retrieving receipt %v for block %v: %v", i, block.Number(), reqs[i].Error)
-		}
-		if receipts[i] == nil {
-			return nil, nil, fmt.Errorf("got null value for receipt %d of block %v", i, block.Number())
-		}
-
-		r := receipts[i]
+	for i, r := range receipts {
 		c.Transactions[i].ContractAddress = r.ContractAddress[:]
 		c.Transactions[i].CommulativeGasUsed = r.CumulativeGasUsed
 		c.Transactions[i].GasUsed = r.GasUsed
 		c.Transactions[i].LogsBloom = r.Bloom[:]
 		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
+
+		if r.BlobGasPrice != nil {
+			c.Transactions[i].BlobGasPrice = r.BlobGasPrice.Bytes()
+		}
+		c.Transactions[i].BlobGasUsed = r.BlobGasUsed
 
 		for _, l := range r.Logs {
 			pbLog := &types.Eth1Log{
@@ -381,7 +401,7 @@ func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 
 	latestBlock, err := client.ethClient.BlockByNumber(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("error getting latest block: %v", err)
+		return 0, fmt.Errorf("error getting latest block: %w", err)
 	}
 
 	return latestBlock.NumberU64(), nil
@@ -540,7 +560,7 @@ func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addre
 
 	err := client.rpcClient.BatchCall(batchElements)
 	if err != nil {
-		return nil, fmt.Errorf("error during batch request: %v", err)
+		return nil, fmt.Errorf("error during batch request: %w", err)
 	}
 
 	for i, el := range batchElements {
@@ -615,10 +635,14 @@ func (client *ErigonClient) GetERC20TokenBalance(address string, token string) (
 }
 
 func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Metadata, error) {
-
 	logger.Infof("retrieving metadata for token %x", token)
-	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 
+	oracle, err := oneinchoracle.NewOneInchOracleByChainID(client.GetChainID(), client.ethClient)
+	if err != nil {
+		return nil, err
+	}
+
+	contract, err := erc20.NewErc20(common.BytesToAddress(token), client.ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -635,7 +659,7 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 				return nil
 			}
 
-			return fmt.Errorf("error retrieving symbol: %v", err)
+			return fmt.Errorf("error retrieving symbol: %w", err)
 		}
 
 		ret.Symbol = symbol
@@ -645,7 +669,7 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 	g.Go(func() error {
 		totalSupply, err := contract.TotalSupply(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving total supply: %v", err)
+			return fmt.Errorf("error retrieving total supply: %w", err)
 		}
 		ret.TotalSupply = totalSupply.Bytes()
 		return nil
@@ -654,12 +678,25 @@ func (client *ErigonClient) GetERC20TokenMetadata(token []byte) (*types.ERC20Met
 	g.Go(func() error {
 		decimals, err := contract.Decimals(nil)
 		if err != nil {
-			return fmt.Errorf("error retrieving decimals: %v", err)
+			return fmt.Errorf("error retrieving decimals: %w", err)
 		}
 		ret.Decimals = big.NewInt(int64(decimals)).Bytes()
 		return nil
 	})
+
+	g.Go(func() error {
+		rate, err := oracle.GetRateToEth(nil, common.BytesToAddress(token), false)
+		if err != nil {
+			return fmt.Errorf("error calling oneinchoracle.GetRateToEth: %w", err)
+		}
+		ret.Price = rate.Bytes()
+		return nil
+	})
+
 	err = g.Wait()
+	if err != nil {
+		return ret, err
+	}
 
 	if err == nil && len(ret.Decimals) == 0 && ret.Symbol == "" && len(ret.TotalSupply) == 0 {
 		// it's possible that a token contract implements the ERC20 interfaces but does not return any values; we use a backup in this case

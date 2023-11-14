@@ -35,6 +35,7 @@ func main() {
 
 	if *versionFlag {
 		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
 		return
 	}
 
@@ -44,7 +45,7 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
@@ -86,7 +87,7 @@ func main() {
 
 	client := beacon.NewClient(*bnAddress, time.Minute*5)
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}

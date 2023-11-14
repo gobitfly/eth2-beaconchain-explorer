@@ -34,6 +34,7 @@ func main() {
 
 	if *versionFlag {
 		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
 		return
 	}
 
@@ -43,7 +44,7 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,

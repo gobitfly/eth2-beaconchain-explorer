@@ -1,11 +1,15 @@
 package price
 
 import (
-	"eth2-exporter/price/chainlink_feed"
+	"context"
+	"eth2-exporter/contracts/chainlink_feed"
 	"fmt"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/shopspring/decimal"
@@ -15,31 +19,65 @@ import (
 
 var logger = logrus.New().WithField("module", "price")
 
-type EthPrice struct {
-	Ethereum struct {
-		Cad float64 `json:"cad"`
-		Cny float64 `json:"cny"`
-		Eur float64 `json:"eur"`
-		Jpy float64 `json:"jpy"`
-		Usd float64 `json:"usd"`
-		Gbp float64 `json:"gbp"`
-		Aud float64 `json:"aud"`
-	} `json:"ethereum"`
+var availableCurrencies = []string{}
+
+var runOnce sync.Once
+var runOnceWg sync.WaitGroup
+var prices = map[string]float64{}
+var pricesMu = &sync.Mutex{}
+var didInit = uint64(0)
+var feeds = map[string]*chainlink_feed.Feed{}
+var calcPairs = map[string]bool{}
+var clCurrency = "ETH"
+var elCurrency = "ETH"
+
+var currencies = map[string]struct {
+	Symbol string
+	Label  string
+}{
+	"AUD":  {"A$", "Australian Dollar"},
+	"CAD":  {"C$", "Canadian Dollar"},
+	"CNY":  {"¥", "Chinese Yuan"},
+	"DAI":  {"DAI", "DAI stablecoin"},
+	"xDAI": {"xDAI", "xDAI stablecoin"},
+	"ETH":  {"ETH", "Ether"},
+	"EUR":  {"€", "Euro"},
+	"GBP":  {"£", "Pound Sterling"},
+	"GNO":  {"GNO", "Gnosis"},
+	"mGNO": {"mGNO", "mGnosis"},
+	"JPY":  {"¥", "Japanese Yen"},
+	"RUB":  {"₽", "Russian Ruble"},
+	"USD":  {"$", "United States Dollar"},
 }
 
-var availableCurrencies = []string{"ETH", "USD", "EUR", "GBP", "CNY", "CAD", "AUD", "JPY"}
-var ethPrice = new(EthPrice)
-var ethPriceMux = &sync.RWMutex{}
+func init() {
+	runOnceWg.Add(1)
+}
 
-var ethUSDFeed *chainlink_feed.Feed
-var eurUSDFeed *chainlink_feed.Feed
-var cadUSDFeed *chainlink_feed.Feed
-var cnyUSDFeed *chainlink_feed.Feed
-var jpyUSDFeed *chainlink_feed.Feed
-var gbpUSDFeed *chainlink_feed.Feed
-var audUSDFeed *chainlink_feed.Feed
+func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string) {
+	if atomic.AddUint64(&didInit, 1) > 1 {
+		logrus.Warnf("price.Init called multiple times")
+		return
+	}
 
-func Init(chainId uint64, eth1Endpoint string) {
+	switch chainId {
+	case 1, 100:
+	default:
+		setPrice(elCurrency, elCurrency, 1)
+		setPrice(clCurrency, clCurrency, 1)
+		availableCurrencies = []string{clCurrency, elCurrency}
+		logger.Warnf("chainId not supported for fetching prices: %v", chainId)
+		runOnce.Do(func() { runOnceWg.Done() })
+		return
+	}
+
+	clCurrency = clCurrencyParam
+	elCurrency = elCurrencyParam
+	if elCurrency == "xDAI" {
+		elCurrency = "DAI"
+	}
+	calcPairs[elCurrency] = true
+	calcPairs[clCurrency] = true
 
 	eClient, err := ethclient.Dial(eth1Endpoint)
 	if err != nil {
@@ -47,267 +85,192 @@ func Init(chainId uint64, eth1Endpoint string) {
 		return
 	}
 
-	ethUSDFeed, err = chainlink_feed.NewFeed(common.HexToAddress("0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419"), eClient)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	clientChainId, err := eClient.ChainID(ctx)
 	if err != nil {
-		logger.Errorf("failed to initialized chainlink eth/usd feed contract: %v", err)
-		return
+		logger.WithError(err).Fatalf("failed getting chainID")
+	}
+	if chainId != clientChainId.Uint64() {
+		logger.WithError(err).Fatalf("chainId does not match chainId from client (%v != %v)", chainId, clientChainId.Uint64())
 	}
 
-	eurUSDFeed, err = chainlink_feed.NewFeed(common.HexToAddress("0xb49f677943bc038e9857d61e7d053caa2c1734c1"), eClient)
-	if err != nil {
-		logger.Errorf("failed to initialized chainlink eur/usd feed contract: %v", err)
-		return
+	feedAddrs := map[string]string{}
+	switch chainId {
+	case 1:
+		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/
+		feedAddrs["ETH/USD"] = "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419"
+		feedAddrs["EUR/USD"] = "0xb49f677943bc038e9857d61e7d053caa2c1734c1"
+		feedAddrs["CAD/USD"] = "0xa34317db73e77d453b1b8d04550c44d10e981c8e"
+		feedAddrs["CNY/USD"] = "0xef8a4af35cd47424672e3c590abd37fbb7a7759a"
+		feedAddrs["JPY/USD"] = "0xbce206cae7f0ec07b545edde332a47c2f75bbeb3"
+		feedAddrs["GBP/USD"] = "0x5c0ab2d9b5a7ed9f470386e82bb36a3613cdd4b5"
+		feedAddrs["AUD/USD"] = "0x77f9710e7d0a19669a13c055f62cd80d313df022"
+
+		availableCurrencies = []string{"ETH", "USD", "EUR", "GBP", "CNY", "CAD", "AUD", "JPY"}
+	case 5:
+		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/
+		feedAddrs["ETH/USD"] = "0x694AA1769357215DE4FAC081bf1f309aDC325306"
+		feedAddrs["EUR/USD"] = "0x1a81afB8146aeFfCFc5E50e8479e826E7D55b910"
+
+		availableCurrencies = []string{"ETH", "USD", "EUR"}
+	case 11155111:
+		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/
+		feedAddrs["ETH/USD"] = "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e"
+		feedAddrs["EUR/USD"] = "0x44390589104C9164407A0E0562a9DBe6C24A0E05"
+
+		availableCurrencies = []string{"ETH", "USD", "EUR"}
+	case 100:
+		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/?network=gnosis-chain
+		feedAddrs["GNO/USD"] = "0x22441d81416430A54336aB28765abd31a792Ad37"
+		feedAddrs["DAI/USD"] = "0x678df3415fc31947dA4324eC63212874be5a82f8"
+		feedAddrs["EUR/USD"] = "0xab70BCB260073d036d1660201e9d5405F5829b7a"
+		feedAddrs["JPY/USD"] = "0x2AfB993C670C01e9dA1550c58e8039C1D8b8A317"
+		// feedAddrs["CHFUSD"] = "0xFb00261Af80ADb1629D3869E377ae1EEC7bE659F"
+		feedAddrs["ETH/USD"] = "0xa767f745331D267c7751297D982b050c93985627"
+
+		setPrice("mGNO", "GNO", float64(1)/float64(32))
+		setPrice("GNO", "mGNO", 32)
+		setPrice("mGNO", "mGNO", float64(1)/float64(32))
+		setPrice("GNO", "GNO", 1)
+
+		calcPairs["GNO"] = true
+
+		availableCurrencies = []string{"GNO", "mGNO", "DAI", "ETH", "USD", "EUR", "JPY"}
+	default:
+		logger.Fatalf("unsupported chainId %v", chainId)
 	}
 
-	cadUSDFeed, err = chainlink_feed.NewFeed(common.HexToAddress("0xa34317db73e77d453b1b8d04550c44d10e981c8e"), eClient)
-	if err != nil {
-		logger.Errorf("failed to initialized chainlink eur/usd feed contract: %v", err)
-		return
-	}
-
-	cnyUSDFeed, err = chainlink_feed.NewFeed(common.HexToAddress("0xef8a4af35cd47424672e3c590abd37fbb7a7759a"), eClient)
-	if err != nil {
-		logger.Errorf("failed to initialized chainlink eur/usd feed contract: %v", err)
-		return
-	}
-
-	jpyUSDFeed, err = chainlink_feed.NewFeed(common.HexToAddress("0xbce206cae7f0ec07b545edde332a47c2f75bbeb3"), eClient)
-	if err != nil {
-		logger.Errorf("failed to initialized chainlink eur/usd feed contract: %v", err)
-		return
-	}
-
-	gbpUSDFeed, err = chainlink_feed.NewFeed(common.HexToAddress("0x5c0ab2d9b5a7ed9f470386e82bb36a3613cdd4b5"), eClient)
-	if err != nil {
-		logger.Errorf("failed to initialized chainlink eur/usd feed contract: %v", err)
-		return
-	}
-
-	audUSDFeed, err = chainlink_feed.NewFeed(common.HexToAddress("0x77f9710e7d0a19669a13c055f62cd80d313df022"), eClient)
-	if err != nil {
-		logger.Errorf("failed to initialized chainlink eur/usd feed contract: %v", err)
-		return
-	}
-
-	go updateEthPrice(chainId, eth1Endpoint)
-}
-
-func updateEthPrice(chainId uint64, eth1Endpoint string) {
-
-	for {
-		fetchChainlinkFeed(chainId)
-		time.Sleep(time.Minute)
-	}
-}
-
-func fetchChainlinkFeed(chainId uint64) {
-	if chainId != 1 {
-		ethPrice = &EthPrice{
-			Ethereum: struct {
-				Cad float64 "json:\"cad\""
-				Cny float64 "json:\"cny\""
-				Eur float64 "json:\"eur\""
-				Jpy float64 "json:\"jpy\""
-				Usd float64 "json:\"usd\""
-				Gbp float64 "json:\"gbp\""
-				Aud float64 "json:\"aud\""
-			}{
-				Cad: 0,
-				Cny: 0,
-				Eur: 0,
-				Jpy: 0,
-				Usd: 0,
-				Gbp: 0,
-				Aud: 0,
-			},
+	for pair, addrHex := range feedAddrs {
+		feed, err := chainlink_feed.NewFeed(common.HexToAddress(addrHex), eClient)
+		if err != nil {
+			logger.Errorf("failed to initialized chainlink feed for %v (addr: %v): %v", pair, addrHex, err)
+			return
 		}
-		return
+		feeds[pair] = feed
 	}
 
-	var ethUSDPrice float64
-	var eurUSDPrice float64
-	var cadUSDPrice float64
-	var cnyUSDPrice float64
-	var jpyUSDPrice float64
-	var gbpUSDPrice float64
-	var audUSDPrice float64
+	go func() {
+		for {
+			updatePrices()
+			time.Sleep(time.Minute)
+		}
+	}()
+}
 
+func updatePrices() {
 	g := &errgroup.Group{}
-
-	g.Go(func() error {
-		var err error
-		ethUSDPrice, err = getPriceFromFeed(ethUSDFeed)
-		if err != nil {
-			return fmt.Errorf("error fetching price from EUR/USD feed: %v", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		eurUSDPrice, err = getPriceFromFeed(eurUSDFeed)
-		if err != nil {
-			return fmt.Errorf("error fetching price from EUR/USD feed: %v", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		cadUSDPrice, err = getPriceFromFeed(cadUSDFeed)
-		if err != nil {
-			return fmt.Errorf("error fetching price from CAD/USD feed: %v", err)
-		}
-		return nil
-	})
-
-	g.Go(func() error {
-		var err error
-		cnyUSDPrice, err = getPriceFromFeed(cnyUSDFeed)
-		if err != nil {
-			return fmt.Errorf("error fetching price from CNY/USD feed: %v", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		jpyUSDPrice, err = getPriceFromFeed(jpyUSDFeed)
-		if err != nil {
-			return fmt.Errorf("error fetching price from JPY/USD feed: %v", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		gbpUSDPrice, err = getPriceFromFeed(gbpUSDFeed)
-		if err != nil {
-			return fmt.Errorf("error fetching price from GPY/USD feed: %v", err)
-		}
-		return nil
-	})
-	g.Go(func() error {
-		var err error
-		audUSDPrice, err = getPriceFromFeed(audUSDFeed)
-		if err != nil {
-			return fmt.Errorf("error fetching price from AUD/USD feed: %v", err)
-		}
-		return nil
-	})
-
+	for pair, feed := range feeds {
+		pair := pair
+		feed := feed
+		g.Go(func() error {
+			price, err := getPriceFromFeed(feed)
+			if err != nil {
+				return fmt.Errorf("error getting price from feed for %v: %w", pair, err)
+			}
+			pricesMu.Lock()
+			defer pricesMu.Unlock()
+			prices[pair] = price
+			if pair == "GNO/USD" {
+				prices["mGNO/USD"] = price / 32
+			}
+			return nil
+		})
+	}
 	err := g.Wait()
-
 	if err != nil {
-		logger.Error(err)
+		logger.WithError(err).Errorf("error upating prices")
 		return
 	}
-
-	ethPrice = &EthPrice{
-		Ethereum: struct {
-			Cad float64 "json:\"cad\""
-			Cny float64 "json:\"cny\""
-			Eur float64 "json:\"eur\""
-			Jpy float64 "json:\"jpy\""
-			Usd float64 "json:\"usd\""
-			Gbp float64 "json:\"gbp\""
-			Aud float64 "json:\"aud\""
-		}{
-			Cad: ethUSDPrice / cadUSDPrice,
-			Cny: ethUSDPrice / cnyUSDPrice,
-			Eur: ethUSDPrice / eurUSDPrice,
-			Jpy: ethUSDPrice / jpyUSDPrice,
-			Usd: ethUSDPrice,
-			Gbp: ethUSDPrice / gbpUSDPrice,
-			Aud: ethUSDPrice / audUSDPrice,
-		},
+	for p := range calcPairs {
+		if err = calcPricePairs(p); err != nil {
+			logger.WithError(err).Errorf("error calculating price pairs for %v", p)
+			return
+		}
 	}
+	setPrice(elCurrency, elCurrency, 1)
+	setPrice(clCurrency, clCurrency, 1)
+
+	runOnce.Do(func() { runOnceWg.Done() })
+}
+
+func calcPricePairs(currency string) error {
+	pricesMu.Lock()
+	defer pricesMu.Unlock()
+	pricesCopy := prices
+	currencyUsdPrice, exists := prices[currency+"/USD"]
+	if !exists {
+		return fmt.Errorf("failed updating prices: cant find %v pair %+v", currency+"/USD", prices)
+	}
+	for pair, price := range pricesCopy {
+		s := strings.Split(pair, "/")
+		if len(s) < 2 || s[1] != "USD" {
+			continue
+		}
+		// availableCurrencies = append(availableCurrencies, s[0])
+		prices[currency+"/"+s[0]] = currencyUsdPrice / price
+	}
+	return nil
+}
+
+func setPrice(a, b string, v float64) {
+	pricesMu.Lock()
+	defer pricesMu.Unlock()
+	prices[a+"/"+b] = v
+}
+
+func GetPrice(a, b string) float64 {
+	runOnceWg.Wait()
+	pricesMu.Lock()
+	defer pricesMu.Unlock()
+	if a == "xDAI" {
+		a = "DAI"
+	}
+	if b == "xDAI" {
+		b = "DAI"
+	}
+	price, exists := prices[a+"/"+b]
+	if !exists {
+		logrus.WithFields(logrus.Fields{"pair": a + "/" + b}).Warnf("price pair not found")
+		return 1
+	}
+	return price
 }
 
 func getPriceFromFeed(feed *chainlink_feed.Feed) (float64, error) {
-	decimals := decimal.NewFromInt(100000000)
-
-	res, err := feed.LatestRoundData(nil)
+	decimals := decimal.NewFromInt(1e8) // 8 decimal places for the Chainlink feeds
+	res, err := feed.LatestRoundData(&bind.CallOpts{})
 	if err != nil {
-		return 0, fmt.Errorf("failed to fetch latest chainlink eth/usd price feed data: %v", err)
+		return 0, fmt.Errorf("failed to fetch latest chainlink eth/usd price feed data: %w", err)
 	}
 	return decimal.NewFromBigInt(res.Answer, 0).Div(decimals).InexactFloat64(), nil
-}
-
-func GetEthPrice(currency string) float64 {
-	ethPriceMux.RLock()
-	defer ethPriceMux.RUnlock()
-
-	switch currency {
-	case "EUR":
-		return ethPrice.Ethereum.Eur
-	case "USD":
-		return ethPrice.Ethereum.Usd
-	case "CNY":
-		return ethPrice.Ethereum.Cny
-	case "CAD":
-		return ethPrice.Ethereum.Cad
-	case "AUD":
-		return ethPrice.Ethereum.Aud
-	case "JPY":
-		return ethPrice.Ethereum.Jpy
-	case "GBP":
-		return ethPrice.Ethereum.Gbp
-	default:
-		return 1
-	}
 }
 
 func GetAvailableCurrencies() []string {
 	return availableCurrencies
 }
 
+func IsAvailableCurrency(currency string) bool {
+	for _, c := range availableCurrencies {
+		if c == currency {
+			return true
+		}
+	}
+	return false
+}
+
 func GetCurrencyLabel(currency string) string {
-	switch currency {
-	case "ETH":
-		return "Ether"
-	case "USD":
-		return "United States Dollar"
-	case "EUR":
-		return "Euro"
-	case "GBP":
-		return "Pound Sterling"
-	case "CNY":
-		return "Chinese Yuan"
-	case "RUB":
-		return "Russian Ruble"
-	case "CAD":
-		return "Canadian Dollar"
-	case "AUD":
-		return "Australian Dollar"
-	case "JPY":
-		return "Japanese Yen"
-	default:
+	x, exists := currencies[currency]
+	if !exists {
 		return ""
 	}
+	return x.Label
 }
 
-func GetSymbol(currency string) string {
-
-	switch currency {
-	case "EUR":
-		return "€"
-	case "USD":
-		return "$"
-	case "RUB":
-		return "₽"
-	case "CNY":
-		return "¥"
-	case "CAD":
-		return "C$"
-	case "AUD":
-		return "A$"
-	case "JPY":
-		return "¥"
-	case "GBP":
-		return "£"
-	default:
+func GetCurrencySymbol(currency string) string {
+	x, exists := currencies[currency]
+	if !exists {
 		return ""
 	}
-}
-
-func GetEthRoundPrice(currency float64) uint64 {
-	ethRoundPrice := uint64(currency)
-	return ethRoundPrice
+	return x.Symbol
 }
