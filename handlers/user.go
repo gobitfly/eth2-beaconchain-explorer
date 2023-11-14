@@ -1427,7 +1427,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
-	sessionUser, session, err := getUserSession(r)
+	sessionUser, _, err := getUserSession(r)
 	if err != nil {
 		utils.LogError(err, "error retrieving session for email update confirmation", 0, map[string]interface{}{"hash": hash})
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -1504,12 +1504,6 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		utils.SetFlash(w, r, authSessionName, "Error: Could not update email. Please try again. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
-	}
-
-	if sessionUser.UserID == uint64(user.ID) {
-		session.SetValue("subscription", "")
-		session.SetValue("authenticated", false)
-		session.DeleteValue("user_id")
 	}
 
 	err = purgeAllSessionsForUser(r.Context(), uint64(user.ID))

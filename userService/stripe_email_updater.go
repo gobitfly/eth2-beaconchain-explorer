@@ -1,4 +1,4 @@
-package services
+package userService
 
 import (
 	"bytes"
@@ -8,14 +8,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/lib/pq"
 )
 
-func stripeEmailUpdater(wg *sync.WaitGroup) {
-	firstRun := true
+func stripeEmailUpdater() {
 	for {
 		// fetch all users with pending stripe email updates
 		var pendingUsers []struct {
@@ -39,9 +37,10 @@ func stripeEmailUpdater(wg *sync.WaitGroup) {
 			err := updateStripeCustomerEmail(user.StripeCustomerId, user.Email)
 			if err != nil {
 				utils.LogError(err, "error updating stripe customer email", 0, map[string]interface{}{"email": user.Email, "stripe_customer_id": user.StripeCustomerId})
-				continue
+			} else {
+				updatedUsers = append(updatedUsers, user.Email)
 			}
-			updatedUsers = append(updatedUsers, user.Email)
+			time.Sleep(time.Millisecond * 200)
 		}
 
 		// set stripe_email_pending flag to false for all users that were updated
@@ -54,10 +53,6 @@ func stripeEmailUpdater(wg *sync.WaitGroup) {
 			}
 		}
 
-		if firstRun {
-			wg.Done()
-			firstRun = false
-		}
 		time.Sleep(time.Minute)
 	}
 }
