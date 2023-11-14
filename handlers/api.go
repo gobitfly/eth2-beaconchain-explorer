@@ -3784,6 +3784,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 		pubkey
 	FROM validators
 	WHERE withdrawalcredentials = $1
+	ORDER BY validatorindex ASC
 	LIMIT $2
 	OFFSET $3
 	`, credentials, limit, offset)
