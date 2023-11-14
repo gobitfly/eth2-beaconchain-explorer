@@ -3148,3 +3148,79 @@ func GetSyncParticipationBySlotRange(startSlot, endSlot uint64) (map[uint64]uint
 
 	return ret, nil
 }
+
+// Should be used when retrieving data for a very large amount of validators (for the notifications process)
+func GetValidatorAttestationHistoryForNotifications(startEpoch uint64, endEpoch uint64) (map[types.Epoch]map[types.ValidatorIndex]bool, error) {
+	// first retrieve activation & exit epoch for all validators
+	activityData := []struct {
+		ValidatorIndex  types.ValidatorIndex
+		ActivationEpoch types.Epoch
+		ExitEpoch       types.Epoch
+	}{}
+
+	err := ReaderDb.Select(&activityData, "SELECT validatorindex, activationepoch, exitepoch FROM validators ORDER BY validatorindex;")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving activation & exit epoch for validators: %w", err)
+	}
+
+	logger.Info("retrieved activation & exit epochs")
+
+	// next retrieve all attestation data from the db (need to retrieve data for the endEpoch+1 epoch as that could still contain attestations for the endEpoch)
+	firstSlot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+	lastSlot := ((endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+	lastQuerySlot := ((endEpoch+2)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1)
+
+	rows, err := ReaderDb.Query(`SELECT 
+	blocks_attestations.slot, 
+	validators 
+	FROM blocks_attestations 
+	LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
+	blocks_attestations.block_slot >= $1 AND blocks_attestations.block_slot <= $2 AND blocks.status = '1' ORDER BY block_slot`, firstSlot, lastQuerySlot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving attestation data from the db: %w", err)
+	}
+	defer rows.Close()
+
+	logger.Info("retrieved attestation raw data")
+
+	// next process the data and fill up the epoch participation
+	// validators that participated in an epoch will have the flag set to true
+	// validators that missed their participation will have it set to false
+	epochParticipation := make(map[types.Epoch]map[types.ValidatorIndex]bool)
+	for rows.Next() {
+		var slot types.Slot
+		var attestingValidators pq.Int64Array
+
+		err := rows.Scan(&slot, &attestingValidators)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning attestation data: %w", err)
+		}
+
+		if slot < types.Slot(firstSlot) || slot > types.Slot(lastSlot) {
+			continue
+		}
+
+		epoch := types.Epoch(utils.EpochOfSlot(uint64(slot)))
+
+		participation := epochParticipation[epoch]
+
+		if participation == nil {
+			epochParticipation[epoch] = make(map[types.ValidatorIndex]bool)
+
+			// logger.Infof("seeding validator duties for epoch %v", epoch)
+			for _, data := range activityData {
+				if data.ActivationEpoch <= epoch && epoch < data.ExitEpoch {
+					epochParticipation[epoch][types.ValidatorIndex(data.ValidatorIndex)] = false
+				}
+			}
+
+			participation = epochParticipation[epoch]
+		}
+
+		for _, validator := range attestingValidators {
+			participation[types.ValidatorIndex(validator)] = true
+		}
+	}
+
+	return epochParticipation, nil
+}
