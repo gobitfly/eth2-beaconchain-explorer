@@ -305,7 +305,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots([]uint64{index})
 	if err != nil {
 		utils.LogError(err, "error getting last attestation slots from bigtable", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
@@ -1344,7 +1344,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 			)`, index)
 	if err != nil {
 		utils.LogError(err, "error getting totalCount of validator-slashings from db", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

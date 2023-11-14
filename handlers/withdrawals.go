@@ -89,14 +89,14 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 	data, err := WithdrawalsTableData(draw, search, length, start, orderBy, orderDir, currency)
 	if err != nil {
 		logger.Errorf("error getting withdrawal table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -264,14 +264,14 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 	data, err := BLSTableData(draw, search, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("Error getting bls changes: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

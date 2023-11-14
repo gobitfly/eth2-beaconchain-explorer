@@ -19,6 +19,7 @@ import (
 )
 
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
+const USER_SUBSCRIPTION_LIMIT = 5
 
 type rewardsResp struct {
 	Currencies        []string
@@ -143,7 +144,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -197,7 +198,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(services.GeneratePdfReport(hist, currency))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -207,9 +208,21 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
 	user := getUser(r)
 	if !user.Authenticated {
-		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
-		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		http.Error(w, "User Not Authenticated", http.StatusUnauthorized)
 		return
+	}
+	q := r.URL.Query()
+
+	validatorArr := q.Get("validators")
+	currency := q.Get("currency")
+	validatorLimit := getUserPremium(r).MaxValidators
+
+	errFields := map[string]interface{}{
+		"route":            r.URL.String(),
+		"user_id":          user.UserID,
+		"validators_query": validatorArr,
+		"currency":         currency,
+		"validator_limit":  validatorLimit,
 	}
 
 	var count uint64
@@ -217,29 +230,26 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 		`select count(event_name) 
 		from users_subscriptions 
 		where user_id=$1 AND event_name=$2;`, user.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName))
-
-	if err != nil || count >= 5 {
-		logger.WithField("route", r.URL.String()).Info(fmt.Sprintf("User Subscription limit (%v) reached %v", count, err))
-		http.Error(w, "Internal server error, User Subscription limit reached", http.StatusInternalServerError)
+	if err != nil {
+		utils.LogError(err, "Failed to get User Subscriptions Count", 0, errFields)
+		http.Error(w, "Internal Server Error: failed to get user subscriptions count", http.StatusInternalServerError)
 		return
 	}
 
-	q := r.URL.Query()
+	if count >= USER_SUBSCRIPTION_LIMIT {
+		http.Error(w, "Conflicting Request: user subscription limit reached", http.StatusConflict)
+		return
+	}
 
-	validatorArr := q.Get("validators")
-	validatorLimit := getUserPremium(r).MaxValidators
+	// don't allow passing validator pubkeys in the query string
 	_, queryValidatorPubkeys, err := parseValidatorsFromQueryString(validatorArr, validatorLimit)
 	if err != nil || len(queryValidatorPubkeys) > 0 {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", 400)
+		http.Error(w, "Bad Request: validators could not be parsed or should be specified using Indices", http.StatusBadRequest)
 		return
 	}
 
-	currency := q.Get("currency")
-
 	if validatorArr == "" || !isValidCurrency(currency) {
-		logger.WithField("route", r.URL.String()).Error("Bad Query")
-		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
+		http.Error(w, "Bad Request: no validators or invalid currency given", http.StatusBadRequest)
 		return
 	}
 
@@ -249,8 +259,8 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency), 0)
 
 	if err != nil {
-		logger.Errorf("error updating user subscriptions: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		utils.LogError(err, "Failed to add entry to user subscriptions", 0, errFields)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -259,8 +269,8 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	}{Msg: "Subscription Updated"})
 
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		utils.LogError(err, "error encoding json response", 0, errFields)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -270,30 +280,43 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
 	user := getUser(r)
 	if !user.Authenticated {
-		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
-		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		http.Error(w, "User Not Authenticated", http.StatusUnauthorized)
 		return
 	}
 
 	q := r.URL.Query()
 
 	validatorArr := q.Get("validators")
-
 	currency := q.Get("currency")
+	validatorLimit := getUserPremium(r).MaxValidators
 
-	if validatorArr == "" || !isValidCurrency(currency) {
-		logger.WithField("route", r.URL.String()).Error("Bad Query")
-		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
+	errFields := map[string]interface{}{
+		"route":            r.URL.String(),
+		"user_id":          user.UserID,
+		"validators_query": validatorArr,
+		"currency":         currency,
+		"validator_limit":  validatorLimit,
+	}
+
+	// don't allow passing validator pubkeys in the query string
+	_, queryValidatorPubkeys, err := parseValidatorsFromQueryString(validatorArr, validatorLimit)
+	if err != nil || len(queryValidatorPubkeys) > 0 {
+		http.Error(w, "Bad Request: validators could not be parsed or should be specified using Indices", http.StatusBadRequest)
 		return
 	}
 
-	err := db.DeleteSubscription(user.UserID,
+	if validatorArr == "" || !isValidCurrency(currency) {
+		http.Error(w, "Bad Request: no validators or invalid currency given", http.StatusBadRequest)
+		return
+	}
+
+	err = db.DeleteSubscription(user.UserID,
 		utils.GetNetwork(),
 		types.TaxReportEventName,
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
 
 	if err != nil {
-		logger.Errorf("error deleting entry from user subscriptions: %v", err)
+		utils.LogError(err, "Failed to delete entry from user subscriptions", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -303,8 +326,8 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}{Msg: "Subscription Deleted"})
 
 	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		utils.LogError(err, "error encoding json response", 0, errFields)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -314,7 +337,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	user := getUser(r)
 	if !user.Authenticated {
 		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
-		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusUnauthorized)
 		return
 	}
 
@@ -339,7 +362,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

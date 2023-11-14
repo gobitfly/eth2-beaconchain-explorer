@@ -36,7 +36,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	err := db.ReaderDb.Select(&currentStateCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -264,7 +264,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -275,7 +275,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -294,7 +294,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(indices)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator last attestation slot data")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	for _, validator := range validators {
@@ -356,7 +356,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Get(&countTotal, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	countFiltered := uint64(0)
@@ -365,7 +365,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		err = db.ReaderDb.Get(&countFiltered, qry)
 		if err != nil {
 			logger.Errorf("error retrieving validators total count: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -396,7 +396,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

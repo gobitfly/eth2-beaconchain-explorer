@@ -152,7 +152,7 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 	err := db.CreateAPIKey(user.UserID)
 	if err != nil {
 		logger.WithError(err).Error("Could not create API key for user")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -367,163 +367,6 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AddValidatorsAndSubscribe adds a validator to a users watchlist and subscribes to the validator
-func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
-
-	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-
-	user := getUser(r)
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	reqData := struct {
-		Index  uint64 `json:"index"`
-		Pubkey string `json:"pubkey"`
-		Events []struct {
-			Event string `json:"event"`
-			Email bool   `json:"email"`
-			Push  bool   `json:"push"`
-			Web   bool   `json:"web"`
-		} `json:"events"`
-	}{}
-
-	// pubkeys := make([]string, 0)
-	err = json.Unmarshal(body, &reqData)
-	if err != nil {
-		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	if reqData.Pubkey == "" {
-		err := db.WriterDb.Get(&reqData.Pubkey, "SELECT ENCODE(pubkey, 'hex') as pubkey from validators where validatorindex = $1", reqData.Index)
-		if err != nil {
-			logger.Errorf("error getting pubkey from validator index route: %v, %v", r.URL.String(), err)
-			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	if reqData.Pubkey == "" {
-		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: reqData.Pubkey}}, utils.GetNetwork())
-	if err != nil {
-		logger.Errorf("error adding to watchlist: %v, %v", r.URL.String(), err)
-		return
-	}
-
-	result := true
-	m := map[string]bool{}
-	for _, item := range reqData.Events {
-		if item.Email {
-			if m[item.Event] && reqData.Pubkey == "" {
-				continue
-			}
-
-			result = result && internUserNotificationsSubscribe(item.Event, reqData.Pubkey, 0, w, r)
-			m[item.Event] = true
-			if !result {
-				break
-			}
-		}
-	}
-
-	if result {
-		OKResponse(w, r)
-	}
-}
-
-func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
-
-	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-
-	user := getUser(r)
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	reqData := struct {
-		Pubkeys []string `json:"pubkeys"`
-		Events  []struct {
-			Filter    string  `json:"filter"`
-			Event     string  `json:"event"`
-			Email     bool    `json:"email"`
-			Push      bool    `json:"push"`
-			Web       bool    `json:"web"`
-			Threshold float64 `json:"threshold"`
-		} `json:"events"`
-	}{}
-
-	// pubkeys := make([]string, 0)
-	err = json.Unmarshal(body, &reqData)
-	if err != nil {
-		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	if len(reqData.Pubkeys) == 0 {
-		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	net := strings.ToLower(utils.GetNetwork())
-	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{net + ":" + string(types.ValidatorMissedAttestationEventName),
-		net + ":" + string(types.ValidatorMissedProposalEventName),
-		net + ":" + string(types.ValidatorExecutedProposalEventName),
-		net + ":" + string(types.ValidatorGotSlashedEventName),
-		net + ":" + string(types.SyncCommitteeSoon)})
-
-	_, err = db.FrontendWriterDB.Exec(`
-			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
-		`, user.UserID, pqPubkeys, pqEventNames)
-	if err != nil {
-		logger.Errorf("error removing old events: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	all_success := true
-	for _, pubkey := range reqData.Pubkeys {
-		result := true
-		m := map[string]bool{}
-		for _, item := range reqData.Events {
-			if item.Email {
-				if m[item.Event] && pubkey == "" {
-					continue
-				}
-
-				result = result && internUserNotificationsSubscribe(item.Event, pubkey, item.Threshold, w, r)
-				m[item.Event] = true
-				if !result {
-					break
-				}
-			}
-		}
-		if !result {
-			all_success = false
-			break
-		}
-	}
-
-	if all_success {
-		OKResponse(w, r)
-	}
-}
-
 // UserNotificationsCenter renders the notificationsCenter template
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	var notificationsCenterTemplate = templates.GetTemplate(notificationCenterParts...)
@@ -717,7 +560,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 				networkData, err = getUserNetworkEvents(user.UserID)
 				if err != nil {
 					logger.Errorf("error retrieving network data for user %v: %v ", user.UserID, err)
-					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
 					return
 				}
 			}
@@ -753,28 +596,12 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		validatorTableData = append(validatorTableData, val)
 	}
 
-	//add notification-center data
-	// type metrics
-	// metricsdb, err := getUserMetrics(user.UserID)
-	// if err != nil {
-	// 	logger.Errorf("error retrieving metrics data for users: %v ", user.UserID, err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
-
 	machines, err := db.BigtableClient.GetMachineMetricsMachineNames(user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving user machines for user %v: %v ", user.UserID, err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	// validatorTableData, err := getValidatorTableData(user.UserID)
-	// if err != nil {
-	// 	logger.Errorf("error retrieving validators table data for users: %v ", user.UserID, err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
 
 	var notificationChannels []types.UserNotificationChannels
 
@@ -789,7 +616,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	`, user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving notification channels for user %v: %v ", user.UserID, err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	email := false
@@ -930,7 +757,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		`, user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving subscriptions for users: %v validators: %v", user.UserID, err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -941,10 +768,24 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if len(indices) == 0 {
+		err = json.NewEncoder(w).Encode(&types.DataTableResponse{
+			Draw:            draw,
+			RecordsTotal:    uint64(len(wl)),
+			RecordsFiltered: uint64(len(wl)),
+			Data:            [][]interface{}{},
+		})
+		if err != nil {
+			utils.LogError(err, "error enconding json response", 0, map[string]interface{}{"route": r.URL.String()})
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -984,7 +825,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -1022,7 +863,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 	`, user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving subscriptions for users %v: %v", user.UserID, err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -1067,7 +908,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -2419,7 +2260,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	err := db.FrontendReaderDB.GetContext(ctx, &webhookCount, `SELECT count(*) from users_webhooks where user_id = $1`, user.UserID)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting webhook count")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -2431,7 +2272,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendReaderDB.GetContext(ctx, &activeAPP, `SELECT count(*) from users_app_subscriptions where active = 't' and user_id = $1;`, user.UserID)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting app subscription count")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -2443,7 +2284,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendReaderDB.GetContext(ctx, &activeAPI, `SELECT count(*) from users_stripe_subscriptions us join users u on u.stripe_customer_id = us.customer_id where active = 't' and u.id = $1;`, user.UserID)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting api subscription count")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -2469,7 +2310,7 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	`, user.UserID)
 	if err != nil {
 		logger.Errorf("error querying for webhooks for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -2901,7 +2742,7 @@ func UsersDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 	tx, err := db.FrontendWriterDB.BeginTxx(ctx, &sql.TxOptions{})
 	if err != nil {
 		logger.WithError(err).Errorf("error beginning transaction")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
@@ -2909,14 +2750,14 @@ func UsersDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(`DELETE FROM users_webhooks where user_id = $1 and id = $2`, user.UserID, webhookID)
 	if err != nil {
 		logger.WithError(err).Errorf("error update webhook for user")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		logger.WithError(err).Errorf("error for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
@@ -2941,7 +2782,7 @@ func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
 	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		logger.WithError(err).Error("error beginning transaction")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer tx.Rollback()
@@ -2949,26 +2790,26 @@ func UsersNotificationChannels(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(`INSERT INTO users_notification_channels (user_id, channel, active) VALUES ($1, $2, $3) ON CONFLICT (user_id, channel) DO UPDATE SET active = $3`, user.UserID, types.EmailNotificationChannel, channelEmail == "on")
 	if err != nil {
 		logger.WithError(err).Error("error updating users_notification_channels")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	_, err = tx.Exec(`INSERT INTO users_notification_channels (user_id, channel, active) VALUES ($1, $2, $3) ON CONFLICT (user_id, channel) DO UPDATE SET active = $3`, user.UserID, types.PushNotificationChannel, channelPush == "on")
 	if err != nil {
 		logger.WithError(err).Error("error updating users_notification_channels")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	_, err = tx.Exec(`INSERT INTO users_notification_channels (user_id, channel, active) VALUES ($1, $2, $3) ON CONFLICT (user_id, channel) DO UPDATE SET active = $3`, user.UserID, types.WebhookNotificationChannel, channelWebhook == "on")
 	if err != nil {
 		logger.WithError(err).Error("error updating users_notification_channels")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		logger.WithError(err).Error("error committing transaction")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
