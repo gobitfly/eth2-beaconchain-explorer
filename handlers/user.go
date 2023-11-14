@@ -1490,6 +1490,68 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
+// UserDashboardWatchlistRemove godoc
+// @Summary  unsubscribes a user from a specific validator via index from both watchlist and notification events
+// @Tags User
+// @Produce  json
+// @Param pubKey body []string true "Index of validator you want to unsubscribe from"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/dashboard/remove [post]
+func UserDashboardWatchlistRemove(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	user := getUser(r)
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	indices := make([]string, 0)
+	err = json.Unmarshal(body, &indices)
+	if err != nil {
+		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	indicesParsed := make([]int64, 0)
+	for _, i := range indices {
+		parsed, err := strconv.ParseInt(i, 10, 64)
+		if err != nil {
+			logger.Errorf("error could not parse validator indices: %v, %v", r.URL.String(), err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		indicesParsed = append(indicesParsed, parsed)
+	}
+
+	publicKeys := make([]string, 0)
+	db.WriterDb.Select(&publicKeys, `
+	SELECT pubkeyhex as pubkey
+	FROM validators
+	WHERE validatorindex = ANY($1)
+	`, pq.Int64Array(indicesParsed))
+
+	pubkeys := []string{}
+
+	for _, key := range publicKeys {
+		pubkeys = append(pubkeys, key)
+	}
+
+	err = db.RemoveFromWatchlistBatch(user.UserID, pubkeys, utils.GetNetwork())
+	if err != nil {
+		logger.Errorf("error could not remove validators from watchlist: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	OKResponse(w, r)
+}
+
 // UserValidatorWatchlistRemove godoc
 // @Summary  unsubscribes a user from a specific validator
 // @Tags User
