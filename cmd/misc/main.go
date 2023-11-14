@@ -55,7 +55,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee, export-sync-committee-ph2")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -362,10 +362,10 @@ func main() {
 		}
 	case "export-stats-totals":
 		exportStatsTotals(opts.Columns, opts.StartDay, opts.EndDay, opts.DataConcurrency)
-	case "export-sync-committee":
-		exportSyncCommittee(rpcClient, bt, opts.StartDay, opts.EndDay, opts.DryRun, false)
-	case "export-sync-committee-ph2":
-		exportSyncCommittee(rpcClient, bt, opts.StartDay, opts.EndDay, opts.DryRun, true)
+	case "export-sync-committee-periods":
+		exportSyncCommitteePeriods(rpcClient, bt, opts.StartDay, opts.EndDay, opts.DryRun)
+	case "export-sync-committee-validator-stats":
+		exportSyncCommitteeValidatorStats(rpcClient, bt, opts.StartDay, opts.EndDay, opts.DryRun, true)
 	case "fix-exec-transactions-count":
 		err = fixExecTransactionsCount()
 	default:
@@ -1241,7 +1241,7 @@ OUTER:
 	logrus.Infof("finished all exporting stats totals for columns '%v' for days %v - %v, took %v", columns, dayStart, dayEnd, time.Since(start))
 }
 
-func exportSyncCommittee(rpcClient rpc.Client, bt *db.Bigtable, startDay, endDay uint64, dryRun, skipPhase1 bool) {
+func exportSyncCommitteePeriods(rpcClient rpc.Client, bt *db.Bigtable, startDay, endDay uint64, dryRun bool) {
 	var currEpoch = uint64(0)
 
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
@@ -1262,31 +1262,44 @@ func exportSyncCommittee(rpcClient rpc.Client, bt *db.Bigtable, startDay, endDay
 
 	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
 
-	if !skipPhase1 {
-		logrus.Infof("Phase 1: Re exporting data for sync_committee table")
-		for p := firstPeriod; p <= lastPeriod; p++ {
-			t0 := time.Now()
+	start := time.Now()
+	for p := firstPeriod; p <= lastPeriod; p++ {
+		t0 := time.Now()
 
-			err := reExportSyncCommittee(rpcClient, p, dryRun)
-			if err != nil {
-				if strings.Contains(err.Error(), "not found 404") {
-					logrus.WithField("period", p).Infof("reached max period, stopping")
-					break
-				} else {
-					logrus.WithError(err).WithField("period", p).Errorf("error re-exporting sync_committee")
-					return
-				}
+		err := reExportSyncCommittee(rpcClient, p, dryRun)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found 404") {
+				logrus.WithField("period", p).Infof("reached max period, stopping")
+				break
+			} else {
+				logrus.WithError(err).WithField("period", p).Errorf("error re-exporting sync_committee")
+				return
 			}
-
-			logrus.WithFields(logrus.Fields{
-				"period":   p,
-				"epoch":    utils.FirstEpochOfSyncPeriod(p),
-				"duration": time.Since(t0),
-			}).Infof("re-exported sync_committee")
 		}
+
+		logrus.WithFields(logrus.Fields{
+			"period":   p,
+			"epoch":    utils.FirstEpochOfSyncPeriod(p),
+			"duration": time.Since(t0),
+		}).Infof("re-exported sync_committee")
 	}
 
-	logrus.Infof("Phase 2: Updating validator_stats table")
+	logrus.Infof("finished all exporting sync_committee for periods %v - %v, took %v", firstPeriod, lastPeriod, time.Since(start))
+}
+
+func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, bt *db.Bigtable, startDay, endDay uint64, dryRun, skipPhase1 bool) {
+	var currEpoch = uint64(0)
+
+	if endDay <= 0 {
+		currEpoch = services.LatestFinalizedEpoch()
+		if currEpoch > 0 { // guard against underflows
+			currEpoch = currEpoch - 1
+		}
+	} else {
+		_, lastEpoch := utils.GetFirstAndLastEpochForDay(endDay)
+		currEpoch = lastEpoch
+	}
+
 	start := time.Now()
 
 	epochsPerDay := utils.EpochsPerDay()
