@@ -3143,14 +3143,15 @@ func GetSyncParticipationBySlotRange(startSlot, endSlot uint64) (map[uint64]uint
 }
 
 // Should be used when retrieving data for a very large amount of validators (for the notifications process)
-func GetValidatorAttestationHistoryForNotifications(validators []uint64, startEpoch uint64, endEpoch uint64) (map[types.Epoch]map[types.ValidatorIndex]bool, error) {
+func GetValidatorAttestationHistoryForNotifications(startEpoch uint64, endEpoch uint64) (map[types.Epoch]map[types.ValidatorIndex]bool, error) {
 	// first retrieve activation & exit epoch for all validators
 	activityData := []struct {
+		ValidatorIndex  types.ValidatorIndex
 		ActivationEpoch types.Epoch
 		ExitEpoch       types.Epoch
 	}{}
 
-	err := ReaderDb.Select(&activityData, "SELECT activationepoch, exitepoch FROM validators ORDER BY validatorindex;")
+	err := ReaderDb.Select(&activityData, "SELECT validatorindex, activationepoch, exitepoch FROM validators ORDER BY validatorindex;")
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving activation & exit epoch for validators: %w", err)
 	}
@@ -3200,9 +3201,10 @@ func GetValidatorAttestationHistoryForNotifications(validators []uint64, startEp
 			epochParticipation[epoch] = make(map[types.ValidatorIndex]bool)
 
 			// logger.Infof("seeding validator duties for epoch %v", epoch)
-			for _, validator := range validators {
-				if activityData[validator].ActivationEpoch <= epoch && epoch < activityData[validator].ExitEpoch {
-					epochParticipation[epoch][types.ValidatorIndex(validator)] = false
+			for i := 0; i <= len(activityData); i++ {
+				validatorIndex := activityData[i].ValidatorIndex
+				if activityData[validatorIndex].ActivationEpoch <= epoch && epoch < activityData[validatorIndex].ExitEpoch {
+					epochParticipation[epoch][validatorIndex] = false
 				}
 			}
 
