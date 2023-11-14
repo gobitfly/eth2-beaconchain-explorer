@@ -105,11 +105,10 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "No monitoring data available", http.StatusNotFound)
-			return
 		} else {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
 		}
+		return
 	}
 
 	modulesMap := make(map[string]string)
@@ -3047,9 +3046,13 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 	claims := getAuthClaims(r)
 
 	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
-	if err != nil || subscriptionCount >= 5 {
-		w.WriteHeader(http.StatusConflict)
-		sendErrorResponse(w, r.URL.String(), "reached max subscription limit")
+	if err != nil {
+		utils.LogError(err, "could not get subscription count", 0)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if subscriptionCount >= USER_SUBSCRIPTION_LIMIT {
+		http.Error(w, "Conflicting Request: reached max subscription limit", http.StatusConflict)
 		return
 	}
 
@@ -3099,8 +3102,13 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	claims := getAuthClaims(r)
 
 	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
-	if err != nil || subscriptionCount >= 5 {
-		sendErrorResponse(w, r.URL.String(), "reached max subscription limit")
+	if err != nil {
+		utils.LogError(err, "could not get subscription count", 0)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if subscriptionCount >= USER_SUBSCRIPTION_LIMIT {
+		http.Error(w, "Conflicting Request: reached max subscription limit", http.StatusConflict)
 		return
 	}
 
@@ -3941,11 +3949,11 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	queryValidatorIndices, queryValidatorPubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
 	if err != nil || len(queryValidatorPubkeys) > 0 {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", 400)
+		http.Error(w, "Invalid query", http.StatusBadRequest)
 		return
 	}
 	if len(queryValidatorIndices) < 1 {
-		http.Error(w, "Invalid query", 400)
+		http.Error(w, "Invalid query", http.StatusBadRequest)
 		return
 	}
 	// queryValidatorsArr := pq.Array(queryValidators)

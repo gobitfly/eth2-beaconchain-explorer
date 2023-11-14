@@ -768,6 +768,20 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if len(indices) == 0 {
+		err = json.NewEncoder(w).Encode(&types.DataTableResponse{
+			Draw:            draw,
+			RecordsTotal:    uint64(len(wl)),
+			RecordsFiltered: uint64(len(wl)),
+			Data:            [][]interface{}{},
+		})
+		if err != nil {
+			utils.LogError(err, "error enconding json response", 0, map[string]interface{}{"route": r.URL.String()})
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")

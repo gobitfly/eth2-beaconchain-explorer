@@ -65,6 +65,7 @@ func handleValidatorsQuery(w http.ResponseWriter, r *http.Request, checkValidato
 	return queryValidatorIndices, queryValidatorPubkeys, redirect, nil
 }
 
+// parseValidatorsFromQueryString returns a slice of validator indices and a slice of validator pubkeys from a parsed query string
 func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, [][]byte, error) {
 	if str == "" {
 		return []uint64{}, [][]byte{}, nil
@@ -246,7 +247,6 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 	start := time.Now()
 	if len(validators) == 0 {
-		utils.LogError(err, "error no validators provided", 0, errFieldMap)
 		http.Error(w, "Error: No validators provided", http.StatusBadRequest)
 		return
 	}

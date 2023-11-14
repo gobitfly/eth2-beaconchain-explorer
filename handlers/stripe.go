@@ -274,13 +274,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 		if subscription.Items == nil {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "error creating subscription no items found", http.StatusInternalServerError)
+			http.Error(w, "error creating subscription no items found", http.StatusBadRequest)
 			return
 		}
 
 		if len(subscription.Items.Data) == 0 {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "error creating subscription no items found", http.StatusInternalServerError)
+			http.Error(w, "error creating subscription no items found", http.StatusBadRequest)
 			return
 		}
 
@@ -443,7 +443,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
 		if err != nil {
 			logger.WithError(err).Error("error processing invoice failed to activate subscription for customer", invoice.Customer.ID)
-			http.Error(w, "error proccesing invoice failed to activate subscription for customer", http.StatusInternalServerError)
+			http.Error(w, "error processing invoice failed to activate subscription for customer", http.StatusInternalServerError)
 			return
 		}
 

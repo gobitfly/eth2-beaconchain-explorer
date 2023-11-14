@@ -95,10 +95,12 @@ func BroadcastStatus(w http.ResponseWriter, r *http.Request) {
 
 	job, err := db.GetNodeJob(vars["jobID"])
 	if err != nil {
-		if err != sql.ErrNoRows {
-			logger.Errorf("error retrieving job %v", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "Not found", http.StatusNotFound)
+		} else {
+			logger.WithError(err).Errorf("error retrieving node-job")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
