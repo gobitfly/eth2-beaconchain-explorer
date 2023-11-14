@@ -20,7 +20,7 @@ func stripeEmailUpdater() {
 			Email            string `db:"email"`
 			StripeCustomerId string `db:"stripe_customer_id"`
 		}
-		err := db.FrontendReaderDB.Select(&pendingUsers, "SELECT email, COALESCE(stripe_customer_id. '') FROM users WHERE stripe_email_pending")
+		err := db.FrontendReaderDB.Select(&pendingUsers, "SELECT email, stripe_customer_id FROM users WHERE stripe_email_pending AND stripe_customer_id <> ''")
 		if err != nil {
 			utils.LogError(err, "error getting pending users for stripe email update service", 0)
 			time.Sleep(time.Second * 10)
@@ -30,10 +30,6 @@ func stripeEmailUpdater() {
 		// update stripe customer email
 		var updatedUsers []string
 		for _, user := range pendingUsers {
-			if user.StripeCustomerId == "" {
-				utils.LogError(fmt.Errorf("user has no stripe_customer_id"), "error updating stripe customer email, this should never happen", 0, map[string]interface{}{"email": user.Email})
-				continue
-			}
 			err := updateStripeCustomerEmail(user.StripeCustomerId, user.Email)
 			if err != nil {
 				utils.LogError(err, "error updating stripe customer email", 0, map[string]interface{}{"email": user.Email, "stripe_customer_id": user.StripeCustomerId})
