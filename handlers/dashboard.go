@@ -499,7 +499,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	err = g.Wait()
 	if err != nil {
 		utils.LogError(err, "error while combining balance chart", 0, errFieldMap)
-		sendBadRequestResponse(w, r.URL.String(), err.Error())
+		SendBadRequestResponse(w, r.URL.String(), err.Error())
 		return
 	}
 

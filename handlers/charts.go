@@ -139,7 +139,7 @@ func GenericChartData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{chartData.Series})
+	SendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{chartData.Series})
 }
 
 // SlotViz renders a single page with a d3 slot (block) visualisation

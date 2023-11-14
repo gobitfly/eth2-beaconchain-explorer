@@ -34,12 +34,12 @@ func ResolveEnsDomain(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Warnf("failed to resolve ens %v: %v", search, err)
-		sendBadRequestResponse(w, r.URL.String(), "failed to resolve ens")
+		SendBadRequestResponse(w, r.URL.String(), "failed to resolve ens")
 		return
 	}
 
 	j := json.NewEncoder(w)
-	sendOKResponse(j, r.URL.String(), []interface{}{data})
+	SendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
 func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
