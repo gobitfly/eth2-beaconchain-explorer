@@ -3104,11 +3104,11 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
 	if err != nil {
 		utils.LogError(err, "could not get subscription count", 0)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		sendServerErrorResponse(w, r.URL.String(), "Internal Server Error")
 		return
 	}
 	if subscriptionCount >= USER_SUBSCRIPTION_LIMIT {
-		http.Error(w, "Conflicting Request: reached max subscription limit", http.StatusConflict)
+		sendErrorWithCodeResponse(w, r.URL.String(), "Conflicting Request: reached max subscription limit", http.StatusConflict)
 		return
 	}
 
