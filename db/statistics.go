@@ -1494,7 +1494,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	}
 
 	if firstBlock <= 15537394 {
-		return fmt.Errorf("this function does not yet handle pre merge statistics")
+		return fmt.Errorf("this function does not yet handle pre merge statistics, firstBlock is %v, firstSlot is %v", firstBlock, firstSlot)
 	}
 
 	lastBlock, err := GetBlockNumber(uint64(lastSlot))
