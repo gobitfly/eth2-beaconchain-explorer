@@ -1572,7 +1572,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
 		utils.LogError(err, "could not parse multiple notification subscription intent", 0, errFields)
-		sendErrorResponse(w, r.URL.String(), "could not parse request")
+		SendBadRequestResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
@@ -1580,7 +1580,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 
 	if len(jsonObjects) > 100 {
 		utils.LogError(nil, "multiple notification subscription: max number bundle subscribe is 100", 0)
-		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
+		SendBadRequestResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
 
@@ -1619,20 +1619,20 @@ func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Reque
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		logger.Errorf("error reading body %v URL: %v", err, r.URL.String())
-		sendErrorResponse(w, r.URL.String(), "could not parse body")
+		SendBadRequestResponse(w, r.URL.String(), "could not parse body")
 		return
 	}
 
 	err = json.Unmarshal(b, &jsonObjects)
 	if err != nil {
 		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not parse request")
+		SendBadRequestResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
 	if len(jsonObjects) > 100 {
 		utils.LogError(nil, "Multiple notification subscription web: max number bundle subscribe is 100", 0)
-		sendErrorResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
+		SendBadRequestResponse(w, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
 
@@ -1813,7 +1813,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
 		utils.LogError(err, "Could not parse multiple notification unsubscription intent", 0, errFields)
-		sendErrorResponse(w, r.URL.String(), "could not parse request")
+		SendBadRequestResponse(w, r.URL.String(), "could not parse request")
 		return
 	}
 
@@ -1821,7 +1821,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 
 	if len(jsonObjects) > 100 {
 		utils.LogError(nil, "multiple notification unsubscription: Max number bundle unsubscribe is 100", 0, errFields)
-		sendErrorResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
+		SendBadRequestResponse(w, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}
 
@@ -2110,7 +2110,7 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	sessionUser := getUser(r)
 	if !sessionUser.Authenticated {
-		sendErrorResponse(w, r.URL.String(), "not authenticated")
+		SendBadRequestResponse(w, r.URL.String(), "not authenticated")
 		return
 	}
 
@@ -2120,7 +2120,7 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(req)
 	if err != nil && err != io.EOF {
 		logger.WithError(err).Error("error decoding request body")
-		sendErrorResponse(w, r.URL.String(), "error decoding request body")
+		SendBadRequestResponse(w, r.URL.String(), "error decoding request body")
 		return
 	}
 
@@ -2150,14 +2150,14 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 	if lim != "" {
 		limit, err = strconv.ParseUint(lim, 10, 64)
 		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "error parsing limit")
+			SendBadRequestResponse(w, r.URL.String(), "error parsing limit")
 		}
 	}
 
 	if off != "" {
 		offset, err = strconv.ParseUint(off, 10, 64)
 		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "error parsing offset")
+			SendBadRequestResponse(w, r.URL.String(), "error parsing offset")
 		}
 	}
 
@@ -2174,7 +2174,7 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 		n, err := types.EventNameFromString(en)
 		if err != nil {
 			logger.WithError(err).Errorf("error parsing provided event %v to a known event name type", en)
-			sendErrorResponse(w, r.URL.String(), "error invalid event name provided")
+			SendBadRequestResponse(w, r.URL.String(), "error invalid event name provided")
 		}
 		eventNames = append(eventNames, n)
 	}
@@ -2194,11 +2194,11 @@ func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
 
 	subs, err := db.GetSubscriptions(queryFilter)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "not authenticated")
+		SendBadRequestResponse(w, r.URL.String(), "not authenticated")
 		return
 	}
 
-	sendOKResponse(j, r.URL.String(), []interface{}{subs})
+	SendOKResponse(j, r.URL.String(), []interface{}{subs})
 }
 
 func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
@@ -2215,29 +2215,29 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 		temp, err := strconv.ParseUint(customDeviceID, 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing id %v | err: %v", customDeviceID, err)
-			sendErrorResponse(w, r.URL.String(), "could not parse id")
+			SendBadRequestResponse(w, r.URL.String(), "could not parse id")
 			return
 		}
 		userDeviceID = temp
 		sessionUser := getUser(r)
 		if !sessionUser.Authenticated {
-			sendErrorResponse(w, r.URL.String(), "not authenticated")
+			SendBadRequestResponse(w, r.URL.String(), "not authenticated")
 			return
 		}
 		userID = sessionUser.UserID
 	} else {
-		sendErrorResponse(w, r.URL.String(), "you can not delete the device you are currently signed in with")
+		SendBadRequestResponse(w, r.URL.String(), "you can not delete the device you are currently signed in with")
 		return
 	}
 
 	err := db.MobileDeviceDelete(userID, userDeviceID)
 	if err != nil {
 		logger.Errorf("could not retrieve db results err: %v", err)
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 
-	sendOKResponse(j, r.URL.String(), nil)
+	SendOKResponse(j, r.URL.String(), nil)
 }
 
 // Imprint will show the imprint data using a go template
