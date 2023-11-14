@@ -2236,9 +2236,6 @@ func (bigtable *Bigtable) getValidatorProposalHistoryV1(validators []uint64, sta
 
 func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[uint64]*itypes.ValidatorEpochIncome) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(utils.EpochToTime(epoch).UnixMicro())
 
