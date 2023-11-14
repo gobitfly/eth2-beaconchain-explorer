@@ -1246,7 +1246,12 @@ func exportSyncCommitteePeriods(rpcClient rpc.Client, bt *db.Bigtable, startDay,
 
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
 	if endDay <= 0 {
-		currEpoch = services.LatestFinalizedEpoch()
+		var err error
+		currEpoch, err = db.GetLatestFinalizedEpoch()
+		if err != nil {
+			logrus.WithError(err).Errorf("error getting latest finalized epoch")
+			return
+		}
 		if currEpoch > 0 { // guard against underflows
 			currEpoch = currEpoch - 1
 		}
@@ -1291,7 +1296,12 @@ func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, bt *db.Bigtable, st
 	var currEpoch = uint64(0)
 
 	if endDay <= 0 {
-		currEpoch = services.LatestFinalizedEpoch()
+		var err error
+		currEpoch, err = db.GetLatestFinalizedEpoch()
+		if err != nil {
+			logrus.WithError(err).Errorf("error getting latest finalized epoch")
+			return
+		}
 		if currEpoch > 0 { // guard against underflows
 			currEpoch = currEpoch - 1
 		}
