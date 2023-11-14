@@ -1370,7 +1370,7 @@ func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID ma
 
 	participationPerEpoch, err := db.GetValidatorAttestationHistoryForNotifications(epoch-3, epoch)
 	if err != nil {
-		return fmt.Errorf("error getting validator attestations from bigtable %w", err)
+		return fmt.Errorf("error getting validator attestations from db %w", err)
 	}
 
 	logger.Infof("retrieved validator attestation history data")
