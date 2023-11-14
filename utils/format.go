@@ -620,9 +620,12 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/slots?q=%s\">%s</a></span>", graffiti, u, h))
 }
 
-// FormatHash will return a hash formated as html
-// hash is required, trunc is optional.
-// Only the first value in trunc_opt will be used.
+/*
+  - FormatHash will return a hash formated as html
+    hash is required, trunc is optional.
+    Only the first value in trunc_opt will be used.
+    ATTENTION: IT TRUNCATES BY DEFAULT, PASS FALSE TO trunc_opt TO DISABLE
+*/
 func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%s</span>", FormatHashRaw(hash, trunc_opt...)))
 }
