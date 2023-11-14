@@ -595,9 +595,6 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 
 func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[uint64]uint64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
