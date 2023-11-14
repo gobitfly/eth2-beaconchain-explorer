@@ -67,8 +67,8 @@ type Bigtable struct {
 
 	redisCache *redis.Client
 
-	lastAttestationCache    map[uint64]uint64
-	lastAttestationCacheMux *sync.Mutex
+	LastAttestationCache    map[uint64]uint64
+	LastAttestationCacheMux *sync.Mutex
 
 	chainId string
 
@@ -121,7 +121,7 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 		tableValidatorsHistory:  btClient.Open("beaconchain_validators_history"),
 		chainId:                 chainId,
 		redisCache:              rdc,
-		lastAttestationCacheMux: &sync.Mutex{},
+		LastAttestationCacheMux: &sync.Mutex{},
 		v2SchemaCutOffEpoch:     utils.Config.Bigtable.V2SchemaCutOffEpoch,
 	}
 
@@ -599,20 +599,20 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.ValidatorIndex][]types.Slot) error {
 
 	// Initialize in memory last attestation cache lazily
-	bigtable.lastAttestationCacheMux.Lock()
-	if bigtable.lastAttestationCache == nil {
+	bigtable.LastAttestationCacheMux.Lock()
+	if bigtable.LastAttestationCache == nil {
 		t := time.Now()
 		var err error
-		bigtable.lastAttestationCache, err = bigtable.GetLastAttestationSlots([]uint64{})
+		bigtable.LastAttestationCache, err = bigtable.GetLastAttestationSlots([]uint64{})
 
 		if err != nil {
-			bigtable.lastAttestationCacheMux.Unlock()
+			bigtable.LastAttestationCacheMux.Unlock()
 			return err
 		}
-		logger.Infof("initialized in memory last attestation slot cache with %v validators in %v", len(bigtable.lastAttestationCache), time.Since(t))
+		logger.Infof("initialized in memory last attestation slot cache with %v validators in %v", len(bigtable.LastAttestationCache), time.Since(t))
 
 	}
-	bigtable.lastAttestationCacheMux.Unlock()
+	bigtable.LastAttestationCacheMux.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
@@ -631,7 +631,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		for validator, inclusions := range validators {
 
 			epoch := utils.EpochOfSlot(uint64(attestedSlot))
-			bigtable.lastAttestationCacheMux.Lock()
+			bigtable.LastAttestationCacheMux.Lock()
 			if len(inclusions) == 0 { // for missed attestations we write the max block number which will yield a cell ts of 0
 				inclusions = append(inclusions, MAX_CL_BLOCK_NUMBER)
 			}
@@ -645,16 +645,16 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 				keysInclusionSlot = append(keysInclusionSlot, key)
 				writes++
 
-				if inclusionSlot != MAX_CL_BLOCK_NUMBER && uint64(attestedSlot) > bigtable.lastAttestationCache[uint64(validator)] {
+				if inclusionSlot != MAX_CL_BLOCK_NUMBER && uint64(attestedSlot) > bigtable.LastAttestationCache[uint64(validator)] {
 					mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((attestedSlot)*1000), []byte{})
-					bigtable.lastAttestationCache[uint64(validator)] = uint64(attestedSlot)
+					bigtable.LastAttestationCache[uint64(validator)] = uint64(attestedSlot)
 					mutLastAttestationSlotCount++
 
 					if mutLastAttestationSlotCount == MAX_BATCH_MUTATIONS {
 						mutStart := time.Now()
 						err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
 						if err != nil {
-							bigtable.lastAttestationCacheMux.Unlock()
+							bigtable.LastAttestationCacheMux.Unlock()
 							return fmt.Errorf("error applying last attestation slot mutations: %v", err)
 						}
 						mutLastAttestationSlot = gcp_bigtable.NewMutation()
@@ -667,11 +667,11 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 					attstart := time.Now()
 					errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
 					if err != nil {
-						bigtable.lastAttestationCacheMux.Unlock()
+						bigtable.LastAttestationCacheMux.Unlock()
 						return err
 					}
 					for _, err := range errs {
-						bigtable.lastAttestationCacheMux.Unlock()
+						bigtable.LastAttestationCacheMux.Unlock()
 						return err
 					}
 					logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
@@ -680,7 +680,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 				}
 
 			}
-			bigtable.lastAttestationCacheMux.Unlock()
+			bigtable.LastAttestationCacheMux.Unlock()
 		}
 	}
 

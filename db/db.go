@@ -908,20 +908,26 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 		return fmt.Errorf("error retrieving current validator state set: %v", err)
 	}
 
-	lastAttestationSlots, err := BigtableClient.GetLastAttestationSlots([]uint64{})
-	if err != nil {
-		return fmt.Errorf("error getting validator last attestation slots from bigtable: %w", err)
+	for ; ; time.Sleep(time.Second) { // wait till the last attestation in memory cache has been populated by the exporter
+		BigtableClient.LastAttestationCacheMux.Lock()
+		if BigtableClient.LastAttestationCache != nil {
+			BigtableClient.LastAttestationCacheMux.Unlock()
+			break
+		}
+		BigtableClient.LastAttestationCacheMux.Unlock()
+		logger.Infof("waiting until LastAttestation in memory cache is available")
 	}
 
 	currentStateMap := make(map[uint64]*types.Validator, len(currentState))
 	latestBlock := uint64(0)
-
+	BigtableClient.LastAttestationCacheMux.Lock()
 	for _, v := range currentState {
-		if lastAttestationSlots[v.Index] > latestBlock {
-			latestBlock = lastAttestationSlots[v.Index]
+		if BigtableClient.LastAttestationCache[v.Index] > latestBlock {
+			latestBlock = BigtableClient.LastAttestationCache[v.Index]
 		}
 		currentStateMap[v.Index] = v
 	}
+	BigtableClient.LastAttestationCacheMux.Unlock()
 
 	thresholdSlot := uint64(0)
 	if latestBlock >= 64 {
@@ -1007,8 +1013,9 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 			// WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline'
 			// ELSE 'active_online'
 			// END
-
-			offline := lastAttestationSlots[v.Index] < thresholdSlot
+			BigtableClient.LastAttestationCacheMux.Lock()
+			offline := BigtableClient.LastAttestationCache[v.Index] < thresholdSlot
+			BigtableClient.LastAttestationCacheMux.Unlock()
 
 			if v.ExitEpoch <= latestEpoch && v.Slashed {
 				v.Status = "slashed"
