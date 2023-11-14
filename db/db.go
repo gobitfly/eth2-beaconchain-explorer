@@ -919,15 +919,14 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 	}
 
 	currentStateMap := make(map[uint64]*types.Validator, len(currentState))
-	latestBlock := uint64(0)
-	BigtableClient.LastAttestationCacheMux.Lock()
 	for _, v := range currentState {
-		if BigtableClient.LastAttestationCache[v.Index] > latestBlock {
-			latestBlock = BigtableClient.LastAttestationCache[v.Index]
-		}
 		currentStateMap[v.Index] = v
 	}
-	BigtableClient.LastAttestationCacheMux.Unlock()
+
+	latestBlock, err := BigtableClient.GetGlobalLastAttestationSlot()
+	if err != nil {
+		return fmt.Errorf("error retrieving global last attestation slot: %w", err)
+	}
 
 	thresholdSlot := uint64(0)
 	if latestBlock >= 64 {
@@ -997,7 +996,7 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 			)
 
 			if err != nil {
-				logger.Errorf("error saving new validator %v: %v", v.Index, err)
+				return fmt.Errorf("error saving new validator %v: %v", v.Index, err)
 			}
 		} else {
 			// status                     =

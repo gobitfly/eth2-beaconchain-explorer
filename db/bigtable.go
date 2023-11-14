@@ -76,6 +76,8 @@ type Bigtable struct {
 	v2SchemaCutOffEpoch uint64
 
 	machineMetricsQueuedWritesChan chan (types.BulkMutation)
+
+	globalLastAttestationSlot types.Slot
 }
 
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
@@ -620,10 +622,18 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 			bigtable.LastAttestationCacheMux.Unlock()
 			return err
 		}
+
+		for _, lastAttestationSlot := range bigtable.LastAttestationCache {
+			if types.Slot(lastAttestationSlot) > bigtable.globalLastAttestationSlot {
+				bigtable.globalLastAttestationSlot = types.Slot(lastAttestationSlot)
+			}
+		}
 		logger.Infof("initialized in memory last attestation slot cache with %v validators in %v", len(bigtable.LastAttestationCache), time.Since(t))
 
 	}
 	bigtable.LastAttestationCacheMux.Unlock()
+
+	newGlobalLastAttestationSlot := bigtable.globalLastAttestationSlot
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
@@ -656,6 +666,10 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 					bigtable.LastAttestationCache[uint64(validator)] = uint64(attestedSlot)
 					mutLastAttestationSlotCount++
 
+					if attestedSlot > newGlobalLastAttestationSlot {
+						newGlobalLastAttestationSlot = attestedSlot
+					}
+
 					if mutLastAttestationSlotCount == MAX_BATCH_MUTATIONS {
 						mutStart := time.Now()
 						err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:lastAttestationSlot", bigtable.chainId), mutLastAttestationSlot)
@@ -687,6 +701,19 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		}
 	}
 
+	// store the global last attestation slot in a separate row
+	if newGlobalLastAttestationSlot > bigtable.globalLastAttestationSlot {
+		logger.Infof("incrementing global last attestation slot from %d to %d", bigtable.globalLastAttestationSlot, newGlobalLastAttestationSlot)
+		mut := gcp_bigtable.NewMutation()
+		mut.Set(ATTESTATIONS_FAMILY, "s", gcp_bigtable.Timestamp(0), []byte(fmt.Sprintf("%d", newGlobalLastAttestationSlot)))
+		err := bigtable.tableValidators.Apply(ctx, fmt.Sprintf("%s:globalLastAttestationSlot", bigtable.chainId), mut)
+		if err != nil {
+			return fmt.Errorf("error applying global last attestation slot mutation: %v", err)
+		}
+
+		bigtable.globalLastAttestationSlot = newGlobalLastAttestationSlot
+	}
+
 	logger.Infof("exported %v attestations to bigtable in %v", mutsInclusionSlot.Len(), time.Since(start))
 	return nil
 }
@@ -704,6 +731,28 @@ func (bigtable *Bigtable) SetLastAttestationSlot(validator uint64, lastAttestati
 	}
 
 	return nil
+}
+
+// Retrieves the last seen global last attestation slot
+func (bigtable *Bigtable) GetGlobalLastAttestationSlot() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	row, err := bigtable.tableValidators.ReadRow(ctx, fmt.Sprintf("%s:globalLastAttestationSlot", bigtable.chainId))
+
+	if err != nil {
+		return 0, err
+	}
+
+	globalLastAttestationSlot := uint64(0)
+
+	if row == nil || row[ATTESTATIONS_FAMILY] == nil || len(row[ATTESTATIONS_FAMILY]) == 0 {
+		return globalLastAttestationSlot, nil
+	}
+
+	val := row[ATTESTATIONS_FAMILY][0].Value
+
+	return strconv.ParseUint(string(val), 10, 64)
 }
 
 func (bigtable *Bigtable) SaveProposal(block *types.Block) error {
