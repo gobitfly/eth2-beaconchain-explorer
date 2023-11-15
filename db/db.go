@@ -996,7 +996,7 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 			)
 
 			if err != nil {
-				return fmt.Errorf("error saving new validator %v: %v", v.Index, err)
+				return fmt.Errorf("error saving new validator %v: %w", v.Index, err)
 			}
 		} else {
 			// status                     =
