@@ -216,6 +216,10 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		data.WithdrawalsTotal = previousDayData.WithdrawalsTotal + data.Withdrawals
 		data.WithdrawalsAmountTotal = previousDayData.WithdrawalsAmountTotal + data.WithdrawalsAmount
 
+		// update deposits total
+		data.DepositsTotal = previousDayData.DepositsTotal + data.Deposits
+		data.DepositsAmountTotal = previousDayData.DepositsAmountTotal + data.DepositsAmount
+
 		if statisticsData1d != nil && len(statisticsData1d) > index {
 			data.ClPerformance1d = data.ClRewardsGWeiTotal - statisticsData1d[index].ClRewardsGWeiTotal
 			data.ElPerformance1d = data.ElRewardsWeiTotal.Sub(statisticsData1d[index].ElRewardsWeiTotal)
@@ -304,7 +308,9 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 			"attester_slashings",
 			"proposer_slashings",
 			"deposits",
+			"deposits_total",
 			"deposits_amount",
+			"deposits_amount_total",
 			"withdrawals",
 			"withdrawals_total",
 			"withdrawals_amount",
@@ -342,7 +348,9 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 				validatorData[i].AttesterSlashings,
 				validatorData[i].ProposerSlashing,
 				validatorData[i].Deposits,
+				validatorData[i].DepositsTotal,
 				validatorData[i].DepositsAmount,
+				validatorData[i].DepositsAmountTotal,
 				validatorData[i].Withdrawals,
 				validatorData[i].WithdrawalsTotal,
 				validatorData[i].WithdrawalsAmount,
@@ -1147,7 +1155,9 @@ func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error
 		COALESCE(attester_slashings, 0) AS attester_slashings,
 		COALESCE(proposer_slashings, 0) AS proposer_slashings,
 		COALESCE(deposits, 0) AS deposits,
+		COALESCE(deposits_total, 0) AS deposits_total,
 		COALESCE(deposits_amount, 0) AS deposits_amount,
+		COALESCE(deposits_amount_total, 0) AS deposits_amount_total,
 		COALESCE(withdrawals, 0) AS withdrawals,
 		COALESCE(withdrawals_total, 0) AS withdrawals_total,
 		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
