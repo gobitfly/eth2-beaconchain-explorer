@@ -132,6 +132,7 @@ func (bigtable *Bigtable) ClearByPrefix(table string, family, prefix string, dry
 			keysCount++
 		}
 
+		// we still need to commit in batches here (instead of just calling WriteBulk only once) as loading all keys to be deleted in memory first is not feasible as the delete function could be used to delete millions of rows
 		if mutsDelete.Len() == MAX_BATCH_MUTATIONS {
 			logrus.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
 			if !dryRun {
