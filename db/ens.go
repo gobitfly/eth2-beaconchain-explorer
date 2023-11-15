@@ -491,6 +491,16 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
+		if err.Error() == "unregistered name" || err.Error() == "no address" {
+			// the given name is not available anymore, we can remove it from the db (if it is there)
+			err = removeEnsName(client, name)
+			if err != nil {
+				return fmt.Errorf("error removing ens name [%v]: %w", name, err)
+			}
+
+			return nil
+		}
+
 		return fmt.Errorf("error could not resolve name [%v]: %w", name, err)
 	}
 
@@ -603,5 +613,21 @@ func GetEnsNamesForAddress(addressMap map[string]string) error {
 	for _, foundling := range dbAddresses {
 		addressMap[string(foundling.Address)] = foundling.EnsName
 	}
+	return nil
+}
+
+func removeEnsName(client *ethclient.Client, name string) error {
+	_, err := WriterDb.Exec(`
+	DELETE FROM ens 
+	WHERE 
+		ens_name = $1
+	;`, name)
+	if err != nil && strings.Contains(fmt.Sprintf("%v", err), "invalid byte sequence") {
+		logger.Warnf("could not delete ens name [%v]: %v", name, err)
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error deleting ens name [%v]: %v", name, err)
+	}
+	logger.Infof("Ens name removed from db: %v", name)
 	return nil
 }
