@@ -186,7 +186,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 			ValidatorIndex: uint64(data.ValidatorIndex),
 		}
 
-		if index < len(statisticsData1d) && day > 0 {
+		if index < len(statisticsData1d) {
 			previousDayData = statisticsData1d[index]
 		}
 
