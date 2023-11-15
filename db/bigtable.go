@@ -694,7 +694,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		}
 	}
 
-	err := bigtable.WriteBulk(mutsInclusionSlot, bigtable.tableValidators, MAX_BATCH_MUTATIONS)
+	err := bigtable.WriteBulk(mutsInclusionSlot, bigtable.tableValidatorsHistory, MAX_BATCH_MUTATIONS)
 
 	if err != nil {
 		return fmt.Errorf("error writing attestation inclusion slot mutations: %v", err)
