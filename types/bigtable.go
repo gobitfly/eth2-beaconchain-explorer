@@ -57,15 +57,16 @@ type GasNowHistory struct {
 	Rapid    *big.Int
 }
 
-type GetBlockTimings struct {
-	Headers  time.Duration
-	Receipts time.Duration
-	Traces   time.Duration
-}
-
 type BulkMutations struct {
 	Keys []string
 	Muts []*gcp_bigtable.Mutation
+}
+
+func NewBulkMutations(length int) *BulkMutations {
+	return &BulkMutations{
+		Keys: make([]string, 0, length),
+		Muts: make([]*gcp_bigtable.Mutation, 0, length),
+	}
 }
 
 func (bulkMutations *BulkMutations) Add(key string, mut *gcp_bigtable.Mutation) {
