@@ -1043,7 +1043,8 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&proposals, `
 		SELECT validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks
 		FROM validator_stats
-		WHERE validatorindex = ANY($1) AND (proposed_blocks IS NOT NULL OR missed_blocks IS NOT NULL OR orphaned_blocks IS NOT NULL)
+		WHERE validatorindex = ANY($1) 
+		AND (proposed_blocks > 0 OR missed_blocks > 0 OR orphaned_blocks > 0)
 		ORDER BY day DESC`, filter)
 	if err != nil {
 		utils.LogError(err, "error retrieving validator_stats", 0, errFieldMap)
