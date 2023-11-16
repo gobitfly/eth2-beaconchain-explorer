@@ -623,6 +623,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.ExecutedAttestationsCount = 0
 				validatorPageData.UnmissedAttestationsPercentage = 1
 			} else {
+				if attestationStats.MissedAttestations > validatorPageData.AttestationsCount {
+					// save guard against negative values (should never happen but happened once because of wrong data)
+					attestationStats.MissedAttestations = validatorPageData.AttestationsCount
+				}
 				validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
 				validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
 				validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
