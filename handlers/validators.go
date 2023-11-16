@@ -229,7 +229,7 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	return res, nil
 }
 
-// ValidatorsData returns all validators and their balances
+// ValidatorsData returns all validators and basic information about them based on a StateFilter
 func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
@@ -243,9 +243,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsData
-	qry := ""
-	// if dataQuery.Search == "" && dataQuery.StateFilter == "" {
-	qry = fmt.Sprintf(`
+	qry := fmt.Sprintf(`
 		SELECT  
 		validators.validatorindex,  
 		validators.pubkey,  
@@ -268,87 +266,87 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	indices := make([]uint64, len(validators))
-	for i, validator := range validators {
-		indices[i] = validator.ValidatorIndex
-	}
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	for _, validator := range validators {
-		for balanceIndex, balance := range balances {
-			if len(balance) == 0 {
-				continue
-			}
-			if validator.ValidatorIndex == balanceIndex {
-				validator.CurrentBalance = balance[0].Balance
-				validator.EffectiveBalance = balance[0].EffectiveBalance
-			}
-		}
-	}
-
-	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(indices)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator last attestation slot data")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	for _, validator := range validators {
-		validator.LastAttestationSlot = int64(lastAttestationSlots[validator.ValidatorIndex])
-	}
-
-	isAll := true
-
 	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			[]interface{}{
-				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(utils.Config.Frontend.ClCurrencyDivisor)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
-				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(utils.Config.Frontend.ClCurrencyDivisor)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
-			},
-			v.State,
-			[]interface{}{
-				v.ActivationEpoch,
-				utils.EpochToTime(v.ActivationEpoch).Unix(),
-			},
+	if len(validators) > 0 {
+		indices := make([]uint64, len(validators))
+		for i, validator := range validators {
+			indices[i] = validator.ValidatorIndex
+		}
+		balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
+		if err != nil {
+			logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance data")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 
-		if v.ExitEpoch != 9223372036854775807 {
-			tableData[i] = append(tableData[i], []interface{}{
-				v.ExitEpoch,
-				utils.EpochToTime(v.ExitEpoch).Unix(),
-			})
-		} else {
-			tableData[i] = append(tableData[i], nil)
+		for _, validator := range validators {
+			for balanceIndex, balance := range balances {
+				if len(balance) == 0 {
+					continue
+				}
+				if validator.ValidatorIndex == balanceIndex {
+					validator.CurrentBalance = balance[0].Balance
+					validator.EffectiveBalance = balance[0].EffectiveBalance
+				}
+			}
 		}
 
-		if v.WithdrawableEpoch != 9223372036854775807 {
-			tableData[i] = append(tableData[i], []interface{}{
-				v.WithdrawableEpoch,
-				utils.EpochToTime(v.WithdrawableEpoch).Unix(),
-			})
-		} else {
-			tableData[i] = append(tableData[i], nil)
+		lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(indices)
+		if err != nil {
+			logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator last attestation slot data")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		for _, validator := range validators {
+			validator.LastAttestationSlot = int64(lastAttestationSlots[validator.ValidatorIndex])
 		}
 
-		if v.LastAttestationSlot > 0 {
-			tableData[i] = append(tableData[i], []interface{}{
-				v.LastAttestationSlot,
-				utils.SlotToTime(uint64(v.LastAttestationSlot)).Unix(),
-			})
-		} else {
-			tableData[i] = append(tableData[i], nil)
+		for i, v := range validators {
+			tableData[i] = []interface{}{
+				fmt.Sprintf("%x", v.PublicKey),
+				fmt.Sprintf("%v", v.ValidatorIndex),
+				[]interface{}{
+					fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(utils.Config.Frontend.ClCurrencyDivisor)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
+					fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(utils.Config.Frontend.ClCurrencyDivisor)*price.GetPrice(utils.Config.Frontend.ClCurrency, currency), currency),
+				},
+				v.State,
+				[]interface{}{
+					v.ActivationEpoch,
+					utils.EpochToTime(v.ActivationEpoch).Unix(),
+				},
+			}
+
+			if v.ExitEpoch != 9223372036854775807 {
+				tableData[i] = append(tableData[i], []interface{}{
+					v.ExitEpoch,
+					utils.EpochToTime(v.ExitEpoch).Unix(),
+				})
+			} else {
+				tableData[i] = append(tableData[i], nil)
+			}
+
+			if v.WithdrawableEpoch != 9223372036854775807 {
+				tableData[i] = append(tableData[i], []interface{}{
+					v.WithdrawableEpoch,
+					utils.EpochToTime(v.WithdrawableEpoch).Unix(),
+				})
+			} else {
+				tableData[i] = append(tableData[i], nil)
+			}
+
+			if v.LastAttestationSlot > 0 {
+				tableData[i] = append(tableData[i], []interface{}{
+					v.LastAttestationSlot,
+					utils.SlotToTime(uint64(v.LastAttestationSlot)).Unix(),
+				})
+			} else {
+				tableData[i] = append(tableData[i], nil)
+			}
+
+			tableData[i] = append(tableData[i], v.Slashed)
+
+			tableData[i] = append(tableData[i], html.EscapeString(v.Name))
 		}
-
-		tableData[i] = append(tableData[i], v.Slashed)
-
-		tableData[i] = append(tableData[i], html.EscapeString(v.Name))
 	}
 
 	countTotal := uint64(0)
@@ -384,13 +382,6 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		RecordsTotal:    countTotal,
 		RecordsFiltered: countFiltered,
 		Data:            tableData,
-	}
-
-	if !isAll && validators != nil {
-		data.RecordsFiltered = validators[0].TotalCount
-	}
-	if validators == nil {
-		data.RecordsFiltered = 0
 	}
 
 	err = json.NewEncoder(w).Encode(data)
