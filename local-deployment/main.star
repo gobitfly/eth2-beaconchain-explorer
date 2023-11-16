@@ -61,9 +61,9 @@ def run(plan, args):
 		all_cl_client_contexts.append(participant.cl_client_context)
 
 	fuzz_target = "http://{0}:{1}".format(
-    all_el_client_contexts[0].ip_addr,
-    all_el_client_contexts[0].rpc_port_num,
-  )
+		all_el_client_contexts[0].ip_addr,
+		all_el_client_contexts[0].rpc_port_num,
+	)
 
 	if args["start_tx_spammer"]:
 		plan.print("Launching transaction spammer")

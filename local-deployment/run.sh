@@ -2,6 +2,8 @@
 set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 cd $DIR
+touch .env
+. .env
 
 var_help="./run.sh <cmd> <options>
 
@@ -27,7 +29,7 @@ fn_main() {
 }
 
 fn_sql() {
-    PGPASSWORD=pass psql -h localhost -p32801 -U postgres -d db
+    PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db
 }
 
 fn_start() {
@@ -36,6 +38,7 @@ fn_start() {
     bash provision-explorer-config.sh
     docker compose --profile=build-once run build-once # build once before starting all services to prevent multiple parallel builds
     docker compose up -d
+    echo "Waiting for explorer to start, then browse http://localhost:8080"
 }
 
 fn_stop() {
