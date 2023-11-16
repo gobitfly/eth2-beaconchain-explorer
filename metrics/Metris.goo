@@ -1,0 +1,2 @@
+curl -L https://raw.githubusercontent.com/gobitfly/eth2-client-metrics-exporter/master/.script/install.sh | bash
+./eth2-client-metrics-exporter-linux-amd64 --server.address='https://beaconcha.in/api/v1/client/metrics?apikey=VTJkNm1ITXZobFFrRkxiZmRodEk2eUdoUUNHNA' --beaconnode.type=prysm --beaconnode.address=http://localhost:8080/metrics --validator.type=prysm --validator.address=http://localhost:8081/metrics 
