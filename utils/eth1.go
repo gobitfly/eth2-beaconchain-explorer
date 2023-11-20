@@ -106,9 +106,9 @@ func FormatInOutSelf(address, from, to []byte) template.HTML {
 
 func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
 	if link {
-		return formatAddress(address, token, name, isContract, "address", "", 17, 0, false)
+		return formatAddress(address, token, name, isContract, "address", 17, 0, false)
 	}
-	return formatAddress(address, token, name, isContract, "", "", 17, 0, false)
+	return formatAddress(address, token, name, isContract, "", 17, 0, false)
 }
 
 func FormatBuilder(pubkey []byte) template.HTML {
@@ -144,16 +144,30 @@ func FormatBlobVersionedHash(h []byte) template.HTML {
 }
 
 func FormatAddressWithLimits(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
-	return formatAddress(address, nil, name, isContract, link, "", digitsLimit, nameLimit, addCopyToClipboard)
+	return formatAddress(address, nil, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
 }
 
-func FormatAddressAll(address []byte, name string, isContract bool, link string, urlFragment string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
-	return formatAddress(address, nil, name, isContract, link, urlFragment, digitsLimit, nameLimit, addCopyToClipboard)
+func FormatAddressAll(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	return formatAddress(address, nil, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
+}
+
+// wrapper function of FormatAddressWithLimits used to format addresses in the address page's tables for txs
+//
+// no link to the given txAddress will be added if it is mainAddress of the page is formatted
+//
+//	otherwise, "address" will be passed as link
+func FormatAddressWithLimitsInAddressPageTable(mainAddress []byte, txAddress []byte, name string, isContract bool, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	link := "address"
+	if bytes.Equal(mainAddress, txAddress) {
+		link = ""
+	}
+
+	return FormatAddressWithLimits(txAddress, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
 }
 
 // digitsLimit will limit the address output to that amount of total digits (including 0x & …)
 // nameLimit will limit the name, if existing to giving amount of letters, a limit of 0 will display the full name
-func formatAddress(address []byte, token []byte, name string, isContract bool, link string, urlFragment string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+func formatAddress(address []byte, token []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
 	name = template.HTMLEscapeString(name)
 
 	// we need at least 5 digits for 0x & …
@@ -196,15 +210,16 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		ret = "<i class=\"fas fa-file-contract mr-1\"></i>" + ret
 	}
 
-	// not a link
-	if len(link) < 1 {
+	if len(link) == 0 {
+		// not a link
 		ret += fmt.Sprintf(`<span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s</span>`, tooltip, name)
 	} else {
-		// link & token
 		if token != nil {
+			// link & token
 			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
-		} else { // just link
-			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x`+urlFragment+`" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+		} else {
+			// just link
+			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
 		}
 	}
 
@@ -213,7 +228,6 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		ret += ` <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="` + addressString + `"></i>`
 	}
 
-	// done
 	return template.HTML(ret)
 }
 
