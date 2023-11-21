@@ -8,6 +8,11 @@ x-service: &default-service
     - /tmp/go-cache:/go
     - /tmp/go-build-cache:/root/.cache/go-build
 services:
+  build-once:
+    <<: *default-service
+    profiles:
+      - build-once
+    command: /bin/bash -c "git config --global --add safe.directory '*' && make -B all"
   indexer:
     <<: *default-service
     command: go run ./cmd/explorer -config /app/local-deployment/config.yml

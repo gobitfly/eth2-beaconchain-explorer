@@ -41,7 +41,6 @@ type PageData struct {
 	DepositContract       string
 	Rates                 *Rates
 	InfoBanner            *template.HTML
-	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
 	ChainConfig         ClChainConfig
 	Lang                string

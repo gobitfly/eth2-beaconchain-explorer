@@ -85,7 +85,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			logger.Errorf("error retrieving entry count of given block or state data: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	}

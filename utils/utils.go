@@ -1736,6 +1736,11 @@ func GetCurrentFuncName() string {
 	return runtime.FuncForPC(pc).Name()
 }
 
+func GetParentFuncName() string {
+	pc, _, _, _ := runtime.Caller(2)
+	return runtime.FuncForPC(pc).Name()
+}
+
 // Returns true if the given block number is 0 and the timestamp matches MinGenesisTime
 // This is only true for networks that launch with PoS at block 0
 func IsPoSBlock0(number uint64, ts int64) bool {

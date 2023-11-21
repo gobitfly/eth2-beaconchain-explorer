@@ -305,7 +305,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots([]uint64{index})
 	if err != nil {
 		utils.LogError(err, "error getting last attestation slots from bigtable", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
@@ -623,6 +623,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.ExecutedAttestationsCount = 0
 				validatorPageData.UnmissedAttestationsPercentage = 1
 			} else {
+				if attestationStats.MissedAttestations > validatorPageData.AttestationsCount {
+					// save guard against negative values (should never happen but happened once because of wrong data)
+					attestationStats.MissedAttestations = validatorPageData.AttestationsCount
+				}
 				validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
 				validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
 				validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
@@ -1344,7 +1348,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 			)`, index)
 	if err != nil {
 		utils.LogError(err, "error getting totalCount of validator-slashings from db", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -1592,8 +1596,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	maxPages := 10
 
 	vars := mux.Vars(r)
-	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+	index, err := strconv.ParseUint(vars["index"], 10, 31)
+	if err != nil {
 		logger.Warnf("error parsing validator index: %v", err)
 		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
@@ -1709,7 +1713,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			} else if len(tableData) >= pageLength {
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+			tableData = append(tableData, incomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
 		}
 	}
 
@@ -1750,7 +1754,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
+			tableData = append(tableData, incomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
 
 		}
 	}
@@ -1821,7 +1825,7 @@ func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (m
 	return withdrawalMap, incomeDetails, err
 }
 
-func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
+func incomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
 	events := template.HTML("")
 	if income.AttestationSourcePenalty > 0 && income.AttestationTargetPenalty > 0 {
 		events += utils.FormatAttestationStatusShort(2)
@@ -1845,7 +1849,7 @@ func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdra
 	rewards := income.TotalClRewards()
 	return []interface{}{
 		utils.FormatEpoch(epoch),
-		utils.FormatBalanceChangeFormated(&rewards, currency, income),
+		utils.FormatBalanceChangeFormatted(&rewards, currency, income),
 		template.HTML(""),
 		template.HTML(events),
 	}
@@ -1886,9 +1890,10 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Request came with a validator index number
-		index, err = strconv.ParseUint(vars["index"], 10, 64)
-		// Request is not a valid index number
-		if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		index, err = strconv.ParseUint(vars["index"], 10, 31)
+
+		if err != nil {
+			// Request is not a valid index number
 			logger.Warnf("error parsing validator index: %v", err)
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
@@ -1896,6 +1901,17 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errFields["index"] = index
+
+	// Check if validator index is available
+	var doesIndexExist bool
+	err = db.ReaderDb.Get(&doesIndexExist, "SELECT EXISTS (SELECT validatorindex FROM validators WHERE validatorindex = $1)", index)
+	if err != nil || !doesIndexExist {
+		if err != nil {
+			utils.LogError(err, "error checking for index in validators table", 0, errFields)
+		}
+		validatorNotFound(data, w, r, vars, "/stats")
+		return
+	}
 
 	SetPageDataTitle(data, fmt.Sprintf("Validator %v Daily Statistics", index))
 	data.Meta.Path = fmt.Sprintf("/validator/%v/stats", index)

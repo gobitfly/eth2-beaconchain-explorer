@@ -14,6 +14,14 @@ echo "Postgres port is $POSTGRES_PORT"
 LBT_PORT=$(kurtosis enclave inspect my-testnet | grep 9000/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/tcp\:\/\/127.0.0.1\://' | tail -n 1)
 echo "Little bigtable port is $LBT_PORT"
 
+cat <<EOF > .env
+CL_PORT=$CL_PORT
+EL_PORT=$EL_PORT
+REDIS_PORT=$REDIS_PORT
+POSTGRES_PORT=$POSTGRES_PORT
+LBT_PORT=$LBT_PORT
+EOF
+
 touch config.yml
 
 cat >config.yml <<EOL

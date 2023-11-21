@@ -51,8 +51,8 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	metadata, err := db.BigtableClient.GetMetadataForAddress(addressBytes, 0, db.ECR20TokensPerAddressLimit)
 	if err != nil {
-		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Errorf("error retrieving balances for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	g := new(errgroup.Group)
@@ -310,7 +310,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -337,7 +337,7 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -364,7 +364,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -385,7 +385,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	withdrawals, nextPageToken, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, q.Get("pageToken"))
 	if err != nil {
 		utils.LogError(err, "error getting address withdrawals data", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -408,7 +408,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -435,7 +435,7 @@ func Eth1AddressBlobTransactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -462,7 +462,7 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -489,7 +489,7 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -515,7 +515,7 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -541,7 +541,7 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -564,8 +564,8 @@ func lowerAddressFromRequest(w http.ResponseWriter, r *http.Request) (string, er
 }
 
 func handleNotFoundJson(address string, w http.ResponseWriter, r *http.Request, err error) {
-	logger.Errorf("error getting addres for ENS name [%v] not found for %v route: %v", address, r.URL.String(), err)
-	http.Error(w, "Invalid ENS name", http.StatusServiceUnavailable)
+	logger.Errorf("error getting address for ENS name [%v] not found for %v route: %v", address, r.URL.String(), err)
+	http.Error(w, "Invalid ENS name", http.StatusInternalServerError)
 }
 
 func handleNotFoundHtml(w http.ResponseWriter, r *http.Request) {

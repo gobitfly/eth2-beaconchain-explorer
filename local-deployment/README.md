@@ -61,6 +61,10 @@ docker-compose up -d
 ```
 You can start / stop the exporter submodules using `docker-compose`
 
+# Convenience-script run.sh
+
+The `run.sh` script in this directory can be used to start and stop everything. Just run `./run.sh start` to start the local chain and the explorer, then browse http://localhost:8080 to see it in action. You can run `./run.sh sql` to explore the sql-database. Everything can be stopped and cleaned up with `./run.sh stop`.
+
 # Exit validators
 Exiting individual validators can be done using the provided `exit_validator.sh` script. Requires [https://github.com/wealdtech/ethdo](ethdo) to be available on the path.
 ```

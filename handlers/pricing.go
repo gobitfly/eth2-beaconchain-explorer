@@ -31,7 +31,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -39,7 +39,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 		subscription, err := db.StripeGetUserSubscription(data.User.UserID, utils.GROUP_API)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		pageData.Subscription = subscription
@@ -75,7 +75,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -83,7 +83,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 		subscription, err := db.StripeGetUserSubscription(data.User.UserID, utils.GROUP_MOBILE)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		pageData.Subscription = subscription
@@ -91,7 +91,7 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 		premiumSubscription, err := db.GetUserPremiumSubscription(data.User.UserID)
 		if err != nil && err != sql.ErrNoRows {
 			logger.Errorf("error retrieving user subscriptions %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		pageData.ActiveMobileStoreSub = premiumSubscription.Active
