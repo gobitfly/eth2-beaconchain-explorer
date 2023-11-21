@@ -565,12 +565,14 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 	rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("d"))
 
 	if start > 0 {
-		startKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(start))
-		endKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(start-limit))
-		if limit >= start {
-			// don't include the broken block 0 in the range
-			endKey = fmt.Sprintf("%s:B:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(1)) // add \x00 to make the range inclusive
+		// block 0 cannot be included in the range as it is padded incorrectly (will be fetched last, see below)
+		limitedEnd := uint64(1)
+		if start > limit {
+			limitedEnd = start - limit
 		}
+
+		startKey := fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(start))
+		endKey := fmt.Sprintf("%s:B:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(limitedEnd)) // add \x00 to make the range inclusive
 
 		rowRange := gcp_bigtable.NewRange(startKey, endKey)
 
@@ -591,6 +593,11 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 		if !rowHandler(row) {
 			return nil, fmt.Errorf("error could not read block 0")
 		}
+	}
+
+	for _, b := range blocks {
+		// print block number for debugging
+		fmt.Println(b.Number)
 	}
 
 	return blocks, nil
