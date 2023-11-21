@@ -84,7 +84,7 @@ type additionalSlotData struct {
 	ProposerName string `db:"name"`
 }
 
-func getSlotByTimestamp(t *timestamp.Timestamp) uint64 {
+func getSlotByBlockTimestamp(t *timestamp.Timestamp) uint64 {
 	ts := uint64(t.AsTime().Unix())
 
 	if ts >= utils.Config.Chain.GenesisTimestamp {
@@ -155,7 +155,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		startSlot := uint64(math.MaxUint64)
 		endSlot := uint64(0)
 		for _, b := range blocks {
-			s := getSlotByTimestamp(b.GetTime())
+			s := getSlotByBlockTimestamp(b.GetTime())
 			if s < math.MaxUint64 {
 				foundAtLeastOneValidSlot = true
 				if s < startSlot {
