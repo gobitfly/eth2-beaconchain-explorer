@@ -87,7 +87,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 
 		blockSlot := uint64(0)
 		if !isPosBlock0 {
-			blockSlot = (uint64(eth1BlockPageData.Ts.Unix()) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
+			blockSlot = utils.TimeToSlot(uint64(eth1BlockPageData.Ts.Unix()))
 		}
 
 		// retrieve consensus data
