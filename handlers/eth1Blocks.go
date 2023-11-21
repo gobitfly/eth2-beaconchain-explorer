@@ -182,16 +182,14 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		blockNumber := b.GetNumber()
 		ts := b.GetTime().AsTime().Unix()
 
-		// special handling for networks that launch with PoS on block 0
+		// special handling for networks that launch with merged PoS on block 0
 		isPoSBlock0 := utils.IsPoSBlock0(blockNumber, ts)
 
 		var sData *additionalSlotData
 		if slotData != nil {
 			if uint64(ts) >= utils.Config.Chain.GenesisTimestamp || isPoSBlock0 {
-				slot := uint64(0)
-				if uint64(ts) >= utils.Config.Chain.GenesisTimestamp {
-					slot = (uint64(ts) - utils.Config.Chain.GenesisTimestamp) / utils.Config.Chain.ClConfig.SecondsPerSlot
-				}
+				// block is part of a slot, calculate slot via timestamp
+				slot := utils.TimeToSlot(uint64(ts))
 				if val, ok := slotData[slot]; ok {
 					sData = val
 				} else {
