@@ -427,12 +427,13 @@ func getBlockHandler(blocks *[]*types.Eth1BlockIndexed) func(gcp_bigtable.Row) b
 	}
 }
 
-// GetFullBlocksDescending streams blocks ranging from high to low (both borders are inclusive) in the correct order via a channel.
+// GetFullBlocksDescending streams blocks ranging from high to low (both borders are inclusive) in the correct descending order via a channel.
+//
 // Special handling for block 0 is implemented.
 //
-// stream: channel the function will use for streaming
-// high: highest (max) block number
-// low: lowest (min) block number
+//   - stream: channel the function will use for streaming
+//   - high: highest (max) block number
+//   - low: lowest (min) block number
 func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block, high, low uint64) error {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
@@ -450,11 +451,17 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 		return fmt.Errorf("invalid block range provided (high: %v, low: %v)", high, low)
 	}
 
-	if low > 0 && high > 0 {
-		highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
-		lowKey := fmt.Sprintf("%s:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(low)) // add \x00 to make the range inclusive
+	if high > 0 {
+		limitedLow := low
+		if limitedLow == 0 {
+			// block 0 cannot be included in the range as it is padded incorrectly (will be fetched last, see below)
+			limitedLow = 1
+		}
 
-		limit := high - low + 1
+		highKey := fmt.Sprintf("%s:%s", bigtable.chainId, reversedPaddedBlockNumber(high))
+		lowKey := fmt.Sprintf("%s:%s\x00", bigtable.chainId, reversedPaddedBlockNumber(limitedLow)) // add \x00 to make the range inclusive
+
+		limit := high - limitedLow + 1
 
 		rowRange := gcp_bigtable.NewRange(highKey, lowKey)
 		rowFilter := gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter("data"))
