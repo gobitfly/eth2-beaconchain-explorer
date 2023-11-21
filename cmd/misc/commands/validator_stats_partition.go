@@ -68,20 +68,20 @@ func showHelp() {
 }
 
 func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationTableName string, numberOfPartitions int) error {
-	if !s.DryRun {
-		tableDefFuncExists, err := existsPGGetTableDef(db.WriterDb)
+	tableDefFuncExists, err := existsPGGetTableDef(db.WriterDb)
+	if err != nil {
+		return errors.Wrap(err, "error checking if pg_get_tabledef function exists")
+	}
+
+	if !tableDefFuncExists {
+		logrus.Infof("pg_get_tabledef function does not exist, installing it now")
+		err = installPGGetTableDef(db.WriterDb)
 		if err != nil {
-			return errors.Wrap(err, "error checking if pg_get_tabledef function exists")
+			return errors.Wrap(err, "error installing pg_get_tabledef function")
 		}
+	}
 
-		if !tableDefFuncExists {
-			logrus.Infof("pg_get_tabledef function does not exist, installing it now")
-			err = installPGGetTableDef(db.WriterDb)
-			if err != nil {
-				return errors.Wrap(err, "error installing pg_get_tabledef function")
-			}
-		}
-
+	if !s.DryRun {
 		if s.DropExisting {
 			_, err := db.WriterDb.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s;", destinationTableName))
 			if err != nil {
@@ -111,7 +111,7 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 	}
 
 	logrus.Infof("Part 1: Creating schemas")
-	err := s.createValidatorStatsPartionedTableSchemav1(currentTableName, destinationTableName, numberOfPartitions)
+	err = s.createValidatorStatsPartionedTableSchemav1(currentTableName, destinationTableName, numberOfPartitions)
 	if err != nil {
 		return errors.Wrap(err, "error creating partitioned table")
 	}
