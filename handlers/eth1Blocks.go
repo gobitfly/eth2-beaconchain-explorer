@@ -156,14 +156,16 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		endSlot := uint64(0)
 		for _, b := range blocks {
 			s := getSlotByBlockTimestamp(b.GetTime())
-			if s < math.MaxUint64 {
-				foundAtLeastOneValidSlot = true
-				if s < startSlot {
-					startSlot = s
-				}
-				if s > endSlot {
-					endSlot = s
-				}
+			if s == math.MaxUint64 {
+				continue
+			}
+
+			foundAtLeastOneValidSlot = true
+			if s < startSlot {
+				startSlot = s
+			}
+			if s > endSlot {
+				endSlot = s
 			}
 		}
 
