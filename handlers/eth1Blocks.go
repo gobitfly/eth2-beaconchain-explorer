@@ -135,7 +135,7 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 
 	displayStart := start
 	if start >= recordsTotal {
-		start = 1
+		start = 0
 	} else {
 		start = recordsTotal - start
 	}
