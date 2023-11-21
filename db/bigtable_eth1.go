@@ -532,7 +532,7 @@ func (bigtable *Bigtable) GetBlocksIndexedMultiple(blockNumbers []uint64, limit 
 //
 //	start: highest block number to be returned
 //	limit: amount of blocks to be returned
-//		- if limit > stat + 1, limit will be set to start + 1
+//		- if limit > start + 1, limit will be set to start + 1
 //		- if limit = start + 1, block 0 will be included as last block (special handling for broken padding is implemented)
 //		- if limit = start, block 0 will of course not be included
 func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth1BlockIndexed, error) {
