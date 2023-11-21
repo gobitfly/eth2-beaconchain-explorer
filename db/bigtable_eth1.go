@@ -580,7 +580,7 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 		}
 	}
 
-	if start == 0 || limit == start+1 {
+	if start < limit {
 		// special handling for block 0 with broken padding (see reversedPaddedBlockNumber)
 		row, err := bigtable.tableData.ReadRow(ctx, fmt.Sprintf("%s:B:%s", bigtable.chainId, reversedPaddedBlockNumber(0)), rowFilter)
 		if err != nil {
