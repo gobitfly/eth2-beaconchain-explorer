@@ -22,7 +22,9 @@ var Erc1155TransferSingleEventHash = common.HexToHash("0xc3d58168c5ae7397731d063
 
 func Eth1BlockReward(blockNumber uint64, difficulty []byte) *big.Int {
 
-	if len(difficulty) == 0 { // no block rewards for PoS blocks
+	// no block rewards for PoS blocks
+	// holesky genesis block has difficulty 1 and zero block reward (launched with pos)
+	if len(difficulty) == 0 || (len(difficulty) == 1 && difficulty[0] == 1) {
 		return big.NewInt(0)
 	}
 
@@ -30,6 +32,8 @@ func Eth1BlockReward(blockNumber uint64, difficulty []byte) *big.Int {
 		return big.NewInt(5e+18)
 	} else if blockNumber < Config.Chain.ElConfig.ConstantinopleBlock.Uint64() {
 		return big.NewInt(3e+18)
+	} else if Config.Chain.ClConfig.DepositChainID == 5 { // special case for goerli: https://github.com/eth-clients/goerli
+		return big.NewInt(0)
 	} else {
 		return big.NewInt(2e+18)
 	}
