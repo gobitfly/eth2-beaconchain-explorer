@@ -205,21 +205,12 @@ func getEth1BlocksTableData(draw, start, length, recordsTotal uint64) (*types.Da
 		if sData != nil {
 			status = utils.FormatBlockStatus(sData.Status, sData.Slot)
 
-			posActive := true
 			if !isPoSBlock0 {
 				proposer = utils.FormatValidatorWithName(sData.Proposer, sData.ProposerName)
-				for _, v := range b.GetDifficulty() {
-					if v != 0 {
-						posActive = false
-						break
-					}
-				}
 			}
 
-			if posActive {
-				slotText = template.HTML(fmt.Sprintf(`<a href="slot/%d">%s</a>`, sData.Slot, utils.FormatAddCommas(sData.Slot)))
-				epochText = template.HTML(fmt.Sprintf(`<a href="epoch/%d">%s</a>`, sData.Epoch, utils.FormatAddCommas(sData.Epoch)))
-			}
+			slotText = template.HTML(fmt.Sprintf(`<a href="slot/%d">%s</a>`, sData.Slot, utils.FormatAddCommas(sData.Slot)))
+			epochText = template.HTML(fmt.Sprintf(`<a href="epoch/%d">%s</a>`, sData.Epoch, utils.FormatAddCommas(sData.Epoch)))
 		}
 
 		baseFee := new(big.Int).SetBytes(b.GetBaseFee())
