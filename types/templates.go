@@ -606,7 +606,7 @@ type VotesVisChartData struct {
 	Validators pq.Int64Array `db:"validators" json:"validators"`
 }
 
-// BlockPageData is a struct block data used in the block page
+// BlockPageData is a struct block data used in the block/slot page
 type BlockPageData struct {
 	Epoch                  uint64  `db:"epoch"`
 	EpochFinalized         bool    `db:"epoch_finalized"`
