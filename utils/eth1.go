@@ -216,10 +216,10 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 	} else {
 		if token != nil {
 			// link & token
-			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+			ret += fmt.Sprintf(`<a href="/%s/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, link, address, tooltip, name)
 		} else {
 			// just link
-			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+			ret += fmt.Sprintf(`<a href="/%s/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, link, address, tooltip, name)
 		}
 	}
 
