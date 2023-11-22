@@ -636,6 +636,12 @@ func ReadConfig(cfg *types.Config, path string) error {
 		if err != nil {
 			return err
 		}
+		if minimalCfg.ByzantiumBlock == nil {
+			minimalCfg.ByzantiumBlock = big.NewInt(0)
+		}
+		if minimalCfg.ConstantinopleBlock == nil {
+			minimalCfg.ConstantinopleBlock = big.NewInt(0)
+		}
 		cfg.Chain.ElConfig = &params.ChainConfig{
 			ChainID:             big.NewInt(int64(cfg.Chain.Id)),
 			ByzantiumBlock:      minimalCfg.ByzantiumBlock,
