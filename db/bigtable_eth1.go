@@ -2852,7 +2852,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken st
 	defer tmr.Stop()
 
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC721:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = fmt.Sprintf("%s:I:ERC721:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC721ForAddress(pageToken, 25)
@@ -2962,7 +2962,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken s
 	defer tmr.Stop()
 
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC1155:%s:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = fmt.Sprintf("%s:I:ERC1155:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC1155ForAddress(pageToken, 25)
