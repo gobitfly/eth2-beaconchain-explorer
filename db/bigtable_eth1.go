@@ -40,8 +40,8 @@ import (
 
 const (
 	ECR20TokensPerAddressLimit    = uint64(200) // when changing this, you will have to update the swagger docu for func ApiEth1Address too
-	digitLimitInAddressPagesTable = 18
-	nameLimitInAddressPagesTable  = 18
+	digitLimitInAddressPagesTable = 17
+	nameLimitInAddressPagesTable  = 0
 )
 
 var ErrBlockNotFound = errors.New("block not found")
