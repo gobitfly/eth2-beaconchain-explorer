@@ -229,7 +229,12 @@ func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, dig
 	classes := ""
 
 	if colored {
-		classes = ` class="text-success"`
+		val := IfToDec(valIf)
+		if val.Cmp(decimal.NewFromInt(0)) >= 0 {
+			classes = ` class="text-success"`
+		} else {
+			classes = ` class="text-danger"`
+		}
 	}
 
 	return template.HTML(fmt.Sprintf(`<span%s>%s</span>`, classes, result))
