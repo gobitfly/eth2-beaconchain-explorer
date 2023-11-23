@@ -653,7 +653,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			return fmt.Errorf("error opening EL Chain Config file %v: %w", cfg.Chain.ElConfigPath, err)
 		}
 		var chainConfig *params.ChainConfig
-		decoder := yaml.NewDecoder(f)
+		decoder := json.NewDecoder(f)
 		err = decoder.Decode(&chainConfig)
 		if err != nil {
 			return fmt.Errorf("error decoding EL Chain Config file %v: %v", cfg.Chain.ElConfigPath, err)
