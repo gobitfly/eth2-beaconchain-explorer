@@ -30,7 +30,6 @@ cat >elconfig.json <<EOL
 }
 EOL
 
-
 touch config.yml
 
 cat >config.yml <<EOL
