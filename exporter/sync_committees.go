@@ -124,17 +124,12 @@ func GetSyncCommitteAtPeriod(rpcClient rpc.Client, p uint64) ([]SyncCommittee, e
 		return nil, err
 	}
 
-	validatorsU64 := make([]uint64, len(c.Validators))
+	result := make([]SyncCommittee, len(c.Validators))
 	for i, idxStr := range c.Validators {
 		idxU64, err := strconv.ParseUint(idxStr, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-		validatorsU64[i] = idxU64
-	}
-
-	result := make([]SyncCommittee, len(validatorsU64))
-	for i, idxU64 := range validatorsU64 {
 		result = append(result, SyncCommittee{
 			Period:         p,
 			ValidatorIndex: idxU64,

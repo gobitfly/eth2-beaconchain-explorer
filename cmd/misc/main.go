@@ -363,9 +363,9 @@ func main() {
 	case "export-stats-totals":
 		exportStatsTotals(opts.Columns, opts.StartDay, opts.EndDay, opts.DataConcurrency)
 	case "export-sync-committee-periods":
-		exportSyncCommitteePeriods(rpcClient, bt, opts.StartDay, opts.EndDay, opts.DryRun)
+		exportSyncCommitteePeriods(rpcClient, opts.StartDay, opts.EndDay, opts.DryRun)
 	case "export-sync-committee-validator-stats":
-		exportSyncCommitteeValidatorStats(rpcClient, bt, opts.StartDay, opts.EndDay, opts.DryRun, true)
+		exportSyncCommitteeValidatorStats(rpcClient, opts.StartDay, opts.EndDay, opts.DryRun, true)
 	case "fix-exec-transactions-count":
 		err = fixExecTransactionsCount()
 	default:
@@ -1241,10 +1241,19 @@ OUTER:
 	logrus.Infof("finished all exporting stats totals for columns '%v' for days %v - %v, took %v", columns, dayStart, dayEnd, time.Since(start))
 }
 
-func exportSyncCommitteePeriods(rpcClient rpc.Client, bt *db.Bigtable, startDay, endDay uint64, dryRun bool) {
+/*
+Instead of deleting entries from the sync_committee table in a prod environment and wait for the exporter to sync back all entries,
+this method will replace each sync committee period one by one with the new one. Which is much nicer for a prod environment.
+*/
+func exportSyncCommitteePeriods(rpcClient rpc.Client, startDay, endDay uint64, dryRun bool) {
 	var currEpoch = uint64(0)
 
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
+	if startDay > 0 {
+		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(startDay)
+		firstPeriod = utils.SyncPeriodOfEpoch(firstEpoch)
+	}
+
 	if endDay <= 0 {
 		var err error
 		currEpoch, err = db.GetLatestFinalizedEpoch()
@@ -1258,11 +1267,6 @@ func exportSyncCommitteePeriods(rpcClient rpc.Client, bt *db.Bigtable, startDay,
 	} else {
 		_, lastEpoch := utils.GetFirstAndLastEpochForDay(endDay)
 		currEpoch = lastEpoch
-	}
-
-	if startDay > 0 {
-		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(startDay)
-		firstPeriod = utils.SyncPeriodOfEpoch(firstEpoch)
 	}
 
 	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
@@ -1292,37 +1296,36 @@ func exportSyncCommitteePeriods(rpcClient rpc.Client, bt *db.Bigtable, startDay,
 	logrus.Infof("finished all exporting sync_committee for periods %v - %v, took %v", firstPeriod, lastPeriod, time.Since(start))
 }
 
-func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, bt *db.Bigtable, startDay, endDay uint64, dryRun, skipPhase1 bool) {
-	var currEpoch = uint64(0)
+func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, startDay, endDay uint64, dryRun, skipPhase1 bool) {
+	var lastEpoch = uint64(0)
 
 	if endDay <= 0 {
 		var err error
-		currEpoch, err = db.GetLatestFinalizedEpoch()
+		lastEpoch, err = db.GetLatestFinalizedEpoch()
 		if err != nil {
 			logrus.WithError(err).Errorf("error getting latest finalized epoch")
 			return
 		}
-		if currEpoch > 0 { // guard against underflows
-			currEpoch = currEpoch - 1
+		if lastEpoch > 0 { // guard against underflows
+			lastEpoch = lastEpoch - 1
 		}
 	} else {
-		_, lastEpoch := utils.GetFirstAndLastEpochForDay(endDay)
-		currEpoch = lastEpoch
+		_, lastEpoch = utils.GetFirstAndLastEpochForDay(endDay)
 	}
 
 	start := time.Now()
 
 	epochsPerDay := utils.EpochsPerDay()
-	if currEpoch < epochsPerDay {
+	if lastEpoch < epochsPerDay {
 		logrus.Infof("skipping exporting stats, first day has not been indexed yet")
 		return
 	}
-	currentDay := currEpoch / epochsPerDay
+	currentDay := lastEpoch / epochsPerDay
 	previousDay := currentDay - 1
 
 	for day := startDay; day <= previousDay; day++ {
 		startDay := time.Now()
-		err := UpdateValidatorStatisticsSyncData(bt, day, rpcClient, dryRun)
+		err := UpdateValidatorStatisticsSyncData(day, rpcClient, dryRun)
 		if err != nil {
 			utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
 			break
@@ -1334,7 +1337,7 @@ func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, bt *db.Bigtable, st
 	logrus.Infof("finished all exporting stats for days %v - %v, took %v", startDay, previousDay, time.Since(start))
 }
 
-func UpdateValidatorStatisticsSyncData(bt *db.Bigtable, day uint64, client rpc.Client, dryRun bool) error {
+func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun bool) error {
 	exportStart := time.Now()
 	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
