@@ -2044,7 +2044,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// if ordering is desc, reverse sync slots
 		totalCount = uint64(len(slots))
 
 		startIndex := start + length - 1
@@ -2053,29 +2052,58 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		}
 		endIndex := start
 
-		endSlot := slots[endIndex]
-		startSlot := slots[startIndex]
+		// retrieve sync duties and sync participations
+		syncDuties := make(map[uint64]map[uint64]*types.ValidatorSyncParticipation)
+		syncDuties[validatorIndex] = make(map[uint64]*types.ValidatorSyncParticipation, length)
+		participations := make(map[uint64]uint64, length)
+		{
+			// the slot range for the given table page might contain multiplie sync periods and therefore we may need to split the queries to avoid fetching potentially thousands of duties at once
+			type SlotRange struct {
+				StartSlot uint64
+				EndSlot   uint64
+			}
+			var consecutiveSlotRanges []SlotRange
 
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startSlot, endSlot)
+			// slots are sorted in descending order
+			nextSlotRange := SlotRange{StartSlot: slots[endIndex], EndSlot: slots[endIndex]}
+			for i := endIndex + 1; i <= startIndex; i++ {
+				if slots[i] == nextSlotRange.StartSlot-1 {
+					nextSlotRange.StartSlot = slots[i]
+				} else {
+					consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
+					nextSlotRange = SlotRange{StartSlot: slots[i], EndSlot: slots[i]}
+				}
+			}
+			consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
 
-		errFields["startSlot"] = startSlot
-		errFields["endSlot"] = endSlot
+			// make individual queries for each consecutive slot range and accumulate results
+			for _, slotRange := range consecutiveSlotRanges {
+				sdh, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, slotRange.StartSlot, slotRange.EndSlot)
+				if err != nil {
+					errFields["slotRange"] = slotRange
+					utils.LogError(err, "error getting validator sync duties data from bigtable", 0, errFields)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+				for slot, duty := range sdh[validatorIndex] {
+					syncDuties[validatorIndex][slot] = duty
+				}
 
-		if err != nil {
-			utils.LogError(err, "error getting validator sync duties data from bigtable", 0, errFields)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
+				par, err := db.GetSyncParticipationBySlotRange(slotRange.StartSlot, slotRange.EndSlot)
+				if err != nil {
+					errFields["slotRange"] = slotRange
+					utils.LogError(err, "error getting validator sync participation data from db", 0, errFields)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+				for slot, participation := range par {
+					participations[slot] = participation
+				}
+			}
 		}
 
-		// Search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
+		// search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
 		slotsRange := slots[endIndex : startIndex+1]
-
-		participations, err := db.GetSyncParticipationBySlotRange(startSlot, endSlot)
-		if err != nil {
-			utils.LogError(err, "error getting validator sync participation data from db", 0, errFields)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
 
 		missedSlots := []uint64{}
 		err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, slotsRange)
@@ -2097,25 +2125,14 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			epoch := utils.EpochOfSlot(slot)
 			participation := participations[slot]
 
-			if syncDuties[validatorIndex] == nil {
-				tableData = append(tableData,
-					[]interface{}{
-						fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
-						utils.FormatEpoch(epoch),
-						utils.FormatBlockSlot(slot),
-						utils.FormatSyncParticipationStatus(0, slot),
-						utils.FormatSyncParticipations(participation),
-					},
-				)
-			}
-
 			status := uint64(0)
-
-			if syncDuties[validatorIndex][slot] != nil {
-				status = syncDuties[validatorIndex][slot].Status
-			}
-			if _, ok := missedSlotsMap[slot]; ok {
-				status = 3
+			if syncDuties[validatorIndex] != nil {
+				if syncDuties[validatorIndex][slot] != nil {
+					status = syncDuties[validatorIndex][slot].Status
+				}
+				if _, ok := missedSlotsMap[slot]; ok {
+					status = 3
+				}
 			}
 
 			tableData = append(tableData, []interface{}{
