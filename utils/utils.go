@@ -610,6 +610,57 @@ func ReadConfig(cfg *types.Config, path string) error {
 		}
 		cfg.Chain.ClConfig = *chainConfig
 	}
+
+	type MinimalELConfig struct {
+		ByzantiumBlock      *big.Int `yaml:"BYZANTIUM_FORK_BLOCK,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
+		ConstantinopleBlock *big.Int `yaml:"CONSTANTINOPLE_FORK_BLOCK,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
+	}
+	if cfg.Chain.ElConfigPath == "" {
+		minimalCfg := MinimalELConfig{}
+		switch cfg.Chain.Name {
+		case "mainnet":
+			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &minimalCfg)
+		case "prater":
+			err = yaml.Unmarshal([]byte(config.PraterChainYml), &minimalCfg)
+		case "ropsten":
+			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &minimalCfg)
+		case "sepolia":
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &minimalCfg)
+		case "gnosis":
+			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &minimalCfg)
+		case "holesky":
+			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &minimalCfg)
+		default:
+			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ElConfigPath)
+		}
+		if err != nil {
+			return err
+		}
+		if minimalCfg.ByzantiumBlock == nil {
+			minimalCfg.ByzantiumBlock = big.NewInt(0)
+		}
+		if minimalCfg.ConstantinopleBlock == nil {
+			minimalCfg.ConstantinopleBlock = big.NewInt(0)
+		}
+		cfg.Chain.ElConfig = &params.ChainConfig{
+			ChainID:             big.NewInt(int64(cfg.Chain.Id)),
+			ByzantiumBlock:      minimalCfg.ByzantiumBlock,
+			ConstantinopleBlock: minimalCfg.ConstantinopleBlock,
+		}
+	} else {
+		f, err := os.Open(cfg.Chain.ElConfigPath)
+		if err != nil {
+			return fmt.Errorf("error opening EL Chain Config file %v: %w", cfg.Chain.ElConfigPath, err)
+		}
+		var chainConfig *params.ChainConfig
+		decoder := yaml.NewDecoder(f)
+		err = decoder.Decode(&chainConfig)
+		if err != nil {
+			return fmt.Errorf("error decoding EL Chain Config file %v: %v", cfg.Chain.ElConfigPath, err)
+		}
+		cfg.Chain.ElConfig = chainConfig
+	}
+
 	cfg.Chain.Name = cfg.Chain.ClConfig.ConfigName
 
 	if cfg.Chain.GenesisTimestamp == 0 {
