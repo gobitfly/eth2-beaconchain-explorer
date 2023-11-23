@@ -155,7 +155,7 @@ var AddWatchlistEvents = []EventNameDesc{
 	{
 		Desc:  "Validator is Offline",
 		Event: ValidatorIsOfflineEventName,
-		Info:  template.HTML(`<i data-toggle="tooltip" data-html="true" title="<div class='text-left'>Will trigger a notifcation:<br><ul><li>Once you have been offline for 3 epochs</li><li>Every 32 Epochs (~3 hours) during your downtime</li><li>Once you are back online again</li></ul></div>" class="fas fa-question-circle"></i>`),
+		Info:  template.HTML(`<i data-toggle="tooltip" data-html="true" title="<div class='text-left'>Will trigger a notification:<br><ul><li>Once you have been offline for 3 epochs</li><li>Every 32 Epochs (~3 hours) during your downtime</li><li>Once you are back online again</li></ul></div>" class="fas fa-question-circle"></i>`),
 	},
 	{
 		Desc:  "Proposals missed",
@@ -181,7 +181,7 @@ var AddWatchlistEvents = []EventNameDesc{
 	{
 		Desc:  "Withdrawal processed",
 		Event: ValidatorReceivedWithdrawalEventName,
-		Info:  template.HTML(`<i data-toggle="tooltip" data-html="true" title="<div class='text-left'>Will trigger a notifcation when:<br><ul><li>A partial withdrawal is processed</li><li>Your validator exits and its full balance is withdrawn</li></ul> <div>Requires that your validator has 0x01 credentials</div></div>" class="fas fa-question-circle"></i>`),
+		Info:  template.HTML(`<i data-toggle="tooltip" data-html="true" title="<div class='text-left'>Will trigger a notification when:<br><ul><li>A partial withdrawal is processed</li><li>Your validator exits and its full balance is withdrawn</li></ul> <div>Requires that your validator has 0x01 credentials</div></div>" class="fas fa-question-circle"></i>`),
 	},
 }
 
