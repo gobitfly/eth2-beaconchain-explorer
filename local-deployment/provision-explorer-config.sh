@@ -22,6 +22,15 @@ POSTGRES_PORT=$POSTGRES_PORT
 LBT_PORT=$LBT_PORT
 EOF
 
+touch elconfig.json
+cat >elconfig.json <<EOL
+{
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0
+}
+EOL
+
+
 touch config.yml
 
 cat >config.yml <<EOL
