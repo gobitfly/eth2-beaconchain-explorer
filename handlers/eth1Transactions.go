@@ -135,7 +135,8 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 	}
 }
 
-// Return given block, next block number and error
+// Returns the block requested via number and the number of the next block in our bigtable schema (i.e. the block that came chronologically before the requested block)
+//
 // If nextBlock doesn't exists nil, 0, nil is returned
 func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
