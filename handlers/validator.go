@@ -609,9 +609,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// add attestationStats that are not yet in validator_stats
-			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
-			if lookback > 0 {
-				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
+			lookback := int64(validatorPageData.Epoch - (lastStatsDay+1)*utils.EpochsPerDay())
+			if lookback > 0 && validatorPageData.Epoch > 0 {
+				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, validatorPageData.Epoch-uint64(lookback), validatorPageData.Epoch-1)
 				if err != nil {
 					return fmt.Errorf("error getting validator attestations not in stats from bigtable: %w", err)
 				}
