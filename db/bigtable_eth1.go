@@ -595,11 +595,6 @@ func (bigtable *Bigtable) GetBlocksDescending(start, limit uint64) ([]*types.Eth
 		}
 	}
 
-	for _, b := range blocks {
-		// print block number for debugging
-		fmt.Println(b.Number)
-	}
-
 	return blocks, nil
 }
 
