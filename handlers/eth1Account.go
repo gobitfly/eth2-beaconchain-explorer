@@ -115,7 +115,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "")
+		erc721, err = db.BigtableClient.GetAddressErc721TableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc721TableData: %w", err)
 		}
@@ -123,7 +123,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "")
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc1155TableData: %w", err)
 		}
@@ -502,12 +502,13 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	addressBytes := common.FromHex(address)
 
 	errFields := map[string]interface{}{
 		"route": r.URL.String()}
 
 	pageToken := q.Get("pageToken")
-	data, err := db.BigtableClient.GetAddressErc721TableData(address, pageToken)
+	data, err := db.BigtableClient.GetAddressErc721TableData(addressBytes, pageToken)
 	if err != nil {
 		utils.LogError(err, "error getting eth1 ERC721 transactions table data", 0, errFields)
 	}
@@ -528,12 +529,13 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	addressBytes := common.FromHex(address)
 
 	errFields := map[string]interface{}{
 		"route": r.URL.String()}
 
 	pageToken := q.Get("pageToken")
-	data, err := db.BigtableClient.GetAddressErc1155TableData(address, pageToken)
+	data, err := db.BigtableClient.GetAddressErc1155TableData(addressBytes, pageToken)
 	if err != nil {
 		utils.LogError(err, "error getting eth1 ERC1155 transactions table data", 0, errFields)
 	}
