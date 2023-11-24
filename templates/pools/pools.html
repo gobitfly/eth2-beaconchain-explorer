@@ -4,17 +4,26 @@
   <script src="/js/highcharts/highcharts-global-options.js"></script>
   <script src="/js/luxon.min.js"></script>
   <script>
+    let performanceChart
     if (window.location.hash == "#performance") {
       $("#distribution-chart").addClass("d-none")
       $("#performance-chart").removeClass("d-none")
+      $("#performance-chart-btn-hide-all").removeClass("d-none")
     }
     $("#distribution-chart-btn").on("click", () => {
       $("#distribution-chart").removeClass("d-none")
       $("#performance-chart").addClass("d-none")
+      $("#performance-chart-btn-hide-all").addClass("d-none")
     })
     $("#performance-chart-btn").on("click", () => {
       $("#distribution-chart").addClass("d-none")
       $("#performance-chart").removeClass("d-none")
+      $("#performance-chart-btn-hide-all").removeClass("d-none")
+    })
+    $("#performance-chart-btn-hide-all").on("click", () => {
+      performanceChart.series.forEach((series) => {
+        series.setVisible(false, false)
+      })
     })
   </script>
 {{ end }}
@@ -25,6 +34,23 @@
   <style>
     #charts-container {
       height: 520px;
+      position: relative;
+    }
+    @media (min-width: 817.96px) {
+      #performance-chart-btn-hide-all {
+        position: absolute;
+        right: 0px;
+        bottom: 55px;
+      }
+    }
+
+    @media (max-width: 818px) {
+      #charts-container {
+        height: 560px;
+      }
+      #performance-chart-btn-hide-all {
+        position: relative;
+      }
     }
   </style>
 {{ end }}
@@ -39,6 +65,13 @@
           </div>
           <div id="performance-chart" class="w-100 mb-2 d-none">
             {{ template "performance_chart" .Data }}
+          </div>
+          <div class="text-center">
+            <button class="btn btn-primary btn-sm d-none" id="performance-chart-btn-hide-all">
+              <span class="text-white">
+                <b>Hide all</b>
+              </span>
+            </button>
           </div>
         </div>
         <div class="d-flex justify-content-center btn-group border rounded w-25 m-auto">
