@@ -88,7 +88,7 @@ func FormatTransactionHash(hash []byte, successful bool) template.HTML {
 	}
 	failedStr := ""
 	if !successful {
-		failedStr = "❗"
+		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
 	}
 	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>%s`, hash, hash[:3], hash[len(hash)-3:], failedStr))
 }
