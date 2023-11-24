@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -149,12 +150,12 @@ func main() {
 
 	switch opts.Command {
 	case "nameValidatorsByRanges":
-		err := NameValidatorsByRanges(opts.ValidatorNameRanges)
+		err := nameValidatorsByRanges(opts.ValidatorNameRanges)
 		if err != nil {
 			logrus.WithError(err).Fatal("error naming validators by ranges")
 		}
 	case "updateAPIKey":
-		err := UpdateAPIKey(opts.User)
+		err := updateAPIKey(opts.User)
 		if err != nil {
 			logrus.WithError(err).Fatal("error updating API key")
 		}
@@ -243,17 +244,17 @@ func main() {
 			}
 		}
 	case "debug-rewards":
-		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
+		compareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
 	case "debug-blocks":
-		err = DebugBlocks()
+		err = debugBlocks()
 	case "clear-bigtable":
-		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
+		clearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
-		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
+		indexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "update-block-finalization-sequentially":
-		err = UpdateBlockFinalizationSequentially()
+		err = updateBlockFinalizationSequentially()
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
@@ -454,7 +455,7 @@ func fixExecTransactionsCount() error {
 	return tx.Commit()
 }
 
-func UpdateBlockFinalizationSequentially() error {
+func updateBlockFinalizationSequentially() error {
 	var err error
 
 	var maxSlot uint64
@@ -483,7 +484,7 @@ func UpdateBlockFinalizationSequentially() error {
 		break
 	}
 
-	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("UpdateBlockFinalizationSequentially")
+	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("updateBlockFinalizationSequentially")
 	nextStartEpoch := minNonFinalizedSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
 	stepSize := uint64(100)
 	for ; ; time.Sleep(time.Millisecond * 50) {
@@ -512,7 +513,7 @@ func UpdateBlockFinalizationSequentially() error {
 	}
 }
 
-func DebugBlocks() error {
+func debugBlocks() error {
 	elClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		return err
@@ -590,7 +591,7 @@ func DebugBlocks() error {
 	return nil
 }
 
-func NameValidatorsByRanges(rangesUrl string) error {
+func nameValidatorsByRanges(rangesUrl string) error {
 	ranges := struct {
 		Ranges map[string]string `json:"ranges"`
 	}{}
@@ -824,7 +825,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 }
 
 // Updates a users API key
-func UpdateAPIKey(user uint64) error {
+func updateAPIKey(user uint64) error {
 	type User struct {
 		PHash  string `db:"password"`
 		Email  string `db:"email"`
@@ -878,7 +879,7 @@ func UpdateAPIKey(user uint64) error {
 }
 
 // Debugging function to compare Rewards from the Statistic Table with the onces from the Big Table
-func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
+func compareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
 
 	for day := dayStart; day <= dayEnd; day++ {
 		startEpoch := day * utils.EpochsPerDay()
@@ -908,7 +909,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 
 }
 
-func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
+func clearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
 
 	if !dryRun {
 		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
@@ -939,10 +940,12 @@ func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.
 	logrus.Info("delete completed")
 }
 
-// Let's find blocks that are missing in bt and index them.
+// Goes through the tableData table and checks what blocks in the given range from [start] to [end] are missing and exports/indexes the missing ones
+//
+//	Both [start] and [end] are inclusive
+//	Pass math.MaxInt64 as [end] to export from [start] to the last block in the blocks table
 func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient) {
-
-	if end == 0 {
+	if end == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
 			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
@@ -951,53 +954,70 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 		end = uint64(lastBlockFromBlocksTable)
 	}
 
-	batchSize := uint64(10000)
-	if start == 0 {
-		start = 1
-	}
-	for i := start; i < end; i += batchSize {
-		targetCount := batchSize
-		if i+targetCount >= end {
-			targetCount = end - i
-		}
-		to := i + targetCount - 1
+	errFields := map[string]interface{}{
+		"start": start,
+		"end":   end}
 
-		list, err := bt.GetBlocksDescending(uint64(to), uint64(targetCount))
+	batchSize := uint64(10000)
+	for from := start; from <= end; from += batchSize {
+		targetCount := batchSize
+		if from+targetCount >= end {
+			targetCount = end - from + 1
+		}
+		to := from + targetCount - 1
+
+		errFields["from"] = from
+		errFields["to"] = to
+		errFields["targetCount"] = targetCount
+
+		list, err := bt.GetBlocksDescending(to, targetCount)
 		if err != nil {
-			utils.LogError(err, "can not retrieve blocks via GetBlocksDescending from bigtable", 0)
+			utils.LogError(err, "error retrieving blocks from tableData", 0, errFields)
 			return
 		}
-		if uint64(len(list)) == targetCount {
-			logrus.Infof("found all blocks [%v]->[%v]", i, to)
-		} else {
-			logrus.Infof("oh no we are missing some blocks [%v]->[%v]", i, to)
-			blocksMap := make(map[uint64]bool)
-			for _, item := range list {
-				blocksMap[item.Number] = true
-			}
-			for j := uint64(i); j <= uint64(to); j++ {
-				if !blocksMap[j] {
-					logrus.Infof("block [%v] not found so we need to index it", j)
-					if _, err := db.BigtableClient.GetBlockFromBlocksTable(j); err != nil {
-						logrus.Infof("could not load [%v] from blocks table so we need to fetch it from the node and save it", j)
-						bc, _, err := client.GetBlock(int64(j), "parity/geth")
-						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error getting block: %v from ethereum node", j), 0)
-						}
-						err = bt.SaveBlock(bc)
-						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error saving block: %v ", j), 0)
-						}
-					}
 
-					IndexOldEth1Blocks(j, j, 1, 1, "all", bt, client)
+		receivedLen := uint64(len(list))
+		if receivedLen == targetCount {
+			logrus.Infof("found all blocks [%v]->[%v], skipping batch", from, to)
+			continue
+		}
+
+		logrus.Infof("%v blocks are missing from [%v]->[%v]", targetCount-receivedLen, from, to)
+
+		blocksMap := make(map[uint64]bool)
+		for _, item := range list {
+			blocksMap[item.Number] = true
+		}
+
+		for block := from; block <= to; block++ {
+			if blocksMap[block] {
+				// block already saved, skip
+				continue
+			}
+
+			logrus.Infof("block [%v] not found, will index it", block)
+			if _, err := db.BigtableClient.GetBlockFromBlocksTable(block); err != nil {
+				logrus.Infof("could not load [%v] from blocks table, will try to fetch it from the node and save it", block)
+
+				bc, _, err := client.GetBlock(int64(block), "parity/geth")
+				if err != nil {
+					utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0)
+					return
+				}
+
+				err = bt.SaveBlock(bc)
+				if err != nil {
+					utils.LogError(err, fmt.Sprintf("error saving block: %v ", block), 0)
+					return
 				}
 			}
+
+			indexOldEth1Blocks(block, block, 1, 1, "all", bt, client)
 		}
 	}
 }
 
-func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
+func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
 	if endBlock > 0 && endBlock < startBlock {
 		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
 		return
@@ -1057,20 +1077,15 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
-	if startBlock == 0 && endBlock == 0 {
-		utils.LogFatal(nil, "no start+end block defined", 0)
-		return
-	}
+	to := endBlock
+	if endBlock == math.MaxInt64 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			utils.LogError(err, "error retrieving last blocks from blocks table", 0)
+			return
+		}
 
-	lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
-	if err != nil {
-		utils.LogError(err, "error retrieving last blocks from blocks table", 0)
-		return
-	}
-
-	to := uint64(lastBlockFromBlocksTable)
-	if endBlock > 0 {
-		to = utilMath.MinU64(to, endBlock)
+		to = uint64(lastBlockFromBlocksTable)
 	}
 	blockCount := utilMath.MaxU64(1, batchSize)
 
@@ -1079,7 +1094,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		toBlock := utilMath.MinU64(to, from+blockCount-1)
 
 		logrus.Infof("indexing blocks %v to %v in data table ...", from, toBlock)
-		err = bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, int64(concurrency), cache)
+		err := bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, int64(concurrency), cache)
 		if err != nil {
 			utils.LogError(err, "error indexing from bigtable", 0)
 		}
@@ -1088,7 +1103,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	}
 
 	if importENSChanges {
-		if err = bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
+		if err := bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
 			utils.LogError(err, "error importing ens from events", 0)
 			return
 		}

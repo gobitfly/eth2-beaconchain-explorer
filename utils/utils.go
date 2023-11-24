@@ -1791,3 +1791,21 @@ func GetParentFuncName() string {
 	pc, _, _, _ := runtime.Caller(2)
 	return runtime.FuncForPC(pc).Name()
 }
+
+// Returns true if the given block number is 0 and if it is (according to its timestamp) included in slot 0
+//
+// This is only true for networks that launch with active PoS at block 0 which requires
+//
+//   - Belatrix happening at epoch 0 (pre condition for merged networks)
+//   - Genesis for PoS to happen at the same timestamp as the first block
+func IsPoSBlock0(number uint64, ts int64) bool {
+	if number > 0 {
+		return false
+	}
+
+	if Config.Chain.ClConfig.BellatrixForkEpoch > 0 {
+		return false
+	}
+
+	return time.Unix(int64(Config.Chain.GenesisTimestamp-Config.Chain.ClConfig.GenesisDelay), 0).UTC().Equal(time.Unix(ts, 0))
+}
