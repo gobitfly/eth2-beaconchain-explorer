@@ -2026,7 +2026,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		method := bigtable.GetMethodLabel(t.MethodId, t.InvokesContract)
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash),
+			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
 			utils.FormatMethod(method),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
@@ -2329,7 +2329,7 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken stri
 		toName := names[string(t.To)]
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash),
+			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2448,7 +2448,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		toName := names[string(t.To)]
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2771,7 +2771,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken str
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2886,7 +2886,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken st
 		toName := names[string(t.To)]
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2997,7 +2997,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken s
 		toName := names[string(t.To)]
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -3839,7 +3839,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash),
+			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),

@@ -86,11 +86,15 @@ func FormatBlockHash(hash []byte) template.HTML {
 	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/block/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
 }
 
-func FormatTransactionHash(hash []byte) template.HTML {
+func FormatTransactionHash(hash []byte, successful bool) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
-	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>`, hash, hash[:3], hash[len(hash)-3:]))
+	failedStr := ""
+	if !successful {
+		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
+	}
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>%s`, hash, hash[:3], hash[len(hash)-3:], failedStr))
 }
 
 func FormatInOutSelf(address, from, to []byte) template.HTML {
