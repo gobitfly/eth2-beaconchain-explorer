@@ -35,7 +35,7 @@ touch config.yml
 cat >config.yml <<EOL
 chain:
   clConfigPath: 'node'
-  elConfigPath: 'elconfig.json'
+  elConfigPath: 'local-deployment/elconfig.json'
 readerDatabase:
   name: db
   host: 127.0.0.1
@@ -108,11 +108,11 @@ echo "initializing bigtable schema"
 PROJECT="explorer"
 INSTANCE="explorer"
 HOST="127.0.0.1:$LBT_PORT"
-
-go run ../cmd/misc/main.go -config config.yml -command initBigtableSchema
+cd ..
+go run ./cmd/misc/main.go -config local-deployment/config.yml -command initBigtableSchema
 
 echo "bigtable schema initialization completed"
 
 echo "provisioning postgres db schema"
-go run ../cmd/misc/main.go -config config.yml -command applyDbSchema
+go run ./cmd/misc/main.go -config local-deployment/config.yml -command applyDbSchema
 echo "postgres db schema initialization completed"
