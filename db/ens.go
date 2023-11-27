@@ -351,6 +351,9 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		name:    make(map[string]bool),
 	}
 
+	mutDelete := gcp_bigtable.NewMutation()
+	mutDelete.DeleteRow()
+
 	batchSize := 100
 	total := len(keys)
 	for i := 0; i < total; i += batchSize {
@@ -360,20 +363,21 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		}
 		batch := keys[i:to]
 		logger.Infof("Batching ENS entries %v:%v of %v", i, to, total)
+
 		g := new(errgroup.Group)
 		g.SetLimit(10) // limit load on the node
 		mutsDelete := &types.BulkMutations{
 			Keys: make([]string, 0, 1),
 			Muts: make([]*gcp_bigtable.Mutation, 0, 1),
 		}
-		mutDelete := gcp_bigtable.NewMutation()
-		mutDelete.DeleteRow()
+
 		for _, k := range batch {
 			key := k
 			var name string
 			var address *common.Address
 			split := strings.Split(key, ":")
 			value := split[4]
+
 			switch split[3] {
 			case "H":
 				// if we have a hash we look if we find a name in the db. If not we can ignore it.
@@ -403,9 +407,6 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				name = value
 			}
 
-			mutsDelete.Keys = append(mutsDelete.Keys, key)
-			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-
 			g.Go(func() error {
 				if name != "" {
 					err := validateEnsName(client, name, &alreadyChecked, nil)
@@ -415,22 +416,33 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				} else if address != nil {
 					err := validateEnsAddress(client, *address, &alreadyChecked)
 					if err != nil {
-						return fmt.Errorf("error validating new address [%v]: %w", address, err)
+						if err.Error() == "not a resolver" {
+							// if the given address is not a resolver, we cannot do anything with it and just skip it
+							logger.Warnf("address [%v] is not a resolver, skipping it", address)
+						} else {
+							return fmt.Errorf("error validating new address [%v]: %w", address, err)
+						}
 					}
 				}
 				return nil
 			})
+
+			mutsDelete.Keys = append(mutsDelete.Keys, key)
+			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 		}
+
 		if err := g.Wait(); err != nil {
 			return err
 		}
+
 		// After processing a batch of keys we remove them from bigtable
 		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
 		if err != nil {
 			return err
 		}
 
-		time.Sleep(time.Millisecond * 100) // give node some time for other stuff between batches
+		// give node some time for other stuff between batches
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	logger.Info("Import of ENS updates completed")
