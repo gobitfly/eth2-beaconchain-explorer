@@ -1431,9 +1431,9 @@ func EpochsPerDay() uint64 {
 	return (uint64(day.Seconds()) / Config.Chain.ClConfig.SlotsPerEpoch) / Config.Chain.ClConfig.SecondsPerSlot
 }
 
-func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
-	firstEpoch := day * EpochsPerDay()
-	lastEpoch := firstEpoch + EpochsPerDay() - 1
+func GetFirstAndLastEpochForDay(day uint64) (firstEpoch uint64, lastEpoch uint64) {
+	firstEpoch = day * EpochsPerDay()
+	lastEpoch = firstEpoch + EpochsPerDay() - 1
 	return firstEpoch, lastEpoch
 }
 
