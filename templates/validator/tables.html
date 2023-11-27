@@ -732,7 +732,7 @@
               data-html="true"
               title="
                 CL: {{ formatPercentageWithPrecision .Income.Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Income.Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Income.Apr365d.Cl 2 }}% <br> 
-                El: {{ formatPercentageWithPrecision .Income.Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr365d.El 2 }}%">
+                EL: {{ formatPercentageWithPrecision .Income.Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr365d.El 2 }}%">
               <span class="{{ if gtf .Income.Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr7d.Total 2 }}%</b></span>
               |
               <span class="{{ if gtf .Income.Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr31d.Total 2 }}%</b></span>

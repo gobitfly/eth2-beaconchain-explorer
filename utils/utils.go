@@ -53,6 +53,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
+	confusables "github.com/skygeario/go-confusable-homoglyphs"
 )
 
 // Config is the globally accessible configuration
@@ -1374,34 +1375,32 @@ func FormatPoolPerformance(val float64) template.HTML {
 }
 
 func FormatTokenSymbolTitle(symbol string) string {
-	urls := xurls.Relaxed.FindAllString(symbol, -1)
-
-	if len(urls) > 0 {
-		return fmt.Sprintf("The token symbol has been hidden as it contains a URL (%s) which might be a scam", symbol)
-	} else if symbol == "ETH" {
-		return fmt.Sprintf("The token symbol has been hidden as it contains a Token name (%s) which might be a scam", symbol)
+	if isTokenSus(symbol) {
+		return fmt.Sprintf("The token symbol (%s) has been hidden because it contains a URL or a confusable character", symbol)
 	}
 	return ""
 }
 
 func FormatTokenSymbol(symbol string) string {
-	urls := xurls.Relaxed.FindAllString(symbol, -1)
-
-	if len(urls) > 0 ||
-		symbol == "ETH" {
+	if isTokenSus(symbol) {
 		return "[hidden-symbol] ⚠️"
 	}
 	return symbol
 }
 
+func isTokenSus(symbol string) bool {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+	isConfusable := confusables.IsDangerous(symbol, []string{"latin"})
+	if len(urls) > 0 || isConfusable || symbol == "ETH" {
+		return true
+	}
+	return false
+}
+
 func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
-	tmplString := (string(tmpl))
+	tmplString := FormatTokenSymbol(string(tmpl))
 	symbolTitle := FormatTokenSymbolTitle(tmplString)
-
-	tmplString = FormatTokenSymbol(tmplString)
-	tmpl = template.HTML(strings.ReplaceAll(tmplString, `title=""`, fmt.Sprintf(`title="%s"`, symbolTitle)))
-
-	return tmpl
+	return template.HTML(strings.ReplaceAll(tmplString, `title=""`, fmt.Sprintf(`title="%s"`, symbolTitle)))
 }
 
 func ReverseSlice[S ~[]E, E any](s S) {
