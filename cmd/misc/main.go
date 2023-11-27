@@ -1150,6 +1150,8 @@ func exportStatsTotals(columns string, dayStart, dayEnd, concurrency uint64) {
 		"orphaned_sync_total",
 		"withdrawals_total",
 		"withdrawals_amount_total",
+		"deposits_total",
+		"deposits_amount_total",
 	}
 
 OUTER:
