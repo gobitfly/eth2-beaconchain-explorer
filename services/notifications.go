@@ -2776,7 +2776,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 		var inTime time.Duration
 		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
 		if err != nil {
-			inTime = time.Duration(24 * time.Hour)
+			inTime = time.Duration(utils.Day)
 		} else {
 			inTime = time.Until(utils.EpochToTime(syncStartEpoch))
 		}
