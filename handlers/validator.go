@@ -2008,7 +2008,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	var syncPeriods []uint64 = []uint64{}
 
 	err = db.ReaderDb.Select(&syncPeriods, `
-		SELECT period
+		SELECT distinct period
 		FROM sync_committees 
 		WHERE validatorindex = $1
 		ORDER BY period desc`, validatorIndex)

@@ -36,7 +36,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
-	if err := checkIfDayIsFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		return nil
 	})
 	g.Go(func() error {
-		if err := gatherValidatorSyncDutiesForDay(validators, day, validatorData, validatorDataMux); err != nil {
+		if err := GatherValidatorSyncDutiesForDay(validators, day, validatorData, validatorDataMux); err != nil {
 			return fmt.Errorf("error in GatherValidatorSyncDutiesForDay: %w", err)
 		}
 		return nil
@@ -138,7 +138,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData1d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData1d, err = gatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
+		statisticsData1d, err = GatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -147,7 +147,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData7d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData7d, err = gatherStatisticsForDay(int64(day) - 7) // convert to int64 to avoid underflows
+		statisticsData7d, err = GatherStatisticsForDay(int64(day) - 7) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -156,7 +156,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData31d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData31d, err = gatherStatisticsForDay(int64(day) - 31) // convert to int64 to avoid underflows
+		statisticsData31d, err = GatherStatisticsForDay(int64(day) - 31) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -165,7 +165,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData365d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData365d, err = gatherStatisticsForDay(int64(day) - 365) // convert to int64 to avoid underflows
+		statisticsData365d, err = GatherStatisticsForDay(int64(day) - 365) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -892,7 +892,7 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 	return nil
 }
 
-func gatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
+func GatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_sync_stats").Observe(time.Since(exportStart).Seconds())
@@ -906,9 +906,11 @@ func gatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*ty
 		return nil
 	}
 	logger := logger.WithFields(logrus.Fields{
-		"day":        day,
-		"firstEpoch": firstEpoch,
-		"lastEpoch":  lastEpoch,
+		"day":         day,
+		"firstEpoch":  firstEpoch,
+		"lastEpoch":   lastEpoch,
+		"startPeriod": utils.SyncPeriodOfEpoch(firstEpoch),
+		"endPeriod":   utils.SyncPeriodOfEpoch(lastEpoch),
 	})
 	logger.Infof("gathering sync duties")
 
@@ -1113,7 +1115,7 @@ func gatherValidatorMissedAttestationsStatisticsForDay(validators []uint64, day 
 	return nil
 }
 
-func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
+func GatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
 
 	if day < 0 {
 		return nil, nil
@@ -1800,7 +1802,7 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 	return nil
 }
 
-func checkIfDayIsFinalized(day uint64) error {
+func CheckIfDayIsFinalized(day uint64) error {
 	_, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
 	latestFinalizedEpoch, err := GetLatestFinalizedEpoch()

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,7 +45,7 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 		_, exists := dbPeriodsMap[p]
 		if !exists {
 			t0 := time.Now()
-			err = exportSyncCommitteeAtPeriod(rpcClient, p)
+			err = ExportSyncCommitteeAtPeriod(rpcClient, p, nil)
 			if err != nil {
 				return fmt.Errorf("error exporting sync-committee at period %v: %w", p, err)
 			}
@@ -58,7 +59,48 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 	return nil
 }
 
-func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
+func ExportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64, providedTx *sqlx.Tx) error {
+
+	data, err := GetSyncCommitteAtPeriod(rpcClient, p)
+	if err != nil {
+		return err
+	}
+
+	tx := providedTx
+	if tx == nil {
+		tx, err = db.WriterDb.Beginx()
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+	}
+
+	nArgs := 3
+	valueArgs := make([]interface{}, len(data)*nArgs)
+	valueIds := make([]string, len(data))
+	for i, entry := range data {
+		valueArgs[i*nArgs+0] = entry.Period
+		valueArgs[i*nArgs+1] = entry.ValidatorIndex
+		valueArgs[i*nArgs+2] = entry.CommitteeIndex
+		valueIds[i] = fmt.Sprintf("($%d,$%d,$%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3)
+	}
+	_, err = tx.Exec(
+		fmt.Sprintf(`
+			INSERT INTO sync_committees (period, validatorindex, committeeindex) 
+			VALUES %s ON CONFLICT (period, validatorindex, committeeindex) DO NOTHING`,
+			strings.Join(valueIds, ",")),
+		valueArgs...)
+	if err != nil {
+		return err
+	}
+
+	if providedTx == nil {
+		return tx.Commit()
+	}
+	return nil
+}
+
+func GetSyncCommitteAtPeriod(rpcClient rpc.Client, p uint64) ([]SyncCommittee, error) {
 
 	stateID := uint64(0)
 	if p > 0 {
@@ -75,66 +117,31 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 
 	logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v)", p, firstEpoch, lastEpoch)
 
+	// Note that the order we receive the validators from the node in is crucial
+	// and determines which bit reflects them in the block sync aggregate bits
 	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", stateID), epoch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	validatorsU64 := make([]uint64, len(c.Validators))
+	result := make([]SyncCommittee, len(c.Validators))
 	for i, idxStr := range c.Validators {
 		idxU64, err := strconv.ParseUint(idxStr, 10, 64)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		validatorsU64[i] = idxU64
+		result = append(result, SyncCommittee{
+			Period:         p,
+			ValidatorIndex: idxU64,
+			CommitteeIndex: uint64(i),
+		})
 	}
 
-	dedupMap := make(map[uint64]bool)
+	return result, nil
+}
 
-	for _, validator := range validatorsU64 {
-		dedupMap[validator] = true
-	}
-
-	validatorsU64 = make([]uint64, 0, len(dedupMap))
-	for validator := range dedupMap {
-		validatorsU64 = append(validatorsU64, validator)
-	}
-
-	// start := time.Now()
-	//
-	// firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
-	// lastSlot := lastEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch + utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
-	// logger.Infof("exporting sync committee assignments for period %v (epoch %v to %v, slot %v to %v) to bigtable", p, firstEpoch, lastEpoch, firstSlot, lastSlot)
-
-	// err = db.BigtableClient.SaveSyncCommitteesAssignments(firstSlot, lastSlot, validatorsU64)
-	// if err != nil {
-	// 	return fmt.Errorf("error saving sync committee assignments: %v", err)
-	// }
-	// logger.Infof("exported sync committee assignments for period %v to bigtable in %v", p, time.Since(start))
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	nArgs := 3
-	valueArgs := make([]interface{}, len(validatorsU64)*nArgs)
-	valueIds := make([]string, len(validatorsU64))
-	for i, idxU64 := range validatorsU64 {
-		valueArgs[i*nArgs+0] = p
-		valueArgs[i*nArgs+1] = idxU64
-		valueArgs[i*nArgs+2] = i
-		valueIds[i] = fmt.Sprintf("($%d,$%d,$%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3)
-	}
-	_, err = tx.Exec(
-		fmt.Sprintf(`
-			INSERT INTO sync_committees (period, validatorindex, committeeindex) 
-			VALUES %s ON CONFLICT (period, validatorindex, committeeindex) DO NOTHING`,
-			strings.Join(valueIds, ",")),
-		valueArgs...)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+type SyncCommittee struct {
+	Period         uint64 `json:"period"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+	CommitteeIndex uint64 `json:"committeeindex"`
 }
