@@ -12,7 +12,6 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -1333,6 +1332,7 @@ func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, startDay, endDay ui
 	}
 
 	logrus.Infof("finished all exporting stats for days %v - %v, took %v", startDay, endDay, time.Since(start))
+	logrus.Infof("REMEMBER: To execute export-stats-totals now to update the totals")
 }
 
 func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun bool) error {
@@ -1381,16 +1381,6 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 		return nil
 	})
 
-	var statisticsData1d []*types.ValidatorStatsTableDbRow
-	g.Go(func() error {
-		var err error
-		statisticsData1d, err = db.GatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
-		if err != nil {
-			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
-		}
-		return nil
-	})
-
 	err = g.Wait()
 	if err != nil {
 		return err
@@ -1409,27 +1399,6 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 	}
 
 	logrus.Infof("statistics data collection for day %v completed", day)
-
-	// calculate cl income data & update totals
-	for _, data := range onlySyncCommitteeValidatorData {
-
-		previousDayData := &types.ValidatorStatsTableDbRow{
-			ValidatorIndex: math.MaxUint64,
-		}
-
-		if data.ValidatorIndex < uint64(len(statisticsData1d)) && day > 0 {
-			previousDayData = statisticsData1d[data.ValidatorIndex]
-		}
-
-		if data.ValidatorIndex != previousDayData.ValidatorIndex {
-			return fmt.Errorf("logic error when retrieving previous day data for validator %v (%v wanted, %v retrieved)", data.ValidatorIndex, data.ValidatorIndex, previousDayData.ValidatorIndex)
-		}
-
-		// update sync total
-		data.ParticipatedSyncTotal = previousDayData.ParticipatedSyncTotal + data.ParticipatedSync
-		data.MissedSyncTotal = previousDayData.MissedSyncTotal + data.MissedSync
-		data.OrphanedSyncTotal = previousDayData.OrphanedSyncTotal + data.OrphanedSync
-	}
 
 	var statisticsDataToday []*types.ValidatorStatsTableDbRow
 	if dryRun {
@@ -1451,23 +1420,20 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 	for _, data := range onlySyncCommitteeValidatorData {
 		if dryRun {
 			logrus.Infof(
-				"validator %v: participated sync: %v -> %v, missed sync: %v -> %v, orphaned sync: %v -> %v, total participated: %v -> %v, total missed sync: %v -> %v, total orphaned sync: %v -> %v",
+				"validator %v: participated sync: %v -> %v, missed sync: %v -> %v, orphaned sync: %v -> %v",
 				data.ValidatorIndex, statisticsDataToday[data.ValidatorIndex].ParticipatedSync, data.ParticipatedSync, statisticsDataToday[data.ValidatorIndex].MissedSync, data.MissedSync, statisticsDataToday[data.ValidatorIndex].OrphanedSync,
-				data.OrphanedSync, statisticsDataToday[data.ValidatorIndex].ParticipatedSyncTotal, data.ParticipatedSyncTotal, statisticsDataToday[data.ValidatorIndex].MissedSyncTotal, data.MissedSyncTotal, statisticsDataToday[data.ValidatorIndex].OrphanedSyncTotal, data.OrphanedSyncTotal,
+				data.OrphanedSync,
 			)
 		} else {
 			tx.Exec(`
 				UPDATE validator_stats set
 				participated_sync = $1,
-				participated_sync_total = $2,
-				missed_sync = $3,
-				missed_sync_total = $4,
-				orphaned_sync = $5,
-				orphaned_sync_total = $6
-				WHERE day = $7 AND validatorindex = $8`,
-				data.ParticipatedSync, data.ParticipatedSyncTotal,
-				data.MissedSync, data.MissedSyncTotal,
-				data.OrphanedSync, data.OrphanedSyncTotal,
+				missed_sync = $2,
+				orphaned_sync = $3,
+				WHERE day = $4 AND validatorindex = $5`,
+				data.ParticipatedSync,
+				data.MissedSync,
+				data.OrphanedSync,
 				data.Day, data.ValidatorIndex)
 		}
 	}
