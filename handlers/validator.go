@@ -2053,8 +2053,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		endIndex := start
 
 		// retrieve sync duties and sync participations
-		syncDuties := make(map[uint64]map[uint64]*types.ValidatorSyncParticipation)
-		syncDuties[validatorIndex] = make(map[uint64]*types.ValidatorSyncParticipation, length)
+		syncDuties := make(map[uint64]*types.ValidatorSyncParticipation, length)
 		participations := make(map[uint64]uint64, length)
 		{
 			// the slot range for the given table page might contain multiplie sync periods and therefore we may need to split the queries to avoid fetching potentially thousands of duties at once
@@ -2086,7 +2085,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				for slot, duty := range sdh[validatorIndex] {
-					syncDuties[validatorIndex][slot] = duty
+					syncDuties[slot] = duty
 				}
 
 				par, err := db.GetSyncParticipationBySlotRange(slotRange.StartSlot, slotRange.EndSlot)
@@ -2126,13 +2125,11 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			participation := participations[slot]
 
 			status := uint64(0)
-			if syncDuties[validatorIndex] != nil {
-				if syncDuties[validatorIndex][slot] != nil {
-					status = syncDuties[validatorIndex][slot].Status
-				}
-				if _, ok := missedSlotsMap[slot]; ok {
-					status = 3
-				}
+			if syncDuties[slot] != nil {
+				status = syncDuties[slot].Status
+			}
+			if _, ok := missedSlotsMap[slot]; ok {
+				status = 3
 			}
 
 			tableData = append(tableData, []interface{}{
