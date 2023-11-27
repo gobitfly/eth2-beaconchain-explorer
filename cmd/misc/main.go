@@ -1246,7 +1246,7 @@ Instead of deleting entries from the sync_committee table in a prod environment 
 this method will replace each sync committee period one by one with the new one. Which is much nicer for a prod environment.
 */
 func exportSyncCommitteePeriods(rpcClient rpc.Client, startDay, endDay uint64, dryRun bool) {
-	var currEpoch = uint64(0)
+	var lastEpoch = uint64(0)
 
 	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
 	if startDay > 0 {
@@ -1256,20 +1256,19 @@ func exportSyncCommitteePeriods(rpcClient rpc.Client, startDay, endDay uint64, d
 
 	if endDay <= 0 {
 		var err error
-		currEpoch, err = db.GetLatestFinalizedEpoch()
+		lastEpoch, err = db.GetLatestFinalizedEpoch()
 		if err != nil {
-			logrus.WithError(err).Errorf("error getting latest finalized epoch")
+			utils.LogError(err, "error getting latest finalized epoch", 0)
 			return
 		}
-		if currEpoch > 0 { // guard against underflows
-			currEpoch = currEpoch - 1
+		if lastEpoch > 0 { // guard against underflows
+			lastEpoch = lastEpoch - 1
 		}
 	} else {
-		_, lastEpoch := utils.GetFirstAndLastEpochForDay(endDay)
-		currEpoch = lastEpoch
+		_, lastEpoch = utils.GetFirstAndLastEpochForDay(endDay)
 	}
 
-	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch)) + 1 // we can look into the future
+	lastPeriod := utils.SyncPeriodOfEpoch(uint64(lastEpoch)) + 1 // we can look into the future
 
 	start := time.Now()
 	for p := firstPeriod; p <= lastPeriod; p++ {
@@ -1281,7 +1280,9 @@ func exportSyncCommitteePeriods(rpcClient rpc.Client, startDay, endDay uint64, d
 				logrus.WithField("period", p).Infof("reached max period, stopping")
 				break
 			} else {
-				logrus.WithError(err).WithField("period", p).Errorf("error re-exporting sync_committee")
+				utils.LogError(err, "error re-exporting sync_committee", 0, map[string]interface{}{
+					"period": p,
+				})
 				return
 			}
 		}
@@ -1297,33 +1298,30 @@ func exportSyncCommitteePeriods(rpcClient rpc.Client, startDay, endDay uint64, d
 }
 
 func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, startDay, endDay uint64, dryRun, skipPhase1 bool) {
-	var lastEpoch = uint64(0)
-
 	if endDay <= 0 {
-		var err error
-		lastEpoch, err = db.GetLatestFinalizedEpoch()
+		lastEpoch, err := db.GetLatestFinalizedEpoch()
 		if err != nil {
-			logrus.WithError(err).Errorf("error getting latest finalized epoch")
+			utils.LogError(err, "error getting latest finalized epoch", 0)
 			return
 		}
 		if lastEpoch > 0 { // guard against underflows
 			lastEpoch = lastEpoch - 1
 		}
-	} else {
-		_, lastEpoch = utils.GetFirstAndLastEpochForDay(endDay)
+
+		_, err = db.GetLastExportedStatisticDay()
+		if err != nil {
+			logrus.Infof("skipping exporting stats, first day has not been indexed yet")
+			return
+		}
+
+		epochsPerDay := utils.EpochsPerDay()
+		currentDay := lastEpoch / epochsPerDay
+		endDay = currentDay - 1 // current day will be picked up by exporter
 	}
 
 	start := time.Now()
 
-	epochsPerDay := utils.EpochsPerDay()
-	if lastEpoch < epochsPerDay {
-		logrus.Infof("skipping exporting stats, first day has not been indexed yet")
-		return
-	}
-	currentDay := lastEpoch / epochsPerDay
-	previousDay := currentDay - 1
-
-	for day := startDay; day <= previousDay; day++ {
+	for day := startDay; day <= endDay; day++ {
 		startDay := time.Now()
 		err := UpdateValidatorStatisticsSyncData(day, rpcClient, dryRun)
 		if err != nil {
@@ -1334,7 +1332,7 @@ func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, startDay, endDay ui
 		logrus.Infof("finished updating validators_stats for day %v, took %v", day, time.Since(startDay))
 	}
 
-	logrus.Infof("finished all exporting stats for days %v - %v, took %v", startDay, previousDay, time.Since(start))
+	logrus.Infof("finished all exporting stats for days %v - %v, took %v", startDay, endDay, time.Since(start))
 }
 
 func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun bool) error {
@@ -1350,18 +1348,24 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 	logrus.Infof("getting exported state for day %v", day)
 
 	var err error
-	maxValidatorIndex := uint64(1999999) //bt.GetMaxValidatorindexForEpoch(lastEpoch)
-	// if err != nil {
-	// 	logrus.Errorf("error getting max validator index for epoch %v: %v", lastEpoch, err)
-	// 	return err
-	// }
-	validators := make([]uint64, 0, maxValidatorIndex)
+	var maxValidatorIndex uint64
+	err = db.ReaderDb.Get(&maxValidatorIndex, `SELECT MAX(validatorindex) FROM validator_stats WHERE day = $1`, day)
+	if err != nil {
+		utils.LogFatal(err, "error: could not get max validator index", 0, map[string]interface{}{
+			"epoch": firstEpoch,
+		})
+	} else if maxValidatorIndex == uint64(0) {
+		utils.LogFatal(err, "error: no validator found", 0, map[string]interface{}{
+			"epoch": firstEpoch,
+		})
+	}
+	maxValidatorIndex += 10000 // add some buffer, exact number is not important. Should just be bigger than max validators that can join in a day
+
 	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, maxValidatorIndex)
 	validatorDataMux := &sync.Mutex{}
 
 	logrus.Infof("processing statistics for validators 0-%d", maxValidatorIndex)
 	for i := uint64(0); i <= maxValidatorIndex; i++ {
-		validators = append(validators, i)
 		validatorData = append(validatorData, &types.ValidatorStatsTableDbRow{
 			ValidatorIndex: i,
 			Day:            int64(day),
@@ -1371,7 +1375,7 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 	g := &errgroup.Group{}
 
 	g.Go(func() error {
-		if err := db.GatherValidatorSyncDutiesForDay(validators, day, validatorData, validatorDataMux); err != nil {
+		if err := db.GatherValidatorSyncDutiesForDay(nil, day, validatorData, validatorDataMux); err != nil {
 			return fmt.Errorf("error in GatherValidatorSyncDutiesForDay: %w", err)
 		}
 		return nil
@@ -1392,29 +1396,25 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 		return err
 	}
 
-	onlySyncValidatorData := make([]*types.ValidatorStatsTableDbRow, 0, len(validatorData))
+	onlySyncCommitteeValidatorData := make([]*types.ValidatorStatsTableDbRow, 0, len(validatorData))
 	for index := range validatorData {
 
 		if validatorData[index].ParticipatedSync > 0 || validatorData[index].MissedSync > 0 || validatorData[index].OrphanedSync > 0 {
-			onlySyncValidatorData = append(onlySyncValidatorData, validatorData[index])
+			onlySyncCommitteeValidatorData = append(onlySyncCommitteeValidatorData, validatorData[index])
 		}
 	}
 
-	if len(onlySyncValidatorData) == 0 {
+	if len(onlySyncCommitteeValidatorData) == 0 {
 		return nil // no sync committee yet skip
 	}
 
 	logrus.Infof("statistics data collection for day %v completed", day)
 
 	// calculate cl income data & update totals
-	for _, data := range onlySyncValidatorData {
+	for _, data := range onlySyncCommitteeValidatorData {
 
 		previousDayData := &types.ValidatorStatsTableDbRow{
 			ValidatorIndex: math.MaxUint64,
-		}
-
-		if day == 0 {
-			previousDayData.ValidatorIndex = data.ValidatorIndex
 		}
 
 		if data.ValidatorIndex < uint64(len(statisticsData1d)) && day > 0 {
