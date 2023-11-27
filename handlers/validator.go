@@ -2006,148 +2006,156 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 	// retrieve all sync periods for this validator
 	var syncPeriods []uint64 = []uint64{}
-
 	err = db.ReaderDb.Select(&syncPeriods, `
 		SELECT period
 		FROM sync_committees 
 		WHERE validatorindex = $1
 		ORDER BY period desc`, validatorIndex)
+
 	if err != nil {
 		utils.LogError(err, "error getting sync tab count data of sync-assignments from db", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// total count of sync duties for this validator
-	totalCount := uint64(0)
-
 	tableData := [][]interface{}{}
-
-	if len(syncPeriods) > 0 {
-
-		latestProposedSlot := services.LatestProposedSlot()
-
-		slots := make([]uint64, 0, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod*utils.Config.Chain.ClConfig.SlotsPerEpoch*uint64(len(syncPeriods)))
-
-		for _, period := range syncPeriods {
-			firstEpoch := utils.FirstEpochOfSyncPeriod(period)
-			lastEpoch := firstEpoch + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
-
-			firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
-			lastSlot := (lastEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
-
-			for slot := lastSlot; slot >= firstSlot && (slot <= lastSlot /* guards against underflows */); slot-- {
-				if slot > latestProposedSlot || utils.EpochOfSlot(slot) < utils.Config.Chain.ClConfig.AltairForkEpoch {
-					continue
-				}
-				slots = append(slots, slot)
-			}
-		}
-
-		totalCount = uint64(len(slots))
-
-		startIndex := start + length - 1
-		if startIndex > uint64(len(slots)-1) {
-			startIndex = uint64(len(slots) - 1)
-		}
-		endIndex := start
-
-		// retrieve sync duties and sync participations
-		syncDuties := make(map[uint64]*types.ValidatorSyncParticipation, length)
-		participations := make(map[uint64]uint64, length)
-		{
-			// the slot range for the given table page might contain multiple sync periods and therefore we may need to split the queries to avoid fetching potentially thousands of duties at once
-			type SlotRange struct {
-				StartSlot uint64
-				EndSlot   uint64
-			}
-			var consecutiveSlotRanges []SlotRange
-
-			// slots are sorted in descending order
-			nextSlotRange := SlotRange{StartSlot: slots[endIndex], EndSlot: slots[endIndex]}
-			for i := endIndex + 1; i <= startIndex; i++ {
-				if slots[i] == nextSlotRange.StartSlot-1 {
-					nextSlotRange.StartSlot = slots[i]
-				} else {
-					consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
-					nextSlotRange = SlotRange{StartSlot: slots[i], EndSlot: slots[i]}
-				}
-			}
-			consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
-
-			// make individual queries for each consecutive slot range and accumulate results
-			for _, slotRange := range consecutiveSlotRanges {
-				sdh, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, slotRange.StartSlot, slotRange.EndSlot)
-				if err != nil {
-					errFields["slotRange"] = slotRange
-					utils.LogError(err, "error getting validator sync duties data from bigtable", 0, errFields)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
-				}
-				for slot, duty := range sdh[validatorIndex] {
-					syncDuties[slot] = duty
-				}
-
-				par, err := db.GetSyncParticipationBySlotRange(slotRange.StartSlot, slotRange.EndSlot)
-				if err != nil {
-					errFields["slotRange"] = slotRange
-					utils.LogError(err, "error getting validator sync participation data from db", 0, errFields)
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
-					return
-				}
-				for slot, participation := range par {
-					participations[slot] = participation
-				}
-			}
-		}
-
-		// search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
-		slotsRange := slots[endIndex : startIndex+1]
-
-		missedSlots := []uint64{}
-		err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, slotsRange)
-		if err != nil {
-			utils.LogError(err, "error getting missed slots data from db", 0, errFields)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		missedSlotsMap := make(map[uint64]bool, len(missedSlots))
-		for _, slot := range missedSlots {
-			missedSlotsMap[slot] = true
-		}
-
-		// extract correct slots
-		tableData = make([][]interface{}, 0, length)
-		for index := endIndex; index <= startIndex; index++ {
-			slot := slots[index]
-
-			epoch := utils.EpochOfSlot(slot)
-			participation := participations[slot]
-
-			status := uint64(0)
-			if syncDuties[slot] != nil {
-				status = syncDuties[slot].Status
-			}
-			if _, ok := missedSlotsMap[slot]; ok {
-				status = 3
-			}
-
-			tableData = append(tableData, []interface{}{
-				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
-				utils.FormatEpoch(epoch),
-				utils.FormatBlockSlot(slot),
-				utils.FormatSyncParticipationStatus(status, slot),
-				utils.FormatSyncParticipations(participation),
-			})
-		}
-	}
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
+		RecordsTotal:    0,
+		RecordsFiltered: 0,
 		Data:            tableData,
 	}
+
+	if len(syncPeriods) == 0 {
+		// no sync periods for this validator => early exit with empty tableData
+		err = json.NewEncoder(w).Encode(data)
+		if err != nil {
+			utils.LogError(err, "error encoding json response", 0, errFields)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	totalCount := uint64(0) // total count of sync duties for this validator
+	latestProposedSlot := services.LatestProposedSlot()
+	slots := make([]uint64, 0, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod*utils.Config.Chain.ClConfig.SlotsPerEpoch*uint64(len(syncPeriods)))
+
+	for _, period := range syncPeriods {
+		firstEpoch := utils.FirstEpochOfSyncPeriod(period)
+		lastEpoch := firstEpoch + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
+
+		firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+		lastSlot := (lastEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
+
+		for slot := lastSlot; slot >= firstSlot && (slot <= lastSlot /* guards against underflows */); slot-- {
+			if slot > latestProposedSlot || utils.EpochOfSlot(slot) < utils.Config.Chain.ClConfig.AltairForkEpoch {
+				continue
+			}
+			slots = append(slots, slot)
+		}
+	}
+
+	totalCount = uint64(len(slots))
+
+	startIndex := start + length - 1
+	if startIndex > uint64(len(slots)-1) {
+		startIndex = uint64(len(slots) - 1)
+	}
+	endIndex := start
+
+	// retrieve sync duties and sync participations
+	syncDuties := make(map[uint64]*types.ValidatorSyncParticipation, length)
+	participations := make(map[uint64]uint64, length)
+
+	// the slot range for the given table page might contain multiple sync periods and therefore we may need to split the queries to avoid fetching potentially thousands of duties at once
+	type SlotRange struct {
+		StartSlot uint64
+		EndSlot   uint64
+	}
+	var consecutiveSlotRanges []SlotRange
+
+	// slots are sorted in descending order
+	nextSlotRange := SlotRange{StartSlot: slots[endIndex], EndSlot: slots[endIndex]}
+	for i := endIndex + 1; i <= startIndex; i++ {
+		if slots[i] == nextSlotRange.StartSlot-1 {
+			nextSlotRange.StartSlot = slots[i]
+		} else {
+			consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
+			nextSlotRange = SlotRange{StartSlot: slots[i], EndSlot: slots[i]}
+		}
+	}
+	consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
+
+	// make individual queries for each consecutive slot range and accumulate results
+	for _, slotRange := range consecutiveSlotRanges {
+		sdh, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, slotRange.StartSlot, slotRange.EndSlot)
+		if err != nil {
+			errFields["slotRange"] = slotRange
+			utils.LogError(err, "error getting validator sync duties data from bigtable", 0, errFields)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		for slot, duty := range sdh[validatorIndex] {
+			syncDuties[slot] = duty
+		}
+
+		par, err := db.GetSyncParticipationBySlotRange(slotRange.StartSlot, slotRange.EndSlot)
+		if err != nil {
+			errFields["slotRange"] = slotRange
+			utils.LogError(err, "error getting validator sync participation data from db", 0, errFields)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		for slot, participation := range par {
+			participations[slot] = participation
+		}
+	}
+
+	// search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
+	slotsRange := slots[endIndex : startIndex+1]
+
+	missedSlots := []uint64{}
+	err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, slotsRange)
+	if err != nil {
+		utils.LogError(err, "error getting missed slots data from db", 0, errFields)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	missedSlotsMap := make(map[uint64]bool, len(missedSlots))
+	for _, slot := range missedSlots {
+		missedSlotsMap[slot] = true
+	}
+
+	// extract correct slots
+	tableData = make([][]interface{}, 0, length)
+	for index := endIndex; index <= startIndex; index++ {
+		slot := slots[index]
+
+		epoch := utils.EpochOfSlot(slot)
+		participation := participations[slot]
+
+		status := uint64(0)
+		if syncDuties[slot] != nil {
+			status = syncDuties[slot].Status
+		}
+		if _, ok := missedSlotsMap[slot]; ok {
+			status = 3
+		}
+
+		tableData = append(tableData, []interface{}{
+			fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
+			utils.FormatEpoch(epoch),
+			utils.FormatBlockSlot(slot),
+			utils.FormatSyncParticipationStatus(status, slot),
+			utils.FormatSyncParticipations(participation),
+		})
+	}
+
+	// fill and send data
+	data.RecordsTotal = totalCount
+	data.RecordsFiltered = totalCount
+	data.Data = tableData
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
