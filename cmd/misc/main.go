@@ -1446,9 +1446,9 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 	}
 	defer tx.Rollback()
 
-	logrus.Infof("updating statistics data into the validator_stats table %v | %v", len(onlySyncValidatorData), len(validatorData))
+	logrus.Infof("updating statistics data into the validator_stats table %v | %v", len(onlySyncCommitteeValidatorData), len(validatorData))
 
-	for _, data := range onlySyncValidatorData {
+	for _, data := range onlySyncCommitteeValidatorData {
 		if dryRun {
 			logrus.Infof(
 				"validator %v: participated sync: %v -> %v, missed sync: %v -> %v, orphaned sync: %v -> %v, total participated: %v -> %v, total missed sync: %v -> %v, total orphaned sync: %v -> %v",
