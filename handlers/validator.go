@@ -2056,7 +2056,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		syncDuties := make(map[uint64]*types.ValidatorSyncParticipation, length)
 		participations := make(map[uint64]uint64, length)
 		{
-			// the slot range for the given table page might contain multiplie sync periods and therefore we may need to split the queries to avoid fetching potentially thousands of duties at once
+			// the slot range for the given table page might contain multiple sync periods and therefore we may need to split the queries to avoid fetching potentially thousands of duties at once
 			type SlotRange struct {
 				StartSlot uint64
 				EndSlot   uint64
