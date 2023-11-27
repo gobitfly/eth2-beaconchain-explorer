@@ -115,7 +115,7 @@ func notificationCollector() {
 				if err != nil {
 					logger.Errorf("error collection user db notifications: %v", err)
 					ReportStatus("notification-collector", "Error", nil)
-					time.Sleep(time.Second * 120)
+					time.Sleep(time.Minute * 2)
 					continue
 				}
 
@@ -139,7 +139,7 @@ func notificationCollector() {
 func notificationSender() {
 	for {
 		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 
 		conn, err := db.FrontendWriterDB.Conn(ctx)
 		if err != nil {

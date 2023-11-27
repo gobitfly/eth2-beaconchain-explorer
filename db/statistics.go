@@ -1315,7 +1315,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 func WriteChartSeriesForDay(day int64) error {
 	startTs := time.Now()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	g, gCtx := errgroup.WithContext(ctx)
 

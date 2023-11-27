@@ -125,7 +125,7 @@ func genesisDepositsExporter(client rpc.Client) {
 		}
 
 		if latestEpoch == 0 {
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Minute)
 			continue
 		}
 
@@ -134,7 +134,7 @@ func genesisDepositsExporter(client rpc.Client) {
 		err = db.WriterDb.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits WHERE block_slot=0")
 		if err != nil {
 			logger.Errorf("error retrieving genesis-deposits-count when exporting genesis-deposits: %v", err)
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Minute)
 			continue
 		}
 
@@ -146,14 +146,14 @@ func genesisDepositsExporter(client rpc.Client) {
 		genesisValidators, err := client.GetValidatorState(0)
 		if err != nil {
 			logger.Errorf("error retrieving genesis validator data for genesis-epoch when exporting genesis-deposits: %v", err)
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Minute)
 			continue
 		}
 
 		tx, err := db.WriterDb.Beginx()
 		if err != nil {
 			logger.Errorf("error beginning db-tx when exporting genesis-deposits: %v", err)
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Minute)
 			continue
 		}
 
@@ -169,7 +169,7 @@ func genesisDepositsExporter(client rpc.Client) {
 			if err != nil {
 				tx.Rollback()
 				logger.Errorf("error exporting genesis-deposits: %v", err)
-				time.Sleep(time.Second * 60)
+				time.Sleep(time.Minute)
 				continue
 			}
 		}
@@ -186,7 +186,7 @@ func genesisDepositsExporter(client rpc.Client) {
 		if err != nil {
 			tx.Rollback()
 			logger.Errorf("error hydrating eth1 data into genesis-deposits: %v", err)
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Minute)
 			continue
 		}
 
@@ -195,7 +195,7 @@ func genesisDepositsExporter(client rpc.Client) {
 		if err != nil {
 			tx.Rollback()
 			logger.Errorf("error updating deposit count for the genesis slot: %v", err)
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Minute)
 			continue
 		}
 
@@ -203,7 +203,7 @@ func genesisDepositsExporter(client rpc.Client) {
 		if err != nil {
 			tx.Rollback()
 			logger.Errorf("error committing db-tx when exporting genesis-deposits: %v", err)
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Minute)
 			continue
 		}
 

@@ -22,7 +22,7 @@ func latestBlockUpdater(wg *sync.WaitGroup) {
 			utils.LogError(err, "error getting most recent eth1 block", 0)
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:%s", utils.Config.Chain.ClConfig.DepositChainID, latestBlockNumberCacheKey)
-		err = cache.TieredCache.SetUint64(cacheKey, recent.GetNumber(), time.Hour*24)
+		err = cache.TieredCache.SetUint64(cacheKey, recent.GetNumber(), utils.Day)
 		if err != nil {
 			utils.LogError(err, fmt.Sprintf("error caching latest block number with cache key %s", latestBlockNumberCacheKey), 0)
 		}
@@ -66,7 +66,7 @@ func headBlockRootHashUpdater(wg *sync.WaitGroup) {
 			utils.LogError(err, "error getting blockroot hash for chain head", 0)
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:%s", utils.Config.Chain.ClConfig.DepositChainID, latestBlockHashRootCacheKey)
-		err = cache.TieredCache.SetString(cacheKey, string(blockRootHash), time.Hour*24)
+		err = cache.TieredCache.SetString(cacheKey, string(blockRootHash), utils.Day)
 		if err != nil {
 			utils.LogError(err, fmt.Sprintf("error caching latest blockroot hash with cache key %s", latestBlockHashRootCacheKey), 0)
 		}

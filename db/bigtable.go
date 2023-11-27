@@ -2302,7 +2302,7 @@ func (bigtable *Bigtable) getValidatorIncomeDetailsHistoryV2(validators []uint64
 		startEpoch = 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
 	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
@@ -2378,7 +2378,7 @@ func (bigtable *Bigtable) getValidatorIncomeDetailsHistoryV1(validators []uint64
 		startEpoch = 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
 	ranges := bigtable.getEpochRangesV1(startEpoch, endEpoch)
@@ -2530,7 +2530,7 @@ func (bigtable *Bigtable) GetTotalValidatorIncomeDetailsHistory(startEpoch uint6
 		startEpoch = 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
 	res := make(map[uint64]*itypes.ValidatorEpochIncome, endEpoch-startEpoch+1)

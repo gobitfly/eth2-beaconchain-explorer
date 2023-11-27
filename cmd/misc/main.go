@@ -336,7 +336,7 @@ func main() {
 			)
 			if err != nil {
 				logrus.Errorf("error exporting genesis-deposits: %v", err)
-				time.Sleep(time.Second * 60)
+				time.Sleep(time.Minute)
 				continue
 			}
 		}

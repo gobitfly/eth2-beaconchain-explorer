@@ -451,7 +451,7 @@ func (bigtable *Bigtable) GetFullBlocksDescending(stream chan<- *types.Eth1Block
 	})
 	defer tmr.Stop()
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*180))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*3))
 	defer cancel()
 
 	if high < low {
@@ -3026,7 +3026,7 @@ func (bigtable *Bigtable) GetMetadataUpdates(prefix string, startToken string, l
 	})
 	defer tmr.Stop()
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Hour*2))
 	defer cancel()
 
 	keys := make([]string, 0, limit)
@@ -3062,7 +3062,7 @@ func (bigtable *Bigtable) GetMetadata(startToken string, limit int) ([]string, [
 	})
 	defer tmr.Stop()
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*120))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Hour*2))
 	defer cancel()
 
 	keys := make([]string, 0, limit)
@@ -3411,7 +3411,7 @@ func (bigtable *Bigtable) GetAddressName(address []byte) (string, error) {
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := bigtable.chainId + ":NAME:" + rowKey
 
-	if wanted, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Hour*24); err == nil {
+	if wanted, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, utils.Day); err == nil {
 		// logrus.Infof("retrieved name for address %x from cache", address)
 		return wanted, nil
 	}
@@ -3495,7 +3495,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 
 	rowKey := fmt.Sprintf("%s:%x", bigtable.chainId, address)
 	cacheKey := bigtable.chainId + ":CONTRACT:" + rowKey
-	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour*24, new(types.ContractMetadata)); err == nil {
+	if cached, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, utils.Day, new(types.ContractMetadata)); err == nil {
 		ret := cached.(*types.ContractMetadata)
 		val, err := abi.JSON(bytes.NewReader(ret.ABIJson))
 		ret.ABI = &val
@@ -3520,7 +3520,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 				} else {
 					utils.LogError(err, "Fetching contract metadata", 0, logAdditionalInfo)
 				}
-				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+				err := cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, utils.Day)
 				if err != nil {
 					utils.LogError(err, "Caching contract metadata", 0, logAdditionalInfo)
 				}
@@ -3530,14 +3530,14 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 
 		// No contract found, caching empty
 		if ret == nil {
-			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, time.Hour*24)
+			err = cache.TieredCache.Set(cacheKey, &types.ContractMetadata{}, utils.Day)
 			if err != nil {
 				utils.LogError(err, "Caching contract metadata", 0, map[string]interface{}{"address": fmt.Sprintf("%x", address)})
 			}
 			return nil, nil
 		}
 
-		err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, ret, utils.Day)
 		if err != nil {
 			utils.LogError(err, "Caching contract metadata", 0, map[string]interface{}{"address": fmt.Sprintf("%x", address)})
 		}
@@ -3565,7 +3565,7 @@ func (bigtable *Bigtable) GetContractMetadata(address []byte) (*types.ContractMe
 		}
 	}
 
-	err = cache.TieredCache.Set(cacheKey, ret, time.Hour*24)
+	err = cache.TieredCache.Set(cacheKey, ret, utils.Day)
 	return ret, err
 }
 
@@ -4096,7 +4096,7 @@ func (bigtable *Bigtable) markBalanceUpdate(address []byte, token []byte, mutati
 		mutations.Keys = append(mutations.Keys, balanceUpdateKey)
 		mutations.Muts = append(mutations.Muts, mut)
 
-		cache.Set(balanceUpdateCacheKey, []byte{0x1}, int((time.Hour * 48).Seconds()))
+		cache.Set(balanceUpdateCacheKey, []byte{0x1}, int((utils.Day * 2).Seconds()))
 	}
 }
 
