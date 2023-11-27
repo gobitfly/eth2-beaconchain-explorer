@@ -520,11 +520,11 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 				previousBlock := i - 1
 				err := bt.SetLastBlockInBlocksTable(int64(previousBlock))
 				if err != nil {
-					return err
+					return fmt.Errorf("error setting last block [%v] in blocks table: %w", previousBlock, err)
 				}
 				err = bt.SetLastBlockInDataTable(int64(previousBlock))
 				if err != nil {
-					return err
+					return fmt.Errorf("error setting last block [%v] in data table: %w", previousBlock, err)
 				}
 				// now we can proceed to delete all blocks including and after the forked block
 			}
