@@ -1243,24 +1243,11 @@ OUTER:
 		}
 
 		if exportToToday {
-			// update end day since export might take a couple days to finish
-			lastEpoch, err := db.GetLatestFinalizedEpoch()
+			dayEnd, err = db.GetLastExportedStatisticDay()
 			if err != nil {
-				utils.LogError(err, "error getting latest finalized epoch", 0)
+				utils.LogError(err, "error getting last exported statistic day", 0)
 				return
 			}
-			if lastEpoch > 0 { // guard against underflows
-				lastEpoch = lastEpoch - 1
-			}
-
-			_, err = db.GetLastExportedStatisticDay()
-			if err != nil {
-				logrus.Infof("skipping exporting stats, first day has not been indexed yet")
-				return
-			}
-
-			epochsPerDay := utils.EpochsPerDay()
-			dayEnd = lastEpoch / epochsPerDay
 		}
 		logrus.Infof("finished exporting stats totals for columns '%v for day %v, took %v", columns, day, time.Since(timeDay))
 	}
