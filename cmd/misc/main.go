@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -1127,6 +1128,12 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 
 func exportStatsTotals(columns string, dayStart, dayEnd, concurrency uint64) {
 	start := time.Now()
+	exportToToday := false
+	if dayEnd <= 0 {
+		exportToToday = true
+		dayEnd = math.MaxInt
+	}
+
 	logrus.Infof("exporting stats totals for columns '%v'", columns)
 
 	// validate columns input
@@ -1233,6 +1240,27 @@ OUTER:
 				"day":     day,
 				"columns": columns,
 			})
+		}
+
+		if exportToToday {
+			// update end day since export might take a couple days to finish
+			lastEpoch, err := db.GetLatestFinalizedEpoch()
+			if err != nil {
+				utils.LogError(err, "error getting latest finalized epoch", 0)
+				return
+			}
+			if lastEpoch > 0 { // guard against underflows
+				lastEpoch = lastEpoch - 1
+			}
+
+			_, err = db.GetLastExportedStatisticDay()
+			if err != nil {
+				logrus.Infof("skipping exporting stats, first day has not been indexed yet")
+				return
+			}
+
+			epochsPerDay := utils.EpochsPerDay()
+			dayEnd = lastEpoch / epochsPerDay
 		}
 		logrus.Infof("finished exporting stats totals for columns '%v for day %v, took %v", columns, day, time.Since(timeDay))
 	}
