@@ -1,0 +1,29 @@
+#!/bin/sh
+set -v
+notallmodules="indexer eth1indexer frontend-data-updater"
+
+./stop
+cd ~/eth2-beaconchain-explorer/local-deployment/
+
+set +v
+echo "================================================================"
+echo "Launch all modules?"
+echo "'n' will launch  only  $notallmodules"
+read -p "y/n ?  " runall
+echo "================================================================"
+set -v
+
+systemctl restart docker.service
+kurtosis engine restart
+kurtosis clean -a
+
+kurtosis run --enclave my-testnet . "$(cat network-params.json)"
+
+bash provision-explorer-config.sh
+
+case $runall in
+    y) docker compose up -d;;
+    n) docker compose up -d ${notallmodules};;
+    *) echo "Please start Docker manually.";;
+esac
+
