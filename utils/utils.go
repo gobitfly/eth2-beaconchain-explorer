@@ -610,6 +610,57 @@ func ReadConfig(cfg *types.Config, path string) error {
 		}
 		cfg.Chain.ClConfig = *chainConfig
 	}
+
+	type MinimalELConfig struct {
+		ByzantiumBlock      *big.Int `yaml:"BYZANTIUM_FORK_BLOCK,omitempty"`      // Byzantium switch block (nil = no fork, 0 = already on byzantium)
+		ConstantinopleBlock *big.Int `yaml:"CONSTANTINOPLE_FORK_BLOCK,omitempty"` // Constantinople switch block (nil = no fork, 0 = already activated)
+	}
+	if cfg.Chain.ElConfigPath == "" {
+		minimalCfg := MinimalELConfig{}
+		switch cfg.Chain.Name {
+		case "mainnet":
+			err = yaml.Unmarshal([]byte(config.MainnetChainYml), &minimalCfg)
+		case "prater":
+			err = yaml.Unmarshal([]byte(config.PraterChainYml), &minimalCfg)
+		case "ropsten":
+			err = yaml.Unmarshal([]byte(config.RopstenChainYml), &minimalCfg)
+		case "sepolia":
+			err = yaml.Unmarshal([]byte(config.SepoliaChainYml), &minimalCfg)
+		case "gnosis":
+			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &minimalCfg)
+		case "holesky":
+			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &minimalCfg)
+		default:
+			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ElConfigPath)
+		}
+		if err != nil {
+			return err
+		}
+		if minimalCfg.ByzantiumBlock == nil {
+			minimalCfg.ByzantiumBlock = big.NewInt(0)
+		}
+		if minimalCfg.ConstantinopleBlock == nil {
+			minimalCfg.ConstantinopleBlock = big.NewInt(0)
+		}
+		cfg.Chain.ElConfig = &params.ChainConfig{
+			ChainID:             big.NewInt(int64(cfg.Chain.Id)),
+			ByzantiumBlock:      minimalCfg.ByzantiumBlock,
+			ConstantinopleBlock: minimalCfg.ConstantinopleBlock,
+		}
+	} else {
+		f, err := os.Open(cfg.Chain.ElConfigPath)
+		if err != nil {
+			return fmt.Errorf("error opening EL Chain Config file %v: %w", cfg.Chain.ElConfigPath, err)
+		}
+		var chainConfig *params.ChainConfig
+		decoder := json.NewDecoder(f)
+		err = decoder.Decode(&chainConfig)
+		if err != nil {
+			return fmt.Errorf("error decoding EL Chain Config file %v: %v", cfg.Chain.ElConfigPath, err)
+		}
+		cfg.Chain.ElConfig = chainConfig
+	}
+
 	cfg.Chain.Name = cfg.Chain.ClConfig.ConfigName
 
 	if cfg.Chain.GenesisTimestamp == 0 {
@@ -1380,9 +1431,9 @@ func EpochsPerDay() uint64 {
 	return (uint64(day.Seconds()) / Config.Chain.ClConfig.SlotsPerEpoch) / Config.Chain.ClConfig.SecondsPerSlot
 }
 
-func GetFirstAndLastEpochForDay(day uint64) (uint64, uint64) {
-	firstEpoch := day * EpochsPerDay()
-	lastEpoch := firstEpoch + EpochsPerDay() - 1
+func GetFirstAndLastEpochForDay(day uint64) (firstEpoch uint64, lastEpoch uint64) {
+	firstEpoch = day * EpochsPerDay()
+	lastEpoch = firstEpoch + EpochsPerDay() - 1
 	return firstEpoch, lastEpoch
 }
 
@@ -1734,4 +1785,27 @@ func ReverseString(s string) string {
 func GetCurrentFuncName() string {
 	pc, _, _, _ := runtime.Caller(1)
 	return runtime.FuncForPC(pc).Name()
+}
+
+func GetParentFuncName() string {
+	pc, _, _, _ := runtime.Caller(2)
+	return runtime.FuncForPC(pc).Name()
+}
+
+// Returns true if the given block number is 0 and if it is (according to its timestamp) included in slot 0
+//
+// This is only true for networks that launch with active PoS at block 0 which requires
+//
+//   - Belatrix happening at epoch 0 (pre condition for merged networks)
+//   - Genesis for PoS to happen at the same timestamp as the first block
+func IsPoSBlock0(number uint64, ts int64) bool {
+	if number > 0 {
+		return false
+	}
+
+	if Config.Chain.ClConfig.BellatrixForkEpoch > 0 {
+		return false
+	}
+
+	return time.Unix(int64(Config.Chain.GenesisTimestamp-Config.Chain.ClConfig.GenesisDelay), 0).UTC().Equal(time.Unix(ts, 0))
 }

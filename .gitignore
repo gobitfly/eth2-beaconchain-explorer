@@ -30,3 +30,5 @@ cmd/forkwatch
 **/.DS_Store
 _gitignore/
 local-deployment/config.yml
+local-deployment/elconfig.json
+local-deployment/.env

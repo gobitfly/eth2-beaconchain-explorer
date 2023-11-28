@@ -1,5 +1,6 @@
 chain:
-  configPath: 'node'
+  clConfigPath: 'node'
+  elConfigPath: '' # Works for well known public networks like mainnet, prater, holesky, sepolia. Specify a file for custom chains
 readerDatabase:
   name: db
   host: {{.DBHost}}

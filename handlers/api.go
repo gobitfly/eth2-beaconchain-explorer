@@ -726,6 +726,8 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 		period = utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
 	}
 
+	// Beware that we do not deduplicate here since a validator can be part multiple times of the same sync committee period
+	// and the order of the committeeindex is important, deduplicating it would mess up the order
 	rows, err := db.ReaderDb.Query(`SELECT period, GREATEST(period*$2, $3) AS start_epoch, ((period+1)*$2)-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, utils.Config.Chain.ClConfig.AltairForkEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
@@ -1014,15 +1016,24 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSyncCommitteeInfoForValidators(validators []uint64, period uint64) ([]interface{}, error) {
-	rows, err := db.ReaderDb.Query(
-		`SELECT 
-			period, 
-			GREATEST(period*$3, $4) AS start_epoch, 
-			((period+1)*$3)-1 AS end_epoch, 
-			ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
-		FROM sync_committees 
-		WHERE period = $1 AND validatorindex = ANY($2)
-		GROUP BY period`,
+	rows, err := db.ReaderDb.Query(`
+			WITH
+				data as (
+					SELECT 
+						period,
+						validatorindex,
+						max(committeeindex) as committeeindex
+					FROM sync_committees 
+					WHERE period = $1 AND validatorindex = ANY($2)
+					group by period, validatorindex
+				)	
+			SELECT 
+				period, 
+				GREATEST(period*$3, $4) AS start_epoch, 
+				((period+1)*$3)-1 AS end_epoch, 
+				ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators 
+			FROM data 	
+			group by period;`,
 		period, pq.Array(validators),
 		utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod, utils.Config.Chain.ClConfig.AltairForkEpoch,
 	)
@@ -1212,7 +1223,7 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 			Validators pq.Int64Array `db:"validators"`
 		}
 		query, args, err := sqlx.In(`
-			SELECT period, COALESCE(ARRAY_AGG(validatorindex), '{}') AS validators
+			SELECT period, COALESCE(ARRAY_AGG(distinct validatorindex), '{}') AS validators
 			FROM sync_committees
 			WHERE period IN (?) AND validatorindex IN (?)
 			GROUP BY period
@@ -2237,17 +2248,17 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := db.ReaderDb.Query(`
 	SELECT 
-		validator_performance.validatorindex, 
+		validators.validatorindex, 
 		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d, 
 		COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d, 
 		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d, 
 		COALESCE(validator_performance.cl_performance_365d, 0) AS performance365d, 
 		COALESCE(validator_performance.cl_performance_total, 0) AS performanceTotal, 
-		validator_performance.rank7d 
-	FROM validator_performance 
-	LEFT JOIN validators ON 
+		COALESCE(validator_performance.rank7d, 0) AS rank7d
+	FROM validators 
+	LEFT JOIN validator_performance ON 
 		validators.validatorindex = validator_performance.validatorindex 
-	WHERE validator_performance.validatorindex = ANY($1) 
+	WHERE validators.validatorindex = ANY($1) 
 	ORDER BY validatorindex`, pq.Array(queryIndices))
 	if err != nil {
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2481,7 +2492,7 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 				rank7d, 
 				validatorindex
 			FROM validator_performance 
-			ORDER BY rank7d DESC LIMIT 100`)
+			ORDER BY rank7d ASC LIMIT 100`)
 	if err != nil {
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
 		return

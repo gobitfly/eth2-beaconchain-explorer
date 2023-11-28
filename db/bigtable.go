@@ -46,7 +46,8 @@ const (
 	max_block_number_v1 = 1000000000
 	max_epoch_v1        = 1000000000
 
-	MAX_BATCH_MUTATIONS = 100000
+	MAX_BATCH_MUTATIONS   = 100000
+	DEFAULT_BATCH_INSERTS = 10000
 
 	REPORT_TIMEOUT = time.Second * 10
 )
@@ -142,10 +143,7 @@ func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
 
 	batchSize := 10000
 
-	muts := &types.BulkMutations{
-		Keys: make([]string, 0, batchSize),
-		Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
-	}
+	muts := types.NewBulkMutations(batchSize)
 
 	tmr := time.NewTicker(time.Second * 10)
 	for {
@@ -159,13 +157,10 @@ func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
 
 			if len(muts.Keys) >= batchSize || !ok && len(muts.Keys) > 0 { // commit when batch size is reached or on channel close
 				logger.Infof("committing %v queued machine metric inserts (trigger=batchSize, ok=%v)", len(muts.Keys), ok)
-				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
+				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics, batchSize)
 
 				if err == nil {
-					muts = &types.BulkMutations{
-						Keys: make([]string, 0, batchSize),
-						Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
-					}
+					muts = types.NewBulkMutations(batchSize)
 				} else {
 					logger.Errorf("error writing queued machine metrics to bigtable: %v", err)
 				}
@@ -180,13 +175,10 @@ func (bigtable *Bigtable) commitQueuedMachineMetricWrites() {
 		case <-tmr.C:
 			if len(muts.Keys) > 0 {
 				logger.Infof("committing %v queued machine metric inserts (trigger=timeout)", len(muts.Keys))
-				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics)
+				err := bigtable.WriteBulk(muts, bigtable.tableMachineMetrics, DEFAULT_BATCH_INSERTS)
 
 				if err == nil {
-					muts = &types.BulkMutations{
-						Keys: make([]string, 0, batchSize),
-						Muts: make([]*gcp_bigtable.Mutation, 0, batchSize),
-					}
+					muts = types.NewBulkMutations(batchSize)
 				} else {
 					logger.Errorf("error writing queued machine metrics to bigtable: %v", err)
 				}
@@ -545,8 +537,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	// start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
-	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
+	muts := types.NewBulkMutations(len(validators))
 
 	highestActiveIndex := uint64(0)
 	epochKey := bigtable.reversedPaddedEpoch(epoch)
@@ -568,34 +559,12 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 		mut.Set(VALIDATOR_BALANCES_FAMILY, "b", ts, combined)
 		key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.Index), VALIDATOR_BALANCES_FAMILY, epochKey)
 
-		muts = append(muts, mut)
-		keys = append(keys, key)
-
-		if len(muts) == MAX_BATCH_MUTATIONS {
-			errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-			if err != nil {
-				return err
-			}
-
-			for _, err := range errs {
-				return err
-			}
-			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-			keys = make([]string, 0, MAX_BATCH_MUTATIONS)
-		}
+		muts.Add(key, mut)
 	}
 
-	if len(muts) > 0 {
-		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-		if err != nil {
-			return err
-		}
-
-		for _, err := range errs {
-			return err
-		}
+	err := bigtable.WriteBulk(muts, bigtable.tableValidatorsHistory, MAX_BATCH_MUTATIONS)
+	if err != nil {
+		return err
 	}
 
 	// store the highes active validator index for that epoch
@@ -605,7 +574,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	mut := &gcp_bigtable.Mutation{}
 	mut.Set(VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, ts, highestActiveIndexEncoded)
 	key := fmt.Sprintf("%s:%s:%s", bigtable.chainId, VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY, epochKey)
-	err := bigtable.tableValidatorsHistory.Apply(ctx, key, mut)
+	err = bigtable.tableValidatorsHistory.Apply(ctx, key, mut)
 	if err != nil {
 		return err
 	}
@@ -614,14 +583,10 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 
 func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[uint64]uint64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(0)
 
-	muts := make([]*gcp_bigtable.Mutation, 0, len(assignments))
-	keys := make([]string, 0, len(assignments))
+	muts := types.NewBulkMutations(len(assignments))
 
 	for slot, validator := range assignments {
 		mut := gcp_bigtable.NewMutation()
@@ -629,34 +594,13 @@ func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[
 
 		key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), PROPOSALS_FAMILY, bigtable.reversedPaddedEpoch(epoch), bigtable.reversedPaddedSlot(slot))
 
-		muts = append(muts, mut)
-		keys = append(keys, key)
-
-		if len(muts) == MAX_BATCH_MUTATIONS {
-			errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-			if err != nil {
-				return err
-			}
-
-			for _, err := range errs {
-				return err
-			}
-			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-			keys = make([]string, 0, MAX_BATCH_MUTATIONS)
-		}
+		muts.Add(key, mut)
 	}
 
-	if len(muts) > 0 {
-		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
+	err := bigtable.WriteBulk(muts, bigtable.tableValidatorsHistory, MAX_BATCH_MUTATIONS)
 
-		if err != nil {
-			return err
-		}
-
-		for _, err := range errs {
-			return err
-		}
+	if err != nil {
+		return err
 	}
 
 	logger.Infof("exported proposal assignments to bigtable in %v", time.Since(start))
@@ -686,10 +630,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 
 	start := time.Now()
 
-	mutsInclusionSlot := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-	keysInclusionSlot := make([]string, 0, MAX_BATCH_MUTATIONS)
-
-	writes := 0
+	mutsInclusionSlot := types.NewBulkMutations(MAX_BATCH_MUTATIONS)
 
 	mutLastAttestationSlot := gcp_bigtable.NewMutation()
 	mutLastAttestationSlotCount := 0
@@ -708,9 +649,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 				mutInclusionSlot := gcp_bigtable.NewMutation()
 				mutInclusionSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", attestedSlot), gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-inclusionSlot)*1000), []byte{})
 
-				mutsInclusionSlot = append(mutsInclusionSlot, mutInclusionSlot)
-				keysInclusionSlot = append(keysInclusionSlot, key)
-				writes++
+				mutsInclusionSlot.Add(key, mutInclusionSlot)
 
 				if inclusionSlot != MAX_CL_BLOCK_NUMBER && uint64(attestedSlot) > bigtable.LastAttestationCache[uint64(validator)] {
 					mutLastAttestationSlot.Set(ATTESTATIONS_FAMILY, fmt.Sprintf("%d", validator), gcp_bigtable.Timestamp((attestedSlot)*1000), []byte{})
@@ -730,38 +669,15 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 					}
 				}
 
-				if len(mutsInclusionSlot) == MAX_BATCH_MUTATIONS {
-					attstart := time.Now()
-					errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
-					if err != nil {
-						bigtable.LastAttestationCacheMux.Unlock()
-						return err
-					}
-					for _, err := range errs {
-						bigtable.LastAttestationCacheMux.Unlock()
-						return err
-					}
-					logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
-					mutsInclusionSlot = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-					keysInclusionSlot = make([]string, 0, MAX_BATCH_MUTATIONS)
-				}
-
 			}
 			bigtable.LastAttestationCacheMux.Unlock()
 		}
 	}
 
-	if len(mutsInclusionSlot) > 0 {
-		// logger.Infof("exporting remaining %v attestation mutations", len(mutsInclusionSlot))
-		// attstart := time.Now()
-		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keysInclusionSlot, mutsInclusionSlot)
-		if err != nil {
-			return err
-		}
-		for _, err := range errs {
-			return err
-		}
-		// logger.Infof("applied %v attestation mutations in %v", len(keysInclusionSlot), time.Since(attstart))
+	err := bigtable.WriteBulk(mutsInclusionSlot, bigtable.tableValidatorsHistory, MAX_BATCH_MUTATIONS)
+
+	if err != nil {
+		return fmt.Errorf("error writing attestation inclusion slot mutations: %v", err)
 	}
 
 	if mutLastAttestationSlotCount > 0 {
@@ -771,7 +687,7 @@ func (bigtable *Bigtable) SaveAttestationDuties(duties map[types.Slot]map[types.
 		}
 	}
 
-	logger.Infof("exported %v attestations to bigtable in %v", writes, time.Since(start))
+	logger.Infof("exported %v attestations to bigtable in %v", mutsInclusionSlot.Len(), time.Since(start))
 	return nil
 }
 
@@ -815,10 +731,6 @@ func (bigtable *Bigtable) SaveProposal(block *types.Block) error {
 }
 
 func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types.ValidatorIndex]bool) error {
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
-	defer cancel()
-
 	start := time.Now()
 
 	if len(duties) == 0 {
@@ -826,8 +738,7 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 		return nil
 	}
 
-	muts := make([]*gcp_bigtable.Mutation, 0, utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.SyncCommitteeSize+1)
-	keys := make([]string, 0, utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.SyncCommitteeSize+1)
+	muts := types.NewBulkMutations(int(utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.SyncCommitteeSize + 1))
 
 	for slot, validators := range duties {
 		for validator, participated := range validators {
@@ -839,22 +750,16 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 			}
 			key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(uint64(validator)), SYNC_COMMITTEES_FAMILY, bigtable.reversedPaddedEpoch(utils.EpochOfSlot(uint64(slot))), bigtable.reversedPaddedSlot(uint64(slot)))
 
-			muts = append(muts, mut)
-			keys = append(keys, key)
+			muts.Add(key, mut)
 		}
 	}
 
-	errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
+	err := bigtable.WriteBulk(muts, bigtable.tableValidatorsHistory, MAX_BATCH_MUTATIONS)
 	if err != nil {
 		return err
 	}
 
-	for _, err := range errs {
-		return err
-	}
-
-	logger.Infof("exported %v sync committee duties to bigtable in %v", len(muts), time.Since(start))
+	logger.Infof("exported %v sync committee duties to bigtable in %v", muts.Len(), time.Since(start))
 	return nil
 }
 
@@ -2308,16 +2213,12 @@ func (bigtable *Bigtable) getValidatorProposalHistoryV1(validators []uint64, sta
 
 func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[uint64]*itypes.ValidatorEpochIncome) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
 	start := time.Now()
 	ts := gcp_bigtable.Timestamp(utils.EpochToTime(epoch).UnixMicro())
 
 	total := &itypes.ValidatorEpochIncome{}
 
-	muts := make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-	keys := make([]string, 0, MAX_BATCH_MUTATIONS)
+	muts := types.NewBulkMutations(len(rewards))
 
 	for i, rewardDetails := range rewards {
 
@@ -2331,21 +2232,7 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 		mut.Set(INCOME_DETAILS_COLUMN_FAMILY, "i", ts, data)
 		key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(i), INCOME_DETAILS_COLUMN_FAMILY, bigtable.reversedPaddedEpoch(epoch))
 
-		muts = append(muts, mut)
-		keys = append(keys, key)
-
-		if len(muts) == MAX_BATCH_MUTATIONS {
-			errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-			if err != nil {
-				return err
-			}
-			for _, err := range errs {
-				return err
-			}
-			muts = make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS)
-			keys = make([]string, 0, MAX_BATCH_MUTATIONS)
-		}
+		muts.Add(key, mut)
 
 		total.AttestationHeadReward += rewardDetails.AttestationHeadReward
 		total.AttestationSourceReward += rewardDetails.AttestationSourceReward
@@ -2363,17 +2250,6 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 		total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, rewardDetails.TxFeeRewardWei)
 	}
 
-	if len(muts) > 0 {
-		errs, err := bigtable.tableValidatorsHistory.ApplyBulk(ctx, keys, muts)
-
-		if err != nil {
-			return err
-		}
-		for _, err := range errs {
-			return err
-		}
-	}
-
 	sum, err := proto.Marshal(total)
 	if err != nil {
 		return err
@@ -2382,7 +2258,10 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 	mut := &gcp_bigtable.Mutation{}
 	mut.Set(STATS_COLUMN_FAMILY, SUM_COLUMN, ts, sum)
 
-	err = bigtable.tableValidatorsHistory.Apply(ctx, fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(epoch)), mut)
+	muts.Add(fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(epoch)), mut)
+
+	err = bigtable.WriteBulk(muts, bigtable.tableValidatorsHistory, MAX_BATCH_MUTATIONS)
+
 	if err != nil {
 		return err
 	}
@@ -2787,102 +2666,6 @@ func (bigtable *Bigtable) validatorKeyToIndex(key string) (uint64, error) {
 		return 0, err
 	}
 	return indexKey, nil
-}
-
-func (bigtable *Bigtable) ClearByPrefix(table string, family, prefix string, dryRun bool) error {
-	if family == "" || prefix == "" {
-		return fmt.Errorf("please provide family [%v] and prefix [%v]", family, prefix)
-	}
-
-	rowRange := gcp_bigtable.PrefixRange(prefix)
-
-	var btTable *gcp_bigtable.Table
-
-	switch table {
-	case "data":
-		btTable = bigtable.tableData
-	case "blocks":
-		btTable = bigtable.tableBlocks
-	case "metadata_updates":
-		btTable = bigtable.tableMetadataUpdates
-	case "metadata":
-		btTable = bigtable.tableMetadata
-	case "beaconchain":
-		btTable = bigtable.tableBeaconchain
-	case "machine_metrics":
-		btTable = bigtable.tableMachineMetrics
-	case "beaconchain_validators":
-		btTable = bigtable.tableValidators
-	case "beaconchain_validators_history":
-		btTable = bigtable.tableValidatorsHistory
-	default:
-		return fmt.Errorf("unknown table %v provided", table)
-	}
-
-	mutsDelete := &types.BulkMutations{
-		Keys: make([]string, 0, MAX_BATCH_MUTATIONS),
-		Muts: make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS),
-	}
-
-	keysCount := 0
-	err := btTable.ReadRows(context.Background(), rowRange, func(row gcp_bigtable.Row) bool {
-
-		if family == "*" {
-			// if dryRun {
-			// 	logger.Infof("would delete key %v", row.Key())
-			// }
-			mutDelete := gcp_bigtable.NewMutation()
-			mutDelete.DeleteRow()
-			mutsDelete.Keys = append(mutsDelete.Keys, row.Key())
-			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-			keysCount++
-		} else {
-			row_ := row[family][0]
-			// if dryRun {
-			// 	logger.Infof("would delete key %v", row_.Row)
-			// }
-
-			mutDelete := gcp_bigtable.NewMutation()
-			mutDelete.DeleteRow()
-			mutsDelete.Keys = append(mutsDelete.Keys, row_.Row)
-			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-			keysCount++
-		}
-
-		if len(mutsDelete.Keys) == 1000000 {
-			logrus.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
-			if !dryRun {
-				err := bigtable.WriteBulk(mutsDelete, btTable)
-
-				if err != nil {
-					logger.Errorf("error writing bulk mutations: %v", err)
-					return false
-				}
-			}
-			mutsDelete = &types.BulkMutations{
-				Keys: make([]string, 0, MAX_BATCH_MUTATIONS),
-				Muts: make([]*gcp_bigtable.Mutation, 0, MAX_BATCH_MUTATIONS),
-			}
-		}
-		return true
-	})
-	if err != nil {
-		return err
-	}
-
-	if !dryRun && len(mutsDelete.Keys) > 0 {
-		logrus.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
-
-		err := bigtable.WriteBulk(mutsDelete, btTable)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	logger.Infof("deleted %v keys", keysCount)
-
-	return nil
 }
 
 func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error) {

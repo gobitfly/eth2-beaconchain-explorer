@@ -578,8 +578,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 			validatorPageData.AttestationsCount = 0
+
+			return nil
 		} else if isPreGenesis {
 			validatorPageData.AttestationsCount = 1
+			validatorPageData.MissedAttestationsCount = 0
+			validatorPageData.ExecutedAttestationsCount = 0
+			validatorPageData.UnmissedAttestationsPercentage = 1
+
+			return nil
 		} else {
 			validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
 
@@ -608,25 +615,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// add attestationStats that are not yet in validator_stats
-			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
-			if lookback > 0 {
-				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
+			// add attestationStats that are not yet in validator_stats (if any)
+			nextStatsDayFirstEpoch, _ := utils.GetFirstAndLastEpochForDay(lastStatsDay + 1)
+			if validatorPageData.Epoch > nextStatsDayFirstEpoch {
+				lookback := validatorPageData.Epoch - nextStatsDayFirstEpoch
+				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, validatorPageData.Epoch-lookback, validatorPageData.Epoch-1)
 				if err != nil {
 					return fmt.Errorf("error getting validator attestations not in stats from bigtable: %w", err)
 				}
 				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
 			}
 
-			if isPreGenesis {
-				validatorPageData.MissedAttestationsCount = 0
-				validatorPageData.ExecutedAttestationsCount = 0
-				validatorPageData.UnmissedAttestationsPercentage = 1
-			} else {
-				validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
-				validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
-				validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			if attestationStats.MissedAttestations > validatorPageData.AttestationsCount {
+				// save guard against negative values (should never happen but happened once because of wrong data)
+				attestationStats.MissedAttestations = validatorPageData.AttestationsCount
 			}
+			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
+			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
+			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 		}
 		return nil
 	})
@@ -718,11 +724,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if lastStatsDay > 0 {
 				err = db.ReaderDb.Get(&syncStats, `
 					SELECT
-						COALESCE(participated_sync, 0) AS participated_sync,
-						COALESCE(missed_sync, 0) AS missed_sync,
-						COALESCE(orphaned_sync, 0) AS orphaned_sync
+						COALESCE(participated_sync_total, 0) AS participated_sync,
+						COALESCE(missed_sync_total, 0) AS missed_sync,
+						COALESCE(orphaned_sync_total, 0) AS orphaned_sync
 					FROM validator_stats
-					WHERE validatorindex = $1 AND day = (SELECT max(day) FROM validator_stats)`, index)
+					WHERE validatorindex = $1 AND day = $2`, index, lastStatsDay)
 				if err != nil {
 					return fmt.Errorf("error getting validator syncStats: %w", err)
 				}
@@ -2004,7 +2010,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	var syncPeriods []uint64 = []uint64{}
 
 	err = db.ReaderDb.Select(&syncPeriods, `
-		SELECT period
+		SELECT distinct period
 		FROM sync_committees 
 		WHERE validatorindex = $1
 		ORDER BY period desc`, validatorIndex)

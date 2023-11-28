@@ -13,14 +13,17 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pkg/errors"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
@@ -55,7 +58,7 @@ func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
 
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, partition-validator-stats")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -154,12 +157,12 @@ func main() {
 
 	switch opts.Command {
 	case "nameValidatorsByRanges":
-		err := NameValidatorsByRanges(opts.ValidatorNameRanges)
+		err := nameValidatorsByRanges(opts.ValidatorNameRanges)
 		if err != nil {
 			logrus.WithError(err).Fatal("error naming validators by ranges")
 		}
 	case "updateAPIKey":
-		err := UpdateAPIKey(opts.User)
+		err := updateAPIKey(opts.User)
 		if err != nil {
 			logrus.WithError(err).Fatal("error updating API key")
 		}
@@ -248,17 +251,17 @@ func main() {
 			}
 		}
 	case "debug-rewards":
-		CompareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
+		compareRewards(opts.StartDay, opts.EndDay, opts.Validator, bt)
 	case "debug-blocks":
-		err = DebugBlocks()
+		err = debugBlocks()
 	case "clear-bigtable":
-		ClearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
+		clearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
-		IndexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
+		indexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
 		updateAggreationBits(rpcClient, opts.StartEpoch, opts.EndEpoch, opts.DataConcurrency)
 	case "update-block-finalization-sequentially":
-		err = UpdateBlockFinalizationSequentially()
+		err = updateBlockFinalizationSequentially()
 	case "historic-prices-export":
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
@@ -364,6 +367,10 @@ func main() {
 		}
 	case "export-stats-totals":
 		exportStatsTotals(opts.Columns, opts.StartDay, opts.EndDay, opts.DataConcurrency)
+	case "export-sync-committee-periods":
+		exportSyncCommitteePeriods(rpcClient, opts.StartDay, opts.EndDay, opts.DryRun)
+	case "export-sync-committee-validator-stats":
+		exportSyncCommitteeValidatorStats(rpcClient, opts.StartDay, opts.EndDay, opts.DryRun, true)
 	case "fix-exec-transactions-count":
 		err = fixExecTransactionsCount()
 	case "partition-validator-stats":
@@ -462,7 +469,7 @@ func fixExecTransactionsCount() error {
 	return tx.Commit()
 }
 
-func UpdateBlockFinalizationSequentially() error {
+func updateBlockFinalizationSequentially() error {
 	var err error
 
 	var maxSlot uint64
@@ -491,7 +498,7 @@ func UpdateBlockFinalizationSequentially() error {
 		break
 	}
 
-	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("UpdateBlockFinalizationSequentially")
+	logrus.WithFields(logrus.Fields{"minNonFinalizedSlot": minNonFinalizedSlot}).Infof("updateBlockFinalizationSequentially")
 	nextStartEpoch := minNonFinalizedSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
 	stepSize := uint64(100)
 	for ; ; time.Sleep(time.Millisecond * 50) {
@@ -520,7 +527,7 @@ func UpdateBlockFinalizationSequentially() error {
 	}
 }
 
-func DebugBlocks() error {
+func debugBlocks() error {
 	elClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		return err
@@ -598,7 +605,7 @@ func DebugBlocks() error {
 	return nil
 }
 
-func NameValidatorsByRanges(rangesUrl string) error {
+func nameValidatorsByRanges(rangesUrl string) error {
 	ranges := struct {
 		Ranges map[string]string `json:"ranges"`
 	}{}
@@ -832,7 +839,7 @@ func updateAggreationBits(rpcClient *rpc.LighthouseClient, startEpoch uint64, en
 }
 
 // Updates a users API key
-func UpdateAPIKey(user uint64) error {
+func updateAPIKey(user uint64) error {
 	type User struct {
 		PHash  string `db:"password"`
 		Email  string `db:"email"`
@@ -886,7 +893,7 @@ func UpdateAPIKey(user uint64) error {
 }
 
 // Debugging function to compare Rewards from the Statistic Table with the onces from the Big Table
-func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
+func compareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Bigtable) {
 
 	for day := dayStart; day <= dayEnd; day++ {
 		startEpoch := day * utils.EpochsPerDay()
@@ -916,7 +923,7 @@ func CompareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 
 }
 
-func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
+func clearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
 
 	if !dryRun {
 		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
@@ -947,10 +954,12 @@ func ClearBigtable(table string, family string, key string, dryRun bool, bt *db.
 	logrus.Info("delete completed")
 }
 
-// Let's find blocks that are missing in bt and index them.
+// Goes through the tableData table and checks what blocks in the given range from [start] to [end] are missing and exports/indexes the missing ones
+//
+//	Both [start] and [end] are inclusive
+//	Pass math.MaxInt64 as [end] to export from [start] to the last block in the blocks table
 func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient) {
-
-	if end == 0 {
+	if end == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
 			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
@@ -959,53 +968,70 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 		end = uint64(lastBlockFromBlocksTable)
 	}
 
-	batchSize := uint64(10000)
-	if start == 0 {
-		start = 1
-	}
-	for i := start; i < end; i += batchSize {
-		targetCount := batchSize
-		if i+targetCount >= end {
-			targetCount = end - i
-		}
-		to := i + targetCount - 1
+	errFields := map[string]interface{}{
+		"start": start,
+		"end":   end}
 
-		list, err := bt.GetBlocksDescending(uint64(to), uint64(targetCount))
+	batchSize := uint64(10000)
+	for from := start; from <= end; from += batchSize {
+		targetCount := batchSize
+		if from+targetCount >= end {
+			targetCount = end - from + 1
+		}
+		to := from + targetCount - 1
+
+		errFields["from"] = from
+		errFields["to"] = to
+		errFields["targetCount"] = targetCount
+
+		list, err := bt.GetBlocksDescending(to, targetCount)
 		if err != nil {
-			utils.LogError(err, "can not retrieve blocks via GetBlocksDescending from bigtable", 0)
+			utils.LogError(err, "error retrieving blocks from tableData", 0, errFields)
 			return
 		}
-		if uint64(len(list)) == targetCount {
-			logrus.Infof("found all blocks [%v]->[%v]", i, to)
-		} else {
-			logrus.Infof("oh no we are missing some blocks [%v]->[%v]", i, to)
-			blocksMap := make(map[uint64]bool)
-			for _, item := range list {
-				blocksMap[item.Number] = true
-			}
-			for j := uint64(i); j <= uint64(to); j++ {
-				if !blocksMap[j] {
-					logrus.Infof("block [%v] not found so we need to index it", j)
-					if _, err := db.BigtableClient.GetBlockFromBlocksTable(j); err != nil {
-						logrus.Infof("could not load [%v] from blocks table so we need to fetch it from the node and save it", j)
-						bc, _, err := client.GetBlock(int64(j), "parity/geth")
-						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error getting block: %v from ethereum node", j), 0)
-						}
-						err = bt.SaveBlock(bc)
-						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error saving block: %v ", j), 0)
-						}
-					}
 
-					IndexOldEth1Blocks(j, j, 1, 1, "all", bt, client)
+		receivedLen := uint64(len(list))
+		if receivedLen == targetCount {
+			logrus.Infof("found all blocks [%v]->[%v], skipping batch", from, to)
+			continue
+		}
+
+		logrus.Infof("%v blocks are missing from [%v]->[%v]", targetCount-receivedLen, from, to)
+
+		blocksMap := make(map[uint64]bool)
+		for _, item := range list {
+			blocksMap[item.Number] = true
+		}
+
+		for block := from; block <= to; block++ {
+			if blocksMap[block] {
+				// block already saved, skip
+				continue
+			}
+
+			logrus.Infof("block [%v] not found, will index it", block)
+			if _, err := db.BigtableClient.GetBlockFromBlocksTable(block); err != nil {
+				logrus.Infof("could not load [%v] from blocks table, will try to fetch it from the node and save it", block)
+
+				bc, _, err := client.GetBlock(int64(block), "parity/geth")
+				if err != nil {
+					utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0)
+					return
+				}
+
+				err = bt.SaveBlock(bc)
+				if err != nil {
+					utils.LogError(err, fmt.Sprintf("error saving block: %v ", block), 0)
+					return
 				}
 			}
+
+			indexOldEth1Blocks(block, block, 1, 1, "all", bt, client)
 		}
 	}
 }
 
-func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
+func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
 	if endBlock > 0 && endBlock < startBlock {
 		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
 		return
@@ -1065,20 +1091,15 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
-	if startBlock == 0 && endBlock == 0 {
-		utils.LogFatal(nil, "no start+end block defined", 0)
-		return
-	}
+	to := endBlock
+	if endBlock == math.MaxInt64 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			utils.LogError(err, "error retrieving last blocks from blocks table", 0)
+			return
+		}
 
-	lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
-	if err != nil {
-		utils.LogError(err, "error retrieving last blocks from blocks table", 0)
-		return
-	}
-
-	to := uint64(lastBlockFromBlocksTable)
-	if endBlock > 0 {
-		to = utilMath.MinU64(to, endBlock)
+		to = uint64(lastBlockFromBlocksTable)
 	}
 	blockCount := utilMath.MaxU64(1, batchSize)
 
@@ -1087,7 +1108,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		toBlock := utilMath.MinU64(to, from+blockCount-1)
 
 		logrus.Infof("indexing blocks %v to %v in data table ...", from, toBlock)
-		err = bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, int64(concurrency), cache)
+		err := bt.IndexEventsWithTransformers(int64(from), int64(toBlock), transforms, int64(concurrency), cache)
 		if err != nil {
 			utils.LogError(err, "error indexing from bigtable", 0)
 		}
@@ -1096,7 +1117,7 @@ func IndexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	}
 
 	if importENSChanges {
-		if err = bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
+		if err := bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
 			utils.LogError(err, "error importing ens from events", 0)
 			return
 		}
@@ -1129,6 +1150,12 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 
 func exportStatsTotals(columns string, dayStart, dayEnd, concurrency uint64) {
 	start := time.Now()
+	exportToToday := false
+	if dayEnd <= 0 {
+		exportToToday = true
+		dayEnd = math.MaxInt
+	}
+
 	logrus.Infof("exporting stats totals for columns '%v'", columns)
 
 	// validate columns input
@@ -1143,6 +1170,8 @@ func exportStatsTotals(columns string, dayStart, dayEnd, concurrency uint64) {
 		"orphaned_sync_total",
 		"withdrawals_total",
 		"withdrawals_amount_total",
+		"deposits_total",
+		"deposits_amount_total",
 	}
 
 OUTER:
@@ -1236,8 +1265,274 @@ OUTER:
 				"columns": columns,
 			})
 		}
+
+		if exportToToday {
+			dayEnd, err = db.GetLastExportedStatisticDay()
+			if err != nil {
+				utils.LogError(err, "error getting last exported statistic day", 0)
+				return
+			}
+		}
 		logrus.Infof("finished exporting stats totals for columns '%v for day %v, took %v", columns, day, time.Since(timeDay))
 	}
 
 	logrus.Infof("finished all exporting stats totals for columns '%v' for days %v - %v, took %v", columns, dayStart, dayEnd, time.Since(start))
+}
+
+/*
+Instead of deleting entries from the sync_committee table in a prod environment and wait for the exporter to sync back all entries,
+this method will replace each sync committee period one by one with the new one. Which is much nicer for a prod environment.
+*/
+func exportSyncCommitteePeriods(rpcClient rpc.Client, startDay, endDay uint64, dryRun bool) {
+	var lastEpoch = uint64(0)
+
+	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
+	if startDay > 0 {
+		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(startDay)
+		firstPeriod = utils.SyncPeriodOfEpoch(firstEpoch)
+	}
+
+	if endDay <= 0 {
+		var err error
+		lastEpoch, err = db.GetLatestFinalizedEpoch()
+		if err != nil {
+			utils.LogError(err, "error getting latest finalized epoch", 0)
+			return
+		}
+		if lastEpoch > 0 { // guard against underflows
+			lastEpoch = lastEpoch - 1
+		}
+	} else {
+		_, lastEpoch = utils.GetFirstAndLastEpochForDay(endDay)
+	}
+
+	lastPeriod := utils.SyncPeriodOfEpoch(uint64(lastEpoch)) + 1 // we can look into the future
+
+	start := time.Now()
+	for p := firstPeriod; p <= lastPeriod; p++ {
+		t0 := time.Now()
+
+		err := reExportSyncCommittee(rpcClient, p, dryRun)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found 404") {
+				logrus.WithField("period", p).Infof("reached max period, stopping")
+				break
+			} else {
+				utils.LogError(err, "error re-exporting sync_committee", 0, map[string]interface{}{
+					"period": p,
+				})
+				return
+			}
+		}
+
+		logrus.WithFields(logrus.Fields{
+			"period":   p,
+			"epoch":    utils.FirstEpochOfSyncPeriod(p),
+			"duration": time.Since(t0),
+		}).Infof("re-exported sync_committee")
+	}
+
+	logrus.Infof("finished all exporting sync_committee for periods %v - %v, took %v", firstPeriod, lastPeriod, time.Since(start))
+}
+
+func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, startDay, endDay uint64, dryRun, skipPhase1 bool) {
+	if endDay <= 0 {
+		lastEpoch, err := db.GetLatestFinalizedEpoch()
+		if err != nil {
+			utils.LogError(err, "error getting latest finalized epoch", 0)
+			return
+		}
+		if lastEpoch > 0 { // guard against underflows
+			lastEpoch = lastEpoch - 1
+		}
+
+		_, err = db.GetLastExportedStatisticDay()
+		if err != nil {
+			logrus.Infof("skipping exporting stats, first day has not been indexed yet")
+			return
+		}
+
+		epochsPerDay := utils.EpochsPerDay()
+		currentDay := lastEpoch / epochsPerDay
+		endDay = currentDay - 1 // current day will be picked up by exporter
+	}
+
+	start := time.Now()
+
+	for day := startDay; day <= endDay; day++ {
+		startDay := time.Now()
+		err := UpdateValidatorStatisticsSyncData(day, rpcClient, dryRun)
+		if err != nil {
+			utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
+			break
+		}
+
+		logrus.Infof("finished updating validators_stats for day %v, took %v", day, time.Since(startDay))
+	}
+
+	logrus.Infof("finished all exporting stats for days %v - %v, took %v", startDay, endDay, time.Since(start))
+	logrus.Infof("REMEMBER: To execute export-stats-totals now to update the totals")
+}
+
+func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun bool) error {
+	exportStart := time.Now()
+	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
+
+	logrus.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
+
+	if err := db.CheckIfDayIsFinalized(day); err != nil && !dryRun {
+		return err
+	}
+
+	logrus.Infof("getting exported state for day %v", day)
+
+	var err error
+	var maxValidatorIndex uint64
+	err = db.ReaderDb.Get(&maxValidatorIndex, `SELECT MAX(validatorindex) FROM validator_stats WHERE day = $1`, day)
+	if err != nil {
+		utils.LogFatal(err, "error: could not get max validator index", 0, map[string]interface{}{
+			"epoch": firstEpoch,
+		})
+	} else if maxValidatorIndex == uint64(0) {
+		utils.LogFatal(err, "error: no validator found", 0, map[string]interface{}{
+			"epoch": firstEpoch,
+		})
+	}
+	maxValidatorIndex += 10000 // add some buffer, exact number is not important. Should just be bigger than max validators that can join in a day
+
+	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, maxValidatorIndex)
+	validatorDataMux := &sync.Mutex{}
+
+	logrus.Infof("processing statistics for validators 0-%d", maxValidatorIndex)
+	for i := uint64(0); i <= maxValidatorIndex; i++ {
+		validatorData = append(validatorData, &types.ValidatorStatsTableDbRow{
+			ValidatorIndex: i,
+			Day:            int64(day),
+		})
+	}
+
+	g := &errgroup.Group{}
+
+	g.Go(func() error {
+		if err := db.GatherValidatorSyncDutiesForDay(nil, day, validatorData, validatorDataMux); err != nil {
+			return fmt.Errorf("error in GatherValidatorSyncDutiesForDay: %w", err)
+		}
+		return nil
+	})
+
+	err = g.Wait()
+	if err != nil {
+		return err
+	}
+
+	onlySyncCommitteeValidatorData := make([]*types.ValidatorStatsTableDbRow, 0, len(validatorData))
+	for index := range validatorData {
+
+		if validatorData[index].ParticipatedSync > 0 || validatorData[index].MissedSync > 0 || validatorData[index].OrphanedSync > 0 {
+			onlySyncCommitteeValidatorData = append(onlySyncCommitteeValidatorData, validatorData[index])
+		}
+	}
+
+	if len(onlySyncCommitteeValidatorData) == 0 {
+		return nil // no sync committee yet skip
+	}
+
+	logrus.Infof("statistics data collection for day %v completed", day)
+
+	var statisticsDataToday []*types.ValidatorStatsTableDbRow
+	if dryRun {
+		var err error
+		statisticsDataToday, err = db.GatherStatisticsForDay(int64(day)) // convert to int64 to avoid underflows
+		if err != nil {
+			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
+		}
+	}
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error retrieving raw sql connection: %w", err)
+	}
+	defer tx.Rollback()
+
+	logrus.Infof("updating statistics data into the validator_stats table %v | %v", len(onlySyncCommitteeValidatorData), len(validatorData))
+
+	for _, data := range onlySyncCommitteeValidatorData {
+		if dryRun {
+			logrus.Infof(
+				"validator %v: participated sync: %v -> %v, missed sync: %v -> %v, orphaned sync: %v -> %v",
+				data.ValidatorIndex, statisticsDataToday[data.ValidatorIndex].ParticipatedSync, data.ParticipatedSync, statisticsDataToday[data.ValidatorIndex].MissedSync, data.MissedSync, statisticsDataToday[data.ValidatorIndex].OrphanedSync,
+				data.OrphanedSync,
+			)
+		} else {
+			tx.Exec(`
+				UPDATE validator_stats set
+				participated_sync = $1,
+				missed_sync = $2,
+				orphaned_sync = $3,
+				WHERE day = $4 AND validatorindex = $5`,
+				data.ParticipatedSync,
+				data.MissedSync,
+				data.OrphanedSync,
+				data.Day, data.ValidatorIndex)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error during statistics data insert: %w", err)
+	}
+
+	logrus.Infof("statistics sync re-export of day %v completed, took %v", day, time.Since(exportStart))
+	return nil
+}
+
+func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
+	if dryRun {
+		var currentData []struct {
+			ValidatorIndex uint64 `db:"validatorindex"`
+			CommitteeIndex uint64 `db:"committeeindex"`
+		}
+
+		err := db.WriterDb.Select(&currentData, `SELECT validatorindex, committeeindex FROM sync_committees WHERE period = $1`, p)
+		if err != nil {
+			return errors.Wrap(err, "select old entries")
+		}
+
+		newData, err := exporter.GetSyncCommitteAtPeriod(rpcClient, p)
+		if err != nil {
+			return errors.Wrap(err, "export")
+		}
+
+		// now we compare currentData with newData and print any difference in committeeindex
+		for _, d := range currentData {
+			for _, n := range newData {
+				if d.ValidatorIndex == n.ValidatorIndex && d.CommitteeIndex != n.CommitteeIndex {
+					logrus.Infof("validator %v has different committeeindex: %v -> %v", d.ValidatorIndex, d.CommitteeIndex, n.CommitteeIndex)
+				}
+			}
+		}
+		return nil
+	} else {
+		tx, err := db.WriterDb.Beginx()
+		if err != nil {
+			return errors.Wrap(err, "tx")
+		}
+
+		defer tx.Rollback()
+		_, err = tx.Exec(`DELETE FROM sync_committees WHERE period = $1`, p)
+		if err != nil {
+			return errors.Wrap(err, "delete old entries")
+		}
+
+		err = exporter.ExportSyncCommitteeAtPeriod(rpcClient, p, tx)
+		if err != nil {
+			return errors.Wrap(err, "export")
+		}
+
+		return tx.Commit()
+	}
 }
