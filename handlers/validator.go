@@ -578,8 +578,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 			validatorPageData.AttestationsCount = 0
+
+			return nil
 		} else if isPreGenesis {
 			validatorPageData.AttestationsCount = 1
+			validatorPageData.MissedAttestationsCount = 0
+			validatorPageData.ExecutedAttestationsCount = 0
+			validatorPageData.UnmissedAttestationsPercentage = 1
+
+			return nil
 		} else {
 			validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
 
@@ -608,29 +615,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// add attestationStats that are not yet in validator_stats
-			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
-			if lookback > 0 {
-				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
+			// add attestationStats that are not yet in validator_stats (if any)
+			nextStatsDayFirstEpoch, _ := utils.GetFirstAndLastEpochForDay(lastStatsDay + 1)
+			if validatorPageData.Epoch > nextStatsDayFirstEpoch {
+				lookback := validatorPageData.Epoch - nextStatsDayFirstEpoch
+				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, validatorPageData.Epoch-lookback, validatorPageData.Epoch-1)
 				if err != nil {
 					return fmt.Errorf("error getting validator attestations not in stats from bigtable: %w", err)
 				}
 				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
 			}
 
-			if isPreGenesis {
-				validatorPageData.MissedAttestationsCount = 0
-				validatorPageData.ExecutedAttestationsCount = 0
-				validatorPageData.UnmissedAttestationsPercentage = 1
-			} else {
-				if attestationStats.MissedAttestations > validatorPageData.AttestationsCount {
-					// save guard against negative values (should never happen but happened once because of wrong data)
-					attestationStats.MissedAttestations = validatorPageData.AttestationsCount
-				}
-				validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
-				validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
-				validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			if attestationStats.MissedAttestations > validatorPageData.AttestationsCount {
+				// save guard against negative values (should never happen but happened once because of wrong data)
+				attestationStats.MissedAttestations = validatorPageData.AttestationsCount
 			}
+			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
+			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
+			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 		}
 		return nil
 	})
