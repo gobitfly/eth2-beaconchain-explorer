@@ -2063,8 +2063,8 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	startIndex := start + length - 1
-	if startIndex > uint64(len(slots)-1) {
-		startIndex = uint64(len(slots) - 1)
+	if startIndex >= totalCount {
+		startIndex = totalCount - 1
 	}
 	endIndex := start
 
