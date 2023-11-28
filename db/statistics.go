@@ -1781,9 +1781,15 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 	firstSlot := uint64(day) * epochsPerDay * utils.Config.Chain.ClConfig.SlotsPerEpoch
 	firstSlotOfNextDay := uint64(day+1) * epochsPerDay * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db tx in WriteGraffitiStatisticsForDay: %w", err)
+	}
+	defer tx.Rollback()
+
 	// \x are missed blocks
 	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
-	_, err := WriterDb.Exec(`
+	_, err = tx.Exec(`
 		insert into graffiti_stats
 		select $1::int as day, graffiti, graffiti_text, count(*), count(distinct proposer) as proposer_count
 		from blocks 
@@ -1799,6 +1805,24 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 		return err
 	}
 
+	var lastSlot uint64
+	err = tx.Get(&lastSlot, `select coalesce(max(slot),0) from blocks;`)
+	if err != nil {
+		return fmt.Errorf("error getting lastSlot in WriteGraffitiStatisticsForDay: %w", err)
+	}
+
+	// if last exported slot is younger than the last slot of the exported day then the day is completely exported
+	if day < int64(utils.DayOfSlot(lastSlot)) {
+		_, err = tx.Exec(`insert into graffiti_stats_status (day, status) values ($1, true) on conflict (day) do update set status = excluded.status`, day)
+		if err != nil {
+			return fmt.Errorf("error updating graffiti_stats_status in WriteGraffitiStatisticsForDay: %w", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing db tx in WriteGraffitiStatisticsForDay: %w", err)
+	}
 	return nil
 }
 
