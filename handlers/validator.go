@@ -2033,8 +2033,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			utils.LogError(err, "error encoding json response", 0, errFields)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
 		}
+
+		return
 	}
 
 	totalCount := uint64(0) // total count of sync duties for this validator
@@ -2057,6 +2058,9 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	totalCount = uint64(len(slots))
+	if start >= totalCount {
+		start = totalCount - 1
+	}
 
 	startIndex := start + length - 1
 	if startIndex > uint64(len(slots)-1) {
