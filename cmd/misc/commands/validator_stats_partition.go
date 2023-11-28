@@ -151,6 +151,38 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 			}
 			return errors.Wrap(err, "error renaming tables")
 		}
+	} else {
+		// Sanity
+		err := sanityCheckIsSameExportedDay(nil, currentTableName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func sanityCheckIsSameExportedDay(tx *sqlx.Tx, pTableName string) error {
+	lastDayViaStatus, err := db.GetLastExportedStatisticDay()
+	if err != nil {
+		return errors.Wrap(err, "error getting last exported day")
+	}
+
+	var lastDayViaPartitioned uint64
+	query := fmt.Sprintf("SELECT max(day) FROM %s", pTableName)
+
+	if tx != nil {
+		err = tx.Get(&lastDayViaPartitioned, query)
+	} else {
+		err = db.WriterDb.Get(&lastDayViaPartitioned, query)
+	}
+
+	if err != nil {
+		return errors.Wrap(err, "error getting last day from partitioned table")
+	}
+
+	if lastDayViaStatus != lastDayViaPartitioned {
+		return errors.New(fmt.Sprintf("sanity check failed, last exported day is not the same in current table and destination table. validator_stats_status: %v | %v: %v", lastDayViaStatus, pTableName, lastDayViaPartitioned))
 	}
 
 	return nil
@@ -162,6 +194,12 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 		return errors.Wrap(err, "error starting transaction")
 	}
 	defer tx.Rollback()
+
+	// Sanity check same day height
+	err = sanityCheckIsSameExportedDay(tx, currentTableName)
+	if err != nil {
+		return err
+	}
 
 	// get number of rows in current-table of last day
 	var numberOfRows int64
@@ -232,8 +270,7 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 
 /*
 Partitions the table and moves the primary key and day index to each individual partition.
-Since each table has now a smaller subset of the data, the individual index is much smaller and faster to use.
-Uniqueness is still guaranteed by the primary key since a given index can only be part of one partition at a time.
+Note: abandoned since postgres does this basically automatically in the background for us when adding an index to a partitioned table.
 */
 // func (s *statsMigratorConfig) createValidatorStatsPartionedTableSchemav2(tableName, tempPartitionedName string, numberOfPartitions int) error {
 // 	createStatement, err := getCreateTableStatement(db.WriterDb, tableName)
@@ -288,7 +325,7 @@ Uniqueness is still guaranteed by the primary key since a given index can only b
 /*
 Partition by day alternative
 */
-// func (s *statsMigratorConfig) createValidatorStatsPartionedTableSchemav3(tableName, tempPartitionedName string, numberOfPartitions int) error {
+// func (s *statsMigratorConfig) createValidatorStatsPartionedTablePerDaySchema(tableName, tempPartitionedName string, numberOfPartitions int) error {
 // 	createStatement, err := getCreateTableStatement(db.WriterDb, tableName)
 // 	if err != nil {
 // 		return errors.Wrap(err, "error getting table schema, is the pg_get_tabledef function available?")

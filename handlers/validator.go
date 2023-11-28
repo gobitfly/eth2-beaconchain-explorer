@@ -718,11 +718,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if lastStatsDay > 0 {
 				err = db.ReaderDb.Get(&syncStats, `
 					SELECT
-						COALESCE(SUM(participated_sync), 0) AS participated_sync,
-						COALESCE(SUM(missed_sync), 0) AS missed_sync,
-						COALESCE(SUM(orphaned_sync), 0) AS orphaned_sync
+						COALESCE(participated_sync, 0) AS participated_sync,
+						COALESCE(missed_sync, 0) AS missed_sync,
+						COALESCE(orphaned_sync, 0) AS orphaned_sync
 					FROM validator_stats
-					WHERE validatorindex = $1`, index)
+					WHERE validatorindex = $1 AND day = (SELECT max(day) FROM validator_stats)`, index)
 				if err != nil {
 					return fmt.Errorf("error getting validator syncStats: %w", err)
 				}
