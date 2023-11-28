@@ -1375,20 +1375,20 @@ func FormatPoolPerformance(val float64) template.HTML {
 }
 
 func FormatTokenSymbolTitle(symbol string) string {
-	if isTokenSus(symbol) {
+	if isMaliciousToken(symbol) {
 		return fmt.Sprintf("The token symbol (%s) has been hidden because it contains a URL or a confusable character", symbol)
 	}
 	return ""
 }
 
 func FormatTokenSymbol(symbol string) string {
-	if isTokenSus(symbol) {
+	if isMaliciousToken(symbol) {
 		return "[hidden-symbol] ⚠️"
 	}
 	return symbol
 }
 
-func isTokenSus(symbol string) bool {
+func isMaliciousToken(symbol string) bool {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 	isConfusable := confusables.IsDangerous(symbol, []string{"latin"})
 	return len(urls) > 0 || isConfusable || symbol == "ETH"
