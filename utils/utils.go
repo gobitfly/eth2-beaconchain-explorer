@@ -1391,11 +1391,7 @@ func FormatTokenSymbol(symbol string) string {
 func isTokenSus(symbol string) bool {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 	isConfusable := confusables.IsDangerous(symbol, []string{"latin"})
-	if len(urls) > 0 || isConfusable || symbol == "ETH" {
-		// TODO: whitelist tokens that are not dangerous
-		return true
-	}
-	return false
+	return len(urls) > 0 || isConfusable || symbol == "ETH"
 }
 
 func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
