@@ -113,7 +113,7 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 	logrus.Infof("Part 1: Creating schemas")
 	err = s.createValidatorStatsPartionedTableSchemav1(currentTableName, destinationTableName, numberOfPartitions)
 	if err != nil {
-		return errors.Wrap(err, "error creating partitioned table")
+		return errors.Wrap(err, "error while creating a partitioned table")
 	}
 
 	logrus.Infof("Part 2: Schema creation completed, moving data now")
@@ -385,8 +385,9 @@ func (s *statsMigratorConfig) createValidatorStatsPartionedTableSchemav1(tableNa
 	}
 	commands := strings.Split(createStatement, ";")
 
-	// we dont need to define a name, just use primary key
-	currentPrimKeyName := fmt.Sprintf("CONSTRAINT %v_pkey ", tableName)
+	// we dont need to define a name for pk constraint, just use primary key to create a new name
+	currentPrimKeyName := commands[0][strings.Index(commands[0], "CONSTRAINT"):]
+	currentPrimKeyName = currentPrimKeyName[:strings.Index(currentPrimKeyName, "PRIMARY")]
 	createOnly := strings.ReplaceAll(commands[0], currentPrimKeyName, "")
 
 	// remove anything after the create database closing )
@@ -449,7 +450,7 @@ func (s *statsMigratorConfig) copyValidatorStats(destTableName, sourceTableName 
 	firstTryOnNewDay := true
 
 	for {
-		result, err := db.WriterDb.Exec(fmt.Sprintf("INSERT INTO %s SELECT * FROM %s WHERE day = $1 AND validatorindex >= $2 AND validatorindex < $3 ON CONFLICT DO NOTHING;", destTableName, sourceTableName), day, offset, offset+s.BatchSize)
+		result, err := db.WriterDb.Exec(fmt.Sprintf("INSERT INTO %s (SELECT * FROM %s WHERE day = $1 AND validatorindex >= $2 AND validatorindex < $3) ON CONFLICT DO NOTHING;", destTableName, sourceTableName), day, offset, offset+s.BatchSize)
 		if err != nil {
 			return errors.Wrap(err, "error copying data")
 		}
@@ -459,6 +460,7 @@ func (s *statsMigratorConfig) copyValidatorStats(destTableName, sourceTableName 
 			return errors.Wrap(err, "error getting rows affected")
 		}
 
+		offset += s.BatchSize
 		if rowsAffected == 0 {
 			if firstTryOnNewDay {
 				break
@@ -483,7 +485,6 @@ func (s *statsMigratorConfig) copyValidatorStats(destTableName, sourceTableName 
 		}
 
 		firstTryOnNewDay = false
-		offset += s.BatchSize
 		time.Sleep(s.SleepInBetween)
 	}
 
