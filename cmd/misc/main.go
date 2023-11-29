@@ -1566,6 +1566,7 @@ func bids2330ExportBlocks() error {
 		if err != nil {
 			return fmt.Errorf("error exporting slot %v: %w", slot, err)
 		}
+		logrus.Infof("exported slot %v", slot)
 	}
 
 	for epoch := range affectedEpochs {
@@ -1578,6 +1579,7 @@ func bids2330ExportBlocks() error {
 		if err != nil {
 			return fmt.Errorf("error updating epoch status for epoch %v: %w", epoch, err)
 		}
+		logrus.Infof("updated epoch status for epoch %v", epoch)
 	}
 
 	err = tx.Commit()
