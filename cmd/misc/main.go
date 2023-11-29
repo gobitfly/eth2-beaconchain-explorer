@@ -56,7 +56,7 @@ var opts = struct {
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, fix-exec-transactions-count, fix-blocks")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, fix-exec-transactions-count, fix-blocks")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -262,103 +262,6 @@ func main() {
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
-	case "export-genesis-validators":
-		logrus.Infof("retrieving genesis validator state")
-		validators, err := rpcClient.GetValidatorState(0)
-		if err != nil {
-			logrus.Fatalf("error retrieving genesis validator state")
-		}
-
-		validatorsArr := make([]*types.Validator, 0, len(validators.Data))
-
-		for _, validator := range validators.Data {
-			validatorsArr = append(validatorsArr, &types.Validator{
-				Index:                      uint64(validator.Index),
-				PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
-				WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
-				Balance:                    uint64(validator.Balance),
-				EffectiveBalance:           uint64(validator.Validator.EffectiveBalance),
-				Slashed:                    validator.Validator.Slashed,
-				ActivationEligibilityEpoch: uint64(validator.Validator.ActivationEligibilityEpoch),
-				ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
-				ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
-				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
-				Status:                     "active_online",
-			})
-		}
-
-		tx, err := db.WriterDb.Beginx()
-		if err != nil {
-			logrus.Fatalf("error starting tx: %v", err)
-		}
-		defer tx.Rollback()
-
-		batchSize := 10000
-		for i := 0; i < len(validatorsArr); i += batchSize {
-			data := &types.EpochData{
-				SyncDuties:        make(map[types.Slot]map[types.ValidatorIndex]bool),
-				AttestationDuties: make(map[types.Slot]map[types.ValidatorIndex][]types.Slot),
-				ValidatorAssignmentes: &types.EpochAssignments{
-					ProposerAssignments: map[uint64]uint64{},
-					AttestorAssignments: map[string]uint64{},
-					SyncAssignments:     make([]uint64, 0),
-				},
-				Blocks:                  make(map[uint64]map[string]*types.Block),
-				FutureBlocks:            make(map[uint64]map[string]*types.Block),
-				EpochParticipationStats: &types.ValidatorParticipation{},
-				Finalized:               false,
-			}
-
-			data.Validators = make([]*types.Validator, 0, batchSize)
-
-			start := i
-			end := i + batchSize
-			if end >= len(validatorsArr) {
-				end = len(validatorsArr) - 1
-			}
-			data.Validators = append(data.Validators, validatorsArr[start:end]...)
-
-			logrus.Infof("saving validators %v-%v", data.Validators[0].Index, data.Validators[len(data.Validators)-1].Index)
-
-			err = db.SaveValidators(0, data.Validators, rpcClient, len(data.Validators), tx)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-		}
-
-		logrus.Infof("exporting deposit data for genesis %v validators", len(validators.Data))
-		for i, validator := range validators.Data {
-			if i%1000 == 0 {
-				logrus.Infof("exporting deposit data for genesis validator %v (of %v/%v)", validator.Index, i, len(validators.Data))
-			}
-			_, err = tx.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
-			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
-				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},
-			)
-			if err != nil {
-				logrus.Errorf("error exporting genesis-deposits: %v", err)
-				time.Sleep(time.Second * 60)
-				continue
-			}
-		}
-
-		_, err = tx.Exec(`
-		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, syncaggregate_participation, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, proposer, status, exec_transactions_count, eth1data_depositcount)
-		VALUES (0, 0, '\x'::bytea, '\x'::bytea, '\x'::bytea, '\x'::bytea, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-		ON CONFLICT (slot, blockroot) DO NOTHING`)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		err = db.BigtableClient.SaveValidatorBalances(0, validatorsArr)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			logrus.Fatal(err)
-		}
 	case "export-stats-totals":
 		exportStatsTotals(opts.Columns, opts.StartDay, opts.EndDay, opts.DataConcurrency)
 	case "fix-exec-transactions-count":
