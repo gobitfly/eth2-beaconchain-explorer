@@ -51,6 +51,16 @@ const (
 	SyncCommitteeSoon                                EventName = "validator_synccommittee_soon"
 )
 
+var MachineEvents = []EventName{
+	MonitoringMachineCpuLoadEventName,
+	MonitoringMachineOfflineEventName,
+	MonitoringMachineDiskAlmostFullEventName,
+	MonitoringMachineCpuLoadEventName,
+	MonitoringMachineMemoryUsageEventName,
+	MonitoringMachineSwitchedToETH2FallbackEventName,
+	MonitoringMachineSwitchedToETH1FallbackEventName,
+}
+
 var UserIndexEvents = []EventName{
 	EthClientUpdateEventName,
 	MonitoringMachineCpuLoadEventName,
@@ -96,6 +106,15 @@ var EventLabel map[EventName]string = map[EventName]string{
 
 func IsUserIndexed(event EventName) bool {
 	for _, ev := range UserIndexEvents {
+		if ev == event {
+			return true
+		}
+	}
+	return false
+}
+
+func IsMachineNotification(event EventName) bool {
+	for _, ev := range MachineEvents {
 		if ev == event {
 			return true
 		}

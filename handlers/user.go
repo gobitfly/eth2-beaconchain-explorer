@@ -25,6 +25,7 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -1727,8 +1728,8 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 	errFields["event_name"] = eventName
 
-	if !isValidSubscriptionFilter(eventName, filter) {
-		utils.LogError(nil, "error invalid filter: not pubkey or client for subscription", 0, errFields)
+	if valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter); err != nil || !valid {
+		utils.LogError(err, "error invalid filter: not pubkey or client for subscription", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -1917,8 +1918,8 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 	errFields["event_name"] = eventName
 
-	if !isValidSubscriptionFilter(eventName, filter) {
-		utils.LogError(nil, "error invalid filter: not pubkey or client for unsubscription", 0, errFields)
+	if valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter); err != nil || !valid {
+		utils.LogError(err, "error invalid filter: not pubkey or client for unsubscription", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -2000,12 +2001,12 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !isValidSubscriptionFilter(eventName, filter) {
+	if valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter); err != nil || !valid {
 		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
 		errFields := map[string]interface{}{
 			"filter":     filter,
 			"filter_len": len(filter)}
-		utils.LogError(nil, errMsg, 0, errFields)
+		utils.LogError(err, errMsg, 0, errFields)
 
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
@@ -2060,7 +2061,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
-func isValidSubscriptionFilter(eventName types.EventName, filter string) bool {
+func isValidSubscriptionFilter(userID uint64, eventName types.EventName, filter string) (bool, error) {
 	ethClients := []string{"geth", "nethermind", "besu", "erigon", "teku", "prysm", "nimbus", "lighthouse", "lodestar", "rocketpool", "mev-boost"}
 
 	isPkey := searchPubkeyExactRE.MatchString(filter)
@@ -2078,7 +2079,43 @@ func isValidSubscriptionFilter(eventName types.EventName, filter string) bool {
 		isClient = true
 	}
 
-	return len(filter) == 0 || isPkey || isClient
+	isValidMachine := false
+	if types.IsMachineNotification(eventName) {
+		machines, err := db.BigtableClient.GetMachineMetricsMachineNames(userID)
+		if err != nil {
+			return false, errors.Wrap(err, "can not get users machines from bigtable for validation")
+		}
+		for _, userMachineName := range machines {
+			if userMachineName == filter {
+				isValidMachine = true
+				break
+			}
+		}
+
+		// While the above works fine for active machines (adding a new notification to an active machine)
+		// It does not work for a machine that is offline and where the user wants to unsubscribe from this machine.
+		// So check the db for any machine names as well
+		if !isValidMachine {
+			machines := make([]string, 0)
+			err = db.FrontendWriterDB.Select(&machines, `
+				select event_filter
+				from users_subscriptions 
+				where user_id = $1 AND event_name = ANY($2)
+			`, userID, pq.Array(types.MachineEvents))
+			if err != nil {
+				return false, errors.Wrap(err, "can not get event_filters from db for validation")
+			}
+
+			for _, machineName := range machines {
+				if machineName == filter {
+					isValidMachine = true
+					break
+				}
+			}
+		}
+	}
+
+	return len(filter) == 0 || isPkey || isClient || isValidMachine, nil
 }
 
 func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) {
