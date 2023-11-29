@@ -786,7 +786,7 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
 		})
 	}
 

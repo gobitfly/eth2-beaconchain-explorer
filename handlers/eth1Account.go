@@ -159,7 +159,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-				template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
+				template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
 			})
 		}
 
@@ -177,7 +177,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("GetAddressWithdrawalsTotal: %w", err)
 		}
-		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false))
+		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false, false))
 		return nil
 	})
 
@@ -396,7 +396,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
 		}
 	}
 

@@ -498,7 +498,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false, true))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -1292,7 +1292,8 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false)),
+			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false, true)),
+			// utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6))
 		})
 	}
 

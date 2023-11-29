@@ -318,7 +318,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	earnings.LastWeekFormatted = utils.FormatIncomeClEl(earnings.Income7d, currency)
 	earnings.LastMonthFormatted = utils.FormatIncomeClEl(earnings.Income31d, currency)
 	earnings.TotalFormatted = utils.FormatIncomeClEl(earnings.IncomeTotal, currency)
-	earnings.TotalBalance = "<b>" + utils.FormatClCurrency(totalBalance, currency, 5, true, false, false) + "</b>"
+	earnings.TotalBalance = "<b>" + utils.FormatClCurrency(totalBalance, currency, 5, true, false, false, false) + "</b>"
 	return earnings, balancesMap, nil
 }
 
