@@ -1809,3 +1809,40 @@ func IsPoSBlock0(number uint64, ts int64) bool {
 
 	return time.Unix(int64(Config.Chain.GenesisTimestamp-Config.Chain.ClConfig.GenesisDelay), 0).UTC().Equal(time.Unix(ts, 0))
 }
+
+// ParseUint64Ranges parses a string of comma separated values and/or ranges into a sorted slice of unique uint64 values (e.g. "1,4,7,6-9" -> []uint64{1,4,6,7,8,9}).
+func ParseUint64Ranges(ranges string) ([]uint64, error) {
+	res := []uint64{}
+	if ranges == "" {
+		return res, nil
+	}
+	for _, s := range strings.Split(ranges, ",") {
+		ss := strings.Split(s, "-")
+		if len(ss) == 2 {
+			u64a, err := strconv.ParseUint(ss[0], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid ranges: %v: %w", ranges, err)
+			}
+			u64b, err := strconv.ParseUint(ss[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid ranges: %v: %w", ranges, err)
+			}
+			if u64b < u64a {
+				return nil, fmt.Errorf("invalid ranges: %v", ranges)
+			}
+			for i := u64a; i <= u64b; i++ {
+				res = append(res, i)
+			}
+			continue
+		}
+		if len(ss) > 2 {
+			return nil, fmt.Errorf("invalid ranges: %v", ranges)
+		}
+		u64, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, u64)
+	}
+	return SortedUniqueUint64(res), nil
+}

@@ -51,12 +51,17 @@ var opts = struct {
 	Family              string
 	Key                 string
 	ValidatorNameRanges string
+	Slots               string
 	DryRun              bool
 }{}
 
+var clClient *rpc.LighthouseClient
+var elClient *rpc.ErigonClient
+var chainIdString string
+
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, fix-exec-transactions-count, fix-blocks")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, fix-exec-transactions-count")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -74,6 +79,7 @@ func main() {
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
 	flag.StringVar(&opts.Columns, "columns", "", "Comma separated list of columns that should be affected by the command")
+	flag.StringVar(&opts.Slots, "slots", "", "Slots that should be reexported, comma separated and/or inclusive range (e.g. 1,2,3,100-200)")
 	flag.BoolVar(&opts.DryRun, "dry-run", true, "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -92,7 +98,7 @@ func main() {
 	}
 	utils.Config = cfg
 
-	chainIdString := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
+	chainIdString = strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
 
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
 	if err != nil {
@@ -104,11 +110,13 @@ func main() {
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
+	clClient = rpcClient
 
 	erigonClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		logrus.Fatalf("error initializing erigon client: %v", err)
 	}
+	elClient = erigonClient
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
@@ -266,8 +274,10 @@ func main() {
 		exportStatsTotals(opts.Columns, opts.StartDay, opts.EndDay, opts.DataConcurrency)
 	case "fix-exec-transactions-count":
 		err = fixExecTransactionsCount()
-	case "fix-blocks":
-		err = fixBlocks()
+	case "bids-2330-fix-blocks":
+		err = bids2330FixBlocks()
+	case "bids-2330-export-blocks":
+		err = bids2330ExportBlocks()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -277,214 +287,6 @@ func main() {
 	} else {
 		logrus.Infof("command executed successfully")
 	}
-}
-
-func fixBlocks() error {
-	logrus.WithFields(logrus.Fields{"startBlock": opts.StartBlock, "endBlock": opts.EndBlock, "dry": opts.DryRun}).Infof("running command fixBlocks")
-
-	type ClEthV1ConfigSpecResponse struct {
-		Data map[string]string `json:"data"`
-	}
-
-	type ClEthV2BeaconBlocksBlockResponse struct {
-		Version             string `json:"version"`
-		ExecutionOptimistic bool   `json:"execution_optimistic"`
-		Finalized           bool   `json:"finalized"`
-		Data                struct {
-			Message struct {
-				Slot string `json:"slot"`
-			}
-		}
-	}
-
-	spec := &ClEthV1ConfigSpecResponse{}
-	err := utils.HttpReq(context.Background(), http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/config/spec", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port), nil, spec)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	nodeDepositNetworkId, ok := spec.Data["DEPOSIT_NETWORK_ID"]
-	if !ok {
-		logrus.Fatal(fmt.Errorf("missing DEPOSIT_NETWORK_ID in spec from node"))
-	}
-	if fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositNetworkID) != nodeDepositNetworkId {
-		logrus.Fatal(fmt.Errorf("config.DepositNetworkId != node.DepositNetworkId: %v != %v", utils.Config.Chain.ClConfig.DepositNetworkID, nodeDepositNetworkId))
-	}
-
-	start := opts.StartBlock
-	end := opts.EndBlock
-	if end == 0 {
-		end = math.MaxUint64
-	}
-
-	for i := start; i < end; i += 1000 {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-		res := &ClEthV2BeaconBlocksBlockResponse{}
-		err := utils.HttpReq(ctx, http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/beacon/blocks/finalized", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port), nil, res)
-		if err != nil {
-			return fmt.Errorf("error getting finalized block: %w", err)
-		}
-
-		finalizedSlot, err := strconv.ParseUint(res.Data.Message.Slot, 10, 64)
-		if err != nil {
-			return fmt.Errorf("error parsing finalized slot: %w", err)
-		}
-		iStart := i
-		iEnd := i + 1000
-		if iEnd > finalizedSlot+1 {
-			iEnd = finalizedSlot + 1
-		}
-
-		err = fixBlocksInRange(int(iStart), int(iEnd))
-		if err != nil {
-			return err
-		}
-
-		if iEnd > finalizedSlot {
-			return nil
-		}
-	}
-	return nil
-}
-
-func fixBlocksInRange(start, end int) error {
-	type ClEthV2BeaconBlocksBlockRootResponse struct {
-		ExecutionOptimistic bool `json:"execution_optimistic"`
-		Finalized           bool `json:"finalized"`
-		Data                struct {
-			Root string `json:"root"`
-		} `json:"data"`
-	}
-
-	logrus.Infof("checking blocks [%v-%v)", start, end)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
-	defer cancel()
-
-	var err error
-	type DbBlock struct {
-		Slot            uint64 `db:"slot"`
-		ExecBlockNumber uint64 `db:"exec_block_number"`
-		BlockRoot       []byte `db:"blockroot"`
-	}
-	type Block struct {
-		Slot               uint64
-		DbBlocks           []*DbBlock
-		ClBlockRootReponse *ClEthV2BeaconBlocksBlockRootResponse
-	}
-
-	dbBlocks := []*DbBlock{}
-	err = db.WriterDb.Select(&dbBlocks, `SELECT slot, coalesce(exec_block_number,0) exec_block_number, blockroot FROM blocks WHERE status = '1' AND slot >= $1 AND slot < $2`, start, end)
-	if err != nil {
-		return fmt.Errorf("error getting dbBlocks: %w", err)
-	}
-
-	blocksBySlotMu := sync.Mutex{}
-	blocksBySlot := map[uint64]*Block{}
-
-	for _, dbBlock := range dbBlocks {
-		block, exists := blocksBySlot[dbBlock.Slot]
-		if !exists {
-			block = &Block{Slot: dbBlock.Slot}
-			blocksBySlot[dbBlock.Slot] = block
-		}
-		block.DbBlocks = append(block.DbBlocks, dbBlock)
-	}
-
-	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(4)
-
-	for slot := start; slot < end; slot++ {
-		slot := slot
-		g.Go(func() error {
-			select {
-			case <-gCtx.Done():
-				return gCtx.Err()
-			default:
-			}
-			res := &ClEthV2BeaconBlocksBlockRootResponse{}
-			ctx, cancel := context.WithTimeout(gCtx, time.Second*10)
-			defer cancel()
-			var err error
-			for i := 0; i < 100; i++ {
-				if i > 0 {
-					time.Sleep(time.Second * time.Duration(math.Min(float64(i), 10)))
-				}
-				err = utils.HttpReq(ctx, http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/beacon/blocks/%d/root", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port, slot), nil, res)
-				if err != nil {
-					var httpErr *utils.HttpReqHttpError
-					if errors.As(err, &httpErr) && httpErr.StatusCode == 404 {
-						// no sidecar for this slot
-						return nil
-					}
-					logrus.Errorf("error getting blockroot for slot %v: %v (attempt %v)", slot, err, i)
-				} else {
-					break
-				}
-			}
-			if err != nil {
-				return err
-			}
-			blocksBySlotMu.Lock()
-			block, exists := blocksBySlot[uint64(slot)]
-			if !exists {
-				block = &Block{Slot: uint64(slot)}
-				blocksBySlot[uint64(slot)] = block
-			}
-			block.ClBlockRootReponse = res
-			blocksBySlotMu.Unlock()
-			return nil
-		})
-	}
-
-	err = g.Wait()
-	if err != nil {
-		return err
-	}
-
-	blocksArr := []*Block{}
-	for _, block := range blocksBySlot {
-		blocksArr = append(blocksArr, block)
-	}
-	sort.Slice(blocksArr, func(i, j int) bool { return blocksArr[i].Slot < blocksArr[j].Slot })
-
-	for _, block := range blocksArr {
-		if block.ClBlockRootReponse == nil {
-			if opts.DryRun {
-				logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "dbBlocks": len(block.DbBlocks)}).Warnf("wrong blocks.status (not updateing because dry)")
-			} else {
-				for _, dbBlock := range block.DbBlocks {
-					_, err = db.WriterDb.Exec(`UPDATE blocks SET status = '3' WHERE slot = $1 AND blockroot = $2`, dbBlock.Slot, dbBlock.BlockRoot)
-					if err != nil {
-						return fmt.Errorf("error updating blocks.status to 3 for block at slot %v with blockroot %#x: %w", block.Slot, dbBlock.BlockRoot, err)
-					}
-					logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "blockroot": fmt.Sprintf("%#x", dbBlock.BlockRoot)}).Warnf("updated blocks.status to 3, because no block from cl")
-				}
-			}
-		}
-
-		if len(block.DbBlocks) == 0 {
-			logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot)}).Warnf("missing block in db")
-		}
-
-		if len(block.DbBlocks) > 0 && block.ClBlockRootReponse != nil {
-			for _, dbBlock := range block.DbBlocks {
-				if block.ClBlockRootReponse.Data.Root != fmt.Sprintf("%#x", dbBlock.BlockRoot) {
-					if opts.DryRun {
-						logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot)}).Warnf("wrong blocks.status (not updateing because dry), missmatching blockroot at slot: %v: %s != %#x", block.Slot, block.ClBlockRootReponse.Data.Root, dbBlock.BlockRoot)
-					} else {
-						_, err = db.WriterDb.Exec(`UPDATE blocks SET status = '3' WHERE slot = $1 AND blockroot = $2`, dbBlock.Slot, dbBlock.BlockRoot)
-						if err != nil {
-							return fmt.Errorf("error updating blocks.status to 3 for block at slot %v with blockroot %#x: %w", block.Slot, dbBlock.BlockRoot, err)
-						}
-						logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "blockroot": fmt.Sprintf("%#x", dbBlock.BlockRoot)}).Warnf("updated blocks.status to 3, because missmatching blockroot at slot: %v: %s != %#x", block.Slot, block.ClBlockRootReponse.Data.Root, dbBlock.BlockRoot)
-					}
-				}
-			}
-		}
-	}
-
-	return nil
 }
 
 func fixExecTransactionsCount() error {
@@ -1361,4 +1163,268 @@ OUTER:
 	}
 
 	logrus.Infof("finished all exporting stats totals for columns '%v' for days %v - %v, took %v", columns, dayStart, dayEnd, time.Since(start))
+}
+
+// bids2330ExportBlocks has been implemented for bids-2330
+func bids2330ExportBlocks() error {
+	slots, err := utils.ParseUint64Ranges(opts.Slots)
+	if err != nil {
+		return fmt.Errorf("invalid -slots: %w", err)
+	}
+	if len(slots) == 0 {
+		return nil
+	}
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	affectedEpochs := map[uint64]bool{}
+	affectedDays := map[uint64]bool{}
+
+	for _, slot := range slots {
+		affectedEpochs[utils.EpochOfSlot(slot)] = true
+		affectedDays[utils.DayOfSlot(slot)] = true
+
+		err := exporter.ExportSlot(clClient, slot, false, tx)
+		if err != nil {
+			return fmt.Errorf("error exporting slot %v: %w", slot, err)
+		}
+	}
+
+	for epoch := range affectedEpochs {
+		// update epoch status
+		epochParticipationStats, err := clClient.GetValidatorParticipation(epoch)
+		if err != nil {
+			return fmt.Errorf("error getting validator participation for epoch %v: %w", epoch, err)
+		}
+		err = db.UpdateEpochStatus(epochParticipationStats, tx)
+		if err != nil {
+			return fmt.Errorf("error updating epoch status for epoch %v: %w", epoch, err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing db tx: %w", err)
+	}
+
+	affectedDaysArr := []uint64{}
+	for day := range affectedDays {
+		affectedDaysArr = append(affectedDaysArr, day)
+	}
+	fmt.Printf("stats for these days must be recalculated: %v\n", affectedDaysArr)
+
+	return nil
+}
+
+// bids2330FixBlocks has been implemented for bids-2330
+func bids2330FixBlocks() error {
+	logrus.WithFields(logrus.Fields{"startBlock": opts.StartBlock, "endBlock": opts.EndBlock, "dry": opts.DryRun}).Infof("running command fixBlocks")
+
+	type ClEthV1ConfigSpecResponse struct {
+		Data map[string]string `json:"data"`
+	}
+
+	type ClEthV2BeaconBlocksBlockResponse struct {
+		Version             string `json:"version"`
+		ExecutionOptimistic bool   `json:"execution_optimistic"`
+		Finalized           bool   `json:"finalized"`
+		Data                struct {
+			Message struct {
+				Slot string `json:"slot"`
+			}
+		}
+	}
+
+	spec := &ClEthV1ConfigSpecResponse{}
+	err := utils.HttpReq(context.Background(), http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/config/spec", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port), nil, spec)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	nodeDepositNetworkId, ok := spec.Data["DEPOSIT_NETWORK_ID"]
+	if !ok {
+		logrus.Fatal(fmt.Errorf("missing DEPOSIT_NETWORK_ID in spec from node"))
+	}
+	if fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositNetworkID) != nodeDepositNetworkId {
+		logrus.Fatal(fmt.Errorf("config.DepositNetworkId != node.DepositNetworkId: %v != %v", utils.Config.Chain.ClConfig.DepositNetworkID, nodeDepositNetworkId))
+	}
+
+	start := opts.StartBlock
+	end := opts.EndBlock
+	if end == 0 {
+		end = math.MaxUint64
+	}
+
+	for i := start; i < end; i += 1000 {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		res := &ClEthV2BeaconBlocksBlockResponse{}
+		err := utils.HttpReq(ctx, http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/beacon/blocks/finalized", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port), nil, res)
+		if err != nil {
+			return fmt.Errorf("error getting finalized block: %w", err)
+		}
+
+		finalizedSlot, err := strconv.ParseUint(res.Data.Message.Slot, 10, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing finalized slot: %w", err)
+		}
+		iStart := i
+		iEnd := i + 1000
+		if iEnd > finalizedSlot+1 {
+			iEnd = finalizedSlot + 1
+		}
+
+		err = bids2330FixBlocksInRange(int(iStart), int(iEnd))
+		if err != nil {
+			return err
+		}
+
+		if iEnd > finalizedSlot {
+			return nil
+		}
+	}
+	return nil
+}
+
+func bids2330FixBlocksInRange(start, end int) error {
+	type ClEthV2BeaconBlocksBlockRootResponse struct {
+		ExecutionOptimistic bool `json:"execution_optimistic"`
+		Finalized           bool `json:"finalized"`
+		Data                struct {
+			Root string `json:"root"`
+		} `json:"data"`
+	}
+
+	logrus.Infof("checking blocks [%v-%v)", start, end)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	var err error
+	type DbBlock struct {
+		Slot            uint64 `db:"slot"`
+		ExecBlockNumber uint64 `db:"exec_block_number"`
+		BlockRoot       []byte `db:"blockroot"`
+	}
+	type Block struct {
+		Slot               uint64
+		DbBlocks           []*DbBlock
+		ClBlockRootReponse *ClEthV2BeaconBlocksBlockRootResponse
+	}
+
+	dbBlocks := []*DbBlock{}
+	err = db.WriterDb.Select(&dbBlocks, `SELECT slot, coalesce(exec_block_number,0) exec_block_number, blockroot FROM blocks WHERE status = '1' AND slot >= $1 AND slot < $2`, start, end)
+	if err != nil {
+		return fmt.Errorf("error getting dbBlocks: %w", err)
+	}
+
+	blocksBySlotMu := sync.Mutex{}
+	blocksBySlot := map[uint64]*Block{}
+
+	for _, dbBlock := range dbBlocks {
+		block, exists := blocksBySlot[dbBlock.Slot]
+		if !exists {
+			block = &Block{Slot: dbBlock.Slot}
+			blocksBySlot[dbBlock.Slot] = block
+		}
+		block.DbBlocks = append(block.DbBlocks, dbBlock)
+	}
+
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(4)
+
+	for slot := start; slot < end; slot++ {
+		slot := slot
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
+			}
+			res := &ClEthV2BeaconBlocksBlockRootResponse{}
+			ctx, cancel := context.WithTimeout(gCtx, time.Second*10)
+			defer cancel()
+			var err error
+			for i := 0; i < 100; i++ {
+				if i > 0 {
+					time.Sleep(time.Second * time.Duration(math.Min(float64(i), 10)))
+				}
+				err = utils.HttpReq(ctx, http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/beacon/blocks/%d/root", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port, slot), nil, res)
+				if err != nil {
+					var httpErr *utils.HttpReqHttpError
+					if errors.As(err, &httpErr) && httpErr.StatusCode == 404 {
+						// no sidecar for this slot
+						return nil
+					}
+					logrus.Errorf("error getting blockroot for slot %v: %v (attempt %v)", slot, err, i)
+				} else {
+					break
+				}
+			}
+			if err != nil {
+				return err
+			}
+			blocksBySlotMu.Lock()
+			block, exists := blocksBySlot[uint64(slot)]
+			if !exists {
+				block = &Block{Slot: uint64(slot)}
+				blocksBySlot[uint64(slot)] = block
+			}
+			block.ClBlockRootReponse = res
+			blocksBySlotMu.Unlock()
+			return nil
+		})
+	}
+
+	err = g.Wait()
+	if err != nil {
+		return err
+	}
+
+	blocksArr := []*Block{}
+	for _, block := range blocksBySlot {
+		blocksArr = append(blocksArr, block)
+	}
+	sort.Slice(blocksArr, func(i, j int) bool { return blocksArr[i].Slot < blocksArr[j].Slot })
+
+	for _, block := range blocksArr {
+		if block.ClBlockRootReponse == nil {
+			if opts.DryRun {
+				logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "dbBlocks": len(block.DbBlocks)}).Warnf("wrong blocks.status (not updateing because dry)")
+			} else {
+				for _, dbBlock := range block.DbBlocks {
+					_, err = db.WriterDb.Exec(`UPDATE blocks SET status = '3' WHERE slot = $1 AND blockroot = $2`, dbBlock.Slot, dbBlock.BlockRoot)
+					if err != nil {
+						return fmt.Errorf("error updating blocks.status to 3 for block at slot %v with blockroot %#x: %w", block.Slot, dbBlock.BlockRoot, err)
+					}
+					logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "blockroot": fmt.Sprintf("%#x", dbBlock.BlockRoot)}).Warnf("updated blocks.status to 3, because no block from cl")
+				}
+			}
+		}
+
+		if len(block.DbBlocks) == 0 {
+			logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot)}).Warnf("missing block in db")
+		}
+
+		if len(block.DbBlocks) > 0 && block.ClBlockRootReponse != nil {
+			for _, dbBlock := range block.DbBlocks {
+				if block.ClBlockRootReponse.Data.Root != fmt.Sprintf("%#x", dbBlock.BlockRoot) {
+					if opts.DryRun {
+						logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot)}).Warnf("wrong blocks.status (not updateing because dry), missmatching blockroot at slot: %v: %s != %#x", block.Slot, block.ClBlockRootReponse.Data.Root, dbBlock.BlockRoot)
+					} else {
+						_, err = db.WriterDb.Exec(`UPDATE blocks SET status = '3' WHERE slot = $1 AND blockroot = $2`, dbBlock.Slot, dbBlock.BlockRoot)
+						if err != nil {
+							return fmt.Errorf("error updating blocks.status to 3 for block at slot %v with blockroot %#x: %w", block.Slot, dbBlock.BlockRoot, err)
+						}
+						logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "blockroot": fmt.Sprintf("%#x", dbBlock.BlockRoot)}).Warnf("updated blocks.status to 3, because missmatching blockroot at slot: %v: %s != %#x", block.Slot, block.ClBlockRootReponse.Data.Root, dbBlock.BlockRoot)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
