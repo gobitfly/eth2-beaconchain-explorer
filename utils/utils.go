@@ -230,7 +230,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatPoolPerformance":            FormatPoolPerformance,
 		"formatTokenSymbolTitle":           FormatTokenSymbolTitle,
 		"formatTokenSymbol":                FormatTokenSymbol,
-		"formatTokenSymbolHTML":            FormatTokenSymbolHTML,
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, errors.New("invalid dict call")
@@ -1392,13 +1391,6 @@ func isMaliciousToken(symbol string) bool {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 	isConfusable := confusables.IsDangerous(symbol, []string{"latin"})
 	return len(urls) > 0 || isConfusable || strings.ToUpper(symbol) == "ETH"
-}
-
-func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
-	tmplStr := string(tmpl)
-	symbol := FormatTokenSymbol(tmplStr)
-	title := FormatTokenSymbolTitle(tmplStr)
-	return template.HTML(strings.ReplaceAll(symbol, `title=""`, fmt.Sprintf(`title="%s"`, title)))
 }
 
 func ReverseSlice[S ~[]E, E any](s S) {
