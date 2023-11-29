@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -16,7 +15,6 @@ import (
 	"math"
 	"math/big"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,6 +22,7 @@ import (
 
 	"github.com/coocood/freecache"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pkg/errors"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
 	"golang.org/x/sync/errgroup"
 
@@ -51,17 +50,12 @@ var opts = struct {
 	Family              string
 	Key                 string
 	ValidatorNameRanges string
-	Slots               string
 	DryRun              bool
 }{}
 
-var clClient *rpc.LighthouseClient
-var elClient *rpc.ErigonClient
-var chainIdString string
-
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, fix-exec-transactions-count")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -79,8 +73,7 @@ func main() {
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
 	flag.StringVar(&opts.Columns, "columns", "", "Comma separated list of columns that should be affected by the command")
-	flag.StringVar(&opts.Slots, "slots", "", "Slots that should be reexported, comma separated and/or inclusive range (e.g. 1,2,3,100-200)")
-	flag.BoolVar(&opts.DryRun, "dry-run", true, "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
+	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
 
@@ -90,6 +83,8 @@ func main() {
 		return
 	}
 
+	opts.DryRun = *dryRun != "false"
+
 	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -98,7 +93,7 @@ func main() {
 	}
 	utils.Config = cfg
 
-	chainIdString = strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
+	chainIdString := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
 
 	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
 	if err != nil {
@@ -110,13 +105,11 @@ func main() {
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
-	clClient = rpcClient
 
 	erigonClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		logrus.Fatalf("error initializing erigon client: %v", err)
 	}
-	elClient = erigonClient
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
@@ -270,14 +263,111 @@ func main() {
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
+	case "export-genesis-validators":
+		logrus.Infof("retrieving genesis validator state")
+		validators, err := rpcClient.GetValidatorState(0)
+		if err != nil {
+			logrus.Fatalf("error retrieving genesis validator state")
+		}
+
+		validatorsArr := make([]*types.Validator, 0, len(validators.Data))
+
+		for _, validator := range validators.Data {
+			validatorsArr = append(validatorsArr, &types.Validator{
+				Index:                      uint64(validator.Index),
+				PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
+				WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
+				Balance:                    uint64(validator.Balance),
+				EffectiveBalance:           uint64(validator.Validator.EffectiveBalance),
+				Slashed:                    validator.Validator.Slashed,
+				ActivationEligibilityEpoch: uint64(validator.Validator.ActivationEligibilityEpoch),
+				ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
+				ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
+				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
+				Status:                     "active_online",
+			})
+		}
+
+		tx, err := db.WriterDb.Beginx()
+		if err != nil {
+			logrus.Fatalf("error starting tx: %v", err)
+		}
+		defer tx.Rollback()
+
+		batchSize := 10000
+		for i := 0; i < len(validatorsArr); i += batchSize {
+			data := &types.EpochData{
+				SyncDuties:        make(map[types.Slot]map[types.ValidatorIndex]bool),
+				AttestationDuties: make(map[types.Slot]map[types.ValidatorIndex][]types.Slot),
+				ValidatorAssignmentes: &types.EpochAssignments{
+					ProposerAssignments: map[uint64]uint64{},
+					AttestorAssignments: map[string]uint64{},
+					SyncAssignments:     make([]uint64, 0),
+				},
+				Blocks:                  make(map[uint64]map[string]*types.Block),
+				FutureBlocks:            make(map[uint64]map[string]*types.Block),
+				EpochParticipationStats: &types.ValidatorParticipation{},
+				Finalized:               false,
+			}
+
+			data.Validators = make([]*types.Validator, 0, batchSize)
+
+			start := i
+			end := i + batchSize
+			if end >= len(validatorsArr) {
+				end = len(validatorsArr) - 1
+			}
+			data.Validators = append(data.Validators, validatorsArr[start:end]...)
+
+			logrus.Infof("saving validators %v-%v", data.Validators[0].Index, data.Validators[len(data.Validators)-1].Index)
+
+			err = db.SaveValidators(0, data.Validators, rpcClient, len(data.Validators), tx)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		}
+
+		logrus.Infof("exporting deposit data for genesis %v validators", len(validators.Data))
+		for i, validator := range validators.Data {
+			if i%1000 == 0 {
+				logrus.Infof("exporting deposit data for genesis validator %v (of %v/%v)", validator.Index, i, len(validators.Data))
+			}
+			_, err = tx.Exec(`INSERT INTO blocks_deposits (block_slot, block_root, block_index, publickey, withdrawalcredentials, amount, signature)
+			VALUES (0, '\x01', $1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+				validator.Index, utils.MustParseHex(validator.Validator.Pubkey), utils.MustParseHex(validator.Validator.WithdrawalCredentials), validator.Balance, []byte{0x0},
+			)
+			if err != nil {
+				logrus.Errorf("error exporting genesis-deposits: %v", err)
+				time.Sleep(time.Minute)
+				continue
+			}
+		}
+
+		_, err = tx.Exec(`
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, syncaggregate_participation, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, proposer, status, exec_transactions_count, eth1data_depositcount)
+		VALUES (0, 0, '\x'::bytea, '\x'::bytea, '\x'::bytea, '\x'::bytea, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+		ON CONFLICT (slot, blockroot) DO NOTHING`)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = db.BigtableClient.SaveValidatorBalances(0, validatorsArr)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 	case "export-stats-totals":
 		exportStatsTotals(opts.Columns, opts.StartDay, opts.EndDay, opts.DataConcurrency)
+	case "export-sync-committee-periods":
+		exportSyncCommitteePeriods(rpcClient, opts.StartDay, opts.EndDay, opts.DryRun)
+	case "export-sync-committee-validator-stats":
+		exportSyncCommitteeValidatorStats(rpcClient, opts.StartDay, opts.EndDay, opts.DryRun, true)
 	case "fix-exec-transactions-count":
 		err = fixExecTransactionsCount()
-	case "bids-2330-fix-blocks":
-		err = bids2330FixBlocks()
-	case "bids-2330-export-blocks":
-		err = bids2330ExportBlocks()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -1052,6 +1142,12 @@ func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
 
 func exportStatsTotals(columns string, dayStart, dayEnd, concurrency uint64) {
 	start := time.Now()
+	exportToToday := false
+	if dayEnd <= 0 {
+		exportToToday = true
+		dayEnd = math.MaxInt
+	}
+
 	logrus.Infof("exporting stats totals for columns '%v'", columns)
 
 	// validate columns input
@@ -1066,6 +1162,8 @@ func exportStatsTotals(columns string, dayStart, dayEnd, concurrency uint64) {
 		"orphaned_sync_total",
 		"withdrawals_total",
 		"withdrawals_amount_total",
+		"deposits_total",
+		"deposits_amount_total",
 	}
 
 OUTER:
@@ -1159,272 +1257,274 @@ OUTER:
 				"columns": columns,
 			})
 		}
+
+		if exportToToday {
+			dayEnd, err = db.GetLastExportedStatisticDay()
+			if err != nil {
+				utils.LogError(err, "error getting last exported statistic day", 0)
+				return
+			}
+		}
 		logrus.Infof("finished exporting stats totals for columns '%v for day %v, took %v", columns, day, time.Since(timeDay))
 	}
 
 	logrus.Infof("finished all exporting stats totals for columns '%v' for days %v - %v, took %v", columns, dayStart, dayEnd, time.Since(start))
 }
 
-// bids2330ExportBlocks has been implemented for bids-2330
-func bids2330ExportBlocks() error {
-	slots, err := utils.ParseUint64Ranges(opts.Slots)
-	if err != nil {
-		return fmt.Errorf("invalid -slots: %w", err)
+/*
+Instead of deleting entries from the sync_committee table in a prod environment and wait for the exporter to sync back all entries,
+this method will replace each sync committee period one by one with the new one. Which is much nicer for a prod environment.
+*/
+func exportSyncCommitteePeriods(rpcClient rpc.Client, startDay, endDay uint64, dryRun bool) {
+	var lastEpoch = uint64(0)
+
+	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.ClConfig.AltairForkEpoch)
+	if startDay > 0 {
+		firstEpoch, _ := utils.GetFirstAndLastEpochForDay(startDay)
+		firstPeriod = utils.SyncPeriodOfEpoch(firstEpoch)
 	}
-	if len(slots) == 0 {
-		return nil
-	}
 
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		return fmt.Errorf("error starting tx: %w", err)
-	}
-	defer tx.Rollback()
-
-	affectedEpochs := map[uint64]bool{}
-	affectedDays := map[uint64]bool{}
-
-	for _, slot := range slots {
-		affectedEpochs[utils.EpochOfSlot(slot)] = true
-		affectedDays[utils.DayOfSlot(slot)] = true
-
-		err := exporter.ExportSlot(clClient, slot, false, tx)
+	if endDay <= 0 {
+		var err error
+		lastEpoch, err = db.GetLatestFinalizedEpoch()
 		if err != nil {
-			return fmt.Errorf("error exporting slot %v: %w", slot, err)
+			utils.LogError(err, "error getting latest finalized epoch", 0)
+			return
 		}
+		if lastEpoch > 0 { // guard against underflows
+			lastEpoch = lastEpoch - 1
+		}
+	} else {
+		_, lastEpoch = utils.GetFirstAndLastEpochForDay(endDay)
 	}
 
-	for epoch := range affectedEpochs {
-		// update epoch status
-		epochParticipationStats, err := clClient.GetValidatorParticipation(epoch)
+	lastPeriod := utils.SyncPeriodOfEpoch(uint64(lastEpoch)) + 1 // we can look into the future
+
+	start := time.Now()
+	for p := firstPeriod; p <= lastPeriod; p++ {
+		t0 := time.Now()
+
+		err := reExportSyncCommittee(rpcClient, p, dryRun)
 		if err != nil {
-			return fmt.Errorf("error getting validator participation for epoch %v: %w", epoch, err)
-		}
-		err = db.UpdateEpochStatus(epochParticipationStats, tx)
-		if err != nil {
-			return fmt.Errorf("error updating epoch status for epoch %v: %w", epoch, err)
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("error committing db tx: %w", err)
-	}
-
-	affectedDaysArr := []uint64{}
-	for day := range affectedDays {
-		affectedDaysArr = append(affectedDaysArr, day)
-	}
-	fmt.Printf("stats for these days must be recalculated: %v\n", affectedDaysArr)
-
-	return nil
-}
-
-// bids2330FixBlocks has been implemented for bids-2330
-func bids2330FixBlocks() error {
-	logrus.WithFields(logrus.Fields{"startBlock": opts.StartBlock, "endBlock": opts.EndBlock, "dry": opts.DryRun}).Infof("running command fixBlocks")
-
-	type ClEthV1ConfigSpecResponse struct {
-		Data map[string]string `json:"data"`
-	}
-
-	type ClEthV2BeaconBlocksBlockResponse struct {
-		Version             string `json:"version"`
-		ExecutionOptimistic bool   `json:"execution_optimistic"`
-		Finalized           bool   `json:"finalized"`
-		Data                struct {
-			Message struct {
-				Slot string `json:"slot"`
+			if strings.Contains(err.Error(), "not found 404") {
+				logrus.WithField("period", p).Infof("reached max period, stopping")
+				break
+			} else {
+				utils.LogError(err, "error re-exporting sync_committee", 0, map[string]interface{}{
+					"period": p,
+				})
+				return
 			}
 		}
+
+		logrus.WithFields(logrus.Fields{
+			"period":   p,
+			"epoch":    utils.FirstEpochOfSyncPeriod(p),
+			"duration": time.Since(t0),
+		}).Infof("re-exported sync_committee")
 	}
 
-	spec := &ClEthV1ConfigSpecResponse{}
-	err := utils.HttpReq(context.Background(), http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/config/spec", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port), nil, spec)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	nodeDepositNetworkId, ok := spec.Data["DEPOSIT_NETWORK_ID"]
-	if !ok {
-		logrus.Fatal(fmt.Errorf("missing DEPOSIT_NETWORK_ID in spec from node"))
-	}
-	if fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositNetworkID) != nodeDepositNetworkId {
-		logrus.Fatal(fmt.Errorf("config.DepositNetworkId != node.DepositNetworkId: %v != %v", utils.Config.Chain.ClConfig.DepositNetworkID, nodeDepositNetworkId))
-	}
-
-	start := opts.StartBlock
-	end := opts.EndBlock
-	if end == 0 {
-		end = math.MaxUint64
-	}
-
-	for i := start; i < end; i += 1000 {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-		res := &ClEthV2BeaconBlocksBlockResponse{}
-		err := utils.HttpReq(ctx, http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/beacon/blocks/finalized", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port), nil, res)
-		if err != nil {
-			return fmt.Errorf("error getting finalized block: %w", err)
-		}
-
-		finalizedSlot, err := strconv.ParseUint(res.Data.Message.Slot, 10, 64)
-		if err != nil {
-			return fmt.Errorf("error parsing finalized slot: %w", err)
-		}
-		iStart := i
-		iEnd := i + 1000
-		if iEnd > finalizedSlot+1 {
-			iEnd = finalizedSlot + 1
-		}
-
-		err = bids2330FixBlocksInRange(int(iStart), int(iEnd))
-		if err != nil {
-			return err
-		}
-
-		if iEnd > finalizedSlot {
-			return nil
-		}
-	}
-	return nil
+	logrus.Infof("finished all exporting sync_committee for periods %v - %v, took %v", firstPeriod, lastPeriod, time.Since(start))
 }
 
-func bids2330FixBlocksInRange(start, end int) error {
-	type ClEthV2BeaconBlocksBlockRootResponse struct {
-		ExecutionOptimistic bool `json:"execution_optimistic"`
-		Finalized           bool `json:"finalized"`
-		Data                struct {
-			Root string `json:"root"`
-		} `json:"data"`
+func exportSyncCommitteeValidatorStats(rpcClient rpc.Client, startDay, endDay uint64, dryRun, skipPhase1 bool) {
+	if endDay <= 0 {
+		lastEpoch, err := db.GetLatestFinalizedEpoch()
+		if err != nil {
+			utils.LogError(err, "error getting latest finalized epoch", 0)
+			return
+		}
+		if lastEpoch > 0 { // guard against underflows
+			lastEpoch = lastEpoch - 1
+		}
+
+		_, err = db.GetLastExportedStatisticDay()
+		if err != nil {
+			logrus.Infof("skipping exporting stats, first day has not been indexed yet")
+			return
+		}
+
+		epochsPerDay := utils.EpochsPerDay()
+		currentDay := lastEpoch / epochsPerDay
+		endDay = currentDay - 1 // current day will be picked up by exporter
 	}
 
-	logrus.Infof("checking blocks [%v-%v)", start, end)
+	start := time.Now()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
-	defer cancel()
+	for day := startDay; day <= endDay; day++ {
+		startDay := time.Now()
+		err := UpdateValidatorStatisticsSyncData(day, rpcClient, dryRun)
+		if err != nil {
+			utils.LogError(err, fmt.Errorf("error exporting stats for day %v", day), 0)
+			break
+		}
+
+		logrus.Infof("finished updating validators_stats for day %v, took %v", day, time.Since(startDay))
+	}
+
+	logrus.Infof("finished all exporting stats for days %v - %v, took %v", startDay, endDay, time.Since(start))
+	logrus.Infof("REMEMBER: To execute export-stats-totals now to update the totals")
+}
+
+func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun bool) error {
+	exportStart := time.Now()
+	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
+
+	logrus.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
+
+	if err := db.CheckIfDayIsFinalized(day); err != nil && !dryRun {
+		return err
+	}
+
+	logrus.Infof("getting exported state for day %v", day)
 
 	var err error
-	type DbBlock struct {
-		Slot            uint64 `db:"slot"`
-		ExecBlockNumber uint64 `db:"exec_block_number"`
-		BlockRoot       []byte `db:"blockroot"`
-	}
-	type Block struct {
-		Slot               uint64
-		DbBlocks           []*DbBlock
-		ClBlockRootReponse *ClEthV2BeaconBlocksBlockRootResponse
-	}
-
-	dbBlocks := []*DbBlock{}
-	err = db.WriterDb.Select(&dbBlocks, `SELECT slot, coalesce(exec_block_number,0) exec_block_number, blockroot FROM blocks WHERE status = '1' AND slot >= $1 AND slot < $2`, start, end)
+	var maxValidatorIndex uint64
+	err = db.ReaderDb.Get(&maxValidatorIndex, `SELECT MAX(validatorindex) FROM validator_stats WHERE day = $1`, day)
 	if err != nil {
-		return fmt.Errorf("error getting dbBlocks: %w", err)
-	}
-
-	blocksBySlotMu := sync.Mutex{}
-	blocksBySlot := map[uint64]*Block{}
-
-	for _, dbBlock := range dbBlocks {
-		block, exists := blocksBySlot[dbBlock.Slot]
-		if !exists {
-			block = &Block{Slot: dbBlock.Slot}
-			blocksBySlot[dbBlock.Slot] = block
-		}
-		block.DbBlocks = append(block.DbBlocks, dbBlock)
-	}
-
-	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(4)
-
-	for slot := start; slot < end; slot++ {
-		slot := slot
-		g.Go(func() error {
-			select {
-			case <-gCtx.Done():
-				return gCtx.Err()
-			default:
-			}
-			res := &ClEthV2BeaconBlocksBlockRootResponse{}
-			ctx, cancel := context.WithTimeout(gCtx, time.Second*10)
-			defer cancel()
-			var err error
-			for i := 0; i < 100; i++ {
-				if i > 0 {
-					time.Sleep(time.Second * time.Duration(math.Min(float64(i), 10)))
-				}
-				err = utils.HttpReq(ctx, http.MethodGet, fmt.Sprintf("http://%s:%s/eth/v1/beacon/blocks/%d/root", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port, slot), nil, res)
-				if err != nil {
-					var httpErr *utils.HttpReqHttpError
-					if errors.As(err, &httpErr) && httpErr.StatusCode == 404 {
-						// no sidecar for this slot
-						return nil
-					}
-					logrus.Errorf("error getting blockroot for slot %v: %v (attempt %v)", slot, err, i)
-				} else {
-					break
-				}
-			}
-			if err != nil {
-				return err
-			}
-			blocksBySlotMu.Lock()
-			block, exists := blocksBySlot[uint64(slot)]
-			if !exists {
-				block = &Block{Slot: uint64(slot)}
-				blocksBySlot[uint64(slot)] = block
-			}
-			block.ClBlockRootReponse = res
-			blocksBySlotMu.Unlock()
-			return nil
+		utils.LogFatal(err, "error: could not get max validator index", 0, map[string]interface{}{
+			"epoch": firstEpoch,
+		})
+	} else if maxValidatorIndex == uint64(0) {
+		utils.LogFatal(err, "error: no validator found", 0, map[string]interface{}{
+			"epoch": firstEpoch,
 		})
 	}
+	maxValidatorIndex += 10000 // add some buffer, exact number is not important. Should just be bigger than max validators that can join in a day
+
+	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, maxValidatorIndex)
+	validatorDataMux := &sync.Mutex{}
+
+	logrus.Infof("processing statistics for validators 0-%d", maxValidatorIndex)
+	for i := uint64(0); i <= maxValidatorIndex; i++ {
+		validatorData = append(validatorData, &types.ValidatorStatsTableDbRow{
+			ValidatorIndex: i,
+			Day:            int64(day),
+		})
+	}
+
+	g := &errgroup.Group{}
+
+	g.Go(func() error {
+		if err := db.GatherValidatorSyncDutiesForDay(nil, day, validatorData, validatorDataMux); err != nil {
+			return fmt.Errorf("error in GatherValidatorSyncDutiesForDay: %w", err)
+		}
+		return nil
+	})
 
 	err = g.Wait()
 	if err != nil {
 		return err
 	}
 
-	blocksArr := []*Block{}
-	for _, block := range blocksBySlot {
-		blocksArr = append(blocksArr, block)
-	}
-	sort.Slice(blocksArr, func(i, j int) bool { return blocksArr[i].Slot < blocksArr[j].Slot })
+	onlySyncCommitteeValidatorData := make([]*types.ValidatorStatsTableDbRow, 0, len(validatorData))
+	for index := range validatorData {
 
-	for _, block := range blocksArr {
-		if block.ClBlockRootReponse == nil {
-			if opts.DryRun {
-				logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "dbBlocks": len(block.DbBlocks)}).Warnf("wrong blocks.status (not updateing because dry)")
-			} else {
-				for _, dbBlock := range block.DbBlocks {
-					_, err = db.WriterDb.Exec(`UPDATE blocks SET status = '3' WHERE slot = $1 AND blockroot = $2`, dbBlock.Slot, dbBlock.BlockRoot)
-					if err != nil {
-						return fmt.Errorf("error updating blocks.status to 3 for block at slot %v with blockroot %#x: %w", block.Slot, dbBlock.BlockRoot, err)
-					}
-					logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "blockroot": fmt.Sprintf("%#x", dbBlock.BlockRoot)}).Warnf("updated blocks.status to 3, because no block from cl")
-				}
-			}
-		}
-
-		if len(block.DbBlocks) == 0 {
-			logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot)}).Warnf("missing block in db")
-		}
-
-		if len(block.DbBlocks) > 0 && block.ClBlockRootReponse != nil {
-			for _, dbBlock := range block.DbBlocks {
-				if block.ClBlockRootReponse.Data.Root != fmt.Sprintf("%#x", dbBlock.BlockRoot) {
-					if opts.DryRun {
-						logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot)}).Warnf("wrong blocks.status (not updateing because dry), missmatching blockroot at slot: %v: %s != %#x", block.Slot, block.ClBlockRootReponse.Data.Root, dbBlock.BlockRoot)
-					} else {
-						_, err = db.WriterDb.Exec(`UPDATE blocks SET status = '3' WHERE slot = $1 AND blockroot = $2`, dbBlock.Slot, dbBlock.BlockRoot)
-						if err != nil {
-							return fmt.Errorf("error updating blocks.status to 3 for block at slot %v with blockroot %#x: %w", block.Slot, dbBlock.BlockRoot, err)
-						}
-						logrus.WithFields(logrus.Fields{"slot": block.Slot, "epoch": utils.EpochOfSlot(block.Slot), "blockroot": fmt.Sprintf("%#x", dbBlock.BlockRoot)}).Warnf("updated blocks.status to 3, because missmatching blockroot at slot: %v: %s != %#x", block.Slot, block.ClBlockRootReponse.Data.Root, dbBlock.BlockRoot)
-					}
-				}
-			}
+		if validatorData[index].ParticipatedSync > 0 || validatorData[index].MissedSync > 0 || validatorData[index].OrphanedSync > 0 {
+			onlySyncCommitteeValidatorData = append(onlySyncCommitteeValidatorData, validatorData[index])
 		}
 	}
 
+	if len(onlySyncCommitteeValidatorData) == 0 {
+		return nil // no sync committee yet skip
+	}
+
+	logrus.Infof("statistics data collection for day %v completed", day)
+
+	var statisticsDataToday []*types.ValidatorStatsTableDbRow
+	if dryRun {
+		var err error
+		statisticsDataToday, err = db.GatherStatisticsForDay(int64(day)) // convert to int64 to avoid underflows
+		if err != nil {
+			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
+		}
+	}
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error retrieving raw sql connection: %w", err)
+	}
+	defer tx.Rollback()
+
+	logrus.Infof("updating statistics data into the validator_stats table %v | %v", len(onlySyncCommitteeValidatorData), len(validatorData))
+
+	for _, data := range onlySyncCommitteeValidatorData {
+		if dryRun {
+			logrus.Infof(
+				"validator %v: participated sync: %v -> %v, missed sync: %v -> %v, orphaned sync: %v -> %v",
+				data.ValidatorIndex, statisticsDataToday[data.ValidatorIndex].ParticipatedSync, data.ParticipatedSync, statisticsDataToday[data.ValidatorIndex].MissedSync, data.MissedSync, statisticsDataToday[data.ValidatorIndex].OrphanedSync,
+				data.OrphanedSync,
+			)
+		} else {
+			tx.Exec(`
+				UPDATE validator_stats set
+				participated_sync = $1,
+				missed_sync = $2,
+				orphaned_sync = $3,
+				WHERE day = $4 AND validatorindex = $5`,
+				data.ParticipatedSync,
+				data.MissedSync,
+				data.OrphanedSync,
+				data.Day, data.ValidatorIndex)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error during statistics data insert: %w", err)
+	}
+
+	logrus.Infof("statistics sync re-export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
+}
+
+func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
+	if dryRun {
+		var currentData []struct {
+			ValidatorIndex uint64 `db:"validatorindex"`
+			CommitteeIndex uint64 `db:"committeeindex"`
+		}
+
+		err := db.WriterDb.Select(&currentData, `SELECT validatorindex, committeeindex FROM sync_committees WHERE period = $1`, p)
+		if err != nil {
+			return errors.Wrap(err, "select old entries")
+		}
+
+		newData, err := exporter.GetSyncCommitteAtPeriod(rpcClient, p)
+		if err != nil {
+			return errors.Wrap(err, "export")
+		}
+
+		// now we compare currentData with newData and print any difference in committeeindex
+		for _, d := range currentData {
+			for _, n := range newData {
+				if d.ValidatorIndex == n.ValidatorIndex && d.CommitteeIndex != n.CommitteeIndex {
+					logrus.Infof("validator %v has different committeeindex: %v -> %v", d.ValidatorIndex, d.CommitteeIndex, n.CommitteeIndex)
+				}
+			}
+		}
+		return nil
+	} else {
+		tx, err := db.WriterDb.Beginx()
+		if err != nil {
+			return errors.Wrap(err, "tx")
+		}
+
+		defer tx.Rollback()
+		_, err = tx.Exec(`DELETE FROM sync_committees WHERE period = $1`, p)
+		if err != nil {
+			return errors.Wrap(err, "delete old entries")
+		}
+
+		err = exporter.ExportSyncCommitteeAtPeriod(rpcClient, p, tx)
+		if err != nil {
+			return errors.Wrap(err, "export")
+		}
+
+		return tx.Commit()
+	}
 }
