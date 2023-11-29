@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/alexedwards/scs/redisstore"
 	"github.com/alexedwards/scs/v2"
@@ -94,7 +93,7 @@ func InitSessionStore(secret string) {
 	}
 
 	sessionManager := scs.New()
-	sessionManager.Lifetime = time.Hour * 24 * 7
+	sessionManager.Lifetime = Week
 	sessionManager.Cookie.Name = "session_id"
 	sessionManager.Cookie.HttpOnly = true
 	sessionManager.Cookie.Persist = true

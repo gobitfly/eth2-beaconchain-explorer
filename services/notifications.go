@@ -115,7 +115,7 @@ func notificationCollector() {
 				if err != nil {
 					logger.Errorf("error collection user db notifications: %v", err)
 					ReportStatus("notification-collector", "Error", nil)
-					time.Sleep(time.Second * 120)
+					time.Sleep(time.Minute * 2)
 					continue
 				}
 
@@ -139,7 +139,7 @@ func notificationCollector() {
 func notificationSender() {
 	for {
 		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 
 		conn, err := db.FrontendWriterDB.Conn(ctx)
 		if err != nil {
@@ -2776,7 +2776,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 		var inTime time.Duration
 		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
 		if err != nil {
-			inTime = time.Duration(24 * time.Hour)
+			inTime = time.Duration(utils.Day)
 		} else {
 			inTime = time.Until(utils.EpochToTime(syncStartEpoch))
 		}

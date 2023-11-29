@@ -138,7 +138,7 @@ func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressH
 	rpe.Eth1Client = eth1Client
 	rpe.API = rp
 	rpe.DB = db
-	rpe.UpdateInterval = time.Second * 60
+	rpe.UpdateInterval = time.Minute
 	rpe.MinipoolsByAddress = map[string]*RocketpoolMinipool{}
 	rpe.NodesByAddress = map[string]*RocketpoolNode{}
 	rpe.DAOProposalsByID = map[uint64]*RocketpoolDAOProposal{}
@@ -219,7 +219,7 @@ func (rp *RocketpoolExporter) InitDAOMembers() error {
 }
 
 func (rp *RocketpoolExporter) Run() error {
-	errorInterval := time.Second * 60
+	errorInterval := time.Minute
 	t := time.NewTicker(rp.UpdateInterval)
 	defer t.Stop()
 	var count int64 = 0

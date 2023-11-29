@@ -28,7 +28,7 @@ func statsUpdater(wg *sync.WaitGroup) {
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("stats update completed")
 
 		cacheKey := fmt.Sprintf("%d:frontend:latestStats", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, statResult, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, statResult, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching latestStats: %v", err)
 		}

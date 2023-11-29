@@ -620,7 +620,7 @@ func main() {
 			utils.Config.Frontend.HttpReadTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpIdleTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 60
+			utils.Config.Frontend.HttpIdleTimeout = time.Minute
 		}
 		srv := &http.Server{
 			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,

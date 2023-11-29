@@ -110,7 +110,7 @@ func startElDataMonitoringService() {
 		}
 		blockBlocksTable, err := db.BigtableClient.GetBlockFromBlocksTable(uint64(numberBlocksTable))
 		if err != nil {
-			errorMsg := fmt.Errorf("error: could not retrieve latest block from the blocks table: %v", err)
+			errorMsg := fmt.Errorf("error: could not retrieve latest block (%d) from the blocks table: %v", numberBlocksTable, err)
 			ReportStatus(name, errorMsg.Error(), nil)
 			continue
 		}

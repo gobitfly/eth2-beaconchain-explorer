@@ -29,11 +29,11 @@ func InitBigtableSchema() error {
 		DEFAULT_FAMILY_BLOCKS: gcp_bigtable.MaxVersionsGCPolicy(1),
 	}
 	tables["data"] = map[string]gcp_bigtable.GCPolicy{
-		CONTRACT_METADATA_FAMILY: gcp_bigtable.MaxAgeGCPolicy(time.Hour * 24),
+		CONTRACT_METADATA_FAMILY: gcp_bigtable.MaxAgeGCPolicy(utils.Day),
 		DEFAULT_FAMILY:           nil,
 	}
 	tables["machine_metrics"] = map[string]gcp_bigtable.GCPolicy{
-		MACHINE_METRICS_COLUMN_FAMILY: gcp_bigtable.MaxAgeGCPolicy(time.Hour * 24 * 31),
+		MACHINE_METRICS_COLUMN_FAMILY: gcp_bigtable.MaxAgeGCPolicy(utils.Day * 31),
 	}
 	tables["metadata"] = map[string]gcp_bigtable.GCPolicy{
 		ACCOUNT_METADATA_FAMILY:  nil,
@@ -44,7 +44,7 @@ func InitBigtableSchema() error {
 		SERIES_FAMILY:            gcp_bigtable.MaxVersionsGCPolicy(1),
 	}
 	tables["metadata_updates"] = map[string]gcp_bigtable.GCPolicy{
-		METADATA_UPDATES_FAMILY_BLOCKS: gcp_bigtable.MaxAgeGCPolicy(time.Hour * 24),
+		METADATA_UPDATES_FAMILY_BLOCKS: gcp_bigtable.MaxAgeGCPolicy(utils.Day),
 		DEFAULT_FAMILY:                 nil,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)

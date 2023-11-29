@@ -1608,6 +1608,11 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV1(validators []ui
 	return res, nil
 }
 
+// GetValidatorSyncDutiesHistory returns the sync participation status for the given validators ranging from startSlot to endSlot (both inclusive)
+//
+// The returned map uses the following keys: [validatorIndex][slot]
+//
+// The function is able to handle both V1 and V2 schema based on the configured v2SchemaCutOffEpoch
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startSlot uint64, endSlot uint64) (map[uint64]map[uint64]*types.ValidatorSyncParticipation, error) {
 	if endSlot/utils.Config.Chain.ClConfig.SlotsPerEpoch < bigtable.v2SchemaCutOffEpoch {
 		if startSlot/utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 {
@@ -2302,7 +2307,7 @@ func (bigtable *Bigtable) getValidatorIncomeDetailsHistoryV2(validators []uint64
 		startEpoch = 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
 	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
@@ -2378,7 +2383,7 @@ func (bigtable *Bigtable) getValidatorIncomeDetailsHistoryV1(validators []uint64
 		startEpoch = 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
 	ranges := bigtable.getEpochRangesV1(startEpoch, endEpoch)
@@ -2530,7 +2535,7 @@ func (bigtable *Bigtable) GetTotalValidatorIncomeDetailsHistory(startEpoch uint6
 		startEpoch = 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*180)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
 	defer cancel()
 
 	res := make(map[uint64]*itypes.ValidatorEpochIncome, endEpoch-startEpoch+1)
