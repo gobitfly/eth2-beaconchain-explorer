@@ -2,7 +2,7 @@
 This document summarized the bigtable configuration options and table definitions required to run the beaconcha.in explorer. All settings can be applied either by using the GCP bigtable web interface or the `cbt` tool.
 
 ----
-Table name: `beaconchain_validator_history`
+Table name: `beaconchain_validators_history`
 
 ```
 cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_history
