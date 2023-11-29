@@ -12,8 +12,6 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
-	"strconv"
-	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -34,7 +32,6 @@ var opt = &options{}
 
 func main() {
 	flag.StringVar(&opt.configPath, "config", "", "Path to the config file")
-	flag.Int64Var(&opt.statisticsDayToExport, "statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 	flag.StringVar(&opt.statisticsDaysToExport, "statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
 	flag.BoolVar(&opt.statisticsValidatorToggle, "validators.enabled", false, "Toggle exporting validator statistics")
 	flag.BoolVar(&opt.statisticsChartToggle, "charts.enabled", false, "Toggle exporting chart series")
@@ -134,38 +131,22 @@ func main() {
 	}
 
 	if opt.statisticsDaysToExport != "" {
-		s := strings.Split(opt.statisticsDaysToExport, "-")
-		if len(s) < 2 {
-			logrus.Fatalf("invalid arg")
-		}
-		firstDay, err := strconv.ParseUint(s[0], 10, 64)
+		days, err := utils.ParseUint64Ranges(opt.statisticsDaysToExport)
 		if err != nil {
-			utils.LogFatal(err, "error parsing first day of statisticsDaysToExport flag to uint", 0)
+			utils.LogFatal(err, "error parsing --statistic.days flag", 0)
 		}
-		lastDay, err := strconv.ParseUint(s[1], 10, 64)
-		if err != nil {
-			utils.LogFatal(err, "error parsing last day of statisticsDaysToExport flag to uint", 0)
-		}
-
-		if opt.statisticsValidatorToggle {
-			logrus.Infof("exporting validator statistics for days %v-%v", firstDay, lastDay)
-			for d := firstDay; d <= lastDay; d++ {
-
+		for _, d := range days {
+			if opt.statisticsValidatorToggle {
 				if opt.resetStatus {
 					clearStatsStatusTable(d)
 				}
-
 				err = db.WriteValidatorStatisticsForDay(uint64(d), rpcClient)
 				if err != nil {
 					utils.LogError(err, fmt.Errorf("error exporting stats for day %v", d), 0)
 					break
 				}
 			}
-		}
-
-		if opt.statisticsChartToggle {
-			logrus.Infof("exporting chart series for days %v-%v", firstDay, lastDay)
-			for d := firstDay; d <= lastDay; d++ {
+			if opt.statisticsChartToggle {
 				_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", d)
 				if err != nil {
 					logrus.Fatalf("error resetting status for chart series status for day %v: %v", d, err)
@@ -177,48 +158,12 @@ func main() {
 					break
 				}
 			}
-		}
-
-		if opt.statisticsGraffitiToggle {
-			for d := firstDay; d <= lastDay; d++ {
+			if opt.statisticsGraffitiToggle {
 				err = db.WriteGraffitiStatisticsForDay(int64(d))
 				if err != nil {
 					logrus.Errorf("error exporting graffiti-stats from day %v: %v", opt.statisticsDayToExport, err)
 					break
 				}
-			}
-		}
-
-		return
-	} else if opt.statisticsDayToExport >= 0 {
-
-		if opt.statisticsValidatorToggle {
-			if opt.resetStatus {
-				clearStatsStatusTable(uint64(opt.statisticsDayToExport))
-			}
-
-			err = db.WriteValidatorStatisticsForDay(uint64(opt.statisticsDayToExport), rpcClient)
-			if err != nil {
-				utils.LogError(err, fmt.Errorf("error exporting stats for day %v", opt.statisticsDayToExport), 0)
-			}
-		}
-
-		if opt.statisticsChartToggle {
-			_, err = db.WriterDb.Exec("delete from chart_series_status where day = $1", opt.statisticsDayToExport)
-			if err != nil {
-				logrus.Fatalf("error resetting status for chart series status for day %v: %v", opt.statisticsDayToExport, err)
-			}
-
-			err = db.WriteChartSeriesForDay(int64(opt.statisticsDayToExport))
-			if err != nil {
-				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
-			}
-		}
-
-		if opt.statisticsGraffitiToggle {
-			err = db.WriteGraffitiStatisticsForDay(int64(opt.statisticsDayToExport))
-			if err != nil {
-				logrus.Errorf("error exporting chart series from day %v: %v", opt.statisticsDayToExport, err)
 			}
 		}
 		return
