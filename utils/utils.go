@@ -1391,13 +1391,14 @@ func FormatTokenSymbol(symbol string) string {
 func isMaliciousToken(symbol string) bool {
 	urls := xurls.Relaxed.FindAllString(symbol, -1)
 	isConfusable := confusables.IsDangerous(symbol, []string{"latin"})
-	return len(urls) > 0 || isConfusable || symbol == "ETH"
+	return len(urls) > 0 || isConfusable || strings.ToUpper(symbol) == "ETH"
 }
 
 func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
-	tmplString := FormatTokenSymbol(string(tmpl))
-	symbolTitle := FormatTokenSymbolTitle(tmplString)
-	return template.HTML(strings.ReplaceAll(tmplString, `title=""`, fmt.Sprintf(`title="%s"`, symbolTitle)))
+	tmplStr := string(tmpl)
+	symbol := FormatTokenSymbol(tmplStr)
+	title := FormatTokenSymbolTitle(tmplStr)
+	return template.HTML(strings.ReplaceAll(symbol, `title=""`, fmt.Sprintf(`title="%s"`, title)))
 }
 
 func ReverseSlice[S ~[]E, E any](s S) {
