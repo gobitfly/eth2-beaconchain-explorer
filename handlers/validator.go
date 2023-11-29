@@ -1293,7 +1293,6 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
 			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false, true)),
-			// utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6))
 		})
 	}
 
