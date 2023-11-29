@@ -3124,6 +3124,9 @@ func GetBlockStatus(block int64, latestFinalizedEpoch uint64, epochInfo *types.E
 		block, latestFinalizedEpoch)
 }
 
+// Returns the participation rate for every slot between startSlot and endSlot (both inclusive) as a map with the slot as key
+//
+// If a slot is missed, the map will not contain an entry for it
 func GetSyncParticipationBySlotRange(startSlot, endSlot uint64) (map[uint64]uint64, error) {
 
 	rows := []struct {
