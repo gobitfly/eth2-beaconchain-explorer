@@ -288,7 +288,7 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		}
 	}
 
-	err = cache.TieredCache.Set(cacheKey, txPageData, time.Hour*24)
+	err = cache.TieredCache.Set(cacheKey, txPageData, utils.Day)
 	if err != nil {
 		return nil, fmt.Errorf("error writing data for tx to cache: %w", err)
 	}
@@ -308,7 +308,7 @@ func IsContract(ctx context.Context, address common.Address) (bool, error) {
 	}
 
 	isContract := len(code) != 0
-	err = cache.TieredCache.SetBool(cacheKey, isContract, time.Hour*24)
+	err = cache.TieredCache.SetBool(cacheKey, isContract, utils.Day)
 	if err != nil {
 		return false, fmt.Errorf("error writing code data for address %v to cache: %w", address, err)
 	}

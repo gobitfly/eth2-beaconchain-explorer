@@ -360,12 +360,12 @@ func EpochToTime(epoch uint64) time.Time {
 
 // TimeToDay will return a days since genesis for an timestamp
 func TimeToDay(timestamp uint64) uint64 {
-	return uint64(time.Unix(int64(timestamp), 0).Sub(time.Unix(int64(Config.Chain.GenesisTimestamp), 0)).Hours() / 24)
-	// return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(time.Hour * time.Duration(24*int(day)))
+	const hoursInADay = float64(Day / time.Hour)
+	return uint64(time.Unix(int64(timestamp), 0).Sub(time.Unix(int64(Config.Chain.GenesisTimestamp), 0)).Hours() / hoursInADay)
 }
 
 func DayToTime(day int64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(time.Hour * time.Duration(24*int(day)))
+	return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(Day * time.Duration(day))
 }
 
 // TimeToEpoch will return an epoch for a given time
@@ -1427,8 +1427,7 @@ func GetTimeToNextWithdrawal(distance uint64) time.Time {
 }
 
 func EpochsPerDay() uint64 {
-	day := time.Hour * 24
-	return (uint64(day.Seconds()) / Config.Chain.ClConfig.SlotsPerEpoch) / Config.Chain.ClConfig.SecondsPerSlot
+	return (uint64(Day.Seconds()) / Config.Chain.ClConfig.SlotsPerEpoch) / Config.Chain.ClConfig.SecondsPerSlot
 }
 
 func GetFirstAndLastEpochForDay(day uint64) (firstEpoch uint64, lastEpoch uint64) {

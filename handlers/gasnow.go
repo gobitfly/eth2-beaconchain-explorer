@@ -23,7 +23,7 @@ func GasNow(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34), templateFiles)
 
 	now := time.Now().Truncate(time.Minute)
-	lastWeek := time.Now().Truncate(time.Minute).Add(-time.Hour * 24 * 7)
+	lastWeek := time.Now().Truncate(time.Minute).Add(-utils.Week)
 
 	history, err := db.BigtableClient.GetGasNowHistory(now, lastWeek)
 	if err != nil {

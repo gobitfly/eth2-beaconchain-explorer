@@ -70,7 +70,7 @@ func checkSubscriptions() {
 		}
 
 		logger.WithField("subscriptions", len(receipts)).WithField("duration", time.Since(start)).Info("subscription update completed")
-		time.Sleep(time.Second * 60 * 60 * 4) // 4h
+		time.Sleep(time.Hour * 4)
 	}
 }
 

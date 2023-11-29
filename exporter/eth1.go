@@ -155,7 +155,7 @@ func eth1DepositsExporter() {
 			continue
 		}
 
-		time.Sleep(time.Second * 60)
+		time.Sleep(time.Minute)
 	}
 }
 

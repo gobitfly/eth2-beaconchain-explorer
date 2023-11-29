@@ -98,7 +98,7 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 
 	dbTestConnection(dbConnWriter, "database")
 	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
-	dbConnWriter.SetConnMaxLifetime(time.Second * 60)
+	dbConnWriter.SetConnMaxLifetime(time.Minute)
 	dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
 	dbConnWriter.SetMaxIdleConns(writer.MaxIdleConns)
 
@@ -114,7 +114,7 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 
 	dbTestConnection(dbConnReader, "read replica database")
 	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
-	dbConnReader.SetConnMaxLifetime(time.Second * 60)
+	dbConnReader.SetConnMaxLifetime(time.Minute)
 	dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
 	dbConnReader.SetMaxIdleConns(reader.MaxIdleConns)
 	return dbConnWriter, dbConnReader

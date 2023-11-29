@@ -483,9 +483,9 @@ func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map
 
 func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionPerformanceResponse, error) {
 	latestEpoch := services.LatestEpoch()
-	last31dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
-	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
-	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
+	last31dTimestamp := time.Now().Add(-31 * utils.Day)
+	last7dTimestamp := time.Now().Add(-7 * utils.Day)
+	last1dTimestamp := time.Now().Add(-1 * utils.Day)
 
 	monthRange := latestEpoch - 7200
 	if latestEpoch < 7200 {

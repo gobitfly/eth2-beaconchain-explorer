@@ -90,7 +90,7 @@ func SendMailRateLimited(to, subject string, msg types.Email, attachment []types
 			return err
 		}
 		if count >= utils.Config.Frontend.MaxMailsPerEmailPerDay {
-			timeLeft := now.Add(time.Hour * 24).Truncate(time.Hour * 24).Sub(now)
+			timeLeft := now.Add(utils.Day).Truncate(utils.Day).Sub(now)
 			return &types.RateLimitError{TimeLeft: timeLeft}
 		}
 	}
