@@ -781,7 +781,6 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(withdrawals))
 	for _, w := range withdrawals {
-		// logger.Infof("w: %+v", w)
 		tableData = append(tableData, []interface{}{
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
@@ -793,8 +792,7 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 	data := &types.DataTableResponse{
 		Draw:         1,
 		RecordsTotal: uint64(len(withdrawals)),
-		// RecordsFiltered: uint64(len(withdrawals)),
-		Data: tableData,
+		Data:         tableData,
 	}
 
 	err = json.NewEncoder(w).Encode(data)
