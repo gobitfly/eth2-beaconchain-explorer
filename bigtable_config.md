@@ -5,7 +5,7 @@ This document summarized the bigtable configuration options and table definition
 Table name: `beaconchain_validators_history`
 
 ```
-cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_history
+cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validators_history
 ```
 
 Column families:
