@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -80,24 +79,7 @@ func main() {
 	defer db.FrontendWriterDB.Close()
 
 	if utils.Config.Metrics.Enabled {
-		go metrics.MonitorDB(db.WriterDb)
-		DBInfo := []string{
-			cfg.WriterDatabase.Username,
-			cfg.WriterDatabase.Password,
-			cfg.WriterDatabase.Host,
-			cfg.WriterDatabase.Port,
-			cfg.WriterDatabase.Name}
-		DBStr := strings.Join(DBInfo, "-")
-		frontendDBInfo := []string{
-			cfg.Frontend.WriterDatabase.Username,
-			cfg.Frontend.WriterDatabase.Password,
-			cfg.Frontend.WriterDatabase.Host,
-			cfg.Frontend.WriterDatabase.Port,
-			cfg.Frontend.WriterDatabase.Name}
-		frontendDBStr := strings.Join(frontendDBInfo, "-")
-		if DBStr != frontendDBStr {
-			go metrics.MonitorDB(db.FrontendWriterDB)
-		}
+		go metrics.MonitorDB(db.FrontendWriterDB)
 	}
 
 	logrus.Infof("database connection established")
