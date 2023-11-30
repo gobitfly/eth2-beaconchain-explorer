@@ -86,7 +86,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, maxValidatorIndex)
 	validatorDataMux := &sync.Mutex{}
 
-	logger.Infof("processing statistics for validators 0-%d", maxValidatorIndex)
+	logger.Infof("processing statistics for validators 0-%d (day: %v, epochs: %v-%v)", maxValidatorIndex, day, firstEpoch, lastEpoch)
 	for i := uint64(0); i <= maxValidatorIndex; i++ {
 		validators = append(validators, i)
 		validatorData = append(validatorData, &types.ValidatorStatsTableDbRow{

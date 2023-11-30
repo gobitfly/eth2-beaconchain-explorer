@@ -3227,3 +3227,9 @@ func GetValidatorAttestationHistoryForNotifications(startEpoch uint64, endEpoch 
 
 	return epochParticipation, nil
 }
+
+func GetMaxValidatorIndexForEpoch(epoch uint64) (uint64, error) {
+	maxValidatorIndex := uint64(0)
+	err := ReaderDb.Get(&maxValidatorIndex, `SELECT MAX(validatorindex) FROM validators WHERE activationeligibilityepoch <= $1`, epoch)
+	return maxValidatorIndex, err
+}
