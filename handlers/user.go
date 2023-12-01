@@ -1178,7 +1178,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check if password is correct
-	formPassword := r.FormValue("password")
+	formPassword := r.FormValue("current-password")
 
 	err = bcrypt.CompareHashAndPassword([]byte(userData.Password), []byte(formPassword))
 	if err != nil {
