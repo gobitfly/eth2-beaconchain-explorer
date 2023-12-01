@@ -209,6 +209,7 @@ func sendMessage(content, webhookUrl, username string) {
 		log.Fatal(err)
 	}
 }
+
 func getBlock(url string, httpClient *http.Client, number int) ([]byte, error) {
 	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":1}`, number))
 
