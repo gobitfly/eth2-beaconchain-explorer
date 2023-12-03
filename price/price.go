@@ -220,6 +220,9 @@ func setPrice(a, b string, v float64) {
 }
 
 func GetPrice(a, b string) float64 {
+	if didInit < 1 {
+		logger.Fatal("using GetPrice without calling price.Init once")
+	}
 	runOnceWg.Wait()
 	pricesMu.Lock()
 	defer pricesMu.Unlock()
