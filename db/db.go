@@ -10,6 +10,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"math/big"
 	"regexp"
 	"sort"
@@ -2202,30 +2203,31 @@ func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
 	return
 }
 
-// GetAddressWithdrawals returns the withdrawals for an address
-func GetAddressWithdrawals(address []byte, limit uint64, pageToken string) ([]*types.Withdrawals, string, error) {
+// GetAddressWithdrawals returns the withdrawal data for an address
+func GetAddressWithdrawals(address []byte, limit uint64, pageToken string, currency string) (*types.DataTableResponse, error) {
 	const endOfWithdrawalsData = "End of withdrawals data"
 
 	var withdrawals []*types.Withdrawals
 	if limit == 0 {
 		limit = 100
 	}
-
-	var withdrawalindex uint64
+	var withdrawalIndex uint64
 	var err error
+	var nextPageToken string
+
 	if pageToken == "" {
 		// Start from the beginning
-		withdrawalindex, err = GetTotalWithdrawals()
+		withdrawalIndex, err = GetTotalWithdrawals()
 		if err != nil {
-			return nil, "", fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
+			return nil, fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
 		}
 	} else if pageToken == endOfWithdrawalsData {
 		// Last page already shown, end the infinite scroll
-		return nil, "", nil
+		return nil, nil
 	} else {
-		withdrawalindex, err = strconv.ParseUint(pageToken, 10, 64)
+		withdrawalIndex, err = strconv.ParseUint(pageToken, 10, 64)
 		if err != nil {
-			return nil, "", fmt.Errorf("error parsing page token: %w", err)
+			return nil, fmt.Errorf("error parsing page token: %w", err)
 		}
 	}
 
@@ -2239,22 +2241,39 @@ func GetAddressWithdrawals(address []byte, limit uint64, pageToken string) ([]*t
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
 	WHERE w.address = $1 AND w.withdrawalindex <= $2
-	ORDER BY w.withdrawalindex DESC LIMIT $3`, address, withdrawalindex, limit+1)
+	ORDER BY w.withdrawalindex DESC LIMIT $3`, address, withdrawalIndex, limit+1)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return withdrawals, "", nil
+		if err != sql.ErrNoRows {
+			return nil, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
 		}
-		return nil, "", fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+		nextPageToken = ""
+	} else {
+		// Get the next page token and remove that withdrawal from the results
+		nextPageToken = endOfWithdrawalsData
+		if len(withdrawals) == int(limit+1) {
+			nextPageToken = fmt.Sprintf("%d", withdrawals[limit].Index)
+			withdrawals = withdrawals[:limit]
+		}
 	}
 
-	// Get the next page token and remove that withdrawal from the results
-	nextPageToken := endOfWithdrawalsData
-	if len(withdrawals) == int(limit+1) {
-		nextPageToken = fmt.Sprintf("%d", withdrawals[limit].Index)
-		withdrawals = withdrawals[:limit]
+	withdrawalsData := make([][]interface{}, len(withdrawals))
+	for i, w := range withdrawals {
+		withdrawalsData[i] = []interface{}{
+			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
+			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
+		}
 	}
 
-	return withdrawals, nextPageToken, nil
+	resultData := &types.DataTableResponse{
+		RecordsTotal: uint64(len(withdrawalsData)),
+		Data:         withdrawalsData,
+		PagingToken:  nextPageToken,
+	}
+
+	return resultData, nil
 }
 
 func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error) {
