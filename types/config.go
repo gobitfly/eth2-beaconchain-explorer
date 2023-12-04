@@ -183,6 +183,13 @@ type Config struct {
 		ElCurrencyDivisor  int64         `yaml:"elCurrencyDivisor" envconfig:"FRONTEND_EL_CURRENCY_DIVISOR"`
 		ElCurrencyDecimals int64         `yaml:"elCurrencyDecimals" envconfig:"FRONTEND_EL_CURRENCY_DECIMALS"`
 		MainCurrency       string        `yaml:"mainCurrency" envconfig:"FRONTEND_MAIN_CURRENCY"`
+		Turnstile          struct {
+			Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_TURNSTILE_ENABLED"`
+			SiteKey       string `yaml:"siteKey" envconfig:"FRONTEND_TURNSTILE_SITE_KEY"`
+			SecretKey     string `yaml:"secretKey" envconfig:"FRONTEND_TURNSTILE_SECRET_KEY"`
+			SessionMaxAge int64  `yaml:"sessionMaxAge" envconfig:"FRONTEND_TURNSTILE_SESSION_MAX_AGE"`
+			CookieMaxAge  int64  `yaml:"cookieMaxAge" envconfig:"FRONTEND_TURNSTILE_COOKIE_MAX_AGE"`
+		} `yaml:"turnstile"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`

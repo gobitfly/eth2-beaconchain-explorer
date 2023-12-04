@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"time"
 )
 
 // Index will return the main "index" page using a go template
@@ -111,4 +112,39 @@ func calculateChurn(page *types.IndexPageData) {
 	page.NewDepositProcessAfter = time_as_days
 	page.ValidatorsPerEpoch = *limit
 	page.ValidatorsPerDay = limit_per_day
+}
+
+func VerifyTurnstile(w http.ResponseWriter, r *http.Request) {
+
+	if utils.Config.Frontend.Turnstile.Enabled {
+
+		err := utils.VerifyTurnstileToken(r)
+
+		cookie := http.Cookie{
+			Name:     "turnstile",
+			Value:    "verified",
+			Path:     "/",
+			MaxAge:   int(utils.Config.Frontend.Turnstile.CookieMaxAge),
+			HttpOnly: false,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+		}
+
+		if err != nil {
+			fmt.Println(err)
+			// clear cookie
+			cookie.MaxAge = -1
+			http.SetCookie(w, &cookie)
+			http.Error(w, "Turnstile challenge failed", http.StatusServiceUnavailable)
+			return
+		}
+
+		validuntil := time.Now().Add(time.Duration(utils.Config.Frontend.Turnstile.SessionMaxAge) * time.Second).Format(time.RFC3339)
+
+		utils.SessionStore.SCS.Put(r.Context(), "TURNSTILE::VALIDUNTIL", validuntil)
+		http.SetCookie(w, &cookie)
+		w.Write([]byte("Success"))
+	} else {
+		w.Write([]byte("Turnstile not enabled"))
+	}
 }

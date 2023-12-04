@@ -4,7 +4,19 @@ const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_proposal_mi
 
 // const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
+function prepare(query,settings){
+  settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
+  settings.beforeSend = function(jqXHR){
+    jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+  }
+  settings.complete = function(){
+    resetTurnstileToken()
+  }
+  return settings
+}
+
 function create_typeahead(input_container) {
+
   var timeWait = 0
   var debounce = function (context, func) {
     var timeout, result
@@ -13,7 +25,9 @@ function create_typeahead(input_container) {
       var args = arguments,
         later = function () {
           timeout = null
-          result = func.apply(context, args)
+          waitForTurnstileToken(()=>{
+            result = func.apply(context, args)
+          })
         }
       clearTimeout(timeout)
       timeout = setTimeout(later, timeWait)
@@ -35,11 +49,16 @@ function create_typeahead(input_container) {
       // use prepare hook to modify the rateLimitWait parameter on input changes
       // NOTE: we only need to do this for the first function because testing showed that queries are executed/queued in order
       // No need to update `timeWait` multiple times.
-      prepare: function (_, settings) {
-        var cur_query = $(input_container).val()
-        timeWait = 4000 - Math.min(cur_query.length, 5) * 500
+      prepare: function (query, settings) {
+        timeWait = 4000 - Math.min(query.length, 5) * 500
         // "wildcard" can't be used anymore, need to set query wildcard ourselves now
-        settings.url = settings.url.replace("%QUERY", encodeURIComponent(cur_query))
+        settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
+        settings.beforeSend = function(jqXHR){
+          jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+        }
+        settings.complete = function(){
+          resetTurnstileToken()
+        }
         return settings
       },
     },
@@ -53,7 +72,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_name/%QUERY",
-      wildcard: "%QUERY",
+      prepare:prepare,
     },
   })
   bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
@@ -65,7 +84,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_graffiti/%QUERY",
-      wildcard: "%QUERY",
+      prepare:prepare,
     },
   })
   bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
@@ -77,7 +96,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
-      wildcard: "%QUERY",
+      prepare:prepare,
     },
   })
   bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
@@ -180,7 +199,7 @@ function create_validators_typeahead(input_container_selector, table_selector) {
     },
     remote: {
       url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
-      wildcard: "%QUERY",
+      prepare:prepare,
     },
   })
   $(input_container_selector).typeahead(

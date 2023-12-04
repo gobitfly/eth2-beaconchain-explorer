@@ -58,38 +58,43 @@ function findNewDoner(data) {
 }
 
 function updateFeed() {
-  $.ajax({
-    url: "/gitcoinfeed",
-    success: (data) => {
-      let isLive = data.isLive
-      if (!isLive && feedInterval !== null) {
-        clearInterval(feedInterval)
-        return
-      }
-      data = data.donors
-
-      if (isLive) {
-        $("#hero-feed").addClass("d-lg-flex fade-in-top")
-
-        if (data.length > 0) {
-          donors = findNewDoner(data)
-          $("#hero-feed ul>li#gitcoinwaitmsg").remove()
-          $(".hover-shadow").hover(
-            function () {
-              $(this).addClass("shadow color-shift-anim border-rounded")
-            },
-            function () {
-              $(this).removeClass("shadow color-shift-anim border-rounded fade-in")
-            }
-          )
-        } else {
-          $("#hero-feed ul").html("")
-          $("#hero-feed ul").prepend(`
-                        <li id="gitcoinwaitmsg"><i class="far fa-clock mx-1"></i><span>Waiting for the next gitcoin round to start</span></li>
-                    `)
+  waitForTurnstileToken(()=>{
+    $.ajax({
+      url: "/gitcoinfeed",
+      headers: {'X-TURNSTILE-TOKEN': window.turnstileToken},
+      success: (data) => {
+        let isLive = data.isLive
+        if (!isLive && feedInterval !== null) {
+          clearInterval(feedInterval)
+          return
         }
+        data = data.donors
+  
+        if (isLive) {
+          $("#hero-feed").addClass("d-lg-flex fade-in-top")
+  
+          if (data.length > 0) {
+            donors = findNewDoner(data)
+            $("#hero-feed ul>li#gitcoinwaitmsg").remove()
+            $(".hover-shadow").hover(
+              function () {
+                $(this).addClass("shadow color-shift-anim border-rounded")
+              },
+              function () {
+                $(this).removeClass("shadow color-shift-anim border-rounded fade-in")
+              }
+            )
+          } else {
+            $("#hero-feed ul").html("")
+            $("#hero-feed ul").prepend(`
+                          <li id="gitcoinwaitmsg"><i class="far fa-clock mx-1"></i><span>Waiting for the next gitcoin round to start</span></li>
+                      `)
+          }
+        }
+      },complete:()=>{
+        resetTurnstileToken()
       }
-    },
+    })
   })
 }
 

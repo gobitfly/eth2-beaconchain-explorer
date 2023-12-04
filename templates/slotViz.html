@@ -374,15 +374,19 @@
     var lastSlotVizData;
 
     function fetchMetrics() {
-      fetch("/launchMetrics")
-        .then((res) => res.json())
-        .then((data) => {
-          lastSlotVizData = data
-          processLaunchMetrics(data)
-        })
-        .catch((error) => {
-          console.error("error fetching resource", error)
-        })
+      waitForTurnstileToken(()=>{
+        fetch("/launchMetrics", {headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}})
+          .then((res) => res.json())
+          .then((data) => {
+            lastSlotVizData = data
+            processLaunchMetrics(data)
+          })
+          .catch((error) => {
+            console.error("error fetching resource", error)
+          }).finally(() => {
+            resetTurnstileToken()
+          })
+      })
     }
 
     function processLaunchMetrics(data) {

@@ -221,6 +221,17 @@ $(document).ready(function () {
     $('[data-toggle="tooltip"]').tooltip()
   }
 
+  function prepare(query,settings){
+    settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
+    settings.beforeSend = function(jqXHR){
+      jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+    }
+    settings.complete = function(){
+      resetTurnstileToken()
+    }
+    return settings
+  }
+
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
   let requestNum = 10
@@ -237,7 +248,9 @@ $(document).ready(function () {
       var args = arguments,
         later = function () {
           timeout = null
-          result = func.apply(context, args)
+          waitForTurnstileToken(()=>{
+            result = func.apply(context, args)
+          })
         }
       clearTimeout(timeout)
       timeout = setTimeout(later, timeWait)
@@ -259,11 +272,16 @@ $(document).ready(function () {
       // use prepare hook to modify the rateLimitWait parameter on input changes
       // NOTE: we only need to do this for the first function because testing showed that queries are executed/queued in order
       // No need to update `timeWait` multiple times.
-      prepare: function (_, settings) {
-        var cur_query = $("input.typeahead.tt-input").val()
-        timeWait = 4000 - Math.min(cur_query.length, 5) * 500
+      prepare: function (query, settings) {
+        timeWait = 4000 - Math.min(query.length, 5) * 500
         // "wildcard" can't be used anymore, need to set query wildcard ourselves now
-        settings.url = settings.url.replace("%QUERY", encodeURIComponent(cur_query))
+        settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
+        settings.beforeSend = function(jqXHR){
+          jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+        }
+        settings.complete = function(){
+          resetTurnstileToken()
+        }
         return settings
       },
       maxPendingRequests: requestNum,
@@ -279,11 +297,11 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/ens/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
       transform: function (data) {
         return data?.address && data?.domain ? { data: { ...data } } : null
       },
+      prepare:prepare,
     },
   })
   bhEns.remote.transport._get = debounce(bhEns.remote.transport, bhEns.remote.transport._get)
@@ -296,8 +314,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/slots/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhSlots.remote.transport._get = debounce(bhSlots.remote.transport, bhSlots.remote.transport._get)
@@ -310,8 +328,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/blocks/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhBlocks.remote.transport._get = debounce(bhBlocks.remote.transport, bhBlocks.remote.transport._get)
@@ -324,8 +342,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/transactions/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhTransactions.remote.transport._get = debounce(bhTransactions.remote.transport, bhTransactions.remote.transport._get)
@@ -338,8 +356,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/graffiti/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
@@ -352,8 +370,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/epochs/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhEpochs.remote.transport._get = debounce(bhEpochs.remote.transport, bhEpochs.remote.transport._get)
@@ -366,8 +384,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/eth1_addresses/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhEth1Accounts.remote.transport._get = debounce(bhEth1Accounts.remote.transport, bhEth1Accounts.remote.transport._get)
@@ -380,8 +398,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/count_indexed_validators_by_eth1_address/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhValidatorsByAddress.remote.transport._get = debounce(bhValidatorsByAddress.remote.transport, bhValidatorsByAddress.remote.transport._get)
@@ -394,8 +412,8 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/validators_by_pubkey/%QUERY",
-      wildcard: "%QUERY",
       maxPendingRequests: requestNum,
+      prepare:prepare,
     },
   })
   bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)

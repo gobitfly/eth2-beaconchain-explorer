@@ -594,3 +594,18 @@ type SearchValidatorsByEth1Result []struct {
 	ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 	Count            uint64        `db:"count" json:"-"`
 }
+
+type TurnstileResponse struct {
+	// Success indicates if the challenge was passed
+	Success bool `json:"success"`
+	// ChallengeTs is the timestamp of the captcha
+	ChallengeTs string `json:"challenge_ts"`
+	// Hostname is the hostname of the passed captcha
+	Hostname string `json:"hostname"`
+	// ErrorCodes contains error codes returned by hCaptcha (optional)
+	ErrorCodes []string `json:"error-codes"`
+	// Action  is the customer widget identifier passed to the widget on the client side
+	Action string `json:"action"`
+	// CData is the customer data passed to the widget on the client side
+	CData string `json:"cdata"`
+}

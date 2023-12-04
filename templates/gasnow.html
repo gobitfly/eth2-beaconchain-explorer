@@ -528,12 +528,30 @@
 		methods: {
 			tick: function () {
 				if (this.updateIn <= 0) {
-					$.getJSON('/gasnow/data', function (response) {
-						// console.log('gasnow data', response)
-						this.page = response;
-
-						document.title = (response.data.rapid / 1e9).toFixed(0) + "-" + (response.data.fast / 1e9).toFixed(0) + " GWei | Ethereum (ETH) Mainnet - GasNow - beaconcha.in - " + new Date().getFullYear();
-					}.bind(this));
+					waitForTurnstileToken(()=>{
+          	fetch('/gasnow/data', {
+							headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}
+						})
+            .then((res)=>{
+            	if (!res.ok) {
+              	throw new Error(`Failed with status: ${res.status}`)
+            	}
+              if(window.turnstile){
+                window.turnstile.reset(window.turnstileWidgetId);
+                window.turnstileToken = "";
+              }
+              return res.json()
+            })
+            .then((result)=>{
+							this.page = result;			
+							document.title = (result.data.rapid / 1e9).toFixed(0) + "-" + (result.data.fast / 1e9).toFixed(0) + " GWei | Ethereum (ETH) Mainnet - GasNow - beaconcha.in - " + new Date().getFullYear();
+            }).catch((err)=>{
+              console.log(err)                          
+            })
+						.finally(()=>{
+							resetTurnstileToken()
+						})
+					})
 					this.updateIn = 5;
 					this.progress = 0;
 				} else {

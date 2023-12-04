@@ -1807,3 +1807,124 @@ func IsPoSBlock0(number uint64, ts int64) bool {
 
 	return time.Unix(int64(Config.Chain.GenesisTimestamp-Config.Chain.ClConfig.GenesisDelay), 0).UTC().Equal(time.Unix(ts, 0))
 }
+
+func TurnstileMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		cookie := http.Cookie{
+			Name:     "turnstile",
+			Value:    "verified",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: false,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+		}
+
+		if Config.Frontend.Turnstile.Enabled {
+
+			session, err := SessionStore.Get(r, "auth")
+
+			if err != nil {
+				logger.Errorf("error retrieving session: %v", err)
+			}
+
+			turnstileExpires := session.SCS.GetString(r.Context(), "TURNSTILE::VALIDUNTIL")
+			turnstileExpiresTime, _ := time.Parse(time.RFC3339, turnstileExpires)
+
+			if turnstileExpires == "" || turnstileExpiresTime.Before(time.Now()) {
+				http.SetCookie(w, &cookie)
+				http.Error(w, "Turnstile token expired", http.StatusServiceUnavailable)
+				return
+			} else {
+				Duration := time.Until(turnstileExpiresTime)
+				dtSessionCookie := int(Config.Frontend.Turnstile.SessionMaxAge - Config.Frontend.Turnstile.CookieMaxAge)
+				cookie.MaxAge = int(Duration.Seconds()) - dtSessionCookie
+				http.SetCookie(w, &cookie)
+			}
+			next.ServeHTTP(w, r)
+		} else {
+			http.SetCookie(w, &cookie)
+			next.ServeHTTP(w, r)
+		}
+	})
+}
+
+var turnstileClient = &http.Client{
+	Timeout: time.Second * 10,
+}
+
+func VerifyTurnstileToken(req *http.Request) error {
+
+	//fmt.Println("verifyTurnstileToken")
+	token := req.Header.Get("X-TURNSTILE-TOKEN")
+	idempotency_key := req.Header.Get("X-TURNSTILE-IDEMPOTENCY-KEY")
+
+	if token == "" {
+		return fmt.Errorf("missing turnstile token")
+	}
+	ip := readUserIP(req)
+	//fmt.Println(ip)
+	//fmt.Println(token)
+
+	turnstileURL := "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
+	values := url.Values{"secret": {Config.Frontend.Turnstile.SecretKey}, "response": {token}}
+
+	if ip != "" {
+		values.Set("remoteip", ip)
+	}
+
+	if idempotency_key != "" {
+		values.Set("idempotency_key", idempotency_key)
+	}
+
+	resp, err := turnstileClient.PostForm(turnstileURL, values)
+	if err != nil {
+		return fmt.Errorf("error posting data to turnstile http endpoint: %w", err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading turnstile response: %w", err)
+	}
+
+	r := types.TurnstileResponse{}
+	err = json.Unmarshal(body, &r)
+	if err != nil {
+		return fmt.Errorf("error decoding turnstile response: %w", err)
+	}
+
+	fmt.Print(r)
+
+	if !r.Success {
+		return fmt.Errorf("invalid turnstile token")
+	}
+
+	return nil
+}
+
+func readUserIP(req *http.Request) string {
+	ipAddress := req.Header.Get("CF-Connecting-IP")
+	if ipAddress == "" {
+		ipAddress = req.Header.Get("X-Real-Ip")
+		if ipAddress == "" {
+			ipAddress = req.Header.Get("X-Forwarded-For")
+		}
+		if ipAddress == "" {
+			ipAddress = req.RemoteAddr
+		}
+	}
+	return ipAddress
+}
+
+// https://stackoverflow.com/questions/64768950/how-to-use-specific-middleware-for-specific-routes-in-a-get-subrouter-in-gorilla
+// Adapt takes Handler funcs and chains them to the main handler.
+func Adapt(handler http.Handler, adapters ...func(http.Handler) http.Handler) http.Handler {
+	// The loop is reversed so the adapters/middleware gets executed in the same
+	// order as provided in the array.
+	for i := len(adapters); i > 0; i-- {
+		handler = adapters[i-1](handler)
+	}
+	return handler
+}

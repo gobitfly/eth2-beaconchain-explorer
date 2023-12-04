@@ -27,7 +27,7 @@ function dataTableLoader(path, param, dataSrc) {
   }
 
   const doFetch = (tableData, callback) => {
-    fetch(`${path}?${$.param(tableData)}&${param}`)
+    fetch(`${path}?${$.param(tableData)}&${param}`, {headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}})
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed with status: ${response.status}`)
@@ -53,7 +53,9 @@ function dataTableLoader(path, param, dataSrc) {
   const fetchWithRetry = (tableData, callback) => {
     clearTimeout(timeoutId) // Clear any pending retries.
     retries = 0 // Reset retry count.
-    doFetch(tableData, callback)
+    waitForTurnstileToken(()=>{
+      doFetch(tableData, callback)
+    })
   }
   const debouncedFetchData = debounce(fetchWithRetry, DEBOUNCE_DELAY)
 
