@@ -47,15 +47,17 @@ function updateBanner() {
         slotHandle.setAttribute("href", "/slot/" + data.currentSlot)
       }
 
-      var ethPriceHandle = document.getElementById("banner-eth-price-data")
-
-      try {
-        let userCurrency = getCookie("currency")
-        if (userCurrency == data.rates.mainCurrency) userCurrency = data.rates.tickerCurrency
-        var price = data.rates.mainCurrencyPrices[userCurrency]
-        ethPriceHandle.innerHTML = `<span class='currency-symbol'>${price.symbol} </span><span class='k-formatted-price'>${price.truncPrice}</span><span class='price'>${addCommas(price.roundPrice)}</span>`
-      } catch (err) {
-        console.error("failed updating banner-price:", err)
+      if (data && data.chainID === 1 ) {
+        var ethPriceHandle = document.getElementById("banner-eth-price-data")
+        try {
+          let userCurrency = getCookie("currency")
+          if (!userCurrency) userCurrency = data.rates.tickerCurrency
+          else if (userCurrency == data.rates.mainCurrency) userCurrency = data.rates.tickerCurrency
+          var price = data.rates.mainCurrencyTickerPrices[userCurrency]
+          ethPriceHandle.innerHTML = `<span class='currency-symbol'>${price.symbol} </span><span class='k-formatted-price'>${price.truncPrice}</span><span class='price'>${addCommas(price.roundPrice)}</span>`
+        } catch (err) {
+          console.error("failed updating banner-price:", err)
+        }
       }
 
       var finDelayDataHandle = document.getElementById("banner-fin-data")
