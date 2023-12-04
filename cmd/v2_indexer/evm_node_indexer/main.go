@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -64,6 +65,8 @@ func main() {
 		logrus.Fatalf("error retrieving chain id from node: %v", err)
 	}
 	chainIdUint64 := chainId.Uint64()
+
+	//checkRead(tableBlocksRaw, chainIdUint64)
 
 	httpClient := &http.Client{
 		Timeout: time.Second * 10,
@@ -194,7 +197,35 @@ func main() {
 	}
 
 	gOuter.Wait()
+}
 
+func checkRead(tbl *gcp_bigtable.Table, chainId uint64) {
+	ctx := context.Background()
+
+	filter := gcp_bigtable.PrefixRange(fmt.Sprintf("%d:", chainId))
+
+	err := tbl.ReadRows(ctx, filter, func(r gcp_bigtable.Row) bool {
+
+		blockNumberString := strings.Replace(r.Key(), fmt.Sprintf("%d:", chainId), "", 1)
+		blockNumberUint64, err := strconv.ParseUint(blockNumberString, 10, 64)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		blockNumberUint64 = MAX_EL_BLOCK_NUMBER - blockNumberUint64
+		logrus.Infof("retrieved block %d", blockNumberUint64)
+		blockCell := r["b"][0]
+
+		blockDataCompressed := blockCell.Value
+		blockDataDecompressed := decompress(blockDataCompressed)
+
+		logrus.Info(string(blockDataDecompressed))
+
+		return true
+	})
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
 }
 
 func sendMessage(content, webhookUrl, username string) {
@@ -339,6 +370,19 @@ func compress(src []byte) []byte {
 		logrus.Fatalf("error closing gzip writer: %v", err)
 	}
 	return buf.Bytes()
+}
+
+func decompress(src []byte) []byte {
+	zr, err := gzip.NewReader(bytes.NewReader(src))
+	if err != nil {
+		logrus.Fatalf("error creating gzip reader: %v", err)
+	}
+
+	data, err := io.ReadAll(zr)
+	if err != nil {
+		logrus.Fatalf("error reading from gzip reader: %v", err)
+	}
+	return data
 }
 
 func getBlockKey(blockNumber int, chainId uint64) string {

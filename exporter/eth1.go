@@ -43,7 +43,7 @@ func eth1DepositsExporter() {
 	eth1DepositContractAddress = common.HexToAddress(utils.Config.Chain.ClConfig.DepositContractAddress)
 	eth1DepositContractFirstBlock = utils.Config.Indexer.Eth1DepositContractFirstBlock
 
-	rpcClient, err := gethRPC.Dial(utils.Config.Eth1GethEndpoint)
+	rpcClient, err := gethRPC.Dial(utils.Config.Eth1RpcEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "new exporter geth client error", 0)
 	}

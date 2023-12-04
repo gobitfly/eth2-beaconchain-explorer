@@ -1285,7 +1285,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	gpoData.Code = 200
 	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
 
-	client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
+	client, err := geth_rpc.Dial(utils.Config.Eth1RpcEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -1421,7 +1421,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		var err error
 
 		if client == nil {
-			client, err = geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
+			client, err = geth_rpc.Dial(utils.Config.Eth1RpcEndpoint)
 			if err != nil {
 				utils.LogError(err, "can't connect to geth node", 0)
 				time.Sleep(time.Second * 30)

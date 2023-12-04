@@ -52,7 +52,7 @@ var leb16, _ = big.NewInt(0).SetString("16000000000000000000", 10)
 
 func rocketpoolExporter() {
 	RP_CONFIG = initRPConfig()
-	endpoint := utils.Config.Eth1GethEndpoint
+	endpoint := utils.Config.Eth1RpcEndpoint
 	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
 		endpoint = "ws" + endpoint[4:]
 	}
