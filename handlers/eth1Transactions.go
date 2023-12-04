@@ -41,7 +41,7 @@ func Eth1TransactionsData(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(getTransactionDataStartingWithPageToken(r.URL.Query().Get("pageToken")))
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -135,8 +135,9 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 	}
 }
 
-// Return given block, next block number and error
-// If block doesn't exists nil, 0, nil is returned
+// Returns the block requested via number and the number of the next block in our bigtable schema (i.e. the block that came chronologically before the requested block)
+//
+// If nextBlock doesn't exists nil, 0, nil is returned
 func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
 	if err != nil {
@@ -144,6 +145,10 @@ func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	}
 	if block == nil {
 		return nil, 0, fmt.Errorf("block %d not found", number)
+	}
+
+	if number == 0 {
+		return block, 0, nil
 	}
 
 	nextBlock := uint64(0)

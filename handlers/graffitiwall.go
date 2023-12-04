@@ -23,7 +23,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.LogError(err, "error retrieving graffitiwall data", 0)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

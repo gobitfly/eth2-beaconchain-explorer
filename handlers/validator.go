@@ -305,7 +305,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots([]uint64{index})
 	if err != nil {
 		utils.LogError(err, "error getting last attestation slots from bigtable", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	validatorPageData.LastAttestationSlot = lastAttestationSlots[index]
@@ -498,7 +498,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 						template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 						withdrawalCredentialsTemplate,
-						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false))),
+						template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false, true))),
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
@@ -578,8 +578,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 		} else if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 			validatorPageData.AttestationsCount = 0
+
+			return nil
 		} else if isPreGenesis {
 			validatorPageData.AttestationsCount = 1
+			validatorPageData.MissedAttestationsCount = 0
+			validatorPageData.ExecutedAttestationsCount = 0
+			validatorPageData.UnmissedAttestationsPercentage = 1
+
+			return nil
 		} else {
 			validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
 
@@ -608,25 +615,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// add attestationStats that are not yet in validator_stats
-			lookback := int64(lastFinalizedEpoch - (lastStatsDay+1)*utils.EpochsPerDay())
-			if lookback > 0 {
-				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, lastFinalizedEpoch-uint64(lookback), lastFinalizedEpoch)
+			// add attestationStats that are not yet in validator_stats (if any)
+			nextStatsDayFirstEpoch, _ := utils.GetFirstAndLastEpochForDay(lastStatsDay + 1)
+			if validatorPageData.Epoch > nextStatsDayFirstEpoch {
+				lookback := validatorPageData.Epoch - nextStatsDayFirstEpoch
+				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, validatorPageData.Epoch-lookback, validatorPageData.Epoch-1)
 				if err != nil {
 					return fmt.Errorf("error getting validator attestations not in stats from bigtable: %w", err)
 				}
 				attestationStats.MissedAttestations += uint64(len(missedAttestations[index]))
 			}
 
-			if isPreGenesis {
-				validatorPageData.MissedAttestationsCount = 0
-				validatorPageData.ExecutedAttestationsCount = 0
-				validatorPageData.UnmissedAttestationsPercentage = 1
-			} else {
-				validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
-				validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
-				validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+			if attestationStats.MissedAttestations > validatorPageData.AttestationsCount {
+				// save guard against negative values (should never happen but happened once because of wrong data)
+				attestationStats.MissedAttestations = validatorPageData.AttestationsCount
 			}
+			validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations
+			validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount
+			validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.ExecutedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 		}
 		return nil
 	})
@@ -718,11 +724,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if lastStatsDay > 0 {
 				err = db.ReaderDb.Get(&syncStats, `
 					SELECT
-						COALESCE(SUM(participated_sync), 0) AS participated_sync,
-						COALESCE(SUM(missed_sync), 0) AS missed_sync,
-						COALESCE(SUM(orphaned_sync), 0) AS orphaned_sync
+						COALESCE(participated_sync_total, 0) AS participated_sync,
+						COALESCE(missed_sync_total, 0) AS missed_sync,
+						COALESCE(orphaned_sync_total, 0) AS orphaned_sync
 					FROM validator_stats
-					WHERE validatorindex = $1`, index)
+					WHERE validatorindex = $1 AND day = $2`, index, lastStatsDay)
 				if err != nil {
 					return fmt.Errorf("error getting validator syncStats: %w", err)
 				}
@@ -1286,7 +1292,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false)),
+			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false, true)),
 		})
 	}
 
@@ -1344,7 +1350,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 			)`, index)
 	if err != nil {
 		utils.LogError(err, "error getting totalCount of validator-slashings from db", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -1592,8 +1598,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	maxPages := 10
 
 	vars := mux.Vars(r)
-	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+	index, err := strconv.ParseUint(vars["index"], 10, 31)
+	if err != nil {
 		logger.Warnf("error parsing validator index: %v", err)
 		http.Error(w, "Error: Invalid parameter validator index.", http.StatusBadRequest)
 		return
@@ -1709,7 +1715,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			} else if len(tableData) >= pageLength {
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
+			tableData = append(tableData, incomeToTableData(i, incomeDetails[index][i], withdrawalMap[i], currency))
 		}
 	}
 
@@ -1750,7 +1756,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-			tableData = append(tableData, icomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
+			tableData = append(tableData, incomeToTableData(epoch, incomeDetails[index][epoch], withdrawalMap[epoch], currency))
 
 		}
 	}
@@ -1821,7 +1827,7 @@ func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (m
 	return withdrawalMap, incomeDetails, err
 }
 
-func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
+func incomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {
 	events := template.HTML("")
 	if income.AttestationSourcePenalty > 0 && income.AttestationTargetPenalty > 0 {
 		events += utils.FormatAttestationStatusShort(2)
@@ -1845,7 +1851,7 @@ func icomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdra
 	rewards := income.TotalClRewards()
 	return []interface{}{
 		utils.FormatEpoch(epoch),
-		utils.FormatBalanceChangeFormated(&rewards, currency, income),
+		utils.FormatBalanceChangeFormatted(&rewards, currency, income),
 		template.HTML(""),
 		template.HTML(events),
 	}
@@ -1886,9 +1892,10 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Request came with a validator index number
-		index, err = strconv.ParseUint(vars["index"], 10, 64)
-		// Request is not a valid index number
-		if err != nil || index > math.MaxInt32 { // index in postgres is limited to int
+		index, err = strconv.ParseUint(vars["index"], 10, 31)
+
+		if err != nil {
+			// Request is not a valid index number
 			logger.Warnf("error parsing validator index: %v", err)
 			validatorNotFound(data, w, r, vars, "/stats")
 			return
@@ -1896,6 +1903,17 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errFields["index"] = index
+
+	// Check if validator index is available
+	var doesIndexExist bool
+	err = db.ReaderDb.Get(&doesIndexExist, "SELECT EXISTS (SELECT validatorindex FROM validators WHERE validatorindex = $1)", index)
+	if err != nil || !doesIndexExist {
+		if err != nil {
+			utils.LogError(err, "error checking for index in validators table", 0, errFields)
+		}
+		validatorNotFound(data, w, r, vars, "/stats")
+		return
+	}
 
 	SetPageDataTitle(data, fmt.Sprintf("Validator %v Daily Statistics", index))
 	data.Meta.Path = fmt.Sprintf("/validator/%v/stats", index)
@@ -1990,134 +2008,160 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 
 	// retrieve all sync periods for this validator
 	var syncPeriods []uint64 = []uint64{}
-
 	err = db.ReaderDb.Select(&syncPeriods, `
-		SELECT period
+		SELECT distinct period
 		FROM sync_committees 
 		WHERE validatorindex = $1
 		ORDER BY period desc`, validatorIndex)
+
 	if err != nil {
 		utils.LogError(err, "error getting sync tab count data of sync-assignments from db", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// total count of sync duties for this validator
-	totalCount := uint64(0)
-
 	tableData := [][]interface{}{}
 
-	if len(syncPeriods) > 0 {
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    0,
+		RecordsFiltered: 0,
+		Data:            tableData,
+	}
 
-		latestProposedSlot := services.LatestProposedSlot()
-
-		slots := make([]uint64, 0, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod*utils.Config.Chain.ClConfig.SlotsPerEpoch*uint64(len(syncPeriods)))
-
-		for _, period := range syncPeriods {
-			firstEpoch := utils.FirstEpochOfSyncPeriod(period)
-			lastEpoch := firstEpoch + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
-
-			firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
-			lastSlot := (lastEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
-
-			for slot := lastSlot; slot >= firstSlot && (slot <= lastSlot /* guards against underflows */); slot-- {
-				if slot > latestProposedSlot || utils.EpochOfSlot(slot) < utils.Config.Chain.ClConfig.AltairForkEpoch {
-					continue
-				}
-				slots = append(slots, slot)
-			}
-		}
-
-		// if ordering is desc, reverse sync slots
-		totalCount = uint64(len(slots))
-
-		startIndex := start + length - 1
-		if startIndex > uint64(len(slots)-1) {
-			startIndex = uint64(len(slots) - 1)
-		}
-		endIndex := start
-
-		endSlot := slots[endIndex]
-		startSlot := slots[startIndex]
-
-		syncDuties, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, startSlot, endSlot)
-
-		errFields["startSlot"] = startSlot
-		errFields["endSlot"] = endSlot
-
+	if len(syncPeriods) == 0 {
+		// no sync periods for this validator => early exit with empty tableData
+		err = json.NewEncoder(w).Encode(data)
 		if err != nil {
+			utils.LogError(err, "error encoding json response", 0, errFields)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+	totalCount := uint64(0) // total count of sync duties for this validator
+	latestProposedSlot := services.LatestProposedSlot()
+	slots := make([]uint64, 0, utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod*utils.Config.Chain.ClConfig.SlotsPerEpoch*uint64(len(syncPeriods)))
+
+	for _, period := range syncPeriods {
+		firstEpoch := utils.FirstEpochOfSyncPeriod(period)
+		lastEpoch := firstEpoch + utils.Config.Chain.ClConfig.EpochsPerSyncCommitteePeriod - 1
+
+		firstSlot := firstEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+		lastSlot := (lastEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
+
+		for slot := lastSlot; slot >= firstSlot && (slot <= lastSlot /* guards against underflows */); slot-- {
+			if slot > latestProposedSlot || utils.EpochOfSlot(slot) < utils.Config.Chain.ClConfig.AltairForkEpoch {
+				continue
+			}
+			slots = append(slots, slot)
+		}
+	}
+
+	totalCount = uint64(len(slots))
+	if start >= totalCount {
+		start = totalCount - 1
+	}
+
+	startIndex := start + length - 1
+	if startIndex >= totalCount {
+		startIndex = totalCount - 1
+	}
+	endIndex := start
+
+	// retrieve sync duties and sync participations
+	syncDuties := make(map[uint64]*types.ValidatorSyncParticipation, length)
+	participations := make(map[uint64]uint64, length)
+
+	// the slot range for the given table page might contain multiple sync periods and therefore we may need to split the queries to avoid fetching potentially thousands of duties at once
+	type SlotRange struct {
+		StartSlot uint64
+		EndSlot   uint64
+	}
+	var consecutiveSlotRanges []SlotRange
+
+	// slots are sorted in descending order
+	nextSlotRange := SlotRange{StartSlot: slots[endIndex], EndSlot: slots[endIndex]}
+	for i := endIndex + 1; i <= startIndex; i++ {
+		if slots[i] == nextSlotRange.StartSlot-1 {
+			nextSlotRange.StartSlot = slots[i]
+		} else {
+			consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
+			nextSlotRange = SlotRange{StartSlot: slots[i], EndSlot: slots[i]}
+		}
+	}
+	consecutiveSlotRanges = append(consecutiveSlotRanges, nextSlotRange)
+
+	// make individual queries for each consecutive slot range and accumulate results
+	for _, slotRange := range consecutiveSlotRanges {
+		sdh, err := db.BigtableClient.GetValidatorSyncDutiesHistory([]uint64{validatorIndex}, slotRange.StartSlot, slotRange.EndSlot)
+		if err != nil {
+			errFields["slotRange"] = slotRange
 			utils.LogError(err, "error getting validator sync duties data from bigtable", 0, errFields)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		for slot, duty := range sdh[validatorIndex] {
+			syncDuties[slot] = duty
+		}
 
-		// Search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
-		slotsRange := slots[endIndex : startIndex+1]
-
-		participations, err := db.GetSyncParticipationBySlotRange(startSlot, endSlot)
+		par, err := db.GetSyncParticipationBySlotRange(slotRange.StartSlot, slotRange.EndSlot)
 		if err != nil {
+			errFields["slotRange"] = slotRange
 			utils.LogError(err, "error getting validator sync participation data from db", 0, errFields)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-
-		missedSlots := []uint64{}
-		err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, slotsRange)
-		if err != nil {
-			utils.LogError(err, "error getting missed slots data from db", 0, errFields)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		missedSlotsMap := make(map[uint64]bool, len(missedSlots))
-		for _, slot := range missedSlots {
-			missedSlotsMap[slot] = true
-		}
-
-		// extract correct slots
-		tableData = make([][]interface{}, 0, length)
-		for index := endIndex; index <= startIndex; index++ {
-			slot := slots[index]
-
-			epoch := utils.EpochOfSlot(slot)
-			participation := participations[slot]
-
-			if syncDuties[validatorIndex] == nil {
-				tableData = append(tableData,
-					[]interface{}{
-						fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
-						utils.FormatEpoch(epoch),
-						utils.FormatBlockSlot(slot),
-						utils.FormatSyncParticipationStatus(0, slot),
-						utils.FormatSyncParticipations(participation),
-					},
-				)
-			}
-
-			status := uint64(0)
-
-			if syncDuties[validatorIndex][slot] != nil {
-				status = syncDuties[validatorIndex][slot].Status
-			}
-			if _, ok := missedSlotsMap[slot]; ok {
-				status = 3
-			}
-
-			tableData = append(tableData, []interface{}{
-				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
-				utils.FormatEpoch(epoch),
-				utils.FormatBlockSlot(slot),
-				utils.FormatSyncParticipationStatus(status, slot),
-				utils.FormatSyncParticipations(participation),
-			})
+		for slot, participation := range par {
+			participations[slot] = participation
 		}
 	}
 
-	data := &types.DataTableResponse{
-		Draw:            draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
-		Data:            tableData,
+	// search for the missed slots (status = 2), to see if it was only our validator that missed the slot or if the block was missed
+	slotsRange := slots[endIndex : startIndex+1]
+
+	missedSlots := []uint64{}
+	err = db.ReaderDb.Select(&missedSlots, `SELECT slot FROM blocks WHERE slot = ANY($1) AND status = '2'`, slotsRange)
+	if err != nil {
+		utils.LogError(err, "error getting missed slots data from db", 0, errFields)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
+	missedSlotsMap := make(map[uint64]bool, len(missedSlots))
+	for _, slot := range missedSlots {
+		missedSlotsMap[slot] = true
+	}
+
+	// extract correct slots
+	tableData = make([][]interface{}, 0, length)
+	for index := endIndex; index <= startIndex; index++ {
+		slot := slots[index]
+
+		epoch := utils.EpochOfSlot(slot)
+		participation := participations[slot]
+
+		status := uint64(0)
+		if syncDuties[slot] != nil {
+			status = syncDuties[slot].Status
+		}
+		if _, ok := missedSlotsMap[slot]; ok {
+			status = 3
+		}
+
+		tableData = append(tableData, []interface{}{
+			fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
+			utils.FormatEpoch(epoch),
+			utils.FormatBlockSlot(slot),
+			utils.FormatSyncParticipationStatus(status, slot),
+			utils.FormatSyncParticipations(participation),
+		})
+	}
+
+	// fill and send data
+	data.RecordsTotal = totalCount
+	data.RecordsFiltered = totalCount
+	data.Data = tableData
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {

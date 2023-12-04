@@ -14,11 +14,28 @@ echo "Postgres port is $POSTGRES_PORT"
 LBT_PORT=$(kurtosis enclave inspect my-testnet | grep 9000/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/tcp\:\/\/127.0.0.1\://' | tail -n 1)
 echo "Little bigtable port is $LBT_PORT"
 
+cat <<EOF > .env
+CL_PORT=$CL_PORT
+EL_PORT=$EL_PORT
+REDIS_PORT=$REDIS_PORT
+POSTGRES_PORT=$POSTGRES_PORT
+LBT_PORT=$LBT_PORT
+EOF
+
+touch elconfig.json
+cat >elconfig.json <<EOL
+{
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0
+}
+EOL
+
 touch config.yml
 
 cat >config.yml <<EOL
 chain:
   clConfigPath: 'node'
+  elConfigPath: 'local-deployment/elconfig.json'
 readerDatabase:
   name: db
   host: 127.0.0.1
@@ -91,11 +108,11 @@ echo "initializing bigtable schema"
 PROJECT="explorer"
 INSTANCE="explorer"
 HOST="127.0.0.1:$LBT_PORT"
-
-go run ../cmd/misc/main.go -config config.yml -command initBigtableSchema
+cd ..
+go run ./cmd/misc/main.go -config local-deployment/config.yml -command initBigtableSchema
 
 echo "bigtable schema initialization completed"
 
 echo "provisioning postgres db schema"
-go run ../cmd/misc/main.go -config config.yml -command applyDbSchema
+go run ./cmd/misc/main.go -config local-deployment/config.yml -command applyDbSchema
 echo "postgres db schema initialization completed"

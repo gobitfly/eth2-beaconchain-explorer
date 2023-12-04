@@ -2,10 +2,10 @@
 This document summarized the bigtable configuration options and table definitions required to run the beaconcha.in explorer. All settings can be applied either by using the GCP bigtable web interface or the `cbt` tool.
 
 ----
-Table name: `beaconchain_validator_history`
+Table name: `beaconchain_validators_history`
 
 ```
-cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validator_history
+cbt -project $PROJECT -instance $INSTANCE createtable beaconchain_validators_history
 ```
 
 Column families:
@@ -19,14 +19,14 @@ Column families:
 * Name: `stats` | GC Policy: None
 
 ```
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history vb
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history ha
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history at
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history pr
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history sc
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history sp
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history id
-cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validator_history stats
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history vb
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history ha
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history at
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history pr
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history sc
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history sp
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history id
+cbt -project $PROJECT -instance $INSTANCE createfamily beaconchain_validators_history stats
 ```
 ----
 Table name: `beaconchain_validators`

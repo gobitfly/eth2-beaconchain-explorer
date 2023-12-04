@@ -9,7 +9,7 @@
             </div>
             <div class="d-flex justify-content-between align-items-center">
               <span class="h6 font-weight-normal mb-0" title="Number of withdrawals Processed"><b>{{ formatAddCommas .WithdrawalCount }}</b> <small>processed</small></span>
-              <span class="h6 font-weight-normal mb-0"><b>{{ formatClCurrency .TotalAmountWithdrawn config.Frontend.MainCurrency 2 true false false }}</b> <small>distributed</small></span>
+              <span class="h6 font-weight-normal mb-0"><b>{{ formatClCurrency .TotalAmountWithdrawn config.Frontend.MainCurrency 2 true false false true }}</b> <small>distributed</small></span>
             </div>
           </div>
         </div>

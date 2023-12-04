@@ -436,7 +436,7 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		}
 
 		// After processing a batch of keys we remove them from bigtable
-		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData)
+		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData, DEFAULT_BATCH_INSERTS)
 		if err != nil {
 			return err
 		}

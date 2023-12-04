@@ -90,7 +90,7 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 
 		// if start.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
 		// 	logger.Info("skipping chartsPageDataUpdater because the explorer is syncing")
-		// 	time.Sleep(time.Second * 60)
+		// 	time.Sleep(time.Minute)
 		// 	continue
 		// }
 
@@ -104,7 +104,7 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(start)).Info("chartPageData update completed")
 
 		cacheKey := fmt.Sprintf("%d:frontend:chartsPageData", utils.Config.Chain.ClConfig.DepositChainID)
-		cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		cache.TieredCache.Set(cacheKey, data, utils.Day)
 
 		prevEpoch = latestEpoch
 
@@ -114,7 +114,7 @@ func chartsPageDataUpdater(wg *sync.WaitGroup) {
 		}
 		if latestEpoch == 0 {
 			ReportStatus("chartsPageDataUpdater", "Running", nil)
-			time.Sleep(time.Second * 60 * 10)
+			time.Sleep(time.Minute * 10)
 		}
 	}
 }
@@ -277,7 +277,7 @@ func activeValidatorsChartData() (*types.GenericChartData, error) {
 	dailyActiveValidators := [][]float64{}
 
 	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+		day := float64(utils.EpochToTime(row.Epoch).Truncate(utils.Day).Unix() * 1000)
 
 		if len(dailyActiveValidators) == 0 || dailyActiveValidators[len(dailyActiveValidators)-1][0] != day {
 			dailyActiveValidators = append(dailyActiveValidators, []float64{day, float64(row.ValidatorsCount)})

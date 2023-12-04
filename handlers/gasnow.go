@@ -23,7 +23,7 @@ func GasNow(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "gasnow", "/gasnow", fmt.Sprintf("%v Gwei", 34), templateFiles)
 
 	now := time.Now().Truncate(time.Minute)
-	lastWeek := time.Now().Truncate(time.Minute).Add(-time.Hour * 24 * 7)
+	lastWeek := time.Now().Truncate(time.Minute).Add(-utils.Week)
 
 	history, err := db.BigtableClient.GetGasNowHistory(now, lastWeek)
 	if err != nil {
@@ -73,7 +73,7 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 	gasnowData := services.LatestGasNowData()
 	if gasnowData == nil {
 		utils.LogError(nil, "error obtaining latest gas now data 'nil'", 0)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -87,7 +87,7 @@ func GasNowData(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(gasnowData)
 	if err != nil {
 		logger.Errorf("error serializing json data for API %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

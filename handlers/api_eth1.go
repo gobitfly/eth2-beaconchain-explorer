@@ -39,13 +39,13 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 
 	eth1TxHash, err := hex.DecodeString(strings.Replace(vars["txhash"], "0x", "", -1))
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "invalid eth1 tx hash provided")
+		SendBadRequestResponse(w, r.URL.String(), "invalid eth1 tx hash provided")
 		return
 	}
 
 	rows, err := db.ReaderDb.Query("SELECT amount, block_number, block_ts, from_address, merkletree_index, publickey, removed, signature, tx_hash, tx_index, tx_input, valid_signature, withdrawal_credentials FROM eth1_deposits WHERE tx_hash = $1", eth1TxHash)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
 	defer rows.Close()
@@ -73,41 +73,41 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	for _, split := range splits {
 		temp, err := strconv.ParseUint(split, 10, 64)
 		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "invalid block number")
+			SendBadRequestResponse(w, r.URL.String(), "invalid block number")
 			return
 		}
 		blockList = append(blockList, temp)
 	}
 
 	if len(blockList) > int(limit) {
-		sendErrorResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
+		SendBadRequestResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
 		return
 	}
 
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
-		sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from bigtable")
+		SendBadRequestResponse(w, r.URL.String(), "can not retrieve blocks from bigtable")
 		return
 	}
 
 	_, beaconDataMap, err := findExecBlockNumbersByExecBlockNumber(blockList, 0, limit)
 	if err != nil {
-		sendErrorResponse(w, r.URL.String(), "can not retrieve proposer information")
+		SendBadRequestResponse(w, r.URL.String(), "can not retrieve proposer information")
 		return
 	}
 
 	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
 		logger.Errorf("can not load mev data %v", err)
-		sendErrorResponse(w, r.URL.String(), "can not retrieve mev data")
+		SendBadRequestResponse(w, r.URL.String(), "can not retrieve mev data")
 		return
 	}
 
 	results := formatBlocksForApiResponse(blocks, relaysData, beaconDataMap, nil)
 
 	j := json.NewEncoder(w)
-	sendOKResponse(j, r.URL.String(), []interface{}{results})
+	SendOKResponse(j, r.URL.String(), []interface{}{results})
 }
 
 // ApiETH1AccountProposedBlocks godoc
@@ -131,7 +131,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	maxValidators := getUserPremium(r).MaxValidators
 	addresses, indices, err := getAddressesOrIndicesFromAddressIndexOrPubkey(vars["addressIndexOrPubkey"], maxValidators)
 	if err != nil {
-		sendErrorResponse(
+		SendBadRequestResponse(
 			w,
 			r.URL.String(),
 			fmt.Sprintf("invalid address, validator index or pubkey or exceeded max of %v params", maxValidators),
@@ -140,7 +140,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(addresses) > 20 {
-		sendErrorResponse(
+		SendBadRequestResponse(
 			w,
 			r.URL.String(),
 			"you are only allowed to query up to max 20 addresses",
@@ -177,7 +177,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	if len(addresses) > 0 {
 		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByFeeRecipient(addresses, offset, limit, isSortAsc)
 		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
+			SendBadRequestResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
 		}
 		blockList = append(blockList, blockListSub...)
@@ -189,7 +189,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	if len(indices) > 0 {
 		blockListSub, beaconDataMapSub, err := findExecBlockNumbersByProposerIndex(indices, offset, limit, isSortAsc, false, 0)
 		if err != nil {
-			sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from database")
+			SendBadRequestResponse(w, r.URL.String(), "can not retrieve blocks from database")
 			return
 		}
 		blockList = append(blockList, blockListSub...)
@@ -222,14 +222,14 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, uint64(limit))
 	if err != nil {
 		logger.Errorf("Can not retrieve blocks from bigtable %v", err)
-		sendErrorResponse(w, r.URL.String(), "can not retrieve blocks from bigtable")
+		SendBadRequestResponse(w, r.URL.String(), "can not retrieve blocks from bigtable")
 		return
 	}
 
 	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
 	if err != nil {
 		logger.Errorf("can not load mev data %v", err)
-		sendErrorResponse(w, r.URL.String(), "can not retrieve mev data")
+		SendBadRequestResponse(w, r.URL.String(), "can not retrieve mev data")
 		return
 	}
 
@@ -241,7 +241,7 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 	results := formatBlocksForApiResponse(blocks, relaysData, beaconDataMap, sortFunc)
 
 	j := json.NewEncoder(w)
-	sendOKResponse(j, r.URL.String(), []interface{}{results})
+	SendOKResponse(j, r.URL.String(), []interface{}{results})
 }
 
 // ApiETH1GasNowData godoc
@@ -261,7 +261,7 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 
 	if gasnowData == nil {
 		logger.Errorf("error gasnow data is not defined. The frontend updater might not be running.")
-		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
+		SendBadRequestResponse(w, r.URL.String(), "error gasnow data is currently not available.")
 		return
 	}
 
@@ -271,7 +271,7 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(gasnowData)
 	if err != nil {
 		logger.Errorf("error gasnow data is not defined. The frontend updater might not be running.")
-		sendErrorResponse(w, r.URL.String(), "error gasnow data is currently not available.")
+		SendBadRequestResponse(w, r.URL.String(), "error gasnow data is currently not available.")
 		return
 	}
 }
@@ -298,7 +298,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	address = strings.ToLower(address)
 
 	if !utils.IsEth1Address(address) {
-		sendErrorResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		SendBadRequestResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 		return
 	}
 	token := q.Get("token")
@@ -307,7 +307,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		token = strings.Replace(token, "0x", "", -1)
 		token = strings.ToLower(token)
 		if !utils.IsEth1Address(token) {
-			sendErrorResponse(w, r.URL.String(), "error invalid token query param. A token address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+			SendBadRequestResponse(w, r.URL.String(), "error invalid token query param. A token address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 			return
 		}
 	}
@@ -336,7 +336,7 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
+	SendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 // ApiEth1AddressERC20Tokens godoc
@@ -363,7 +363,7 @@ func ApiEth1AddressERC20Tokens(w http.ResponseWriter, r *http.Request) {
 	address = strings.ToLower(address)
 
 	if !utils.IsEth1Address(address) {
-		sendErrorResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
+		SendBadRequestResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 		return
 	}
 
@@ -405,7 +405,7 @@ func ApiEth1AddressERC20Tokens(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	sendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
+	SendOKResponse(json.NewEncoder(w), r.URL.String(), []interface{}{response})
 }
 
 func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map[common.Hash]types.RelaysData, beaconDataMap map[uint64]types.ExecBlockProposer, sortFunc func(i, j types.ExecutionBlockApiResponse) bool) []types.ExecutionBlockApiResponse {
@@ -483,9 +483,9 @@ func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map
 
 func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionPerformanceResponse, error) {
 	latestEpoch := services.LatestEpoch()
-	last31dTimestamp := time.Now().Add(-31 * 24 * time.Hour)
-	last7dTimestamp := time.Now().Add(-7 * 24 * time.Hour)
-	last1dTimestamp := time.Now().Add(-1 * 24 * time.Hour)
+	last31dTimestamp := time.Now().Add(-31 * utils.Day)
+	last7dTimestamp := time.Now().Add(-7 * utils.Day)
+	last1dTimestamp := time.Now().Add(-1 * utils.Day)
 
 	monthRange := latestEpoch - 7200
 	if latestEpoch < 7200 {

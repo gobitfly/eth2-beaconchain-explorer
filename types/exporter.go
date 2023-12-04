@@ -642,8 +642,10 @@ type ValidatorStatsTableDbRow struct {
 	AttesterSlashings int64 `db:"attester_slashings"`
 	ProposerSlashing  int64 `db:"proposer_slashings"`
 
-	Deposits       int64 `db:"deposits"`
-	DepositsAmount int64 `db:"deposits_amount"`
+	Deposits            int64 `db:"deposits"`
+	DepositsTotal       int64 `db:"deposits_total"`
+	DepositsAmount      int64 `db:"deposits_amount"`
+	DepositsAmountTotal int64 `db:"deposits_amount_total"`
 
 	Withdrawals            int64 `db:"withdrawals"`
 	WithdrawalsTotal       int64 `db:"withdrawals_total"`

@@ -67,14 +67,14 @@ func SlotsData(w http.ResponseWriter, r *http.Request) {
 	tableData, err := GetSlotsTableData(draw, start, length, search, searchForEmpty)
 	if err != nil {
 		logger.Errorf("error rendering blocks table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(tableData)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -235,36 +235,23 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
-		if b.Slot == 0 {
-			tableData[i] = []interface{}{
-				utils.FormatEpoch(b.Epoch),
-				utils.FormatBlockSlot(b.Slot),
-				template.HTML("<span class=\"badge text-dark\" style=\"background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;\">Genesis</span>"),
-				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
-				template.HTML("N/A"),
-				b.Attestations,
-				template.HTML(fmt.Sprintf("%v / %v", b.Deposits, b.Withdrawals)),
-				fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-				b.Exits,
-				b.Votes,
-				fmt.Sprintf("%.2f", b.SyncAggParticipation*100.0),
-				utils.FormatGraffitiAsLink(b.Graffiti),
-			}
-		} else {
-			tableData[i] = []interface{}{
-				utils.FormatEpoch(b.Epoch),
-				utils.FormatBlockSlot(b.Slot),
-				utils.FormatBlockStatus(b.Status, b.Slot),
-				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
-				utils.FormatValidatorWithName(b.Proposer, b.ProposerName),
-				b.Attestations,
-				template.HTML(fmt.Sprintf("%v / %v", b.Deposits, b.Withdrawals)),
-				fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-				b.Exits,
-				b.Votes,
-				fmt.Sprintf("%.2f", b.SyncAggParticipation*100.0),
-				utils.FormatGraffitiAsLink(b.Graffiti),
-			}
+		validatorName := template.HTML("N/A")
+		if b.Slot > 0 {
+			validatorName = utils.FormatValidatorWithName(b.Proposer, b.ProposerName)
+		}
+		tableData[i] = []interface{}{
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatBlockSlot(b.Slot),
+			utils.FormatBlockStatus(b.Status, b.Slot),
+			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
+			validatorName,
+			b.Attestations,
+			template.HTML(fmt.Sprintf("%v / %v", b.Deposits, b.Withdrawals)),
+			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
+			b.Exits,
+			b.Votes,
+			fmt.Sprintf("%.2f", b.SyncAggParticipation*100.0),
+			utils.FormatGraffitiAsLink(b.Graffiti),
 		}
 	}
 

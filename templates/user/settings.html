@@ -402,14 +402,14 @@
                     <form id="email-form" action="settings/email" method="POST">
                       {{ .CsrfField }}
                       <div class="form-group">
-                        <label for="email">Email address</label>
-                        <div class="input-group">
-                          <input value="{{ .Subscription.Email }}" disabled inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email" />
-                          <div class="input-group-append">
-                            <button id="email-edit-button" onclick="toggleButton(this)" type="button" class="btn btn-outline-primary">Edit</button>
-                          </div>
-                        </div>
+                        <label for="current-password">Confirm Current Password</label>
+                        <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="current-password" name="current-password" />
                       </div>
+                      <div class="form-group">
+                        <label for="email">New Email Address</label>
+                        <input required value="{{ .Subscription.Email }}" inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email" />
+                      </div>
+                      <button type="submit" class="btn btn-outline-primary float-right">Change Email</button>
                     </form>
                   </div>
                 </div>

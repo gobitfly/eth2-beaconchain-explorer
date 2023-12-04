@@ -111,7 +111,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-minipools from db: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -145,7 +145,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search+"%", "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-minipools from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -185,7 +185,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -272,7 +272,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-nodes from db: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -302,7 +302,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-nodes from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -336,7 +336,7 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -434,7 +434,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-proposals from db: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -480,7 +480,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search, search+"%", "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-proposals from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -532,7 +532,7 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -638,7 +638,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			logger.Errorf("error getting rocketpool-members from db: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -666,7 +666,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 			offset $2`, orderBy, orderDir), length, start, search+"%", "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error getting rocketpool-members from db (with search: %v): %v", search, err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -700,7 +700,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

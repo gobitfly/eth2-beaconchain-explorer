@@ -318,7 +318,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	earnings.LastWeekFormatted = utils.FormatIncomeClEl(earnings.Income7d, currency)
 	earnings.LastMonthFormatted = utils.FormatIncomeClEl(earnings.Income31d, currency)
 	earnings.TotalFormatted = utils.FormatIncomeClEl(earnings.IncomeTotal, currency)
-	earnings.TotalBalance = "<b>" + utils.FormatClCurrency(totalBalance, currency, 5, true, false, false) + "</b>"
+	earnings.TotalBalance = "<b>" + utils.FormatClCurrency(totalBalance, currency, 5, true, false, false, false) + "</b>"
 	return earnings, balancesMap, nil
 }
 
@@ -483,7 +483,7 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error sending latest index page data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -692,7 +692,7 @@ func handleTemplateError(w http.ResponseWriter, r *http.Request, fileIdentifier 
 			"error type": fmt.Sprintf("%T", err),
 			"route":      r.URL.String(),
 		}).WithError(err).Error("error executing template")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 	return err
 }

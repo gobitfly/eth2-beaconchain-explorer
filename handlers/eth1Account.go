@@ -51,8 +51,8 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 
 	metadata, err := db.BigtableClient.GetMetadataForAddress(addressBytes, 0, db.ECR20TokensPerAddressLimit)
 	if err != nil {
-		logger.Errorf("error retieving balances for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Errorf("error retrieving balances for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	g := new(errgroup.Group)
@@ -115,7 +115,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc721, err = db.BigtableClient.GetAddressErc721TableData(address, "")
+		erc721, err = db.BigtableClient.GetAddressErc721TableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc721TableData: %w", err)
 		}
@@ -123,7 +123,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(address, "")
+		erc1155, err = db.BigtableClient.GetAddressErc1155TableData(addressBytes, "")
 		if err != nil {
 			return fmt.Errorf("GetAddressErc1155TableData: %w", err)
 		}
@@ -159,7 +159,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-				template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
+				template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
 			})
 		}
 
@@ -177,7 +177,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("GetAddressWithdrawalsTotal: %w", err)
 		}
-		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false))
+		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false, true))
 		return nil
 	})
 
@@ -310,7 +310,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -337,7 +337,7 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -364,7 +364,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -385,7 +385,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	withdrawals, nextPageToken, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, q.Get("pageToken"))
 	if err != nil {
 		utils.LogError(err, "error getting address withdrawals data", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -396,7 +396,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false)),
+			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
 		}
 	}
 
@@ -408,7 +408,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -435,7 +435,7 @@ func Eth1AddressBlobTransactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -462,7 +462,7 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -489,7 +489,7 @@ func Eth1AddressErc20Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -502,12 +502,13 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	addressBytes := common.FromHex(address)
 
 	errFields := map[string]interface{}{
 		"route": r.URL.String()}
 
 	pageToken := q.Get("pageToken")
-	data, err := db.BigtableClient.GetAddressErc721TableData(address, pageToken)
+	data, err := db.BigtableClient.GetAddressErc721TableData(addressBytes, pageToken)
 	if err != nil {
 		utils.LogError(err, "error getting eth1 ERC721 transactions table data", 0, errFields)
 	}
@@ -515,7 +516,7 @@ func Eth1AddressErc721Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -528,12 +529,13 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	addressBytes := common.FromHex(address)
 
 	errFields := map[string]interface{}{
 		"route": r.URL.String()}
 
 	pageToken := q.Get("pageToken")
-	data, err := db.BigtableClient.GetAddressErc1155TableData(address, pageToken)
+	data, err := db.BigtableClient.GetAddressErc1155TableData(addressBytes, pageToken)
 	if err != nil {
 		utils.LogError(err, "error getting eth1 ERC1155 transactions table data", 0, errFields)
 	}
@@ -541,7 +543,7 @@ func Eth1AddressErc1155Transactions(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -564,8 +566,8 @@ func lowerAddressFromRequest(w http.ResponseWriter, r *http.Request) (string, er
 }
 
 func handleNotFoundJson(address string, w http.ResponseWriter, r *http.Request, err error) {
-	logger.Errorf("error getting addres for ENS name [%v] not found for %v route: %v", address, r.URL.String(), err)
-	http.Error(w, "Invalid ENS name", http.StatusServiceUnavailable)
+	logger.Errorf("error getting address for ENS name [%v] not found for %v route: %v", address, r.URL.String(), err)
+	http.Error(w, "Invalid ENS name", http.StatusInternalServerError)
 }
 
 func handleNotFoundHtml(w http.ResponseWriter, r *http.Request) {

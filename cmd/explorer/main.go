@@ -563,8 +563,6 @@ func main() {
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
-			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
-			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
 
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
@@ -622,7 +620,7 @@ func main() {
 			utils.Config.Frontend.HttpReadTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpIdleTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 60
+			utils.Config.Frontend.HttpIdleTimeout = time.Minute
 		}
 		srv := &http.Server{
 			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,

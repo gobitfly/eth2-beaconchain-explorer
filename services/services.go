@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
+	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -96,6 +97,8 @@ func InitNotificationCollector(pubkeyCachePath string) {
 	if err != nil {
 		logger.Fatalf("error initializing pubkey cache path for notifications: %v", err)
 	}
+
+	go ethclients.Init()
 
 	go notificationCollector()
 }
@@ -317,7 +320,7 @@ func relaysUpdater(wg *sync.WaitGroup) {
 		}
 
 		cacheKey := fmt.Sprintf("%d:frontend:relaysData", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, data, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching relaysData: %v", err)
 		}
@@ -341,7 +344,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 			logger.Errorf("error retrieving latest node epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestNodeEpoch", utils.Config.Chain.ClConfig.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, epochNode, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, epochNode, utils.Day)
 			if err != nil {
 				logger.Errorf("error caching latestNodeEpoch: %v", err)
 			}
@@ -354,7 +357,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 			logger.Errorf("error retrieving latest node finalized epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestNodeFinalizedEpoch", utils.Config.Chain.ClConfig.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, latestNodeFinalized, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, latestNodeFinalized, utils.Day)
 			if err != nil {
 				logger.Errorf("error caching latestNodeFinalized: %v", err)
 			}
@@ -367,7 +370,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 			logger.Errorf("error retrieving latest exported epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestEpoch", utils.Config.Chain.ClConfig.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, epoch, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, epoch, utils.Day)
 			if err != nil {
 				logger.Errorf("error caching latestEpoch: %v", err)
 			}
@@ -380,7 +383,7 @@ func epochUpdater(wg *sync.WaitGroup) {
 			logger.Errorf("error retrieving latest exported finalized epoch from the database: %v", err)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:latestFinalized", utils.Config.Chain.ClConfig.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, latestFinalizedEpoch, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, latestFinalizedEpoch, utils.Day)
 			if err != nil {
 				logger.Errorf("error caching latestFinalizedEpoch: %v", err)
 			}
@@ -410,7 +413,7 @@ func slotUpdater(wg *sync.WaitGroup) {
 			}
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:slot", utils.Config.Chain.ClConfig.DepositChainID)
-			err := cache.TieredCache.SetUint64(cacheKey, slot, time.Hour*24)
+			err := cache.TieredCache.SetUint64(cacheKey, slot, utils.Day)
 			if err != nil {
 				logger.Errorf("error caching slot: %v", err)
 			}
@@ -437,7 +440,7 @@ func poolsUpdater(wg *sync.WaitGroup) {
 		}
 
 		cacheKey := fmt.Sprintf("%d:frontend:poolsData", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, data, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching poolsData: %v", err)
 		}
@@ -490,7 +493,7 @@ func latestProposedSlotUpdater(wg *sync.WaitGroup) {
 		} else {
 
 			cacheKey := fmt.Sprintf("%d:frontend:latestProposedSlot", utils.Config.Chain.ClConfig.DepositChainID)
-			err = cache.TieredCache.SetUint64(cacheKey, slot, time.Hour*24)
+			err = cache.TieredCache.SetUint64(cacheKey, slot, utils.Day)
 			if err != nil {
 				logger.Errorf("error caching latestProposedSlot: %v", err)
 			}
@@ -520,7 +523,7 @@ func indexPageDataUpdater(wg *sync.WaitGroup) {
 		logger.WithFields(logrus.Fields{"genesis": data.Genesis, "currentEpoch": data.CurrentEpoch, "networkName": data.NetworkName, "networkStartTs": data.NetworkStartTs}).Infof("index page data update completed in %v", time.Since(start))
 
 		cacheKey := fmt.Sprintf("%d:frontend:indexPageData", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, data, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching indexPageData: %v", err)
 		}
@@ -545,7 +548,7 @@ func ethStoreStatisticsDataUpdater(wg *sync.WaitGroup) {
 		}
 
 		cacheKey := fmt.Sprintf("%d:frontend:ethStoreStatistics", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, data, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching ETH.STORE statistics data: %v", err)
 		}
@@ -569,7 +572,7 @@ func slotVizUpdater(wg *sync.WaitGroup) {
 			logger.Errorf("error retrieving slot viz data from database: %v latest epoch: %v", err, latestEpoch)
 		} else {
 			cacheKey := fmt.Sprintf("%d:frontend:slotVizMetrics", utils.Config.Chain.ClConfig.DepositChainID)
-			err = cache.TieredCache.Set(cacheKey, epochData, time.Hour*24)
+			err = cache.TieredCache.Set(cacheKey, epochData, utils.Day)
 			if err != nil {
 				logger.Errorf("error caching slotVizMetrics: %v", err)
 			}
@@ -753,7 +756,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				periodDays := float64(len(points))
 				avgDepositPerDay := data.DepositedTotal / periodDays
 				daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
-				estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
+				estimatedTimeToThreshold := time.Now().Add(utils.Day * time.Duration(daysUntilThreshold))
 				if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
 					data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.ClConfig.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
 				}
@@ -768,7 +771,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.Genesis = false
 	}
 	// show the transition view one hour before the first slot and until epoch 30 is reached
-	if now.Add(time.Hour*24).After(startSlotTime) && now.Before(genesisTransition) {
+	if now.Add(utils.Day).After(startSlotTime) && now.Before(genesisTransition) {
 		data.GenesisPeriod = true
 	} else {
 		data.GenesisPeriod = false
@@ -1021,7 +1024,7 @@ func LatestProposedSlot() uint64 {
 func LatestMempoolTransactions() *types.RawMempoolResponse {
 	wanted := &types.RawMempoolResponse{}
 	cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.ClConfig.DepositChainID)
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute, wanted); err == nil {
 		return wanted.(*types.RawMempoolResponse)
 	} else {
 		logger.Errorf("error retrieving mempool data from cache: %v", err)
@@ -1032,7 +1035,7 @@ func LatestMempoolTransactions() *types.RawMempoolResponse {
 func LatestBurnData() *types.BurnPageData {
 	wanted := &types.BurnPageData{}
 	cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.ClConfig.DepositChainID)
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute, wanted); err == nil {
 		return wanted.(*types.BurnPageData)
 	} else {
 		logger.Errorf("error retrieving burn data from cache: %v", err)
@@ -1043,7 +1046,7 @@ func LatestBurnData() *types.BurnPageData {
 func LatestEthStoreStatistics() *types.EthStoreStatistics {
 	wanted := &types.EthStoreStatistics{}
 	cacheKey := fmt.Sprintf("%d:frontend:ethStoreStatistics", utils.Config.Chain.ClConfig.DepositChainID)
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Second*60, wanted); err == nil {
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute, wanted); err == nil {
 		return wanted.(*types.EthStoreStatistics)
 	} else {
 		logger.Errorf("error retrieving ETH.STORE statistics data from cache: %v", err)
@@ -1268,7 +1271,7 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 		}
 
 		cacheKey := fmt.Sprintf("%d:frontend:gasNow", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, data, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching latestFinalizedEpoch: %v", err)
 		}
@@ -1476,7 +1479,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 		}
 
 		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, mempoolTx, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, mempoolTx, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching mempool data: %v", err)
 		}
@@ -1499,7 +1502,7 @@ func burnUpdater(wg *sync.WaitGroup) {
 			continue
 		}
 		cacheKey := fmt.Sprintf("%d:frontend:burn", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, data, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, data, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching burn data: %v", err)
 		}
@@ -1515,8 +1518,17 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	data := &types.BurnPageData{}
 	start := time.Now()
 
-	latestEpoch := LatestEpoch()
+	latestFinalizedEpoch := LatestFinalizedEpoch()
 	latestBlock := LatestEth1BlockNumber()
+
+	lookbackEpoch := latestFinalizedEpoch - 10
+	if lookbackEpoch > latestFinalizedEpoch {
+		lookbackEpoch = 0
+	}
+	lookbackDayEpoch := latestFinalizedEpoch - utils.EpochsPerDay()
+	if lookbackDayEpoch > latestFinalizedEpoch {
+		lookbackDayEpoch = 0
+	}
 
 	// Check db to have at least one entry (will error otherwise anyway)
 	burnedFeesCount := 0
@@ -1538,12 +1550,6 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	}
 
 	cutOffEpoch := utils.TimeToEpoch(cutOff)
-	// logger.Infof("cutoff epoch: %v", cutOffEpoch)
-	// var blockLastHour uint64
-	// db.ReaderDb.Get(&blockLastHour, "select ")
-
-	// var blockLastDay uint64
-	// db.ReaderDb.Get(&blockLastDay)
 
 	additionalBurned := float64(0)
 	err := db.ReaderDb.Get(&additionalBurned, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) AS burnedfees FROM blocks WHERE epoch > $1", cutOffEpoch)
@@ -1553,49 +1559,33 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// logger.Infof("additonal burn: %v", additionalBurned)
 	data.TotalBurned += additionalBurned
 
-	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", latestEpoch-10)
+	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", lookbackEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
 	}
 
-	// err = db.ReaderDb.Get(&data.Emission, "select total_rewards_wei as emission from eth_store_stats order by day desc limit 1")
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error retrieving emission (24h): %v", err)
-	// }
-
-	// swap this for GetEpochIncomeHistory in the future
-
-	validators, err := db.GetValidatorIndices()
-	if err != nil {
-		return nil, err
-	}
-
-	income, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, latestEpoch-10, latestEpoch)
+	income, err := db.BigtableClient.GetTotalValidatorIncomeDetailsHistory(lookbackEpoch, latestFinalizedEpoch)
 	if err != nil {
 		logger.WithError(err).Error("error getting validator income history")
 	}
 
 	total := &itypes.ValidatorEpochIncome{}
 
-	for _, epochs := range income {
-		// logger.Infof("epochs: %+v", epochs)
-		for _, details := range epochs {
-			// logger.Infof("income: %+v", details)
-			total.AttestationHeadReward += details.AttestationHeadReward
-			total.AttestationSourceReward += details.AttestationSourceReward
-			total.AttestationSourcePenalty += details.AttestationSourcePenalty
-			total.AttestationTargetReward += details.AttestationTargetReward
-			total.AttestationTargetPenalty += details.AttestationTargetPenalty
-			total.FinalityDelayPenalty += details.FinalityDelayPenalty
-			total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
-			total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
-			total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
-			total.SyncCommitteeReward += details.SyncCommitteeReward
-			total.SyncCommitteePenalty += details.SyncCommitteePenalty
-			total.SlashingReward += details.SlashingReward
-			total.SlashingPenalty += details.SlashingPenalty
-			total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
-		}
+	for _, details := range income {
+		total.AttestationHeadReward += details.AttestationHeadReward
+		total.AttestationSourceReward += details.AttestationSourceReward
+		total.AttestationSourcePenalty += details.AttestationSourcePenalty
+		total.AttestationTargetReward += details.AttestationTargetReward
+		total.AttestationTargetPenalty += details.AttestationTargetPenalty
+		total.FinalityDelayPenalty += details.FinalityDelayPenalty
+		total.ProposerSlashingInclusionReward += details.ProposerSlashingInclusionReward
+		total.ProposerAttestationInclusionReward += details.ProposerAttestationInclusionReward
+		total.ProposerSyncInclusionReward += details.ProposerSyncInclusionReward
+		total.SyncCommitteeReward += details.SyncCommitteeReward
+		total.SyncCommitteePenalty += details.SyncCommitteePenalty
+		total.SlashingReward += details.SlashingReward
+		total.SlashingPenalty += details.SlashingPenalty
+		total.TxFeeRewardWei = utils.AddBigInts(total.TxFeeRewardWei, details.TxFeeRewardWei)
 	}
 
 	rewards := decimal.NewFromBigInt(new(big.Int).SetBytes(total.TxFeeRewardWei), 0)
@@ -1624,12 +1614,12 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
 	// logger.Infof("calculated emission: %v", data.Emission)
 
-	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", latestEpoch-utils.EpochsPerDay())
+	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", lookbackDayEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
 	}
 
-	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", latestEpoch-utils.EpochsPerDay())
+	err = db.ReaderDb.Get(&data.BlockUtilization, "select avg(exec_gas_used::numeric * 100 / exec_gas_limit) from blocks where epoch >= $1 and exec_gas_used > 0 and exec_gas_limit > 0", lookbackDayEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block utilization from blocks table: %v", err)
 	}
@@ -1638,8 +1628,6 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// db.BigAdminClient
 
 	data.Blocks = make([]*types.BurnPageDataBlock, 0, 1000)
 	for _, blk := range blocks {
@@ -1698,7 +1686,7 @@ func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 			continue
 		}
 
-		err = cache.TieredCache.Set(cacheKey, lastDay, time.Hour*24)
+		err = cache.TieredCache.Set(cacheKey, lastDay, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching last exported statistics day: %v", err)
 		}
@@ -1708,7 +1696,7 @@ func latestExportedStatisticDayUpdater(wg *sync.WaitGroup) {
 			logger.Info("initialized last exported statistics day updater")
 		}
 		ReportStatus("lastExportedStatisticDay", "Running", nil)
-		time.Sleep(time.Second * 120)
+		time.Sleep(time.Minute * 2)
 	}
 }
 

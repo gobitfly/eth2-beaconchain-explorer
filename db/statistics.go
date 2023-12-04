@@ -36,7 +36,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 
 	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
-	if err := checkIfDayIsFinalized(day); err != nil {
+	if err := CheckIfDayIsFinalized(day); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		return nil
 	})
 	g.Go(func() error {
-		if err := gatherValidatorSyncDutiesForDay(validators, day, validatorData, validatorDataMux); err != nil {
+		if err := GatherValidatorSyncDutiesForDay(validators, day, validatorData, validatorDataMux); err != nil {
 			return fmt.Errorf("error in GatherValidatorSyncDutiesForDay: %w", err)
 		}
 		return nil
@@ -138,7 +138,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData1d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData1d, err = gatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
+		statisticsData1d, err = GatherStatisticsForDay(int64(day) - 1) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -147,7 +147,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData7d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData7d, err = gatherStatisticsForDay(int64(day) - 7) // convert to int64 to avoid underflows
+		statisticsData7d, err = GatherStatisticsForDay(int64(day) - 7) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -156,7 +156,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData31d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData31d, err = gatherStatisticsForDay(int64(day) - 31) // convert to int64 to avoid underflows
+		statisticsData31d, err = GatherStatisticsForDay(int64(day) - 31) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -165,7 +165,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	var statisticsData365d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
 		var err error
-		statisticsData31d, err = gatherStatisticsForDay(int64(day) - 365) // convert to int64 to avoid underflows
+		statisticsData365d, err = GatherStatisticsForDay(int64(day) - 365) // convert to int64 to avoid underflows
 		if err != nil {
 			return fmt.Errorf("error in GatherPreviousDayStatisticsData: %w", err)
 		}
@@ -215,6 +215,10 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		// update withdrawal total
 		data.WithdrawalsTotal = previousDayData.WithdrawalsTotal + data.Withdrawals
 		data.WithdrawalsAmountTotal = previousDayData.WithdrawalsAmountTotal + data.WithdrawalsAmount
+
+		// update deposits total
+		data.DepositsTotal = previousDayData.DepositsTotal + data.Deposits
+		data.DepositsAmountTotal = previousDayData.DepositsAmountTotal + data.DepositsAmount
 
 		if statisticsData1d != nil && len(statisticsData1d) > index {
 			data.ClPerformance1d = data.ClRewardsGWeiTotal - statisticsData1d[index].ClRewardsGWeiTotal
@@ -304,7 +308,9 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 			"attester_slashings",
 			"proposer_slashings",
 			"deposits",
+			"deposits_total",
 			"deposits_amount",
+			"deposits_amount_total",
 			"withdrawals",
 			"withdrawals_total",
 			"withdrawals_amount",
@@ -342,7 +348,9 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 				validatorData[i].AttesterSlashings,
 				validatorData[i].ProposerSlashing,
 				validatorData[i].Deposits,
+				validatorData[i].DepositsTotal,
 				validatorData[i].DepositsAmount,
+				validatorData[i].DepositsAmountTotal,
 				validatorData[i].Withdrawals,
 				validatorData[i].WithdrawalsTotal,
 				validatorData[i].WithdrawalsAmount,
@@ -884,7 +892,7 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 	return nil
 }
 
-func gatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
+func GatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
 	exportStart := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_update_validator_sync_stats").Observe(time.Since(exportStart).Seconds())
@@ -898,9 +906,11 @@ func gatherValidatorSyncDutiesForDay(validators []uint64, day uint64, data []*ty
 		return nil
 	}
 	logger := logger.WithFields(logrus.Fields{
-		"day":        day,
-		"firstEpoch": firstEpoch,
-		"lastEpoch":  lastEpoch,
+		"day":         day,
+		"firstEpoch":  firstEpoch,
+		"lastEpoch":   lastEpoch,
+		"startPeriod": utils.SyncPeriodOfEpoch(firstEpoch),
+		"endPeriod":   utils.SyncPeriodOfEpoch(lastEpoch),
 	})
 	logger.Infof("gathering sync duties")
 
@@ -1105,7 +1115,7 @@ func gatherValidatorMissedAttestationsStatisticsForDay(validators []uint64, day 
 	return nil
 }
 
-func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
+func GatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error) {
 
 	if day < 0 {
 		return nil, nil
@@ -1147,7 +1157,9 @@ func gatherStatisticsForDay(day int64) ([]*types.ValidatorStatsTableDbRow, error
 		COALESCE(attester_slashings, 0) AS attester_slashings,
 		COALESCE(proposer_slashings, 0) AS proposer_slashings,
 		COALESCE(deposits, 0) AS deposits,
+		COALESCE(deposits_total, 0) AS deposits_total,
 		COALESCE(deposits_amount, 0) AS deposits_amount,
+		COALESCE(deposits_amount_total, 0) AS deposits_amount_total,
 		COALESCE(withdrawals, 0) AS withdrawals,
 		COALESCE(withdrawals_total, 0) AS withdrawals_total,
 		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
@@ -1315,7 +1327,7 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 func WriteChartSeriesForDay(day int64) error {
 	startTs := time.Now()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	g, gCtx := errgroup.WithContext(ctx)
 
@@ -1494,7 +1506,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	}
 
 	if firstBlock <= 15537394 {
-		return fmt.Errorf("this function does not yet handle pre merge statistics")
+		return fmt.Errorf("this function does not yet handle pre merge statistics, firstBlock is %v, firstSlot is %v", firstBlock, firstSlot)
 	}
 
 	lastBlock, err := GetBlockNumber(uint64(lastSlot))
@@ -1769,9 +1781,15 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 	firstSlot := uint64(day) * epochsPerDay * utils.Config.Chain.ClConfig.SlotsPerEpoch
 	firstSlotOfNextDay := uint64(day+1) * epochsPerDay * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
+	tx, err := WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db tx in WriteGraffitiStatisticsForDay: %w", err)
+	}
+	defer tx.Rollback()
+
 	// \x are missed blocks
 	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
-	_, err := WriterDb.Exec(`
+	_, err = tx.Exec(`
 		insert into graffiti_stats
 		select $1::int as day, graffiti, graffiti_text, count(*), count(distinct proposer) as proposer_count
 		from blocks 
@@ -1787,10 +1805,28 @@ func WriteGraffitiStatisticsForDay(day int64) error {
 		return err
 	}
 
+	var lastSlot uint64
+	err = tx.Get(&lastSlot, `select coalesce(max(slot),0) from blocks;`)
+	if err != nil {
+		return fmt.Errorf("error getting lastSlot in WriteGraffitiStatisticsForDay: %w", err)
+	}
+
+	// if last exported slot is younger than the last slot of the exported day then the day is completely exported
+	if day < int64(utils.DayOfSlot(lastSlot)) {
+		_, err = tx.Exec(`insert into graffiti_stats_status (day, status) values ($1, true) on conflict (day) do update set status = excluded.status`, day)
+		if err != nil {
+			return fmt.Errorf("error updating graffiti_stats_status in WriteGraffitiStatisticsForDay: %w", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing db tx in WriteGraffitiStatisticsForDay: %w", err)
+	}
 	return nil
 }
 
-func checkIfDayIsFinalized(day uint64) error {
+func CheckIfDayIsFinalized(day uint64) error {
 	_, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
 
 	latestFinalizedEpoch, err := GetLatestFinalizedEpoch()

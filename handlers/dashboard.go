@@ -65,6 +65,7 @@ func handleValidatorsQuery(w http.ResponseWriter, r *http.Request, checkValidato
 	return queryValidatorIndices, queryValidatorPubkeys, redirect, nil
 }
 
+// parseValidatorsFromQueryString returns a slice of validator indices and a slice of validator pubkeys from a parsed query string
 func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, [][]byte, error) {
 	if str == "" {
 		return []uint64{}, [][]byte{}, nil
@@ -246,14 +247,13 @@ func Heatmap(w http.ResponseWriter, r *http.Request) {
 
 	start := time.Now()
 	if len(validators) == 0 {
-		utils.LogError(err, "error no validators provided", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Error: No validators provided", http.StatusBadRequest)
 		return
 	}
 	incomeData, err := db.BigtableClient.GetValidatorIncomeDetailsHistory(validators, endEpoch-100, endEpoch)
 	if err != nil {
 		utils.LogError(err, "error loading validator income history data", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -439,7 +439,7 @@ func getNextWithdrawalRow(queryValidators []uint64, currency string) ([][]interf
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
 		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 		withdrawalCredentialsTemplate,
-		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false, true))),
 	})
 
 	return nextData, nil
@@ -499,7 +499,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	err = g.Wait()
 	if err != nil {
 		utils.LogError(err, "error while combining balance chart", 0, errFieldMap)
-		sendErrorResponse(w, r.URL.String(), err.Error())
+		SendBadRequestResponse(w, r.URL.String(), err.Error())
 		return
 	}
 
@@ -513,7 +513,7 @@ func DashboardDataBalanceCombined(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -548,7 +548,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(incomeHistoryChartData)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -577,7 +577,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 		ORDER BY slot`, filter)
 	if err != nil {
 		utils.LogError(err, "error retrieving block-proposals", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -592,7 +592,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(proposalsResult)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -681,8 +681,7 @@ func DashboardDataWithdrawals(w http.ResponseWriter, r *http.Request) {
 			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
 			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false)),
-			// template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), utils.Config.Frontend.ElCurrency, 6))),
+			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false, true)),
 		})
 	}
 
@@ -739,7 +738,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.LogError(err, "error retrieving validator data", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -761,7 +760,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		WHERE publickey = ANY($1)`, pubkeyFilter)
 	if err != nil {
 		utils.LogError(err, "error retrieving validator deposists", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -783,7 +782,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		balances, err := db.BigtableClient.GetValidatorBalanceHistory(validatorIndexArr, latestEpoch, latestEpoch)
 		if err != nil {
 			utils.LogError(err, "error retrieving validator balance data", 0, errFieldMap)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -802,7 +801,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		lastAttestationSlots, err := db.BigtableClient.GetLastAttestationSlots(validatorIndexArr)
 		if err != nil {
 			utils.LogError(err, "error retrieving validator last attestation slot data", 0, errFieldMap)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -840,7 +839,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				queueAhead, err = db.GetQueueAheadOfValidator(v.ValidatorIndex)
 				if err != nil {
 					utils.LogError(err, fmt.Sprintf("failed to retrieve queue ahead of validator %v for dashboard", v.ValidatorIndex), 0, errFieldMap)
-					http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
 					return
 				}
 				epochsToWait := queueAhead / *churnRate
@@ -934,7 +933,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -952,7 +951,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	earnings, _, err := GetValidatorEarnings(queryValidatorIndices, GetCurrency(r))
 	if err != nil {
 		utils.LogError(err, "error retrieving validator earnings", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 
 	if earnings == nil {
@@ -962,7 +961,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(earnings)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -1003,7 +1002,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	effectiveness, err := db.BigtableClient.GetValidatorEffectiveness(activeValidators, epoch)
 	if err != nil {
 		utils.LogError(err, "error retrieving validator effectiveness", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -1014,7 +1013,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(avgIncDistance)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -1043,18 +1042,19 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	err = db.ReaderDb.Select(&proposals, `
 		SELECT validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks
 		FROM validator_stats
-		WHERE validatorindex = ANY($1) AND (proposed_blocks IS NOT NULL OR missed_blocks IS NOT NULL OR orphaned_blocks IS NOT NULL)
+		WHERE validatorindex = ANY($1) 
+		AND (proposed_blocks > 0 OR missed_blocks > 0 OR orphaned_blocks > 0)
 		ORDER BY day DESC`, filter)
 	if err != nil {
 		utils.LogError(err, "error retrieving validator_stats", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	lastDay, err := db.GetLastExportedStatisticDay()
 	if err != nil && err != db.ErrNoStats {
 		utils.LogError(err, "error retrieving last exported statistic day", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	_, lastExportedEpoch := utils.GetFirstAndLastEpochForDay(lastDay)
@@ -1070,7 +1070,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		group by proposer`, filter, lastExportedEpoch)
 	if err != nil {
 		utils.LogError(err, "error retrieving validator_stats", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -1104,7 +1104,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(proposalsHistResult)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFieldMap)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

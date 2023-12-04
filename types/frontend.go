@@ -79,7 +79,7 @@ var EventLabel map[EventName]string = map[EventName]string{
 	NetworkValidatorExitQueueFullEventName:           "The validator exit queue is full",
 	NetworkValidatorExitQueueNotFullEventName:        "The validator exit queue is empty",
 	NetworkLivenessIncreasedEventName:                "The network is experiencing liveness issues",
-	EthClientUpdateEventName:                         "A ethereum client has a new available update",
+	EthClientUpdateEventName:                         "An Ethereum client has a new update available",
 	MonitoringMachineOfflineEventName:                "Your machine(s) might be offline",
 	MonitoringMachineDiskAlmostFullEventName:         "Your machine(s) disk space is running low",
 	MonitoringMachineCpuLoadEventName:                "Your machine(s) has a high CPU load",
@@ -87,10 +87,10 @@ var EventLabel map[EventName]string = map[EventName]string{
 	MonitoringMachineSwitchedToETH2FallbackEventName: "Your machine(s) is using its consensus client fallback",
 	MonitoringMachineSwitchedToETH1FallbackEventName: "Your machine(s) is using its execution client fallback",
 	TaxReportEventName:                               "You have an available tax report",
-	RocketpoolCommissionThresholdEventName:           "Your configured rocket pool commission threshold is reached",
-	RocketpoolNewClaimRoundStartedEventName:          "Your rocket pool claim round is available",
-	RocketpoolCollateralMinReached:                   "You reached the rocketpool min collateral",
-	RocketpoolCollateralMaxReached:                   "You reached the rocketpool max collateral",
+	RocketpoolCommissionThresholdEventName:           "Your configured Rocket Pool commission threshold is reached",
+	RocketpoolNewClaimRoundStartedEventName:          "Your Rocket Pool claim from last round is available",
+	RocketpoolCollateralMinReached:                   "You reached the Rocket Pool min RPL collateral",
+	RocketpoolCollateralMaxReached:                   "You reached the Rocket Pool max RPL collateral",
 	SyncCommitteeSoon:                                "Your validator(s) will soon be part of the sync committee",
 }
 
@@ -530,9 +530,9 @@ type Eth1AddressSearchItem struct {
 }
 
 type RawMempoolResponse struct {
-	Pending map[string]map[int]*RawMempoolTransaction `json:"pending"`
-	Queued  map[string]map[int]*RawMempoolTransaction `json:"queued"`
-	BaseFee map[string]map[int]*RawMempoolTransaction `json:"baseFee"`
+	Pending map[string]map[string]*RawMempoolTransaction `json:"pending"`
+	Queued  map[string]map[string]*RawMempoolTransaction `json:"queued"`
+	BaseFee map[string]map[string]*RawMempoolTransaction `json:"baseFee"`
 
 	TxsByHash map[common.Hash]*RawMempoolTransaction
 }

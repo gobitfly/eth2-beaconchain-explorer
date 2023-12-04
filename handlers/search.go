@@ -83,7 +83,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	switch searchType {
 	case "slots":
-		if len(search) <= 1 || !searchLikeRE.MatchString(strippedSearch) {
+		if !searchLikeRE.MatchString(strippedSearch) {
 			break
 		}
 		result = &types.SearchAheadSlotsResult{}
@@ -120,7 +120,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		result = &types.SearchAheadBlocksResult{{
-			Block: block.Number,
+			Block: fmt.Sprintf("%v", block.Number),
 			Hash:  fmt.Sprintf("%#x", block.Hash),
 		}}
 	case "graffiti":

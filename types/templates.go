@@ -41,7 +41,6 @@ type PageData struct {
 	DepositContract       string
 	Rates                 *Rates
 	InfoBanner            *template.HTML
-	ClientsUpdated        bool
 	// IsUserClientUpdated   func(uint64) bool
 	ChainConfig         ClChainConfig
 	Lang                string
@@ -607,7 +606,7 @@ type VotesVisChartData struct {
 	Validators pq.Int64Array `db:"validators" json:"validators"`
 }
 
-// BlockPageData is a struct block data used in the block page
+// BlockPageData is a struct block data used in the block/slot page
 type BlockPageData struct {
 	Epoch                  uint64  `db:"epoch"`
 	EpochFinalized         bool    `db:"epoch_finalized"`
@@ -887,7 +886,7 @@ type SearchAheadSlotsResult []struct {
 
 // SearchAheadBlockssResult is a struct to hold the search ahead block results
 type SearchAheadBlocksResult []struct {
-	Block uint64 `json:"block,omitempty"`
+	Block string `json:"block,omitempty"`
 	Hash  string `json:"hash,omitempty"`
 }
 
