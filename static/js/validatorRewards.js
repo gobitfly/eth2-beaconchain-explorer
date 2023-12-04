@@ -7,13 +7,12 @@ var subsTable = null
 // let validators = []
 
 function create_typeahead(input_container) {
-
-  function prepare(query,settings){
+  function prepare(query, settings) {
     settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-    settings.beforeSend = function(jqXHR){
-      jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+    settings.beforeSend = function (jqXHR) {
+      jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
     }
-    settings.complete = function(){
+    settings.complete = function () {
       resetTurnstileToken()
     }
     return settings
@@ -27,7 +26,7 @@ function create_typeahead(input_container) {
       var args = arguments,
         later = function () {
           timeout = null
-          waitForTurnstileToken(()=>{
+          waitForTurnstileToken(() => {
             result = func.apply(context, args)
           })
         }
@@ -55,10 +54,10 @@ function create_typeahead(input_container) {
         timeWait = 4000 - Math.min(query.length, 5) * 500
         // "wildcard" can't be used anymore, need to set query wildcard ourselves now
         settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-        settings.beforeSend = function(jqXHR){
-          jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+        settings.beforeSend = function (jqXHR) {
+          jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
         }
-        settings.complete = function(){
+        settings.complete = function () {
           resetTurnstileToken()
         }
         return settings
@@ -74,7 +73,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
@@ -86,7 +85,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_name/%QUERY",
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
@@ -98,7 +97,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_graffiti/%QUERY",
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)

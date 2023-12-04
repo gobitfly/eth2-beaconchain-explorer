@@ -221,12 +221,12 @@ $(document).ready(function () {
     $('[data-toggle="tooltip"]').tooltip()
   }
 
-  function prepare(query,settings){
+  function prepare(query, settings) {
     settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-    settings.beforeSend = function(jqXHR){
-      jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+    settings.beforeSend = function (jqXHR) {
+      jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
     }
-    settings.complete = function(){
+    settings.complete = function () {
       resetTurnstileToken()
     }
     return settings
@@ -248,7 +248,7 @@ $(document).ready(function () {
       var args = arguments,
         later = function () {
           timeout = null
-          waitForTurnstileToken(()=>{
+          waitForTurnstileToken(() => {
             result = func.apply(context, args)
           })
         }
@@ -276,10 +276,10 @@ $(document).ready(function () {
         timeWait = 4000 - Math.min(query.length, 5) * 500
         // "wildcard" can't be used anymore, need to set query wildcard ourselves now
         settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-        settings.beforeSend = function(jqXHR){
-          jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+        settings.beforeSend = function (jqXHR) {
+          jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
         }
-        settings.complete = function(){
+        settings.complete = function () {
           resetTurnstileToken()
         }
         return settings
@@ -301,7 +301,7 @@ $(document).ready(function () {
       transform: function (data) {
         return data?.address && data?.domain ? { data: { ...data } } : null
       },
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhEns.remote.transport._get = debounce(bhEns.remote.transport, bhEns.remote.transport._get)
@@ -315,7 +315,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/slots/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhSlots.remote.transport._get = debounce(bhSlots.remote.transport, bhSlots.remote.transport._get)
@@ -329,7 +329,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/blocks/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhBlocks.remote.transport._get = debounce(bhBlocks.remote.transport, bhBlocks.remote.transport._get)
@@ -343,7 +343,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/transactions/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhTransactions.remote.transport._get = debounce(bhTransactions.remote.transport, bhTransactions.remote.transport._get)
@@ -357,7 +357,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/graffiti/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
@@ -371,7 +371,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/epochs/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhEpochs.remote.transport._get = debounce(bhEpochs.remote.transport, bhEpochs.remote.transport._get)
@@ -385,7 +385,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/eth1_addresses/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhEth1Accounts.remote.transport._get = debounce(bhEth1Accounts.remote.transport, bhEth1Accounts.remote.transport._get)
@@ -399,7 +399,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/count_indexed_validators_by_eth1_address/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhValidatorsByAddress.remote.transport._get = debounce(bhValidatorsByAddress.remote.transport, bhValidatorsByAddress.remote.transport._get)
@@ -413,7 +413,7 @@ $(document).ready(function () {
     remote: {
       url: "/search/validators_by_pubkey/%QUERY",
       maxPendingRequests: requestNum,
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)

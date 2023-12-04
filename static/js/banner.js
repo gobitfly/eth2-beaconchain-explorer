@@ -28,28 +28,28 @@ function getCookie(cname) {
 }
 
 function updateBanner() {
-  waitForTurnstileToken(()=>{
-    fetch("/latestState", {headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}})
+  waitForTurnstileToken(() => {
+    fetch("/latestState", { headers: { "X-TURNSTILE-TOKEN": window.turnstileToken } })
       .then(function (res) {
         return res.json()
       })
       .then(function (data) {
         // always visible
         var epochHandle = document.getElementById("banner-epoch-data")
-  
+
         if (data.currentEpoch) {
           epochHandle.innerHTML = addCommas(data.currentEpoch)
           epochHandle.setAttribute("href", "/epoch/" + data.currentEpoch)
         }
-  
+
         var slotHandle = document.getElementById("banner-slot-data")
         if (data.currentSlot) {
           slotHandle.innerHTML = addCommas(data.currentSlot)
           slotHandle.setAttribute("href", "/slot/" + data.currentSlot)
         }
-  
+
         var ethPriceHandle = document.getElementById("banner-eth-price-data")
-  
+
         try {
           let userCurrency = getCookie("currency")
           if (userCurrency == data.rates.mainCurrency) userCurrency = data.rates.tickerCurrency
@@ -58,7 +58,7 @@ function updateBanner() {
         } catch (err) {
           console.error("failed updating banner-price:", err)
         }
-  
+
         var finDelayDataHandle = document.getElementById("banner-fin-data")
         finDelayHtml = `
         <div id="banner-fin" class="info-item d-flex mr-3">
@@ -76,7 +76,7 @@ function updateBanner() {
         </div>
       </div>
       `
-  
+
         if (!finDelayDataHandle && data.finalityDelay > 3 && !data.syncing) {
           // create fin delay node
           document.getElementById("banner-slot").insertAdjacentHTML("afterend", finDelayHtml)
@@ -103,7 +103,7 @@ function updateBanner() {
           // remove fin delay if we are still syncing
           let findDelayHandle = document.getElementById("banner-fin")
           if (findDelayHandle) findDelayHandle.remove()
-  
+
           var bannerHandle = document.getElementById("banner-status")
           if (!bannerHandle) {
             var statusHtml = `

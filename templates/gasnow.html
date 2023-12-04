@@ -543,10 +543,10 @@
               return res.json()
             })
             .then((result)=>{
-							this.page = result;			
+							this.page = result;
 							document.title = (result.data.rapid / 1e9).toFixed(0) + "-" + (result.data.fast / 1e9).toFixed(0) + " GWei | Ethereum (ETH) Mainnet - GasNow - beaconcha.in - " + new Date().getFullYear();
             }).catch((err)=>{
-              console.log(err)                          
+              console.log(err)
             })
 						.finally(()=>{
 							resetTurnstileToken()

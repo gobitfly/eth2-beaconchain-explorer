@@ -119,56 +119,64 @@ function updateValidatorInfo(index) {
   waitForTurnstileToken(() => {
     fetch(`/validator/${index}/proposedblocks?draw=1&start=1&length=1`, {
       method: "GET",
-      headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}
-    }).then((res) => {
-      res.json().then((data) => {
-        $("#blockCount span").text(data.recordsTotal)
-      })
-    }).finally(()=>{
-      resetTurnstileToken()
+      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
     })
+      .then((res) => {
+        res.json().then((data) => {
+          $("#blockCount span").text(data.recordsTotal)
+        })
+      })
+      .finally(() => {
+        resetTurnstileToken()
+      })
   })
   waitForTurnstileToken(() => {
     fetch(`/validator/${index}/attestations?draw=1&start=1&length=1`, {
       method: "GET",
-      headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}
-    }).then((res) => {
-      res.json().then((data) => {
-        $("#attestationCount span").text(data.recordsTotal)
-      })
-    }).finally(()=>{
-      resetTurnstileToken()
+      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
     })
+      .then((res) => {
+        res.json().then((data) => {
+          $("#attestationCount span").text(data.recordsTotal)
+        })
+      })
+      .finally(() => {
+        resetTurnstileToken()
+      })
   })
   waitForTurnstileToken(() => {
     fetch(`/validator/${index}/slashings?draw=1&start=1&length=1`, {
       method: "GET",
-      headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}
-    }).then((res) => {
-      res.json().then((data) => {
-        var total = parseInt(data.recordsTotal)
-        if (total > 0) {
-          $("#slashingsCountDiv").removeClass("d-none")
-          $("#slashingsCount span").text(total)
-        } else {
-          $("#slashingsCountDiv").addClass("d-none")
-        }
-      })
-    }).finally(()=>{
-      resetTurnstileToken()
+      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
     })
+      .then((res) => {
+        res.json().then((data) => {
+          var total = parseInt(data.recordsTotal)
+          if (total > 0) {
+            $("#slashingsCountDiv").removeClass("d-none")
+            $("#slashingsCount span").text(total)
+          } else {
+            $("#slashingsCountDiv").addClass("d-none")
+          }
+        })
+      })
+      .finally(() => {
+        resetTurnstileToken()
+      })
   })
   waitForTurnstileToken(() => {
     fetch(`/validator/${index}/effectiveness`, {
       method: "GET",
-      headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}
-    }).then((res) => {
-      res.json().then((data) => {
-        setValidatorEffectiveness("effectiveness", data.effectiveness)
-      })
-    }).finally(()=>{
-      resetTurnstileToken()
+      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
     })
+      .then((res) => {
+        res.json().then((data) => {
+          setValidatorEffectiveness("effectiveness", data.effectiveness)
+        })
+      })
+      .finally(() => {
+        resetTurnstileToken()
+      })
   })
 }
 
@@ -312,20 +320,22 @@ function renderProposedHistoryTable(data) {
 }
 
 function showProposedHistoryTable() {
-  waitForTurnstileToken(()=>{
+  waitForTurnstileToken(() => {
     fetch("/dashboard/data/proposalshistory" + getValidatorQueryString(), {
       method: "GET",
-    }).then((res) => {
-      res.json().then(function (data) {
-        let proposedHistTableData = []
-        for (let item of data) {
-          proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
-        }
-        renderProposedHistoryTable(proposedHistTableData)
-      })
-    }).finally(()=>{
-      resetTurnstileToken()
     })
+      .then((res) => {
+        res.json().then(function (data) {
+          let proposedHistTableData = []
+          for (let item of data) {
+            proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
+          }
+          renderProposedHistoryTable(proposedHistTableData)
+        })
+      })
+      .finally(() => {
+        resetTurnstileToken()
+      })
   })
 }
 
@@ -716,13 +726,12 @@ $(document).ready(function () {
   }
   create_validators_typeahead("input[aria-controls='validators']", "#validators")
 
-
-  function prepare(query,settings){
+  function prepare(query, settings) {
     settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-    settings.beforeSend = function(jqXHR){
-      jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+    settings.beforeSend = function (jqXHR) {
+      jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
     }
-    settings.complete = function(jqXHR){
+    settings.complete = function (jqXHR) {
       resetTurnstileToken()
     }
     return settings
@@ -761,10 +770,10 @@ $(document).ready(function () {
         timeWait = 4000 - Math.min(query.length, 5) * 500
         // "wildcard" can't be used anymore, need to set query wildcard ourselves now
         settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-        settings.beforeSend = function(jqXHR){
-          jqXHR.setRequestHeader('X-TURNSTILE-TOKEN', window.turnstileToken)
+        settings.beforeSend = function (jqXHR) {
+          jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
         }
-        settings.complete = function(){
+        settings.complete = function () {
           resetTurnstileToken()
         }
         return settings
@@ -780,7 +789,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/validators_by_pubkey/%QUERY",
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)
@@ -792,7 +801,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
@@ -804,7 +813,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators_by_name/%QUERY",
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
@@ -816,7 +825,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators_by_graffiti/%QUERY",
-      prepare:prepare,
+      prepare: prepare,
     },
   })
   bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
@@ -1013,10 +1022,10 @@ $(document).ready(function () {
       $("#dash-validator-history-index-div").removeClass("d-none")
       $("#dash-validator-history-index-div").addClass("d-flex")
 
-      waitForTurnstileToken(()=>{
+      waitForTurnstileToken(() => {
         fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`, {
           method: "GET",
-          headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}
+          headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
         }).then((res) => {
           res.json().then((data) => {
             if (Object.keys(data).length === 0) {
@@ -1228,11 +1237,10 @@ $(document).ready(function () {
       document.querySelector("#copy-button").style.visibility = "visible"
       document.querySelector("#clear-search").style.visibility = "visible"
 
-
-      waitForTurnstileToken(()=>{
+      waitForTurnstileToken(() => {
         $.ajax({
           url: "/dashboard/data/validators" + qryStr,
-          headers: {'X-TURNSTILE-TOKEN': window.turnstileToken},
+          headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
           success: function (result) {
             var t1 = Date.now()
             console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1 - t0}ms`)
@@ -1252,7 +1260,7 @@ $(document).ready(function () {
             state.validatorsCount.exiting_offline = 0
             state.validatorsCount.exited = 0
             state.validatorsCount.slashed = 0
-  
+
             for (var i = 0; i < result.data.length; i++) {
               var v = result.data[i]
               var vIndex = v[1]
@@ -1263,17 +1271,17 @@ $(document).ready(function () {
               if (el) el.dataset.state = vState
             }
             validatorsDataTable.clear()
-  
+
             validatorsDataTable.rows.add(result.data).draw()
-  
+
             validatorsDataTable.column(6).visible(false)
-  
+
             requestAnimationFrame(() => {
               validatorsDataTable.columns.adjust().responsive.recalc()
             })
-  
+
             document.getElementById("validators-table-holder").style.display = "block"
-  
+
             renderDashboardInfo()
           },
         })
@@ -1282,15 +1290,15 @@ $(document).ready(function () {
       if (firstValidatorWithIndex() !== undefined) {
         document.querySelector("#rewards-button").style.visibility = "visible"
         document.querySelector("#bookmark-button").style.visibility = "visible"
-        waitForTurnstileToken(()=>{
+        waitForTurnstileToken(() => {
           $.ajax({
             url: "/dashboard/data/earnings" + qryStr,
-            headers: {'X-TURNSTILE-TOKEN': window.turnstileToken},
+            headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
             success: function (result) {
               var t1 = Date.now()
               console.log(`loaded earnings: fetch: ${t1 - t0}ms`)
               if (!result) return
-  
+
               document.querySelector("#earnings-day").innerHTML = result.lastDayFormatted || summaryDefaultValue
               document.querySelector("#earnings-week").innerHTML = result.lastWeekFormatted || summaryDefaultValue
               document.querySelector("#earnings-month").innerHTML = result.lastMonthFormatted || summaryDefaultValue
@@ -1300,9 +1308,9 @@ $(document).ready(function () {
               $("#balance-total span:first").removeClass("text-success").removeClass("text-danger")
               $("#balance-total span:first").html($("#balance-total span:first").html().replace("+", ""))
             },
-            complete:()=>{
+            complete: () => {
               resetTurnstileToken()
-            }
+            },
           })
         })
       } else {
@@ -1376,10 +1384,10 @@ $(document).ready(function () {
   function renderCharts() {
     var t0 = Date.now()
     var qryStr = "?validators=" + state.validators.join(",")
-    waitForTurnstileToken(()=>{
+    waitForTurnstileToken(() => {
       $.ajax({
         url: "/dashboard/data/allbalances" + qryStr + "&days=31",
-        headers: {'X-TURNSTILE-TOKEN': window.turnstileToken},
+        headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
         success: function (result) {
           var t1 = Date.now()
           createIncomeChart(result.consensusChartData, result.executionChartData)
@@ -1388,15 +1396,15 @@ $(document).ready(function () {
           allIncomeLoaded = false
           $("#load-income-btn").removeClass("d-none")
         },
-        complete:()=>{
+        complete: () => {
           resetTurnstileToken()
-        }
+        },
       })
     })
-    waitForTurnstileToken(()=>{
+    waitForTurnstileToken(() => {
       $.ajax({
         url: "/dashboard/data/proposals" + qryStr,
-        headers: {'X-TURNSTILE-TOKEN': window.turnstileToken},
+        headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
         success: function (result) {
           var t1 = Date.now()
           if (result && result.length) {
@@ -1410,9 +1418,9 @@ $(document).ready(function () {
           var t2 = Date.now()
           console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t2 - t1}ms`)
         },
-        complete:()=>{
+        complete: () => {
           resetTurnstileToken()
-        }
+        },
       })
     })
   }
@@ -1425,8 +1433,8 @@ $(document).ready(function () {
 
     const url = "/dashboard/data/allbalances?validators=" + state.validators.join(",")
     $("#load-income-btn").text("Loading...")
-    waitForTurnstileToken(()=>{
-      fetch(url,{headers : {'X-TURNSTILE-TOKEN': window.turnstileToken}})
+    waitForTurnstileToken(() => {
+      fetch(url, { headers: { "X-TURNSTILE-TOKEN": window.turnstileToken } })
         .then((response) => {
           if (!response.ok) {
             throw new Error("Network response was not ok.")

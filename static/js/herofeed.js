@@ -58,10 +58,10 @@ function findNewDoner(data) {
 }
 
 function updateFeed() {
-  waitForTurnstileToken(()=>{
+  waitForTurnstileToken(() => {
     $.ajax({
       url: "/gitcoinfeed",
-      headers: {'X-TURNSTILE-TOKEN': window.turnstileToken},
+      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
       success: (data) => {
         let isLive = data.isLive
         if (!isLive && feedInterval !== null) {
@@ -69,10 +69,10 @@ function updateFeed() {
           return
         }
         data = data.donors
-  
+
         if (isLive) {
           $("#hero-feed").addClass("d-lg-flex fade-in-top")
-  
+
           if (data.length > 0) {
             donors = findNewDoner(data)
             $("#hero-feed ul>li#gitcoinwaitmsg").remove()
@@ -91,9 +91,10 @@ function updateFeed() {
                       `)
           }
         }
-      },complete:()=>{
+      },
+      complete: () => {
         resetTurnstileToken()
-      }
+      },
     })
   })
 }
