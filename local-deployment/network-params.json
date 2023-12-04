@@ -22,7 +22,8 @@
       "seconds_per_slot": 12,
       "genesis_delay": 10,
       "capella_fork_epoch": 0,
-      "deneb_fork_epoch": 999999999
+      "deneb_fork_epoch": 999999999,
+      "electra_fork_epoch": 999999999
     },
     "global_client_log_level": "info",
     "start_tx_spammer": true,

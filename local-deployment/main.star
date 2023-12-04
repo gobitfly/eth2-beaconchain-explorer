@@ -67,7 +67,7 @@ def run(plan, args):
 
 	if args["start_tx_spammer"]:
 		plan.print("Launching transaction spammer")
-		transaction_spammer.launch_transaction_spammer(plan, genesis_constants.PRE_FUNDED_ACCOUNTS, fuzz_target , args_with_right_defaults.tx_spammer_params)
+		transaction_spammer.launch_transaction_spammer(plan, genesis_constants.PRE_FUNDED_ACCOUNTS, fuzz_target, args_with_right_defaults.tx_spammer_params, network_params.electra_fork_epoch)
 		plan.print("Succesfully launched transaction spammer")
 
 	if args["start_blob_spammer"]:
