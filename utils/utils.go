@@ -53,6 +53,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
+	confusables "github.com/skygeario/go-confusable-homoglyphs"
 )
 
 // Config is the globally accessible configuration
@@ -228,7 +229,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatPoolPerformance":            FormatPoolPerformance,
 		"formatTokenSymbolTitle":           FormatTokenSymbolTitle,
 		"formatTokenSymbol":                FormatTokenSymbol,
-		"formatTokenSymbolHTML":            FormatTokenSymbolHTML,
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
 				return nil, errors.New("invalid dict call")
@@ -1373,34 +1373,23 @@ func FormatPoolPerformance(val float64) template.HTML {
 }
 
 func FormatTokenSymbolTitle(symbol string) string {
-	urls := xurls.Relaxed.FindAllString(symbol, -1)
-
-	if len(urls) > 0 {
-		return fmt.Sprintf("The token symbol has been hidden as it contains a URL (%s) which might be a scam", symbol)
-	} else if symbol == "ETH" {
-		return fmt.Sprintf("The token symbol has been hidden as it contains a Token name (%s) which might be a scam", symbol)
+	if isMaliciousToken(symbol) {
+		return fmt.Sprintf("The token symbol (%s) has been hidden because it contains a URL or a confusable character", symbol)
 	}
 	return ""
 }
 
 func FormatTokenSymbol(symbol string) string {
-	urls := xurls.Relaxed.FindAllString(symbol, -1)
-
-	if len(urls) > 0 ||
-		symbol == "ETH" {
+	if isMaliciousToken(symbol) {
 		return "[hidden-symbol] ⚠️"
 	}
 	return symbol
 }
 
-func FormatTokenSymbolHTML(tmpl template.HTML) template.HTML {
-	tmplString := (string(tmpl))
-	symbolTitle := FormatTokenSymbolTitle(tmplString)
-
-	tmplString = FormatTokenSymbol(tmplString)
-	tmpl = template.HTML(strings.ReplaceAll(tmplString, `title=""`, fmt.Sprintf(`title="%s"`, symbolTitle)))
-
-	return tmpl
+func isMaliciousToken(symbol string) bool {
+	urls := xurls.Relaxed.FindAllString(symbol, -1)
+	isConfusable := confusables.IsDangerous(symbol, []string{"latin"})
+	return len(urls) > 0 || isConfusable || strings.ToUpper(symbol) == "ETH"
 }
 
 func ReverseSlice[S ~[]E, E any](s S) {
