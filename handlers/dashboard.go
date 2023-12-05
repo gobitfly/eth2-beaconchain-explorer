@@ -1068,8 +1068,10 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	todaysProposals := proposals
 
 	dayFilter := "day >= $2 AND day <= $3"
+	args := []interface{}{filter, dayStart, dayEnd}
 	if allowedDayRange == 0 {
 		dayFilter = "day = $2"
+		args = []interface{}{filter, dayStart}
 	}
 
 	err = db.ReaderDb.Select(&proposals, fmt.Sprintf(`
@@ -1078,7 +1080,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		WHERE validatorindex = ANY($1) 
 		AND (proposed_blocks > 0 OR missed_blocks > 0 OR orphaned_blocks > 0)
 		AND %v
-		ORDER BY day DESC`, dayFilter), filter, dayStart, dayEnd)
+		ORDER BY day DESC`, dayFilter), args...)
 	if err != nil {
 		utils.LogError(err, "error retrieving validator_stats", 0, errFieldMap)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

@@ -102,7 +102,7 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 			var exists bool
 			err := db.WriterDb.Get(&exists, fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = '%s_backup');", currentTableName))
 			if err != nil {
-				return errors.Wrap(err, "error checking if destination table exists")
+				return errors.Wrap(err, "error checking if backup table exists")
 			}
 			if exists {
 				return errors.New("backup table of current table already exists, please rename or drop it before running this command")
@@ -119,7 +119,7 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 	logrus.Infof("Part 2: Schema creation completed, moving data now")
 
 	// Data moving
-	err = s.copyValidatorStats(destinationTableName, currentTableName, 0)
+	err = s.copyValidatorStats(currentTableName, destinationTableName, 0)
 	if err != nil {
 		return errors.Wrap(err, "error copying data")
 	}
@@ -133,12 +133,12 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 				// This should handle the case when we switch days after data has been copied and before renaming. Remember that only completed days are exported by the statistics exporter.
 				logrus.Infof("Missmatch between current table and destination table row amount for the last exported day. Retrying to export last day.")
 				maxDay := int64(0)
-				err = db.WriterDb.Get(&maxDay, fmt.Sprintf("SELECT max(day) FROM %s", currentTableName))
+				err = db.WriterDb.Get(&maxDay, fmt.Sprintf("SELECT max(day) FROM %s", destinationTableName))
 				if err != nil {
 					return errors.Wrap(err, "error getting max day")
 				}
 
-				err = s.copyValidatorStats(destinationTableName, currentTableName, maxDay)
+				err = s.copyValidatorStats(currentTableName, destinationTableName, maxDay+1)
 				if err != nil {
 					return errors.Wrap(err, "error copying data")
 				}
@@ -203,14 +203,14 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 
 	// get number of rows in current-table of last day
 	var numberOfRows int64
-	err = tx.Get(&numberOfRows, fmt.Sprintf("SELECT count(1) FROM %s WHERE day = (SELECT max(day) FROM %s)", currentTableName, currentTableName))
+	err = tx.Get(&numberOfRows, fmt.Sprintf("SELECT count(1) FROM %[1]s WHERE day = (SELECT max(day) FROM %[1]s)", currentTableName))
 	if err != nil {
 		return errors.Wrap(err, "error getting number of rows in current table")
 	}
 
 	// get number of rows in destination-table of last day
 	var numberOfRowsDestination int64
-	err = tx.Get(&numberOfRowsDestination, fmt.Sprintf("SELECT count(1) FROM %s WHERE day = (SELECT max(day) FROM %s)", destinationTableName, destinationTableName))
+	err = tx.Get(&numberOfRowsDestination, fmt.Sprintf("SELECT count(1) FROM %[1]s WHERE day = (SELECT max(day) FROM %[1]s)", destinationTableName))
 	if err != nil {
 		return errors.Wrap(err, "error getting number of rows in destination table")
 	}
@@ -226,13 +226,13 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 	}
 
 	// Rename old pk to backup
-	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX %s_pkey RENAME TO %s_backup_pkey ;", currentTableName, currentTableName))
+	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX %[1]s_pkey RENAME TO %[1]s_backup_pkey", currentTableName))
 	if err != nil {
 		return errors.Wrap(err, "error renaming destination table v1 index to current table")
 	}
 
 	// rename old day idx to backup
-	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX idx_%s_day RENAME TO idx_%s_backup_day;", currentTableName, currentTableName))
+	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX idx_%[1]s_day RENAME TO idx_%[1]s_backup_day;", currentTableName))
 	if err != nil {
 		return errors.Wrap(err, "error renaming destination table v1 pk to current table")
 	}
@@ -409,7 +409,8 @@ func (s *statsMigratorConfig) createValidatorStatsPartionedTableSchemav1(tableNa
 
 	// remove anything after the create database closing )
 	if strings.Contains(createOnly, "PRIMARY KEY") {
-		createOnly = fmt.Sprintf("%s))", strings.Split(createOnly, ")")[0])
+		lastIndex := strings.LastIndex(createOnly, ")")
+		createOnly = fmt.Sprintf("%s)", createOnly[:lastIndex])
 	} else {
 		return errors.New("Can not create a v1 schema for the " + tableName + " since this table is not a valid unpartitioned v1 schema (missing primary key)")
 		// if this is needed at some point to convert a v2 to a v1, we can add the primary key here
@@ -455,7 +456,7 @@ func (s *statsMigratorConfig) createValidatorStatsPartionedTableSchemav1(tableNa
 	return nil
 }
 
-func (s *statsMigratorConfig) copyValidatorStats(destTableName, sourceTableName string, startDay int64) error {
+func (s *statsMigratorConfig) copyValidatorStats(sourceTableName, destTableName string, startDay int64) error {
 	if s.DryRun {
 		fmt.Printf("No data transfer in dry-run\n")
 		return nil
@@ -512,7 +513,7 @@ func (s *statsMigratorConfig) copyValidatorStats(destTableName, sourceTableName 
 
 func getCreateTableStatement(db *sqlx.DB, tableName string) (string, error) {
 	var createStatement string
-	err := db.QueryRow(fmt.Sprintf("SELECT public.pg_get_tabledef('public', '%s', false);", tableName)).Scan(&createStatement)
+	err := db.QueryRow(fmt.Sprintf("SELECT public.pg_get_tabledef('public', '%s', false)", tableName)).Scan(&createStatement)
 	if err != nil {
 		return "", err
 	}
@@ -528,7 +529,7 @@ func existsPGGetTableDef(db *sqlx.DB) (bool, error) {
 		AND pronamespace = (
 			SELECT oid FROM pg_namespace WHERE nspname = 'public'
 		)
-	);`).Scan(&exists)
+	)`).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
