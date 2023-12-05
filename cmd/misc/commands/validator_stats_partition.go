@@ -153,7 +153,7 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 		}
 	} else {
 		// Sanity
-		err := sanityCheckIsSameExportedDay(nil, currentTableName)
+		err := sanityCheckIsSameExportedDay(nil, destinationTableName)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 	defer tx.Rollback()
 
 	// Sanity check same day height
-	err = sanityCheckIsSameExportedDay(tx, currentTableName)
+	err = sanityCheckIsSameExportedDay(tx, destinationTableName)
 	if err != nil {
 		return err
 	}
