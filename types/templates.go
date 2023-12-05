@@ -126,7 +126,6 @@ type Meta struct {
 
 // LatestState is a struct to hold data for the banner
 type LatestState struct {
-	ChainID               uint64 `json:"chainID"`
 	LastProposedSlot      uint64 `json:"lastProposedSlot"`
 	CurrentSlot           uint64 `json:"currentSlot"`
 	CurrentEpoch          uint64 `json:"currentEpoch"`

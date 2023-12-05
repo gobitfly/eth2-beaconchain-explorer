@@ -1134,7 +1134,6 @@ func LatestSlotVizMetrics() []*types.SlotVizEpochs {
 // LatestState returns statistics about the current eth2 state
 func LatestState() *types.LatestState {
 	data := &types.LatestState{}
-	data.ChainID = utils.Config.Chain.Id
 	data.CurrentEpoch = LatestEpoch()
 	data.CurrentSlot = LatestSlot()
 	data.CurrentFinalizedEpoch = LatestFinalizedEpoch()

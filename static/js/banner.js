@@ -47,8 +47,8 @@ function updateBanner() {
         slotHandle.setAttribute("href", "/slot/" + data.currentSlot)
       }
 
-      if (data && data.chainID === 1) {
-        var ethPriceHandle = document.getElementById("banner-eth-price-data")
+      var ethPriceHandle = document.getElementById("banner-eth-price-data")
+      if (ethPriceHandle) {
         try {
           let userCurrency = getCookie("currency")
           if (!userCurrency) userCurrency = data.rates.tickerCurrency
