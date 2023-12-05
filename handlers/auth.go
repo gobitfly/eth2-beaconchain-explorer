@@ -753,7 +753,7 @@ func sendPasswordResetEmail(email string) error {
 		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authResetEmailRateLimit).Sub(now)}
 	}
 
-	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1 WHERE email = $2", resetHash, email)
+	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1, password_reset_ts = TO_TIMESTAMP($2) WHERE email = $3", resetHash, time.Now().Unix(), email)
 	if err != nil {
 		return fmt.Errorf("error updating reset-hash: %w", err)
 	}
@@ -777,11 +777,6 @@ Best regards,
 	err = mail.SendTextMail(email, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
-	}
-
-	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password_reset_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
-	if err != nil {
-		return fmt.Errorf("error updating reset-ts: %w", err)
 	}
 
 	return nil
