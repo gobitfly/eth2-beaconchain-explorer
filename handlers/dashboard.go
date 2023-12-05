@@ -1085,7 +1085,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if uint64(dayEnd) >= lastDay {
+	if uint64(dayEnd) > lastDay {
 		_, lastExportedEpoch := utils.GetFirstAndLastEpochForDay(lastDay)
 
 		err = db.ReaderDb.Select(&todaysProposals, `
