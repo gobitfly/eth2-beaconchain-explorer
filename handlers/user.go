@@ -1268,13 +1268,6 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
-	sessionUser, _, err := getUserSession(r)
-	if err != nil {
-		utils.LogError(err, "error retrieving session for email update confirmation", 0, map[string]interface{}{"hash": hash})
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	user := struct {
 		ID               int64     `db:"id"`
 		Email            string    `db:"email"`
@@ -1284,7 +1277,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		StripeCustomerId string    `db:"stripe_customer_id"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&user, `
+	err := db.FrontendWriterDB.Get(&user, `
 		SELECT
 			id,
 			email,
@@ -1296,7 +1289,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		WHERE email_confirmation_hash = $1`, hash)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash, "userID": sessionUser.UserID})
+			utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash})
 		}
 		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1311,7 +1304,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.ConfirmTs.Add(time.Minute * 30).Before(time.Now()) {
+	if user.ConfirmTs.Add(authEmailExpireTime).Before(time.Now()) {
 		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
