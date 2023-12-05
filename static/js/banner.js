@@ -51,8 +51,7 @@ function updateBanner() {
       if (ethPriceHandle) {
         try {
           let userCurrency = getCookie("currency")
-          if (!userCurrency) userCurrency = data.rates.tickerCurrency
-          else if (userCurrency == data.rates.mainCurrency) userCurrency = data.rates.tickerCurrency
+          if (!userCurrency || userCurrency == data.rates.mainCurrency) userCurrency = data.rates.tickerCurrency
           var price = data.rates.mainCurrencyTickerPrices[userCurrency]
           ethPriceHandle.innerHTML = `<span class='currency-symbol'>${price.symbol} </span><span class='k-formatted-price'>${price.truncPrice}</span><span class='price'>${addCommas(price.roundPrice)}</span>`
         } catch (err) {
