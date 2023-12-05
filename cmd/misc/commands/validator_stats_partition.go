@@ -153,7 +153,7 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 		}
 	} else {
 		// Sanity
-		err := sanityCheckIsSameExportedDay(nil, currentTableName)
+		err := sanityCheckIsSameExportedDay(nil, destinationTableName)
 		if err != nil {
 			return err
 		}
