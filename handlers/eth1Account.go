@@ -147,11 +147,10 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		withdrawals, err = db.GetAddressWithdrawals(addressBytes, 25, "", currency)
+		withdrawals, err = db.GetAddressWithdrawalTableData(addressBytes, "", currency)
 		if err != nil {
-			return fmt.Errorf("GetAddressWithdrawals: %w", err)
+			return fmt.Errorf("GetAddressWithdrawalTableData: %w", err)
 		}
-		withdrawals.Draw = 1
 		return nil
 	})
 	g.Go(func() error {
@@ -364,15 +363,14 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	errFields := map[string]interface{}{
 		"route": r.URL.String()}
 
-	withdrawalData, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, q.Get("pageToken"), currency)
-	withdrawalData.RecordsTotal = 0
+	data, err := db.GetAddressWithdrawalTableData(common.HexToAddress(address).Bytes(), q.Get("pageToken"), currency)
 	if err != nil {
 		utils.LogError(err, "error getting address withdrawals data", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(withdrawalData)
+	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		utils.LogError(err, "error enconding json response", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

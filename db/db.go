@@ -49,6 +49,8 @@ const WithdrawalsQueryLimit = 10000
 const BlsChangeQueryLimit = 10000
 const MaxSqlInteger = 2147483647
 
+const DefaultSizeOfRowsQueries = 25
+
 var ErrNoStats = errors.New("no stats available")
 
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
@@ -2203,31 +2205,43 @@ func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
 	return
 }
 
-// GetAddressWithdrawals returns the withdrawal data for an address
-func GetAddressWithdrawals(address []byte, limit uint64, pageToken string, currency string) (*types.DataTableResponse, error) {
+// GetAddressWithdrawalTableData returns the withdrawal data for an address
+func GetAddressWithdrawalTableData(address []byte, pageToken string, currency string) (*types.DataTableResponse, error) {
 	const endOfWithdrawalsData = "End of withdrawals data"
+	const limit = DefaultSizeOfRowsQueries
 
 	var withdrawals []*types.Withdrawals
-	if limit == 0 {
-		limit = 100
-	}
 	var withdrawalIndex uint64
 	var err error
 	var nextPageToken string
+	var emptyData = types.DataTableResponse{
+		Draw:         0,
+		RecordsTotal: 0,
+		Data:         make([][]interface{}, 0),
+		PagingToken:  "",
+	}
+
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
+		logger.WithFields(logrus.Fields{
+			"address":   address,
+			"pageToken": pageToken,
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+	})
+	defer tmr.Stop()
 
 	if pageToken == "" {
 		// Start from the beginning
 		withdrawalIndex, err = GetTotalWithdrawals()
 		if err != nil {
-			return nil, fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
+			return &emptyData, fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
 		}
 	} else if pageToken == endOfWithdrawalsData {
 		// Last page already shown, end the infinite scroll
-		return nil, nil
+		return &emptyData, nil
 	} else {
 		withdrawalIndex, err = strconv.ParseUint(pageToken, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing page token: %w", err)
+			return &emptyData, fmt.Errorf("error parsing page token: %w", err)
 		}
 	}
 
@@ -2243,17 +2257,16 @@ func GetAddressWithdrawals(address []byte, limit uint64, pageToken string, curre
 	WHERE w.address = $1 AND w.withdrawalindex <= $2
 	ORDER BY w.withdrawalindex DESC LIMIT $3`, address, withdrawalIndex, limit+1)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			return nil, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+		if err == sql.ErrNoRows {
+			return &emptyData, nil
 		}
-		nextPageToken = ""
-	} else {
-		// Get the next page token and remove that withdrawal from the results
-		nextPageToken = endOfWithdrawalsData
-		if len(withdrawals) == int(limit+1) {
-			nextPageToken = fmt.Sprintf("%d", withdrawals[limit].Index)
-			withdrawals = withdrawals[:limit]
-		}
+		return &emptyData, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+	}
+	// Get the next page token and remove that withdrawal from the results
+	nextPageToken = endOfWithdrawalsData
+	if len(withdrawals) == int(limit+1) {
+		nextPageToken = fmt.Sprintf("%d", withdrawals[limit].Index)
+		withdrawals = withdrawals[:limit]
 	}
 
 	withdrawalsData := make([][]interface{}, len(withdrawals))
@@ -2267,13 +2280,14 @@ func GetAddressWithdrawals(address []byte, limit uint64, pageToken string, curre
 		}
 	}
 
-	resultData := &types.DataTableResponse{
+	data := types.DataTableResponse{
+		Draw:         1,
 		RecordsTotal: uint64(len(withdrawalsData)),
 		Data:         withdrawalsData,
 		PagingToken:  nextPageToken,
 	}
 
-	return resultData, nil
+	return &data, nil
 }
 
 func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error) {
