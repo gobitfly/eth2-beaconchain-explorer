@@ -20,8 +20,6 @@ import (
 	"github.com/gtuk/discordwebhook"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 	"google.golang.org/api/option"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
@@ -33,10 +31,11 @@ func main() {
 
 	url := flag.String("url", "http://localhost:4000", "")
 
-	discordWebhookReportUrl := flag.String("discord-url", "", "")
-	discordWebhookUser := flag.String("discord-user", "", "")
+	// discordWebhookReportUrl := flag.String("discord-url", "", "")
+	// discordWebhookUser := flag.String("discord-user", "", "")
 	slotNumber := flag.Int("slot-number", -1, "")
 	startSlotNumber := flag.Int("start-slot-number", 0, "")
+	concurrency := flag.Int("concurrency", 1, "")
 
 	flag.Parse()
 
@@ -90,7 +89,7 @@ func main() {
 	}
 
 	gOuter := &errgroup.Group{}
-	gOuter.SetLimit(25)
+	gOuter.SetLimit(*concurrency)
 
 	muts := []*gcp_bigtable.Mutation{}
 	keys := []string{}
@@ -118,7 +117,7 @@ func main() {
 		}
 	}()
 
-	p := message.NewPrinter(language.English)
+	//p := message.NewPrinter(language.English)
 
 	for i := *startSlotNumber; i <= int(latestBlockNumber); i++ {
 
@@ -127,56 +126,95 @@ func main() {
 		gOuter.Go(func() error {
 			for ; ; time.Sleep(time.Second) {
 
-				g := &errgroup.Group{}
+				logrus.Infof("retrieving data for slot %d", i)
 
-				start := time.Now()
+				var slot, proposalRewards, syncRewards []byte
 
-				var slot, receipts, traces []byte
-				var blockDuration, receiptsDuration, tracesDuration time.Duration
+				var proposerAssignments, syncAssignments, attestationAssignments, attestationRewards, validators []byte
 
-				g.Go(func() error {
-					var err error
-					slot, err = getSlot(*url, httpClient, i)
-					blockDuration = time.Since(start)
-					return err
-				})
-
-				err := g.Wait()
-
+				var err error
+				slot, err = getSlot(*url, httpClient, i)
 				if err != nil {
-					logrus.Errorf("error processing block %v: %v", i, err)
+					logrus.Error(err)
 					continue
+				}
+				proposalRewards, err = getPropoalRewards(*url, httpClient, i)
+				if err != nil {
+					logrus.Error(err)
+					continue
+				}
+				syncRewards, err = getSyncRewards(*url, httpClient, i)
+				if err != nil {
+					logrus.Error(err)
+					continue
+				}
+
+				if i%slotsPerEpoch == 0 {
+					logrus.Infof("requesting data for epoch %d", i/slotsPerEpoch)
+					proposerAssignments, err = getPropoalAssignments(*url, httpClient, i/slotsPerEpoch)
+					if err != nil {
+						logrus.Error(err)
+						continue
+					}
+					syncAssignments, err = getSyncCommittees(*url, httpClient, i)
+					if err != nil {
+						logrus.Error(err)
+						continue
+					}
+
+					attestationAssignments, err = getCommittees(*url, httpClient, i)
+					if err != nil {
+						logrus.Error(err)
+						continue
+					}
+
+					attestationRewards, err = getAttestationRewards(*url, httpClient, i/slotsPerEpoch)
+					if err != nil {
+						logrus.Error(err)
+						continue
+					}
+
+					validators, err = getValidators(*url, httpClient, i)
+					if err != nil {
+						logrus.Error(err)
+						continue
+					}
 				}
 
 				mux.Lock()
 				mut := gcp_bigtable.NewMutation()
 				mut.Set("s", "s", gcp_bigtable.Timestamp(0), slot)
-				mut.Set("v", "v", gcp_bigtable.Timestamp(0), receipts)
-				mut.Set("a", "p", gcp_bigtable.Timestamp(0), traces)
-				mut.Set("a", "a", gcp_bigtable.Timestamp(0), traces)
-				mut.Set("a", "s", gcp_bigtable.Timestamp(0), traces)
+				mut.Set("r", "p", gcp_bigtable.Timestamp(0), proposalRewards)
+				mut.Set("r", "s", gcp_bigtable.Timestamp(0), syncRewards)
+
+				if i%slotsPerEpoch == 0 {
+					mut.Set("r", "a", gcp_bigtable.Timestamp(0), attestationRewards)
+					mut.Set("a", "p", gcp_bigtable.Timestamp(0), proposerAssignments)
+					mut.Set("a", "a", gcp_bigtable.Timestamp(0), attestationAssignments)
+					mut.Set("a", "s", gcp_bigtable.Timestamp(0), syncAssignments)
+					mut.Set("v", "v", gcp_bigtable.Timestamp(0), validators)
+				}
 
 				muts = append(muts, mut)
 				key := getBlockKey(i, chainIdUint64)
 				keys = append(keys, key)
 
-				if len(keys) == 1000 {
+				if len(keys) == 32 {
 					ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 					errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
 
 					if err != nil {
-						logrus.Errorf("error writing data to bigtable: %v", err)
+						logrus.Fatalf("error writing data to bigtable: %v", err)
 						cancel()
 						continue
 					}
 
 					for _, err := range errs {
-						logrus.Errorf("error writing data to bigtable: %v", err)
+						logrus.Fatalf("error writing data to bigtable: %v", err)
 						cancel()
 						continue
 					}
 					cancel()
-					logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(slot), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(slot)+len(receipts)+len(traces))
 
 					muts = []*gcp_bigtable.Mutation{}
 					keys = []string{}
@@ -184,8 +222,29 @@ func main() {
 				}
 				mux.Unlock()
 
+				if i%slotsPerEpoch == 0 {
+					logrus.Infof("completed processing block %v (block: %v b, proposer rewards: %v b, sync rewards: %v b, attestation rewards: %v b, proposer assignments: %v b, attestation assignments: %v b, sync assignments: %v b, validators: %v b, total: %v b)",
+						i,
+						len(slot),
+						len(proposalRewards),
+						len(syncRewards),
+						len(attestationRewards),
+						len(proposerAssignments),
+						len(attestationAssignments),
+						len(syncAssignments),
+						len(validators),
+						len(slot)+len(proposalRewards)+len(syncRewards)+len(attestationRewards)+len(proposerAssignments)+len(attestationAssignments)+len(syncAssignments)+len(validators))
+				} else {
+					logrus.Infof("completed processing block %v (block: %v b, proposer rewards: %v b, sync rewards: %v b, total: %v b)",
+						i,
+						len(slot),
+						len(proposalRewards),
+						len(syncRewards),
+						len(slot)+len(proposalRewards)+len(syncRewards)+len(attestationRewards)+len(proposerAssignments)+len(attestationAssignments)+len(syncAssignments)+len(validators))
+				}
+
 				if blocksProcessedTotal.Add(1)%100000 == 0 {
-					sendMessage(p.Sprintf("OP MAINNET NODE EXPORT: currently at block %v of %v (%.1f%%)", i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
+					//sendMessage(p.Sprintf("OP MAINNET NODE EXPORT: currently at block %v of %v (%.1f%%)", i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
 				}
 
 				blocksProcessedIntv.Add(1)
@@ -300,6 +359,16 @@ func genericRequest(method string, requestUrl string, httpClient *http.Client) (
 	}
 
 	if res.StatusCode != http.StatusOK {
+
+		if res.StatusCode == http.StatusNotFound {
+			return nil, nil
+		}
+		if res.StatusCode == http.StatusBadRequest {
+			return nil, nil
+		}
+		if res.StatusCode == http.StatusInternalServerError {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
 	}
 
@@ -310,7 +379,7 @@ func genericRequest(method string, requestUrl string, httpClient *http.Client) (
 		return nil, fmt.Errorf("error reading request body: %v", err)
 	}
 
-	logrus.Info(string(resString))
+	// logrus.Info(string(resString))
 
 	if strings.Contains(string(resString), `"code"`) {
 		return nil, fmt.Errorf("rpc error: %s", resString)
