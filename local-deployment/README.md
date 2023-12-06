@@ -99,7 +99,7 @@ To enable withdrawals for specific validators in your local network, we provide 
 The script needs some arguments: 
 ```
 cd ~/eth2-beaconchain-explorer/local-deployment/scripts
-bash add_withdrawal_address.sh -a "EL wallet address (0x1234...)" -m "memonic" -b "http://localhost:bn_api_port" -i validator_index
+bash add_withdrawal_address.sh -a "ETH address" -m "mnemonic" -b "URL" -i validator_index
 ```
 To fill the address field, you will find address generators with Google but you can also peek any existing address, like your own to enjoy watching it receive huge rewards locally.
 To fill the mnemonic field, copy it from our file _network-params.json_.
