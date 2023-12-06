@@ -79,7 +79,7 @@ func main() {
 	// checkRead(tableBlocksRaw, chainIdUint64)
 
 	httpClient := &http.Client{
-		Timeout: time.Second * 10,
+		Timeout: time.Second * 120,
 	}
 
 	if *blockNumber != -1 {
