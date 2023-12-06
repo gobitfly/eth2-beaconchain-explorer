@@ -101,10 +101,10 @@ The script needs some arguments:
 cd ~/eth2-beaconchain-explorer/local-deployment/scripts
 bash add_withdrawal_address.sh -a "ETH address" -m "mnemonic" -b "URL" -i validator_index
 ```
-To fill the address field, you will find address generators with Google but you can also peek any existing address, like your own to enjoy watching it receive huge rewards locally.
-To fill the mnemonic field, copy it from our file _network-params.json_.
-Replace `bn_api_port` with the port that Kurtosis maps the http port of the consensus client to. This port is written on the console by Kurtosis when it starts, on this line: `cl-1-lighthouse-geth http: ...../tcp -> http://127.0.0.1:XXXXX` (what you want is represented by XXXXX).
-Finally, `validator_index` identifies the local validator that you want to activate withdrawals for. Give a number between 1 and 64.
+- `-a`: Followed by a `string` representing an ETH address prefixed with "0x".
+- `-m`: Followed by a `string` representing the validator mnemonic. The one used to create the initial set of validators can be found in the _network-params.json_ file, see `preregistered_validator_keys_mnemonic`.
+- `-b`: Followed by a `string` representing the URL to the consensus client. The whole URL is logged by Kurtosis when it starts. Search for `cl-1-lighthouse-geth` and look for something like `tcp-discovery: 30303/tcp -> 127.0.0.1:32787`. 
+- `-i`: Followed by a `number` representing the index of the validator you want to activate withdrawals for. The amount of validators created can be also found in the _network-params.json_ file, see `num_validator_keys_per_node`. For 64 validators, the indexes range from 0 to 63.
 
 Here is an example:
 ```
