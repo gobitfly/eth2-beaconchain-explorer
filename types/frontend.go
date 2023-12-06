@@ -222,6 +222,7 @@ type Notification interface {
 	GetEventName() EventName
 	GetEpoch() uint64
 	GetInfo(includeUrl bool) string
+	GetExtras() []string
 	GetTitle() string
 	GetEventFilter() string
 	GetEmailAttachment() *EmailAttachment
