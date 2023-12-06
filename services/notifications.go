@@ -671,14 +671,6 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 					event_title = "income_history"
 				}
 
-				if event == types.SyncCommitteeSoon {
-					if len(ns) > 1 {
-						msgSyncCommitteeSoon += "Your validators "
-					} else {
-						msgSyncCommitteeSoon += "Your validator"
-					}
-				}
-
 				msg.Body += template.HTML(fmt.Sprintf("%s<br>====<br><br>", types.EventLabel[event_title]))
 				unsubURL := "https://" + utils.Config.Frontend.SiteDomain + "/notifications/unsubscribe"
 
