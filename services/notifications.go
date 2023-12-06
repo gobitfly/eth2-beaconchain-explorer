@@ -43,6 +43,7 @@ import (
 // the epochs_notified sql table is used to keep track of already notified epochs
 // before collecting notifications several db consistency checks are done
 func notificationCollector() {
+
 	for {
 		latestFinalizedEpoch := LatestFinalizedEpoch()
 
@@ -628,6 +629,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 }
 
 func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) error {
+
 	userIDs := []uint64{}
 	for userID := range notificationsByUserID {
 		userIDs = append(userIDs, userID)
@@ -658,19 +660,33 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 			subject := ""
 			notificationTitlesMap := make(map[string]bool)
 			notificationTitles := []string{}
+
 			for event, ns := range userNotifications {
 				if len(msg.Body) > 0 {
 					msg.Body += "<br>"
 				}
 				event_title := event
+
 				if event == types.TaxReportEventName {
 					event_title = "income_history"
 				}
+
+				if event == types.SyncCommitteeSoon {
+					if len(ns) > 1 {
+						msgSyncCommitteeSoon += "Your validators "
+					} else {
+						msgSyncCommitteeSoon += "Your validator"
+					}
+				}
+
 				msg.Body += template.HTML(fmt.Sprintf("%s<br>====<br><br>", types.EventLabel[event_title]))
 				unsubURL := "https://" + utils.Config.Frontend.SiteDomain + "/notifications/unsubscribe"
+
 				for i, n := range ns {
+
 					// Find all unique notification titles for the subject
 					title := n.GetTitle()
+
 					if _, ok := notificationTitlesMap[title]; !ok {
 						notificationTitlesMap[title] = true
 						notificationTitles = append(notificationTitles, title)
@@ -727,7 +743,21 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 						unsubURL += "&hash=" + html.EscapeString(unsubHash)
 					}
 					msg.UnSubURL = template.HTML(fmt.Sprintf(`<a style="color: white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'" href="%v">Unsubscribe</a>`, unsubURL))
-					msg.Body += template.HTML(fmt.Sprintf("%s<br>", n.GetInfo(true)))
+
+					if event == types.SyncCommitteeSoon && len(ns) > 1 {
+						extras := n.GetExtras()
+						if i == 0 {
+							msg.Body += template.HTML(fmt.Sprintf("Your validators %s, ", extras[0]))
+						} else if i == len(ns)-1 {
+							msg.Body += template.HTML(fmt.Sprintf("and %s, have been elected to be part of the next sync committee. The additional duties start at epoch %s, which is in %s and will last for about a day until epoch %s..<br>", extras[0], extras[1], extras[2], extras[3]))
+						} else {
+							msg.Body += template.HTML(fmt.Sprintf("%s, ", extras[0]))
+						}
+
+					} else {
+						msg.Body += template.HTML(fmt.Sprintf("%s<br>", n.GetInfo(true)))
+					}
+
 					if att := n.GetEmailAttachment(); att != nil {
 						attachments = append(attachments, *att)
 					}
@@ -1348,6 +1378,10 @@ func (n *validatorProposalNotification) GetInfoMarkdown() string {
 	return generalPart
 }
 
+func (n *validatorProposalNotification) GetExtras() []string {
+	return nil
+}
+
 func collectAttestationAndOfflineValidatorNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, epoch uint64) error {
 	_, subMap, err := db.GetSubsForEventFilter(types.ValidatorMissedAttestationEventName)
 	if err != nil {
@@ -1713,6 +1747,10 @@ func (n *validatorIsOfflineNotification) GetInfoMarkdown() string {
 	}
 }
 
+func (n *validatorIsOfflineNotification) GetExtras() []string {
+	return nil
+}
+
 type validatorAttestationNotification struct {
 	SubscriptionID     uint64
 	ValidatorIndex     uint64
@@ -1797,6 +1835,10 @@ func (n *validatorAttestationNotification) GetInfoMarkdown() string {
 	return generalPart
 }
 
+func (n *validatorAttestationNotification) GetExtras() []string {
+	return nil
+}
+
 type validatorGotSlashedNotification struct {
 	SubscriptionID  uint64
 	ValidatorIndex  uint64
@@ -1853,6 +1895,10 @@ func (n *validatorGotSlashedNotification) GetEventFilter() string {
 func (n *validatorGotSlashedNotification) GetInfoMarkdown() string {
 	generalPart := fmt.Sprintf(`Validator [%[1]v](https://%[5]v/validator/%[1]v) has been slashed at epoch [%[2]v](https://%[5]v/epoch/%[2]v) by validator [%[3]v](https://%[5]v/validator/%[3]v) for %[4]s.`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason, utils.Config.Frontend.SiteDomain)
 	return generalPart
+}
+
+func (n *validatorGotSlashedNotification) GetExtras() []string {
+	return nil
 }
 
 func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, epoch uint64) error {
@@ -1974,6 +2020,10 @@ func (n *validatorWithdrawalNotification) GetEventFilter() string {
 func (n *validatorWithdrawalNotification) GetInfoMarkdown() string {
 	generalPart := fmt.Sprintf(`An automatic withdrawal of %[2]v has been processed for validator [%[1]v](https://%[6]v/validator/%[1]v) during slot [%[3]v](https://%[6]v/slot/%[3]v). The funds have been sent to: [%[4]v](https://%[6]v/address/0x%[5]x).`, n.ValidatorIndex, utils.FormatClCurrencyString(n.Amount, utils.Config.Frontend.MainCurrency, 6, true, false, false), n.Slot, utils.FormatHashRaw(n.Address), n.Address, utils.Config.Frontend.SiteDomain)
 	return generalPart
+}
+
+func (n *validatorWithdrawalNotification) GetExtras() []string {
+	return nil
 }
 
 // collectWithdrawalNotifications collects all notifications validator withdrawals
@@ -2139,6 +2189,10 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 	generalPart := fmt.Sprintf(`A new version for [%s](%s) is available.`, n.EthClient, url)
 
 	return generalPart
+}
+
+func (n *ethClientNotification) GetExtras() []string {
+	return nil
 }
 
 func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
@@ -2449,6 +2503,10 @@ func (n *monitorMachineNotification) GetInfo(includeUrl bool) string {
 	return ""
 }
 
+func (n *monitorMachineNotification) GetExtras() []string {
+	return nil
+}
+
 func (n *monitorMachineNotification) GetTitle() string {
 	switch n.EventName {
 	case types.MonitoringMachineDiskAlmostFullEventName:
@@ -2555,6 +2613,10 @@ func (n *taxReportNotification) GetEventFilter() string {
 
 func (n *taxReportNotification) GetInfoMarkdown() string {
 	return n.GetInfo(false)
+}
+
+func (n *taxReportNotification) GetExtras() []string {
+	return nil
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
@@ -2720,6 +2782,10 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 	return nil
 }
 
+func (n *networkNotification) GetExtras() []string {
+	return nil
+}
+
 type rocketpoolNotification struct {
 	SubscriptionID  uint64
 	UserID          uint64
@@ -2758,6 +2824,7 @@ func (n *rocketpoolNotification) GetEventName() types.EventName {
 }
 
 func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
+
 	switch n.EventName {
 	case types.RocketpoolCommissionThresholdEventName:
 		return fmt.Sprintf(`The current RPL commission rate of %v has reached your configured threshold.`, n.ExtraData)
@@ -2769,6 +2836,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.SyncCommitteeSoon:
 		extras := strings.Split(n.ExtraData, "|")
+
 		if len(extras) != 3 {
 			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
 			return ""
@@ -2785,6 +2853,24 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	}
 
 	return ""
+}
+
+func (n *rocketpoolNotification) GetExtras() []string {
+	extras := strings.Split(n.ExtraData, "|")
+
+	if len(extras) != 3 {
+		logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
+		return nil
+	}
+	var inTime time.Duration
+	syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
+	if err != nil {
+		inTime = time.Duration(utils.Day)
+	} else {
+		inTime = time.Until(utils.EpochToTime(syncStartEpoch))
+	}
+
+	return []string{extras[0], extras[1], inTime.Round(time.Second).String(), extras[2]}
 }
 
 func (n *rocketpoolNotification) GetTitle() string {
