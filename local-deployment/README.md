@@ -20,7 +20,7 @@ sudo usermod -aG docker $USER
 ```
 
 # Install kurtosis-cli
-Kurtosis is a software which will launch inside your computer the different parts of a test network and Bitfly's explorer, using Docker. You will not have to deal with it (nor with Docker), because automating the launch of interdependant modules with Docker and configuring them is the point of Kurtosis. [This short video](https://www.loom.com/share/4256e2b84e5840d3a0a941a80037aebe) gives an overview if it is your first time.
+Kurtosis is a software which will launch the different parts of a test network and the beaconcha.in explorer, using Docker. You will not have to deal with it (nor with Docker), because automating the launch of interdependent modules with Docker and configuring them is the point of Kurtosis. [This short video](https://www.loom.com/share/4256e2b84e5840d3a0a941a80037aebe) gives an overview if it is your first time.
 
 Now, let us install it:
 ```
