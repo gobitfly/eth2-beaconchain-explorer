@@ -20,7 +20,7 @@ sudo usermod -aG docker $USER
 ```
 
 # Install kurtosis-cli
-Kurtosis is a software which will launch the different parts of a test network and the beaconcha.in explorer, using Docker. You will not have to deal with it (nor with Docker), because automating the launch of interdependent modules with Docker and configuring them is the point of Kurtosis. [This short video](https://www.loom.com/share/4256e2b84e5840d3a0a941a80037aebe) gives an overview if it is your first time.
+Kurtosis is a software which will launch the different parts of a test network and the beaconcha.in explorer, all running locally, using Docker. You will not have to deal with it (nor with Docker), because automating the launch of interdependent modules with Docker and configuring them is the point of Kurtosis. [This short video](https://www.loom.com/share/4256e2b84e5840d3a0a941a80037aebe) gives an overview if it is your first time.
 
 Now, let us install it:
 ```
@@ -101,9 +101,9 @@ The script needs some arguments:
 cd ~/eth2-beaconchain-explorer/local-deployment/scripts
 bash add_withdrawal_address.sh -a "ETH address" -m "mnemonic" -b "URL" -i validator_index
 ```
-- `-a`: Followed by a `string` representing an ETH address prefixed with "0x".
+- `-a`: Followed by a `string` representing an ETH address prefixed with "0x" (for example an address that you generated with an online tool – for safety reasons, never use online generators for real applications).
 - `-m`: Followed by a `string` representing the validator mnemonic. The one used to create the initial set of validators can be found in the _network-params.json_ file, see `preregistered_validator_keys_mnemonic`.
-- `-b`: Followed by a `string` representing the URL to the consensus client. The whole URL is logged by Kurtosis when it starts. Search for `cl-1-lighthouse-geth` and look for something like `tcp-discovery: 30303/tcp -> 127.0.0.1:32787`. 
+- `-b`: Followed by a `string` representing the URL to the consensus client. The URL is logged by Kurtosis when it starts. Once everything is running, search for `cl-1-lighthouse-geth` on your console and look for something like `http: 4000/tcp -> http://127.0.0.1:32779`. The end of the line shows the URL that the parameter `-b` needs.
 - `-i`: Followed by a `number` representing the index of the validator you want to activate withdrawals for. The amount of validators created can be also found in the _network-params.json_ file, see `num_validator_keys_per_node`. For 64 validators, the indexes range from 0 to 63.
 
 Here is an example:
