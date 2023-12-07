@@ -608,8 +608,8 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	return template.HTML(p.Sprintf(tpl, float64(e)/float64(Config.Frontend.ClCurrencyDivisor)*price.GetPrice(Config.Frontend.ClCurrency, currency), rr))
 }
 
-// Returns 'count' as a string if parameter 'finalized' is true or if it holds a positive value.
 // When 'finalized' is false and 'count' is 0, a in-progress hint is returned (three dots if 'shortenCalcHint' is true)
+// If 'count' is positive or 'finalized' is true, 'count' is returned as a string
 func FormatCount(count uint64, finalized bool, shortenCalcHint bool) template.HTML {
 	if finalized || count > 0 {
 		return template.HTML(fmt.Sprintf("%v", count))
