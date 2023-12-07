@@ -189,7 +189,7 @@
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:</div>
-            <div class="col-md-9">{{ .ProposerSlashingsCount }} / {{ .AttesterSlashingsCount }}</div>
+            <div class="col-md-9">{{ if or .Finalized .ProposerSlashingsCount }}{{ .ProposerSlashingsCount }}{{ else }}...{{ end }} / {{ if or .Finalized .AttesterSlashingsCount }}{{ .AttesterSlashingsCount }}{{ else }}...{{ end }}</div>
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Voting Participation:</div>

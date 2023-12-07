@@ -30,6 +30,8 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
+const CalculatingHint = `Calculating...`
+
 func FormatMessageToHtml(message string) template.HTML {
 	message = fmt.Sprint(strings.Replace(message, "Error: ", "", 1))
 	return template.HTML(message)
@@ -105,7 +107,7 @@ func FormatBalance(balanceInt uint64, currency string) template.HTML {
 // FormatBalance will return a string for a balance
 func FormatEligibleBalance(balanceInt uint64, currency string) template.HTML {
 	if balanceInt == 0 {
-		return `<span class="text-small text-muted">Calculating...</span>`
+		return `<span class="text-small text-muted">` + CalculatingHint + `</span>`
 	}
 	exchangeRate := price.GetPrice(Config.Frontend.ClCurrency, currency)
 	balance := FormatFloat((float64(balanceInt)/float64(Config.Frontend.ClCurrencyDivisor))*float64(exchangeRate), 2)
@@ -592,7 +594,7 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
 	if e == 0 {
-		return `<span class="text-small text-muted">Calculating...</span>`
+		return `<span class="text-small text-muted">` + CalculatingHint + `</span>`
 	}
 	p := message.NewPrinter(language.English)
 	rr := fmt.Sprintf("%v%%", math.Round(r*10000)/100)
@@ -604,6 +606,20 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	  </div>
 	</div>`
 	return template.HTML(p.Sprintf(tpl, float64(e)/float64(Config.Frontend.ClCurrencyDivisor)*price.GetPrice(Config.Frontend.ClCurrency, currency), rr))
+}
+
+// Returns 'count' as a string if parameter 'finalized' is true or if it holds a positive value.
+// When 'finalized' is false and 'count' is 0, a in-progress hint is returned (three dots if 'shortenCalcHint' is true)
+func FormatCount(count uint64, finalized bool, shortenCalcHint bool) template.HTML {
+	if finalized || count > 0 {
+		return template.HTML(fmt.Sprintf("%v", count))
+	} else {
+		if shortenCalcHint {
+			return template.HTML("...")
+		} else {
+			return template.HTML(CalculatingHint)
+		}
+	}
 }
 
 func FormatEtherValue(currency string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
