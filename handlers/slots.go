@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -82,34 +83,30 @@ func SlotsData(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty bool) (*types.DataTableResponse, error) {
-	var totalCount uint64
 	var filteredCount uint64
 	var blocks []*types.BlocksPageDataBlocks
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	err := db.ReaderDb.Get(&totalCount, "SELECT COALESCE(MAX(slot),0) FROM blocks")
-	if err != nil {
-		return nil, err
-	}
+	latestSlot := services.LatestSlot()
 
 	if length > 100 {
 		length = 100
 	}
 
 	if search == "" && !searchForEmpty {
-		filteredCount = totalCount
-		startSlot := totalCount - start
-		endSlot := totalCount - start - length + 1
+		filteredCount = latestSlot
+		startSlot := latestSlot - start
+		endSlot := latestSlot - start - length + 1
 
 		if startSlot > 9223372036854775807 {
-			startSlot = totalCount
+			startSlot = latestSlot
 		}
 		if endSlot > 9223372036854775807 {
 			endSlot = 0
 		}
-		err = db.ReaderDb.Select(&blocks, `
+		err := db.ReaderDb.Select(&blocks, `
 			SELECT 
 				blocks.epoch, 
 				blocks.slot, 
@@ -170,7 +167,7 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 			ilikeSearch := "%" + search + "%"
 			var graffiti [][]byte
 			statsQry := `SELECT DISTINCT(graffiti) FROM graffiti_stats WHERE graffiti_text ILIKE $1`
-			err = db.ReaderDb.SelectContext(ctx, &graffiti, statsQry, ilikeSearch)
+			err := db.ReaderDb.SelectContext(ctx, &graffiti, statsQry, ilikeSearch)
 			if err != nil {
 				return nil, fmt.Errorf("error retrieving graffiti stats data (with search): %w", err)
 			}
@@ -235,7 +232,7 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 			LEFT JOIN (select count(*) from matched_slots) cnt(total_count) ON true
 			ORDER BY slot DESC LIMIT $%v OFFSET $%v`, searchBlocksQry, len(args)-1, len(args))
 
-		err = db.ReaderDb.SelectContext(ctx, &blocks, qry, args...)
+		err := db.ReaderDb.SelectContext(ctx, &blocks, qry, args...)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving block data (with search): %w", err)
 		}
@@ -270,7 +267,7 @@ func GetSlotsTableData(draw, start, length uint64, search string, searchForEmpty
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    totalCount,
+		RecordsTotal:    latestSlot,
 		RecordsFiltered: filteredCount,
 		Data:            tableData,
 		DisplayStart:    start,
