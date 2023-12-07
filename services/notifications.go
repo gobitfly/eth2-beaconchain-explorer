@@ -727,7 +727,12 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 						unsubURL += "&hash=" + html.EscapeString(unsubHash)
 					}
 					msg.UnSubURL = template.HTML(fmt.Sprintf(`<a style="color: white" onMouseOver="this.style.color='#F5B498'" onMouseOut="this.style.color='#FFFFFF'" href="%v">Unsubscribe</a>`, unsubURL))
-					msg.Body += template.HTML(fmt.Sprintf("%s<br>", n.GetInfo(true)))
+
+					if event != types.SyncCommitteeSoon {
+						// SyncCommitteeSoon notifications are summed up in getEventInfo for all validators
+						msg.Body += template.HTML(fmt.Sprintf("%s<br>", n.GetInfo(true)))
+					}
+
 					if att := n.GetEmailAttachment(); att != nil {
 						attachments = append(attachments, *att)
 					}
@@ -735,8 +740,9 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 					metrics.NotificationsQueued.WithLabelValues("email", string(event)).Inc()
 				}
 
-				if event == "validator_balance_decreased" {
-					msg.Body += template.HTML("<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.<br>")
+				eventInfo := getEventInfo(event, ns)
+				if eventInfo != "" {
+					msg.Body += template.HTML(fmt.Sprintf("%s<br>", eventInfo))
 				}
 			}
 
@@ -2768,20 +2774,7 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolCollateralMinReached:
 		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.SyncCommitteeSoon:
-		extras := strings.Split(n.ExtraData, "|")
-		if len(extras) != 3 {
-			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
-			return ""
-		}
-		var inTime time.Duration
-		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
-		if err != nil {
-			inTime = time.Duration(utils.Day)
-		} else {
-			inTime = time.Until(utils.EpochToTime(syncStartEpoch))
-		}
-
-		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in %s and will last for about a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Second), extras[2])
+		return getSyncCommitteeSoonInfo([]types.Notification{n})
 	}
 
 	return ""
@@ -3162,4 +3155,69 @@ type WebhookQueue struct {
 	Destination    sql.NullString `db:"destination"`
 	Payload        []byte         `db:"payload"`
 	LastTry        time.Time      `db:"last_try"`
+}
+
+func getEventInfo(event types.EventName, ns []types.Notification) string {
+	switch event {
+	case types.SyncCommitteeSoon:
+		return getSyncCommitteeSoonInfo(ns)
+	case "validator_balance_decreased":
+		return "<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again."
+	}
+
+	return ""
+}
+
+func getSyncCommitteeSoonInfo(ns []types.Notification) string {
+	validators := []string{}
+	var startEpoch, endEpoch string
+	var inTime time.Duration
+
+	for i, n := range ns {
+		n, ok := n.(*rocketpoolNotification)
+		if !ok {
+			logger.Errorf("Sync committee notification not of type rocketpoolNotification")
+			return ""
+		}
+		extras := strings.Split(n.ExtraData, "|")
+		if len(extras) != 3 {
+			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
+			return ""
+		}
+
+		validators = append(validators, extras[0])
+		if i == 0 {
+			// startEpoch, endEpoch and inTime must be the same for all validators
+			startEpoch = extras[1]
+			endEpoch = extras[2]
+
+			syncStartEpoch, err := strconv.ParseUint(startEpoch, 10, 64)
+			if err != nil {
+				inTime = time.Duration(utils.Day)
+			} else {
+				inTime = time.Until(utils.EpochToTime(syncStartEpoch))
+			}
+			inTime = inTime.Round(time.Second)
+		}
+	}
+
+	if len(validators) > 0 {
+		validatorsInfo := ""
+		if len(validators) == 1 {
+			validatorsInfo = fmt.Sprintf(`Your validator %s has been elected to be part of the next sync committee.`, validators[0])
+		} else {
+			validatorsText := ""
+			for i, validator := range validators {
+				if i < len(validators)-1 {
+					validatorsText += fmt.Sprintf("%s, ", validator)
+				} else {
+					validatorsText += fmt.Sprintf("and %s", validator)
+				}
+			}
+			validatorsInfo = fmt.Sprintf(`Your validators %s have been elected to be part of the next sync committee.`, validatorsText)
+		}
+		return fmt.Sprintf(`%s The additional duties start at epoch %s, which is in %s and will last for about a day until epoch %s.`, validatorsInfo, startEpoch, inTime, endEpoch)
+	}
+
+	return ""
 }
