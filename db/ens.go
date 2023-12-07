@@ -351,6 +351,9 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		name:    make(map[string]bool),
 	}
 
+	mutDelete := gcp_bigtable.NewMutation()
+	mutDelete.DeleteRow()
+
 	batchSize := 100
 	total := len(keys)
 	for i := 0; i < total; i += batchSize {
@@ -360,19 +363,21 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		}
 		batch := keys[i:to]
 		logger.Infof("Batching ENS entries %v:%v of %v", i, to, total)
+
 		g := new(errgroup.Group)
+		g.SetLimit(10) // limit load on the node
 		mutsDelete := &types.BulkMutations{
 			Keys: make([]string, 0, 1),
 			Muts: make([]*gcp_bigtable.Mutation, 0, 1),
 		}
-		mutDelete := gcp_bigtable.NewMutation()
-		mutDelete.DeleteRow()
+
 		for _, k := range batch {
 			key := k
 			var name string
 			var address *common.Address
 			split := strings.Split(key, ":")
 			value := split[4]
+
 			switch split[3] {
 			case "H":
 				// if we have a hash we look if we find a name in the db. If not we can ignore it.
@@ -402,39 +407,49 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				name = value
 			}
 
-			mutsDelete.Keys = append(mutsDelete.Keys, key)
-			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
-
 			g.Go(func() error {
 				if name != "" {
 					err := validateEnsName(client, name, &alreadyChecked, nil)
 					if err != nil {
-						return err
+						return fmt.Errorf("error validating new name [%v]: %w", name, err)
 					}
 				} else if address != nil {
 					err := validateEnsAddress(client, *address, &alreadyChecked)
 					if err != nil {
-						return err
+						if err.Error() == "not a resolver" {
+							// if the given address is not a resolver, we cannot do anything with it and just skip it
+							logger.Warnf("address [%v] is not a resolver, skipping it", address)
+						} else {
+							return fmt.Errorf("error validating new address [%v]: %w", address, err)
+						}
 					}
 				}
 				return nil
 			})
+
+			mutsDelete.Keys = append(mutsDelete.Keys, key)
+			mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
 		}
+
 		if err := g.Wait(); err != nil {
 			return err
 		}
+
 		// After processing a batch of keys we remove them from bigtable
 		err = bigtable.WriteBulk(mutsDelete, bigtable.tableData, DEFAULT_BATCH_INSERTS)
 		if err != nil {
 			return err
 		}
+
+		// give node some time for other stuff between batches
+		time.Sleep(time.Millisecond * 100)
 	}
-	logger.Info("ens key indexing completed")
+
+	logger.Info("Import of ENS updates completed")
 	return nil
 }
 
 func validateEnsAddress(client *ethclient.Client, address common.Address, alreadyChecked *EnsCheckedDictionary) error {
-
 	alreadyChecked.mux.Lock()
 	if alreadyChecked.address[address] {
 		alreadyChecked.mux.Unlock()
@@ -445,8 +460,7 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 
 	name, err := go_ens.ReverseResolve(client, address)
 	if err != nil {
-		logger.Warnf("could not reverse resolve address [%v]: %v", address, err)
-		return removeEnsAddress(client, address, alreadyChecked)
+		return fmt.Errorf("error could not reverse resolve address [%v]: %w", address, err)
 	}
 
 	currentName, err := GetEnsNameForAddress(address)
@@ -461,7 +475,7 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 		logger.Infof("Address [%x] has a new main name from %x to: %v", address, *currentName, name)
 		err := validateEnsName(client, *currentName, alreadyChecked, &isPrimary)
 		if err != nil {
-			return err
+			return fmt.Errorf("error validating new name [%v]: %w", *currentName, err)
 		}
 	}
 	isPrimary = true
@@ -484,14 +498,22 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	nameHash, err := go_ens.NameHash(name)
 	if err != nil {
-		utils.LogError(err, fmt.Errorf("could not hash name: %v", name), 0)
-		return nil
+		return fmt.Errorf("error could not hash name [%v]: %w", name, err)
 	}
 
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
-		logger.Warnf("could not resolve name [%v]: %v", name, err)
-		return removeEnsName(client, name)
+		if err.Error() == "unregistered name" || err.Error() == "no address" {
+			// the given name is not available anymore, we can remove it from the db (if it is there)
+			err = removeEnsName(client, name)
+			if err != nil {
+				return fmt.Errorf("error removing ens name [%v]: %w", name, err)
+			}
+
+			return nil
+		}
+
+		return fmt.Errorf("error could not resolve name [%v]: %w", name, err)
 	}
 
 	// we need to get the main domain to get the expiration date
@@ -499,19 +521,21 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	mainName := strings.Join(parts[len(parts)-2:], ".")
 	ensName, err := go_ens.NewName(client, mainName)
 	if err != nil {
-		logger.Warnf("could not create name via go_ens.NewName for [%v]: %v", name, err)
-		return removeEnsName(client, name)
+		return fmt.Errorf("error could not create name via go_ens.NewName for [%v]: %w", name, err)
 	}
 
 	expires, err := ensName.Expires()
 	if err != nil {
-		logger.Warnf("could not get ens expire date [%v]: %v", name, err)
-		return removeEnsName(client, name)
+		return fmt.Errorf("error could not get ens expire date for [%v]: %w", name, err)
 	}
 	isPrimary := false
 	if isPrimaryName == nil {
 		reverseName, err := go_ens.ReverseResolve(client, addr)
-		if err == nil && reverseName == name {
+		if err != nil {
+			return fmt.Errorf("error could not reverse resolve address [%v]: %w", addr, err)
+		}
+
+		if reverseName == name {
 			isPrimary = true
 		}
 	} else if *isPrimaryName {
@@ -538,38 +562,10 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 			logger.Warnf("could not insert ens name [%v]: %v", name, err)
 			return nil
 		}
-		utils.LogError(err, fmt.Errorf("error writing ens data for name [%v]", name), 0)
-		return err
+		return fmt.Errorf("error writing ens data for name [%v]: %w", name, err)
 	}
+
 	logger.Infof("Name [%v] resolved -> %x, expires: %v, is primary: %v", name, addr, expires, isPrimary)
-	return nil
-}
-
-func removeEnsAddress(client *ethclient.Client, address common.Address, alreadyChecked *EnsCheckedDictionary) error {
-	name, err := GetEnsNameForAddress(address)
-	if err != nil && err != sql.ErrNoRows {
-		return err
-	}
-	if name == nil {
-		return nil
-	}
-	isPrimary := false
-	return validateEnsName(client, *name, alreadyChecked, &isPrimary)
-}
-
-func removeEnsName(client *ethclient.Client, name string) error {
-	_, err := WriterDb.Exec(`
-	DELETE FROM ens 
-	WHERE 
-		ens_name = $1
-	;`, name)
-	if err != nil && strings.Contains(fmt.Sprintf("%v", err), "invalid byte sequence") {
-		logger.Warnf("could not delete ens name [%v]: %v", name, err)
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("error deleting ens name [%v]: %v", name, err)
-	}
-	logger.Infof("Ens name remove from db: %v", name)
 	return nil
 }
 
@@ -629,5 +625,21 @@ func GetEnsNamesForAddress(addressMap map[string]string) error {
 	for _, foundling := range dbAddresses {
 		addressMap[string(foundling.Address)] = foundling.EnsName
 	}
+	return nil
+}
+
+func removeEnsName(client *ethclient.Client, name string) error {
+	_, err := WriterDb.Exec(`
+	DELETE FROM ens 
+	WHERE 
+		ens_name = $1
+	;`, name)
+	if err != nil && strings.Contains(fmt.Sprintf("%v", err), "invalid byte sequence") {
+		logger.Warnf("could not delete ens name [%v]: %v", name, err)
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error deleting ens name [%v]: %v", name, err)
+	}
+	logger.Infof("Ens name removed from db: %v", name)
 	return nil
 }
