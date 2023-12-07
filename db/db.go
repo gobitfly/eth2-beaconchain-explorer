@@ -49,7 +49,7 @@ const WithdrawalsQueryLimit = 10000
 const BlsChangeQueryLimit = 10000
 const MaxSqlInteger = 2147483647
 
-const DefaultSizeOfRowsQueries = 25
+const DefaultInfScrollRows = 25
 
 var ErrNoStats = errors.New("no stats available")
 
@@ -2208,13 +2208,13 @@ func GetEpochWithdrawalsTotal(epoch uint64) (total uint64, err error) {
 // GetAddressWithdrawalTableData returns the withdrawal data for an address
 func GetAddressWithdrawalTableData(address []byte, pageToken string, currency string) (*types.DataTableResponse, error) {
 	const endOfWithdrawalsData = "End of withdrawals data"
-	const limit = DefaultSizeOfRowsQueries
+	const limit = DefaultInfScrollRows
 
 	var withdrawals []*types.Withdrawals
 	var withdrawalIndex uint64
 	var err error
 	var nextPageToken string
-	var emptyData = types.DataTableResponse{
+	var emptyData = &types.DataTableResponse{
 		Draw:         0,
 		RecordsTotal: 0,
 		Data:         make([][]interface{}, 0),
@@ -2233,15 +2233,15 @@ func GetAddressWithdrawalTableData(address []byte, pageToken string, currency st
 		// Start from the beginning
 		withdrawalIndex, err = GetTotalWithdrawals()
 		if err != nil {
-			return &emptyData, fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
+			return emptyData, fmt.Errorf("error getting total withdrawals for address: %x, %w", address, err)
 		}
 	} else if pageToken == endOfWithdrawalsData {
 		// Last page already shown, end the infinite scroll
-		return &emptyData, nil
+		return emptyData, nil
 	} else {
 		withdrawalIndex, err = strconv.ParseUint(pageToken, 10, 64)
 		if err != nil {
-			return &emptyData, fmt.Errorf("error parsing page token: %w", err)
+			return emptyData, fmt.Errorf("error parsing page token: %w", err)
 		}
 	}
 
@@ -2258,9 +2258,9 @@ func GetAddressWithdrawalTableData(address []byte, pageToken string, currency st
 	ORDER BY w.withdrawalindex DESC LIMIT $3`, address, withdrawalIndex, limit+1)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return &emptyData, nil
+			return emptyData, nil
 		}
-		return &emptyData, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
+		return emptyData, fmt.Errorf("error getting blocks_withdrawals for address: %x: %w", address, err)
 	}
 	// Get the next page token and remove that withdrawal from the results
 	nextPageToken = endOfWithdrawalsData
@@ -2280,14 +2280,12 @@ func GetAddressWithdrawalTableData(address []byte, pageToken string, currency st
 		}
 	}
 
-	data := types.DataTableResponse{
-		Draw:         1,
-		RecordsTotal: uint64(len(withdrawalsData)),
-		Data:         withdrawalsData,
-		PagingToken:  nextPageToken,
+	data := &types.DataTableResponse{
+		Data:        withdrawalsData,
+		PagingToken: nextPageToken,
 	}
 
-	return &data, nil
+	return data, nil
 }
 
 func GetEpochWithdrawals(epoch uint64) ([]*types.WithdrawalsNotification, error) {
