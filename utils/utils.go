@@ -1796,3 +1796,15 @@ func IsPoSBlock0(number uint64, ts int64) bool {
 
 	return time.Unix(int64(Config.Chain.GenesisTimestamp-Config.Chain.ClConfig.GenesisDelay), 0).UTC().Equal(time.Unix(ts, 0))
 }
+
+func GetMaxAllowedDayRangeValidatorStats(validatorAmount int) int {
+	if validatorAmount > 100000 {
+		return 0 // exact day only
+	} else if validatorAmount > 10000 {
+		return 3
+	} else if validatorAmount > 1000 {
+		return 10
+	} else {
+		return math.MaxInt
+	}
+}
