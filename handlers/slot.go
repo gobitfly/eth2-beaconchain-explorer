@@ -783,9 +783,9 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 	for _, w := range withdrawals {
 		tableData = append(tableData, []interface{}{
 			template.HTML(fmt.Sprintf("%v", w.Index)),
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
+			utils.FormatValidator(w.ValidatorIndex),
+			utils.FormatAddress(w.Address, nil, "", false, false, true),
+			utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true),
 		})
 	}
 
@@ -821,10 +821,10 @@ func SlotBlsChangeData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, 0, len(blsChange))
 	for _, c := range blsChange {
 		tableData = append(tableData, []interface{}{
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(c.Validatorindex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.Signature))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.BlsPubkey))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(c.Address, nil, "", false, false, true))),
+			utils.FormatValidator(c.Validatorindex),
+			utils.FormatHashWithCopy(c.Signature),
+			utils.FormatHashWithCopy(c.BlsPubkey),
+			utils.FormatAddress(c.Address, nil, "", false, false, true),
 		})
 	}
 

@@ -158,7 +158,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("GetAddressWithdrawalsTotal: %w", err)
 		}
-		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false, true))
+		withdrawalSummary = utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false, true)
 		return nil
 	})
 
