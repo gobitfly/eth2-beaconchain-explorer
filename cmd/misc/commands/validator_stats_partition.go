@@ -220,7 +220,7 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 	}
 
 	// Rename old table to backuo
-	_, err = tx.Exec(fmt.Sprintf("ALTER TABLE %[1]s RENAME TO %[1]s_backup;", currentTableName))
+	_, err = tx.Exec(fmt.Sprintf("ALTER TABLE %[1]s RENAME TO %[1]s_backup", currentTableName))
 	if err != nil {
 		return errors.Wrap(err, "error renaming current table")
 	}
@@ -232,20 +232,20 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 	}
 
 	// rename old day idx to backup
-	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX idx_%[1]s_day RENAME TO idx_%[1]s_backup_day;", currentTableName))
+	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX idx_%[1]s_day RENAME TO idx_%[1]s_backup_day", currentTableName))
 	if err != nil {
 		return errors.Wrap(err, "error renaming destination table v1 pk to current table")
 	}
 
 	// rename new table
-	_, err = tx.Exec(fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", destinationTableName, currentTableName))
+	_, err = tx.Exec(fmt.Sprintf("ALTER TABLE %s RENAME TO %s", destinationTableName, currentTableName))
 	if err != nil {
 		return errors.Wrap(err, "error renaming destination table to current table")
 	}
 
 	// rename new tables partition names
 	for i := 0; i < numberOfPartitions; i++ {
-		_, err = tx.Exec(fmt.Sprintf("ALTER TABLE %s_%d RENAME TO %s_%d;", destinationTableName, i, currentTableName, i))
+		_, err = tx.Exec(fmt.Sprintf("ALTER TABLE %s_%d RENAME TO %s_%d", destinationTableName, i, currentTableName, i))
 		if err != nil {
 			return errors.Wrap(err, "error renaming destination table partition to current table")
 		}
@@ -267,7 +267,7 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 	}
 
 	// v1 pk renaming
-	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX %s_pkey RENAME TO %s_pkey ;", destinationTableName, currentTableName))
+	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX %s_pkey RENAME TO %s_pkey", destinationTableName, currentTableName))
 	if err != nil {
 		if !strings.Contains(err.Error(), "does not exist") {
 			return errors.Wrap(err, "error renaming destination table v1 index to current table")
@@ -275,7 +275,7 @@ func tableRenaming(currentTableName, destinationTableName string, numberOfPartit
 	}
 
 	// v1 day index renaming
-	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX idx_%s_day RENAME TO idx_%s_day;", destinationTableName, currentTableName))
+	_, err = tx.Exec(fmt.Sprintf("ALTER INDEX idx_%s_day RENAME TO idx_%s_day", destinationTableName, currentTableName))
 	if err != nil {
 		if !strings.Contains(err.Error(), "does not exist") {
 			return errors.Wrap(err, "error renaming destination table v1 pk to current table")
@@ -468,7 +468,7 @@ func (s *statsMigratorConfig) copyValidatorStats(sourceTableName, destTableName 
 	firstTryOnNewDay := true
 
 	for {
-		result, err := db.WriterDb.Exec(fmt.Sprintf("INSERT INTO %s (SELECT * FROM %s WHERE day = $1 AND validatorindex >= $2 AND validatorindex < $3) ON CONFLICT DO NOTHING;", destTableName, sourceTableName), day, offset, offset+s.BatchSize)
+		result, err := db.WriterDb.Exec(fmt.Sprintf("INSERT INTO %s (SELECT * FROM %s WHERE day = $1 AND validatorindex >= $2 AND validatorindex < $3) ON CONFLICT DO NOTHING", destTableName, sourceTableName), day, offset, offset+s.BatchSize)
 		if err != nil {
 			return errors.Wrap(err, "error copying data")
 		}
