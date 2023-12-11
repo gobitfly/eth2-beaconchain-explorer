@@ -90,12 +90,12 @@ func InitSessionStore(secret string) {
 }
 
 func SetFlash(w http.ResponseWriter, r *http.Request, name string, value string) {
-	cookie := http.Cookie{Name: "flash", Value: value, Expires: time.Now().Add(5 * time.Minute)}
+	cookie := http.Cookie{Name: "flash_" + name, Value: value, Expires: time.Now().Add(5 * time.Minute)}
 	http.SetCookie(w, &cookie)
 }
 
 func GetFlash(w http.ResponseWriter, r *http.Request, name string) (string, error) {
-	cookie, err := r.Cookie("flash")
+	cookie, err := r.Cookie("flash_" + name)
 	if err != nil {
 		return "", nil
 	}
@@ -103,14 +103,14 @@ func GetFlash(w http.ResponseWriter, r *http.Request, name string) (string, erro
 }
 
 func GetFlashes(w http.ResponseWriter, r *http.Request, name string) []interface{} {
-	cookie, err := r.Cookie("flash")
+	cookie, err := r.Cookie("flash_" + name)
 	if err != nil || cookie.Value == "" {
 		return nil
 	}
 
 	defer func() {
 		// remove cookie
-		cookie = &http.Cookie{Name: "flash", Value: "", Expires: time.Now().Add(-1 * time.Minute)}
+		cookie = &http.Cookie{Name: "flash_" + name, Value: "", Expires: time.Now().Add(-1 * time.Minute)}
 		http.SetCookie(w, cookie)
 	}()
 
