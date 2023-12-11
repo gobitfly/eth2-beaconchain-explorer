@@ -39,6 +39,12 @@ const BT_COLUMN_TRACES = "t"
 const BT_COLUMNFAMILY_UNCLES = "u"
 const BT_COLUMN_UNCLES = "u"
 
+type blockData struct {
+	block  []byte
+	txs    []string
+	uncles []byte
+}
+
 func main() {
 	elClientUrl := flag.String("elclienturl", "http://localhost:8545", "")
 	discordWebhookReportUrl := flag.String("discord-url", "", "")
@@ -135,12 +141,11 @@ func main() {
 
 				start := time.Now()
 
-				var block, receipts, traces, uncles []byte
-				var txs []string
+				var bData *blockData
+				var receipts, traces []byte
 				var blockDuration, receiptsDuration, tracesDuration time.Duration
-
 				var err error
-				block, txs, uncles, err = getBlock(*elClientUrl, httpClient, i)
+				bData, err = getBlock(*elClientUrl, httpClient, i)
 
 				if err != nil {
 					utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
@@ -148,9 +153,9 @@ func main() {
 				}
 				blockDuration = time.Since(start)
 
-				if len(txs) > 0 { // only request receipts & traces for blocks with tx
+				if len(bData.txs) > 0 { // only request receipts & traces for blocks with tx
 					if chainIdUint64 == 42161 {
-						receipts, err = getBatchedReceipts(*elClientUrl, httpClient, txs)
+						receipts, err = getBatchedReceipts(*elClientUrl, httpClient, bData.txs)
 					} else {
 						receipts, err = getReceipts(*elClientUrl, httpClient, i)
 					}
@@ -174,11 +179,11 @@ func main() {
 
 				mux.Lock()
 				mut := gcp_bigtable.NewMutation()
-				mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), block)
+				mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), bData.block)
 				mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), receipts)
 				mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), traces)
-				if len(uncles) > 0 {
-					mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), uncles)
+				if len(bData.uncles) > 0 {
+					mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), bData.uncles)
 				}
 
 				muts = append(muts, mut)
@@ -201,7 +206,7 @@ func main() {
 						continue
 					}
 					cancel()
-					logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(block)+len(receipts)+len(traces))
+					logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(bData.block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(bData.block)+len(receipts)+len(traces))
 
 					muts = []*gcp_bigtable.Mutation{}
 					keys = []string{}
@@ -214,9 +219,7 @@ func main() {
 				}
 
 				blocksProcessedIntv.Add(1)
-
 				break
-
 			}
 			return nil
 		})
@@ -225,6 +228,58 @@ func main() {
 	gOuter.Wait()
 }
 
+/*
+func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, elClientUrl string, httpClient *http.Client, depth int) error {
+
+	ctx := context.Background()
+	// get latest block from the node
+	latestNodeBlock, err := client.GetNativeClient().BlockByNumber(ctx, nil)
+	if err != nil {
+		return err
+	}
+	latestNodeBlockNumber := latestNodeBlock.NumberU64()
+
+	// for each block check if block node hash and block db hash match
+	for i := latestNodeBlockNumber - uint64(depth); i <= latestNodeBlockNumber; i++ {
+		nodeBlock, err := client.GetNativeClient().HeaderByNumber(ctx, big.NewInt(int64(i)))
+		if err != nil {
+			return err
+		}
+
+		dbBlock, err := bt.GetBlockFromBlocksTable(i)
+		if err != nil {
+			if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
+				return nil
+			}
+			return err
+		}
+
+		if !bytes.Equal(nodeBlock.Hash().Bytes(), dbBlock.Hash) {
+			logrus.Warnf("found incosistency at height %v, node block hash: %x, db block hash: %x", i, nodeBlock.Hash().Bytes(), dbBlock.Hash)
+
+			// delete all blocks starting from the fork block up to the latest block in the db
+			for j := i; j <= latestNodeBlockNumber; j++ {
+				dbBlock, err := bt.GetBlockFromBlocksTable(j)
+				if err != nil {
+					if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
+						return nil
+					}
+					return err
+				}
+				logrus.Infof("deleting block at height %v with hash %x", dbBlock.Number, dbBlock.Hash)
+				err = bt.DeleteBlock(dbBlock.Number, dbBlock.Hash)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			logrus.Infof("height %v, node block hash: %x, db block hash: %x", i, nodeBlock.Hash().Bytes(), dbBlock.Hash)
+		}
+	}
+
+	return nil
+}
+*/
 /*
 func checkRead(tbl *gcp_bigtable.Table, chainId uint64) {
 	ctx := context.Background()
@@ -279,43 +334,43 @@ func sendMessage(content, webhookUrl, username string) {
 	}
 }
 
-func getBlock(url string, httpClient *http.Client, number int) ([]byte, []string, []byte, error) {
+func getBlock(elClientUrl string, httpClient *http.Client, number int) (*blockData, error) {
 	// block
 	var resString []byte
 	blockParsed := &types.Eth1RpcGetBlockResponse{}
 	{
 		body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":1}`, number))
 
-		r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+		r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer(body))
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("error creating post request: %w", err)
+			return nil, fmt.Errorf("error creating post request: %w", err)
 		}
 
 		r.Header.Add("Content-Type", "application/json")
 
 		res, err := httpClient.Do(r)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("error executing post request: %w", err)
+			return nil, fmt.Errorf("error executing post request: %w", err)
 		}
 
 		if res.StatusCode != http.StatusOK {
-			return nil, nil, nil, fmt.Errorf("error unexpected status code: %d", res.StatusCode)
+			return nil, fmt.Errorf("error unexpected status code: %d", res.StatusCode)
 		}
 
 		defer res.Body.Close()
 
 		resString, err = io.ReadAll(res.Body)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("error reading request body: %w", err)
+			return nil, fmt.Errorf("error reading request body: %w", err)
 		}
 
 		err = json.Unmarshal(resString, blockParsed)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("error decoding block response: %w", err)
+			return nil, fmt.Errorf("error decoding block response: %w", err)
 		}
 
 		if strings.Contains(string(resString), `"error":{"code"`) {
-			return nil, nil, nil, fmt.Errorf("eth_getBlockByNumber rpc error: %s", resString)
+			return nil, fmt.Errorf("eth_getBlockByNumber rpc error: %s", resString)
 		}
 	}
 
@@ -327,7 +382,7 @@ func getBlock(url string, httpClient *http.Client, number int) ([]byte, []string
 			transactions[i] = tx.Hash
 		}
 	} else {
-		return nil, nil, nil, fmt.Errorf("blockParsed.Result.Transactions is nil")
+		return nil, fmt.Errorf("blockParsed.Result.Transactions is nil")
 	}
 
 	// uncles
@@ -335,7 +390,7 @@ func getBlock(url string, httpClient *http.Client, number int) ([]byte, []string
 		uncleCount := len(blockParsed.Result.Uncles)
 		if uncleCount > 0 {
 			if uncleCount > 2 {
-				return nil, nil, nil, fmt.Errorf("found more than 2 uncles: %d", len(blockParsed.Result.Uncles))
+				return nil, fmt.Errorf("found more than 2 uncles: %d", len(blockParsed.Result.Uncles))
 			}
 
 			var body []byte
@@ -345,38 +400,38 @@ func getBlock(url string, httpClient *http.Client, number int) ([]byte, []string
 				body = []byte(fmt.Sprintf(`[{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":1}, {"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x1"],"id":2}]`, number, number))
 			}
 
-			r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+			r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer(body))
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("error creating post request for uncle: %w", err)
+				return nil, fmt.Errorf("error creating post request for uncle: %w", err)
 			}
 
 			r.Header.Add("Content-Type", "application/json")
 
 			res, err := httpClient.Do(r)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("error executing post request for uncle: %w", err)
+				return nil, fmt.Errorf("error executing post request for uncle: %w", err)
 			}
 
 			if res.StatusCode != http.StatusOK {
-				return nil, nil, nil, fmt.Errorf("error unexpected status code: %d", res.StatusCode)
+				return nil, fmt.Errorf("error unexpected status code: %d", res.StatusCode)
 			}
 
 			defer res.Body.Close()
 
 			resStringUncle, err := io.ReadAll(res.Body)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("error reading request body for uncle: %w", err)
+				return nil, fmt.Errorf("error reading request body for uncle: %w", err)
 			}
 
 			if strings.Contains(string(resStringUncle), `"error":{"code"`) {
-				return nil, nil, nil, fmt.Errorf("eth_getUncleByBlockNumberAndIndex rpc error: %s", resStringUncle)
+				return nil, fmt.Errorf("eth_getUncleByBlockNumberAndIndex rpc error: %s", resStringUncle)
 			}
 
-			return compress(resString), transactions, compress(resStringUncle), nil
+			return &blockData{block: compress(resString), txs: transactions, uncles: compress(resStringUncle)}, nil
 		}
 	}
 
-	return compress(resString), transactions, nil, nil
+	return &blockData{block: compress(resString), txs: transactions, uncles: nil}, nil
 }
 
 func getReceipts(url string, httpClient *http.Client, number int) ([]byte, error) {
