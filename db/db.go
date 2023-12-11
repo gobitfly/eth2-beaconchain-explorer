@@ -2215,10 +2215,8 @@ func GetAddressWithdrawalTableData(address []byte, pageToken string, currency st
 	var err error
 	var nextPageToken string
 	var emptyData = &types.DataTableResponse{
-		Draw:         0,
-		RecordsTotal: 0,
-		Data:         make([][]interface{}, 0),
-		PagingToken:  "",
+		Data:        make([][]interface{}, 0),
+		PagingToken: "",
 	}
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
