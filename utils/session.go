@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/alexedwards/scs/redisstore"
 	"github.com/alexedwards/scs/v2"
@@ -31,10 +32,6 @@ type CustomSession struct {
 	// TODO: Implement
 }
 
-func (cs *CustomSession) AddFlash(value string) {
-	cs.SCS.Put(cs.ContextFn(), "_flash", value)
-}
-
 func (cs *CustomSession) Save(r *http.Request, w http.ResponseWriter) error {
 	// Not required as sessions are saved on the fly via middleware
 	return nil
@@ -50,21 +47,6 @@ func (cs *CustomSession) GetValue(key string) interface{} {
 
 func (cs *CustomSession) DeleteValue(key string) {
 	cs.SCS.Remove(cs.ContextFn(), key)
-}
-
-func (cs *CustomSession) Flashes(vars ...string) []interface{} {
-	// TODO: Implement
-	key := "_flash"
-	if len(vars) > 0 {
-		key = vars[0]
-	}
-
-	val := cs.SCS.PopString(cs.ContextFn(), key)
-	if val != "" {
-		return []interface{}{val}
-	}
-
-	return []interface{}{}
 }
 
 func (cs *CustomSession) Values() map[interface{}]interface{} {
@@ -108,38 +90,31 @@ func InitSessionStore(secret string) {
 }
 
 func SetFlash(w http.ResponseWriter, r *http.Request, name string, value string) {
-	session, err := SessionStore.Get(r, name)
-	if err != nil {
-		return
-	}
-	session.AddFlash(value)
-	session.Save(r, w)
+	cookie := http.Cookie{Name: "flash", Value: value, Expires: time.Now().Add(5 * time.Minute)}
+	http.SetCookie(w, &cookie)
 }
 
 func GetFlash(w http.ResponseWriter, r *http.Request, name string) (string, error) {
-	session, err := SessionStore.Get(r, name)
+	cookie, err := r.Cookie("flash")
 	if err != nil {
 		return "", nil
 	}
-	fm := session.Flashes()
-	if fm == nil {
-		return "", nil
-	}
-
-	if len(fm) > 0 {
-		return fmt.Sprintf("%v", fm[0]), nil
-	}
-	return "", nil
+	return cookie.Value, nil
 }
 
 func GetFlashes(w http.ResponseWriter, r *http.Request, name string) []interface{} {
-	session, err := SessionStore.Get(r, name)
-	if err != nil {
-		return []interface{}{}
+	cookie, err := r.Cookie("flash")
+	if err != nil || cookie.Value == "" {
+		return nil
 	}
-	flashes := session.Flashes()
-	session.Save(r, w)
-	return flashes
+
+	defer func() {
+		// remove cookie
+		cookie = &http.Cookie{Name: "flash", Value: "", Expires: time.Now().Add(-1 * time.Minute)}
+		http.SetCookie(w, cookie)
+	}()
+
+	return []interface{}{cookie.Value}
 }
 
 func HandleRecaptcha(w http.ResponseWriter, r *http.Request, errorRoute string) error {
