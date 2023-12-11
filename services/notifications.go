@@ -738,14 +738,17 @@ func queueEmailNotifications(notificationsByUserID map[uint64]map[types.EventNam
 
 					if event == types.SyncCommitteeSoon && len(ns) > 1 {
 						extras := n.GetExtras()
-						if i == 0 {
-							msg.Body += template.HTML(fmt.Sprintf("Your validators %s, ", extras[0]))
-						} else if i == len(ns)-1 {
-							msg.Body += template.HTML(fmt.Sprintf("and %s, have been elected to be part of the next sync committee. The additional duties start at epoch %s, which is in %s and will last for about a day until epoch %s..<br>", extras[0], extras[1], extras[2], extras[3]))
+						if extras != nil {
+							if i == 0 {
+								msg.Body += template.HTML(fmt.Sprintf("Your validators %s, ", extras[0]))
+							} else if i == len(ns)-1 {
+								msg.Body += template.HTML(fmt.Sprintf("and %s have been elected to be part of the next sync committee. The additional duties start at epoch %s, which is in %s and will last for about a day until epoch %s.<br>", extras[0], extras[1], extras[2], extras[3]))
+							} else {
+								msg.Body += template.HTML(fmt.Sprintf("%s, ", extras[0]))
+							}
 						} else {
-							msg.Body += template.HTML(fmt.Sprintf("%s, ", extras[0]))
+							logger.Errorf("error getting extras for sync committee soon notification")
 						}
-
 					} else {
 						msg.Body += template.HTML(fmt.Sprintf("%s<br>", n.GetInfo(true)))
 					}
@@ -2827,21 +2830,11 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolCollateralMinReached:
 		return fmt.Sprintf(`Your RPL collateral has reached your configured threshold at %v%%.`, n.ExtraData)
 	case types.SyncCommitteeSoon:
-		extras := strings.Split(n.ExtraData, "|")
-
-		if len(extras) != 3 {
-			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
+		extras := n.GetExtras()
+		if extras == nil {
 			return ""
 		}
-		var inTime time.Duration
-		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
-		if err != nil {
-			inTime = time.Duration(utils.Day)
-		} else {
-			inTime = time.Until(utils.EpochToTime(syncStartEpoch))
-		}
-
-		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in %s and will last for about a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Second), extras[2])
+		return fmt.Sprintf(`Your validator %s has been elected to be part of the next sync committee. The additional duties start at epoch %s, which is in %s and will last for about a day until epoch %s.`, extras[0], extras[1], extras[2], extras[3])
 	}
 
 	return ""
