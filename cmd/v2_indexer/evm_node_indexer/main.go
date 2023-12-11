@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -44,6 +45,18 @@ type blockData struct {
 	txs    []string
 	uncles []byte
 }
+type eth1RpcGetBlockNumberResponse struct {
+	Result string `json:"result"`
+}
+type eth1RpcGetBlockInfoResponse struct {
+	Id   uint64 `json:"id"`
+	Hash string `json:"hash"`
+}
+type dbBlockHash struct {
+	Hash string `json:"hash"`
+}
+
+var dbBlockCache map[uint64]string
 
 func main() {
 	elClientUrl := flag.String("elclienturl", "http://localhost:8545", "")
@@ -55,6 +68,8 @@ func main() {
 	btProject := flag.String("btproject", "etherchain", "")
 	btInstance := flag.String("btinstance", "beaconchain-node-data-storage", "")
 	flag.Parse()
+
+	dbBlockCache = make(map[uint64]string)
 
 	btClient, err := gcp_bigtable.NewClient(context.Background(), *btProject, *btInstance, option.WithGRPCConnectionPool(1))
 	if err != nil {
@@ -187,7 +202,7 @@ func main() {
 				}
 
 				muts = append(muts, mut)
-				key := getBlockKey(i, chainIdUint64)
+				key := getBlockKey(uint64(i), chainIdUint64)
 				keys = append(keys, key)
 
 				if len(keys) == 1000 {
@@ -228,37 +243,146 @@ func main() {
 	gOuter.Wait()
 }
 
-/*
-func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, elClientUrl string, httpClient *http.Client, depth int) error {
+func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, elClientUrl string, httpClient *http.Client, chainId uint64, depth uint64) error {
 
-	ctx := context.Background()
-	// get latest block from the node
-	latestNodeBlock, err := client.GetNativeClient().BlockByNumber(ctx, nil)
-	if err != nil {
-		return err
+	// get latest node block number
+	var latestNodeBlockNumber uint64
+	{
+		body := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
+
+		r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer(body))
+		if err != nil {
+			return fmt.Errorf("error creating post request for reorg: %w", err)
+		}
+
+		r.Header.Add("Content-Type", "application/json")
+		res, err := httpClient.Do(r)
+		if err != nil {
+			return fmt.Errorf("error executing post request for reorg: %w", err)
+		}
+
+		if res.StatusCode != http.StatusOK {
+			return fmt.Errorf("error unexpected status code for reorg: %d", res.StatusCode)
+		}
+		defer res.Body.Close()
+
+		resString, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("error reading request body for reorg: %w", err)
+		}
+
+		if strings.Contains(string(resString), `"error":{"code"`) {
+			return fmt.Errorf("eth_blockNumber rpc error for reorg: %s", resString)
+		}
+
+		blockParsed := &eth1RpcGetBlockNumberResponse{}
+		err = json.Unmarshal(resString, blockParsed)
+		if err != nil {
+			return fmt.Errorf("error decoding block response for reorg: %w", err)
+		}
+
+		latestNodeBlockNumber, err = strconv.ParseUint(blockParsed.Result, 16, 64)
+		if err != nil {
+			return fmt.Errorf("error parsing response for reorg: %w", err)
+		}
 	}
-	latestNodeBlockNumber := latestNodeBlock.NumberU64()
+
+	// define start block
+	if depth > latestNodeBlockNumber {
+		depth = latestNodeBlockNumber
+	}
+	startBlock := latestNodeBlockNumber - depth
+
+	// get all block infos from node
+	var nodeBlocks []eth1RpcGetBlockInfoResponse
+	{
+		bodyString := fmt.Sprintf(`[{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", false],"id":%d}`, startBlock, startBlock)
+		for i := startBlock + 1; i <= latestNodeBlockNumber; i++ {
+			bodyString += fmt.Sprintf(`,{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", false],"id":%d}`, i, i)
+		}
+		bodyString += "]"
+
+		r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer([]byte(bodyString)))
+		if err != nil {
+			return fmt.Errorf("error creating post request for all blocks: %w", err)
+		}
+
+		r.Header.Add("Content-Type", "application/json")
+		res, err := httpClient.Do(r)
+		if err != nil {
+			return fmt.Errorf("error executing post request for all blocks: %w", err)
+		}
+
+		if res.StatusCode != http.StatusOK {
+			return fmt.Errorf("error unexpected status code for all blocks: %d", res.StatusCode)
+		}
+		defer res.Body.Close()
+
+		resString, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("error reading request body for all blocks: %w", err)
+		}
+
+		if strings.Contains(string(resString), `"error":{"code"`) {
+			return fmt.Errorf("eth_blockNumber rpc error for all blocks: %s", resString)
+		}
+
+		err = json.Unmarshal(resString, &nodeBlocks)
+		if err != nil {
+			return fmt.Errorf("error decoding block response for all blocks: %w", err)
+		}
+	}
+
+	// clean our map before adding new elements (and end up oom cause by an error causing a infinit loop)
+	if len(dbBlockCache) > (int)(depth*2) {
+		dbBlockCacheNew := make(map[uint64]string)
+		for i, v := range dbBlockCache {
+			if i >= startBlock {
+				dbBlockCache[i] = v
+			}
+		}
+		dbBlockCache = dbBlockCacheNew
+	}
 
 	// for each block check if block node hash and block db hash match
-	for i := latestNodeBlockNumber - uint64(depth); i <= latestNodeBlockNumber; i++ {
-		nodeBlock, err := client.GetNativeClient().HeaderByNumber(ctx, big.NewInt(int64(i)))
-		if err != nil {
-			return err
-		}
+	for _, nBlock := range nodeBlocks {
 
-		dbBlock, err := bt.GetBlockFromBlocksTable(i)
-		if err != nil {
-			if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
-				return nil
+		var dbHash string
+		if val, ok := dbBlockCache[nBlock.Id]; ok {
+			dbHash = val
+		} else {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+
+			row, err := tableBlocksRaw.ReadRow(ctx, getBlockKey(nBlock.Id, chainId))
+			if err != nil {
+				return fmt.Errorf("error reading row (block %d) from bigtable for db blocks: %w", nBlock.Id, err)
 			}
-			return err
+
+			if len(row[BT_COLUMNFAMILY_BLOCK]) == 0 { // block not found
+				return fmt.Errorf("block %d not found in block table: %w", nBlock.Id, err)
+			}
+
+			for _, r := range row[BT_COLUMNFAMILY_BLOCK] {
+				if r.Column == BT_COLUMN_BLOCK {
+					bInfo := &dbBlockHash{}
+					err = json.Unmarshal(decompress(r.Value), bInfo)
+					if err != nil {
+						return fmt.Errorf("block %d has an error on unmarshal: %w", nBlock.Id, err)
+					}
+					dbHash := bInfo.Hash
+					dbBlockCache[nBlock.Id] = dbHash
+					break
+				}
+			}
 		}
 
-		if !bytes.Equal(nodeBlock.Hash().Bytes(), dbBlock.Hash) {
-			logrus.Warnf("found incosistency at height %v, node block hash: %x, db block hash: %x", i, nodeBlock.Hash().Bytes(), dbBlock.Hash)
+		if dbHash != nBlock.Hash {
+			logrus.Warnf("found incosistency at block %d, node block hash: %s, db block hash: %s", nBlock.Id, nBlock.Hash, dbHash)
 
 			// delete all blocks starting from the fork block up to the latest block in the db
-			for j := i; j <= latestNodeBlockNumber; j++ {
+			for i := nBlock.Id; i <= latestNodeBlockNumber; i++ {
+				/* INCOMPLETE INCOMPLETE INCOMPLETE
 				dbBlock, err := bt.GetBlockFromBlocksTable(j)
 				if err != nil {
 					if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
@@ -270,16 +394,18 @@ func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, elClientUrl string, h
 				err = bt.DeleteBlock(dbBlock.Number, dbBlock.Hash)
 				if err != nil {
 					return err
-				}
+				} */
 			}
-		} else {
-			logrus.Infof("height %v, node block hash: %x, db block hash: %x", i, nodeBlock.Hash().Bytes(), dbBlock.Hash)
-		}
+
+			break // nothing more to do, we deleted everything
+		} /* else {
+			logrus.Infof("block %d, node block hash: %s, db block hash: %s", nBlock.Id, nBlock.Hash, dbHash)
+		} */
 	}
 
 	return nil
 }
-*/
+
 /*
 func checkRead(tbl *gcp_bigtable.Table, chainId uint64) {
 	ctx := context.Background()
@@ -617,7 +743,6 @@ func compress(src []byte) []byte {
 	return buf.Bytes()
 }
 
-/*
 func decompress(src []byte) []byte {
 	zr, err := gzip.NewReader(bytes.NewReader(src))
 	if err != nil {
@@ -630,8 +755,7 @@ func decompress(src []byte) []byte {
 	}
 	return data
 }
-*/
 
-func getBlockKey(blockNumber int, chainId uint64) string {
+func getBlockKey(blockNumber uint64, chainId uint64) string {
 	return fmt.Sprintf("%d:%12d", chainId, MAX_EL_BLOCK_NUMBER-blockNumber)
 }
