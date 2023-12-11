@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
@@ -39,6 +40,8 @@ const BT_COLUMNFAMILY_TRACES = "t"
 const BT_COLUMN_TRACES = "t"
 const BT_COLUMNFAMILY_UNCLES = "u"
 const BT_COLUMN_UNCLES = "u"
+
+var ErrBlockNotFound = errors.New("block not found")
 
 type blockData struct {
 	block  []byte
@@ -243,7 +246,7 @@ func main() {
 	gOuter.Wait()
 }
 
-func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, elClientUrl string, httpClient *http.Client, chainId uint64, depth uint64) error {
+func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, chainId uint64, elClientUrl string, httpClient *http.Client, depth uint64) error {
 
 	// get latest node block number
 	var latestNodeBlockNumber uint64
@@ -347,63 +350,109 @@ func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, elClientUrl string, h
 	// for each block check if block node hash and block db hash match
 	for _, nBlock := range nodeBlocks {
 
-		var dbHash string
-		if val, ok := dbBlockCache[nBlock.Id]; ok {
-			dbHash = val
-		} else {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-
-			row, err := tableBlocksRaw.ReadRow(ctx, getBlockKey(nBlock.Id, chainId))
-			if err != nil {
-				return fmt.Errorf("error reading row (block %d) from bigtable for db blocks: %w", nBlock.Id, err)
+		dbHash, err := getBlockHashFromBT(nBlock.Id, chainId, tableBlocksRaw)
+		if err != nil {
+			if err == ErrBlockNotFound { // exit if we hit a block that is not yet in the db
+				return nil
 			}
-
-			if len(row[BT_COLUMNFAMILY_BLOCK]) == 0 { // block not found
-				return fmt.Errorf("block %d not found in block table: %w", nBlock.Id, err)
-			}
-
-			for _, r := range row[BT_COLUMNFAMILY_BLOCK] {
-				if r.Column == BT_COLUMN_BLOCK {
-					bInfo := &dbBlockHash{}
-					err = json.Unmarshal(decompress(r.Value), bInfo)
-					if err != nil {
-						return fmt.Errorf("block %d has an error on unmarshal: %w", nBlock.Id, err)
-					}
-					dbHash := bInfo.Hash
-					dbBlockCache[nBlock.Id] = dbHash
-					break
-				}
-			}
+			return fmt.Errorf("error getting block hash from BT: %w", err)
 		}
 
 		if dbHash != nBlock.Hash {
 			logrus.Warnf("found incosistency at block %d, node block hash: %s, db block hash: %s", nBlock.Id, nBlock.Hash, dbHash)
 
 			// delete all blocks starting from the fork block up to the latest block in the db
+			blocksToDelete := make([]uint64, 0, latestNodeBlockNumber-nBlock.Id+1)
 			for i := nBlock.Id; i <= latestNodeBlockNumber; i++ {
-				/* INCOMPLETE INCOMPLETE INCOMPLETE
-				dbBlock, err := bt.GetBlockFromBlocksTable(j)
+				blockInBT, err := isBlockInBT(i, chainId, tableBlocksRaw)
 				if err != nil {
-					if err == db.ErrBlockNotFound { // exit if we hit a block that is not yet in the db
-						return nil
-					}
-					return err
+					return fmt.Errorf("error getting block hash from BT for delete: %w", err)
 				}
-				logrus.Infof("deleting block at height %v with hash %x", dbBlock.Number, dbBlock.Hash)
-				err = bt.DeleteBlock(dbBlock.Number, dbBlock.Hash)
-				if err != nil {
-					return err
-				} */
+				if !blockInBT {
+					break // stop collecting blocks if we found a block not in db
+				}
+				blocksToDelete = append(blocksToDelete, i)
 			}
 
-			break // nothing more to do, we deleted everything
-		} /* else {
+			// remove everything from cache
+			dbBlockCache = make(map[uint64]string)
+
+			// remove blocks
+			err = deleteBlocksInBT(blocksToDelete, chainId, tableBlocksRaw)
+			if err != nil {
+				return fmt.Errorf("error deleting block from BT: %w", err)
+			}
+
+			// nothing more to do, we deleted everything
+			break
+
+		} else {
 			logrus.Infof("block %d, node block hash: %s, db block hash: %s", nBlock.Id, nBlock.Hash, dbHash)
-		} */
+		}
 	}
 
 	return nil
+}
+
+func deleteBlocksInBT(blocks []uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Table) error {
+	if len(blocks) <= 0 {
+		return nil
+	}
+
+	// INCOMPLETE INCOMPLETE INCOMPLETE
+	return nil
+}
+
+func isBlockInBT(number uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Table) (bool, error) {
+
+	if _, ok := dbBlockCache[number]; ok {
+		return true, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	row, err := tableBlocksRaw.ReadRow(ctx, getBlockKey(number, chainId))
+	if err != nil {
+		return false, fmt.Errorf("error reading row (block %d) from bigtable for db blocks: %w", number, err)
+	}
+
+	if len(row[BT_COLUMNFAMILY_BLOCK]) == 0 { // block not found
+		return false, nil
+	}
+	return true, nil
+}
+
+func getBlockHashFromBT(number uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Table) (string, error) {
+
+	if val, ok := dbBlockCache[number]; ok {
+		return val, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	row, err := tableBlocksRaw.ReadRow(ctx, getBlockKey(number, chainId))
+	if err != nil {
+		return "", fmt.Errorf("error reading row (block %d) from bigtable for db blocks: %w", number, err)
+	}
+
+	if len(row[BT_COLUMNFAMILY_BLOCK]) == 0 { // block not found
+		return "", ErrBlockNotFound
+	}
+
+	for _, r := range row[BT_COLUMNFAMILY_BLOCK] {
+		if r.Column == BT_COLUMN_BLOCK {
+			bInfo := &dbBlockHash{}
+			err = json.Unmarshal(decompress(r.Value), bInfo)
+			if err != nil {
+				return "", fmt.Errorf("block %d has an error on unmarshal: %w", number, err)
+			}
+			dbBlockCache[number] = bInfo.Hash
+			return bInfo.Hash, nil
+		}
+	}
+	return "", fmt.Errorf("block %d, no entry for block in bigtable found", number)
 }
 
 /*
