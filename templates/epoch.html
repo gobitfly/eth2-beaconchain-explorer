@@ -177,11 +177,11 @@
             <div class="col-md-3">
               <span>Attestations:</span>
             </div>
-            <div class="col-md-9">{{ formatAddCommas .AttestationsCount }}</div>
+            <div class="col-md-9">{{ if or .Finalized .AttestationsCount }}{{ formatAddCommas .AttestationsCount }}{{ else }}Calculating…{{ end }}</div>
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Deposits:</div>
-            <div class="col-md-9">{{ .DepositsCount }}</div>
+            <div class="col-md-9">{{ if or .Finalized .DepositsCount }}{{ .DepositsCount }}{{ else }}Calculating…{{ end }}</div>
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Withdrawals:</div>
@@ -189,18 +189,19 @@
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:</div>
-            <div class="col-md-9">{{ .ProposerSlashingsCount }} / {{ .AttesterSlashingsCount }}</div>
+            <div class="col-md-9">{{ if or .Finalized .ProposerSlashingsCount }}{{ .ProposerSlashingsCount }}{{ else }}…{{ end }} / {{ if or .Finalized .AttesterSlashingsCount }}{{ .AttesterSlashingsCount }}{{ else }}…{{ end }}</div>
           </div>
           <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Voting Participation:</div>
             <div class="col-md-9">
               <div>
-                {{ formatBalance .VotedEther $.Rates.SelectedCurrency }} of
-                {{ formatBalance .EligibleEther $.Rates.SelectedCurrency }}
-                <small class="text-muted ml-1"
-                  >({{ formatPercentageWithPrecision .GlobalParticipationRate 1 }}
-                  %)</small
-                >
+                {{ if or .Finalized .VotedEther }}
+                  {{ formatBalance .VotedEther $.Rates.SelectedCurrency }} of
+                  {{ formatBalance .EligibleEther $.Rates.SelectedCurrency }}
+                  <small class="text-muted ml-1">({{ formatPercentageWithPrecision .GlobalParticipationRate 1 }} %)</small>
+                {{ else }}
+                  Calculating… (total stake: {{ formatBalance .EligibleEther $.Rates.SelectedCurrency }})
+                {{ end }}
               </div>
               <div class="progress" style="height: 5px; width: 250px;">
                 <div class="progress-bar" role="progressbar" style="width: {{ .GlobalParticipationRate | formatPercentage }}%;" aria-valuenow="{{ .GlobalParticipationRate | formatPercentage }}" aria-valuemin="0" aria-valuemax="100"></div>
@@ -227,7 +228,11 @@
           <div class="row p-3 mx-0 collapsed">
             <div style="position:relative" class="col-md-3">Slots:</div>
             <div class="col-md-9">
-              {{ .BlocksCount }}
+              {{ if or .Finalized .BlocksCount }}
+                {{ .BlocksCount }}
+              {{ else }}
+                Calculating…
+              {{ end }}
               <small class="text-muted"> ({{ if gt .ProposedCount 0 }}{{ .ProposedCount }} Proposed{{ end }}{{ if gt .MissedCount 0 }}, {{ .MissedCount }} Missed{{ end }}{{ if gt .ScheduledCount 0 }}, {{ .ScheduledCount }} Pending{{ end }}{{ if gt .OrphanedCount 0 }}, {{ .OrphanedCount }} Orphaned{{ end }}) </small>
             </div>
           </div>
