@@ -2002,7 +2002,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		pageToken = fmt.Sprintf("%s:I:TX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := BigtableClient.GetEth1TxForAddress(pageToken, 25)
+	transactions, lastKey, err := BigtableClient.GetEth1TxForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -2117,7 +2117,7 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, pageTok
 		pageToken = fmt.Sprintf("%s:I:B:%s:", bigtable.chainId, address)
 	}
 
-	blocks, lastKey, err := BigtableClient.GetEth1BlocksForAddress(pageToken, 25)
+	blocks, lastKey, err := BigtableClient.GetEth1BlocksForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -2214,7 +2214,7 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, pageTok
 		pageToken = fmt.Sprintf("%s:I:U:%s:", bigtable.chainId, address)
 	}
 
-	uncles, lastKey, err := BigtableClient.GetEth1UnclesForAddress(pageToken, 25)
+	uncles, lastKey, err := BigtableClient.GetEth1UnclesForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -2307,7 +2307,7 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken stri
 		pageToken = fmt.Sprintf("%s:I:BTX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := bigtable.GetEth1BtxForAddress(pageToken, 25)
+	transactions, lastKey, err := bigtable.GetEth1BtxForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -2426,7 +2426,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		pageToken = fmt.Sprintf("%s:I:ITX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, 25)
+	transactions, lastKey, err := bigtable.GetEth1ItxForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -2739,7 +2739,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken str
 		pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := bigtable.GetEth1ERC20ForAddress(pageToken, 25)
+	transactions, lastKey, err := bigtable.GetEth1ERC20ForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -2865,7 +2865,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken st
 		pageToken = fmt.Sprintf("%s:I:ERC721:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := bigtable.GetEth1ERC721ForAddress(pageToken, 25)
+	transactions, lastKey, err := bigtable.GetEth1ERC721ForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -2975,7 +2975,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken s
 		pageToken = fmt.Sprintf("%s:I:ERC1155:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	}
 
-	transactions, lastKey, err := bigtable.GetEth1ERC1155ForAddress(pageToken, 25)
+	transactions, lastKey, err := bigtable.GetEth1ERC1155ForAddress(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
@@ -3805,7 +3805,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		}
 	}
 
-	transactions, lastKey, err := BigtableClient.GetEth1TxForToken(pageToken, 25)
+	transactions, lastKey, err := BigtableClient.GetEth1TxForToken(pageToken, DefaultInfScrollRows)
 	if err != nil {
 		return nil, err
 	}
