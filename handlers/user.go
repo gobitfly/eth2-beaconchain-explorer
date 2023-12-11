@@ -1728,9 +1728,15 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 	errFields["event_name"] = eventName
 
-	if valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter); err != nil || !valid {
-		utils.LogError(err, "error invalid filter: not pubkey or client for subscription", 0, errFields)
+	valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter)
+	if err != nil {
+		utils.LogError(err, "error validating filter", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return false
+	}
+
+	if !valid {
+		ErrorOrJSONResponse(w, r, "Invalid filter, only pubkey, client or machine name is valid.", http.StatusBadRequest)
 		return false
 	}
 
@@ -1917,10 +1923,16 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 	}
 
 	errFields["event_name"] = eventName
+	valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter)
 
-	if valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter); err != nil || !valid {
-		utils.LogError(err, "error invalid filter: not pubkey or client for unsubscription", 0, errFields)
+	if err != nil {
+		utils.LogError(err, "error validating filter", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return false
+	}
+
+	if !valid {
+		ErrorOrJSONResponse(w, r, "Invalid filter, only pubkey, client or machine name is valid.", http.StatusBadRequest)
 		return false
 	}
 
@@ -2001,14 +2013,20 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter); err != nil || !valid {
-		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
+	valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter)
+	if err != nil {
+		errMsg := fmt.Errorf("error validating filter")
 		errFields := map[string]interface{}{
 			"filter":     filter,
 			"filter_len": len(filter)}
 		utils.LogError(err, errMsg, 0, errFields)
 
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if !valid {
+		ErrorOrJSONResponse(w, r, "Invalid filter, only pubkey, client or machine name is valid.", http.StatusBadRequest)
 		return
 	}
 
@@ -2093,7 +2111,7 @@ func isValidSubscriptionFilter(userID uint64, eventName types.EventName, filter 
 		}
 
 		// While the above works fine for active machines (adding a new notification to an active machine)
-		// It does not work for a machine that is offline and where the user wants to unsubscribe from this machine.
+		// It does not work for a machine that is offline and where the user wants to subscribe/unsubscribe from this machine.
 		// So check the db for any machine names as well
 		if !isValidMachine {
 			machines := make([]string, 0)
