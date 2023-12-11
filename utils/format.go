@@ -30,7 +30,7 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
-const CalculatingHint = `Calculating...`
+const CalculatingHint = `Calculating…`
 
 func FormatMessageToHtml(message string) template.HTML {
 	message = fmt.Sprint(strings.Replace(message, "Error: ", "", 1))
@@ -615,7 +615,7 @@ func FormatCount(count uint64, finalized bool, shortenCalcHint bool) template.HT
 		return template.HTML(fmt.Sprintf("%v", count))
 	} else {
 		if shortenCalcHint {
-			return template.HTML("...")
+			return template.HTML("…")
 		} else {
 			return template.HTML(CalculatingHint)
 		}
