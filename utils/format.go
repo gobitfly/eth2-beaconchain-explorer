@@ -613,13 +613,11 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 func FormatCount(count uint64, finalized bool, shortenCalcHint bool) template.HTML {
 	if finalized || count > 0 {
 		return template.HTML(fmt.Sprintf("%v", count))
-	} else {
-		if shortenCalcHint {
-			return template.HTML("…")
-		} else {
-			return template.HTML(CalculatingHint)
-		}
 	}
+	if shortenCalcHint {
+		return template.HTML("…")
+	}
+	return template.HTML(CalculatingHint)
 }
 
 func FormatEtherValue(currency string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
