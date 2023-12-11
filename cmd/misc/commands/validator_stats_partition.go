@@ -421,7 +421,7 @@ func (s *statsMigratorConfig) createValidatorStatsPartionedTableSchemav1(tableNa
 	}
 
 	partitionedCreate := strings.Replace(fmt.Sprintf("%s PARTITION BY hash(validatorindex);", createOnly), tableName, tempPartitionedName, 1)
-	dayIndex := fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_%s_day ON %[1]s (DAY);", tempPartitionedName)
+	dayIndex := fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_%s_day ON %[1]s (DAY)", tempPartitionedName)
 
 	if s.DryRun {
 		fmt.Printf("%s\n\n%s\n\n", partitionedCreate, dayIndex)
@@ -440,7 +440,7 @@ func (s *statsMigratorConfig) createValidatorStatsPartionedTableSchemav1(tableNa
 	for i := 0; i < numberOfPartitions; i++ {
 		partitionCreate := fmt.Sprintf(`
 			CREATE TABLE %s_%d PARTITION OF %[1]s
-				FOR VALUES WITH (MODULUS %[3]d, REMAINDER %[2]d);
+				FOR VALUES WITH (MODULUS %[3]d, REMAINDER %[2]d)
 		`, tempPartitionedName, i, numberOfPartitions)
 
 		if s.DryRun {
