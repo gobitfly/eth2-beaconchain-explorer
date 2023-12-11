@@ -40,25 +40,24 @@ const BT_COLUMNFAMILY_UNCLES = "u"
 const BT_COLUMN_UNCLES = "u"
 
 func main() {
-
-	url := flag.String("url", "http://localhost:8545", "")
-
+	elClientUrl := flag.String("elclienturl", "http://localhost:8545", "")
 	discordWebhookReportUrl := flag.String("discord-url", "", "")
 	discordWebhookUser := flag.String("discord-user", "", "")
 	blockNumber := flag.Int("block-number", -1, "")
 	startBlockNumber := flag.Int("start-block-number", 0, "")
 	concurrency := flag.Int("concurrency", 1, "")
-
+	btProject := flag.String("btproject", "etherchain", "")
+	btInstance := flag.String("btinstance", "beaconchain-node-data-storage", "")
 	flag.Parse()
 
-	btClient, err := gcp_bigtable.NewClient(context.Background(), "etherchain", "beaconchain-node-data-storage", option.WithGRPCConnectionPool(1))
+	btClient, err := gcp_bigtable.NewClient(context.Background(), *btProject, *btInstance, option.WithGRPCConnectionPool(1))
 	if err != nil {
 		utils.LogFatal(err, "creating new client for Bigtable", 0)
 	}
 
 	tableBlocksRaw := btClient.Open("blocks-raw")
 
-	client, err := ethclient.Dial(*url)
+	client, err := ethclient.Dial(*elClientUrl)
 
 	if err != nil {
 		logrus.Fatalf("error dialing eth url: %v", err)
@@ -92,7 +91,7 @@ func main() {
 
 	if *blockNumber != -1 {
 		logrus.Infof("checking block %v", *blockNumber)
-		getBlock(*url, httpClient, *blockNumber)
+		getBlock(*elClientUrl, httpClient, *blockNumber)
 		logrus.Info("OK")
 		return
 	}
@@ -141,7 +140,7 @@ func main() {
 				var blockDuration, receiptsDuration, tracesDuration time.Duration
 
 				var err error
-				block, txs, uncles, err = getBlock(*url, httpClient, i)
+				block, txs, uncles, err = getBlock(*elClientUrl, httpClient, i)
 
 				if err != nil {
 					utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
@@ -151,9 +150,9 @@ func main() {
 
 				if len(txs) > 0 { // only request receipts & traces for blocks with tx
 					if chainIdUint64 == 42161 {
-						receipts, err = getBatchedReceipts(*url, httpClient, txs)
+						receipts, err = getBatchedReceipts(*elClientUrl, httpClient, txs)
 					} else {
-						receipts, err = getReceipts(*url, httpClient, i)
+						receipts, err = getReceipts(*elClientUrl, httpClient, i)
 					}
 					receiptsDuration = time.Since(start)
 					if err != nil {
@@ -162,9 +161,9 @@ func main() {
 					}
 
 					if chainIdUint64 == 42161 && i <= 22207815 {
-						traces, err = getArbitrumTraces(*url, httpClient, i)
+						traces, err = getArbitrumTraces(*elClientUrl, httpClient, i)
 					} else {
-						traces, err = getGethTraces(*url, httpClient, i)
+						traces, err = getGethTraces(*elClientUrl, httpClient, i)
 					}
 					tracesDuration = time.Since(start)
 					if err != nil {
