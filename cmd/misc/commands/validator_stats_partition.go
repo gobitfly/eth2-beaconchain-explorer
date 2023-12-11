@@ -131,7 +131,7 @@ func (s *statsMigratorConfig) partitionStatsTable(currentTableName, destinationT
 		if err != nil {
 			if err == rowMissmatchErr {
 				// This should handle the case when we switch days after data has been copied and before renaming. Remember that only completed days are exported by the statistics exporter.
-				logrus.Infof("Missmatch between current table and destination table row amount for the last exported day. Retrying to export last day.")
+				logrus.Infof("Missmatch between current table and destination table row amount for the last exported day. Retrying to export last days.")
 				maxDay := int64(0)
 				err = db.WriterDb.Get(&maxDay, fmt.Sprintf("SELECT max(day) FROM %s", destinationTableName))
 				if err != nil {
