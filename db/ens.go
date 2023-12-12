@@ -411,22 +411,12 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				if name != "" {
 					err := validateEnsName(client, name, &alreadyChecked, nil)
 					if err != nil {
-						if err.Error() == "not a resolver" || err.Error() == "no resultion" {
-							// if resolving the given name results in an address that is not a resolver or does not have any resolution, we cannot do anything with it and just skip it
-							logger.Warnf("resolving name [%s] resulted in a skippable error [%s], skipping it", name, err.Error())
-						} else {
-							return fmt.Errorf("error validating new name [%v]: %w", name, err)
-						}
+						return fmt.Errorf("error validating new name [%v]: %w", name, err)
 					}
 				} else if address != nil {
 					err := validateEnsAddress(client, *address, &alreadyChecked)
 					if err != nil {
-						if err.Error() == "not a resolver" {
-							// if the given address is not a resolver, we cannot do anything with it and just skip it
-							logger.Warnf("address [%v] is not a resolver, skipping it", address)
-						} else {
-							return fmt.Errorf("error validating new address [%v]: %w", address, err)
-						}
+						return fmt.Errorf("error validating new address [%v]: %w", address, err)
 					}
 				}
 				return nil
@@ -465,6 +455,11 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 
 	name, err := go_ens.ReverseResolve(client, address)
 	if err != nil {
+		if err.Error() == "not a resolver" || err.Error() == "no resolution" {
+			logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", address, err.Error())
+			return nil
+		}
+
 		return fmt.Errorf("error could not reverse resolve address [%v]: %w", address, err)
 	}
 
@@ -537,6 +532,11 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	if isPrimaryName == nil {
 		reverseName, err := go_ens.ReverseResolve(client, addr)
 		if err != nil {
+			if err.Error() == "not a resolver" || err.Error() == "no resolution" {
+				logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", addr, err.Error())
+				return nil
+			}
+
 			return fmt.Errorf("error could not reverse resolve address [%v]: %w", addr, err)
 		}
 
