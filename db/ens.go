@@ -411,9 +411,9 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 				if name != "" {
 					err := validateEnsName(client, name, &alreadyChecked, nil)
 					if err != nil {
-						if err.Error() == "not a resolver" {
-							// if resolving the given name results in an address that is not a resolver, we cannot do anything with it and just skip it
-							logger.Warnf("resolving name [%s] resulted in an address that is not a resolver, skipping it", name)
+						if err.Error() == "not a resolver" || err.Error() == "no resultion" {
+							// if resolving the given name results in an address that is not a resolver or does not have any resolution, we cannot do anything with it and just skip it
+							logger.Warnf("resolving name [%s] resulted in a skippable error [%s], skipping it", name, err.Error())
 						} else {
 							return fmt.Errorf("error validating new name [%v]: %w", name, err)
 						}
