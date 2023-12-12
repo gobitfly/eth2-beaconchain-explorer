@@ -1026,8 +1026,6 @@ func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
-	var GenericUpdatePasswordError = "Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>"
-
 	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
@@ -1080,19 +1078,10 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pHash, err := bcrypt.GenerateFromPassword([]byte(pwdNew), 10)
-	if err != nil {
-		logger.Errorf("error generating hash for password: %v", err)
-		session.AddFlash(GenericUpdatePasswordError)
-		session.Save(r, w)
-		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-		return
-	}
-
-	err = db.UpdatePassword(user.UserID, pHash)
+	err = db.UpdatePassword(user.UserID, pwdNew)
 	if err != nil {
 		logger.Errorf("error updating password for user: %v", err)
-		session.AddFlash("Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
+		session.AddFlash("Error: Something went wrong updating your password. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return

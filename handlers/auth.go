@@ -471,18 +471,10 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 
 	// update password
 	pwd := r.FormValue("password")
-	pHash, err := bcrypt.GenerateFromPassword([]byte(pwd), 10)
-	if err != nil {
-		utils.LogError(err, "error generating hash for password", 0, errFields)
-		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
-		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
-		return
-	}
-
-	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password = $1, password_reset_hash = NULL WHERE id = $2", pHash, user.ID)
+	err = db.UpdatePassword(user.ID, pwd)
 	if err != nil {
 		utils.LogError(err, "error updating password", 0, errFields)
-		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating your password. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
 		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
