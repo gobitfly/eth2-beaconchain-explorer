@@ -61,30 +61,51 @@ type dbBlockHash struct {
 
 var dbBlockCache map[uint64]string
 
+func init() {
+	dbBlockCache = make(map[uint64]string)
+}
+
 func main() {
-	elClientUrl := flag.String("elclienturl", "http://localhost:8545", "")
-	discordWebhookReportUrl := flag.String("discord-url", "", "")
-	discordWebhookUser := flag.String("discord-user", "", "")
-	blockNumber := flag.Int("block-number", -1, "")
-	startBlockNumber := flag.Int("start-block-number", 0, "")
-	concurrency := flag.Int("concurrency", 1, "")
-	btProject := flag.String("btproject", "etherchain", "")
-	btInstance := flag.String("btinstance", "beaconchain-node-data-storage", "")
+	// read / set parameter
+	elClientUrl := flag.String("elclienturl", "http://localhost:8545", "url to el client")
+	btProject := flag.String("btproject", "etherchain", "bigtable project name")
+	btInstance := flag.String("btinstance", "beaconchain-node-data-storage", "bigtable instance name")
+	startBlockNumber := flag.Int("start-block-number", 0, "only useful in combination with end-block-number, defined block is included")
+	endBlockNumber := flag.Int("end-block-number", 0, "only useful in combination with start-block-number, defined block is included")
+	reorgDepth := flag.Int("reorg.depth", 20, "lookback to check and handle chain reorgs")
+	concurrency := flag.Int("concurrency", 1, "maximum threads used")
+	discordWebhookReportUrl := flag.String("discord-url", "", "report progress to discord url")
+	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
 	flag.Parse()
 
-	dbBlockCache = make(map[uint64]string)
+	_ = startBlockNumber
+	_ = endBlockNumber
+	_ = reorgDepth
 
+	// init bigtable
 	btClient, err := gcp_bigtable.NewClient(context.Background(), *btProject, *btInstance, option.WithGRPCConnectionPool(1))
 	if err != nil {
 		utils.LogFatal(err, "creating new client for Bigtable", 0)
 	}
-
 	tableBlocksRaw := btClient.Open("blocks-raw")
+	if tableBlocksRaw == nil {
+		utils.LogFatal(err, "open blocks-raw table", 0)
+	}
 
+	// init el client
 	client, err := ethclient.Dial(*elClientUrl)
-
 	if err != nil {
 		logrus.Fatalf("error dialing eth url: %v", err)
+	}
+
+	// get chain id
+	var chainIdUint64 uint64
+	{
+		chainId, err := client.ChainID(context.Background())
+		if err != nil {
+			logrus.Fatalf("error retrieving chain id from node: %v", err)
+		}
+		chainIdUint64 = chainId.Uint64()
 	}
 
 	// chainIdUint64 := uint64(10)
@@ -95,29 +116,10 @@ func main() {
 		logrus.Fatalf("error retrieving latest block number: %v", err)
 	}
 
-	chainId, err := client.ChainID(context.Background())
-	if err != nil {
-		logrus.Fatalf("error retrieving chain id from node: %v", err)
-	}
-	chainIdUint64 := chainId.Uint64()
-
-	networkName := ""
-	if chainIdUint64 == 10 {
-		networkName = "OPTIMISM MAINNET"
-	} else if chainIdUint64 == 42161 {
-		networkName = "ARBITRUM MAINNET"
-	}
 	// checkRead(tableBlocksRaw, chainIdUint64)
 
 	httpClient := &http.Client{
 		Timeout: time.Second * 120,
-	}
-
-	if *blockNumber != -1 {
-		logrus.Infof("checking block %v", *blockNumber)
-		getBlock(*elClientUrl, httpClient, *blockNumber)
-		logrus.Info("OK")
-		return
 	}
 
 	gOuter := &errgroup.Group{}
@@ -233,7 +235,7 @@ func main() {
 				mux.Unlock()
 
 				if blocksProcessedTotal.Add(1)%100000 == 0 {
-					sendMessage(p.Sprintf("%s NODE EXPORT: currently at block %v of %v (%.1f%%)", networkName, i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
+					sendMessage(p.Sprintf("%s NODE EXPORT: currently at block %v of %v (%.1f%%)", getChainName(chainIdUint64), i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
 				}
 
 				blocksProcessedIntv.Add(1)
@@ -244,6 +246,18 @@ func main() {
 	}
 
 	gOuter.Wait()
+}
+
+func getChainName(chainId uint64) string {
+	switch chainId {
+	case 1:
+		return "ETHEREUM mainnet"
+	case 10:
+		return "OPTIMISM mainnet"
+	case 42161:
+		return "ARBITRUM mainnet"
+	}
+	return ""
 }
 
 func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, chainId uint64, elClientUrl string, httpClient *http.Client, depth uint64) error {
