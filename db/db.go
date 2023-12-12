@@ -10,7 +10,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"html/template"
 	"math/big"
 	"regexp"
 	"sort"
@@ -2270,11 +2269,11 @@ func GetAddressWithdrawalTableData(address []byte, pageToken string, currency st
 	withdrawalsData := make([][]interface{}, len(withdrawals))
 	for i, w := range withdrawals {
 		withdrawalsData[i] = []interface{}{
-			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
+			utils.FormatEpoch(utils.EpochOfSlot(w.Slot)),
+			utils.FormatBlockSlot(w.Slot),
+			utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()),
+			utils.FormatValidator(w.ValidatorIndex),
+			utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true),
 		}
 	}
 
