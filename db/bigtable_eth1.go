@@ -1941,7 +1941,87 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 	return bulkData, bulkMetadataUpdates, nil
 }
 
-func (bigtable *Bigtable) GetEth1TxsForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, []string, error) {
+func (bigtable *Bigtable) rearrangeReversePaddedIndexZero(ctx context.Context, indexes, keys []string) ([]string, []string) {
+	if len(indexes) < 2 {
+		return indexes, keys
+	}
+	// check for out-of-order index 0
+	for i, index := range indexes {
+		splits := strings.Split(index, ":")
+		if len(splits) < 7 {
+			utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": index})
+			continue
+		}
+
+		if splits[6] == "10000" {
+			k := keys[i]
+			j := i + 1
+			for ; j < len(indexes); j++ {
+				next_splits := strings.Split(indexes[j], ":")
+				if len(next_splits) < 7 {
+					utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": indexes[j]})
+					continue
+				}
+				if next_splits[5] == splits[5] {
+					// another transaction in the same block, move it one step up
+					indexes[j-1] = indexes[j]
+					keys[j-1] = keys[j]
+				} else {
+					// next block, insert index/key
+					indexes[j-1] = index
+					keys[j-1] = k
+					break
+				}
+			}
+			if j == len(indexes) {
+				// remove last entry to avoid duplicate
+				indexes = indexes[:len(indexes)-1]
+				keys = keys[:len(keys)-1]
+				// keep searching for all transactions of that block, ignoring the limit
+				// TODO handle Trace indices correctly
+				i, err := strconv.Atoi(splits[5])
+				if err != nil {
+					utils.LogError(err, "error converting bigtable transaction index timestamp", 0, map[string]interface{}{"index": splits[5]})
+					continue
+				}
+				splits[5] = fmt.Sprintf("%d", i+1)
+				rowRange := gcp_bigtable.NewRange(indexes[len(indexes)-1]+"\x00", strings.Join(splits[:6], ":"))
+				err = bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+					keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+					indexes = append(indexes, row.Key())
+					return true
+				})
+				if err != nil {
+					utils.LogError(err, "error reading from bigtable", 0)
+				}
+				indexes = append(indexes, index)
+				keys = append(keys, k)
+				break
+			}
+		}
+	}
+	return indexes, keys
+}
+
+func skipBlockIfLastTxIndex(key string) string {
+	splits := strings.Split(key, ":")
+	if len(splits) < 7 {
+		utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": key})
+		return key
+	}
+	if splits[6] == "10000" {
+		i, err := strconv.Atoi(splits[5])
+		if err != nil {
+			utils.LogError(err, "error converting bigtable transaction index timestamp", 0, map[string]interface{}{"index": splits[5]})
+		} else {
+			splits[5] = fmt.Sprintf("%d", i+1)
+			return strings.Join(splits[:6], ":")
+		}
+	}
+	return key
+}
+
+func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -1974,6 +2054,8 @@ func (bigtable *Bigtable) GetEth1TxsForAddress(prefix string, limit int64) ([]*t
 		return data, nil, nil
 	}
 
+	indexes, keys = bigtable.rearrangeReversePaddedIndexZero(ctx, indexes, keys)
+
 	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1TransactionIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
@@ -1996,7 +2078,7 @@ func (bigtable *Bigtable) GetEth1TxsForAddress(prefix string, limit int64) ([]*t
 		}
 	}
 
-	return data, indexes, nil
+	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
 }
 
 func (bigtable *Bigtable) GetAddressesNamesArMetadata(names *map[string]string, inputMetadata *map[string]*types.ERC20Metadata) (map[string]string, map[string]*types.ERC20Metadata, error) {
@@ -2129,8 +2211,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 	}
 
 	tableData := make([][]interface{}, len(transactions))
-	for i := len(transactions) - 1; i >= 0; i-- {
-		t := transactions[i]
+	for i, t := range transactions {
 		fromName := names[string(t.From)]
 		var contractInteraction types.ContractInteractionType
 		if len(contractInteractionTypes) > i {
@@ -2387,6 +2468,8 @@ func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*t
 		return data, "", nil
 	}
 
+	indexes, keys = bigtable.rearrangeReversePaddedIndexZero(ctx, indexes, keys)
+
 	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1BlobTransactionIndexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
@@ -2407,7 +2490,7 @@ func (bigtable *Bigtable) GetEth1BtxForAddress(prefix string, limit int64) ([]*t
 		}
 	}
 
-	return data, indexes[len(indexes)-1], nil
+	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
 }
 
 func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
@@ -2441,8 +2524,7 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken stri
 	}
 
 	tableData := make([][]interface{}, len(transactions))
-	for i := len(transactions) - 1; i >= 0; i-- {
-		t := transactions[i]
+	for i, t := range transactions {
 
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
@@ -2489,7 +2571,6 @@ func (bigtable *Bigtable) GetEth1ItxsForAddress(prefix string, limit int64) ([]*
 
 	keysMap := make(map[string]*types.Eth1InternalTransactionIndexed, limit)
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-
 		keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
 		indexes = append(indexes, row.Key())
 		return true
@@ -2500,6 +2581,8 @@ func (bigtable *Bigtable) GetEth1ItxsForAddress(prefix string, limit int64) ([]*
 	if len(keys) == 0 {
 		return data, nil, nil
 	}
+
+	indexes, keys = bigtable.rearrangeReversePaddedIndexZero(ctx, indexes, keys)
 
 	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1InternalTransactionIndexed{}
@@ -2527,7 +2610,7 @@ func (bigtable *Bigtable) GetEth1ItxsForAddress(prefix string, limit int64) ([]*
 		}
 	}
 
-	return data, indexes, nil
+	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
 }
 
 func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
@@ -2821,7 +2904,7 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 	})
 	defer tmr.Stop()
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*30))
 	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value
@@ -2842,6 +2925,8 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 	if len(keys) == 0 {
 		return data, "", nil
 	}
+
+	indexes, keys = bigtable.rearrangeReversePaddedIndexZero(ctx, indexes, keys)
 
 	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1ERC20Indexed{}
@@ -2864,7 +2949,7 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 		}
 	}
 
-	return data, indexes[len(indexes)-1], nil
+	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
 }
 
 func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
@@ -2900,8 +2985,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken str
 
 	tableData := make([][]interface{}, len(transactions))
 
-	for i := len(transactions) - 1; i >= 0; i-- {
-		t := transactions[i]
+	for i, t := range transactions {
 
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
@@ -2971,6 +3055,8 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([
 		return data, "", nil
 	}
 
+	indexes, keys = bigtable.rearrangeReversePaddedIndexZero(ctx, indexes, keys)
+
 	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1ERC721Indexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
@@ -2991,7 +3077,7 @@ func (bigtable *Bigtable) GetEth1ERC721ForAddress(prefix string, limit int64) ([
 			data = append(data, d)
 		}
 	}
-	return data, indexes[len(indexes)-1], nil
+	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
 }
 
 func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
@@ -3024,8 +3110,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken st
 	}
 
 	tableData := make([][]interface{}, len(transactions))
-	for i := len(transactions) - 1; i >= 0; i-- {
-		t := transactions[i]
+	for i, t := range transactions {
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
 
@@ -3082,6 +3167,8 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) (
 		return data, "", nil
 	}
 
+	indexes, keys = bigtable.rearrangeReversePaddedIndexZero(ctx, indexes, keys)
+
 	err = bigtable.tableData.ReadRows(ctx, gcp_bigtable.RowList(keys), func(row gcp_bigtable.Row) bool {
 		b := &types.ETh1ERC1155Indexed{}
 		err := proto.Unmarshal(row[DEFAULT_FAMILY][0].Value, b)
@@ -3102,7 +3189,7 @@ func (bigtable *Bigtable) GetEth1ERC1155ForAddress(prefix string, limit int64) (
 			data = append(data, d)
 		}
 	}
-	return data, indexes[len(indexes)-1], nil
+	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
 }
 
 func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
@@ -3136,8 +3223,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken s
 		return nil, err
 	}
 
-	for i := len(transactions) - 1; i >= 0; i-- {
-		t := transactions[i]
+	for i, t := range transactions {
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
 
