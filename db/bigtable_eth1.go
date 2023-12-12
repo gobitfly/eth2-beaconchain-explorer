@@ -1988,7 +1988,7 @@ func (bigtable *Bigtable) GetIndexedEth1Transaction(txHash []byte) (*types.Eth1T
 	}
 }
 
-func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageToken string, currency string) (*types.DataTableResponse, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -2033,7 +2033,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
 			utils.FormatInOutSelf(address, t.From, t.To),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.To, toName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), utils.Config.Frontend.ElCurrency, 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), currency, 6),
 		}
 	}
 
@@ -2103,7 +2103,7 @@ func (bigtable *Bigtable) GetEth1BlocksForAddress(prefix string, limit int64) ([
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, pageToken string, currency string) (*types.DataTableResponse, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -2130,7 +2130,7 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, pageTok
 			utils.FormatBlockNumber(b.Number),
 			utils.FormatTimestamp(b.Time.AsTime().Unix()),
 			utils.FormatBlockUsage(b.GasUsed, b.GasLimit),
-			utils.FormatAmount(reward, utils.Config.Frontend.ElCurrency, 6),
+			utils.FormatAmount(reward, currency, 6),
 		}
 	}
 
@@ -2200,7 +2200,7 @@ func (bigtable *Bigtable) GetEth1UnclesForAddress(prefix string, limit int64) ([
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, pageToken string, currency string) (*types.DataTableResponse, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -2225,7 +2225,7 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, pageTok
 			utils.FormatBlockNumber(u.Number),
 			utils.FormatTimestamp(u.Time.AsTime().Unix()),
 			utils.FormatDifficulty(new(big.Int).SetBytes(u.Difficulty)),
-			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), utils.Config.Frontend.ElCurrency, 6),
+			utils.FormatAmount(new(big.Int).SetBytes(u.Reward), currency, 6),
 		}
 	}
 
@@ -2411,7 +2411,7 @@ func (bigtable *Bigtable) GetEth1ItxForAddress(prefix string, limit int64) ([]*t
 	return data, indexes[len(indexes)-1], nil
 }
 
-func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
+func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken string, currency string) (*types.DataTableResponse, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -2454,7 +2454,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
 			utils.FormatInOutSelf(address, t.From, t.To),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.To, toName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
-			utils.FormatAmount(new(big.Int).SetBytes(t.Value), utils.Config.Frontend.ElCurrency, 6),
+			utils.FormatAmount(new(big.Int).SetBytes(t.Value), currency, 6),
 			t.Type,
 		}
 	}

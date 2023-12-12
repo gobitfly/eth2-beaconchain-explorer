@@ -28,7 +28,7 @@ func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/eth1transactions", "Transactions", templateFiles)
-	data.Data = getTransactionDataStartingWithPageToken("")
+	data.Data = getTransactionDataStartingWithPageToken("", GetCurrency(r))
 
 	if handleTemplateError(w, r, "eth1Transactions.go", "Eth1Transactions", "", eth1TransactionsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
@@ -38,14 +38,14 @@ func Eth1Transactions(w http.ResponseWriter, r *http.Request) {
 func Eth1TransactionsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	err := json.NewEncoder(w).Encode(getTransactionDataStartingWithPageToken(r.URL.Query().Get("pageToken")))
+	err := json.NewEncoder(w).Encode(getTransactionDataStartingWithPageToken(r.URL.Query().Get("pageToken"), GetCurrency(r)))
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
-func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableResponse {
+func getTransactionDataStartingWithPageToken(pageToken string, currency string) *types.DataTableResponse {
 	pageTokenId := uint64(0)
 	{
 		if len(pageToken) > 0 {
@@ -118,8 +118,8 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
 					toText,
-					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
-					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
+					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), currency, 8, 4, true, true, false),
+					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), currency, 8, 4, true, true, false),
 				})
 				return nil
 			})
