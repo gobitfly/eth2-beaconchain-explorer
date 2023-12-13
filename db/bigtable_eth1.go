@@ -1941,66 +1941,109 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 	return bulkData, bulkMetadataUpdates, nil
 }
 
+type IndexKeys struct {
+	indexes []string
+	keys    []string
+}
+
+type SortByIndexes IndexKeys
+
+func (sbi SortByIndexes) Len() int {
+	return len(sbi.indexes)
+}
+
+func (sbi SortByIndexes) Swap(i, j int) {
+	sbi.indexes[i], sbi.indexes[j] = sbi.indexes[j], sbi.indexes[i]
+	sbi.keys[i], sbi.keys[j] = sbi.keys[j], sbi.keys[i]
+}
+
+func (sbi SortByIndexes) Less(i, j int) bool {
+	i_splits := strings.Split(sbi.indexes[i], ":")
+	j_splits := strings.Split(sbi.indexes[j], ":")
+	if len(i_splits) != len(j_splits) || len(i_splits) < 7 {
+		utils.LogError(nil, "unexpected bigtable transaction indices", 0, map[string]interface{}{"index_i": sbi.indexes[i], "index_j": sbi.indexes[j]})
+		return false
+	}
+
+	// block
+	if i_splits[5] != j_splits[5] {
+		return i_splits[5] < j_splits[5]
+	}
+	// tx idx
+	if i_splits[6] != j_splits[6] {
+		if i_splits[6] == "10000" || j_splits[6] == "10000" {
+			return j_splits[6] == "10000"
+		}
+		return i_splits[6] < j_splits[6]
+	}
+	// itx idx
+	if len(i_splits) > 7 && i_splits[7] != j_splits[7] {
+		if i_splits[7] == "100000" || j_splits[7] == "100000" {
+			return j_splits[7] == "100000"
+		}
+		return i_splits[7] < j_splits[7]
+	}
+	// shouldn't happen, this means we've the same key twice
+	utils.LogError(nil, "unexpected bigtable transaction indices", 0, map[string]interface{}{"index_i": sbi.indexes[i], "index_j": sbi.indexes[j]})
+	return false
+}
+
 func (bigtable *Bigtable) rearrangeReversePaddedIndexZero(ctx context.Context, indexes, keys []string) ([]string, []string) {
 	if len(indexes) < 2 {
 		return indexes, keys
 	}
-	// check for out-of-order index 0
-	for i, index := range indexes {
-		splits := strings.Split(index, ":")
+
+	// first find out if we've a (sub)transaction with index 0 whose block/transaction has maybe not been completed by the request
+	// if we find one, make sure we do. So we won't miss that (i)tx next time (=> ignoring the query limit)
+	for i := 0; i < len(indexes); i++ {
+		splits := strings.Split(indexes[i], ":")
 		if len(splits) < 7 {
-			utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": index})
+			utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": indexes[i]})
 			continue
 		}
 
-		if splits[6] == "10000" {
-			k := keys[i]
-			j := i + 1
-			for ; j < len(indexes); j++ {
-				next_splits := strings.Split(indexes[j], ":")
-				if len(next_splits) < 7 {
-					utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": indexes[j]})
-					continue
-				}
-				if next_splits[5] == splits[5] {
-					// another transaction in the same block, move it one step up
-					indexes[j-1] = indexes[j]
-					keys[j-1] = keys[j]
-				} else {
-					// next block, insert index/key
-					indexes[j-1] = index
-					keys[j-1] = k
-					break
-				}
+		if splits[6] != "10000" && len(splits) > 7 && splits[7] != "100000" {
+			continue
+		}
+		// check if results list all following (i)txs already
+		for i++; i < len(indexes); i++ {
+			next_splits := strings.Split(indexes[i], ":")
+			if len(next_splits) < 7 {
+				utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": indexes[i]})
+				continue
 			}
-			if j == len(indexes) {
-				// remove last entry to avoid duplicate
-				indexes = indexes[:len(indexes)-1]
-				keys = keys[:len(keys)-1]
-				// keep searching for all transactions of that block, ignoring the limit
-				// TODO handle Trace indices correctly
-				i, err := strconv.Atoi(splits[5])
-				if err != nil {
-					utils.LogError(err, "error converting bigtable transaction index timestamp", 0, map[string]interface{}{"index": splits[5]})
-					continue
-				}
-				splits[5] = fmt.Sprintf("%d", i+1)
-				rowRange := gcp_bigtable.NewRange(indexes[len(indexes)-1]+"\x00", strings.Join(splits[:6], ":"))
-				err = bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-					keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
-					indexes = append(indexes, row.Key())
-					return true
-				})
-				if err != nil {
-					utils.LogError(err, "error reading from bigtable", 0)
-				}
-				indexes = append(indexes, index)
-				keys = append(keys, k)
+			if next_splits[5] != splits[5] || (len(splits) > 7 && next_splits[6] != splits[6]) {
+				// next block/tx
 				break
 			}
 		}
+		if i == len(indexes) {
+			// block/tx maybe isn't fully included in results, request all missing entries (ignoring the query limit)
+			i, err := strconv.Atoi(splits[5])
+			if err != nil {
+				utils.LogError(err, "error converting bigtable transaction index timestamp", 0, map[string]interface{}{"index": splits[5]})
+				continue
+			}
+			splits[5] = fmt.Sprintf("%d", i+1)
+			rowRange := gcp_bigtable.NewRange(indexes[len(indexes)-1]+"\x00", strings.Join(splits[:6], ":"))
+			err = bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+				keys = append(keys, strings.TrimPrefix(row[DEFAULT_FAMILY][0].Column, "f:"))
+				indexes = append(indexes, row.Key())
+				return true
+			})
+			if err != nil {
+				utils.LogError(err, "error reading from bigtable", 0)
+			}
+			break
+		}
+		i--
 	}
-	return indexes, keys
+
+	// sort
+	ik := IndexKeys{indexes, keys}
+	sort.Sort(SortByIndexes(ik))
+
+	return ik.indexes, ik.keys
 }
 
 func skipBlockIfLastTxIndex(key string) string {
@@ -2008,6 +2051,15 @@ func skipBlockIfLastTxIndex(key string) string {
 	if len(splits) < 7 {
 		utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": key})
 		return key
+	}
+	if len(splits) == 8 && splits[7] == "100000" && splits[6] != "10000" {
+		i, err := strconv.Atoi(splits[6])
+		if err != nil {
+			utils.LogError(err, "error converting bigtable transaction index", 0, map[string]interface{}{"index": splits[6]})
+		} else {
+			splits[6] = fmt.Sprintf("%d", i+1)
+		}
+		splits = splits[:7]
 	}
 	if splits[6] == "10000" {
 		i, err := strconv.Atoi(splits[5])
@@ -2904,7 +2956,7 @@ func (bigtable *Bigtable) GetEth1ERC20ForAddress(prefix string, limit int64) ([]
 	})
 	defer tmr.Stop()
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*30))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
 	defer cancel()
 
 	// add \x00 to the row range such that we skip the previous value

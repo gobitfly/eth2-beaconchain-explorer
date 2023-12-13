@@ -193,9 +193,9 @@
                 el.classList.add('text-truncate')
                 el.innerHTML = col
                 infLoading.insertAdjacentElement("beforebegin", el)
-                drawCallback()
               }
              }
+             drawCallback()
            } else if (data && data.data) {
             if (data.data.length < 25) {
               infLoading.innerText = ''
