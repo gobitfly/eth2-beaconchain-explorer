@@ -254,6 +254,8 @@ func getChainName(chainId uint64) string {
 		return "ETHEREUM mainnet"
 	case 10:
 		return "OPTIMISM mainnet"
+	case 100:
+		return "GNOSIS mainnet"
 	case 42161:
 		return "ARBITRUM mainnet"
 	}
