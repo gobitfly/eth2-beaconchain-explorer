@@ -233,8 +233,9 @@ func main() {
 
 				}
 				mux.Unlock()
+				blocksProcessedTotal.Add(1)
 
-				if blocksProcessedTotal.Add(1)%100000 == 0 {
+				if i%100000 == 0 {
 					sendMessage(p.Sprintf("%s NODE EXPORT: currently at block %v of %v (%.1f%%)", getChainName(chainIdUint64), i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
 				}
 
@@ -251,13 +252,13 @@ func main() {
 func getChainName(chainId uint64) string {
 	switch chainId {
 	case 1:
-		return "ETHEREUM mainnet"
+		return "<:eth:1184470363967598623> ETHEREUM mainnet"
 	case 10:
-		return "OPTIMISM mainnet"
+		return "<:op:1184470125458489354> OPTIMISM mainnet"
 	case 100:
-		return "GNOSIS mainnet"
+		return "<:gnosis:1184470353947398155> GNOSIS mainnet"
 	case 42161:
-		return "ARBITRUM mainnet"
+		return "<:arbitrum:1184470344506036334> ARBITRUM mainnet"
 	}
 	return ""
 }
