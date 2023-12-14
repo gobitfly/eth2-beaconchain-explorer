@@ -503,8 +503,8 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
-		if err.Error() == "unregistered name" || err.Error() == "no address" || err.Error() == "no resolver" {
-			// the given name is not available anymore, we can remove it from the db (if it is there)
+		if err.Error() == "unregistered name" || err.Error() == "no address" || err.Error() == "no resolver" || err.Error() == "execution reverted" {
+			// the given name is not available anymore or resolving it did not work properly => we can remove it from the db (if it is there)
 			err = removeEnsName(client, name)
 			if err != nil {
 				return fmt.Errorf("error removing ens name [%v]: %w", name, err)
