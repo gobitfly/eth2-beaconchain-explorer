@@ -1039,8 +1039,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -1059,15 +1058,13 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 		if err != sql.ErrNoRows {
 			logger.Errorf("error retrieving password for user %v: %v", user.UserID, err)
 		}
-		session.AddFlash("Error: Invalid password!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid password!")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
 	if !currentUser.Confirmed {
-		session.AddFlash("Error: Email has not been confirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Email has not been confirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1075,8 +1072,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = bcrypt.CompareHashAndPassword([]byte(currentUser.Password), []byte(pwdOld))
 	if err != nil {
 		logger.Errorf("error verifying password for user %v: %v", currentUser.Email, err)
-		session.AddFlash("Error: Invalid password!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid password!")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1084,8 +1080,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	pHash, err := bcrypt.GenerateFromPassword([]byte(pwdNew), 10)
 	if err != nil {
 		logger.Errorf("error generating hash for password: %v", err)
-		session.AddFlash(GenericUpdatePasswordError)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, GenericUpdatePasswordError)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1093,8 +1088,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = db.UpdatePassword(user.UserID, pHash)
 	if err != nil {
 		logger.Errorf("error updating password for user: %v", err)
-		session.AddFlash("Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1102,8 +1096,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = purgeAllSessionsForUser(r.Context(), user.UserID)
 	if err != nil {
 		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -1111,14 +1104,12 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = session.SCS.RenewToken(r.Context())
 	if err != nil {
 		logger.Errorf("error renewing session token for user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
-	session.AddFlash("Password Updated Successfully ✔️")
-	session.Save(r, w)
+	utils.SetFlash(w, r, authSessionName, "Password Updated Successfully ✔️")
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 }
 
@@ -1133,8 +1124,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !user.Authenticated {
-		session.AddFlash("Error: You need to be logged in to change your email!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: You need to be logged in to change your email!")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -1154,8 +1144,8 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		WHERE users.id = $1`, user.UserID)
 	if err != nil {
 		utils.LogError(err, "error user data for email change request", 0, map[string]interface{}{"userID": user.UserID})
-		session.AddFlash("Error: Error processing request, please try again later.")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Error processing request, please try again later.")
+
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1163,8 +1153,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	// check if email change request is ratelimited
 	now := time.Now()
 	if rateLimitDeadline := userData.ConfirmTs.Add(authConfirmEmailRateLimit); rateLimitDeadline.After(now) {
-		session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", rateLimitDeadline.Sub(now).Round(time.Second)))
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", rateLimitDeadline.Sub(now).Round(time.Second)))
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1172,8 +1161,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	err = r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1183,8 +1171,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(userData.Password), []byte(formPassword))
 	if err != nil {
-		session.AddFlash("Error: Invalid credentials!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid credentials!")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1199,8 +1186,7 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !utils.IsValidEmail(newEmail) {
-		session.AddFlash("Error: Invalid email format!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid email format!")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1209,15 +1195,13 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendWriterDB.Get(&emailExists, "SELECT EXISTS (SELECT email FROM users WHERE email = $1)", newEmail)
 	if err != nil {
 		utils.LogError(err, "error checking if email exists", 0, map[string]interface{}{"email": newEmail})
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
 	if emailExists {
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
@@ -1227,13 +1211,12 @@ func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	err = sendEmailUpdateConfirmation(user.UserID, newEmail)
 	if err != nil {
 		utils.LogError(err, "error sending email-change confirmation email", 0, map[string]interface{}{"userID": user.UserID, "newEmail": newEmail})
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
-	session.AddFlash("An email has been sent, please click the link in the email to confirm your email change. The link will expire in 30 minutes.")
+	utils.SetFlash(w, r, authSessionName, "An email has been sent, please click the link in the email to confirm your email change. The link will expire in 30 minutes.")
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 }

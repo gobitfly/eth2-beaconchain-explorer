@@ -44,16 +44,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 // RegisterPost handles the register-formular to register a new user.
 func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	logger := logger.WithField("route", r.URL.String())
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-	}
 
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -63,8 +58,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	pwd := r.FormValue("password")
 
 	if !utils.IsValidEmail(email) {
-		session.AddFlash("Error: Invalid email!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid email!")
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -72,8 +66,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		logger.Errorf("error creating db-tx for registering user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -82,15 +75,13 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	var existingEmails int
 	err = tx.Get(&existingEmails, "SELECT COUNT(*) FROM users WHERE LOWER(email) = $1", email)
 	if existingEmails > 0 {
-		session.AddFlash("Error: Email already exists!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Email already exists!")
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
 	if err != nil {
 		logger.Errorf("error retrieving existing emails: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -98,8 +89,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	pHash, err := bcrypt.GenerateFromPassword([]byte(pwd), 10)
 	if err != nil {
 		logger.Errorf("error generating hash for password: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -107,8 +97,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	apiKey, err := utils.GenerateRandomAPIKey()
 	if err != nil {
 		logger.Errorf("error generating hash for api_key: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -121,8 +110,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error saving new user into db: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -130,8 +118,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	err = tx.Commit()
 	if err != nil {
 		logger.Errorf("error committing db-tx when registering user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -139,12 +126,10 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	err = sendConfirmationEmail(email)
 	if err != nil {
 		logger.Errorf("error sending confirmation-email: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 	} else {
-		session.AddFlash("Your account has been created! Please verify your email by clicking the link in the email we just sent you.")
+		utils.SetFlash(w, r, authSessionName, "Your account has been created! Please verify your email by clicking the link in the email we just sent you.")
 	}
-
-	session.Save(r, w)
 
 	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 }
@@ -193,25 +178,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("Error retrieving session for login route: %v", err)
-	}
-
-	err = session.SCS.RenewToken(r.Context())
-	if err != nil {
-		logger.Errorf("error renewing session token: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
-		http.Redirect(w, r, "/register", http.StatusSeeOther)
-		return
-	}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
@@ -262,29 +232,39 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		if err != sql.ErrNoRows {
 			logger.Errorf("error retrieving password for user %v: %v", email, err)
 		}
-		session.AddFlash("Error: Invalid email or password!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid email or password!")
 		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
 	if !user.Confirmed {
-		session.AddFlash("Error: Email has not been confirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Email has not been confirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
 		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(pwd))
 	if err != nil {
-		session.AddFlash("Error: Invalid email or password!")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid email or password!")
 		http.Redirect(w, r, "/login"+redirectParam, http.StatusSeeOther)
 		return
 	}
 
 	if !user.Active {
 		user.ProductID = ""
+	}
+
+	session, err := utils.SessionStore.Get(r, authSessionName)
+	if err != nil {
+		logger.Errorf("Error retrieving session for login route: %v", err)
+	}
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token: %v", err)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
 	}
 
 	session.SetValue("authenticated", true)
@@ -352,8 +332,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	err = session.SCS.Destroy(r.Context())
 	if err != nil {
 		logger.Errorf("error destroying session tokent user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -372,13 +351,6 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
@@ -389,7 +361,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		ProductID      string `db:"product_id"`
 		Active         bool   `db:"active"`
 	}{}
-	err = db.FrontendWriterDB.Get(&dbUser, `
+	err := db.FrontendWriterDB.Get(&dbUser, `
 		WITH
 			latest_and_greatest_sub AS (
 				SELECT user_id, product_id, active, created_at FROM users_app_subscriptions 
@@ -408,14 +380,14 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		WHERE password_reset_hash = $1`, hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			session.AddFlash("Error: Invalid reset link, please retry.")
-			session.Save(r, w)
+			utils.SetFlash(w, r, authSessionName, "Error: Invalid reset link, please retry.")
+
 			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 			return
 		}
 		logger.Errorf("error resetting password: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+
 		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
@@ -423,8 +395,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password_reset_hash = '' WHERE id = $1", dbUser.ID)
 	if err != nil {
 		logger.Errorf("error clearing hash when user is resetting password: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
@@ -434,12 +405,11 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", dbUser.ID)
 		if err != nil {
 			logger.Errorf("error setting confirmed when user is resetting password: %v", err)
-			session.AddFlash(authInternalServerErrorFlashMsg)
-			session.Save(r, w)
+			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 			return
 		}
-		session.AddFlash("Your email-address has been confirmed.")
+		utils.SetFlash(w, r, authSessionName, "Your email-address has been confirmed.")
 	}
 
 	user := &types.User{}
@@ -448,6 +418,21 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	user.Subscription = ""
 	if dbUser.Active {
 		user.Subscription = dbUser.ProductID
+	}
+
+	session, err := utils.SessionStore.Get(r, authSessionName)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = session.SCS.RenewToken(r.Context())
+	if err != nil {
+		logger.Errorf("error renewing session token: %v", err)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
 	}
 
 	session.SetValue("authenticated", true)
@@ -476,8 +461,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !user.Authenticated {
-		session.AddFlash("Error: You are not authenticated (or did not use the correct reset-link).")
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, "Error: You are not authenticated (or did not use the correct reset-link).")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -485,8 +469,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = r.ParseForm()
 	if err != nil {
 		utils.LogError(err, "error parsing form", 0)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -495,8 +478,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	pHash, err := bcrypt.GenerateFromPassword([]byte(pwd), 10)
 	if err != nil {
 		logger.Errorf("error generating hash for password: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -504,8 +486,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = db.UpdatePassword(user.UserID, pHash)
 	if err != nil {
 		logger.Errorf("error updating password for user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -517,8 +498,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = purgeAllSessionsForUser(r.Context(), user.UserID)
 	if err != nil {
 		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -526,15 +506,12 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	err = session.SCS.RenewToken(r.Context())
 	if err != nil {
 		logger.Errorf("error renewing session token for user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
-	session.AddFlash("Your password has been updated successfully, please log in again!")
-
-	session.Save(r, w)
+	utils.SetFlash(w, r, authSessionName, "Your password has been updated successfully, please log in again!")
 
 	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 }
