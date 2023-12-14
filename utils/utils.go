@@ -1387,9 +1387,10 @@ func FormatTokenSymbol(symbol string) string {
 }
 
 func isMaliciousToken(symbol string) bool {
-	urls := xurls.Relaxed.FindAllString(symbol, -1)
-	isConfusable := confusables.IsDangerous(symbol, []string{"latin"})
-	return len(urls) > 0 || isConfusable || strings.ToUpper(symbol) == "ETH"
+	containsUrls := len(xurls.Relaxed.FindAllString(symbol, -1)) > 0
+	isConfusable := len(confusables.IsConfusable(symbol, false, []string{"LATIN", "COMMON"})) > 0
+	isMixedScript := confusables.IsMixedScript(symbol, nil)
+	return containsUrls || isConfusable || isMixedScript || strings.ToUpper(symbol) == "ETH"
 }
 
 func ReverseSlice[S ~[]E, E any](s S) {
