@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -248,6 +249,7 @@ func AuthorizedAPIMiddleware(next http.Handler) http.Handler {
 				context.Set(r, JsonBodyKey, keyVal)
 				context.Set(r, JsonBodyNakedKey, body)
 			}
+			r.Body = io.NopCloser(bytes.NewReader(body))
 		}
 
 		context.Set(r, ClaimsContextKey, claims)

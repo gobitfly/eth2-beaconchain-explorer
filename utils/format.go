@@ -30,6 +30,8 @@ import (
 	itypes "github.com/gobitfly/eth-rewards/types"
 )
 
+const CalculatingHint = `Calculating…`
+
 func FormatMessageToHtml(message string) template.HTML {
 	message = fmt.Sprint(strings.Replace(message, "Error: ", "", 1))
 	return template.HTML(message)
@@ -105,7 +107,7 @@ func FormatBalance(balanceInt uint64, currency string) template.HTML {
 // FormatBalance will return a string for a balance
 func FormatEligibleBalance(balanceInt uint64, currency string) template.HTML {
 	if balanceInt == 0 {
-		return `<span class="text-small text-muted">Calculating...</span>`
+		return `<span class="text-small text-muted">` + CalculatingHint + `</span>`
 	}
 	exchangeRate := price.GetPrice(Config.Frontend.ClCurrency, currency)
 	balance := FormatFloat((float64(balanceInt)/float64(Config.Frontend.ClCurrencyDivisor))*float64(exchangeRate), 2)
@@ -184,48 +186,70 @@ func ClToCurrencyGwei(valIf interface{}, currency string) decimal.Decimal {
 	return val.Mul(decimal.NewFromFloat(price.GetPrice(Config.Frontend.ClCurrency, currency)))
 }
 
-func FormatElCurrency(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored bool) template.HTML {
-	return FormatCurrency(ElToCurrency(value, Config.Frontend.ElCurrency), Config.Frontend.ElCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, colored)
+func FormatElCurrency(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored, truncateAndAddTooltip bool) template.HTML {
+	return formatCurrency(ElToCurrency(value, Config.Frontend.ElCurrency), Config.Frontend.ElCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, colored, truncateAndAddTooltip)
 }
 
-func FormatClCurrency(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored bool) template.HTML {
-	return FormatCurrency(ClToCurrency(value, Config.Frontend.ClCurrency), Config.Frontend.ClCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, colored)
+func FormatClCurrency(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored, truncateAndAddTooltip bool) template.HTML {
+	return formatCurrency(ClToCurrency(value, Config.Frontend.ClCurrency), Config.Frontend.ClCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, colored, truncateAndAddTooltip)
 }
 
-func FormatElCurrencyString(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign bool) string {
-	return FormatCurrencyString(ElToCurrency(value, Config.Frontend.ElCurrency), Config.Frontend.ElCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign)
+func FormatElCurrencyString(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, truncateAndAddTooltip bool) string {
+	return formatCurrencyString(ElToCurrency(value, Config.Frontend.ElCurrency), Config.Frontend.ElCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, truncateAndAddTooltip)
 }
 
-func FormatClCurrencyString(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign bool) string {
-	return FormatCurrencyString(ClToCurrency(value, Config.Frontend.ClCurrency), Config.Frontend.ClCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign)
+func FormatClCurrencyString(value interface{}, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, truncateAndAddTooltip bool) string {
+	return formatCurrencyString(ClToCurrency(value, Config.Frontend.ClCurrency), Config.Frontend.ClCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, truncateAndAddTooltip)
 }
 
-func FormatCurrencyString(valIf interface{}, valueCurrency, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign bool) string {
+func formatCurrencyString(valIf interface{}, valueCurrency, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, truncateAndAddTooltip bool) string {
 	val := IfToDec(valIf)
+
 	valPriced := val
 	if valueCurrency != targetCurrency {
 		valPriced = val.Mul(decimal.NewFromFloat(price.GetPrice(valueCurrency, targetCurrency)))
 	}
-	var resStr string
+
+	currencyStr := ""
 	if showCurrencySymbol {
-		resStr = fmt.Sprintf("%s %s", valPriced.StringFixed(int32(digitsAfterComma)), price.GetCurrencySymbol(targetCurrency))
-	} else {
-		resStr = valPriced.StringFixed(int32(digitsAfterComma))
+		currencyStr = " " + price.GetCurrencySymbol(targetCurrency)
 	}
 
-	plusSign := ""
+	amountStr := ""
+	tooltipStartStr := ""
+	tooltipEndStr := ""
+	if truncateAndAddTooltip {
+		amountStr = valPriced.Truncate(int32(digitsAfterComma)).String()
 
-	if valPriced.Cmp(decimal.NewFromInt(0)) >= 0 {
-		if showPlusSign {
-			plusSign = "+"
+		// only add tooltip if the value is actually truncated
+		valStr := valPriced.String()
+		if valStr != amountStr {
+			tooltipStartStr = fmt.Sprintf(`<span data-toggle="tooltip" data-placement="top" title="%s%s">`, valPriced, currencyStr)
+			tooltipEndStr = `</span>`
 		}
+
+		// add trailing zeros to always have the same amount of digits after the comma
+		dotIndex := strings.Index(valStr, ".")
+		if dotIndex >= 0 {
+			missingZeros := digitsAfterComma - (len(amountStr) - dotIndex - 1)
+			if missingZeros > 0 {
+				amountStr += strings.Repeat("0", missingZeros)
+			}
+		}
+	} else {
+		amountStr = valPriced.StringFixed(int32(digitsAfterComma))
 	}
 
-	return fmt.Sprintf(`%s%s`, plusSign, resStr)
+	plusSignStr := ""
+	if showPlusSign && valPriced.Cmp(decimal.NewFromInt(0)) >= 0 {
+		plusSignStr = "+"
+	}
+
+	return fmt.Sprintf(`%s%s%s%s%s`, tooltipStartStr, plusSignStr, amountStr, currencyStr, tooltipEndStr)
 }
 
-func FormatCurrency(valIf interface{}, valueCurrency, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored bool) template.HTML {
-	result := FormatCurrencyString(valIf, valueCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign)
+func formatCurrency(valIf interface{}, valueCurrency, targetCurrency string, digitsAfterComma int, showCurrencySymbol, showPlusSign, colored, truncateAndAddTooltip bool) template.HTML {
+	result := formatCurrencyString(valIf, valueCurrency, targetCurrency, digitsAfterComma, showCurrencySymbol, showPlusSign, truncateAndAddTooltip)
 	classes := ""
 
 	if colored {
@@ -570,7 +594,7 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
 	if e == 0 {
-		return `<span class="text-small text-muted">Calculating...</span>`
+		return `<span class="text-small text-muted">` + CalculatingHint + `</span>`
 	}
 	p := message.NewPrinter(language.English)
 	rr := fmt.Sprintf("%v%%", math.Round(r*10000)/100)
@@ -582,6 +606,18 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 	  </div>
 	</div>`
 	return template.HTML(p.Sprintf(tpl, float64(e)/float64(Config.Frontend.ClCurrencyDivisor)*price.GetPrice(Config.Frontend.ClCurrency, currency), rr))
+}
+
+// When 'finalized' is false and 'count' is 0, a in-progress hint is returned (three dots if 'shortenCalcHint' is true)
+// If 'count' is positive or 'finalized' is true, 'count' is returned as a string
+func FormatCount(count uint64, finalized bool, shortenCalcHint bool) template.HTML {
+	if finalized || count > 0 {
+		return template.HTML(fmt.Sprintf("%v", count))
+	}
+	if shortenCalcHint {
+		return template.HTML("…")
+	}
+	return template.HTML(CalculatingHint)
 }
 
 func FormatEtherValue(currency string, ethPrice decimal.Decimal, currentPrice template.HTML) template.HTML {
@@ -815,11 +851,11 @@ func FormatIncomeClEl(income types.ClEl, currency string) template.HTML {
 			<b>%s</b>
 		</span>`,
 			className,
-			FormatElCurrency(income.Cl, currency, 5, true, true, false),
-			FormatElCurrency(income.El, currency, 5, true, true, false), // we use FormatElCurrency here because all values in income-struct are in el-currency
-			FormatElCurrency(income.Total, currency, 5, true, true, false)))
+			FormatElCurrency(income.Cl, currency, 5, true, true, false, false),
+			FormatElCurrency(income.El, currency, 5, true, true, false, false), // we use FormatElCurrency here because all values in income-struct are in el-currency
+			FormatElCurrency(income.Total, currency, 5, true, true, false, false)))
 	} else {
-		return template.HTML(fmt.Sprintf(`<span><b>%s</b></span>`, FormatElCurrency(income.Total, currency, 5, true, true, false)))
+		return template.HTML(fmt.Sprintf(`<span><b>%s</b></span>`, FormatElCurrency(income.Total, currency, 5, true, true, false, false)))
 	}
 }
 
@@ -840,8 +876,8 @@ func FormatIncomeClElInt64(income types.ClElInt64, currency string) template.HTM
 			<b>%s %s</b>
 		</span>`,
 			className,
-			FormatClCurrency(income.Cl, currency, 5, true, true, false),
-			FormatClCurrency(income.El, currency, 5, true, true, false), // we use FormatClCurrency here because all values in income-struct are in Gwei
+			FormatClCurrency(income.Cl, currency, 5, true, true, false, false),
+			FormatClCurrency(income.El, currency, 5, true, true, false, false), // we use FormatClCurrency here because all values in income-struct are in Gwei
 			incomeTrimmed,
 			currency))
 	} else {

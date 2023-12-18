@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"eth2-exporter/cmd/misc/commands"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/rpc"
@@ -61,8 +62,10 @@ var elClient *rpc.ErigonClient
 var chainIdString string
 
 func main() {
+	statsPartitionCommand := commands.StatsMigratorCommand{}
+
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, update-epoch-status")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -83,6 +86,8 @@ func main() {
 	flag.StringVar(&opts.Epochs, "epochs", "", "Epochs, comma separated and/or inclusive range (e.g. 1,2,3,100-200)")
 	flag.BoolVar(&opts.DryRun, "dry-run", true, "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
+
+	statsPartitionCommand.ParseCommandOptions()
 	flag.Parse()
 
 	if *versionFlag {
@@ -118,6 +123,15 @@ func main() {
 		logrus.Fatalf("error initializing erigon client: %v", err)
 	}
 	elClient = erigonClient
+
+	elChainId, err := elClient.GetNativeClient().ChainID(context.Background())
+	if err != nil {
+		utils.LogFatal(err, "node chain id error", 0)
+	}
+
+	if elChainId.String() != chainIdString {
+		utils.LogFatal(err, fmt.Sprintf("elChainId != paramsChainId: %v != %v", elChainId.String(), chainIdString), 0)
+	}
 
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
@@ -382,6 +396,9 @@ func main() {
 		err = bids2330FixBlocks()
 	case "bids-2330-export-blocks":
 		err = bids2330ExportBlocks()
+	case "partition-validator-stats":
+		statsPartitionCommand.Config.DryRun = opts.DryRun
+		err = statsPartitionCommand.StartStatsPartitionCommand()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -534,16 +551,6 @@ func updateBlockFinalizationSequentially() error {
 }
 
 func debugBlocks() error {
-	elClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
-	if err != nil {
-		return err
-	}
-
-	clClient, err := rpc.NewLighthouseClient(fmt.Sprintf("http://%v:%v", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port), new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID))
-	if err != nil {
-		return err
-	}
-
 	for i := opts.StartBlock; i <= opts.EndBlock; i++ {
 		btBlock, err := db.BigtableClient.GetBlockFromBlocksTable(i)
 		if err != nil {
