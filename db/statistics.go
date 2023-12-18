@@ -82,11 +82,11 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 	if err != nil {
 		return err
 	}
-	validators := make([]uint64, 0, maxValidatorIndex)
-	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, maxValidatorIndex)
+	validators := make([]uint64, 0, maxValidatorIndex+1)
+	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, maxValidatorIndex+1)
 	validatorDataMux := &sync.Mutex{}
 
-	logger.Infof("processing statistics for validators 0-%d (day: %v, epochs: %v-%v)", maxValidatorIndex, day, firstEpoch, lastEpoch)
+	logger.Infof("processing statistics for validators 0-%d (day: %v, epochs: %v-%v, maxValidatorIndex: %v)", maxValidatorIndex, day, firstEpoch, lastEpoch, maxValidatorIndex)
 	for i := uint64(0); i <= maxValidatorIndex; i++ {
 		validators = append(validators, i)
 		validatorData = append(validatorData, &types.ValidatorStatsTableDbRow{
@@ -1506,7 +1506,8 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	}
 
 	if firstBlock <= 15537394 {
-		return fmt.Errorf("this function does not yet handle pre merge statistics, firstBlock is %v, firstSlot is %v", firstBlock, firstSlot)
+		logrus.Warnf("execution charts are not implemented yet for pre merge statistics: firstBlock is %v, firstSlot is %v", firstBlock, firstSlot)
+		return nil
 	}
 
 	lastBlock, err := GetBlockNumber(uint64(lastSlot))

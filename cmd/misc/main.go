@@ -1568,12 +1568,35 @@ func updateEpochStatus() error {
 
 	// fetch participation-stats before updating epoch status
 	participationStatsPerEpoch := map[uint64]*types.ValidatorParticipation{}
+	participationStatsPerEpochMu := &sync.Mutex{}
+
+	ctx := context.Background()
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(4)
+
 	for _, epoch := range epochs {
-		epochParticipationStats, err := clClient.GetValidatorParticipation(epoch)
-		if err != nil {
-			return fmt.Errorf("error getting validator participation for epoch %v: %w", epoch, err)
-		}
-		participationStatsPerEpoch[epoch] = epochParticipationStats
+		epoch := epoch
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return gCtx.Err()
+			default:
+			}
+
+			epochParticipationStats, err := clClient.GetValidatorParticipation(epoch)
+			if err != nil {
+				return fmt.Errorf("error getting validator participation for epoch %v: %w", epoch, err)
+			}
+			participationStatsPerEpochMu.Lock()
+			participationStatsPerEpoch[epoch] = epochParticipationStats
+			participationStatsPerEpochMu.Unlock()
+			return nil
+		})
+	}
+
+	err = g.Wait()
+	if err != nil {
+		return err
 	}
 
 	logrus.Infof("updating status of all epochs (%v)", len(epochs))
