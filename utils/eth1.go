@@ -309,19 +309,20 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmountFormatted(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
+func FormatAmountFormatted(amountInWei *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+	return formatAmount(amountInWei, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
 }
-func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
-	return formatAmount(amount, unit, digits, 0, true, false, false)
+func FormatAmount(amountInWei *big.Int, unit string, digits int) template.HTML {
+	return formatAmount(amountInWei, unit, digits, 0, true, false, false)
 }
-func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
-	return FormatAmount((*big.Int)(amount), unit, digits)
+func FormatBigAmount(amountInWei *hexutil.Big, unit string, digits int) template.HTML {
+	return FormatAmount((*big.Int)(amountInWei), unit, digits)
 }
-func FormatBytesAmount(amount []byte, unit string, digits int) template.HTML {
-	return FormatAmount(new(big.Int).SetBytes(amount), unit, digits)
+func FormatBytesAmount(amountInWei []byte, unit string, digits int) template.HTML {
+	return FormatAmount(new(big.Int).SetBytes(amountInWei), unit, digits)
 }
-func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+
+func formatAmount(amountInWei *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
 	// define display unit & digits used per unit max
 	displayUnit := " " + unit
 	var unitDigits int
@@ -330,8 +331,7 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 	} else if unit == "GWei" {
 		unitDigits = 9
 	} else {
-		displayUnit = " ?"
-		unitDigits = 0
+		unitDigits = 2
 	}
 
 	// small unit & new line for unit handling
@@ -353,7 +353,7 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 		}
 	}
 
-	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
+	trimmedAmount, fullAmount := InsertCommaAndTrim(amountInWei, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
 	tooltip := ""
 	if fullAmountTooltip {
 		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
@@ -363,49 +363,50 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
 }
 
-func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
-	// Initialize trimmedAmount and postComma variables to "0"
+// This function takes a number without explicit comma in it. The function seperates the integer part from the fractional part with a comma, placing it as indicated by commaPosition. This is returned in fullAmount.
+// trimmedAmount returns also the number with its comma, but the fractional part contains at most maxFractionalDigitsBeforeTrim digits. This part can be trimmed because of this limit or because the integer part is longer than maxIntegerDigitsBeforeTrim.
+func InsertCommaAndTrim(amountWithoutComma *big.Int, commaPosition int, maxIntegerDigitsBeforeTrim int, maxFractionalDigitsBeforeTrim int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
 	trimmedAmount = "0"
 	postComma := "0"
 	proceed := ""
 
-	if amount != nil {
-		s := amount.String()
-		if amount.Sign() > 0 && addPositiveSign {
+	if amountWithoutComma != nil {
+		s := amountWithoutComma.String()
+		if amountWithoutComma.Sign() > 0 && addPositiveSign {
 			proceed = "+"
-		} else if amount.Sign() < 0 {
+		} else if amountWithoutComma.Sign() < 0 {
 			proceed = "-"
 			s = strings.Replace(s, "-", "", 1)
 		}
 		l := len(s)
 
 		// Check if there is a part of the amount before the decimal point
-		if l > int(unitDigits) {
+		if l > int(commaPosition) {
 			// Calculate length of preComma part
-			l -= unitDigits
+			l -= commaPosition
 			// Set preComma to part of the string before the decimal point
 			trimmedAmount = s[:l]
 			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s[l:], "0")
 
 			// Check if the preComma part exceeds the maximum number of digits before the decimal point
-			if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
+			if maxIntegerDigitsBeforeTrim > 0 && l > maxIntegerDigitsBeforeTrim {
 				// Reduce the number of digits after the decimal point by the excess number of digits in the preComma part
-				l -= maxPreCommaDigitsBeforeTrim
-				if digits < l {
-					digits = 0
+				l -= maxIntegerDigitsBeforeTrim
+				if maxFractionalDigitsBeforeTrim < l {
+					maxFractionalDigitsBeforeTrim = 0
 				} else {
-					digits -= l
+					maxFractionalDigitsBeforeTrim -= l
 				}
 			}
 			// Check if there is only a part of the amount after the decimal point, and no leading zeros need to be added
-		} else if l == unitDigits {
+		} else if l == commaPosition {
 			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s, "0")
 			// Check if there is only a part of the amount after the decimal point, and leading zeros need to be added
 		} else if l != 0 {
 			// Use fmt package to add leading zeros to the string
-			d := fmt.Sprintf("%%0%dd", unitDigits-l)
+			d := fmt.Sprintf("%%0%dd", commaPosition-l)
 			// Set postComma to resulting string, after removing trailing zeros
 			postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
 		}
@@ -416,10 +417,9 @@ func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int
 		}
 
 		// limit floating part
-		if len(postComma) > digits {
-			postComma = postComma[:digits]
+		if len(postComma) > maxFractionalDigitsBeforeTrim {
+			postComma = postComma[:maxFractionalDigitsBeforeTrim]
 		}
-
 		// set floating point
 		if len(postComma) > 0 {
 			trimmedAmount += "." + postComma
