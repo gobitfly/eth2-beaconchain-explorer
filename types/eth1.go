@@ -67,25 +67,25 @@ type Eth1RpcGetBlockResponse struct {
 			} `json:"accessList"`
 
 			// Optimism specific fields
-			YParity    string `json:"yParity"`
-			Mint       string `json:"mint"`       // The ETH value to mint on L2.
-			SourceHash string `json:"sourceHash"` // the source-hash, uniquely identifies the origin of the deposit.
+			YParity    hexutil.Bytes `json:"yParity"`
+			Mint       hexutil.Bytes `json:"mint"`       // The ETH value to mint on L2.
+			SourceHash hexutil.Bytes `json:"sourceHash"` // the source-hash, uniquely identifies the origin of the deposit.
 
 			// Arbitrum specific fields
 			RequestId string `json:"requestId"` // On L1 to L2 transactions, this field is added to indicate position in the Inbox queue
 
 		} `json:"transactions"`
-		TransactionsRoot string `json:"transactionsRoot"`
+		TransactionsRoot hexutil.Bytes `json:"transactionsRoot"`
 
 		Withdrawals []struct {
-			Index          string `json:"index"`
-			ValidatorIndex string `json:"validatorIndex"`
-			Address        string `json:"address"`
-			Amount         string `json:"amount"`
+			Index          hexutil.Uint64 `json:"index"`
+			ValidatorIndex hexutil.Uint64 `json:"validatorIndex"`
+			Address        hexutil.Bytes  `json:"address"`
+			Amount         hexutil.Big    `json:"amount"`
 		} `json:"withdrawals"`
-		WithdrawalsRoot string `json:"withdrawalsRoot"`
+		WithdrawalsRoot hexutil.Bytes `json:"withdrawalsRoot"`
 
-		Uncles []string `json:"uncles"`
+		Uncles []hexutil.Bytes `json:"uncles"`
 
 		// Optimism specific fields
 

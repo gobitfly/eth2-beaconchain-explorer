@@ -99,6 +99,9 @@ func checkBlocksFromBigtable(tbl *gcp_bigtable.Table, chainId uint64) {
 				utils.LogFatal(err, "error decoding block", 0)
 			}
 
+			for _, tx := range blockDataParsed.Result.Transactions {
+				logrus.Infof("%v", tx.SourceHash)
+			}
 			previousNumber = blockNumberUint64
 
 			i++
