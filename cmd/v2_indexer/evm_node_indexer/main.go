@@ -211,25 +211,29 @@ func main() {
 				keys = append(keys, key)
 
 				if len(keys) == 1000 {
-					ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-					errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
 
-					if err != nil {
-						logrus.Errorf("error writing data to bigtable: %v", err)
+					for ; ; time.Sleep(time.Second) {
+						ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+						errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
+
+						if err != nil {
+							logrus.Errorf("error writing data to bigtable: %v", err)
+							cancel()
+							continue
+						}
+
+						for _, err := range errs {
+							logrus.Errorf("error writing data to bigtable: %v", err)
+							cancel()
+							continue
+						}
 						cancel()
-						continue
-					}
+						logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(bData.block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(bData.block)+len(receipts)+len(traces))
 
-					for _, err := range errs {
-						logrus.Errorf("error writing data to bigtable: %v", err)
-						cancel()
-						continue
+						muts = []*gcp_bigtable.Mutation{}
+						keys = []string{}
+						break
 					}
-					cancel()
-					logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(bData.block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(bData.block)+len(receipts)+len(traces))
-
-					muts = []*gcp_bigtable.Mutation{}
-					keys = []string{}
 
 				}
 				mux.Unlock()
