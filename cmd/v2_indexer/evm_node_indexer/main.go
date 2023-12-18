@@ -476,47 +476,6 @@ func getBlockHashFromBT(number uint64, chainId uint64, tableBlocksRaw *gcp_bigta
 	return "", fmt.Errorf("block %d, no entry for block in bigtable found", number)
 }
 
-/*
-func checkRead(tbl *gcp_bigtable.Table, chainId uint64) {
-	ctx := context.Background()
-
-	start := fmt.Sprintf("%d:", chainId)
-
-	previousNumber := uint64(0)
-	i := 0
-	for {
-		filter := gcp_bigtable.NewRange(start, "")
-		err := tbl.ReadRows(ctx, filter, func(r gcp_bigtable.Row) bool {
-			key := r.Key()
-			blockNumberString := strings.Replace(key, fmt.Sprintf("%d:", chainId), "", 1)
-			blockNumberUint64, err := strconv.ParseUint(blockNumberString, 10, 64)
-			if err != nil {
-				logrus.Fatal(err)
-			}
-			blockNumberUint64 = MAX_EL_BLOCK_NUMBER - blockNumberUint64
-
-			if blockNumberUint64%10000 == 0 {
-				logrus.Infof("retrieved block %d", blockNumberUint64)
-			}
-			if blockNumberUint64 != previousNumber-1 && previousNumber != 0 && i > 1000 {
-				logrus.Fatalf("%d != %d", blockNumberUint64, previousNumber)
-			}
-
-			previousNumber = blockNumberUint64
-
-			i++
-
-			start = fmt.Sprintf("%s\x00", key)
-			return true
-		}, gcp_bigtable.RowFilter(gcp_bigtable.ChainFilters(gcp_bigtable.CellsPerRowLimitFilter(1), gcp_bigtable.StripValueFilter())), gcp_bigtable.LimitRows(1000))
-
-		if err != nil {
-			logrus.Fatal(err)
-		}
-	}
-}
-*/
-
 func sendMessage(content, webhookUrl, username string) {
 
 	message := discordwebhook.Message{

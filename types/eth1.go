@@ -3,6 +3,8 @@ package types
 import (
 	"time"
 
+	"eth2-exporter/hexutil"
+
 	gcp_bigtable "cloud.google.com/go/bigtable"
 )
 
@@ -21,47 +23,47 @@ type Eth1RpcGetBlockResponse struct {
 	JsonRpc string `json:"jsonrpc"`
 	Id      int    `json:"id"`
 	Result  struct {
-		BaseFeePerGas   string `json:"baseFeePerGas"`
-		Difficulty      string `json:"difficulty"`
-		ExtraData       string `json:"extraData"`
-		GasLimit        string `json:"gasLimit"`
-		GasUsed         string `json:"gasUsed"`
-		Hash            string `json:"hash"`
-		LogsBloom       string `json:"logsBloom"`
-		Miner           string `json:"miner"`
-		MixHash         string `json:"mixHash"`
-		Nonce           string `json:"nonce"`
-		Number          string `json:"number"`
-		ParentHash      string `json:"parentHash"`
-		ReceiptsRoot    string `json:"receiptsRoot"`
-		Sha3Uncles      string `json:"sha3Uncles"`
-		Size            string `json:"size"`
-		StateRoot       string `json:"stateRoot"`
-		Timestamp       string `json:"timestamp"`
-		TotalDifficulty string `json:"totalDifficulty"`
+		BaseFeePerGas   hexutil.Big    `json:"baseFeePerGas"`
+		Difficulty      hexutil.Big    `json:"difficulty"`
+		ExtraData       hexutil.Bytes  `json:"extraData"`
+		GasLimit        hexutil.Uint64 `json:"gasLimit"`
+		GasUsed         hexutil.Uint64 `json:"gasUsed"`
+		Hash            hexutil.Bytes  `json:"hash"`
+		LogsBloom       hexutil.Bytes  `json:"logsBloom"`
+		Miner           hexutil.Bytes  `json:"miner"`
+		MixHash         hexutil.Bytes  `json:"mixHash"`
+		Nonce           hexutil.Uint64 `json:"nonce"`
+		Number          hexutil.Uint64 `json:"number"`
+		ParentHash      hexutil.Bytes  `json:"parentHash"`
+		ReceiptsRoot    hexutil.Bytes  `json:"receiptsRoot"`
+		Sha3Uncles      hexutil.Bytes  `json:"sha3Uncles"`
+		Size            hexutil.Uint64 `json:"size"`
+		StateRoot       hexutil.Bytes  `json:"stateRoot"`
+		Timestamp       hexutil.Uint64 `json:"timestamp"`
+		TotalDifficulty hexutil.Big    `json:"totalDifficulty"`
 		Transactions    []struct {
-			BlockHash            string `json:"blockHash"`
-			BlockNumber          string `json:"blockNumber"`
-			From                 string `json:"from"`
-			Gas                  string `json:"gas"`
-			GasPrice             string `json:"gasPrice"`
-			Hash                 string `json:"hash"`
-			Input                string `json:"input"`
-			Nonce                string `json:"nonce"`
-			To                   string `json:"to"`
-			TransactionIndex     string `json:"transactionIndex"`
-			Value                string `json:"value"`
-			Type                 string `json:"type"`
-			V                    string `json:"v"`
-			R                    string `json:"r"`
-			S                    string `json:"s"`
-			ChainID              string `json:"chainId"`
-			MaxFeePerGas         string `json:"maxFeePerGas"`
-			MaxPriorityFeePerGas string `json:"maxPriorityFeePerGas"`
+			BlockHash            hexutil.Bytes  `json:"blockHash"`
+			BlockNumber          hexutil.Uint64 `json:"blockNumber"`
+			From                 hexutil.Bytes  `json:"from"`
+			Gas                  hexutil.Uint64 `json:"gas"`
+			GasPrice             hexutil.Big    `json:"gasPrice"`
+			Hash                 hexutil.Bytes  `json:"hash"`
+			Input                hexutil.Bytes  `json:"input"`
+			Nonce                hexutil.Uint64 `json:"nonce"`
+			To                   hexutil.Bytes  `json:"to"`
+			TransactionIndex     hexutil.Uint64 `json:"transactionIndex"`
+			Value                hexutil.Big    `json:"value"`
+			Type                 hexutil.Uint64 `json:"type"`
+			V                    hexutil.Bytes  `json:"v"`
+			R                    hexutil.Bytes  `json:"r"`
+			S                    hexutil.Bytes  `json:"s"`
+			ChainID              hexutil.Uint64 `json:"chainId"`
+			MaxFeePerGas         hexutil.Big    `json:"maxFeePerGas"`
+			MaxPriorityFeePerGas hexutil.Big    `json:"maxPriorityFeePerGas"`
 
 			AccessList []struct {
-				Address     string   `json:"address"`
-				StorageKeys []string `json:"storageKeys"`
+				Address     hexutil.Bytes   `json:"address"`
+				StorageKeys []hexutil.Bytes `json:"storageKeys"`
 			} `json:"accessList"`
 
 			// Optimism specific fields
