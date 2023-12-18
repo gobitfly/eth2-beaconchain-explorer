@@ -52,6 +52,7 @@ var opts = struct {
 	Key                 string
 	ValidatorNameRanges string
 	Slots               string
+	Epochs              string
 	DryRun              bool
 }{}
 
@@ -61,7 +62,7 @@ var chainIdString string
 
 func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, update-epoch-status")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -78,7 +79,8 @@ func main() {
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
-	flag.StringVar(&opts.Slots, "slots", "", "Slots that should be reexported, comma separated and/or inclusive range (e.g. 1,2,3,100-200)")
+	flag.StringVar(&opts.Slots, "slots", "", "Slots, comma separated and/or inclusive range (e.g. 1,2,3,100-200)")
+	flag.StringVar(&opts.Epochs, "epochs", "", "Epochs, comma separated and/or inclusive range (e.g. 1,2,3,100-200)")
 	flag.BoolVar(&opts.DryRun, "dry-run", true, "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -374,6 +376,8 @@ func main() {
 		exportSyncCommitteeValidatorStats(rpcClient, opts.StartDay, opts.EndDay, opts.DryRun, true)
 	case "fix-exec-transactions-count":
 		err = fixExecTransactionsCount()
+	case "update-epoch-status":
+		err = updateEpochStatus()
 	case "bids-2330-fix-blocks":
 		err = bids2330FixBlocks()
 	case "bids-2330-export-blocks":
@@ -1537,6 +1541,68 @@ func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
 
 		return tx.Commit()
 	}
+}
+
+func updateEpochStatus() error {
+	epochs, err := utils.ParseUint64Ranges(opts.Epochs)
+	if err != nil {
+		return fmt.Errorf("invalid -epochs: %w", err)
+	}
+	slots, err := utils.ParseUint64Ranges(opts.Slots)
+	if err != nil {
+		return fmt.Errorf("invalid -slots: %w", err)
+	}
+
+	// include slots in epochs
+	lastEpoch := uint64(0)
+	for _, slot := range slots {
+		epoch := utils.EpochOfSlot(slot)
+		if epoch != lastEpoch {
+			epochs = append(epochs, epoch)
+		}
+		lastEpoch = epoch
+	}
+	epochs = utils.SortedUniqueUint64(epochs)
+
+	logrus.Infof("calculating participation stats for all epochs (%v)", len(epochs))
+
+	// fetch participation-stats before updating epoch status
+	participationStatsPerEpoch := map[uint64]*types.ValidatorParticipation{}
+	for _, epoch := range epochs {
+		epochParticipationStats, err := clClient.GetValidatorParticipation(epoch)
+		if err != nil {
+			return fmt.Errorf("error getting validator participation for epoch %v: %w", epoch, err)
+		}
+		participationStatsPerEpoch[epoch] = epochParticipationStats
+	}
+
+	logrus.Infof("updating status of all epochs (%v)", len(epochs))
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	for _, epoch := range epochs {
+		// update epoch status
+		epochParticipationStats, exists := participationStatsPerEpoch[epoch]
+		if !exists {
+			return fmt.Errorf("missing participationStatsPerEpoch[%v]", epoch)
+		}
+		err = db.UpdateEpochStatus(epochParticipationStats, tx)
+		if err != nil {
+			return fmt.Errorf("error updating epoch status for epoch %v: %w", epoch, err)
+		}
+		logrus.Infof("updated epoch status for epoch %v", epoch)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing db tx: %w", err)
+	}
+
+	return nil
 }
 
 // bids2330ExportBlocks has been implemented for bids-2330
