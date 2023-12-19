@@ -534,7 +534,7 @@ func getBlock(elClientUrl string, httpClient *http.Client, number int) (*blockDa
 	if blockParsed.Result.Transactions != nil {
 		transactions = make([]string, len(blockParsed.Result.Transactions))
 		for i, tx := range blockParsed.Result.Transactions {
-			transactions[i] = tx.Hash
+			transactions[i] = tx.Hash.String()
 		}
 	} else {
 		return nil, fmt.Errorf("blockParsed.Result.Transactions is nil")

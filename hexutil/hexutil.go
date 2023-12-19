@@ -45,6 +45,10 @@ func (b *Bytes) UnmarshalJSON(input []byte) error {
 	return err
 }
 
+func (b *Bytes) String() string {
+	return fmt.Sprintf("0x%x", *b)
+}
+
 // Big unmarshals as a JSON string with 0x prefix.
 type Big big.Int
 
