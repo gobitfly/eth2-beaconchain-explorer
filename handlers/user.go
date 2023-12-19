@@ -87,18 +87,18 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		statsSharing = false
 	}
 
-	maxDaily := 10000
-	maxMonthly := 30000
+	maxDaily := utils.Config.Frontend.Ratelimits.FreeDay
+	maxMonthly := utils.Config.Frontend.Ratelimits.FreeMonth
 	if subscription.PriceID != nil {
 		if *subscription.PriceID == utils.Config.Frontend.Stripe.Sapphire {
-			maxDaily = 100000
-			maxMonthly = 500000
+			maxDaily = utils.Config.Frontend.Ratelimits.SapphierDay
+			maxMonthly = utils.Config.Frontend.Ratelimits.SapphierMonth
 		} else if *subscription.PriceID == utils.Config.Frontend.Stripe.Emerald {
-			maxDaily = 200000
-			maxMonthly = 1000000
+			maxDaily = utils.Config.Frontend.Ratelimits.EmeraldDay
+			maxMonthly = utils.Config.Frontend.Ratelimits.EmeraldMonth
 		} else if *subscription.PriceID == utils.Config.Frontend.Stripe.Diamond {
-			maxDaily = -1
-			maxMonthly = 4000000
+			maxDaily = utils.Config.Frontend.Ratelimits.DiamondDay
+			maxMonthly = utils.Config.Frontend.Ratelimits.DiamondMonth
 		}
 	}
 
