@@ -1117,7 +1117,7 @@ func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	}
 
 	if importENSChanges {
-		if err := bt.ImportEnsUpdates(client.GetNativeClient()); err != nil {
+		if err := bt.ImportEnsUpdates(client.GetNativeClient(), math.MaxInt64); err != nil {
 			utils.LogError(err, "error importing ens from events", 0)
 			return
 		}

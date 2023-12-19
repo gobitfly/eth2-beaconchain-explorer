@@ -379,7 +379,7 @@ func main() {
 		}
 
 		if *enableEnsUpdater {
-			err := bt.ImportEnsUpdates(client.GetNativeClient())
+			err := bt.ImportEnsUpdates(client.GetNativeClient(), 1000)
 			if err != nil {
 				utils.LogError(err, "error importing ens updates", 0, nil)
 				continue
