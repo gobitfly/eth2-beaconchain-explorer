@@ -498,7 +498,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	nameHash, err := go_ens.NameHash(name)
 	if err != nil {
-		logger.Errorf("error could not hash name [%v]: %w -> removing ens entry", name, err)
+		logger.Errorf("error could not hash name [%v]: %v -> removing ens entry", name, err)
 
 		err = removeEnsName(client, name)
 		if err != nil {
