@@ -78,8 +78,6 @@ func main() {
 	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
 	flag.Parse()
 
-	_ = startBlockNumber
-	_ = endBlockNumber
 	_ = reorgDepth
 
 	// init bigtable
@@ -152,105 +150,126 @@ func main() {
 
 	p := message.NewPrinter(language.English)
 
-	for i := *startBlockNumber; i <= int(latestBlockNumber); i++ {
-
-		i := i
-
-		gOuter.Go(func() error {
-			for ; ; time.Sleep(time.Second) {
-
-				start := time.Now()
-
-				var bData *blockData
-				var receipts, traces []byte
-				var blockDuration, receiptsDuration, tracesDuration time.Duration
-				var err error
-				bData, err = getBlock(*elClientUrl, httpClient, i)
-
-				if err != nil {
-					utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
-					continue
-				}
-				blockDuration = time.Since(start)
-
-				if len(bData.txs) > 0 { // only request receipts & traces for blocks with tx
-					if chainIdUint64 == 42161 {
-						receipts, err = getBatchedReceipts(*elClientUrl, httpClient, bData.txs)
-					} else {
-						receipts, err = getReceipts(*elClientUrl, httpClient, i)
-					}
-					receiptsDuration = time.Since(start)
-					if err != nil {
-						utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
-						continue
-					}
-
-					if chainIdUint64 == 42161 && i <= 22207815 {
-						traces, err = getArbitrumTraces(*elClientUrl, httpClient, i)
-					} else {
-						traces, err = getGethTraces(*elClientUrl, httpClient, i)
-					}
-					tracesDuration = time.Since(start)
-					if err != nil {
-						utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
-						continue
-					}
-				}
-
-				mux.Lock()
-				mut := gcp_bigtable.NewMutation()
-				mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), bData.block)
-				mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), receipts)
-				mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), traces)
-				if len(bData.uncles) > 0 {
-					mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), bData.uncles)
-				}
-
-				muts = append(muts, mut)
-				key := getBlockKey(uint64(i), chainIdUint64)
-				keys = append(keys, key)
-
-				if len(keys) == 1000 {
-
-					for ; ; time.Sleep(time.Second) {
-						ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-						errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
-
-						if err != nil {
-							logrus.Errorf("error writing data to bigtable: %v", err)
-							cancel()
-							continue
-						}
-
-						for _, err := range errs {
-							logrus.Errorf("error writing data to bigtable: %v", err)
-							cancel()
-							continue
-						}
-						cancel()
-						logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(bData.block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(bData.block)+len(receipts)+len(traces))
-
-						muts = []*gcp_bigtable.Mutation{}
-						keys = []string{}
-						break
-					}
-
-				}
-				mux.Unlock()
-				blocksProcessedTotal.Add(1)
-
-				if i%100000 == 0 {
-					sendMessage(p.Sprintf("%s NODE EXPORT: currently at block %v of %v (%.1f%%)", getChainName(chainIdUint64), i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
-				}
-
-				blocksProcessedIntv.Add(1)
-				break
+	for ; ; time.Sleep(time.Minute) {
+		if *startBlockNumber != *endBlockNumber && *startBlockNumber < *endBlockNumber { // reexport
+			latestBlockNumber = uint64(*endBlockNumber)
+		} else { // normal run
+			latestBlockNumber, err = client.BlockNumber(context.Background())
+			if err != nil {
+				logrus.Fatalf("error retrieving latest block number (node): %v", err)
 			}
-			return nil
-		})
-	}
+			latestBlockNumber = latestBlockNumber - 100 // don't touch newest 100 blocks, so reorgs are no topic
 
-	gOuter.Wait()
+			*startBlockNumber, err = getLatestBlockNumberFromBT(tableBlocksRaw, chainIdUint64)
+			if err != nil {
+				logrus.Fatalf("error retrieving latest block number (Bigtable): %v", err)
+			}
+		}
+
+		for i := *startBlockNumber; i <= int(latestBlockNumber); i++ {
+
+			i := i
+
+			gOuter.Go(func() error {
+				for ; ; time.Sleep(time.Second) {
+
+					start := time.Now()
+
+					var bData *blockData
+					var receipts, traces []byte
+					var blockDuration, receiptsDuration, tracesDuration time.Duration
+					var err error
+					bData, err = getBlock(*elClientUrl, httpClient, i)
+
+					if err != nil {
+						utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
+						continue
+					}
+					blockDuration = time.Since(start)
+
+					if len(bData.txs) > 0 { // only request receipts & traces for blocks with tx
+						if chainIdUint64 == 42161 {
+							receipts, err = getBatchedReceipts(*elClientUrl, httpClient, bData.txs)
+						} else {
+							receipts, err = getReceipts(*elClientUrl, httpClient, i)
+						}
+						receiptsDuration = time.Since(start)
+						if err != nil {
+							utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
+							continue
+						}
+
+						if chainIdUint64 == 42161 && i <= 22207815 {
+							traces, err = getArbitrumTraces(*elClientUrl, httpClient, i)
+						} else {
+							traces, err = getGethTraces(*elClientUrl, httpClient, i)
+						}
+						tracesDuration = time.Since(start)
+						if err != nil {
+							utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
+							continue
+						}
+					}
+
+					mux.Lock()
+					mut := gcp_bigtable.NewMutation()
+					mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), bData.block)
+					mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), receipts)
+					mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), traces)
+					if len(bData.uncles) > 0 {
+						mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), bData.uncles)
+					}
+
+					muts = append(muts, mut)
+					key := getBlockKey(uint64(i), chainIdUint64)
+					keys = append(keys, key)
+
+					if len(keys) == 1000 {
+
+						for ; ; time.Sleep(time.Second) {
+							ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+							errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
+
+							if err != nil {
+								logrus.Errorf("error writing data to bigtable: %v", err)
+								cancel()
+								continue
+							}
+
+							for _, err := range errs {
+								logrus.Errorf("error writing data to bigtable: %v", err)
+								cancel()
+								continue
+							}
+							cancel()
+							logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(bData.block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(bData.block)+len(receipts)+len(traces))
+
+							muts = []*gcp_bigtable.Mutation{}
+							keys = []string{}
+							break
+						}
+
+					}
+					mux.Unlock()
+					blocksProcessedTotal.Add(1)
+
+					if i%100000 == 0 {
+						sendMessage(p.Sprintf("%s NODE EXPORT: currently at block %v of %v (%.1f%%)", getChainName(chainIdUint64), i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
+					}
+
+					blocksProcessedIntv.Add(1)
+					break
+				}
+				return nil
+			})
+		}
+
+		gOuter.Wait()
+
+		if *endBlockNumber != 0 {
+			break // no loop on reexport
+		}
+	}
 }
 
 func getChainName(chainId uint64) string {
@@ -442,6 +461,28 @@ func isBlockInBT(number uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Tab
 		return false, nil
 	}
 	return true, nil
+}
+
+func getLatestBlockNumberFromBT(tableBlocksRaw *gcp_bigtable.Table, chainId uint64) (int, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	var readError error
+	var atoiError error
+	var lastBlock int
+	prefix := fmt.Sprintf("%d:", chainId)
+	readError = tableBlocksRaw.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+		k := r.Key()
+		lastBlock, atoiError = strconv.Atoi(k[len(prefix):])
+		return false
+	}, gcp_bigtable.LimitRows(1), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+	if readError != nil || atoiError != nil {
+		return 0, fmt.Errorf("error getting last block number from BT, readError:'%w', atoiError: '%w'", readError, atoiError)
+	}
+
+	return MAX_EL_BLOCK_NUMBER - lastBlock, nil
 }
 
 func getBlockHashFromBT(number uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Table) (string, error) {
