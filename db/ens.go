@@ -335,7 +335,7 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		row_ := row[DEFAULT_FAMILY][0]
 		keys = append(keys, row_.Row)
 		return true
-	})
+	}, gcp_bigtable.LimitRows(1000)) // limit to max 1000 entries to avoid blocking the import of new blocks
 	if err != nil {
 		return err
 	}
@@ -498,7 +498,15 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	nameHash, err := go_ens.NameHash(name)
 	if err != nil {
-		return fmt.Errorf("error could not hash name [%v]: %w", name, err)
+		logger.Errorf("error could not hash name [%v]: %w -> removing ens entry", name, err)
+
+		err = removeEnsName(client, name)
+		if err != nil {
+			return fmt.Errorf("error removing ens name [%v]: %w", name, err)
+		}
+		return nil
+
+		//return fmt.Errorf("error could not hash name [%v]: %w", name, err)
 	}
 
 	addr, err := go_ens.Resolve(client, name)
@@ -506,9 +514,8 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 		if err.Error() == "unregistered name" ||
 			err.Error() == "no address" ||
 			err.Error() == "no resolver" ||
-			err.Error() == "execution reverted" ||
 			err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
-			err.Error() == "execution reverted: Invalid address" {
+			strings.Contains(err.Error(), "execution reverted") {
 			// the given name is not available anymore or resolving it did not work properly => we can remove it from the db (if it is there)
 			err = removeEnsName(client, name)
 			if err != nil {
