@@ -322,7 +322,7 @@ type EnsCheckedDictionary struct {
 	name    map[string]bool
 }
 
-func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
+func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client, readBatchSize int64) error {
 	key := fmt.Sprintf("%s:ENS:V", bigtable.chainId)
 
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
@@ -335,7 +335,7 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client) error {
 		row_ := row[DEFAULT_FAMILY][0]
 		keys = append(keys, row_.Row)
 		return true
-	}, gcp_bigtable.LimitRows(1000)) // limit to max 1000 entries to avoid blocking the import of new blocks
+	}, gcp_bigtable.LimitRows(readBatchSize)) // limit to max 1000 entries to avoid blocking the import of new blocks
 	if err != nil {
 		return err
 	}
