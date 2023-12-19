@@ -14,6 +14,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -104,8 +105,13 @@ func DeleteUserById(id uint64) error {
 }
 
 // UpdatePassword updates the password of a user.
-func UpdatePassword(userId uint64, hash []byte) error {
-	_, err := FrontendWriterDB.Exec("UPDATE users SET password = $1 WHERE id = $2", hash, userId)
+func UpdatePassword(userId uint64, cleartextPassword string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(cleartextPassword), 10)
+	if err != nil {
+		return err
+	}
+
+	_, err = FrontendWriterDB.Exec("UPDATE users SET password = $1, password_reset_hash = NULL WHERE id = $2", hash, userId)
 	return err
 }
 
