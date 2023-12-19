@@ -136,6 +136,16 @@ type Config struct {
 			Plankton  string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
 			Webhook   string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
 		}
+		Ratelimits struct {
+			FreeDay       int `yaml:"freeDay" envconfig:"FRONTEND_RATELIMITS_FREE_DAY"`
+			FreeMonth     int `yaml:"freeMonth" envconfig:"FRONTEND_RATELIMITS_FREE_MONTH"`
+			SapphierDay   int `yaml:"sapphireDay" envconfig:"FRONTEND_RATELIMITS_SAPPHIRE_DAY"`
+			SapphierMonth int `yaml:"sapphireDay" envconfig:"FRONTEND_RATELIMITS_SAPPHIRE_MONTH"`
+			EmeraldDay    int `yaml:"emeraldDay" envconfig:"FRONTEND_RATELIMITS_EMERALD_DAY"`
+			EmeraldMonth  int `yaml:"emeraldMonth" envconfig:"FRONTEND_RATELIMITS_EMERALD_MONTH"`
+			DiamondDay    int `yaml:"diamondDay" envconfig:"FRONTEND_RATELIMITS_DIAMOND_DAY"`
+			DiamondMonth  int `yaml:"diamondMonth" envconfig:"FRONTEND_RATELIMITS_DIAMOND_MONTH"`
+		} `yaml:"ratelimits"`
 		SessionSecret          string `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
 		JwtSigningSecret       string `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
 		JwtIssuer              string `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
