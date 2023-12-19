@@ -511,7 +511,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
-		utils.LogError(err, "error could not resolve name", 0, map[string]interface{}{"name": name})
+		utils.LogError(err, "error, could not resolve name", 0, map[string]interface{}{"name": name})
 		/* if err.Error() == "unregistered name" ||
 		err.Error() == "no address" ||
 		err.Error() == "no resolver" ||
