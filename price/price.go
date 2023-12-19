@@ -17,6 +17,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const ETHGWeiCommaShift = 9
+const GWeiWeiCommaShift = 9
+const ETHWeiCommaShift = ETHGWeiCommaShift + GWeiWeiCommaShift
+const ETHGWeiRatio int64 = 1000000000
+const GWeiWeiRatio int64 = 1000000000
+const ETHWeiRatio = ETHGWeiRatio * GWeiWeiRatio
+
 var logger = logrus.New().WithField("module", "price")
 
 var availableCurrencies = []string{}
@@ -63,9 +70,12 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 	switch chainId {
 	case 1, 100:
 	default:
+		usd := "USD"
+		setPrice(clCurrency, usd, 1.0/2300.0)
+		setPrice(usd, clCurrency, 2300)
 		setPrice(elCurrency, elCurrency, 1)
 		setPrice(clCurrency, clCurrency, 1)
-		availableCurrencies = []string{clCurrency, elCurrency}
+		availableCurrencies = []string{clCurrency, elCurrency, usd}
 		logger.Warnf("chainId not supported for fetching prices: %v", chainId)
 		runOnce.Do(func() { runOnceWg.Done() })
 		return
@@ -149,13 +159,14 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 		}
 		feeds[pair] = feed
 	}
-
-	go func() {
-		for {
-			updatePrices()
-			time.Sleep(time.Minute)
-		}
-	}()
+	/*
+		go func() {
+			for {
+				updatePrices()
+				time.Sleep(time.Minute)
+			}
+		}()
+	*/
 }
 
 func updatePrices() {

@@ -916,7 +916,7 @@ func exchangeAndTrim(valueCurrency, exCurrency string, amount float64, addPositi
 	exchangeRate := price.GetPrice(valueCurrency, exCurrency)
 	exchangedAmount := float64(amount) * exchangeRate
 	// lost precision here but we don't need it for frontend
-	income, _ := trimAmount(big.NewInt(int64(exchangedAmount)), 9, preCommaDecimals, decimals, addPositiveSign)
+	income, _ := insertCommaAndTrim(big.NewInt(int64(exchangedAmount)), 9, decimals, preCommaDecimals, addPositiveSign)
 	return income
 }
 
