@@ -2467,7 +2467,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte) ([]types.Transfer, error) {
+func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult) ([]types.ITransaction, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -2525,7 +2525,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		return nil, err
 	}
 
-	data := make([]types.Transfer, len(transfers))
+	data := make([]types.ITransaction, len(transfers))
 
 	// sort by event id
 	keys := make([]int, 0, len(transfers))
@@ -2542,11 +2542,29 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		from := utils.FormatAddress(t.From, nil, fromName, false, false, true)
 		to := utils.FormatAddress(t.To, nil, toName, false, false, true)
 
-		data[i] = types.Transfer{
-			From:   from,
-			To:     to,
-			Amount: utils.FormatBytesAmount(t.Value, utils.Config.Frontend.ElCurrency, 8),
+		input := make([]byte, 0)
+		if len(parityTrace[i+1].Action.Input) > 2 {
+			input, err = hex.DecodeString(parityTrace[i+1].Action.Input[2:])
+			if err != nil {
+				utils.LogError(err, "can't convert hex string", 0)
+			}
 		}
+
+		data[i] = types.ITransaction{
+			From:      from,
+			To:        to,
+			Amount:    utils.FormatBytesAmount(t.Value, utils.Config.Frontend.ElCurrency, 8),
+			TracePath: utils.FormatTracePath(parityTrace[i+1].Action.CallType, parityTrace[i+1].TraceAddress, parityTrace[i+1].Error == "", bigtable.GetMethodLabel(input[:4], true)),
+		}
+
+		gaslimit, err := strconv.ParseUint(parityTrace[i+1].Action.Gas, 0, 0)
+		if err == nil {
+			data[i].Gas.Limit = gaslimit
+		}
+		// gasusage, err := strconv.ParseUint(parityTrace[i+1].Result.GasUsed, 0, 0)
+		// if err == nil {
+		// 	data[i].Gas.Usage = gasusage
+		// }
 	}
 	return data, nil
 }

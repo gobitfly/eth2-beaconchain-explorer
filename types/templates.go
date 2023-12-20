@@ -1670,6 +1670,18 @@ type Eth1TokenPageData struct {
 	HoldersTable     *DataTableResponse
 }
 
+type ITransaction struct {
+	From      template.HTML
+	To        template.HTML
+	Amount    template.HTML
+	TracePath template.HTML
+	Gas       struct {
+		Limit uint64
+		// Usage    uint64
+		// UsedPerc float64
+	}
+}
+
 type Transfer struct {
 	From   template.HTML
 	To     template.HTML
@@ -1691,7 +1703,7 @@ type EpochInfo struct {
 type Eth1TxData struct {
 	From         common.Address
 	To           *common.Address
-	InternalTxns []Transfer
+	InternalTxns []ITransaction
 	FromName     string
 	ToName       string
 	Gas          struct {

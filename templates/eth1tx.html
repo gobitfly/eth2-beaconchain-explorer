@@ -399,16 +399,20 @@
                 <div class="table-responsive">
                   <table class="table table-borderless text-monospace">
                     <thead>
+                      <th>Type Trace Address</th>
                       <th>From</th>
                       <th>To</th>
                       <th>Value</th>
+                      <th>Gas Limit</th>
                     </thead>
                     <tbody>
                       {{ range $index, $tx := .InternalTxns }}
                         <tr>
+                          <td>{{ .TracePath }}</td>
                           <td>{{ .From }}</td>
                           <td>{{ .To }}</td>
                           <td>{{ .Amount }}</td>
+                          <td>{{ .Gas.Limit }}</td>
                         </tr>
                       {{ end }}
                     </tbody>
