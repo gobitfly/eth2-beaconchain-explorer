@@ -478,7 +478,7 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 			return fmt.Errorf("error validating new name [%v]: %w", *currentName, err)
 		}
 	}
-	isPrimary = true
+	// isPrimary = true
 	logger.Infof("Address [%x] has a primary name: %v", address, name)
 	return validateEnsName(client, name, alreadyChecked, &isPrimary)
 }
@@ -512,20 +512,20 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
 		utils.LogError(err, "error, could not resolve name", 0, map[string]interface{}{"name": name})
-		/* if err.Error() == "unregistered name" ||
-		err.Error() == "no address" ||
-		err.Error() == "no resolver" ||
-		err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
-		strings.Contains(err.Error(), "execution reverted") ||
-		err.Error() == "invalid jump destination" { */
-		// the given name is not available anymore or resolving it did not work properly => we can remove it from the db (if it is there)
-		err = removeEnsName(client, name)
-		if err != nil {
-			return fmt.Errorf("error removing ens name [%v]: %w", name, err)
+		if err.Error() == "unregistered name" ||
+			err.Error() == "no address" ||
+			err.Error() == "no resolver" ||
+			err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
+			strings.Contains(err.Error(), "execution reverted") ||
+			err.Error() == "invalid jump destination" {
+			// the given name is not available anymore or resolving it did not work properly => we can remove it from the db (if it is there)
+			err = removeEnsName(client, name)
+			if err != nil {
+				return fmt.Errorf("error removing ens name after resolve failed [%v]: %w", name, err)
+			}
+			return nil
 		}
-		return nil
-		//		}
-		// return fmt.Errorf("error could not resolve name [%v]: %w", name, err)
+		return fmt.Errorf("error could not resolve name [%v]: %w", name, err)
 	}
 
 	// we need to get the main domain to get the expiration date
@@ -546,12 +546,14 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 		if err != nil {
 			if err.Error() == "not a resolver" || err.Error() == "no resolution" {
 				logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", addr, err.Error())
+				err = removeEnsName(client, name)
+				if err != nil {
+					return fmt.Errorf("error removing ens name after resolve failed [%v]: %w", name, err)
+				}
 				return nil
 			}
-
 			return fmt.Errorf("error could not reverse resolve address [%v]: %w", addr, err)
 		}
-
 		if reverseName == name {
 			isPrimary = true
 		}
