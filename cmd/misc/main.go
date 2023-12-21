@@ -22,9 +22,11 @@ import (
 	"time"
 
 	"github.com/coocood/freecache"
+	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pkg/errors"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
+	go_ens "github.com/wealdtech/go-ens/v3"
 	"golang.org/x/sync/errgroup"
 
 	"flag"
@@ -376,6 +378,8 @@ func main() {
 	case "partition-validator-stats":
 		statsPartitionCommand.Config.DryRun = opts.DryRun
 		err = statsPartitionCommand.StartStatsPartitionCommand()
+	case "fix-ens":
+		err = fixEns(erigonClient)
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -385,6 +389,57 @@ func main() {
 	} else {
 		logrus.Infof("command executed successfully")
 	}
+}
+
+func fixEns(erigonClient *rpc.ErigonClient) error {
+	addrs := []struct {
+		Address []byte `db:"address"`
+		EnsName string `db:"ens_name"`
+	}{}
+	err := db.WriterDb.Select(&addrs, `select address, ens_name from ens where is_primary_name = true`)
+	if err != nil {
+		return err
+	}
+	for _, addr := range addrs {
+		ensAddr, err := go_ens.Resolve(erigonClient.GetNativeClient(), addr.EnsName)
+		if err != nil {
+			if err.Error() == "unregistered name" ||
+				err.Error() == "no address" ||
+				err.Error() == "no resolver" ||
+				err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
+				strings.Contains(err.Error(), "execution reverted") ||
+				err.Error() == "invalid jump destination" {
+				logrus.Warnf("error resolving name: %v", err)
+				continue
+			}
+			return err
+		}
+
+		dbAddr := common.BytesToAddress(addr.Address)
+		if dbAddr.Cmp(ensAddr) != 0 {
+			_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Address)
+			if err != nil {
+				return err
+			}
+		}
+
+		reverseName, err := go_ens.ReverseResolve(erigonClient.GetNativeClient(), dbAddr)
+		if err != nil {
+			if err.Error() == "not a resolver" || err.Error() == "no resolution" {
+				logrus.Warnf("error reverse-resolving name: %v", err)
+				continue
+			}
+			return err
+		}
+
+		if reverseName != addr.EnsName {
+			_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Address)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func fixExecTransactionsCount() error {
