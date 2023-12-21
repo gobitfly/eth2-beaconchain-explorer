@@ -455,7 +455,7 @@
         {{ if .ExecutionData }}
           <div class="tab-pane fade" id="transactionsTabPanel" role="tabpanel" aria-labelledby="transactions-tab">
             <div class="card block-card py-1">
-              {{ template "execution_transactions" .ExecutionData }}
+              {{ template "execution_transactions" $ }}
             </div>
           </div>
         {{ end }}

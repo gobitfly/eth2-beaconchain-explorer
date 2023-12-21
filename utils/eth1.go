@@ -8,7 +8,6 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
-	"math"
 	"math/big"
 	"strings"
 
@@ -325,63 +324,57 @@ func FormatBytesAmount(amountInWei []byte, targetCurrency string, maxFractionalD
 }
 
 func convertAndFormatWei(amountInWei *big.Int, targetCurrency string, maxFractionalDigitsBeforeTrim int, maxIntegerDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	// define display unit & digits used per unit max
-	var displayUnit string
 	var commaPositionFromEnd int
 	var targetAmount *big.Int
+
+	targetAmount = amountInWei
+	commaPositionFromEnd = price.ETHWeiCommaShift
 
 	if targetCurrency == "Ether" {
 		targetCurrency = "ETH"
 	}
-	if targetCurrency == "ETH" || targetCurrency == "xDAI" || targetCurrency == "GNO" {
-		targetAmount = amountInWei
-		commaPositionFromEnd = price.ETHWeiCommaShift
-	} else if targetCurrency == "GWei" {
-		targetAmount = amountInWei
-		commaPositionFromEnd = price.GWeiWeiCommaShift
-	} else {
-		// Doing everything with big.Float would be more accurate but would use more ressources (we do this computation for every value on the UI)
-		converted, _ := amountInWei.Float64()
-		converted *= price.GetPrice(Config.Frontend.ElCurrency, targetCurrency)
-		// Preventing overflow of the int64 (that big.NewInt() will take) when the result is greater than 9 × ETHWeiRatio (approximately)
-		if converted >= float64(math.MaxInt64) {
-			converted /= float64(price.GWeiWeiRatio)
-			commaPositionFromEnd = price.GWeiWeiCommaShift
-			// now targetAmount is accurate over 9 fractional digits "only"
-		} else {
-			commaPositionFromEnd = price.ETHWeiCommaShift
-		}
-		targetAmount = big.NewInt(int64(converted))
+	if targetCurrency == "ETH" && amountInWei.Cmp(big.NewInt(1000*price.GWeiInWei)) <= 0 {
+		// The displayed unit will be GWei if the amount is small
+		targetCurrency = "GWei"
 	}
-	displayUnit = " " + targetCurrency
 
+	if targetCurrency == "GWei" {
+		commaPositionFromEnd = price.GWeiWeiCommaShift
+	} else if targetCurrency != "xDAI" && targetCurrency != "GNO" {
+		// The currency is a fiat. We convert the amount of Weis into it:
+		converted := new(big.Float)
+		converted = converted.Mul(new(big.Float).SetInt(amountInWei), big.NewFloat(price.GetPrice(Config.Frontend.ElCurrency, targetCurrency)))
+		targetAmount, _ = converted.Int(targetAmount)
+	}
+
+	formattedUnit := " " + targetCurrency
 	// small unit & new line for unit handling
 	{
-		unit := displayUnit
+		unit := formattedUnit
 		if newLineForUnit {
-			displayUnit = "<BR />"
+			formattedUnit = "<BR />"
 		} else {
-			displayUnit = ""
+			formattedUnit = ""
 		}
 		if smallUnit {
-			displayUnit += `<span style="font-size: .63rem;`
+			formattedUnit += `<span style="font-size: .63rem;`
 			if newLineForUnit {
-				displayUnit += `color: grey;`
+				formattedUnit += `color: grey;`
 			}
-			displayUnit += `">` + unit + `</span>`
+			formattedUnit += `">` + unit + `</span>`
 		} else {
-			displayUnit += unit
+			formattedUnit += unit
 		}
 	}
 
 	trimmedAmount, fullAmount := insertCommaAndTrim(targetAmount, commaPositionFromEnd, maxFractionalDigitsBeforeTrim, maxIntegerDigitsBeforeTrim, false)
 	tooltip := ""
 	if fullAmountTooltip {
-		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s %s"`, fullAmount, targetCurrency)
 	}
 
 	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, formattedUnit))
 }
 
 // This function takes a number without explicit comma in it. The function seperates the integer part from the fractional part with a comma, placing it as indicated by commaPositionFromEnd. This is returned in fullAmount.
