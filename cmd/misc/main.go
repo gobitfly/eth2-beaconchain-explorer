@@ -469,7 +469,7 @@ func fixEns(erigonClient *rpc.ErigonClient) error {
 				if reverseName != addr.EnsName {
 					logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("resolved != reverseResolved: %v != %v", addr.EnsName, reverseName)}).Warnf("deleting ens entry")
 					if !opts.DryRun {
-						_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Address)
+						_, err = db.WriterDb.Exec(`delete from ens where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
 						if err != nil {
 							return err
 						}
