@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"eth2-exporter/cmd/misc/commands"
 	"eth2-exporter/db"
@@ -37,6 +38,7 @@ import (
 var opts = struct {
 	Command             string
 	User                uint64
+	Addresses           string
 	TargetVersion       int64
 	StartEpoch          uint64
 	EndEpoch            uint64
@@ -77,6 +79,7 @@ func main() {
 	flag.Uint64Var(&opts.BatchSize, "data.batchSize", 1000, "Batch size")
 	flag.StringVar(&opts.Transformers, "transformers", "", "Comma separated list of transformers used by the eth1 indexer")
 	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
+	flag.StringVar(&opts.Addresses, "addresses", "", "Comma separated list of addresses that should be processed by the command")
 	flag.StringVar(&opts.Columns, "columns", "", "Comma separated list of columns that should be affected by the command")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
@@ -380,6 +383,8 @@ func main() {
 		err = statsPartitionCommand.StartStatsPartitionCommand()
 	case "fix-ens":
 		err = fixEns(erigonClient)
+	case "fix-ens-addresses":
+		err = fixEnsAddresses(erigonClient)
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -485,6 +490,137 @@ func fixEns(erigonClient *rpc.ErigonClient) error {
 			return err
 		}
 		time.Sleep(time.Millisecond * 100)
+	}
+	return nil
+}
+
+func fixEnsAddresses(erigonClient *rpc.ErigonClient) error {
+	logrus.WithFields(logrus.Fields{"dry": opts.DryRun}).Infof("command: fix-ens-addresses")
+	if opts.Addresses == "" {
+		return errors.New("no addresses specified")
+	}
+
+	type DbEntry struct {
+		NameHash      []byte    `db:"name_hash"`
+		EnsName       string    `db:"ens_name"`
+		Address       []byte    `db:"address"`
+		IsPrimaryName bool      `db:"is_primary_name"`
+		ValidTo       time.Time `db:"valid_to"`
+	}
+
+	for _, addrHex := range strings.Split(opts.Addresses, ",") {
+		if !common.IsHexAddress(addrHex) {
+			return fmt.Errorf("invalid address: %v", addrHex)
+		}
+
+		addr := common.HexToAddress(addrHex)
+
+		dbEntry := &DbEntry{}
+		err := db.WriterDb.Get(dbEntry, `select name_hash, ens_name, address, is_primary_name, valid_to from ens where address = $1`, addr.Bytes())
+		if err != nil && err != sql.ErrNoRows {
+			return fmt.Errorf("error getting ens entry for addr [%v]: %w", addr.Hex(), err)
+		}
+		if err == sql.ErrNoRows {
+			dbEntry = nil
+		}
+
+		name, err := go_ens.ReverseResolve(erigonClient.GetNativeClient(), addr)
+		if err != nil {
+			if err.Error() == "not a resolver" ||
+				err.Error() == "no resolution" {
+				logrus.WithFields(logrus.Fields{"addr": addr.Hex()}).Warnf("error reverse-resolving name: %v", err)
+				if dbEntry != nil {
+					logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%v", addr.Hex()), "reason": fmt.Sprintf("error reverse-resolving name: %v", err)}).Warnf("deleting ens entry")
+					if !opts.DryRun {
+						_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Bytes())
+						if err != nil {
+							return fmt.Errorf("error deleting ens entry: %w", err)
+						}
+					}
+				}
+				continue
+			} else {
+				return fmt.Errorf("error go_ens.ReverseResolve for addr %v: %w", addr.Hex(), err)
+			}
+		}
+
+		if !strings.HasSuffix(name, ".eth") {
+			logrus.Infof("need to add .eth to %v for addr %v", name, addr.Hex())
+			name = name + ".eth"
+		}
+
+		resolvedAddr, err := go_ens.Resolve(erigonClient.GetNativeClient(), name)
+		if err != nil {
+			if err.Error() == "unregistered name" ||
+				err.Error() == "no address" ||
+				err.Error() == "no resolver" ||
+				err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
+				strings.Contains(err.Error(), "execution reverted") ||
+				err.Error() == "invalid jump destination" {
+				if dbEntry != nil {
+					logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%v", addr.Hex()), "reason": fmt.Sprintf("error resolving name: %v", err)}).Warnf("deleting ens entry")
+					if !opts.DryRun {
+						_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Bytes())
+						if err != nil {
+							return fmt.Errorf("error deleting ens entry: %w", err)
+						}
+					}
+				}
+			} else {
+				return fmt.Errorf("error go_ens.Resolve(%v) for addr %v: %w", name, addr.Hex(), err)
+			}
+		}
+
+		nameHash, err := go_ens.NameHash(name)
+		if err != nil {
+			return fmt.Errorf("error go_ens.NameHash(%v) for addr %v: %w", name, addr.Hex(), err)
+		}
+		parts := strings.Split(name, ".")
+		mainName := strings.Join(parts[len(parts)-2:], ".")
+		ensName, err := go_ens.NewName(erigonClient.GetNativeClient(), mainName)
+		if err != nil {
+			return fmt.Errorf("error could not create name via go_ens.NewName for [%v]: %w", name, err)
+		}
+		expires, err := ensName.Expires()
+		if err != nil {
+			return fmt.Errorf("error could not get ens expire date for [%v]: %w", name, err)
+		}
+
+		if dbEntry == nil || dbEntry.EnsName != name || !bytes.Equal(dbEntry.NameHash, nameHash[:]) || !bytes.Equal(dbEntry.Address, resolvedAddr.Bytes()) || dbEntry.ValidTo != expires {
+			logFields := logrus.Fields{"resolvedAddr": resolvedAddr, "addr": addr.Hex(), "name": name, "nameHash": fmt.Sprintf("%#x", nameHash), "expires": expires}
+			if dbEntry == nil {
+				logFields["db"] = "nil"
+				logrus.WithFields(logFields).Warnf("adding ens entry")
+			} else {
+				logFields["db.name"] = dbEntry.EnsName
+				logFields["db.nameHash"] = fmt.Sprintf("%#x", dbEntry.NameHash)
+				logFields["db.addr"] = fmt.Sprintf("%#x", dbEntry.Address)
+				logFields["db.expire"] = dbEntry.ValidTo
+				logrus.WithFields(logFields).Warnf("updating ens entry")
+			}
+
+			if !opts.DryRun {
+				_, err = db.WriterDb.Exec(`
+					INSERT INTO ens (
+						name_hash, 
+						ens_name, 
+						address,
+						is_primary_name, 
+						valid_to)
+					VALUES ($1, $2, $3, $4, $5) 
+					ON CONFLICT 
+						(name_hash) 
+					DO UPDATE SET 
+						ens_name = excluded.ens_name,
+						address = excluded.address,
+						is_primary_name = excluded.is_primary_name,
+						valid_to = excluded.valid_to`,
+					nameHash[:], name, addr.Bytes(), true, expires)
+				if err != nil {
+					return fmt.Errorf("error writing ens data for addr [%v]: %w", addr.Hex(), err)
+				}
+			}
+		}
 	}
 	return nil
 }
