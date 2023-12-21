@@ -478,7 +478,7 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 			return fmt.Errorf("error validating new name [%v]: %w", *currentName, err)
 		}
 	}
-	// isPrimary = true
+	isPrimary = true
 	logger.Infof("Address [%x] has a primary name: %v", address, name)
 	return validateEnsName(client, name, alreadyChecked, &isPrimary)
 }

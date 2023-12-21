@@ -392,6 +392,7 @@ func main() {
 }
 
 func fixEns(erigonClient *rpc.ErigonClient) error {
+	logrus.Infof("command: fix-ens")
 	addrs := []struct {
 		Address []byte `db:"address"`
 		EnsName string `db:"ens_name"`
@@ -400,44 +401,90 @@ func fixEns(erigonClient *rpc.ErigonClient) error {
 	if err != nil {
 		return err
 	}
-	for _, addr := range addrs {
-		ensAddr, err := go_ens.Resolve(erigonClient.GetNativeClient(), addr.EnsName)
+
+	logrus.Infof("found %v ens entries", len(addrs))
+
+	g := new(errgroup.Group)
+	g.SetLimit(10) // limit load on the node
+
+	batchSize := 100
+	total := len(addrs)
+	for i := 0; i < total; i += batchSize {
+		to := i + batchSize
+		if to > total {
+			to = total
+		}
+		batch := addrs[i:to]
+
+		logrus.Infof("processing batch %v-%v / %v", i, to, total)
+		for _, addr := range batch {
+			addr := addr
+			g.Go(func() error {
+				ensAddr, err := go_ens.Resolve(erigonClient.GetNativeClient(), addr.EnsName)
+				if err != nil {
+					if err.Error() == "unregistered name" ||
+						err.Error() == "no address" ||
+						err.Error() == "no resolver" ||
+						err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
+						strings.Contains(err.Error(), "execution reverted") ||
+						err.Error() == "invalid jump destination" {
+						logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("failed resolve: %v", err.Error())}).Warnf("deleting ens entry")
+						if !opts.DryRun {
+							_, err = db.WriterDb.Exec(`delete from ens where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
+							if err != nil {
+								return err
+							}
+						}
+						return nil
+					}
+					return err
+				}
+
+				dbAddr := common.BytesToAddress(addr.Address)
+				if dbAddr.Cmp(ensAddr) != 0 {
+					logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("dbAddr != resolved ensAddr: %#x != %#x", addr.Address, ensAddr.Bytes())}).Warnf("deleting ens entry")
+					if !opts.DryRun {
+						_, err = db.WriterDb.Exec(`delete from ens where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
+						if err != nil {
+							return err
+						}
+					}
+				}
+
+				reverseName, err := go_ens.ReverseResolve(erigonClient.GetNativeClient(), dbAddr)
+				if err != nil {
+					if err.Error() == "not a resolver" || err.Error() == "no resolution" {
+						logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("failed reverse-resolve: %v", err.Error())}).Warnf("deleting ens entry")
+						if !opts.DryRun {
+							_, err = db.WriterDb.Exec(`delete from ens where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
+							if err != nil {
+								return err
+							}
+						}
+						return nil
+					}
+					return err
+				}
+
+				if reverseName != addr.EnsName {
+					logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("resolved != reverseResolved: %v != %v", addr.EnsName, reverseName)}).Warnf("deleting ens entry")
+					if !opts.DryRun {
+						_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Address)
+						if err != nil {
+							return err
+						}
+					}
+				}
+
+				return nil
+			})
+		}
+
+		err = g.Wait()
 		if err != nil {
-			if err.Error() == "unregistered name" ||
-				err.Error() == "no address" ||
-				err.Error() == "no resolver" ||
-				err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
-				strings.Contains(err.Error(), "execution reverted") ||
-				err.Error() == "invalid jump destination" {
-				logrus.Warnf("error resolving name: %v", err)
-				continue
-			}
 			return err
 		}
-
-		dbAddr := common.BytesToAddress(addr.Address)
-		if dbAddr.Cmp(ensAddr) != 0 {
-			_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Address)
-			if err != nil {
-				return err
-			}
-		}
-
-		reverseName, err := go_ens.ReverseResolve(erigonClient.GetNativeClient(), dbAddr)
-		if err != nil {
-			if err.Error() == "not a resolver" || err.Error() == "no resolution" {
-				logrus.Warnf("error reverse-resolving name: %v", err)
-				continue
-			}
-			return err
-		}
-
-		if reverseName != addr.EnsName {
-			_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Address)
-			if err != nil {
-				return err
-			}
-		}
+		time.Sleep(time.Millisecond * 100)
 	}
 	return nil
 }
