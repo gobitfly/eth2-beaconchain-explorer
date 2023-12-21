@@ -571,6 +571,16 @@ func fixEnsAddresses(erigonClient *rpc.ErigonClient) error {
 			}
 		}
 
+		if !bytes.Equal(resolvedAddr.Bytes(), addr.Bytes()) {
+			logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%v", addr.Hex()), "reason": fmt.Sprintf("addr != resolvedAddr: %v != %v", addr.Hex(), resolvedAddr.Hex())}).Warnf("deleting ens entry")
+			if !opts.DryRun {
+				_, err = db.WriterDb.Exec(`delete from ens where address = $1`, addr.Bytes())
+				if err != nil {
+					return fmt.Errorf("error deleting ens entry: %w", err)
+				}
+			}
+		}
+
 		nameHash, err := go_ens.NameHash(name)
 		if err != nil {
 			return fmt.Errorf("error go_ens.NameHash(%v) for addr %v: %w", name, addr.Hex(), err)
