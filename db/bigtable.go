@@ -765,6 +765,9 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 
 // GetMaxValidatorindexForEpoch returns the higest validatorindex with a balance at that epoch
 func (bigtable *Bigtable) GetMaxValidatorindexForEpoch(epoch uint64) (uint64, error) {
+	if epoch < bigtable.v2SchemaCutOffEpoch {
+		return GetMaxValidatorIndexForEpoch(epoch)
+	}
 	return bigtable.getMaxValidatorindexForEpochV2(epoch)
 }
 
