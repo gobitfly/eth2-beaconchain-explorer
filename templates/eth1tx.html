@@ -1,4 +1,7 @@
 {{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
+
   <script>
     function togglePriceContent(currentPrice, historicPrice) {
       var content = document.getElementById("valuePriceButton")
@@ -16,6 +19,58 @@
     }
 
     activateTabbarSwitcher("eth1tx-tab-content", "eth1TxTabs", "overview")
+
+    const handleTabChange = (url) => {
+      if ($(`#${"eth1tx-tab-content"}`).find(".tab-pane.active")[0] == $("#internal-txnsTabPanel")[0]) {
+        $("#advanced-itx").show()
+      }
+      else {
+        $("#advanced-itx").hide()
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", function (ev) {
+      window.navigation.addEventListener("navigate", (event) => {
+        if (!event.destination?.url || event.destination.url.split("#")[0] != event.srcElement?.currentEntry?.url?.split("#")[0]) {
+          return
+        }
+        handleTabChange(event.destination?.url)
+      })
+      handleTabChange(window.location.href)
+    })
+
+    function filterItransactions(show) {
+      if (show) {
+        $('#itransactions').DataTable()
+        .column(3)
+        .search("")
+        .draw()
+      } else {
+        regExSearch = '^(?!' + `0 ETH` + '$).*$';
+        $('#itransactions').DataTable()
+        .column(3)
+        .search(regExSearch, true, false)
+        .draw()
+      }
+    }
+
+    $("#advanced-itx-toggle").on("click", async () => {
+      filterItransactions($("#advanced-itx-toggle").is(':checked'))
+    })
+
+    let hash = {{ .Hash }} || 0
+    $(document).ready(function () {
+      var tblOpts = {
+        processing: true,
+        paging: false,
+        ordering: false,
+        searching: true,
+        ajax: dataTableLoader('/tx/' + hash + '/data'),
+        dom: 'lrtip'
+      }
+    $('#itransactions').DataTable(tblOpts)
+    filterItransactions(false)
+    })
   </script>
 {{ end }}
 
@@ -47,6 +102,15 @@
     {{ with .Data }}
       <div class="card">
         <div class="card-header">
+          <div id="advanced-itx" class="hide mr-20 float-right">
+            <div class="float-right">
+              <span class="text-monospace mr-2">Advanced</span>
+              <label class="advanced-itx-switch float-right" for="advanced-itx-toggle">
+                <input type="checkbox" id="advanced-itx-toggle" />
+                <div class="slider round"></div>
+              </label>
+            </div>
+          </div>
           <ul class="nav nav-tabs card-header-tabs border-bottom-0" id="eth1TxTabs" role="tablist">
             <li class="nav-item">
               <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="fas fa-info-circle"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
@@ -399,27 +463,17 @@
             {{ if .InternalTxns }}
               <div id="internal-txnsTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="internal-txns-tab">
                 <div class="table-responsive">
-                  <table class="table table-borderless text-monospace">
+                  <table class="table dataTable no-footer" id="itransactions" role="grid">
                     <thead>
-                      <th>Type Trace Address</th>
-                      <th>From</th>
-                      <th>To</th>
-                      <th>Value</th>
-                      <th>Gas Limit</th>
+                      <tr>
+                        <th>Type Trace Address</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Value</th>
+                        <th>Gas Limit</th>
+                      </tr>
                     </thead>
-                    <tbody>
-                      {{ range $index, $tx := .InternalTxns }}
-                        {{ if not .Advanced }}
-                          <tr>
-                            <td>{{ .TracePath }}</td>
-                            <td>{{ .From }}</td>
-                            <td>{{ .To }}</td>
-                            <td>{{ .Amount }}</td>
-                            <td>{{ .Gas.Limit }}</td>
-                          </tr>
-                        {{ end }}
-                      {{ end }}
-                    </tbody>
+                    <tbody></tbody>
                   </table>
                 </div>
               </div>

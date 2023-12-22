@@ -5,6 +5,17 @@
   height: 19.2px;
 }
 
+.advanced-itx-switch {
+  position: relative;
+  display: inline-flex;
+  width: 38.4px;
+  height: 19.2px;
+}
+
+.advanced-itx-switch input {
+  display: none;
+}
+
 .theme-switch {
   height: calc(var(--font-size, 1rem) * 1.2);
   position: absolute;
