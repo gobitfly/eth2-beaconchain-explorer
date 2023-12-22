@@ -517,7 +517,8 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 			err.Error() == "no resolver" ||
 			err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
 			strings.Contains(err.Error(), "execution reverted") ||
-			err.Error() == "invalid jump destination" {
+			err.Error() == "invalid jump destination" ||
+			err.Error() == "invalid opcode: INVALID" {
 			// the given name is not available anymore or resolving it did not work properly => we can remove it from the db (if it is there)
 			err = removeEnsName(client, name)
 			if err != nil {
