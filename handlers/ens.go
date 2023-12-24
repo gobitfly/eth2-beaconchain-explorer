@@ -56,6 +56,7 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 		address, err := db.GetAddressForEnsName(search)
 		if err != nil {
+			data.Domain = search
 			return data, err // We want to return the data if it was a valid domain even if there was an error getting the address from bigtable. A valid domain might be enough for the caller.
 		}
 		data.Address = address.Hex()
