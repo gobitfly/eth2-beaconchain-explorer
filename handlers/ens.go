@@ -47,19 +47,26 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 	var returnError error
 
 	if utils.IsValidEnsDomain(search) {
-		data.Domain = search
-
 		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.ClConfig.DepositChainID, search)
 
 		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err == nil && len(address) > 0 {
 			data.Address = address
 			return data, nil
 		}
+
 		address, err := db.GetAddressForEnsName(search)
 		if err != nil {
+			data.Domain = search
 			return data, err // We want to return the data if it was a valid domain even if there was an error getting the address from bigtable. A valid domain might be enough for the caller.
 		}
 		data.Address = address.Hex()
+
+		name, err := db.GetEnsNameForAddress(*address)
+		if err != nil {
+			return data, err // We want to return the data if it was a valid address even if there was an error getting the domain from bigtable. A valid address might be enough for the caller.
+		}
+		data.Domain = *name
+
 		err = cache.TieredCache.SetString(cacheKey, data.Address, time.Minute)
 		if err != nil {
 			logger.Errorf("error caching ens address: %v", err)
