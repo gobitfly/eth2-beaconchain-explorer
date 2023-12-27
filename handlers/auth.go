@@ -23,6 +23,7 @@ import (
 var authSessionName = "auth"
 var authResetEmailRateLimit = time.Minute * 2
 var authConfirmEmailRateLimit = time.Minute * 2
+var authEmailExpireTime = time.Minute * 30
 var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please retry later"
 
 // Register handler renders a template that allows for the creation of a new user.
@@ -364,99 +365,66 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // ResetPassword renders a template that lets the user reset his password.
-// This only works if the hash in the url is correct. This will also confirm
-// the email of the user if it has not been confirmed yet.
+// This only works if the hash in the url is correct.
+// Will also confirm email of the user if it has not been confirmed yet.
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "resetPassword.html")
 	var resetPasswordTemplate = templates.GetTemplate(templateFiles...)
 
 	w.Header().Set("Content-Type", "text/html")
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
-	dbUser := struct {
-		ID             uint64 `db:"id"`
-		EmailConfirmed bool   `db:"email_confirmed"`
-		Email          string `db:"email"`
-		ProductID      string `db:"product_id"`
-		Active         bool   `db:"active"`
+	errFields := map[string]interface{}{
+		"route": r.URL.String(),
+		"hash":  hash,
+	}
+
+	// fetch user from db by hash
+	user := struct {
+		ID        uint64    `db:"id"`
+		Confirmed bool      `db:"email_confirmed"`
+		ResetTs   time.Time `db:"password_reset_ts"`
 	}{}
-	err = db.FrontendWriterDB.Get(&dbUser, `
-		WITH
-			latest_and_greatest_sub AS (
-				SELECT user_id, product_id, active, created_at FROM users_app_subscriptions 
-				left join users on users.id = user_id 
-				WHERE users.password_reset_hash = $1 AND active = true
-				ORDER BY CASE product_id
-					WHEN 'whale' THEN 1
-					WHEN 'goldfish' THEN 2
-					WHEN 'plankton' THEN 3
-					ELSE 4  -- For any other product_id values
-				END, users_app_subscriptions.created_at DESC LIMIT 1
-			)
-		SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active
+	err := db.FrontendWriterDB.Get(&user, `
+		SELECT users.id, email_confirmed, password_reset_ts
 		FROM users 
-		left join latest_and_greatest_sub on latest_and_greatest_sub.user_id = users.id  
 		WHERE password_reset_hash = $1`, hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			session.AddFlash("Error: Invalid reset link, please retry.")
-			session.Save(r, w)
-			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
-			return
+			utils.SetFlash(w, r, authSessionName, "Error: Invalid or outdated reset link, please retry.")
+		} else {
+			utils.LogError(err, "error resetting password", 0, errFields)
+			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		}
-		logger.Errorf("error resetting password: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
 		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password_reset_hash = '' WHERE id = $1", dbUser.ID)
-	if err != nil {
-		logger.Errorf("error clearing hash when user is resetting password: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
+	errFields["user_id"] = user.ID
+
+	// check expired ts
+	if user.ResetTs.Add(authEmailExpireTime).Before(time.Now()) {
+
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid or outdated reset link, please retry.")
 		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	// if the user has not confirmed her email yet, just confirm it since she clicked this reset-password-link that has been sent to her email aswell anyway
-	if !dbUser.EmailConfirmed {
-		_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", dbUser.ID)
+	// if email is not confirmed, confirm since they clicked a link emailed to them
+	if !user.Confirmed {
+		_, err = db.FrontendWriterDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", user.ID)
 		if err != nil {
-			logger.Errorf("error setting confirmed when user is resetting password: %v", err)
-			session.AddFlash(authInternalServerErrorFlashMsg)
-			session.Save(r, w)
+			utils.LogError(err, "error updating email-confirmation when password reset", 0, errFields)
+			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 			return
 		}
-		session.AddFlash("Your email-address has been confirmed.")
 	}
-
-	user := &types.User{}
-	user.Authenticated = true
-	user.UserID = dbUser.ID
-	user.Subscription = ""
-	if dbUser.Active {
-		user.Subscription = dbUser.ProductID
-	}
-
-	session.SetValue("authenticated", true)
-	session.SetValue("user_id", user.UserID)
-	session.SetValue("subscription", user.Subscription)
-	session.Save(r, w)
 
 	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password", templateFiles)
-	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)}
+	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), State: hash, CsrfField: csrf.TemplateField(r)}
 	data.Meta.NoTrack = true
 
 	if handleTemplateError(w, r, "auth.go", "ResetPassword", "", resetPasswordTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -464,79 +432,73 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ResetPasswordPost resets the password to the value provided in the form, given that the user is authenticated.
+// ResetPasswordPost resets the password to the value provided in the form, given that the hash is correct.
 func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
-	logger := logger.WithField("route", r.URL.String())
+	hash := r.FormValue("hash")
+	errFields := map[string]interface{}{
+		"route": r.URL.String(),
+		"hash":  hash,
+	}
 
-	user, session, err := getUserSession(r)
+	// fetch user from db by hash
+	user := struct {
+		ID      uint64    `db:"id"`
+		ResetTs time.Time `db:"password_reset_ts"`
+	}{}
+	err := db.FrontendWriterDB.Get(&user, `
+			SELECT users.id, password_reset_ts
+			FROM users 
+			WHERE password_reset_hash = $1`, hash)
 	if err != nil {
-		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if errors.Is(err, sql.ErrNoRows) {
+			utils.SetFlash(w, r, authSessionName, "Error: Invalid or outdated reset link, please retry.")
+		} else {
+			utils.LogError(err, "error resetting password", 0, errFields)
+			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		}
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	if !user.Authenticated {
-		session.AddFlash("Error: You are not authenticated (or did not use the correct reset-link).")
-		session.Save(r, w)
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+	errFields["user_id"] = user.ID
+
+	// check expired ts
+	if user.ResetTs.Add(authEmailExpireTime).Before(time.Now()) {
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid or outdated reset link, please retry.")
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	err = r.ParseForm()
-	if err != nil {
-		utils.LogError(err, "error parsing form", 0)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
-		return
-	}
-
+	// update password
 	pwd := r.FormValue("password")
-	pHash, err := bcrypt.GenerateFromPassword([]byte(pwd), 10)
+	err = db.UpdatePassword(user.ID, pwd)
 	if err != nil {
-		logger.Errorf("error generating hash for password: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		utils.LogError(err, "error updating password", 0, errFields)
+		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong updating your password. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	err = db.UpdatePassword(user.UserID, pHash)
+	// purge all sessions for user
+	err = purgeAllSessionsForUser(r.Context(), user.ID)
 	if err != nil {
-		logger.Errorf("error updating password for user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		utils.LogError(err, "error purging sessions for user", 0, errFields)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	session.SetValue("subscription", "")
-	session.SetValue("authenticated", false)
-	session.DeleteValue("user_id")
-
-	err = purgeAllSessionsForUser(r.Context(), user.UserID)
-	if err != nil {
-		logger.Errorf("error purging sessions for user %v: %v", user.UserID, err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
-		return
-	}
-
+	session, _ := utils.SessionStore.Get(r, authSessionName)
 	err = session.SCS.RenewToken(r.Context())
 	if err != nil {
-		logger.Errorf("error renewing session token for user: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
-		session.Save(r, w)
-		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		utils.LogError(err, "error renewing session token", 0, errFields)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	session.AddFlash("Your password has been updated successfully, please log in again!")
-
-	session.Save(r, w)
-
-	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+	utils.SetFlash(w, r, authSessionName, "Your password has been updated successfully, you can now log in with your new password.")
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 // RequestResetPassword renders a template that lets the user enter his email and request a reset link.
@@ -591,7 +553,7 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rateLimitError *types.RateLimitError
-	err = sendResetEmail(email)
+	err = sendPasswordResetEmail(email)
 	if err != nil && !errors.As(err, &rateLimitError) {
 		logger.Errorf("error sending reset-email: %v", err)
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
@@ -764,7 +726,7 @@ Best regards,
 	return nil
 }
 
-func sendResetEmail(email string) error {
+func sendPasswordResetEmail(email string) error {
 	now := time.Now()
 	resetHash := utils.RandomString(40)
 
@@ -783,7 +745,7 @@ func sendResetEmail(email string) error {
 		return &types.RateLimitError{TimeLeft: (*lastTs).Add(authResetEmailRateLimit).Sub(now)}
 	}
 
-	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1 WHERE email = $2", resetHash, email)
+	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1, password_reset_ts = TO_TIMESTAMP($2) WHERE email = $3", resetHash, time.Now().Unix(), email)
 	if err != nil {
 		return fmt.Errorf("error updating reset-hash: %w", err)
 	}
@@ -794,10 +756,12 @@ func sendResetEmail(email string) error {
 	}
 
 	subject := fmt.Sprintf("%s: Reset your password", utils.Config.Frontend.SiteDomain)
-	msg := fmt.Sprintf(`You can reset your password on %[1]s by clicking this link:
+	msg := fmt.Sprintf(`To update your password on %[1]s, please click this link:
 
 https://%[1]s/reset/%[2]s
-
+	
+This link will expire in 30 minutes.
+	
 Best regards,
 
 %[1]s
@@ -805,11 +769,6 @@ Best regards,
 	err = mail.SendTextMail(email, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
-	}
-
-	_, err = db.FrontendWriterDB.Exec("UPDATE users SET password_reset_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
-	if err != nil {
-		return fmt.Errorf("error updating reset-ts: %w", err)
 	}
 
 	return nil

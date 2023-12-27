@@ -127,9 +127,9 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
-			b.AttestationsCount,
-			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
-			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
+			utils.FormatCount(b.AttestationsCount, b.Finalized, false),
+			fmt.Sprintf("%v / %v", utils.FormatCount(b.DepositsCount, b.Finalized, true), utils.FormatCount(b.WithdrawalCount, b.Finalized, true)),
+			fmt.Sprintf("%v / %v", utils.FormatCount(b.ProposerSlashingsCount, b.Finalized, true), utils.FormatCount(b.AttesterSlashingsCount, b.Finalized, true)),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),
 			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency),

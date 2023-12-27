@@ -323,7 +323,14 @@ function showProposedHistoryTable() {
   waitForTurnstileToken(() => {
     fetch("/dashboard/data/proposalshistory" + getValidatorQueryString(), {
       method: "GET",
-    })
+    }).then((res) => {
+      res.json().then(function (data) {
+        let proposedHistTableData = []
+        for (let item of data.data) {
+          proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
+        }
+        renderProposedHistoryTable(proposedHistTableData)
+      })
       .then((res) => {
         res.json().then(function (data) {
           let proposedHistTableData = []
@@ -336,6 +343,7 @@ function showProposedHistoryTable() {
       .finally(() => {
         resetTurnstileToken()
       })
+    })
   })
 }
 

@@ -37,9 +37,60 @@ function updateBanner() {
         // always visible
         var epochHandle = document.getElementById("banner-epoch-data")
 
-        if (data.currentEpoch) {
-          epochHandle.innerHTML = addCommas(data.currentEpoch)
-          epochHandle.setAttribute("href", "/epoch/" + data.currentEpoch)
+      if (data.currentEpoch) {
+        epochHandle.innerHTML = addCommas(data.currentEpoch)
+        epochHandle.setAttribute("href", "/epoch/" + data.currentEpoch)
+      }
+
+      var slotHandle = document.getElementById("banner-slot-data")
+      if (data.currentSlot) {
+        slotHandle.innerHTML = addCommas(data.currentSlot)
+        slotHandle.setAttribute("href", "/slot/" + data.currentSlot)
+      }
+
+      var ethPriceHandle = document.getElementById("banner-eth-price-data")
+      if (ethPriceHandle) {
+        try {
+          let userCurrency = getCookie("currency")
+          if (!userCurrency || userCurrency == data.rates.mainCurrency) userCurrency = data.rates.tickerCurrency
+          var price = data.rates.mainCurrencyTickerPrices[userCurrency]
+          ethPriceHandle.innerHTML = `<span class='currency-symbol'>${price.symbol} </span><span class='k-formatted-price'>${price.truncPrice}</span><span class='price'>${addCommas(price.roundPrice)}</span>`
+        } catch (err) {
+          console.error("failed updating banner-price:", err)
+        }
+      }
+
+      var finDelayDataHandle = document.getElementById("banner-fin-data")
+      finDelayHtml = `
+      <div id="banner-fin" class="info-item d-flex mr-3">
+      <div class="info-item-header mr-1 text-warning">
+        <span class="item-icon">
+          <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was ${data.finalityDelay} epochs ago."></i>
+        </span>
+        <span class="item-text">
+          Finality
+        </span>
+      </div>
+      <div class="info-item-body text-warning">
+        <span id="banner-fin-data">${data.finalityDelay}</span>
+        <i class="fas fa-exclamation-triangle item-text" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was ${data.finalityDelay} epochs ago."></i>
+      </div>
+    </div>
+    `
+
+      if (!finDelayDataHandle && data.finalityDelay > 3 && !data.syncing) {
+        // create fin delay node
+        document.getElementById("banner-slot").insertAdjacentHTML("afterend", finDelayHtml)
+        $("#banner-fin i").each(function () {
+          $(this).tooltip("update")
+        })
+      } else if (finDelayDataHandle && data.finalityDelay > 3 && !data.syncing) {
+        // update fin delay node
+        finDelayDataHandle.textContent = data.finalityDelay
+        var icons = document.querySelectorAll("#banner-fin i")
+        for (let i = 0; i < icons.length; i++) {
+          const icon = icons[i]
+          icon.setAttribute("data-original-title", `The last finalized epoch was ${data.finalityDelay} epochs ago.`)
         }
 
         var slotHandle = document.getElementById("banner-slot-data")

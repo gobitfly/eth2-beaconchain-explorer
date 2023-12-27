@@ -1288,11 +1288,11 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	for _, w := range withdrawals {
 		tableData = append(tableData, []interface{}{
-			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false, true)),
+			utils.FormatEpoch(utils.EpochOfSlot(w.Slot)),
+			utils.FormatBlockSlot(w.Slot),
+			utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()),
+			utils.FormatAddress(w.Address, nil, "", false, false, true),
+			utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false, true),
 		})
 	}
 
@@ -1853,7 +1853,7 @@ func incomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdr
 		utils.FormatEpoch(epoch),
 		utils.FormatBalanceChangeFormatted(&rewards, currency, income),
 		template.HTML(""),
-		template.HTML(events),
+		events,
 	}
 }
 

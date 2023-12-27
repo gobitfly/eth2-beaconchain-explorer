@@ -147,29 +147,10 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		addressWithdrawals, nextPageToken, err := db.GetAddressWithdrawals(addressBytes, 25, "")
+		withdrawals, err = db.GetAddressWithdrawalTableData(addressBytes, "", currency)
 		if err != nil {
-			return fmt.Errorf("GetAddressWithdrawals: %w", err)
+			return fmt.Errorf("GetAddressWithdrawalTableData: %w", err)
 		}
-
-		withdrawalsData := make([][]interface{}, 0, len(addressWithdrawals))
-		for _, w := range addressWithdrawals {
-			withdrawalsData = append(withdrawalsData, []interface{}{
-				template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
-				template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-				template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
-				template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-				template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
-			})
-		}
-
-		withdrawals = &types.DataTableResponse{
-			Draw:         1,
-			RecordsTotal: uint64(len(withdrawalsData)),
-			Data:         withdrawalsData,
-			PagingToken:  nextPageToken,
-		}
-
 		return nil
 	})
 	g.Go(func() error {
@@ -177,7 +158,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("GetAddressWithdrawalsTotal: %w", err)
 		}
-		withdrawalSummary = template.HTML(utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false, true))
+		withdrawalSummary = utils.FormatClCurrency(sumWithdrawals, currency, 6, true, false, false, true)
 		return nil
 	})
 
@@ -382,27 +363,11 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	errFields := map[string]interface{}{
 		"route": r.URL.String()}
 
-	withdrawals, nextPageToken, err := db.GetAddressWithdrawals(common.HexToAddress(address).Bytes(), 25, q.Get("pageToken"))
+	data, err := db.GetAddressWithdrawalTableData(common.HexToAddress(address).Bytes(), q.Get("pageToken"), currency)
 	if err != nil {
 		utils.LogError(err, "error getting address withdrawals data", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
-	}
-
-	tableData := make([][]interface{}, len(withdrawals))
-	for i, w := range withdrawals {
-		tableData[i] = []interface{}{
-			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true)),
-		}
-	}
-
-	data := &types.DataTableResponse{
-		Data:        tableData,
-		PagingToken: nextPageToken,
 	}
 
 	err = json.NewEncoder(w).Encode(data)

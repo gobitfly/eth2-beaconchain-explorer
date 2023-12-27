@@ -25,6 +25,7 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -86,18 +87,18 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		statsSharing = false
 	}
 
-	maxDaily := 10000
-	maxMonthly := 30000
+	maxDaily := utils.Config.Frontend.Ratelimits.FreeDay
+	maxMonthly := utils.Config.Frontend.Ratelimits.FreeMonth
 	if subscription.PriceID != nil {
 		if *subscription.PriceID == utils.Config.Frontend.Stripe.Sapphire {
-			maxDaily = 100000
-			maxMonthly = 500000
+			maxDaily = utils.Config.Frontend.Ratelimits.SapphierDay
+			maxMonthly = utils.Config.Frontend.Ratelimits.SapphierMonth
 		} else if *subscription.PriceID == utils.Config.Frontend.Stripe.Emerald {
-			maxDaily = 200000
-			maxMonthly = 1000000
+			maxDaily = utils.Config.Frontend.Ratelimits.EmeraldDay
+			maxMonthly = utils.Config.Frontend.Ratelimits.EmeraldMonth
 		} else if *subscription.PriceID == utils.Config.Frontend.Stripe.Diamond {
-			maxDaily = -1
-			maxMonthly = 4000000
+			maxDaily = utils.Config.Frontend.Ratelimits.DiamondDay
+			maxMonthly = utils.Config.Frontend.Ratelimits.DiamondMonth
 		}
 	}
 
@@ -1026,8 +1027,6 @@ func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
-	var GenericUpdatePasswordError = "Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>"
-
 	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
@@ -1080,19 +1079,10 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pHash, err := bcrypt.GenerateFromPassword([]byte(pwdNew), 10)
-	if err != nil {
-		logger.Errorf("error generating hash for password: %v", err)
-		session.AddFlash(GenericUpdatePasswordError)
-		session.Save(r, w)
-		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-		return
-	}
-
-	err = db.UpdatePassword(user.UserID, pHash)
+	err = db.UpdatePassword(user.UserID, pwdNew)
 	if err != nil {
 		logger.Errorf("error updating password for user: %v", err)
-		session.AddFlash("Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
+		session.AddFlash("Error: Something went wrong updating your password. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -1268,13 +1258,6 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
-	sessionUser, _, err := getUserSession(r)
-	if err != nil {
-		utils.LogError(err, "error retrieving session for email update confirmation", 0, map[string]interface{}{"hash": hash})
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	user := struct {
 		ID               int64     `db:"id"`
 		Email            string    `db:"email"`
@@ -1284,7 +1267,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		StripeCustomerId string    `db:"stripe_customer_id"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&user, `
+	err := db.FrontendWriterDB.Get(&user, `
 		SELECT
 			id,
 			email,
@@ -1296,7 +1279,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		WHERE email_confirmation_hash = $1`, hash)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash, "userID": sessionUser.UserID})
+			utils.LogError(err, "error retrieving user data for updating email", 0, map[string]interface{}{"hash": hash})
 		}
 		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -1311,7 +1294,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.ConfirmTs.Add(time.Minute * 30).Before(time.Now()) {
+	if user.ConfirmTs.Add(authEmailExpireTime).Before(time.Now()) {
 		utils.SetFlash(w, r, authSessionName, "Error: This link is invalid / outdated.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -1537,6 +1520,62 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
+// UserDashboardWatchlistRemove godoc
+// @Summary  unsubscribes a user from a specific validator via index from both watchlist and notification events
+// @Tags User
+// @Produce  json
+// @Param pubKey body []string true "Index of validator you want to unsubscribe from"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/dashboard/remove [post]
+func UserDashboardWatchlistRemove(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	user := getUser(r)
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	indices := make([]string, 0)
+	err = json.Unmarshal(body, &indices)
+	if err != nil {
+		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	indicesParsed := make([]int64, 0)
+	for _, i := range indices {
+		parsed, err := strconv.ParseInt(i, 10, 64)
+		if err != nil {
+			logger.Errorf("error could not parse validator indices: %v, %v", r.URL.String(), err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		indicesParsed = append(indicesParsed, parsed)
+	}
+
+	publicKeys := make([]string, 0)
+	db.WriterDb.Select(&publicKeys, `
+	SELECT pubkeyhex as pubkey
+	FROM validators
+	WHERE validatorindex = ANY($1)
+	`, pq.Int64Array(indicesParsed))
+
+	err = db.RemoveFromWatchlistBatch(user.UserID, publicKeys, utils.GetNetwork())
+	if err != nil {
+		logger.Errorf("error could not remove validators from watchlist: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	OKResponse(w, r)
+}
+
 // UserValidatorWatchlistRemove godoc
 // @Summary  unsubscribes a user from a specific validator
 // @Tags User
@@ -1727,9 +1766,15 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 	errFields["event_name"] = eventName
 
-	if !isValidSubscriptionFilter(eventName, filter) {
-		utils.LogError(nil, "error invalid filter: not pubkey or client for subscription", 0, errFields)
+	valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter)
+	if err != nil {
+		utils.LogError(err, "error validating filter", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return false
+	}
+
+	if !valid {
+		ErrorOrJSONResponse(w, r, "Invalid filter, only pubkey, client or machine name is valid.", http.StatusBadRequest)
 		return false
 	}
 
@@ -1916,10 +1961,16 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 	}
 
 	errFields["event_name"] = eventName
+	valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter)
 
-	if !isValidSubscriptionFilter(eventName, filter) {
-		utils.LogError(nil, "error invalid filter: not pubkey or client for unsubscription", 0, errFields)
+	if err != nil {
+		utils.LogError(err, "error validating filter", 0, errFields)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return false
+	}
+
+	if !valid {
+		ErrorOrJSONResponse(w, r, "Invalid filter, only pubkey, client or machine name is valid.", http.StatusBadRequest)
 		return false
 	}
 
@@ -2000,14 +2051,20 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !isValidSubscriptionFilter(eventName, filter) {
-		errMsg := fmt.Errorf("error invalid filter, not pubkey or client")
+	valid, err := isValidSubscriptionFilter(user.UserID, eventName, filter)
+	if err != nil {
+		errMsg := fmt.Errorf("error validating filter")
 		errFields := map[string]interface{}{
 			"filter":     filter,
 			"filter_len": len(filter)}
-		utils.LogError(nil, errMsg, 0, errFields)
+		utils.LogError(err, errMsg, 0, errFields)
 
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if !valid {
+		ErrorOrJSONResponse(w, r, "Invalid filter, only pubkey, client or machine name is valid.", http.StatusBadRequest)
 		return
 	}
 
@@ -2060,7 +2117,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
-func isValidSubscriptionFilter(eventName types.EventName, filter string) bool {
+func isValidSubscriptionFilter(userID uint64, eventName types.EventName, filter string) (bool, error) {
 	ethClients := []string{"geth", "nethermind", "besu", "erigon", "teku", "prysm", "nimbus", "lighthouse", "lodestar", "rocketpool", "mev-boost"}
 
 	isPkey := searchPubkeyExactRE.MatchString(filter)
@@ -2078,7 +2135,43 @@ func isValidSubscriptionFilter(eventName types.EventName, filter string) bool {
 		isClient = true
 	}
 
-	return len(filter) == 0 || isPkey || isClient
+	isValidMachine := false
+	if types.IsMachineNotification(eventName) {
+		machines, err := db.BigtableClient.GetMachineMetricsMachineNames(userID)
+		if err != nil {
+			return false, errors.Wrap(err, "can not get users machines from bigtable for validation")
+		}
+		for _, userMachineName := range machines {
+			if userMachineName == filter {
+				isValidMachine = true
+				break
+			}
+		}
+
+		// While the above works fine for active machines (adding a new notification to an active machine)
+		// It does not work for a machine that is offline and where the user wants to subscribe/unsubscribe from this machine.
+		// So check the db for any machine names as well
+		if !isValidMachine {
+			machines := make([]string, 0)
+			err = db.FrontendWriterDB.Select(&machines, `
+				select event_filter
+				from users_subscriptions 
+				where user_id = $1 AND event_name = ANY($2)
+			`, userID, pq.Array(types.MachineEvents))
+			if err != nil {
+				return false, errors.Wrap(err, "can not get event_filters from db for validation")
+			}
+
+			for _, machineName := range machines {
+				if machineName == filter {
+					isValidMachine = true
+					break
+				}
+			}
+		}
+	}
+
+	return len(filter) == 0 || isPkey || isClient || isValidMachine, nil
 }
 
 func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) {
