@@ -120,31 +120,19 @@ func VerifyTurnstile(w http.ResponseWriter, r *http.Request) {
 
 		err := utils.VerifyTurnstileToken(r)
 
-		cookie := http.Cookie{
-			Name:     "turnstile",
-			Value:    "verified",
-			Path:     "/",
-			MaxAge:   int(utils.Config.Frontend.Turnstile.CookieMaxAge),
-			HttpOnly: false,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-		}
-
 		if err != nil {
-			fmt.Println(err)
-			// clear cookie
-			cookie.MaxAge = -1
-			http.SetCookie(w, &cookie)
-			http.Error(w, "Turnstile challenge failed", http.StatusServiceUnavailable)
+			utils.LogError(err, "Turnstile challenge failed", 0)
+			utils.ClearTurnstileVerifiedCookie(w)
+			http.Error(w, "Turnstile challenge failed", http.StatusBadRequest)
 			return
 		}
 
-		validuntil := time.Now().Add(time.Duration(utils.Config.Frontend.Turnstile.SessionMaxAge) * time.Second).Format(time.RFC3339)
-
-		utils.SessionStore.SCS.Put(r.Context(), "TURNSTILE::VALIDUNTIL", validuntil)
-		http.SetCookie(w, &cookie)
+		validsince := time.Now().Unix()
+		utils.SessionStore.SCS.Put(r.Context(), "TURNSTILE::VALIDSINCE", validsince)
+		utils.SetTurnstileVerifiedCookie(w, int(utils.Config.Frontend.Turnstile.CookieMaxAge))
 		w.Write([]byte("Success"))
 	} else {
 		w.Write([]byte("Turnstile not enabled"))
 	}
+
 }

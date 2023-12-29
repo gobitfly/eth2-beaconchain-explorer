@@ -4,17 +4,6 @@ const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_proposal_mi
 
 // const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
-function prepare(query, settings) {
-  settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-  settings.beforeSend = function (jqXHR) {
-    jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
-  }
-  settings.complete = function () {
-    resetTurnstileToken()
-  }
-  return settings
-}
-
 function create_typeahead(input_container) {
   var timeWait = 0
   var debounce = function (context, func) {
@@ -71,7 +60,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_name/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
@@ -83,7 +72,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_graffiti/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)
@@ -95,7 +84,7 @@ function create_typeahead(input_container) {
     },
     remote: {
       url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
@@ -198,7 +187,7 @@ function create_validators_typeahead(input_container_selector, table_selector) {
     },
     remote: {
       url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   $(input_container_selector).typeahead(

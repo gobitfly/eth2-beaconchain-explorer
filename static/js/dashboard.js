@@ -323,26 +323,20 @@ function showProposedHistoryTable() {
   waitForTurnstileToken(() => {
     fetch("/dashboard/data/proposalshistory" + getValidatorQueryString(), {
       method: "GET",
+      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken }
     }).then((res) => {
-      res.json().then(function (data) {
-        let proposedHistTableData = []
-        for (let item of data.data) {
-          proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
-        }
-        renderProposedHistoryTable(proposedHistTableData)
-      })
-      .then((res) => {
-        res.json().then(function (data) {
+      res
+        .json()
+        .then(function (data) {
           let proposedHistTableData = []
-          for (let item of data) {
+          for (let item of data.data) {
             proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
           }
           renderProposedHistoryTable(proposedHistTableData)
         })
-      })
-      .finally(() => {
-        resetTurnstileToken()
-      })
+        .finally(() => {
+          resetTurnstileToken()
+        })
     })
   })
 }
@@ -734,17 +728,6 @@ $(document).ready(function () {
   }
   create_validators_typeahead("input[aria-controls='validators']", "#validators")
 
-  function prepare(query, settings) {
-    settings.url = settings.url.replace("%QUERY", encodeURIComponent(query))
-    settings.beforeSend = function (jqXHR) {
-      jqXHR.setRequestHeader("X-TURNSTILE-TOKEN", window.turnstileToken)
-    }
-    settings.complete = function (jqXHR) {
-      resetTurnstileToken()
-    }
-    return settings
-  }
-
   var timeWait = 0
   var debounce = function (context, func) {
     var timeout, result
@@ -797,7 +780,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/validators_by_pubkey/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   bhPubkey.remote.transport._get = debounce(bhPubkey.remote.transport, bhPubkey.remote.transport._get)
@@ -809,7 +792,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators_by_eth1_addresses/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   bhEth1Addresses.remote.transport._get = debounce(bhEth1Addresses.remote.transport, bhEth1Addresses.remote.transport._get)
@@ -821,7 +804,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators_by_name/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   bhName.remote.transport._get = debounce(bhName.remote.transport, bhName.remote.transport._get)
@@ -833,7 +816,7 @@ $(document).ready(function () {
     },
     remote: {
       url: "/search/indexed_validators_by_graffiti/%QUERY",
-      prepare: prepare,
+      prepare: prepareBloodhound,
     },
   })
   bhGraffiti.remote.transport._get = debounce(bhGraffiti.remote.transport, bhGraffiti.remote.transport._get)

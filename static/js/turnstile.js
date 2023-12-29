@@ -15,6 +15,7 @@ function getCookie(cname) {
 
 function renderTurnStile() {
   if (!window.turnstile || getCookie("turnstile") === "verified") return
+  console.debug("renderTurnStile")
 
   if (window.isRequestingTurnstileToken) return
   window.isRequestingTurnstileToken = true
@@ -36,6 +37,7 @@ function renderTurnStile() {
       $("#turnstileModal").modal("hide")
     },
     "error-callback": function (error) {
+      //https://developers.cloudflare.com/turnstile/reference/client-side-errors/
       console.log(`error callback called with ${error}`)
       window.isRequestingTurnstileToken = false
     },
@@ -85,11 +87,12 @@ function verifyTurnStileToken(cb) {
       console.log("error verifying turnstile token", err)
     })
 }
-
 // resetting a widget causes it to rerender
-// rerender only if the cookie is not present
+// rerender only if the cookie is not present and there has been no request already for a token
 function resetTurnstileToken() {
   if (getCookie("turnstile") !== "verified") {
+    if (window.isRequestingTurnstileToken) return
+    window.isRequestingTurnstileToken = true
     if (window.turnstile) {
       if (window.turnstileWidgetId) {
         window.turnstile.reset(window.turnstileWidgetId)

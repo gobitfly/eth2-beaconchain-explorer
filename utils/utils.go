@@ -63,6 +63,8 @@ var ErrRateLimit = errors.New("## RATE LIMIT ##")
 
 var localiser *i18n.I18n
 
+var authSessionName = "auth"
+
 // making sure language files are loaded only once
 func getLocaliser() *i18n.I18n {
 	if localiser == nil {
@@ -1826,43 +1828,57 @@ func IsPoSBlock0(number uint64, ts int64) bool {
 func TurnstileMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		cookie := http.Cookie{
-			Name:     "turnstile",
-			Value:    "verified",
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: false,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-		}
-
 		if Config.Frontend.Turnstile.Enabled {
 
-			session, err := SessionStore.Get(r, "auth")
+			session, err := SessionStore.Get(r, authSessionName)
 
 			if err != nil {
 				logger.Errorf("error retrieving session: %v", err)
 			}
 
-			turnstileExpires := session.SCS.GetString(r.Context(), "TURNSTILE::VALIDUNTIL")
-			turnstileExpiresTime, _ := time.Parse(time.RFC3339, turnstileExpires)
+			validSince := session.SCS.GetInt64(r.Context(), "TURNSTILE::VALIDSINCE")
+			validUntil := time.Unix(validSince+Config.Frontend.Turnstile.SessionMaxAge, 0)
 
-			if turnstileExpires == "" || turnstileExpiresTime.Before(time.Now()) {
-				http.SetCookie(w, &cookie)
+			if validSince == 0 || validUntil.Before(time.Now()) {
+				ClearTurnstileVerifiedCookie(w)
 				http.Error(w, "Turnstile token expired", http.StatusServiceUnavailable)
 				return
 			} else {
-				Duration := time.Until(turnstileExpiresTime)
 				dtSessionCookie := int(Config.Frontend.Turnstile.SessionMaxAge - Config.Frontend.Turnstile.CookieMaxAge)
-				cookie.MaxAge = int(Duration.Seconds()) - dtSessionCookie
-				http.SetCookie(w, &cookie)
+				SetTurnstileVerifiedCookie(w, int(time.Until(validUntil).Seconds())-dtSessionCookie)
 			}
 			next.ServeHTTP(w, r)
 		} else {
-			http.SetCookie(w, &cookie)
+			ClearTurnstileVerifiedCookie(w)
 			next.ServeHTTP(w, r)
 		}
 	})
+}
+
+func ClearTurnstileVerifiedCookie(w http.ResponseWriter) {
+	cookie := http.Cookie{
+		Name:     "turnstile",
+		Value:    "verified",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
+	http.SetCookie(w, &cookie)
+}
+
+func SetTurnstileVerifiedCookie(w http.ResponseWriter, validUntil int) {
+	cookie := http.Cookie{
+		Name:     "turnstile",
+		Value:    "verified",
+		Path:     "/",
+		MaxAge:   validUntil,
+		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
+	http.SetCookie(w, &cookie)
 }
 
 var turnstileClient = &http.Client{
@@ -1895,6 +1911,7 @@ func VerifyTurnstileToken(req *http.Request) error {
 	}
 
 	resp, err := turnstileClient.PostForm(turnstileURL, values)
+
 	if err != nil {
 		return fmt.Errorf("error posting data to turnstile http endpoint: %w", err)
 	}
@@ -1909,6 +1926,8 @@ func VerifyTurnstileToken(req *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("error decoding turnstile response: %w", err)
 	}
+
+	logger.Debug("turnstile challange success")
 
 	fmt.Print(r)
 
