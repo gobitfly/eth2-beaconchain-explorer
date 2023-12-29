@@ -323,7 +323,7 @@ function showProposedHistoryTable() {
   waitForTurnstileToken(() => {
     fetch("/dashboard/data/proposalshistory" + getValidatorQueryString(), {
       method: "GET",
-      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken }
+      headers: { "X-TURNSTILE-TOKEN": window.turnstileToken },
     }).then((res) => {
       res
         .json()
