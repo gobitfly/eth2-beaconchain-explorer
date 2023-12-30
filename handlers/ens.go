@@ -21,7 +21,7 @@ import (
 // @Tags Ens
 // @Description Returns and object with the ens name and address - if found.
 // @Produce  json
-// @Param domain path string true "domain can either be an ens name or an etherum address"
+// @Param domain path string true "domain can either be an ens name or an ethereum address"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/ens/lookup/{domain} [get]
