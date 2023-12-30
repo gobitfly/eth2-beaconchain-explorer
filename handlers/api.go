@@ -3366,7 +3366,7 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 }
 
 // MobileDeviceSettings godoc
-// @Summary Get your device settings, currently only whether to enable mobile notifcations or not
+// @Summary Get your device settings, currently only whether to enable mobile notifications or not
 // @Tags User
 // @Produce json
 // @Success 200 {object} types.ApiResponse{data=types.MobileSettingsData}

@@ -469,7 +469,7 @@ func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]t
 		}
 		_, err := db.FrontendWriterDB.Exec(`UPDATE users_subscriptions SET internal_state = $1 WHERE id = ANY($2)`, state, pq.Int64Array(subArray))
 		if err != nil {
-			logger.Errorf("failed to update internal state of notifcations: %v", err)
+			logger.Errorf("failed to update internal state of notifications: %v", err)
 		}
 	}
 }
@@ -1083,14 +1083,14 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					logger.Warnf("failed to update retries counter to %v for webhook %v: %v", webhook.Retries, webhook.ID, err)
 				}
 
-				// mark notifcations as sent in db
+				// mark notifications as sent in db
 				ids := make([]uint64, 0)
 				for _, req := range reqs {
 					ids = append(ids, req.Id)
 				}
 				_, err = db.FrontendWriterDB.Exec(`UPDATE notification_queue SET sent = now() where id = ANY($1)`, pq.Array(ids))
 				if err != nil {
-					logger.Warnf("failed to update sent for notifcations in queue: %v", err)
+					logger.Warnf("failed to update sent for notifications in queue: %v", err)
 				}
 			}()
 
