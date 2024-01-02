@@ -688,7 +688,7 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 		FROM 
 			api_statistics 
 		WHERE 
-			ts > NOW() - INTERVAL '1 month' AND apikey = $1
+			ts > DATE_TRUNC('month', NOW()) AND apikey = $1
 	)`
 
 	err := FrontendWriterDB.Get(stats, query, apikey)
