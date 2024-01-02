@@ -224,7 +224,7 @@ func main() {
 					key := getBlockKey(uint64(i), chainIdUint64)
 					keys = append(keys, key)
 
-					if len(keys) == 1000 {
+					if len(keys) == 10 {
 
 						for ; ; time.Sleep(time.Second) {
 							ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
