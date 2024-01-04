@@ -1,36 +1,43 @@
 package main
 
+/*
+	#RECY_ QUESTION
+	THIS: https://github.com/gobitfly/eth2-beaconchain-explorer/blob/b45ff4210c6549cfbcb97cb4294101bce9bf2512/hexutil/hexutil.go#L40-L42
+	THAT: https://github.com/gobitfly/eth2-beaconchain-explorer/blob/b45ff4210c6549cfbcb97cb4294101bce9bf2512/hexutil/hexutil.go#L63-L65
+	...might be wrong, please check!
+*/
+
+// imports
 import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"eth2-exporter/db"
+	"eth2-exporter/hexutil"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"strconv"
-	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/gtuk/discordwebhook"
+	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 	"google.golang.org/api/option"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 )
 
-const MAX_EL_BLOCK_NUMBER = 1_000_000_000_000 - 1
+// defines
+const MAX_EL_BLOCK_NUMBER = int64(1_000_000_000_000 - 1)
 
 const BT_COLUMNFAMILY_BLOCK = "b"
 const BT_COLUMN_BLOCK = "b"
@@ -41,791 +48,1263 @@ const BT_COLUMN_TRACES = "t"
 const BT_COLUMNFAMILY_UNCLES = "u"
 const BT_COLUMN_UNCLES = "u"
 
-var ErrBlockNotFound = errors.New("block not found")
+// const MAINNET_CHAINID = 1
+// const GOERLI_CHAINID = 5
+// const OPTIMISM_CHAINID = 10
+// const GNOSIS_CHAINID = 100
+// const HOLESKY_CHAINID = 17000
+// const SEPOLIA_CHAINID = 11155111
+const ARBITRUM_CHAINID = 42161
+const ARBITRUM_NITRO_BLOCKNUMBER = 22207815
 
-type blockData struct {
-	block  []byte
-	txs    []string
-	uncles []byte
+const MAX_REORG_DEPTH = 100            // that number of block we are looking 'back', includes latest block
+const MAX_NODE_REQUESTS_AT_ONCE = 1000 // based on our test, 1000 is the best value
+
+// structs
+type jsonRpcReturnId struct {
+	Id int64 `json:"id"`
 }
-type eth1RpcGetBlockNumberResponse struct {
-	Result string `json:"result"`
+type fullBlockRawData struct {
+	block_number      hexutil.Uint64
+	block_hash        hexutil.Bytes
+	block_unclesCount int
+	block_txs         []string
+
+	block_compressed    hexutil.Bytes
+	receipts_compressed hexutil.Bytes
+	traces_compressed   hexutil.Bytes
+	uncles_compressed   hexutil.Bytes
 }
-type eth1RpcGetBlockInfoResponse struct {
-	Id   uint64 `json:"id"`
-	Hash string `json:"hash"`
-}
-type dbBlockHash struct {
-	Hash string `json:"hash"`
+type intRange struct {
+	start int64
+	end   int64
 }
 
-var dbBlockCache map[uint64]string
+// local globals
+var currentNodeBlockNumber atomic.Int64
+var elClient *ethclient.Client
+var reorgDepth *int64
+var httpClient *http.Client
 
+// init
 func init() {
-	dbBlockCache = make(map[uint64]string)
+	httpClient = &http.Client{Timeout: time.Second * 120}
 }
 
+// main
 func main() {
 	// read / set parameter
-	elClientUrl := flag.String("elclienturl", "http://localhost:8545", "url to el client")
-	btProject := flag.String("btproject", "etherchain", "bigtable project name")
-	btInstance := flag.String("btinstance", "beaconchain-node-data-storage", "bigtable instance name")
-	startBlockNumber := flag.Int("start-block-number", 0, "only useful in combination with end-block-number, defined block is included")
-	endBlockNumber := flag.Int("end-block-number", 0, "only useful in combination with start-block-number, defined block is included")
-	reorgDepth := flag.Int("reorg.depth", 20, "lookback to check and handle chain reorgs")
-	concurrency := flag.Int("concurrency", 1, "maximum threads used")
-	discordWebhookReportUrl := flag.String("discord-url", "", "report progress to discord url")
-	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
+	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
+	startBlockNumber := flag.Int64("start-block-number", -1, "only working in combination with end-block-number, defined block is included")
+	endBlockNumber := flag.Int64("end-block-number", -1, "only working in combination with start-block-number, defined block is included")
+	reorgDepth = flag.Int64("reorg.depth", 20, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %d)", MAX_REORG_DEPTH))
+	concurrency := flag.Int("concurrency", 20, "maximum threads used") // based on our test, 20 is the best value
+	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes")
 	flag.Parse()
 
-	_ = reorgDepth
+	// check config
+	{
+		logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
+		cfg := &types.Config{}
+		err := utils.ReadConfig(cfg, *configPath)
+		if err != nil {
+			utils.LogFatal(err, "error reading config file", 0) // fatal, as there is no point without a config
+		}
+		utils.Config = cfg
+	}
+
+	// check parameters
+	if *reorgDepth < 0 || *reorgDepth > MAX_REORG_DEPTH {
+		logrus.Warnf("reorg.depth parameter set to %d, corrected to %d", *reorgDepth, MAX_REORG_DEPTH)
+		*reorgDepth = MAX_REORG_DEPTH
+	}
+	if *reorgDepth > MAX_NODE_REQUESTS_AT_ONCE {
+		// fatal, as the code doesn't support a reorgDepth greater as MAX_NODE_REQUESTS_AT_ONCE
+		utils.LogFatal(nil, "reorgDepth set to a value greater than 'max node requests at once' value, which is not allowed / possible", 0, map[string]interface{}{"reorgDepth": *reorgDepth, "MAX_NODE_REQUESTS_AT_ONCE": MAX_NODE_REQUESTS_AT_ONCE})
+	}
+	if *concurrency < 1 {
+		logrus.Warnf("concurrency parameter set to %d, corrected to 1", *concurrency)
+		*concurrency = 1
+	}
+
+	// init postgres
+	{
+		db.MustInitDB(&types.DatabaseConfig{
+			Username:     utils.Config.WriterDatabase.Username,
+			Password:     utils.Config.WriterDatabase.Password,
+			Name:         utils.Config.WriterDatabase.Name,
+			Host:         utils.Config.WriterDatabase.Host,
+			Port:         utils.Config.WriterDatabase.Port,
+			MaxOpenConns: utils.Config.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: utils.Config.WriterDatabase.MaxIdleConns,
+		}, &types.DatabaseConfig{
+			Username:     utils.Config.ReaderDatabase.Username,
+			Password:     utils.Config.ReaderDatabase.Password,
+			Name:         utils.Config.ReaderDatabase.Name,
+			Host:         utils.Config.ReaderDatabase.Host,
+			Port:         utils.Config.ReaderDatabase.Port,
+			MaxOpenConns: utils.Config.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: utils.Config.ReaderDatabase.MaxIdleConns,
+		})
+		defer db.ReaderDb.Close()
+		defer db.WriterDb.Close()
+	}
 
 	// init bigtable
-	btClient, err := gcp_bigtable.NewClient(context.Background(), *btProject, *btInstance, option.WithGRPCConnectionPool(1))
+	btClient, err := gcp_bigtable.NewClient(context.Background(), utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, option.WithGRPCConnectionPool(1))
 	if err != nil {
-		utils.LogFatal(err, "creating new client for Bigtable", 0)
+		utils.LogFatal(err, "creating new client for Bigtable", 0) // fatal, no point to continue without BT
 	}
 	tableBlocksRaw := btClient.Open("blocks-raw")
 	if tableBlocksRaw == nil {
-		utils.LogFatal(err, "open blocks-raw table", 0)
+		utils.LogFatal(err, "open blocks-raw table", 0) // fatal, no point to continue without BT
 	}
+	defer btClient.Close()
 
 	// init el client
-	client, err := ethclient.Dial(*elClientUrl)
+	elClient, err = ethclient.Dial(utils.Config.Eth1RpcEndpoint)
 	if err != nil {
-		logrus.Fatalf("error dialing eth url: %v", err)
+		utils.LogFatal(err, "error dialing eth url", 0) // fatal, no point to continue without node connection
 	}
 
-	// get chain id
-	var chainIdUint64 uint64
+	// check chain id
 	{
-		chainId, err := client.ChainID(context.Background())
+		chainID, err := rpciGetChainId()
 		if err != nil {
-			logrus.Fatalf("error retrieving chain id from node: %v", err)
+			utils.LogFatal(err, "error get chain id", 0) // fatal, no point to continue without chain id
 		}
-		chainIdUint64 = chainId.Uint64()
+		if chainID != utils.Config.Chain.Id { // if the chain id is removed from the config, just remove this if, there is no point, except checking consistency
+			utils.LogFatal(err, "node chain different from config chain", 0) // fatal, config doesn't match node
+		}
 	}
 
-	// chainIdUint64 := uint64(10)
-	// latestBlockNumber := uint64(85000000)
-	// retrieve the latest block number
-	latestBlockNumber, err := client.BlockNumber(context.Background())
+	// get latest block (as it's global, so we have a initial value)
+	updateBlockNumber(false)
+
+	// //////////////////////////////////////////
+	// Config done, now actually "doing" stuff //
+	// //////////////////////////////////////////
+
+	// check if reexport requested
+	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
+		logrus.Infof("Found reexport block %v to %v...", *startBlockNumber, *endBlockNumber)
+		err := bulkExportBlocksStartEnd(tableBlocksRaw, *startBlockNumber, *endBlockNumber, *concurrency)
+		if err != nil {
+			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
+		}
+		logrus.Info("Job done, have a nice day :)")
+		return
+	}
+
+	// find holes in our previous runs / sanity check
+	logrus.Infof("Checking for holes...")
+	if !*skipHoleCheck {
+		startTime := time.Now()
+		missingBlocks, err := psqlFindHoles() // find the holes
+		findHolesTook := time.Since(startTime)
+		if err != nil {
+			utils.LogFatal(err, "error checking for holes", 0) // fatal, as we highly depend on postgres, if this is not working, we can quit
+		}
+		l := len(missingBlocks)
+		if l > 0 { // some holes found
+			logrus.Warnf("Found %d missing block ranges in %v, fixing them now...", l, findHolesTook)
+			if l <= 10 {
+				logrus.Warnf("%v", missingBlocks)
+			} else {
+				logrus.Warnf("%v<...>", missingBlocks[:10])
+			}
+			startTime = time.Now()
+			/*
+				#RECY_ QUESTION not sure this should be done at startup, blocking everything :shrug:
+				But on the other hand, there shouldn't be any holes normally
+			*/
+			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency) // reexport the holes
+			if err != nil {
+				utils.LogFatal(err, "error while reexport blocks for bigtable (fixing holes)", 0) // fatal, as if we wanna start with holes, we should set the skip-hole-check parameter
+			}
+			logrus.Warnf("...fixed them in %v", time.Since(startTime))
+		} else {
+			logrus.Infof("...no missing block found in %v", findHolesTook)
+		}
+	}
+
+	// waiting for new blocks and export them, while checking reorg before every new block
+	latestPGBlock, err := psqlGetLatestBlock(false)
 	if err != nil {
-		logrus.Fatalf("error retrieving latest block number: %v", err)
+		utils.LogFatal(err, "error while using psqlGetLatestBlock (start / read)", 0) // fatal, as if there is no inital value, we have nothing to start from
+	}
+	for {
+		currentNodeBN := currentNodeBlockNumber.Load()
+		if currentNodeBN < latestPGBlock {
+			// fatal, as this is an impossible error
+			utils.LogFatal(err, "impossible error currentNodeBN < lastestPGBlock", 0, map[string]interface{}{"currentNodeBN": currentNodeBN, "latestPGBlock": latestPGBlock})
+		} else if currentNodeBN == latestPGBlock {
+			time.Sleep(time.Second)
+			continue // still the same block
+		} else {
+			// checking for reorg
+			if *reorgDepth > 0 && latestPGBlock >= 0 {
+				// define length to check
+				l := *reorgDepth
+				if l > latestPGBlock+1 {
+					l = latestPGBlock + 1
+				}
+
+				// fill array with block numbers to check
+				blockRawData := make([]fullBlockRawData, l)
+				for i := int64(0); i < l; i++ {
+					blockRawData[i].block_number = hexutil.Uint64(latestPGBlock + i - l + 1)
+				}
+
+				// get all hashes from node
+				err = rpciGetBulkBlockRawHash(blockRawData)
+				if err != nil {
+					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
+					utils.LogFatal(err, "error when bulk getting raw block hashes", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+				}
+
+				// get a list of all block_ids where the hashes are fine
+				var matchingHashesBlockIdList []hexutil.Uint64
+				matchingHashesBlockIdList, err = psqlGetHashHitsIdList(blockRawData)
+				if err != nil {
+					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
+					utils.LogFatal(err, "error when getting hash hits id list", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+				}
+
+				matchingLength := len(matchingHashesBlockIdList)
+				if len(blockRawData) != matchingLength { // nothing todo if all elements are fine, but if not...
+					if len(blockRawData) < matchingLength {
+						// fatal, as this is an impossible error
+						utils.LogFatal(err, "impossible error len(blockRawData) < matchingLength", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "matchingLength": matchingLength})
+					}
+
+					// reverse the "fine" list, so we have a "not fine" list
+					blockRawDataFailure := make([]fullBlockRawData, 0, len(blockRawData)-matchingLength)
+					var i int
+					for _, v := range blockRawData {
+						for i < matchingLength && v.block_number > matchingHashesBlockIdList[i] {
+							i++
+						}
+						if i > matchingLength || v.block_number != matchingHashesBlockIdList[i] {
+							blockRawDataFailure = append(blockRawDataFailure, v)
+						}
+					}
+					failureLength := len(blockRawDataFailure)
+					if failureLength != len(blockRawData)-matchingLength {
+						// fatal, as this is an impossible error
+						utils.LogFatal(err, "impossible error failureLength != len(blockRawData)-matchingLength", 0, map[string]interface{}{"failureLength": failureLength, "len(blockRawData)-matchingLength": len(blockRawData) - matchingLength})
+					}
+					logrus.Infof("found %d wrong hashes when checking for reorgs, reexporting them now...", failureLength)
+
+					// export the hits again
+					err = bulkExportBlocks(tableBlocksRaw, blockRawDataFailure)
+					if err != nil {
+						wrongHashIds := make([]hexutil.Uint64, failureLength)
+						for i, v := range blockRawDataFailure {
+							wrongHashIds[i] = v.block_number
+						}
+						// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
+						utils.LogFatal(err, "error exporting hits on reorg", 0, map[string]interface{}{"len(blockRawData)": len(blockRawData), "reorgDepth": *reorgDepth, "wrongHashIds": wrongHashIds})
+					}
+					logrus.Info("...done. Everything fine with reorgs again.")
+				}
+			}
+
+			// export all new blocks
+			{
+				newerNodeBN := currentNodeBlockNumber.Load() // just in case it took a while doing the reorg stuff, no problem if range > reorg limit, as the exported blocks will be newest also
+				if newerNodeBN < currentNodeBN {
+					// fatal, as this is an impossible error
+					utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
+				}
+				err = bulkExportBlocksStartEnd(tableBlocksRaw, latestPGBlock+1, newerNodeBN, *concurrency)
+				if err != nil {
+					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, tbh it's very likly this will fail sometimes cause of timeouts
+					utils.LogFatal(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
+				}
+				latestPGBlock, err = psqlGetLatestBlock(true)
+				if err != nil {
+					// fatal, this mean we have everything exported, but wasn't able to verify it. So it's very likly we get stuck in an endless loop
+					utils.LogFatal(err, "error while using psqlGetLatestBlock (ongoing / write)", 0)
+				}
+				if latestPGBlock != newerNodeBN {
+					// fatal, as this is a nearly impossible error
+					utils.LogFatal(err, "impossible error latestPGBlock != newerNodeBN", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "newerNodeBN": newerNodeBN})
+				}
+			}
+		}
+	}
+}
+
+// export all blocks, heavy use of bulk & concurrency, providing a block raw data array (used by the other bulkExportBlocks+ functions)
+func bulkExportBlocks(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData) error {
+	// check values
+	{
+		if tableBlocksRaw == nil {
+			return fmt.Errorf("tableBlocksRaw == nil")
+		}
+
+		l := len(blockRawData)
+		if l < 1 || l > MAX_NODE_REQUESTS_AT_ONCE {
+			return fmt.Errorf("blockRawData length (%d) is 0 or greater 'max node requests at once' (%d)", l, MAX_NODE_REQUESTS_AT_ONCE)
+		}
 	}
 
-	// checkRead(tableBlocksRaw, chainIdUint64)
+	// get block_hash, block_unclesCount, block_compressed & block_txs
+	err := rpciGetBulkBlockRawData(blockRawData)
+	if err != nil {
+		return err
+	}
+	err = rpciGetBulkRawUncles(blockRawData)
+	if err != nil {
+		return err
+	}
+	err = rpciGetBulkRawReceipts(blockRawData)
+	if err != nil {
+		return err
+	}
+	err = rpciGetBulkRawTraces(blockRawData)
+	if err != nil {
+		return err
+	}
 
-	httpClient := &http.Client{
-		Timeout: time.Second * 120,
+	// write to bigtable
+	{
+		// prepare array
+		muts := []*gcp_bigtable.Mutation{}
+		keys := []string{}
+		for _, v := range blockRawData {
+			mut := gcp_bigtable.NewMutation()
+			mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), v.block_compressed)
+			mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), v.receipts_compressed)
+			mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), v.traces_compressed)
+			if v.block_unclesCount > 0 {
+				mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), v.uncles_compressed)
+			}
+			muts = append(muts, mut)
+			keys = append(keys, fmt.Sprintf("%d:%12d", utils.Config.Chain.Id, MAX_EL_BLOCK_NUMBER-int64(v.block_number)))
+		}
+
+		// write
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+
+		var errs []error
+		errs, err = tableBlocksRaw.ApplyBulk(ctx, keys, muts)
+		if err != nil {
+			return err
+		}
+		for _, e := range errs {
+			return e
+		}
+	}
+
+	// write to SQL
+	err = psqlAddElements(blockRawData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// export all blocks, heavy use of bulk & concurrency, providing a range array
+func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int) error {
+	if len(blockRanges) <= 0 {
+		return nil
 	}
 
 	gOuter := &errgroup.Group{}
-	gOuter.SetLimit(*concurrency)
+	gOuter.SetLimit(concurrency)
 
-	muts := []*gcp_bigtable.Mutation{}
-	keys := []string{}
-	mux := &sync.Mutex{}
+	for _, br := range blockRanges {
+		startBlockNumber := br.start
 
-	blocksProcessedTotal := atomic.Int64{}
-	blocksProcessedIntv := atomic.Int64{}
-	exportStart := time.Now()
+		if br.end-startBlockNumber+1 <= 0 {
+			utils.LogError(nil, "error, impossible start / end combination found", 0, map[string]interface{}{"start": startBlockNumber, "end": br.end})
+			continue
+		}
+
+		for br.end-startBlockNumber+1 > 0 {
+			localEndBlock := startBlockNumber + MAX_NODE_REQUESTS_AT_ONCE - 1 // get end block for the current run
+			if localEndBlock > br.end {                                       // stop at the end block
+				localEndBlock = br.end
+			}
+			{
+				sb := startBlockNumber
+				eb := localEndBlock
+				gOuter.Go(func() error {
+					logrus.Infof("Started export of blocks %d to %d", sb, eb)
+					blockRawData := make([]fullBlockRawData, eb-sb+1)
+					for i := 0; sb <= eb; i++ {
+						blockRawData[i].block_number = hexutil.Uint64(sb)
+						sb++
+					}
+					return bulkExportBlocks(tableBlocksRaw, blockRawData)
+				})
+			}
+			startBlockNumber = localEndBlock + 1
+		}
+	}
+	return gOuter.Wait()
+}
+
+// export all blocks, heavy use of bulk & concurrency, providing a start & end block number
+func bulkExportBlocksStartEnd(tableBlocksRaw *gcp_bigtable.Table, startBlockNumber int64, endBlockNumber int64, concurrency int) error {
+	logrus.Infof("Started export of blocks %d to %d, using an updater every 10 seconds for more details", startBlockNumber, endBlockNumber)
+
+	gOuterMustStop := atomic.Bool{}
+	gOuter := &errgroup.Group{}
+	gOuter.SetLimit(concurrency + 1) // +1 for the statistics
 
 	t := time.NewTicker(time.Second * 10)
+	totalStart := time.Now()
+	exportStart := totalStart
+	blocksProcessedTotal := atomic.Int64{}
+	blocksProcessedIntv := atomic.Int64{}
+	blocksTotalCount := endBlockNumber - startBlockNumber + 1
 
 	go func() {
 		for {
 			<-t.C
+			if gOuterMustStop.Load() {
+				break
+			}
 
-			remainingBlocks := int64(latestBlockNumber) - int64(*startBlockNumber) - blocksProcessedTotal.Load()
-			blocksPerSecond := float64(blocksProcessedIntv.Load()) / time.Since(exportStart).Seconds()
+			bpi := blocksProcessedIntv.Swap(0)
+			newStart := time.Now()
+			blocksProcessedTotal.Add(bpi)
+			bpt := blocksProcessedTotal.Load()
+
+			remainingBlocks := blocksTotalCount - bpt
+			blocksPerSecond := float64(bpi) / time.Since(exportStart).Seconds()
+			blocksPerSecondTotal := float64(bpt) / time.Since(totalStart).Seconds()
 			secondsRemaining := float64(remainingBlocks) / float64(blocksPerSecond)
-
 			durationRemaining := time.Second * time.Duration(secondsRemaining)
-			logrus.Infof("current speed: %0.1f blocks/sec, %d blocks processed, %d blocks remaining (%0.1f days to go)", blocksPerSecond, blocksProcessedIntv.Load(), remainingBlocks, durationRemaining.Hours()/24)
-			blocksProcessedIntv.Store(0)
-			exportStart = time.Now()
+			durationRemainingTotal := time.Second * time.Duration(float64(remainingBlocks)/float64(blocksPerSecondTotal))
+
+			logrus.Infof("current speed: %0.1f blocks/sec, %0.1f total/sec, %d blocks remaining (%v / %v to go)", blocksPerSecond, blocksPerSecondTotal, remainingBlocks, durationRemaining, durationRemainingTotal)
+			exportStart = newStart
 		}
 	}()
 
-	p := message.NewPrinter(language.English)
-
-	for ; ; time.Sleep(time.Minute) {
-		if *startBlockNumber != *endBlockNumber && *startBlockNumber < *endBlockNumber { // reexport
-			latestBlockNumber = uint64(*endBlockNumber)
-		} else { // normal run
-			latestBlockNumber, err = client.BlockNumber(context.Background())
-			if err != nil {
-				logrus.Fatalf("error retrieving latest block number (node): %v", err)
+	for !gOuterMustStop.Load() && startBlockNumber <= endBlockNumber {
+		localEndBlock := startBlockNumber + MAX_NODE_REQUESTS_AT_ONCE - 1 // get end block for the current run
+		{
+			currentNodeBN := currentNodeBlockNumber.Load()
+			if startBlockNumber > currentNodeBN { // inform the user that he requested to much, but only if there is nothing else todo
+				logrus.Errorf("Reached the end, looks like a too high end-block-number was provided, got '%d', current latest block '%d'", endBlockNumber, currentNodeBN)
+				break
 			}
-			latestBlockNumber = latestBlockNumber - 100 // don't touch newest 100 blocks, so reorgs are no topic
-
-			*startBlockNumber, err = getLatestBlockNumberFromBT(tableBlocksRaw, chainIdUint64)
-			if err != nil {
-				logrus.Fatalf("error retrieving latest block number (Bigtable): %v", err)
+			if localEndBlock > endBlockNumber { // stop at the end block
+				localEndBlock = endBlockNumber
+			}
+			if localEndBlock > currentNodeBN { // stop at current newest block
+				localEndBlock = currentNodeBN
 			}
 		}
-
-		for i := *startBlockNumber; i <= int(latestBlockNumber); i++ {
-
-			i := i
-
+		{
+			sb := startBlockNumber
+			eb := localEndBlock
 			gOuter.Go(func() error {
-				for ; ; time.Sleep(time.Second) {
-
-					start := time.Now()
-
-					var bData *blockData
-					var receipts, traces []byte
-					var blockDuration, receiptsDuration, tracesDuration time.Duration
-					var err error
-					bData, err = getBlock(*elClientUrl, httpClient, i)
-
-					if err != nil {
-						utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
-						continue
-					}
-					blockDuration = time.Since(start)
-
-					if len(bData.txs) > 0 { // only request receipts & traces for blocks with tx
-						if chainIdUint64 == 42161 {
-							receipts, err = getBatchedReceipts(*elClientUrl, httpClient, bData.txs)
-						} else {
-							receipts, err = getReceipts(*elClientUrl, httpClient, i)
-						}
-						receiptsDuration = time.Since(start)
-						if err != nil {
-							utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
-							continue
-						}
-
-						if chainIdUint64 == 42161 && i <= 22207815 {
-							traces, err = getArbitrumTraces(*elClientUrl, httpClient, i)
-						} else {
-							traces, err = getGethTraces(*elClientUrl, httpClient, i)
-						}
-						tracesDuration = time.Since(start)
-						if err != nil {
-							utils.LogError(err, "error processing block", 0, map[string]interface{}{"block": i})
-							continue
-						}
-					}
-
-					mux.Lock()
-					mut := gcp_bigtable.NewMutation()
-					mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), bData.block)
-					mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), receipts)
-					mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), traces)
-					if len(bData.uncles) > 0 {
-						mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), bData.uncles)
-					}
-
-					muts = append(muts, mut)
-					key := getBlockKey(uint64(i), chainIdUint64)
-					keys = append(keys, key)
-
-					if len(keys) == 10 {
-
-						for ; ; time.Sleep(time.Second) {
-							ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-							errs, err := tableBlocksRaw.ApplyBulk(ctx, keys, muts)
-
-							if err != nil {
-								logrus.Errorf("error writing data to bigtable: %v", err)
-								cancel()
-								continue
-							}
-
-							for _, err := range errs {
-								logrus.Errorf("error writing data to bigtable: %v", err)
-								cancel()
-								continue
-							}
-							cancel()
-							logrus.Infof("completed processing block %v (block: %v bytes (%v), receipts: %v bytes (%v), traces: %v bytes (%v), total: %v bytes)", i, len(bData.block), blockDuration, len(receipts), receiptsDuration, len(traces), tracesDuration, len(bData.block)+len(receipts)+len(traces))
-
-							muts = []*gcp_bigtable.Mutation{}
-							keys = []string{}
-							break
-						}
-
-					}
-					mux.Unlock()
-					blocksProcessedTotal.Add(1)
-
-					if i%100000 == 0 {
-						sendMessage(p.Sprintf("%s NODE EXPORT: currently at block %v of %v (%.1f%%)", getChainName(chainIdUint64), i, latestBlockNumber, float64(i)*100/float64(latestBlockNumber)), *discordWebhookReportUrl, *discordWebhookUser)
-					}
-
-					blocksProcessedIntv.Add(1)
-					break
+				blockRawData := make([]fullBlockRawData, eb-sb+1)
+				for i := 0; sb <= eb; i++ {
+					blockRawData[i].block_number = hexutil.Uint64(sb)
+					sb++
 				}
-				return nil
+				err := bulkExportBlocks(tableBlocksRaw, blockRawData)
+				if err != nil {
+					gOuterMustStop.Store(true)
+				}
+				blocksProcessedIntv.Add(int64(len(blockRawData)))
+				return err
 			})
 		}
-
-		gOuter.Wait()
-
-		if *endBlockNumber != 0 {
-			break // no loop on reexport
-		}
+		startBlockNumber = localEndBlock + 1 // set new start
 	}
+
+	err := gOuter.Wait()
+	gOuterMustStop.Store(true) // kill the updater
+	return err
 }
 
-func getChainName(chainId uint64) string {
-	switch chainId {
-	case 1:
-		return "<:eth:1184470363967598623> ETHEREUM mainnet"
-	case 10:
-		return "<:op:1184470125458489354> OPTIMISM mainnet"
-	case 100:
-		return "<:gnosis:1184470353947398155> GNOSIS mainnet"
-	case 42161:
-		return "<:arbitrum:1184470344506036334> ARBITRUM mainnet"
-	}
-	return ""
-}
-
-func HandleChainReorgs(tableBlocksRaw *gcp_bigtable.Table, chainId uint64, elClientUrl string, httpClient *http.Client, depth uint64) error {
-
-	// get latest node block number
-	var latestNodeBlockNumber uint64
-	{
-		body := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
-
-		r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer(body))
-		if err != nil {
-			return fmt.Errorf("error creating post request for reorg: %w", err)
-		}
-
-		r.Header.Add("Content-Type", "application/json")
-		res, err := httpClient.Do(r)
-		if err != nil {
-			return fmt.Errorf("error executing post request for reorg: %w", err)
-		}
-
-		if res.StatusCode != http.StatusOK {
-			return fmt.Errorf("error unexpected status code for reorg: %d", res.StatusCode)
-		}
-		defer res.Body.Close()
-
-		resString, err := io.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("error reading request body for reorg: %w", err)
-		}
-
-		if strings.Contains(string(resString), `"error":{"code"`) {
-			return fmt.Errorf("eth_blockNumber rpc error for reorg: %s", resString)
-		}
-
-		blockParsed := &eth1RpcGetBlockNumberResponse{}
-		err = json.Unmarshal(resString, blockParsed)
-		if err != nil {
-			return fmt.Errorf("error decoding block response for reorg: %w", err)
-		}
-
-		latestNodeBlockNumber, err = strconv.ParseUint(blockParsed.Result, 16, 64)
-		if err != nil {
-			return fmt.Errorf("error parsing response for reorg: %w", err)
-		}
-	}
-
-	// define start block
-	if depth > latestNodeBlockNumber {
-		depth = latestNodeBlockNumber
-	}
-	startBlock := latestNodeBlockNumber - depth
-
-	// get all block infos from node
-	var nodeBlocks []eth1RpcGetBlockInfoResponse
-	{
-		bodyString := fmt.Sprintf(`[{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", false],"id":%d}`, startBlock, startBlock)
-		for i := startBlock + 1; i <= latestNodeBlockNumber; i++ {
-			bodyString += fmt.Sprintf(`,{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", false],"id":%d}`, i, i)
-		}
-		bodyString += "]"
-
-		r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer([]byte(bodyString)))
-		if err != nil {
-			return fmt.Errorf("error creating post request for all blocks: %w", err)
-		}
-
-		r.Header.Add("Content-Type", "application/json")
-		res, err := httpClient.Do(r)
-		if err != nil {
-			return fmt.Errorf("error executing post request for all blocks: %w", err)
-		}
-
-		if res.StatusCode != http.StatusOK {
-			return fmt.Errorf("error unexpected status code for all blocks: %d", res.StatusCode)
-		}
-		defer res.Body.Close()
-
-		resString, err := io.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("error reading request body for all blocks: %w", err)
-		}
-
-		if strings.Contains(string(resString), `"error":{"code"`) {
-			return fmt.Errorf("eth_blockNumber rpc error for all blocks: %s", resString)
-		}
-
-		err = json.Unmarshal(resString, &nodeBlocks)
-		if err != nil {
-			return fmt.Errorf("error decoding block response for all blocks: %w", err)
-		}
-	}
-
-	// clean our map before adding new elements (and end up oom cause by an error causing a infinit loop)
-	if len(dbBlockCache) > (int)(depth*2) {
-		dbBlockCacheNew := make(map[uint64]string)
-		for i, v := range dbBlockCache {
-			if i >= startBlock {
-				dbBlockCache[i] = v
-			}
-		}
-		dbBlockCache = dbBlockCacheNew
-	}
-
-	// for each block check if block node hash and block db hash match
-	for _, nBlock := range nodeBlocks {
-
-		dbHash, err := getBlockHashFromBT(nBlock.Id, chainId, tableBlocksRaw)
-		if err != nil {
-			if err == ErrBlockNotFound { // exit if we hit a block that is not yet in the db
-				return nil
-			}
-			return fmt.Errorf("error getting block hash from BT: %w", err)
-		}
-
-		if dbHash != nBlock.Hash {
-			logrus.Warnf("found incosistency at block %d, node block hash: %s, db block hash: %s", nBlock.Id, nBlock.Hash, dbHash)
-
-			// delete all blocks starting from the fork block up to the latest block in the db
-			blocksToDelete := make([]uint64, 0, latestNodeBlockNumber-nBlock.Id+1)
-			for i := nBlock.Id; i <= latestNodeBlockNumber; i++ {
-				blockInBT, err := isBlockInBT(i, chainId, tableBlocksRaw)
-				if err != nil {
-					return fmt.Errorf("error getting block hash from BT for delete: %w", err)
-				}
-				if !blockInBT {
-					break // stop collecting blocks if we found a block not in db
-				}
-				blocksToDelete = append(blocksToDelete, i)
-			}
-
-			// remove everything from cache
-			dbBlockCache = make(map[uint64]string)
-
-			// remove blocks
-			err = deleteBlocksInBT(blocksToDelete, chainId, tableBlocksRaw)
-			if err != nil {
-				return fmt.Errorf("error deleting block from BT: %w", err)
-			}
-
-			// nothing more to do, we deleted everything
-			break
-
-		} else {
-			logrus.Infof("block %d, node block hash: %s, db block hash: %s", nBlock.Id, nBlock.Hash, dbHash)
-		}
-	}
-
-	return nil
-}
-
-func deleteBlocksInBT(blocks []uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Table) error {
-	if len(blocks) <= 0 {
-		return nil
-	}
-
-	// INCOMPLETE INCOMPLETE INCOMPLETE
-	return nil
-}
-
-func isBlockInBT(number uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Table) (bool, error) {
-
-	if _, ok := dbBlockCache[number]; ok {
-		return true, nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	row, err := tableBlocksRaw.ReadRow(ctx, getBlockKey(number, chainId))
-	if err != nil {
-		return false, fmt.Errorf("error reading row (block %d) from bigtable for db blocks: %w", number, err)
-	}
-
-	if len(row[BT_COLUMNFAMILY_BLOCK]) == 0 { // block not found
-		return false, nil
-	}
-	return true, nil
-}
-
-func getLatestBlockNumberFromBT(tableBlocksRaw *gcp_bigtable.Table, chainId uint64) (int, error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	var readError error
-	var atoiError error
-	var lastBlock int
-	prefix := fmt.Sprintf("%d:", chainId)
-	readError = tableBlocksRaw.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
-		k := r.Key()
-		lastBlock, atoiError = strconv.Atoi(k[len(prefix):])
-		return false
-	}, gcp_bigtable.LimitRows(1), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
-
-	if readError != nil || atoiError != nil {
-		return 0, fmt.Errorf("error getting last block number from BT, readError:'%w', atoiError: '%w'", readError, atoiError)
-	}
-
-	return MAX_EL_BLOCK_NUMBER - lastBlock, nil
-}
-
-func getBlockHashFromBT(number uint64, chainId uint64, tableBlocksRaw *gcp_bigtable.Table) (string, error) {
-
-	if val, ok := dbBlockCache[number]; ok {
-		return val, nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	row, err := tableBlocksRaw.ReadRow(ctx, getBlockKey(number, chainId))
-	if err != nil {
-		return "", fmt.Errorf("error reading row (block %d) from bigtable for db blocks: %w", number, err)
-	}
-
-	if len(row[BT_COLUMNFAMILY_BLOCK]) == 0 { // block not found
-		return "", ErrBlockNotFound
-	}
-
-	for _, r := range row[BT_COLUMNFAMILY_BLOCK] {
-		if r.Column == BT_COLUMN_BLOCK {
-			bInfo := &dbBlockHash{}
-			err = json.Unmarshal(decompress(r.Value), bInfo)
-			if err != nil {
-				return "", fmt.Errorf("block %d has an error on unmarshal: %w", number, err)
-			}
-			dbBlockCache[number] = bInfo.Hash
-			return bInfo.Hash, nil
-		}
-	}
-	return "", fmt.Errorf("block %d, no entry for block in bigtable found", number)
-}
-
-func sendMessage(content, webhookUrl, username string) {
-
-	message := discordwebhook.Message{
-		Username: &username,
-		Content:  &content,
-	}
-
-	err := discordwebhook.SendMessage(webhookUrl, message)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func getBlock(elClientUrl string, httpClient *http.Client, number int) (*blockData, error) {
-	// block
-	var resString []byte
-	blockParsed := &types.Eth1RpcGetBlockResponse{}
-	{
-		body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":1}`, number))
-
-		r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer(body))
-		if err != nil {
-			return nil, fmt.Errorf("error creating post request: %w", err)
-		}
-
-		r.Header.Add("Content-Type", "application/json")
-
-		res, err := httpClient.Do(r)
-		if err != nil {
-			return nil, fmt.Errorf("error executing post request: %w", err)
-		}
-
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("error unexpected status code: %d", res.StatusCode)
-		}
-
-		defer res.Body.Close()
-
-		resString, err = io.ReadAll(res.Body)
-		if err != nil {
-			return nil, fmt.Errorf("error reading request body: %w", err)
-		}
-
-		err = json.Unmarshal(resString, blockParsed)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding block response: %w", err)
-		}
-
-		if strings.Contains(string(resString), `"error":{"code"`) {
-			return nil, fmt.Errorf("eth_getBlockByNumber rpc error: %s", resString)
-		}
-	}
-
-	// transactions
-	var transactions []string
-	if blockParsed.Result.Transactions != nil {
-		transactions = make([]string, len(blockParsed.Result.Transactions))
-		for i, tx := range blockParsed.Result.Transactions {
-			transactions[i] = tx.Hash.String()
-		}
-	} else {
-		return nil, fmt.Errorf("blockParsed.Result.Transactions is nil")
-	}
-
-	// uncles
-	if blockParsed.Result.Uncles != nil {
-		uncleCount := len(blockParsed.Result.Uncles)
-		if uncleCount > 0 {
-			if uncleCount > 2 {
-				return nil, fmt.Errorf("found more than 2 uncles: %d", len(blockParsed.Result.Uncles))
-			}
-
-			var body []byte
-			if uncleCount == 1 {
-				body = []byte(fmt.Sprintf(`[{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":1}]`, number))
-			} else {
-				body = []byte(fmt.Sprintf(`[{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":1}, {"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x1"],"id":2}]`, number, number))
-			}
-
-			r, err := http.NewRequest("POST", elClientUrl, bytes.NewBuffer(body))
-			if err != nil {
-				return nil, fmt.Errorf("error creating post request for uncle: %w", err)
-			}
-
-			r.Header.Add("Content-Type", "application/json")
-
-			res, err := httpClient.Do(r)
-			if err != nil {
-				return nil, fmt.Errorf("error executing post request for uncle: %w", err)
-			}
-
-			if res.StatusCode != http.StatusOK {
-				return nil, fmt.Errorf("error unexpected status code: %d", res.StatusCode)
-			}
-
-			defer res.Body.Close()
-
-			resStringUncle, err := io.ReadAll(res.Body)
-			if err != nil {
-				return nil, fmt.Errorf("error reading request body for uncle: %w", err)
-			}
-
-			if strings.Contains(string(resStringUncle), `"error":{"code"`) {
-				return nil, fmt.Errorf("eth_getUncleByBlockNumberAndIndex rpc error: %s", resStringUncle)
-			}
-
-			return &blockData{block: compress(resString), txs: transactions, uncles: compress(resStringUncle)}, nil
-		}
-	}
-
-	return &blockData{block: compress(resString), txs: transactions, uncles: nil}, nil
-}
-
-func getReceipts(url string, httpClient *http.Client, number int) ([]byte, error) {
-	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockReceipts","params":["0x%x"],"id":1}`, number))
-
-	r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, fmt.Errorf("error creating post request: %v", err)
-	}
-
-	r.Header.Add("Content-Type", "application/json")
-
-	res, err := httpClient.Do(r)
-	if err != nil {
-		return nil, fmt.Errorf("error executing post request: %v", err)
-	}
-
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
-	}
-
-	resString, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading request body: %v", err)
-	}
-
-	if strings.Contains(string(resString), `"error":{"code"`) {
-		return nil, fmt.Errorf("eth_getBlockReceipts rpc error: %s", resString)
-	}
-
-	// fmt.Println(string(resString))
-
-	return compress(resString), nil
-}
-
-func getBatchedReceipts(url string, httpClient *http.Client, txs []string) ([]byte, error) {
-
-	body := strings.Builder{}
-	body.WriteString("[")
-	for i, tx := range txs {
-		body.WriteString(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["%s"],"id":%d}`, tx, i))
-
-		if i != len(txs)-1 {
-			body.WriteString(",")
-		}
-	}
-	body.WriteString("]")
-
-	r, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(body.String())))
-	if err != nil {
-		return nil, fmt.Errorf("error creating post request: %v", err)
-	}
-
-	r.Header.Add("Content-Type", "application/json")
-
-	res, err := httpClient.Do(r)
-	if err != nil {
-		return nil, fmt.Errorf("error executing post request: %v", err)
-	}
-
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
-	}
-
-	resString, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading request body: %v", err)
-	}
-
-	if strings.Contains(string(resString), `"error":{"code"`) {
-		return nil, fmt.Errorf("eth_getTransactionReceipt rpc error: %s", resString)
-	}
-
-	// fmt.Println(string(resString))
-
-	return compress(resString), nil
-}
-
-func getGethTraces(url string, httpClient *http.Client, number int) ([]byte, error) {
-
-	if number == 0 { // genesis block can't be traced
-		return []byte{}, nil
-	}
-
-	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"debug_traceBlockByNumber","params":["0x%x", {"tracer": "callTracer"}],"id":1}`, number))
-
-	r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, fmt.Errorf("error creating post request: %v", err)
-	}
-
-	r.Header.Add("Content-Type", "application/json")
-
-	res, err := httpClient.Do(r)
-	if err != nil {
-		return nil, fmt.Errorf("error executing post request: %v", err)
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
-	}
-
-	defer res.Body.Close()
-
-	resString, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading request body: %v", err)
-	}
-
-	if strings.Contains(string(resString), `"error":{"code"`) {
-		return nil, fmt.Errorf("debug_traceBlockByNumber rpc error: %s", resString)
-	}
-
-	return compress(resString), nil
-}
-
-func getArbitrumTraces(url string, httpClient *http.Client, number int) ([]byte, error) {
-
-	if number == 0 { // genesis block can't be traced
-		return []byte{}, nil
-	}
-
-	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"arbtrace_block","params":["0x%x"],"id":1}`, number))
-
-	r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, fmt.Errorf("error creating post request: %v", err)
-	}
-
-	r.Header.Add("Content-Type", "application/json")
-
-	res, err := httpClient.Do(r)
-	if err != nil {
-		return nil, fmt.Errorf("error executing post request: %v", err)
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error unexpected status code: %v", res.StatusCode)
-	}
-
-	defer res.Body.Close()
-
-	resString, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading request body: %v", err)
-	}
-
-	if strings.Contains(string(resString), `"error":{"code"`) {
-		return nil, fmt.Errorf("arbtrace_block rpc error: %s", resString)
-	}
-
-	return compress(resString), nil
-}
-
-/*
-func printCall(calls []types.Eth1RpcTraceCall, txHash string) {
-	for _, call := range calls {
-		if call.Type != "STATICCALL" && call.Type != "DELEGATECALL" && call.Type != "CALL" && call.Type != "CREATE" && call.Type != "CREATE2" && call.Type != "SELFDESTRUCT" {
-			logrus.Infof("%v in %v", call.Type, txHash)
-			spew.Dump(call)
-		}
-		if len(call.Calls) > 0 {
-			printCall(call.Calls, txHash)
-		}
-	}
-}
-*/
-
+// //////////
+// HELPERs //
+// //////////
+// compress given byte slice
 func compress(src []byte) []byte {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
-	_, err := zw.Write(src)
-	if err != nil {
-		logrus.Fatalf("error writing to gzip writer: %v", err)
+	if _, err := zw.Write(src); err != nil {
+		utils.LogFatal(err, "error writing to gzip writer", 0) // fatal, as if this is not working in the first place, it will never work
 	}
 	if err := zw.Close(); err != nil {
-		logrus.Fatalf("error closing gzip writer: %v", err)
+		utils.LogFatal(err, "error closing gzip writer", 0) // fatal, as if this is not working in the first place, it will never work
 	}
 	return buf.Bytes()
 }
 
-func decompress(src []byte) []byte {
+// decompress given byte slice
+/* func decompress(src []byte) []byte {
 	zr, err := gzip.NewReader(bytes.NewReader(src))
 	if err != nil {
-		logrus.Fatalf("error creating gzip reader: %v", err)
+		utils.LogFatal(err, "error creating gzip reader", 0) // fatal, as if this is not working in the first place, it will never work
 	}
-
 	data, err := io.ReadAll(zr)
 	if err != nil {
-		logrus.Fatalf("error reading from gzip reader: %v", err)
+		utils.LogFatal(err, "error reading from gzip reader", 0) // fatal, as if this is not working in the first place, it will never work
 	}
 	return data
+} */
+
+// used by splitAndVerifyJsonArray to add an element to the list depending on its Id
+func _splitAndVerifyJsonArrayAddElement(r *[][]byte, element []byte, lastId int64) (int64, error) {
+	// adding empty elements will cause issues, so we don't allow it
+	if len(element) <= 0 {
+		return -1, fmt.Errorf("error, tried to add empty element, lastId (%d)", lastId)
+	}
+
+	// unmarshal
+	data := &jsonRpcReturnId{}
+	err := json.Unmarshal(element, data)
+	if err != nil {
+		return -1, fmt.Errorf("error decoding '%s': %w", element, err)
+	}
+
+	// negativ ids signals an issue
+	if data.Id < 0 {
+		return -1, fmt.Errorf("error, provided Id (%d) < 0", data.Id)
+	}
+	// id must ascending or equal
+	if data.Id < lastId {
+		return -1, fmt.Errorf("error, provided Id (%d) < lastId (%d)", data.Id, lastId)
+	}
+
+	// new element
+	if data.Id != lastId {
+		*r = append(*r, element)
+	} else { // append element (same id)
+		i := len(*r) - 1
+		if (*r)[i][0] == byte('[') {
+			(*r)[i] = (*r)[i][1 : len((*r)[i])-1]
+		}
+		(*r)[i] = append(append(append(append([]byte("["), (*r)[i]...), byte(',')), element...), byte(']'))
+	}
+
+	return data.Id, nil
 }
 
-func getBlockKey(blockNumber uint64, chainId uint64) string {
-	return fmt.Sprintf("%d:%12d", chainId, MAX_EL_BLOCK_NUMBER-blockNumber)
+// split a bulk json request in single requests
+func _splitAndVerifyJsonArray(jArray []byte) ([][]byte, error) {
+	endDigit := byte('}')
+	searchValue := []byte(`{"jsonrpc":"`)
+	searchLen := len(searchValue)
+
+	// remove everything before the first hit
+	i := bytes.Index(jArray, searchValue)
+	if i < 0 {
+		return nil, fmt.Errorf("no element found")
+	}
+	jArray = jArray[i:]
+
+	// find all elements
+	var err error
+	lastId := int64(-1)
+	r := make([][]byte, 0)
+	for {
+		if len(jArray) < searchLen { // weird corner case, shouldn't happen at all
+			i = -1
+		} else { // get next hit / ignore current (at index 0)
+			i = bytes.Index(jArray[searchLen:], searchValue)
+		}
+		// handle last element
+		if i < 0 {
+			for l := len(jArray) - 1; l >= 0 && jArray[l] != endDigit; l-- {
+				jArray = jArray[:l]
+			}
+			_, err = _splitAndVerifyJsonArrayAddElement(&r, jArray, lastId)
+			if err != nil {
+				return nil, fmt.Errorf("error calling split and verify json array add element - last element: %w", err)
+			}
+			break
+		}
+		// handle normale element
+		lastId, err = _splitAndVerifyJsonArrayAddElement(&r, jArray[:i+searchLen-1], lastId)
+		if err != nil {
+			return nil, fmt.Errorf("error calling split and verify json array add element: %w", err)
+		}
+		// set cursor to new start
+		jArray = jArray[i+searchLen:]
+	}
+	return r, nil
+}
+
+// join int ranges for a better "look"
+func joinIntRanges(iRange []intRange) []intRange {
+	if len(iRange) < 1 {
+		return iRange
+	}
+	for cleanRun := false; !cleanRun; {
+		cleanRun = true
+		l := len(iRange)
+		for i := 0; cleanRun && i < l; i++ {
+			for k, v := range iRange {
+				if i != k && iRange[i].end+1 == v.start {
+					iRange[i].end = v.end
+					iRange[k] = iRange[0]
+					iRange = iRange[1:]
+					cleanRun = false
+					break
+				}
+			}
+		}
+	}
+	return iRange
+}
+
+// get newest block number from node, should be called always with FALSE
+func updateBlockNumber(loop bool) {
+	/*
+		#RECY_ QUESTION wanna use eth_subscribe, but seems not possible?
+		Command: curl -X POST -H "Content-Type: application/json" --data '{"id":1,"jsonrpc":"2.0","method":"eth_subscribe","params":["newHeads"]}' localhost:18545
+		Result: {"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"notifications not supported"}}
+		Environment: our current Sepolia archive node
+	*/
+	sleepTime := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot/2)
+	consecutivelyErrorCount := -1
+	noNewBlockCount := 0
+	for {
+		blockNumber, err := rpciGetLatestBlock()
+		if err == nil {
+			consecutivelyErrorCount = 0
+			if currentNodeBlockNumber.Load() != blockNumber {
+				currentNodeBlockNumber.Store(blockNumber)
+				noNewBlockCount = 0
+			} else {
+				noNewBlockCount++
+				if noNewBlockCount > 20 {
+					// fatal, as if it's not working after so many tries, it's very likly it will never work
+					utils.LogFatal(nil, "error, no new block from node for a while", 0, map[string]interface{}{"noNewBlockCount": noNewBlockCount})
+				} else if noNewBlockCount > 10 {
+					utils.LogError(nil, "error, no new block from node for a while", 0, map[string]interface{}{"noNewBlockCount": noNewBlockCount})
+				} else if noNewBlockCount > 3 {
+					logrus.Warnf("error, no new block from node for a while (%d tries)", noNewBlockCount)
+				}
+			}
+		} else if consecutivelyErrorCount < 0 {
+			// fatal, as we need an initial value, otherwise the result will be random
+			utils.LogFatal(err, "error get latest block number from node, first try", 0)
+		} else {
+			consecutivelyErrorCount++
+			if consecutivelyErrorCount <= 3 {
+				logrus.Warnf("error get latest block number from node. consecutivelyErrorCount: %d", consecutivelyErrorCount)
+			} else if consecutivelyErrorCount <= 10 {
+				utils.LogError(err, "error get latest block number from node", 0, map[string]interface{}{"consecutivelyErrorCount": consecutivelyErrorCount})
+			} else {
+				// fatal, as if it's not working after so many tries, it's very likly it will never work
+				utils.LogFatal(err, "error get latest block number from node", 0, map[string]interface{}{"consecutivelyErrorCount": consecutivelyErrorCount})
+			}
+		}
+		if !loop {
+			go updateBlockNumber(true)
+			break
+		}
+		time.Sleep(sleepTime)
+	}
+}
+
+// /////////////////////
+// Postgres interface //
+// /////////////////////
+// used by findHoles function, doing recursion stuff
+func _psqlCheckHoles(start int64, end int64) ([]intRange, error) {
+	targetAmount := end - start + 1
+	if targetAmount < 1 {
+		return nil, fmt.Errorf("error end (%d) > start (%d) in _psqlCheckHoles", end, start)
+	}
+
+	var blockAmount int64
+	err := db.ReaderDb.Get(&blockAmount, `SELECT COUNT(*) FROM raw_block_status WHERE block_id >= $1 AND block_id <= $2;`, start, end)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			blockAmount = 0
+		} else {
+			return nil, fmt.Errorf("error at 'SELECT COUNT(*) FROM raw_block_status WHERE block_id >= %d AND block_id <= %d;': %w", start, end, err)
+		}
+	}
+
+	if targetAmount == blockAmount {
+		return nil, nil // best case, every as expected
+	} else if targetAmount > blockAmount {
+		// complete range not found
+		if blockAmount == 0 {
+			return []intRange{intRange{start: start, end: start + targetAmount - 1}}, nil
+		}
+
+		// split range in low / high
+		middle := start + targetAmount/2
+		lowBound, err := _psqlCheckHoles(start, middle-1)
+		if err != nil {
+			return nil, err
+		}
+		if blockAmount+int64(len(lowBound)) == targetAmount { // no need to check high bound, if already enough missing elements found
+			return lowBound, nil
+		}
+		highBound, err := _psqlCheckHoles(middle, end)
+		if err != nil {
+			return nil, err
+		}
+		return append(lowBound, highBound...), nil
+	}
+
+	return nil, fmt.Errorf("impossible error, targetAmount (%d) < blockAmount (%d)", targetAmount, blockAmount)
+}
+
+// find holes (missing ids) in raw_block_status. Starting at 0 and ending at current highest index.
+// using _checkHoles function for the recursion stuff
+func psqlFindHoles() ([]intRange, error) {
+	latestBlock, err := psqlGetLatestBlock(false)
+	if err != nil {
+		return nil, err
+	} else if latestBlock < 0 { // no holes if no entries
+		return nil, nil
+	}
+	iRange, err := _psqlCheckHoles(0, latestBlock)
+	if err != nil {
+		return nil, err
+	}
+	return joinIntRanges(iRange), nil
+}
+
+// get latest block in postgres db
+func psqlGetLatestBlock(useWriterDb bool) (int64, error) {
+	var err error
+	var latestBlock int64
+	query := `SELECT block_id FROM raw_block_status ORDER BY block_id DESC LIMIT 1;`
+	if useWriterDb {
+		err = db.WriterDb.Get(&latestBlock, query)
+	} else {
+		err = db.ReaderDb.Get(&latestBlock, query)
+	}
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return -1, nil
+		}
+		return -1, fmt.Errorf("error reading latest block in postgres: %w", err)
+	}
+	return latestBlock, nil
+}
+
+// will add elements to sql, based on blockRawData
+// on conflict, it will only overwrite / change current entry if hash is different
+func psqlAddElements(blockRawData []fullBlockRawData) error {
+	l := len(blockRawData)
+	if l <= 0 {
+		return fmt.Errorf("error, got empty blockRawData array (%d)", l)
+	}
+
+	block_number := make([]hexutil.Uint64, l)
+	block_hash := make(pq.ByteaArray, l)
+	for i, v := range blockRawData {
+		block_number[i] = v.block_number
+		block_hash[i] = v.block_hash
+	}
+
+	_, err := db.WriterDb.Exec(`
+		INSERT INTO raw_block_status
+			(block_id, block_hash)
+		SELECT
+			UNNEST($1::int[]),
+			UNNEST($2::bytea[][])
+		ON CONFLICT (block_id) DO
+			UPDATE SET
+				block_hash = excluded.block_hash,
+				indexed_bt = FALSE
+			WHERE
+				raw_block_status.block_hash != excluded.block_hash;`,
+		pq.Array(block_number), block_hash)
+	return err
+}
+
+// will return a list of all provided block_ids where the hash in the database matches the provided list
+func psqlGetHashHitsIdList(blockRawData []fullBlockRawData) ([]hexutil.Uint64, error) {
+	l := len(blockRawData)
+	if l <= 0 {
+		return nil, fmt.Errorf("error, got empty blockRawData array (%d)", l)
+	}
+
+	block_number := make([]hexutil.Uint64, l)
+	block_hash := make(pq.ByteaArray, l)
+	for i, v := range blockRawData {
+		block_number[i] = v.block_number
+		block_hash[i] = v.block_hash
+	}
+
+	// #RECY_ QUESTION using here the ReaderDB, not sure this is correct, but normally there should be 10+ seconds between writing and this, so sound legit to me
+	rows, err := db.ReaderDb.Query(`
+		SELECT 
+			raw_block_status.block_id 
+		FROM 
+			raw_block_status, 
+			(SELECT UNNEST($1::int[]) as block_id, UNNEST($2::bytea[][]) as block_hash) as node_block_status 
+		WHERE 
+			raw_block_status.block_id = node_block_status.block_id 
+			AND 
+			raw_block_status.block_hash = node_block_status.block_hash 
+		ORDER 
+			by raw_block_status.block_id;`,
+		pq.Array(block_number), block_hash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []hexutil.Uint64{}, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := []hexutil.Uint64{}
+	for rows.Next() {
+		var block_id hexutil.Uint64
+		err := rows.Scan(&block_id)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, block_id)
+	}
+
+	return result, nil
+}
+
+// ////////////////
+// RPC interface //
+// ////////////////
+// get chain id from node
+func rpciGetChainId() (uint64, error) {
+	chainId, err := elClient.ChainID(context.Background())
+	if err != nil {
+		return 0, fmt.Errorf("error retrieving chain id from node: %w", err)
+	}
+	return chainId.Uint64(), nil
+}
+
+// get latest block number from node
+func rpciGetLatestBlock() (int64, error) {
+	latestBlockNumber, err := elClient.BlockNumber(context.Background())
+	if err != nil {
+		return 0, fmt.Errorf("error retrieving latest block number: %w", err)
+	}
+	return int64(latestBlockNumber), nil
+}
+
+// do all the http stuff
+func _rpciGetHttpResult(body []byte) ([][]byte, error) {
+	r, err := http.NewRequest("POST", utils.Config.Eth1RpcEndpoint, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, fmt.Errorf("error creating post request: %w", err)
+	}
+
+	r.Header.Add("Content-Type", "application/json")
+	res, err := httpClient.Do(r)
+	if err != nil {
+		return nil, fmt.Errorf("error executing post request: %w", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error unexpected status code: %d", res.StatusCode)
+	}
+
+	defer res.Body.Close()
+	resByte, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading request body: %w", err)
+	}
+
+	errorToCheck := []byte(`"error":{"code"`)
+	if bytes.Contains(resByte, errorToCheck) {
+		const keepDigitsTotal = 1000
+		const keepDigitsFront = 100
+		if len(resByte) > keepDigitsTotal {
+			i := bytes.Index(resByte, errorToCheck)
+			if i >= keepDigitsFront {
+				resByte = append([]byte(`<...>`), resByte[i-keepDigitsFront:]...)
+			}
+			if len(resByte) > keepDigitsTotal {
+				resByte = append(resByte[:keepDigitsTotal-5], []byte(`<...>`)...)
+			}
+		}
+		return nil, fmt.Errorf("rpc error: %s", resByte)
+	}
+
+	return _splitAndVerifyJsonArray(resByte)
+}
+
+// will fill only receipts_compressed based on block, used by rpciGetBulkRawReceipts function
+func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData) error {
+	// check
+	{
+		l := len(blockRawData)
+		if l < 1 {
+			return fmt.Errorf("empty blockRawData array received")
+		}
+		if l > MAX_NODE_REQUESTS_AT_ONCE {
+			return fmt.Errorf("blockRawData array received with more elements (%d) than allowed (%d)", l, MAX_NODE_REQUESTS_AT_ONCE)
+		}
+	}
+
+	// get array
+	var rawData [][]byte
+	{
+		bodyStr := "["
+		for i, v := range blockRawData {
+			if i != 0 {
+				bodyStr += ","
+			}
+			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockReceipts","params":["0x%x"],"id":%d}`, v.block_number, i)
+		}
+		bodyStr += "]"
+		var err error
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr))
+		if err != nil {
+			return fmt.Errorf("error (_rpciGetBulkRawBlockReceipts) split and verify json array: %w", err)
+		}
+		if len(rawData) != len(blockRawData) {
+			return fmt.Errorf("error (_rpciGetBulkRawBlockReceipts) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
+		}
+	}
+
+	// get data
+	for i, v := range rawData {
+		blockRawData[i].receipts_compressed = compress(v)
+	}
+
+	return nil
+}
+
+// will fill only receipts_compressed based on transaction, used by rpciGetBulkRawReceipts function
+func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData) error {
+	// check
+	{
+		l := len(blockRawData)
+		if l < 1 {
+			return fmt.Errorf("empty blockRawData array received")
+		}
+		if l > MAX_NODE_REQUESTS_AT_ONCE {
+			return fmt.Errorf("blockRawData array received with more elements (%d) than allowed (%d)", l, MAX_NODE_REQUESTS_AT_ONCE)
+		}
+	}
+
+	// iterate through array and get data when threshold reached
+	var currentElementCount int
+	bodyStr := "["
+	for i, v := range blockRawData {
+		l := len(v.block_txs)
+
+		// threshold reached, getting data...
+		if i != 0 {
+			if currentElementCount+l > MAX_NODE_REQUESTS_AT_ONCE {
+				bodyStr += "]"
+				rawData, err := _rpciGetHttpResult([]byte(bodyStr))
+				if err != nil {
+					return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
+				}
+				if len(rawData) != currentElementCount {
+					return fmt.Errorf("different length for rawDataPartial (%d) vs currentElementCount (%d)", len(rawData), currentElementCount)
+				}
+
+				for ii, vv := range rawData {
+					blockRawData[ii].receipts_compressed = compress(vv)
+				}
+
+				currentElementCount = 0
+				bodyStr = "["
+			} else {
+				bodyStr += ","
+			}
+		}
+
+		// adding txs of current block
+		currentElementCount += l
+		for txIndex, txValue := range v.block_txs {
+			if txIndex != 0 {
+				bodyStr += ","
+			}
+			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["%s"],"id":%d}`, txValue, i)
+		}
+	}
+
+	// getting data for the rest...
+	{
+		bodyStr += "]"
+		rawData, err := _rpciGetHttpResult([]byte(bodyStr))
+		if err != nil {
+			return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
+		}
+		if len(rawData) != currentElementCount {
+			return fmt.Errorf("different length for rawDataPartial (%d) vs currentElementCount (%d)", len(rawData), currentElementCount)
+		}
+
+		for ii, vv := range rawData {
+			blockRawData[ii].receipts_compressed = compress(vv)
+		}
+	}
+
+	return nil
+}
+
+// will fill only block_hash, block_unclesCount, block_compressed & block_txs
+func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData) error {
+	// check
+	{
+		l := len(blockRawData)
+		if l < 1 {
+			return fmt.Errorf("empty blockRawData array received")
+		}
+		if l > MAX_NODE_REQUESTS_AT_ONCE {
+			return fmt.Errorf("blockRawData array received with more elements (%d) than allowed (%d)", l, MAX_NODE_REQUESTS_AT_ONCE)
+		}
+	}
+
+	// get array
+	var rawData [][]byte
+	{
+		bodyStr := "["
+		for i, v := range blockRawData {
+			if i != 0 {
+				bodyStr += ","
+			}
+			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":%d}`, v.block_number, i)
+		}
+		bodyStr += "]"
+		var err error
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr))
+		if err != nil {
+			return fmt.Errorf("error (rpciGetBulkBlockRawData) split and verify json array: %w", err)
+		}
+		if len(rawData) != len(blockRawData) {
+			return fmt.Errorf("error (rpciGetBulkBlockRawData) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
+		}
+	}
+
+	// get data
+	blockParsed := &types.Eth1RpcGetBlockResponse{}
+	for i, v := range rawData {
+		// block
+		{
+			blockRawData[i].block_compressed = compress(v)
+			err := json.Unmarshal(v, blockParsed)
+			if err != nil {
+				return fmt.Errorf("error decoding block '%d' response: %w", blockRawData[i].block_number, err)
+			}
+		}
+
+		// id
+		if i != blockParsed.Id {
+			return fmt.Errorf("impossible error, i '%d' doesn't match blockParsed.Id '%d'", i, blockParsed.Id)
+		}
+
+		// number
+		if blockRawData[i].block_number != blockParsed.Result.Number {
+			logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, blockParsed.Result.Number)
+		}
+
+		// hash
+		if blockParsed.Result.Hash == nil {
+			return fmt.Errorf("blockParsed.Result.Hash is nil at block '%d'", blockRawData[i].block_number)
+		}
+		blockRawData[i].block_hash = blockParsed.Result.Hash
+
+		// transaction
+		if blockParsed.Result.Transactions == nil {
+			return fmt.Errorf("blockParsed.Result.Transactions is nil at block '%d'", blockRawData[i].block_number)
+		}
+		blockRawData[i].block_txs = make([]string, len(blockParsed.Result.Transactions))
+		for ii, tx := range blockParsed.Result.Transactions {
+			blockRawData[i].block_txs[ii] = tx.Hash.String()
+		}
+
+		// uncle count
+		if blockParsed.Result.Uncles != nil {
+			blockRawData[i].block_unclesCount = len(blockParsed.Result.Uncles)
+		}
+	}
+
+	return nil
+}
+
+// will fill only block_hash
+func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData) error {
+	// check
+	{
+		l := len(blockRawData)
+		if l < 1 {
+			return fmt.Errorf("empty blockRawData array received")
+		}
+		if l > MAX_NODE_REQUESTS_AT_ONCE {
+			return fmt.Errorf("blockRawData array received with more elements (%d) than allowed (%d)", l, MAX_NODE_REQUESTS_AT_ONCE)
+		}
+	}
+
+	// get array
+	var rawData [][]byte
+	{
+		bodyStr := "["
+		for i, v := range blockRawData {
+			if i != 0 {
+				bodyStr += ","
+			}
+			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":%d}`, v.block_number, i)
+		}
+		bodyStr += "]"
+		var err error
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr))
+		if err != nil {
+			return fmt.Errorf("error (rpciGetBulkBlockRawHash) split and verify json array: %w", err)
+		}
+		if len(rawData) != len(blockRawData) {
+			return fmt.Errorf("error (rpciGetBulkBlockRawHash) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
+		}
+	}
+
+	// get data
+	blockParsed := &types.Eth1RpcGetBlockResponse{}
+	for i, v := range rawData {
+		err := json.Unmarshal(v, blockParsed)
+		if err != nil {
+			return fmt.Errorf("error decoding block '%d' response: %w", blockRawData[i].block_number, err)
+		}
+		if i != blockParsed.Id {
+			return fmt.Errorf("impossible error, i '%d' doesn't match blockParsed.Id '%d'", i, blockParsed.Id)
+		}
+		if blockRawData[i].block_number != blockParsed.Result.Number {
+			logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, blockParsed.Result.Number)
+		}
+		if blockParsed.Result.Hash == nil {
+			return fmt.Errorf("blockParsed.Result.Hash is nil at block '%d'", blockRawData[i].block_number)
+		}
+		blockRawData[i].block_hash = blockParsed.Result.Hash
+	}
+
+	return nil
+}
+
+// will fill only uncles (if available)
+func rpciGetBulkRawUncles(blockRawData []fullBlockRawData) error {
+	// check
+	{
+		l := len(blockRawData)
+		if l < 1 {
+			return fmt.Errorf("empty blockRawData array received")
+		}
+		if l > MAX_NODE_REQUESTS_AT_ONCE {
+			// I know, in the case of uncles, it's very unlikly that we need all slots, but handling this separate, would be way to much, so whatever
+			return fmt.Errorf("blockRawData array received with more elements (%d) than allowed (%d)", l, MAX_NODE_REQUESTS_AT_ONCE)
+		}
+	}
+
+	// get array
+	var rawData [][]byte
+	{
+		requestedCount := 0
+		firstElement := true
+		bodyStr := "["
+		for _, v := range blockRawData {
+			if v.block_unclesCount > 2 || v.block_unclesCount < 0 {
+				// fatal, as this is an impossible error
+				utils.LogFatal(nil, "impossible error, found impossible uncle count, expected 0, 1 or 2", 0, map[string]interface{}{"block_unclesCount": v.block_unclesCount, "block_number": v.block_number})
+			} else if v.block_unclesCount == 0 {
+				continue
+			} else {
+				requestedCount++
+				if firstElement {
+					firstElement = false
+				} else {
+					bodyStr += ","
+				}
+				if v.block_unclesCount == 1 {
+					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d}`, v.block_number, v.block_number)
+				} else /* if v.block_unclesCount == 2 */ {
+					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d},`, v.block_number, v.block_number)
+					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x1"],"id":%d}`, v.block_number, v.block_number)
+				}
+			}
+		}
+		bodyStr += "]"
+		if requestedCount == 0 { // nothing todo, no uncles in set
+			return nil
+		}
+
+		var err error
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr))
+		if err != nil {
+			return fmt.Errorf("error (rpciGetBulkRawUncles) split and verify json array: %w", err)
+		}
+		if len(rawData) != requestedCount {
+			return fmt.Errorf("error (rpciGetBulkRawUncles) different length for rawData (%d) vs requestedCount (%d)", len(rawData), requestedCount)
+		}
+	}
+
+	// get data
+	rdIndex := 0
+	for _, v := range blockRawData {
+		if v.block_unclesCount > 0 { // Not the prettiest way, but the unmarshal would take much longer with the same result
+			v.uncles_compressed = compress(rawData[rdIndex])
+			rdIndex++
+		}
+	}
+
+	return nil
+}
+
+// will fill only receipts_compressed
+func rpciGetBulkRawReceipts(blockRawData []fullBlockRawData) error {
+	if utils.Config.Chain.Id == ARBITRUM_CHAINID {
+		return _rpciGetBulkRawTransactionReceipts(blockRawData)
+	}
+	return _rpciGetBulkRawBlockReceipts(blockRawData)
+}
+
+// will fill only traces_compressed
+func rpciGetBulkRawTraces(blockRawData []fullBlockRawData) error {
+	// check
+	{
+		l := len(blockRawData)
+		if l < 1 {
+			return fmt.Errorf("empty blockRawData array received")
+		}
+		if l > MAX_NODE_REQUESTS_AT_ONCE {
+			return fmt.Errorf("blockRawData array received with more elements (%d) than allowed (%d)", l, MAX_NODE_REQUESTS_AT_ONCE)
+		}
+	}
+
+	// get array
+	var rawData [][]byte
+	{
+		bodyStr := "["
+		for i, v := range blockRawData {
+			if i != 0 {
+				bodyStr += ","
+			}
+			if utils.Config.Chain.Id == ARBITRUM_CHAINID && i <= ARBITRUM_NITRO_BLOCKNUMBER {
+				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"arbtrace_block","params":["0x%x"],"id":%d}`, v.block_number, i)
+			} else {
+				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"debug_traceBlockByNumber","params":["0x%x", {"tracer": "callTracer"}],"id":%d}`, v.block_number, i)
+			}
+		}
+		bodyStr += "]"
+		var err error
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr))
+		if err != nil {
+			return fmt.Errorf("error (rpciGetBulkRawTraces) split and verify json array: %w", err)
+		}
+		if len(rawData) != len(blockRawData) {
+			return fmt.Errorf("error (rpciGetBulkRawTraces) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
+		}
+	}
+
+	// get data
+	for i, v := range rawData {
+		blockRawData[i].traces_compressed = compress(v)
+	}
+
+	return nil
 }

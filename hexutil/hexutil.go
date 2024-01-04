@@ -89,9 +89,6 @@ func (b *Uint64) UnmarshalJSON(input []byte) error {
 	}
 
 	v = strings.Replace(v, "0x", "", 1)
-	if len(v)%2 != 0 {
-		v += "0"
-	}
 
 	ret, err := strconv.ParseUint(v, 16, 64)
 	if err != nil {
