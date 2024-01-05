@@ -333,10 +333,6 @@ func convertAndFormatWei(amountInWei *big.Int, targetCurrency string, maxFractio
 	if targetCurrency == "Ether" {
 		targetCurrency = "ETH"
 	}
-	if targetCurrency == "ETH" && amountInWei.Cmp(big.NewInt(1000*price.GWeiInWei)) <= 0 {
-		// The displayed unit will be GWei if the amount is small
-		targetCurrency = "GWei"
-	}
 
 	if targetCurrency == "GWei" {
 		commaPositionFromEnd = price.GWeiWeiCommaShift

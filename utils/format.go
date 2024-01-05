@@ -212,7 +212,7 @@ func formatCurrencyString(valIf interface{}, valueCurrency, targetCurrency strin
 
 	currencyStr := ""
 	if showCurrencySymbol {
-		currencyStr = " " + price.GetCurrencySymbol(targetCurrency)
+		currencyStr = " " + targetCurrency
 	}
 
 	amountStr := ""
