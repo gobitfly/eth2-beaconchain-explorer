@@ -502,6 +502,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			EjectionBalance:                         mustParseUint(jr.Data.EjectionBalance),
 			MinPerEpochChurnLimit:                   mustParseUint(jr.Data.MinPerEpochChurnLimit),
 			ChurnLimitQuotient:                      mustParseUint(jr.Data.ChurnLimitQuotient),
+			MaxPerEpochActivationChurnLimit:         mustParseUint(jr.Data.MaxPerEpochActivationChurnLimit),
 			ProposerScoreBoost:                      mustParseUint(jr.Data.ProposerScoreBoost),
 			DepositChainID:                          mustParseUint(jr.Data.DepositChainID),
 			DepositNetworkID:                        mustParseUint(jr.Data.DepositNetworkID),
