@@ -27,7 +27,7 @@
   font-weight: 500;
 }
 
-@media (max-width: 1440px) {
+@media (min-width: 1440px) {
   .currency-symbol {
     display: none;
   }
@@ -356,7 +356,7 @@ color: var(--banner-text);
 }
 
 
-@media (min-width: 900px) {
+@media (min-width: 1440px) {
   .currency-name {
     display: inline-block;
   }
