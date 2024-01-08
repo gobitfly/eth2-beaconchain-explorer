@@ -54,7 +54,7 @@ func main() {
 func checkBlocksFromBigtable(tbl *gcp_bigtable.Table, chainId uint64) {
 	ctx := context.Background()
 
-	start := fmt.Sprintf("%d:", chainId)
+	start := fmt.Sprintf("%d:%d", chainId, MAX_EL_BLOCK_NUMBER-1000000)
 
 	previousNumber := uint64(0)
 	i := 0
@@ -126,18 +126,10 @@ func checkBlocksFromBigtable(tbl *gcp_bigtable.Table, chainId uint64) {
 				} else {
 					logrus.Fatal("invalid receipts data object")
 				}
-
-				// for _, receipt := range receiptsDataParsed {
-
-				// 	if receipt.Result.
-				// 	logrus.Infof("%s", receipt.L1FeeScalar)
-				// }
-
 			}
 
 			if len(tracesData) > 0 {
-
-				if strings.Contains(string(tracesData), `"calls"`) {
+				if !strings.Contains(string(tracesData), `"action"`) { // heuristic to detect if traces were obtained via debug_traceBlock or (arb)trace_block style traces
 					var tracesDataParsed types.Eth1RpcTraceBlockResponse
 					tracessDecoder := json.NewDecoder(bytes.NewReader(tracesData))
 					tracessDecoder.DisallowUnknownFields()
@@ -161,6 +153,17 @@ func checkBlocksFromBigtable(tbl *gcp_bigtable.Table, chainId uint64) {
 						fmt.Println(string(tracesData))
 						utils.LogFatal(err, "error decoding traces (parity style)", 0)
 					}
+				}
+			}
+
+			if len(unclesData) > 0 {
+				var unclesDataParsed []types.Eth1RpcGetBlockResponse
+				unclesDecoder := json.NewDecoder(bytes.NewReader(unclesData))
+				unclesDecoder.DisallowUnknownFields()
+				err = unclesDecoder.Decode(&unclesDataParsed)
+				if err != nil {
+					fmt.Println(string(unclesData))
+					utils.LogFatal(err, "error decoding uncles", 0)
 				}
 			}
 
