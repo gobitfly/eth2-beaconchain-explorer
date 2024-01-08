@@ -85,11 +85,13 @@
       t.search(q)
       t.draw()
     }
-    
+
     $(document).on("input", "#epochs_filter > label > input", function (ev) {
       if (ev && ev.target && ev.target.value) {
         var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
         window.history.replaceState(null, "Epochs", newUrl)
+      } else {
+        window.history.replaceState(null, "Epochs", window.location.pathname)
       }
     })
 
