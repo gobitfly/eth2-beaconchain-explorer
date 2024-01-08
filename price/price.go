@@ -17,13 +17,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const ETHGWeiCommaShift = 9
-const GWeiWeiCommaShift = 9
-const ETHWeiCommaShift = ETHGWeiCommaShift + GWeiWeiCommaShift
-const ETHinGWei int64 = 1000000000
-const GWeiInWei int64 = 1000000000
-const ETHinWei = ETHinGWei * GWeiInWei
-
 var logger = logrus.New().WithField("module", "price")
 
 var availableCurrencies = []string{}

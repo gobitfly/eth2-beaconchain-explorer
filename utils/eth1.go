@@ -324,23 +324,15 @@ func FormatBytesAmount(amountInWei []byte, targetCurrency string, maxFractionalD
 }
 
 func convertAndFormatWei(amountInWei *big.Int, targetCurrency string, maxFractionalDigitsBeforeTrim int, maxIntegerDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	var commaPositionFromEnd int
-	var targetAmount *big.Int
-
-	targetAmount = amountInWei
-	commaPositionFromEnd = price.ETHWeiCommaShift
-
-	if targetCurrency == "Ether" {
-		targetCurrency = "ETH"
-	}
-
+	commaPositionFromEnd := int(Config.Frontend.ElCurrencyDecimals)
+	targetAmount := amountInWei
 	if targetCurrency == "GWei" {
-		commaPositionFromEnd = price.GWeiWeiCommaShift
+		commaPositionFromEnd /= 2
 	} else if targetCurrency != "xDAI" && targetCurrency != "GNO" {
-		// The currency is a fiat. We convert the amount of Weis into it:
-		converted := new(big.Float)
-		converted = converted.Mul(new(big.Float).SetInt(amountInWei), big.NewFloat(price.GetPrice(Config.Frontend.ElCurrency, targetCurrency)))
-		targetAmount, _ = converted.Int(targetAmount)
+		// The currency to display with is a fiat. We convert the amount of Weis into it:
+		price := big.NewFloat(price.GetPrice(Config.Frontend.ElCurrency, targetCurrency))
+		new(big.Float).Mul(new(big.Float).SetInt(amountInWei), price).Int(targetAmount)
+		// Now, targetAmount contains the digits in the desired currency
 	}
 
 	formattedUnit := " " + targetCurrency
