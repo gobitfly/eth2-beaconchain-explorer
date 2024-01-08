@@ -95,13 +95,75 @@ func checkBlocksFromBigtable(tbl *gcp_bigtable.Table, chainId uint64) {
 			blocksDecoder.DisallowUnknownFields()
 			err = blocksDecoder.Decode(&blockDataParsed)
 			if err != nil {
-				// fmt.Println(string(blockData))
+				fmt.Println(string(blockData))
 				utils.LogFatal(err, "error decoding block", 0)
 			}
 
-			for _, tx := range blockDataParsed.Result.Transactions {
-				logrus.Infof("%v", tx.Hash.String())
+			// for _, tx := range blockDataParsed.Result.Transactions {
+
+			// 	logrus.Infof("%x", tx.ArbSubType)
+			// }
+
+			if len(receiptsData) > 0 {
+				if receiptsData[0] == '[' { // receipts were retrieved via a batched eth_getTransactionReceipt rpc call
+					var receiptsDataParsed []types.Eth1RpcGetBlockReceiptResponse
+					receiptsDecoder := json.NewDecoder(bytes.NewReader(receiptsData))
+					receiptsDecoder.DisallowUnknownFields()
+					err = receiptsDecoder.Decode(&receiptsDataParsed)
+					if err != nil {
+						fmt.Println(string(receiptsData))
+						utils.LogFatal(err, "error decoding receipts", 0)
+					}
+				} else if receiptsData[0] == '{' { // receipts were retrieved via the eth_getBlockReceipts rpc call
+					var receiptsDataParsed types.Eth1RpcGetBlockReceiptsResponse
+					receiptsDecoder := json.NewDecoder(bytes.NewReader(receiptsData))
+					receiptsDecoder.DisallowUnknownFields()
+					err = receiptsDecoder.Decode(&receiptsDataParsed)
+					if err != nil {
+						fmt.Println(string(receiptsData))
+						utils.LogFatal(err, "error decoding receipts", 0)
+					}
+				} else {
+					logrus.Fatal("invalid receipts data object")
+				}
+
+				// for _, receipt := range receiptsDataParsed {
+
+				// 	if receipt.Result.
+				// 	logrus.Infof("%s", receipt.L1FeeScalar)
+				// }
+
 			}
+
+			if len(tracesData) > 0 {
+
+				if strings.Contains(string(tracesData), `"calls"`) {
+					var tracesDataParsed types.Eth1RpcTraceBlockResponse
+					tracessDecoder := json.NewDecoder(bytes.NewReader(tracesData))
+					tracessDecoder.DisallowUnknownFields()
+					err = tracessDecoder.Decode(&tracesDataParsed)
+					if err != nil {
+						fmt.Println(string(tracesData))
+						utils.LogFatal(err, "error decoding traces (geth style)", 0)
+					}
+
+					// for _, trace := range tracesDataParsed.Result {
+					// 	if trace.Result.Error != "" {
+					// 		logrus.Fatal(trace.Result.Error)
+					// 	}
+					// }
+				} else {
+					var tracesDataParsed types.Eth1RpcDebugTraceBlockResponse
+					tracessDecoder := json.NewDecoder(bytes.NewReader(tracesData))
+					tracessDecoder.DisallowUnknownFields()
+					err = tracessDecoder.Decode(&tracesDataParsed)
+					if err != nil {
+						fmt.Println(string(tracesData))
+						utils.LogFatal(err, "error decoding traces (parity style)", 0)
+					}
+				}
+			}
+
 			previousNumber = blockNumberUint64
 
 			i++

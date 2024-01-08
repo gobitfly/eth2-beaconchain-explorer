@@ -20,8 +20,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/big"
-	"strconv"
 	"strings"
 )
 
@@ -37,63 +35,22 @@ func (b *Bytes) UnmarshalJSON(input []byte) error {
 	}
 
 	v = strings.Replace(v, "0x", "", 1)
+
+	// make sure to have an even length hex string by prefixing odd strings with a single 0, 0x0 will become 0x00 for example
+	// while hashes and addresses have always an even length, numbers usually don't
 	if len(v)%2 != 0 {
-		v += "0"
+		v = "0" + v
 	}
+
 	var err error
 	*b, err = hex.DecodeString(v)
+
+	if err != nil {
+		return fmt.Errorf("error decoding %s: %v", string(input), err)
+	}
 	return err
 }
 
 func (b *Bytes) String() string {
 	return fmt.Sprintf("0x%x", *b)
-}
-
-// Big unmarshals as a JSON string with 0x prefix.
-type Big big.Int
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (b *Big) UnmarshalJSON(input []byte) error {
-	var v string
-	if err := json.Unmarshal(input, &v); err != nil {
-		return err
-	}
-
-	v = strings.Replace(v, "0x", "", 1)
-	if len(v)%2 != 0 {
-		v += "0"
-	}
-
-	ret, ok := new(big.Int).SetString(v, 16)
-	if !ok {
-		return fmt.Errorf("error decoding %s to big int", v)
-	}
-	*b = (Big)(*ret)
-	return nil
-}
-
-// ToInt converts b to a big.Int.
-func (b *Big) ToInt() *big.Int {
-	return (*big.Int)(b)
-}
-
-// Uint64 unmarshals as a JSON string with 0x prefix.
-// The zero value marshals as "0x0".
-type Uint64 uint64
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (b *Uint64) UnmarshalJSON(input []byte) error {
-	var v string
-	if err := json.Unmarshal(input, &v); err != nil {
-		return err
-	}
-
-	v = strings.Replace(v, "0x", "", 1)
-
-	ret, err := strconv.ParseUint(v, 16, 64)
-	if err != nil {
-		return err
-	}
-	*b = Uint64(ret)
-	return err
 }
