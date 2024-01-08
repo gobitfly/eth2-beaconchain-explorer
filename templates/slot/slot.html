@@ -188,6 +188,7 @@
       $("#block_deposits").DataTable(depositsTblOpts)
 
       let votesTblOpts = {
+        searchDelay: 0,
         processing: true,
         serverSide: true,
         ordering: false,
@@ -234,6 +235,7 @@
 
 
       let withdrawalOpts = {
+          searchDelay: 0,
           processing: true,
           serverSide: true,
           ordering: false,
@@ -260,6 +262,7 @@
         $("#block_withdrawals").DataTable(withdrawalOpts)
 
         let blsChangeOpts = {
+          searchDelay: 0,
           processing: true,
           serverSide: true,
           ordering: false,

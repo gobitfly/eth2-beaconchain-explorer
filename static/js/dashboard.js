@@ -239,6 +239,7 @@ function renderProposedHistoryTable(data) {
   }
 
   $("#proposals-table").DataTable({
+    searchDelay: 0,
     serverSide: false,
     data: data,
     processing: false,
@@ -471,6 +472,7 @@ $(document).ready(function () {
   })
   $.fn.DataTable.ext.pager.numbers_length = 5
   var validatorsDataTable = (window.vdt = $("#validators").DataTable({
+    searchDelay: 0,
     processing: true,
     serverSide: false,
     searching: true,

@@ -309,6 +309,7 @@ function loadMonitoringData(data) {
     stateLoadCallback: function (settings) {
       return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
     },
+    searchDelay: 0,
     processing: true,
     responsive: true,
     scroller: true,
@@ -481,6 +482,7 @@ function loadNetworkData(data) {
     stateLoadCallback: function (settings) {
       return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
     },
+    searchDelay: 0,
     processing: true,
     responsive: false,
     scroller: true,
@@ -587,6 +589,7 @@ function loadValidatorsData(data) {
     stateLoadCallback: function (settings) {
       return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
     },
+    searchDelay: 0,
     processing: true,
     // responsive: true,
     paging: true,
