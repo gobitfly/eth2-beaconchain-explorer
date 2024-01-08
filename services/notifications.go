@@ -46,8 +46,8 @@ func notificationCollector() {
 	for {
 		latestFinalizedEpoch := LatestFinalizedEpoch()
 
-		if latestFinalizedEpoch < 4 {
-			logger.Errorf("pausing notifications until at least 4 epochs have been exported into the db")
+		if latestFinalizedEpoch < 7 {
+			logger.Errorf("pausing notifications until at least 7 epochs have been exported into the db")
 			time.Sleep(time.Minute)
 			continue
 		}
