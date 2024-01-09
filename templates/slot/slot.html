@@ -142,6 +142,7 @@
     $(document).ready(function () {
       let slotNumber = {{ .Slot }} || 0
       var depositsTblOpts = {
+        searchDelay: 0,
         processing: true,
         serverSide: true,
         ordering: false,

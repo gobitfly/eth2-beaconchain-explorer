@@ -58,6 +58,7 @@ function showValidatorHist(index) {
   }
 
   $("#dash-validator-history-table").DataTable({
+    searchDelay: 0,
     processing: true,
     serverSide: true,
     lengthChange: false,
