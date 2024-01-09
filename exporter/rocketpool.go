@@ -1588,7 +1588,7 @@ func CalculateLifetimeNodeRewardsAllLegacy(rp *rocketpool.RocketPool, intervalSi
 	// Construct a filter query for relevant logs
 	addressFilter := []common.Address{*rocketRewardsPool.Address}
 	// RPLTokensClaimed(address clamingContract, address claimingAddress, uint256 amount, uint256 time)
-	topicFilter := [][]common.Hash{{rocketRewardsPool.ABI.Events["RPLTokensClaimed"].ID}, {rocketClaimNode.Address.Hash()}}
+	topicFilter := [][]common.Hash{{rocketRewardsPool.ABI.Events["RPLTokensClaimed"].ID}, {common.BytesToHash(rocketClaimNode.Address[:])}}
 
 	sumMap := make(map[string]*big.Int)
 	prerecordedIntervals, exists := firstBlockOfRedstone[utils.Config.Chain.Name]
