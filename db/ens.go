@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/sirupsen/logrus"
 
 	go_ens "github.com/wealdtech/go-ens/v3"
 )
@@ -100,6 +101,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		foundNameChangedIndex := -1
 		foundNewOwnerIndex := -1
 		logs := tx.GetLogs()
+		logTx := false
 		for j, log := range logs {
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most %d but got: %v tx: %x", ITX_PER_TX_LIMIT-1, j, tx.GetHash())
@@ -113,14 +115,30 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 					} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
 						foundNameRenewedIndex = j
 					}
+					logTx = true
 				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
 					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
+					logTx = true
 				} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
 					foundNameChangedIndex = j
+					logTx = true
 				} else if bytes.Equal(lTopic, ens.NewOwnerTopic) {
 					foundNewOwnerIndex = j
+					logTx = true
 				}
 			}
+		}
+
+		if logTx {
+			logrus.WithFields(logrus.Fields{
+				"foundNameIndex":        foundNameIndex,
+				"foundResolverIndex":    foundResolverIndex,
+				"foundNameRenewedIndex": foundNameRenewedIndex,
+				"foundAddressChanged":   foundAddressChangedIndices,
+				"foundNameChangedIndex": foundNameChangedIndex,
+				"foundNewOwnerIndex":    foundNewOwnerIndex,
+				"tx.hash":               fmt.Sprintf("%#x", tx.GetHash()),
+			}).Infof("transformed tx")
 		}
 		// We found a register name event
 		if foundNameIndex > -1 && foundResolverIndex > -1 {
@@ -235,8 +253,8 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, nameHash, tx.GetHash())] = true
 			keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, nameRenewed.Name)] = true
 
-		} else if foundNameChangedIndex > -1 && foundNewOwnerIndex > -1 { // we found a name change event
-
+			// } else if foundNameChangedIndex > -1 && foundNewOwnerIndex > -1 { // we found a name change event
+		} else if foundNewOwnerIndex > -1 { // we found a name change event
 			log := logs[foundNewOwnerIndex]
 			topics := make([]common.Hash, 0, len(log.GetTopics()))
 
@@ -320,6 +338,25 @@ type EnsCheckedDictionary struct {
 	mux     sync.Mutex
 	address map[common.Address]bool
 	name    map[string]bool
+}
+
+func (bigtable *Bigtable) GetRowsByPrefix(prefix string) ([]string, error) {
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	rowRange := gcp_bigtable.PrefixRange(prefix)
+	keys := []string{}
+
+	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
+		row_ := row[DEFAULT_FAMILY][0]
+		keys = append(keys, row_.Row)
+		return true
+	}, gcp_bigtable.LimitRows(1000))
+	if err != nil {
+		return nil, err
+	}
+
+	return keys, nil
 }
 
 func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client, readBatchSize int64) error {
