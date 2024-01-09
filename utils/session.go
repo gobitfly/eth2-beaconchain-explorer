@@ -88,7 +88,7 @@ func InitSessionStore(secret string) {
 	pool := &redis.Pool{
 		MaxIdle: 10,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", Config.RedisCacheEndpoint)
+			return redis.Dial("tcp", Config.RedisSessionStoreEndpoint)
 		},
 	}
 
