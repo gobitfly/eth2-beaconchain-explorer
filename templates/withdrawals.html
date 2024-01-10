@@ -9,6 +9,7 @@
       var usp = new URLSearchParams(window.location.search)
       var q = usp.get("q")
       var tblWithdrawals = $("#withdrawals").DataTable({
+        searchDelay: 0,
         processing: true,
         serverSide: true,
         ordering: false,
@@ -82,6 +83,7 @@
       }
 
       var tblBLS = $("#blsChange").DataTable({
+        searchDelay: 0,
         processing: true,
         serverSide: true,
         ordering: false,

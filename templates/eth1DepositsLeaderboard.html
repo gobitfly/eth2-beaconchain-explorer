@@ -135,6 +135,7 @@
             var q = usp.get('q')
             {{if len .DepositContract}}
                   var tbl = $('#deposits').DataTable({
+                  searchDelay: 0,
                   stateSave: true,
                   stateSaveCallback: function (settings, data) {
                     data.start = 0

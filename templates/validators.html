@@ -112,6 +112,7 @@
             validatorsDataTable = $('#validators').DataTable({
                 search: q ? {search:q} : null,
                 pageLength: 25,
+                searchDelay: 0,
                 processing: true,
                 serverSide: true,
                 searching: false,

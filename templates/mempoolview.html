@@ -5,6 +5,7 @@
 
   <script>
     $("#mempool").DataTable({
+      searchDelay: 0,
       searching: true,
       pageLength: 25,
       data: {{ .Data }},

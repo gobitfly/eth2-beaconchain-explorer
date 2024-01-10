@@ -201,6 +201,7 @@ function showSpinner() {
 
 function showTable(data) {
   $("#tax-table").DataTable({
+    searchDelay: 0,
     processing: true,
     serverSide: false,
     ordering: true,
@@ -319,6 +320,7 @@ function updateSubscriptionTable(data, container) {
     // $('#'+container+" thead").empty()
   }
   subsTable = $("#" + container).DataTable({
+    searchDelay: 0,
     processing: true,
     serverSide: false,
     ordering: true,

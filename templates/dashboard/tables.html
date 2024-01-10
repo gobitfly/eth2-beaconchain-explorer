@@ -50,6 +50,7 @@
       function createWithdrawalTable() {
         if (!table) {
           table = $("#withdrawal-table").DataTable({
+            searchDelay: 0,
             processing: true,
             serverSide: true,
             stateSave: true,

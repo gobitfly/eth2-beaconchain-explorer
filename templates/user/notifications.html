@@ -132,6 +132,7 @@
 
     $(document).ready(function () {
       $("#notifications").DataTable({
+        searchDelay: 0,
         processing: true,
         serverSide: true,
         ordering: false,
@@ -216,6 +217,7 @@
           }
         })
         .DataTable({
+          searchDelay: 0,
           processing: true,
           serverSide: true,
           ordering: false,
