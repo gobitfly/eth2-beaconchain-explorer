@@ -65,15 +65,15 @@ type jsonRpcReturnId struct {
 	Id int64 `json:"id"`
 }
 type fullBlockRawData struct {
-	block_number      int64
-	block_hash        hexutil.Bytes
-	block_unclesCount int
-	block_txs         []string
+	blockNumber      int64
+	blockHash        hexutil.Bytes
+	blockUnclesCount int
+	blockTxs         []string
 
-	block_compressed    hexutil.Bytes
-	receipts_compressed hexutil.Bytes
-	traces_compressed   hexutil.Bytes
-	uncles_compressed   hexutil.Bytes
+	blockCompressed    hexutil.Bytes
+	receiptsCompressed hexutil.Bytes
+	tracesCompressed   hexutil.Bytes
+	unclesCompressed   hexutil.Bytes
 }
 type intRange struct {
 	start int64
@@ -294,7 +294,7 @@ func main() {
 				// fill array with block numbers to check
 				blockRawData := make([]fullBlockRawData, l)
 				for i := int64(0); i < l; i++ {
-					blockRawData[i].block_number = latestPGBlock + i - l + 1
+					blockRawData[i].blockNumber = latestPGBlock + i - l + 1
 				}
 
 				// get all hashes from node
@@ -323,10 +323,10 @@ func main() {
 					blockRawDataFailure := make([]fullBlockRawData, 0, len(blockRawData)-matchingLength)
 					var i int
 					for _, v := range blockRawData {
-						for i < matchingLength && v.block_number > matchingHashesBlockIdList[i] {
+						for i < matchingLength && v.blockNumber > matchingHashesBlockIdList[i] {
 							i++
 						}
-						if i > matchingLength || v.block_number != matchingHashesBlockIdList[i] {
+						if i > matchingLength || v.blockNumber != matchingHashesBlockIdList[i] {
 							blockRawDataFailure = append(blockRawDataFailure, v)
 						}
 					}
@@ -342,7 +342,7 @@ func main() {
 					if err != nil {
 						wrongHashIds := make([]int64, failureLength)
 						for i, v := range blockRawDataFailure {
-							wrongHashIds[i] = v.block_number
+							wrongHashIds[i] = v.blockNumber
 						}
 						// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
 						utils.LogFatal(err, "error exporting hits on reorg", 0, map[string]interface{}{"len(blockRawData)": len(blockRawData), "reorgDepth": *reorgDepth, "wrongHashIds": wrongHashIds})
@@ -435,14 +435,14 @@ func bulkExportBlocks(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlo
 		keys := []string{}
 		for _, v := range blockRawData {
 			mut := gcp_bigtable.NewMutation()
-			mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), v.block_compressed)
-			mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), v.receipts_compressed)
-			mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), v.traces_compressed)
-			if v.block_unclesCount > 0 {
-				mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), v.uncles_compressed)
+			mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), v.blockCompressed)
+			mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), v.receiptsCompressed)
+			mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), v.tracesCompressed)
+			if v.blockUnclesCount > 0 {
+				mut.Set(BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES, gcp_bigtable.Timestamp(0), v.unclesCompressed)
 			}
 			muts = append(muts, mut)
-			keys = append(keys, fmt.Sprintf("%d:%12d", utils.Config.Chain.Id, MAX_EL_BLOCK_NUMBER-int64(v.block_number)))
+			keys = append(keys, fmt.Sprintf("%d:%12d", utils.Config.Chain.Id, MAX_EL_BLOCK_NUMBER-int64(v.blockNumber)))
 		}
 
 		// write
@@ -497,7 +497,7 @@ func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []int
 					// #RECY logrus.Infof("Started export of blocks %d to %d", sb, eb)
 					blockRawData := make([]fullBlockRawData, eb-sb+1)
 					for i := 0; sb <= eb; i++ {
-						blockRawData[i].block_number = sb
+						blockRawData[i].blockNumber = sb
 						sb++
 					}
 					return bulkExportBlocks(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
@@ -569,7 +569,7 @@ func bulkExportBlocksStartEnd(tableBlocksRaw *gcp_bigtable.Table, startBlockNumb
 			gOuter.Go(func() error {
 				blockRawData := make([]fullBlockRawData, eb-sb+1)
 				for i := 0; sb <= eb; i++ {
-					blockRawData[i].block_number = sb
+					blockRawData[i].blockNumber = sb
 					sb++
 				}
 				err := bulkExportBlocks(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
@@ -930,8 +930,8 @@ func psqlAddElements(blockRawData []fullBlockRawData) error {
 	block_number := make([]int64, l)
 	block_hash := make(pq.ByteaArray, l)
 	for i, v := range blockRawData {
-		block_number[i] = v.block_number
-		block_hash[i] = v.block_hash
+		block_number[i] = v.blockNumber
+		block_hash[i] = v.blockHash
 	}
 
 	_, err := db.WriterDb.Exec(`
@@ -960,8 +960,8 @@ func psqlGetHashHitsIdList(blockRawData []fullBlockRawData) ([]int64, error) {
 	block_number := make([]int64, l)
 	block_hash := make(pq.ByteaArray, l)
 	for i, v := range blockRawData {
-		block_number[i] = v.block_number
-		block_hash[i] = v.block_hash
+		block_number[i] = v.blockNumber
+		block_hash[i] = v.blockHash
 	}
 
 	// #RECY_ QUESTION using here the ReaderDB, not sure this is correct, but normally there should be 10+ seconds between writing and this, so sound legit to me
@@ -1088,7 +1088,7 @@ func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsA
 			if i != 0 {
 				bodyStr += ","
 			}
-			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockReceipts","params":["0x%x"],"id":%d}`, v.block_number, i)
+			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockReceipts","params":["0x%x"],"id":%d}`, v.blockNumber, i)
 		}
 		bodyStr += "]"
 		var err error
@@ -1105,7 +1105,7 @@ func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsA
 
 	// get data
 	for i, v := range rawData {
-		blockRawData[i].receipts_compressed = compress(v)
+		blockRawData[i].receiptsCompressed = compress(v)
 	}
 
 	return nil
@@ -1128,7 +1128,7 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 	var currentElementCount int
 	bodyStr := "["
 	for i, v := range blockRawData {
-		l := len(v.block_txs)
+		l := len(v.blockTxs)
 
 		// threshold reached, getting data...
 		if i != 0 {
@@ -1143,7 +1143,7 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 				}
 
 				for ii, vv := range rawData {
-					blockRawData[ii].receipts_compressed = compress(vv)
+					blockRawData[ii].receiptsCompressed = compress(vv)
 				}
 
 				currentElementCount = 0
@@ -1155,7 +1155,7 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 
 		// adding txs of current block
 		currentElementCount += l
-		for txIndex, txValue := range v.block_txs {
+		for txIndex, txValue := range v.blockTxs {
 			if txIndex != 0 {
 				bodyStr += ","
 			}
@@ -1175,7 +1175,7 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 		}
 
 		for ii, vv := range rawData {
-			blockRawData[ii].receipts_compressed = compress(vv)
+			blockRawData[ii].receiptsCompressed = compress(vv)
 		}
 	}
 
@@ -1203,7 +1203,7 @@ func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 			if i != 0 {
 				bodyStr += ","
 			}
-			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":%d}`, v.block_number, i)
+			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":%d}`, v.blockNumber, i)
 		}
 		bodyStr += "]"
 		var err error
@@ -1221,10 +1221,10 @@ func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 	for i, v := range rawData {
 		// block
 		{
-			blockRawData[i].block_compressed = compress(v)
+			blockRawData[i].blockCompressed = compress(v)
 			err := json.Unmarshal(v, blockParsed)
 			if err != nil {
-				return fmt.Errorf("error decoding block '%d' response: %w", blockRawData[i].block_number, err)
+				return fmt.Errorf("error decoding block '%d' response: %w", blockRawData[i].blockNumber, err)
 			}
 		}
 
@@ -1235,30 +1235,30 @@ func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 
 		// number
 		{
-			brNumber := int64(binary.BigEndian.Uint64(append(make([]byte, 8-len(blockParsed.Result.Number)), blockParsed.Result.Number...)))
-			if blockRawData[i].block_number != brNumber {
-				logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, brNumber)
+			blockParsedResultNumber := int64(binary.BigEndian.Uint64(append(make([]byte, 8-len(blockParsed.Result.Number)), blockParsed.Result.Number...)))
+			if blockRawData[i].blockNumber != blockParsedResultNumber {
+				logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].blockNumber, blockParsedResultNumber)
 			}
 		}
 
 		// hash
 		if blockParsed.Result.Hash == nil {
-			return fmt.Errorf("blockParsed.Result.Hash is nil at block '%d'", blockRawData[i].block_number)
+			return fmt.Errorf("blockParsed.Result.Hash is nil at block '%d'", blockRawData[i].blockNumber)
 		}
-		blockRawData[i].block_hash = blockParsed.Result.Hash
+		blockRawData[i].blockHash = blockParsed.Result.Hash
 
 		// transaction
 		if blockParsed.Result.Transactions == nil {
-			return fmt.Errorf("blockParsed.Result.Transactions is nil at block '%d'", blockRawData[i].block_number)
+			return fmt.Errorf("blockParsed.Result.Transactions is nil at block '%d'", blockRawData[i].blockNumber)
 		}
-		blockRawData[i].block_txs = make([]string, len(blockParsed.Result.Transactions))
+		blockRawData[i].blockTxs = make([]string, len(blockParsed.Result.Transactions))
 		for ii, tx := range blockParsed.Result.Transactions {
-			blockRawData[i].block_txs[ii] = tx.Hash.String()
+			blockRawData[i].blockTxs[ii] = tx.Hash.String()
 		}
 
 		// uncle count
 		if blockParsed.Result.Uncles != nil {
-			blockRawData[i].block_unclesCount = len(blockParsed.Result.Uncles)
+			blockRawData[i].blockUnclesCount = len(blockParsed.Result.Uncles)
 		}
 	}
 
@@ -1286,7 +1286,7 @@ func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 			if i != 0 {
 				bodyStr += ","
 			}
-			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":%d}`, v.block_number, i)
+			bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x%x", true],"id":%d}`, v.blockNumber, i)
 		}
 		bodyStr += "]"
 		var err error
@@ -1304,21 +1304,21 @@ func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 	for i, v := range rawData {
 		err := json.Unmarshal(v, blockParsed)
 		if err != nil {
-			return fmt.Errorf("error decoding block '%d' response: %w", blockRawData[i].block_number, err)
+			return fmt.Errorf("error decoding block '%d' response: %w", blockRawData[i].blockNumber, err)
 		}
 		if i != blockParsed.Id {
 			return fmt.Errorf("impossible error, i '%d' doesn't match blockParsed.Id '%d'", i, blockParsed.Id)
 		}
 		{
-			brNumber := int64(binary.BigEndian.Uint64(append(make([]byte, 8-len(blockParsed.Result.Number)), blockParsed.Result.Number...)))
-			if blockRawData[i].block_number != brNumber {
-				logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, brNumber)
+			blockParsedResultNumber := int64(binary.BigEndian.Uint64(append(make([]byte, 8-len(blockParsed.Result.Number)), blockParsed.Result.Number...)))
+			if blockRawData[i].blockNumber != blockParsedResultNumber {
+				logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].blockNumber, blockParsedResultNumber)
 			}
 		}
 		if blockParsed.Result.Hash == nil {
-			return fmt.Errorf("blockParsed.Result.Hash is nil at block '%d'", blockRawData[i].block_number)
+			return fmt.Errorf("blockParsed.Result.Hash is nil at block '%d'", blockRawData[i].blockNumber)
 		}
-		blockRawData[i].block_hash = blockParsed.Result.Hash
+		blockRawData[i].blockHash = blockParsed.Result.Hash
 	}
 
 	return nil
@@ -1345,10 +1345,10 @@ func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 		firstElement := true
 		bodyStr := "["
 		for _, v := range blockRawData {
-			if v.block_unclesCount > 2 || v.block_unclesCount < 0 {
+			if v.blockUnclesCount > 2 || v.blockUnclesCount < 0 {
 				// fatal, as this is an impossible error
-				utils.LogFatal(nil, "impossible error, found impossible uncle count, expected 0, 1 or 2", 0, map[string]interface{}{"block_unclesCount": v.block_unclesCount, "block_number": v.block_number})
-			} else if v.block_unclesCount == 0 {
+				utils.LogFatal(nil, "impossible error, found impossible uncle count, expected 0, 1 or 2", 0, map[string]interface{}{"block_unclesCount": v.blockUnclesCount, "block_number": v.blockNumber})
+			} else if v.blockUnclesCount == 0 {
 				continue
 			} else {
 				requestedCount++
@@ -1357,11 +1357,11 @@ func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 				} else {
 					bodyStr += ","
 				}
-				if v.block_unclesCount == 1 {
-					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d}`, v.block_number, v.block_number)
+				if v.blockUnclesCount == 1 {
+					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d}`, v.blockNumber, v.blockNumber)
 				} else /* if v.block_unclesCount == 2 */ {
-					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d},`, v.block_number, v.block_number)
-					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x1"],"id":%d}`, v.block_number, v.block_number)
+					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d},`, v.blockNumber, v.blockNumber)
+					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x1"],"id":%d}`, v.blockNumber, v.blockNumber)
 				}
 			}
 		}
@@ -1383,8 +1383,8 @@ func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 	// get data
 	rdIndex := 0
 	for i, v := range blockRawData {
-		if v.block_unclesCount > 0 { // Not the prettiest way, but the unmarshal would take much longer with the same result
-			blockRawData[i].uncles_compressed = compress(rawData[rdIndex])
+		if v.blockUnclesCount > 0 { // Not the prettiest way, but the unmarshal would take much longer with the same result
+			blockRawData[i].unclesCompressed = compress(rawData[rdIndex])
 			rdIndex++
 		}
 	}
@@ -1422,9 +1422,9 @@ func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 				bodyStr += ","
 			}
 			if utils.Config.Chain.Id == ARBITRUM_CHAINID && i <= ARBITRUM_NITRO_BLOCKNUMBER {
-				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"arbtrace_block","params":["0x%x"],"id":%d}`, v.block_number, i)
+				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"arbtrace_block","params":["0x%x"],"id":%d}`, v.blockNumber, i)
 			} else {
-				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"debug_traceBlockByNumber","params":["0x%x", {"tracer": "callTracer"}],"id":%d}`, v.block_number, i)
+				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"debug_traceBlockByNumber","params":["0x%x", {"tracer": "callTracer"}],"id":%d}`, v.blockNumber, i)
 			}
 		}
 		bodyStr += "]"
@@ -1440,7 +1440,7 @@ func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 
 	// get data
 	for i, v := range rawData {
-		blockRawData[i].traces_compressed = compress(v)
+		blockRawData[i].tracesCompressed = compress(v)
 	}
 
 	return nil
