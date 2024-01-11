@@ -3093,7 +3093,6 @@ func hmacSign(data string) string {
 }
 
 func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
 
 	var parsedBase types.MobileSubscription
@@ -3102,6 +3101,12 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error parsing body | err: %v", err)
 		SendBadRequestResponse(w, r.URL.String(), "could not parse body")
+		return
+	}
+
+	// Only allow ios and android purchases to be registered via this endpoint
+	if parsedBase.Transaction.Type != "ios-appstore" && parsedBase.Transaction.Type != "android-playstore" {
+		SendBadRequestResponse(w, r.URL.String(), "invalid transaction type")
 		return
 	}
 
@@ -3130,7 +3135,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	// we can ignore this error since it always returns a result object and err
 	// case is not needed on receipt insert
-	validationResult, _ := exporter.VerifyReceipt(nil, verifyPackage)
+	validationResult, _ := exporter.VerifyReceipt(nil, nil, verifyPackage)
 	parsedBase.Valid = validationResult.Valid
 
 	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
