@@ -54,7 +54,7 @@ const ARBITRUM_NITRO_BLOCKNUMBER = 22207815
 
 const HTTP_TIMEOUT_IN_SECONDS = 2 * 120
 const MAX_REORG_DEPTH = 1                         // that number of block we are looking 'back', includes latest block
-const MAX_NODE_REQUESTS_AT_ONCE = 100             // based on our test, 1000 is the best value use
+const MAX_NODE_REQUESTS_AT_ONCE = 100             // Maximum node requests allowed
 const MIN_NODE_REQUESTS_AT_ONCE = MAX_REORG_DEPTH // currently we are not allowed to be lower than MAX_REORG_DEPTH
 
 // errors
@@ -655,10 +655,11 @@ func _splitAndVerifyJsonArrayAddElement(r *[][]byte, element []byte, lastId int6
 }
 
 // split a bulk json request in single requests
-func _splitAndVerifyJsonArray(jArray []byte) ([][]byte, error) {
+func _splitAndVerifyJsonArray(jArray []byte, providedElementCount int) ([][]byte, error) {
 	endDigit := byte('}')
 	searchValue := []byte(`{"jsonrpc":"`)
 	searchLen := len(searchValue)
+	foundElementCount := 0
 
 	// remove everything before the first hit
 	i := bytes.Index(jArray, searchValue)
@@ -682,19 +683,24 @@ func _splitAndVerifyJsonArray(jArray []byte) ([][]byte, error) {
 			for l := len(jArray) - 1; l >= 0 && jArray[l] != endDigit; l-- {
 				jArray = jArray[:l]
 			}
+			foundElementCount++
 			_, err = _splitAndVerifyJsonArrayAddElement(&r, jArray, lastId)
 			if err != nil {
 				return nil, fmt.Errorf("error calling split and verify json array add element - last element: %w", err)
 			}
 			break
 		}
-		// handle normale element
+		// handle normal element
+		foundElementCount++
 		lastId, err = _splitAndVerifyJsonArrayAddElement(&r, jArray[:i+searchLen-1], lastId)
 		if err != nil {
 			return nil, fmt.Errorf("error calling split and verify json array add element: %w", err)
 		}
 		// set cursor to new start
 		jArray = jArray[i+searchLen:]
+	}
+	if foundElementCount != providedElementCount {
+		return r, fmt.Errorf("provided element count %d doesn't match found %d", providedElementCount, foundElementCount)
 	}
 	return r, nil
 }
@@ -1021,7 +1027,7 @@ func rpciGetLatestBlock() (int64, error) {
 }
 
 // do all the http stuff
-func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int) ([][]byte, error) {
+func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int, count int) ([][]byte, error) {
 	startTime := time.Now()
 	r, err := http.NewRequest("POST", utils.Config.Eth1RpcEndpoint, bytes.NewBuffer(body))
 	if err != nil {
@@ -1064,7 +1070,7 @@ func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int) ([][]byte, error) {
 		return nil, fmt.Errorf("rpc error: %s", resByte)
 	}
 
-	return _splitAndVerifyJsonArray(resByte)
+	return _splitAndVerifyJsonArray(resByte, count)
 }
 
 // will fill only receipts_compressed based on block, used by rpciGetBulkRawReceipts function
@@ -1093,13 +1099,10 @@ func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsA
 		bodyStr += "]"
 		var err error
 		// # RECY startTime := time.Now()
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce)
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
 		// # RECY logrus.Warnf("Took %v", time.Second*time.Duration(time.Since(startTime).Seconds()))
 		if err != nil {
 			return fmt.Errorf("error (_rpciGetBulkRawBlockReceipts) split and verify json array: %w", err)
-		}
-		if len(rawData) != len(blockRawData) {
-			return fmt.Errorf("error (_rpciGetBulkRawBlockReceipts) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
 		}
 	}
 
@@ -1134,12 +1137,9 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 		if i != 0 {
 			if currentElementCount+l > nodeRequestsAtOnce {
 				bodyStr += "]"
-				rawData, err := _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce)
+				rawData, err := _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, currentElementCount)
 				if err != nil {
 					return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
-				}
-				if len(rawData) != currentElementCount {
-					return fmt.Errorf("different length for rawDataPartial (%d) vs currentElementCount (%d)", len(rawData), currentElementCount)
 				}
 
 				for ii, vv := range rawData {
@@ -1166,12 +1166,9 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 	// getting data for the rest...
 	{
 		bodyStr += "]"
-		rawData, err := _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce)
+		rawData, err := _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, currentElementCount)
 		if err != nil {
 			return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
-		}
-		if len(rawData) != currentElementCount {
-			return fmt.Errorf("different length for rawDataPartial (%d) vs currentElementCount (%d)", len(rawData), currentElementCount)
 		}
 
 		for ii, vv := range rawData {
@@ -1207,12 +1204,9 @@ func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 		}
 		bodyStr += "]"
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce)
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
 		if err != nil {
 			return fmt.Errorf("error (rpciGetBulkBlockRawData) split and verify json array: %w", err)
-		}
-		if len(rawData) != len(blockRawData) {
-			return fmt.Errorf("error (rpciGetBulkBlockRawData) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
 		}
 	}
 
@@ -1290,12 +1284,9 @@ func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 		}
 		bodyStr += "]"
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce)
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
 		if err != nil {
 			return fmt.Errorf("error (rpciGetBulkBlockRawHash) split and verify json array: %w", err)
-		}
-		if len(rawData) != len(blockRawData) {
-			return fmt.Errorf("error (rpciGetBulkBlockRawHash) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
 		}
 	}
 
@@ -1371,12 +1362,9 @@ func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 		}
 
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce)
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, requestedCount)
 		if err != nil {
 			return fmt.Errorf("error (rpciGetBulkRawUncles) split and verify json array: %w", err)
-		}
-		if len(rawData) != requestedCount {
-			return fmt.Errorf("error (rpciGetBulkRawUncles) different length for rawData (%d) vs requestedCount (%d)", len(rawData), requestedCount)
 		}
 	}
 
@@ -1421,7 +1409,7 @@ func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 			if i != 0 {
 				bodyStr += ","
 			}
-			if utils.Config.Chain.Id == ARBITRUM_CHAINID && i <= ARBITRUM_NITRO_BLOCKNUMBER {
+			if utils.Config.Chain.Id == ARBITRUM_CHAINID && v.blockNumber <= ARBITRUM_NITRO_BLOCKNUMBER {
 				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"arbtrace_block","params":["0x%x"],"id":%d}`, v.blockNumber, i)
 			} else {
 				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"debug_traceBlockByNumber","params":["0x%x", {"tracer": "callTracer"}],"id":%d}`, v.blockNumber, i)
@@ -1429,12 +1417,9 @@ func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 		}
 		bodyStr += "]"
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce)
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
 		if err != nil {
 			return fmt.Errorf("error (rpciGetBulkRawTraces) split and verify json array: %w", err)
-		}
-		if len(rawData) != len(blockRawData) {
-			return fmt.Errorf("error (rpciGetBulkRawTraces) different length for rawData (%d) vs blockRawData (%d)", len(rawData), len(blockRawData))
 		}
 	}
 
