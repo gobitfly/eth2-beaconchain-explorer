@@ -174,7 +174,7 @@ type Config struct {
 		Apple         struct {
 			LegacyAppSubsAppleSecret string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
 			KeyID                    string `yaml:"keyID" envconfig:"FRONTEND_APPLE_APP_KEY_ID"`
-			IssueID                  string `yaml:"issueId" envconfig:"FRONTEND_APPLE_ISSUE_ID"`
+			IssueID                  string `yaml:"issueID" envconfig:"FRONTEND_APPLE_ISSUE_ID"`
 			Certificate              string `yaml:"certificate" envconfig:"FRONTEND_APPLE_CERTIFICATE"`
 		} `yaml:"apple"`
 		AppSubsGoogleJSONPath string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
