@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
@@ -214,13 +215,13 @@ func main() {
 	// Config done, now actually "doing" stuff //
 	// //////////////////////////////////////////
 
-	/*
-		prefix := "11155111:999999826267"
-		readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK)
-		readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS)
-		readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES)
-		readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES)
-		return
+	/* #RECY REMOVE
+	prefix := "11155111:999999826267"
+	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK)
+	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS)
+	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES)
+	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES)
+	return
 	*/
 
 	// check if reexport requested
@@ -1233,12 +1234,12 @@ func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 		}
 
 		// number
-		/* #RECY TODO
-		logrus.Warnf("%v %v", fmt.Sprintf("%x", blockRawData[i].block_number), fmt.Sprintf("%x", blockParsed.Result.Number))
-		if strings.Compare(fmt.Sprintf("%x", blockRawData[i].block_number), fmt.Sprintf("%x", blockParsed.Result.Number)) != 0 {
-			logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, blockParsed.Result.Number)
+		{
+			brNumber := int64(binary.BigEndian.Uint64(append(make([]byte, 8-len(blockParsed.Result.Number)), blockParsed.Result.Number...)))
+			if blockRawData[i].block_number != brNumber {
+				logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, brNumber)
+			}
 		}
-		*/
 
 		// hash
 		if blockParsed.Result.Hash == nil {
@@ -1308,11 +1309,12 @@ func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 		if i != blockParsed.Id {
 			return fmt.Errorf("impossible error, i '%d' doesn't match blockParsed.Id '%d'", i, blockParsed.Id)
 		}
-		/* #RECY TODO
-		if blockRawData[i].block_number != int64(binary.LittleEndian.Uint64(blockParsed.Result.Number)) {
-			logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, blockParsed.Result.Number)
+		{
+			brNumber := int64(binary.BigEndian.Uint64(append(make([]byte, 8-len(blockParsed.Result.Number)), blockParsed.Result.Number...)))
+			if blockRawData[i].block_number != brNumber {
+				logrus.Errorf("blockRawData[i].block_number '%d' doesn't match blockParsed.Result.Number '%d'", blockRawData[i].block_number, brNumber)
+			}
 		}
-		*/
 		if blockParsed.Result.Hash == nil {
 			return fmt.Errorf("blockParsed.Result.Hash is nil at block '%d'", blockRawData[i].block_number)
 		}
