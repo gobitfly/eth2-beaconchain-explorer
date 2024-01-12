@@ -53,9 +53,9 @@ const ARBITRUM_CHAINID = 42161
 const ARBITRUM_NITRO_BLOCKNUMBER = 22207815
 
 const HTTP_TIMEOUT_IN_SECONDS = 2 * 120
-const MAX_REORG_DEPTH = 1                         // that number of block we are looking 'back', includes latest block
-const MAX_NODE_REQUESTS_AT_ONCE = 100             // Maximum node requests allowed
-const MIN_NODE_REQUESTS_AT_ONCE = MAX_REORG_DEPTH // currently we are not allowed to be lower than MAX_REORG_DEPTH
+const MAX_REORG_DEPTH = 100           // that number of block we are looking 'back', includes latest block
+const MAX_NODE_REQUESTS_AT_ONCE = 100 // Maximum node requests allowed
+const OUTPUT_CYCLE_IN_SECONDS = 10    // duration between 2 outputs / updates, just a visual thing
 
 // errors
 var errContextDeadlineExceeded = errors.New("context deadline exceeded (Client.Timeout or context cancellation while reading body)")
@@ -146,11 +146,6 @@ func main() {
 		logrus.Warnf("reorg.depth parameter set to %d, corrected to %d", *reorgDepth, MAX_REORG_DEPTH)
 		*reorgDepth = MAX_REORG_DEPTH
 	}
-	if *reorgDepth > MAX_NODE_REQUESTS_AT_ONCE {
-		// #RECY TODO, as MAX_NODE_REQUESTS_AT_ONCE can vary now, this check should be reworked
-		// fatal, as the code doesn't support a reorgDepth greater as MAX_NODE_REQUESTS_AT_ONCE
-		utils.LogFatal(nil, "reorgDepth set to a value greater than 'max node requests at once' value, which is not allowed / possible", 0, map[string]interface{}{"reorgDepth": *reorgDepth, "MAX_NODE_REQUESTS_AT_ONCE": MAX_NODE_REQUESTS_AT_ONCE})
-	}
 	if *concurrency < 1 {
 		logrus.Warnf("concurrency parameter set to %d, corrected to 1", *concurrency)
 		*concurrency = 1
@@ -235,7 +230,7 @@ func main() {
 	// check if reexport requested
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
 		logrus.Infof("Found REEXPORT for block %v to %v...", *startBlockNumber, *endBlockNumber)
-		err := bulkExportBlocksStartEnd(tableBlocksRaw, *startBlockNumber, *endBlockNumber, *concurrency, *nodeRequestsAtOnce)
+		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce)
 		if err != nil {
 			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
 		}
@@ -263,10 +258,6 @@ func main() {
 				logrus.Warnf("%v<...>", missingBlocks[:10])
 			}
 			startTime = time.Now()
-			/*
-				#RECY_ QUESTION not sure this should be done at startup, blocking everything :shrug:
-				But on the other hand, there shouldn't be any holes normally
-			*/
 			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce) // reexport the holes
 			if err != nil {
 				utils.LogFatal(err, "error while reexport blocks for bigtable (fixing holes)", 0) // fatal, as if we wanna start with holes, we should set the skip-hole-check parameter
@@ -282,6 +273,8 @@ func main() {
 	if err != nil {
 		utils.LogFatal(err, "error while using psqlGetLatestBlock (start / read)", 0) // fatal, as if there is no inital value, we have nothing to start from
 	}
+	var consecutiveErrorCount int
+	consecutiveErrorCountThreshold := 5 // after threshold + 1 errors it will be fatal instead
 	for {
 		currentNodeBN := currentNodeBlockNumber.Load()
 		if currentNodeBN < latestPGBlock {
@@ -291,6 +284,8 @@ func main() {
 			time.Sleep(time.Second)
 			continue // still the same block
 		} else {
+			consecutiveErrorCountOld := consecutiveErrorCount
+
 			// checking for reorg
 			if *reorgDepth > 0 && latestPGBlock >= 0 {
 				// define length to check
@@ -308,16 +303,24 @@ func main() {
 				// get all hashes from node
 				err = rpciGetBulkBlockRawHash(blockRawData, *nodeRequestsAtOnce)
 				if err != nil {
-					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
-					utils.LogFatal(err, "error when bulk getting raw block hashes", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+					consecutiveErrorCount++
+					if consecutiveErrorCount <= consecutiveErrorCountThreshold {
+						utils.LogError(err, "error when bulk getting raw block hashes", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+					} else {
+						utils.LogFatal(err, "error when bulk getting raw block hashes", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+					}
 				}
 
 				// get a list of all block_ids where the hashes are fine
 				var matchingHashesBlockIdList []int64
 				matchingHashesBlockIdList, err = psqlGetHashHitsIdList(blockRawData)
 				if err != nil {
-					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
-					utils.LogFatal(err, "error when getting hash hits id list", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+					consecutiveErrorCount++
+					if consecutiveErrorCount <= consecutiveErrorCountThreshold {
+						utils.LogError(err, "error when getting hash hits id list", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+					} else {
+						utils.LogFatal(err, "error when getting hash hits id list", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
+					}
 				}
 
 				matchingLength := len(matchingHashesBlockIdList)
@@ -328,34 +331,47 @@ func main() {
 					}
 
 					// reverse the "fine" list, so we have a "not fine" list
-					blockRawDataFailure := make([]fullBlockRawData, 0, len(blockRawData)-matchingLength)
+					wrongHashRanges := []intRange{intRange{start: -1}}
+					wrongHashRangesIndex := 0
 					var i int
+					var failCounter int
 					for _, v := range blockRawData {
 						for i < matchingLength && v.blockNumber > matchingHashesBlockIdList[i] {
 							i++
 						}
 						if i > matchingLength || v.blockNumber != matchingHashesBlockIdList[i] {
-							blockRawDataFailure = append(blockRawDataFailure, v)
+							failCounter++
+							if wrongHashRanges[wrongHashRangesIndex].start < 0 {
+								wrongHashRanges[wrongHashRangesIndex].start = v.blockNumber
+								wrongHashRanges[wrongHashRangesIndex].end = v.blockNumber
+							} else if wrongHashRanges[wrongHashRangesIndex].end+1 == v.blockNumber {
+								wrongHashRanges[wrongHashRangesIndex].end = v.blockNumber
+							} else {
+								wrongHashRangesIndex++
+								wrongHashRanges[wrongHashRangesIndex].start = v.blockNumber
+								wrongHashRanges[wrongHashRangesIndex].end = v.blockNumber
+							}
 						}
 					}
-					failureLength := len(blockRawDataFailure)
-					if failureLength != len(blockRawData)-matchingLength {
+					if failCounter != len(blockRawData)-matchingLength {
 						// fatal, as this is an impossible error
-						utils.LogFatal(err, "impossible error failureLength != len(blockRawData)-matchingLength", 0, map[string]interface{}{"failureLength": failureLength, "len(blockRawData)-matchingLength": len(blockRawData) - matchingLength})
+						utils.LogFatal(err, "impossible error failureLength != len(blockRawData)-matchingLength", 0, map[string]interface{}{"failCounter": failCounter, "len(blockRawData)-matchingLength": len(blockRawData) - matchingLength})
 					}
-					logrus.Infof("found %d wrong hashes when checking for reorgs, reexporting them now...", failureLength)
+					logrus.Infof("found %d wrong hashes when checking for reorgs, reexporting them now...", failCounter)
+					logrus.Infof("%v", wrongHashRanges)
 
 					// export the hits again
-					err = bulkExportBlocks(tableBlocksRaw, blockRawDataFailure, *nodeRequestsAtOnce)
+					err = bulkExportBlocksRange(tableBlocksRaw, wrongHashRanges, *concurrency, *nodeRequestsAtOnce)
 					if err != nil {
-						wrongHashIds := make([]int64, failureLength)
-						for i, v := range blockRawDataFailure {
-							wrongHashIds[i] = v.blockNumber
+						consecutiveErrorCount++
+						if consecutiveErrorCount <= consecutiveErrorCountThreshold {
+							utils.LogError(err, "error exporting hits on reorg", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "len(blockRawData)": len(blockRawData), "reorgDepth": *reorgDepth, "matchingHashesBlockIdList": matchingHashesBlockIdList, "wrongHashRanges": wrongHashRanges})
+						} else {
+							utils.LogFatal(err, "error exporting hits on reorg", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "len(blockRawData)": len(blockRawData), "reorgDepth": *reorgDepth, "matchingHashesBlockIdList": matchingHashesBlockIdList, "wrongHashRanges": wrongHashRanges})
 						}
-						// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
-						utils.LogFatal(err, "error exporting hits on reorg", 0, map[string]interface{}{"len(blockRawData)": len(blockRawData), "reorgDepth": *reorgDepth, "wrongHashIds": wrongHashIds})
+					} else {
+						logrus.Info("...done. Everything fine with reorgs again.")
 					}
-					logrus.Info("...done. Everything fine with reorgs again.")
 				}
 			}
 
@@ -366,20 +382,34 @@ func main() {
 					// fatal, as this is an impossible error
 					utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
 				}
-				err = bulkExportBlocksStartEnd(tableBlocksRaw, latestPGBlock+1, newerNodeBN, *concurrency, *nodeRequestsAtOnce)
+				err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce)
 				if err != nil {
-					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, tbh it's very likly this will fail sometimes cause of timeouts
-					utils.LogFatal(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
+					consecutiveErrorCount++
+					if consecutiveErrorCount <= consecutiveErrorCountThreshold {
+						utils.LogError(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
+					} else {
+						utils.LogFatal(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
+					}
+				} else {
+					latestPGBlock, err = psqlGetLatestBlock(true)
+					if err != nil {
+						consecutiveErrorCount++
+						if consecutiveErrorCount <= consecutiveErrorCountThreshold {
+							utils.LogError(err, "error while using psqlGetLatestBlock (ongoing / write)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount})
+						} else {
+							utils.LogFatal(err, "error while using psqlGetLatestBlock (ongoing / write)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount})
+						}
+					} else if latestPGBlock != newerNodeBN {
+						// fatal, as this is a nearly impossible error
+						utils.LogFatal(err, "impossible error latestPGBlock != newerNodeBN", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "newerNodeBN": newerNodeBN})
+					}
 				}
-				latestPGBlock, err = psqlGetLatestBlock(true)
-				if err != nil {
-					// fatal, this mean we have everything exported, but wasn't able to verify it. So it's very likly we get stuck in an endless loop
-					utils.LogFatal(err, "error while using psqlGetLatestBlock (ongoing / write)", 0)
-				}
-				if latestPGBlock != newerNodeBN {
-					// fatal, as this is a nearly impossible error
-					utils.LogFatal(err, "impossible error latestPGBlock != newerNodeBN", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "newerNodeBN": newerNodeBN})
-				}
+			}
+
+			// reset consecutive error count if no change during this run
+			if consecutiveErrorCount > 0 && consecutiveErrorCountOld == consecutiveErrorCount {
+				consecutiveErrorCount = 0
+				logrus.Infof("reset consecutive error count to 0, as no error in this run (was %d)", consecutiveErrorCountOld)
 			}
 		}
 	}
@@ -405,7 +435,7 @@ func readBT(tableBlocksRaw *gcp_bigtable.Table, prefix string, family string, co
 }
 
 // export all blocks, heavy use of bulk & concurrency, providing a block raw data array (used by the other bulkExportBlocks+ functions)
-func bulkExportBlocks(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func _bulkExportBlocks(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
 	// check values
 	{
 		if tableBlocksRaw == nil {
@@ -478,59 +508,36 @@ func bulkExportBlocks(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlo
 
 // export all blocks, heavy use of bulk & concurrency, providing a range array
 func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int, nodeRequestsAtOnce int) error {
-	if len(blockRanges) <= 0 {
-		return nil
-	}
-
-	gOuter := &errgroup.Group{}
-	gOuter.SetLimit(concurrency)
-
-	for _, br := range blockRanges {
-		startBlockNumber := br.start
-
-		if br.end-startBlockNumber+1 <= 0 {
-			utils.LogError(nil, "error, impossible start / end combination found", 0, map[string]interface{}{"start": startBlockNumber, "end": br.end})
-			continue
+	var blocksTotalCount int64
+	{
+		l := len(blockRanges)
+		if l <= 0 {
+			return fmt.Errorf("got empty blockRanges array")
+		}
+		for i, v := range blockRanges {
+			if v.start <= v.end {
+				blocksTotalCount += v.end - v.start + 1
+			} else {
+				return fmt.Errorf("blockRanges at index %d has wrong start (%d) > end (%d) combination", i, v.start, v.end)
+			}
 		}
 
-		for br.end-startBlockNumber+1 > 0 {
-			localEndBlock := startBlockNumber + int64(nodeRequestsAtOnce) - 1 // get end block for the current run
-			if localEndBlock > br.end {                                       // stop at the end block
-				localEndBlock = br.end
-			}
-			{
-				sb := startBlockNumber
-				eb := localEndBlock
-				gOuter.Go(func() error {
-					// #RECY logrus.Infof("Started export of blocks %d to %d", sb, eb)
-					blockRawData := make([]fullBlockRawData, eb-sb+1)
-					for i := 0; sb <= eb; i++ {
-						blockRawData[i].blockNumber = sb
-						sb++
-					}
-					return bulkExportBlocks(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
-				})
-			}
-			startBlockNumber = localEndBlock + 1
+		if l == 1 {
+			logrus.Infof("Only 1 range found, started export of blocks %d to %d, total block amount %d, using an updater every %d seconds for more details.", blockRanges[0].start, blockRanges[0].end, blocksTotalCount, OUTPUT_CYCLE_IN_SECONDS)
+		} else {
+			logrus.Infof("%d ranges found, total block amount %d, using an updater every %d seconds for more details.", l, blocksTotalCount, OUTPUT_CYCLE_IN_SECONDS)
 		}
 	}
-	return gOuter.Wait()
-}
-
-// export all blocks, heavy use of bulk & concurrency, providing a start & end block number
-func bulkExportBlocksStartEnd(tableBlocksRaw *gcp_bigtable.Table, startBlockNumber int64, endBlockNumber int64, concurrency int, nodeRequestsAtOnce int) error {
-	logrus.Infof("Started export of blocks %d to %d, using an updater every 10 seconds for more details", startBlockNumber, endBlockNumber)
 
 	gOuterMustStop := atomic.Bool{}
 	gOuter := &errgroup.Group{}
 	gOuter.SetLimit(concurrency)
 
-	t := time.NewTicker(time.Second * 10)
+	t := time.NewTicker(time.Second * OUTPUT_CYCLE_IN_SECONDS)
 	totalStart := time.Now()
 	exportStart := totalStart
 	blocksProcessedTotal := atomic.Int64{}
 	blocksProcessedIntv := atomic.Int64{}
-	blocksTotalCount := endBlockNumber - startBlockNumber + 1
 
 	go func() {
 		for {
@@ -555,45 +562,54 @@ func bulkExportBlocksStartEnd(tableBlocksRaw *gcp_bigtable.Table, startBlockNumb
 			exportStart = newStart
 		}
 	}()
+	defer gOuterMustStop.Store(true) // kill the updater
 
-	for !gOuterMustStop.Load() && startBlockNumber <= endBlockNumber {
-		localEndBlock := startBlockNumber + int64(nodeRequestsAtOnce) - 1 // get end block for the current run
-		{
-			currentNodeBN := currentNodeBlockNumber.Load()
-			if startBlockNumber > currentNodeBN { // inform the user that he requested to much, but only if there is nothing else todo
-				logrus.Errorf("Reached the end, looks like a too high end-block-number was provided, got '%d', current latest block '%d'", endBlockNumber, currentNodeBN)
-				break
+	blockRawData := make([]fullBlockRawData, 0, nodeRequestsAtOnce)
+	blockRawDataLen := 0
+Loop:
+	for _, blockRange := range blockRanges {
+		current := blockRange.start
+		for blockRange.end-current+1 > 0 {
+			if gOuterMustStop.Load() {
+				break Loop
 			}
-			if localEndBlock > endBlockNumber { // stop at the end block
-				localEndBlock = endBlockNumber
+			for blockRawDataLen < nodeRequestsAtOnce && current <= blockRange.end {
+				blockRawData = append(blockRawData, fullBlockRawData{blockNumber: current})
+				blockRawDataLen++
+				current++
 			}
-			if localEndBlock > currentNodeBN { // stop at current newest block
-				localEndBlock = currentNodeBN
+			if blockRawDataLen == nodeRequestsAtOnce {
+				brd := blockRawData
+				gOuter.Go(func() error {
+					err := _bulkExportBlocks(tableBlocksRaw, brd, nodeRequestsAtOnce)
+					if err != nil {
+						gOuterMustStop.Store(true)
+						return err
+					}
+					blocksProcessedIntv.Add(int64(len(brd)))
+					return nil
+				})
+				blockRawData = make([]fullBlockRawData, 0, nodeRequestsAtOnce)
+				blockRawDataLen = 0
 			}
 		}
-		{
-			sb := startBlockNumber
-			eb := localEndBlock
-			gOuter.Go(func() error {
-				blockRawData := make([]fullBlockRawData, eb-sb+1)
-				for i := 0; sb <= eb; i++ {
-					blockRawData[i].blockNumber = sb
-					sb++
-				}
-				err := bulkExportBlocks(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
-				if err != nil {
-					gOuterMustStop.Store(true)
-				}
-				blocksProcessedIntv.Add(int64(len(blockRawData)))
-				return err
-			})
-		}
-		startBlockNumber = localEndBlock + 1 // set new start
 	}
 
-	err := gOuter.Wait()
-	gOuterMustStop.Store(true) // kill the updater
-	return err
+	// write the rest
+	if !gOuterMustStop.Load() && blockRawDataLen > 0 {
+		brd := blockRawData
+		gOuter.Go(func() error {
+			err := _bulkExportBlocks(tableBlocksRaw, brd, nodeRequestsAtOnce)
+			if err != nil {
+				gOuterMustStop.Store(true)
+				return err
+			}
+			blocksProcessedIntv.Add(int64(len(brd)))
+			return nil
+		})
+	}
+
+	return gOuter.Wait()
 }
 
 // //////////
@@ -1106,9 +1122,7 @@ func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsA
 		}
 		bodyStr += "]"
 		var err error
-		// # RECY startTime := time.Now()
 		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
-		// # RECY logrus.Warnf("Took %v", time.Second*time.Duration(time.Since(startTime).Seconds()))
 		if err != nil {
 			return fmt.Errorf("error (_rpciGetBulkRawBlockReceipts) split and verify json array: %w", err)
 		}
