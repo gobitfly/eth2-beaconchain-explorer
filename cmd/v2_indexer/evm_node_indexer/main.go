@@ -587,10 +587,17 @@ Loop:
 			if gOuterMustStop.Load() {
 				break Loop
 			}
+
+			currentNodeBlockNumberLocalCopy := currentNodeBlockNumber.Load()
 			for blockRawDataLen < nodeRequestsAtOnce && current <= blockRange.end {
-				blockRawData = append(blockRawData, fullBlockRawData{blockNumber: current})
-				blockRawDataLen++
-				current++
+				if currentNodeBlockNumberLocalCopy >= current {
+					blockRawData = append(blockRawData, fullBlockRawData{blockNumber: current})
+					blockRawDataLen++
+					current++
+				} else {
+					logrus.Warnf("tried to export block %d, but latest block on node is %d, so stopping all further export till %d", current, currentNodeBlockNumberLocalCopy, blockRange.end)
+					current = blockRange.end + 1
+				}
 			}
 			if blockRawDataLen == nodeRequestsAtOnce {
 				brd := blockRawData
