@@ -1364,13 +1364,13 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	if standardIndex < len(pendingTxs) {
 		gpoData.Data.Standard = pendingTxs[standardIndex].GasPrice()
 	} else {
-		gpoData.Data.Standard = header.BaseFee
+		gpoData.Data.Standard = pendingTxs[len(pendingTxs)-1].GasPrice() // use the gas price of the last tx in the mempool in case there are less than 1000 tx
 	}
 
 	if slowIndex < len(pendingTxs) {
 		gpoData.Data.Slow = pendingTxs[slowIndex].GasPrice()
 	} else {
-		gpoData.Data.Slow = header.BaseFee
+		gpoData.Data.Slow = pendingTxs[len(pendingTxs)-1].GasPrice() // use the gas price of the last tx in the mempool in case there are less than 500 tx
 	}
 
 	err = db.BigtableClient.SaveGasNowHistory(gpoData.Data.Slow, gpoData.Data.Standard, gpoData.Data.Fast, gpoData.Data.Rapid)
