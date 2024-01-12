@@ -1616,7 +1616,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 				// totalMinerTips = totalMinerTips.Add(tipFee.Mul(gasUsed))
 				txFees = baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))
 				totalTxSavings = totalTxSavings.Add(maxFee.Mul(gasUsed).Sub(baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))))
-
+			// TODO: Handle type 3?
 			default:
 				logger.Fatalf("error unknown tx type %v hash: %x", tx.Status, tx.Hash)
 			}
