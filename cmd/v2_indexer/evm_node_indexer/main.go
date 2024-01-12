@@ -98,11 +98,10 @@ func main() {
 	startBlockNumber := flag.Int64("start-block-number", -1, "only working in combination with end-block-number, defined block is included")
 	endBlockNumber := flag.Int64("end-block-number", -1, "only working in combination with start-block-number, defined block is included")
 	reorgDepth = flag.Int64("reorg.depth", 20, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %d)", MAX_REORG_DEPTH))
-	concurrency := flag.Int("concurrency", 20, "maximum threads used") // based on our test, 20 is the best value
+	concurrency := flag.Int("concurrency", 10, "maximum threads used")
+	nodeRequestsAtOnce := flag.Int("node-requests-at-once", 50, fmt.Sprintf("bulk size per node request (MAX %d)", MAX_NODE_REQUESTS_AT_ONCE))
 	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes")
 	flag.Parse()
-
-	nodeRequestsAtOnce := MAX_NODE_REQUESTS_AT_ONCE // MAX_NODE_REQUESTS_AT_ONCE
 
 	// tell the user about all parameter
 	{
@@ -115,6 +114,7 @@ func main() {
 		}
 		logrus.Infof("reorg.depth set to '%d'", *reorgDepth)
 		logrus.Infof("concurrency set to '%d'", *concurrency)
+		logrus.Infof("node-requests-at-once set to '%d'", *nodeRequestsAtOnce)
 		if *skipHoleCheck {
 			logrus.Infof("skip-hole-check set true")
 		}
@@ -134,6 +134,14 @@ func main() {
 	}
 
 	// check parameters
+	if *nodeRequestsAtOnce < 1 {
+		logrus.Warnf("node-requests-at-once set to %d, corrected to 1", *nodeRequestsAtOnce)
+		*nodeRequestsAtOnce = 1
+	}
+	if *nodeRequestsAtOnce > MAX_NODE_REQUESTS_AT_ONCE {
+		logrus.Warnf("node-requests-at-once set to %d, corrected to %d", *nodeRequestsAtOnce, MAX_NODE_REQUESTS_AT_ONCE)
+		*nodeRequestsAtOnce = MAX_NODE_REQUESTS_AT_ONCE
+	}
 	if *reorgDepth < 0 || *reorgDepth > MAX_REORG_DEPTH {
 		logrus.Warnf("reorg.depth parameter set to %d, corrected to %d", *reorgDepth, MAX_REORG_DEPTH)
 		*reorgDepth = MAX_REORG_DEPTH
@@ -227,7 +235,7 @@ func main() {
 	// check if reexport requested
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
 		logrus.Infof("Found REEXPORT for block %v to %v...", *startBlockNumber, *endBlockNumber)
-		err := bulkExportBlocksStartEnd(tableBlocksRaw, *startBlockNumber, *endBlockNumber, *concurrency, nodeRequestsAtOnce)
+		err := bulkExportBlocksStartEnd(tableBlocksRaw, *startBlockNumber, *endBlockNumber, *concurrency, *nodeRequestsAtOnce)
 		if err != nil {
 			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
 		}
@@ -259,7 +267,7 @@ func main() {
 				#RECY_ QUESTION not sure this should be done at startup, blocking everything :shrug:
 				But on the other hand, there shouldn't be any holes normally
 			*/
-			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, nodeRequestsAtOnce) // reexport the holes
+			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce) // reexport the holes
 			if err != nil {
 				utils.LogFatal(err, "error while reexport blocks for bigtable (fixing holes)", 0) // fatal, as if we wanna start with holes, we should set the skip-hole-check parameter
 			}
@@ -298,7 +306,7 @@ func main() {
 				}
 
 				// get all hashes from node
-				err = rpciGetBulkBlockRawHash(blockRawData, nodeRequestsAtOnce)
+				err = rpciGetBulkBlockRawHash(blockRawData, *nodeRequestsAtOnce)
 				if err != nil {
 					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, but beware, we can't reexport any blocks till this is fixed!!
 					utils.LogFatal(err, "error when bulk getting raw block hashes", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
@@ -338,7 +346,7 @@ func main() {
 					logrus.Infof("found %d wrong hashes when checking for reorgs, reexporting them now...", failureLength)
 
 					// export the hits again
-					err = bulkExportBlocks(tableBlocksRaw, blockRawDataFailure, nodeRequestsAtOnce)
+					err = bulkExportBlocks(tableBlocksRaw, blockRawDataFailure, *nodeRequestsAtOnce)
 					if err != nil {
 						wrongHashIds := make([]int64, failureLength)
 						for i, v := range blockRawDataFailure {
@@ -358,7 +366,7 @@ func main() {
 					// fatal, as this is an impossible error
 					utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
 				}
-				err = bulkExportBlocksStartEnd(tableBlocksRaw, latestPGBlock+1, newerNodeBN, *concurrency, nodeRequestsAtOnce)
+				err = bulkExportBlocksStartEnd(tableBlocksRaw, latestPGBlock+1, newerNodeBN, *concurrency, *nodeRequestsAtOnce)
 				if err != nil {
 					// #RECY IMPROVE this doesn't need to be a fatal at the first occur, tbh it's very likly this will fail sometimes cause of timeouts
 					utils.LogFatal(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
