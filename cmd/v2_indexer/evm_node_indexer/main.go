@@ -220,13 +220,13 @@ func main() {
 	// //////////////////////////////////////////
 
 	/* #RECY REMOVE
-	prefix := "11155111:999999826267"
+	prefix := "42161:999930998874"
 	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK)
 	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS)
 	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES)
 	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES)
 	return
-	*/
+	/* */
 
 	// check if reexport requested
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
@@ -423,6 +423,16 @@ func readBT(tableBlocksRaw *gcp_bigtable.Table, prefix string, family string, co
 
 	rowRange := gcp_bigtable.PrefixRange(prefix)
 	rowHandler := func(row gcp_bigtable.Row) bool {
+		logrus.Warnf("%s %s %s", prefix, family, columnFilter)
+		if row == nil {
+			logrus.Warnf("row == nil")
+		} else if row[family] == nil {
+			logrus.Warnf("row[family] == nil")
+		} else if len(row[family]) == 0 {
+			logrus.Warnf("len(row[family]) == 0")
+		} else if len(row[family][0].Value) == 0 {
+			logrus.Warnf("len(row[family][0].Value) == 0")
+		}
 		logrus.Warnf("%s", decompress(row[family][0].Value))
 		return true
 	}
@@ -473,6 +483,9 @@ func _bulkExportBlocks(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBl
 		muts := []*gcp_bigtable.Mutation{}
 		keys := []string{}
 		for _, v := range blockRawData {
+			if len(v.blockCompressed) == 0 || len(v.receiptsCompressed) == 0 || len(v.tracesCompressed) == 0 {
+				utils.LogFatal(nil, "tried writing empty data to BT", 0, map[string]interface{}{"len(v.blockCompressed)": len(v.blockCompressed), "len(v.receiptsCompressed)": len(v.receiptsCompressed), "len(v.tracesCompressed)": len(v.tracesCompressed)}) // fatal, as if this is not working in the first place, it will never work
+			}
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), v.blockCompressed)
 			mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), v.receiptsCompressed)
@@ -1152,6 +1165,7 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 	}
 
 	// iterate through array and get data when threshold reached
+	var blockRawDataWriteIndex int
 	var currentElementCount int
 	bodyStr := "["
 	for i, v := range blockRawData {
@@ -1167,8 +1181,9 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 				}
 
 				for ii, vv := range rawData {
-					blockRawData[ii].receiptsCompressed = compress(vv)
+					blockRawData[blockRawDataWriteIndex+ii].receiptsCompressed = compress(vv)
 				}
+				blockRawDataWriteIndex += len(rawData)
 
 				currentElementCount = 0
 				bodyStr = "["
@@ -1196,7 +1211,7 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 		}
 
 		for ii, vv := range rawData {
-			blockRawData[ii].receiptsCompressed = compress(vv)
+			blockRawData[blockRawDataWriteIndex+ii].receiptsCompressed = compress(vv)
 		}
 	}
 
