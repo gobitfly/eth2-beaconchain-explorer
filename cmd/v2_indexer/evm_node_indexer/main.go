@@ -198,6 +198,7 @@ func main() {
 
 	// check chain id
 	{
+		// utils.Config.Chain.Id = ARBITRUM_CHAINID // #RECY REMOVE
 		logrus.Info("check chain id...")
 		chainID, err := rpciGetChainId()
 		if err != nil {
@@ -762,6 +763,7 @@ func updateBlockNumber(loop bool) {
 		Command: curl -X POST -H "Content-Type: application/json" --data '{"id":1,"jsonrpc":"2.0","method":"eth_subscribe","params":["newHeads"]}' localhost:18545
 		Result: {"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"notifications not supported"}}
 		Environment: our current Sepolia archive node
+		=> Look like we have to use ws:// endpoint to make this working
 	*/
 	sleepTime := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot/2) // checking twice in the avg duration
 	consecutivelyErrorCount := -1
@@ -994,8 +996,8 @@ func psqlGetHashHitsIdList(blockRawData []fullBlockRawData) ([]int64, error) {
 		block_hash[i] = v.blockHash
 	}
 
-	// #RECY_ QUESTION using here the ReaderDB, not sure this is correct, but normally there should be 10+ seconds between writing and this, so sound legit to me
-	rows, err := db.ReaderDb.Query(`
+	// as there are corner cases, to be on the safe side, we will use WriterDb here
+	rows, err := db.WriterDb.Query(`
 		SELECT 
 			raw_block_status.block_id 
 		FROM 
@@ -1364,16 +1366,18 @@ func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 			} else if v.blockUnclesCount == 0 {
 				continue
 			} else {
-				requestedCount++
 				if firstElement {
 					firstElement = false
 				} else {
 					bodyStr += ","
 				}
 				if v.blockUnclesCount == 1 {
+					requestedCount++
 					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d}`, v.blockNumber, v.blockNumber)
 				} else /* if v.block_unclesCount == 2 */ {
+					requestedCount++
 					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x0"],"id":%d},`, v.blockNumber, v.blockNumber)
+					requestedCount++
 					bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getUncleByBlockNumberAndIndex","params":["0x%x", "0x1"],"id":%d}`, v.blockNumber, v.blockNumber)
 				}
 			}
