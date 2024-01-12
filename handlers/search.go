@@ -39,7 +39,6 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	var ensData *types.EnsDomainResponse
 	if utils.IsValidEnsDomain(search) {
 		ensData, _ = GetEnsDomain(search)
-
 	}
 	search = strings.Replace(search, "0x", "", -1)
 	if ensData != nil && len(ensData.Address) > 0 {
@@ -206,7 +205,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			err = fmt.Errorf("error searching for eth1AddressHash: %v", err)
 		}
 	case "indexed_validators":
-
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
 		indexNumeric, errParse := strconv.ParseInt(search, 10, 32)
@@ -267,7 +265,42 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				WHERE from_address_text LIKE $1 || '%'
 			) a 
 			GROUP BY from_address_text`, lowerStrippedSearch)
-
+	case "count_indexed_validators_by_withdrawal_credential":
+		var ensData *types.EnsDomainResponse
+		if utils.IsValidEnsDomain(search) {
+			ensData, _ = GetEnsDomain(search)
+			if len(ensData.Address) > 0 {
+				lowerStrippedSearch = strings.ToLower(strings.Replace(ensData.Address, "0x", "", -1))
+			}
+		}
+		if !searchLikeRE.MatchString(lowerStrippedSearch) {
+			break
+		}
+		const beginningOfSetCredentials string = "010000000000000000000000"
+		if len(lowerStrippedSearch) <= 40 && lowerStrippedSearch[:24] != beginningOfSetCredentials {
+			lowerStrippedSearch = beginningOfSetCredentials + lowerStrippedSearch
+		}
+		// find validators per withdrawal credential (limit result by N addresses and M validators per credential)
+		dbFinding := []struct {
+			DecodedCredential []byte `db:"withdrawalcredentials"`
+			Count             uint64 `db:"count"`
+		}{}
+		err = db.ReaderDb.Select(&dbFinding, `
+			SELECT withdrawalcredentials, COUNT(*) FROM validators
+			WHERE ENCODE(withdrawalcredentials, 'hex') LIKE $1 || '%'
+			GROUP BY withdrawalcredentials`, lowerStrippedSearch)
+		if err == nil {
+			res := make([]struct {
+				EncodedCredential string `json:"withdrawalcredentials"`
+				Count             uint64 `json:"count"`
+			}, len(dbFinding))
+			for i := range dbFinding {
+				res[i].EncodedCredential = fmt.Sprintf("%x", dbFinding[i].DecodedCredential)
+				res[i].Count = dbFinding[i].Count
+				fmt.Println(res[i].EncodedCredential)
+			}
+			result = &res
+		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
@@ -353,7 +386,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// search can ether be a valid ETH address or an ENS name mapping to one
+// search can either be a valid ETH address or an ENS name mapping to one
 func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByEth1Result, error) {
 	search = strings.ToLower(strings.Replace(ReplaceEnsNameWithAddress(search), "0x", "", -1))
 	if !utils.IsValidEth1Address(search) {
