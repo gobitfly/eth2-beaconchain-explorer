@@ -22,6 +22,7 @@
         var index = {{.Index}}
         window.addEventListener('load', function() {
             $('#blocks-table').DataTable({
+                searchDelay: 0,
                 processing: true,
                 serverSide: true,
                 stateSave: true,
@@ -113,6 +114,7 @@
 
             function createAttestationTable() {
                 $('#attestations-table').DataTable({
+                    searchDelay: 0,
                     processing: true,
                     serverSide: true,
                     stateSave: true,
@@ -182,6 +184,7 @@
 
             function createWithdrawalTable() {
                 $('#withdrawal-table').DataTable({
+                    searchDelay: 0,
                     processing: true,
                     serverSide: true,
                     stateSave: true,
@@ -262,6 +265,7 @@
 
             function createSyncTable() {
                 $('#sync-table').DataTable({
+                    searchDelay: 0,
                     processing: true,
                     serverSide: true,
                     ordering: false,
@@ -342,6 +346,7 @@
         var index = {{.Index}}
         window.addEventListener('load', function() {
             $('#slashings-table').DataTable({
+                searchDelay: 0,
                 processing: true,
                 serverSide: true,
                 ordering: false,
@@ -622,6 +627,7 @@
         var index = {{.Index}}
         window.addEventListener('load', function() {
             $('#validator-history-table').DataTable({
+                searchDelay: 0,
                 processing: true,
                 details: false,
                 serverSide: true,

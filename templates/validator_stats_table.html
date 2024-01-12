@@ -16,6 +16,7 @@
       stateLoadCallback: function (settings) {
         return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
       },
+      searchDelay: 0,
       lengthChange: false,
       dom: "Bfrtip",
       buttons: ["copyHtml5", "excelHtml5", "csvHtml5", "pdfHtml5"],
