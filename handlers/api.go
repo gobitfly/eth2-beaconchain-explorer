@@ -3137,6 +3137,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	// case is not needed on receipt insert
 	validationResult, _ := exporter.VerifyReceipt(nil, nil, verifyPackage)
 	parsedBase.Valid = validationResult.Valid
+	parsedBase.ProductID = verifyPackage.ProductID // apple verify can change the product id
 
 	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
 	if err != nil {
