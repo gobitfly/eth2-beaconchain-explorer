@@ -97,9 +97,9 @@ func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
 	startBlockNumber := flag.Int64("start-block-number", -1, "only working in combination with end-block-number, defined block is included")
 	endBlockNumber := flag.Int64("end-block-number", -1, "only working in combination with start-block-number, defined block is included")
-	reorgDepth = flag.Int64("reorg.depth", 20, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %d)", MAX_REORG_DEPTH))
-	concurrency := flag.Int("concurrency", 10, "maximum threads used")
-	nodeRequestsAtOnce := flag.Int("node-requests-at-once", 50, fmt.Sprintf("bulk size per node request (MAX %d)", MAX_NODE_REQUESTS_AT_ONCE))
+	reorgDepth = flag.Int64("reorg.depth", 20, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %d), you should NEVER reduce this after the first start, otherwise there will be unchecked areas", MAX_REORG_DEPTH))
+	concurrency := flag.Int("concurrency", 12, "maximum threads used")
+	nodeRequestsAtOnce := flag.Int("node-requests-at-once", 42, fmt.Sprintf("bulk size per node request (MAX %d)", MAX_NODE_REQUESTS_AT_ONCE))
 	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes")
 	flag.Parse()
 
@@ -232,6 +232,7 @@ func main() {
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
 		logrus.Infof("Found REEXPORT for block %v to %v...", *startBlockNumber, *endBlockNumber)
 		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce)
+		// #RECY IMPROVE retry on error, main issue here, to check what is current done :s
 		if err != nil {
 			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
 		}
@@ -260,6 +261,7 @@ func main() {
 			}
 			startTime = time.Now()
 			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce) // reexport the holes
+			// #RECY IMPROVE retry on error, main issue here, to check what is current done :s
 			if err != nil {
 				utils.LogFatal(err, "error while reexport blocks for bigtable (fixing holes)", 0) // fatal, as if we wanna start with holes, we should set the skip-hole-check parameter
 			}
@@ -363,6 +365,7 @@ func main() {
 
 					// export the hits again
 					err = bulkExportBlocksRange(tableBlocksRaw, wrongHashRanges, *concurrency, *nodeRequestsAtOnce)
+					// we will retry again, but it's important to skip the export of new blocks in the case of an error
 					if err != nil {
 						consecutiveErrorCount++
 						if consecutiveErrorCount <= consecutiveErrorCountThreshold {
@@ -377,13 +380,14 @@ func main() {
 			}
 
 			// export all new blocks
-			{
+			if consecutiveErrorCountOld == consecutiveErrorCount { // if there is an error above, NOT export more blocks, otherwise we push the reorg maybe to far
 				newerNodeBN := currentNodeBlockNumber.Load() // just in case it took a while doing the reorg stuff, no problem if range > reorg limit, as the exported blocks will be newest also
 				if newerNodeBN < currentNodeBN {
 					// fatal, as this is an impossible error
 					utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
 				}
 				err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce)
+				// we can try again, as throw a fatal will result in try again anyway
 				if err != nil {
 					consecutiveErrorCount++
 					if consecutiveErrorCount <= consecutiveErrorCountThreshold {
@@ -603,9 +607,20 @@ Loop:
 				brd := blockRawData
 				gOuter.Go(func() error {
 					err := _bulkExportBlocks(tableBlocksRaw, brd, nodeRequestsAtOnce)
+					// #RECY IMPROVE half bulk size on "batch response exceeded limit of 10000000 bytes" error
 					if err != nil {
-						gOuterMustStop.Store(true)
-						return err
+						if strings.Contains(err.Error(), "batch response exceeded limit of 10000000 bytes") && len(brd) > 1 {
+							// trying to split it in 2 once, so we might not exceed the limit
+							logrus.Warnf("got error 'batch response exceeded limit of 10000000 bytes', trying to split the request in half to solve the issue")
+							err = _bulkExportBlocks(tableBlocksRaw, brd[:len(brd)/2], nodeRequestsAtOnce)
+							if err == nil {
+								err = _bulkExportBlocks(tableBlocksRaw, brd[len(brd)/2:], nodeRequestsAtOnce)
+							}
+						}
+						if err != nil {
+							gOuterMustStop.Store(true)
+							return err
+						}
 					}
 					blocksProcessedIntv.Add(int64(len(brd)))
 					return nil
@@ -621,9 +636,20 @@ Loop:
 		brd := blockRawData
 		gOuter.Go(func() error {
 			err := _bulkExportBlocks(tableBlocksRaw, brd, nodeRequestsAtOnce)
+			// #RECY IMPROVE half bulk size on "batch response exceeded limit of 10000000 bytes" error
 			if err != nil {
-				gOuterMustStop.Store(true)
-				return err
+				if strings.Contains(err.Error(), "batch response exceeded limit of 10000000 bytes") && len(brd) > 1 {
+					// trying to split it in 2 once, so we might not exceed the limit
+					logrus.Warnf("got error 'batch response exceeded limit of 10000000 bytes', trying to split the request in half to solve the issue")
+					err = _bulkExportBlocks(tableBlocksRaw, brd[:len(brd)/2], nodeRequestsAtOnce)
+					if err == nil {
+						err = _bulkExportBlocks(tableBlocksRaw, brd[len(brd)/2:], nodeRequestsAtOnce)
+					}
+				}
+				if err != nil {
+					gOuterMustStop.Store(true)
+					return err
+				}
 			}
 			blocksProcessedIntv.Add(int64(len(brd)))
 			return nil
