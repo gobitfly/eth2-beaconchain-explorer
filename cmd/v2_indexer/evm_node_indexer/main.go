@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -85,10 +86,17 @@ var currentNodeBlockNumber atomic.Int64
 var elClient *ethclient.Client
 var reorgDepth *int64
 var httpClient *http.Client
+var errorIdentifier *regexp.Regexp
 
 // init
 func init() {
 	httpClient = &http.Client{Timeout: time.Second * HTTP_TIMEOUT_IN_SECONDS}
+
+	var err error
+	errorIdentifier, err = regexp.Compile(`\"error":\{\"code\":\-[0-9]+\,\"message\":\"([^\"]*)`)
+	if err != nil {
+		utils.LogFatal(err, "fatal, compiling regex", 0)
+	}
 }
 
 // main
@@ -449,8 +457,50 @@ func readBT(tableBlocksRaw *gcp_bigtable.Table, prefix string, family string, co
 	return nil
 }
 
+// improve the behaviour in case of an error
+func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int, deep int) error {
+	err := _bulkExportBlocksImpl(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
+	if err != nil {
+		elementCount := len(blockRawData)
+
+		// output the error
+		{
+			s := errorIdentifier.FindStringSubmatch(err.Error())
+			if len(s) >= 2 {
+				logrus.WithFields(logrus.Fields{
+					"deep":     deep,
+					"cause":    s[1],
+					"elements": elementCount}).Warnf("got an error and will try to fix it (sub)")
+			} else if len(s) == 1 {
+				logrus.WithFields(logrus.Fields{
+					"deep":     deep,
+					"cause":    s[0],
+					"elements": elementCount}).Warnf("got an error and will try to fix it (hit)")
+			} else {
+				logrus.WithFields(logrus.Fields{
+					"deep":     deep,
+					"cause":    err,
+					"elements": elementCount}).Warnf("got an error and will try to fix it (err)")
+			}
+		}
+
+		// try to recover
+		if deep < 3 { // only try to recover 3 times in a row
+			if elementCount == 1 { // if there is only 1 element, no split possible
+				err = _bulkExportBlocksHandler(tableBlocksRaw, blockRawData, nodeRequestsAtOnce, deep+1)
+			} else if elementCount > 1 { // split the elements in half and try again to put less strain on the node
+				err = _bulkExportBlocksHandler(tableBlocksRaw, blockRawData[:elementCount/2], nodeRequestsAtOnce, deep+1)
+				if err == nil {
+					err = _bulkExportBlocksHandler(tableBlocksRaw, blockRawData[elementCount/2:], nodeRequestsAtOnce, deep+1)
+				}
+			}
+		}
+	}
+	return err
+}
+
 // export all blocks, heavy use of bulk & concurrency, providing a block raw data array (used by the other bulkExportBlocks+ functions)
-func _bulkExportBlocks(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
 	// check values
 	{
 		if tableBlocksRaw == nil {
@@ -606,21 +656,10 @@ Loop:
 			if blockRawDataLen == nodeRequestsAtOnce {
 				brd := blockRawData
 				gOuter.Go(func() error {
-					err := _bulkExportBlocks(tableBlocksRaw, brd, nodeRequestsAtOnce)
-					// #RECY IMPROVE half bulk size on "batch response exceeded limit of 10000000 bytes" error
+					err := _bulkExportBlocksHandler(tableBlocksRaw, brd, nodeRequestsAtOnce, 0)
 					if err != nil {
-						if strings.Contains(err.Error(), "batch response exceeded limit of 10000000 bytes") && len(brd) > 1 {
-							// trying to split it in 2 once, so we might not exceed the limit
-							logrus.Warnf("got error 'batch response exceeded limit of 10000000 bytes', trying to split the request in half to solve the issue")
-							err = _bulkExportBlocks(tableBlocksRaw, brd[:len(brd)/2], nodeRequestsAtOnce)
-							if err == nil {
-								err = _bulkExportBlocks(tableBlocksRaw, brd[len(brd)/2:], nodeRequestsAtOnce)
-							}
-						}
-						if err != nil {
-							gOuterMustStop.Store(true)
-							return err
-						}
+						gOuterMustStop.Store(true)
+						return err
 					}
 					blocksProcessedIntv.Add(int64(len(brd)))
 					return nil
@@ -635,21 +674,10 @@ Loop:
 	if !gOuterMustStop.Load() && blockRawDataLen > 0 {
 		brd := blockRawData
 		gOuter.Go(func() error {
-			err := _bulkExportBlocks(tableBlocksRaw, brd, nodeRequestsAtOnce)
-			// #RECY IMPROVE half bulk size on "batch response exceeded limit of 10000000 bytes" error
+			err := _bulkExportBlocksHandler(tableBlocksRaw, brd, nodeRequestsAtOnce, 0)
 			if err != nil {
-				if strings.Contains(err.Error(), "batch response exceeded limit of 10000000 bytes") && len(brd) > 1 {
-					// trying to split it in 2 once, so we might not exceed the limit
-					logrus.Warnf("got error 'batch response exceeded limit of 10000000 bytes', trying to split the request in half to solve the issue")
-					err = _bulkExportBlocks(tableBlocksRaw, brd[:len(brd)/2], nodeRequestsAtOnce)
-					if err == nil {
-						err = _bulkExportBlocks(tableBlocksRaw, brd[len(brd)/2:], nodeRequestsAtOnce)
-					}
-				}
-				if err != nil {
-					gOuterMustStop.Store(true)
-					return err
-				}
+				gOuterMustStop.Store(true)
+				return err
 			}
 			blocksProcessedIntv.Add(int64(len(brd)))
 			return nil
