@@ -3,18 +3,21 @@ package exporter
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"log"
+	"math"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/Gurpartap/storekit-go"
+	"github.com/awa/go-iap/appstore"
+	"github.com/awa/go-iap/appstore/api"
 	"github.com/awa/go-iap/playstore"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/pkg/errors"
 )
 
 var duplicateOrderMap map[string]uint64 = make(map[string]uint64)
@@ -34,19 +37,29 @@ func checkSubscriptions() {
 			return
 		}
 
-		googleClient := initGoogle()
+		googleClient, err := initGoogle()
+		if googleClient == nil {
+			logger.Errorf("error initializing google client: %v", err)
+			return
+		}
+
+		appleClient, err := initApple()
+		if err != nil {
+			logger.Errorf("error initializing apple client: %v", err)
+			return
+		}
 
 		for _, receipt := range receipts {
-
-			valid, err := VerifyReceipt(googleClient, receipt)
-
-			if receipt.Store == "manuall" {
-				valid, err = verifyManuall(receipt)
-			}
+			// TODO: At some point we can drop the loop validator approach for iOS purchases and replace it with
+			// the notifications approach.
+			// https://developer.apple.com/documentation/appstoreservernotifications
 
 			if receipt.Store == "ethpool" {
 				continue
 			}
+
+			time.Sleep(100 * time.Millisecond)
+			valid, err := VerifyReceipt(googleClient, appleClient, receipt)
 
 			if err != nil {
 				// error might indicate a connection problem, ignore validation response
@@ -62,9 +75,9 @@ func checkSubscriptions() {
 				continue
 			}
 
+			// In case of fe stripe, just skip updating the state since this will be handled elsewhere
 			if valid.RejectReason == "invalid_store" {
 				continue
-
 			}
 			updateValidationState(receipt, valid)
 		}
@@ -83,11 +96,14 @@ func verifyManuall(receipt *types.PremiumData) (*VerifyResponse, error) {
 	}, nil
 }
 
-func VerifyReceipt(googleClient *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {
+// Does not verify stripe or ethpool payments as those are handled differently
+func VerifyReceipt(googleClient *playstore.Client, appleClient *api.StoreClient, receipt *types.PremiumData) (*VerifyResponse, error) {
 	if receipt.Store == "ios-appstore" {
-		return verifyApple(receipt)
+		return verifyApple(appleClient, receipt)
 	} else if receipt.Store == "android-playstore" {
 		return verifyGoogle(googleClient, receipt)
+	} else if receipt.Store == "manuall" {
+		return verifyManuall(receipt)
 	} else {
 		return &VerifyResponse{
 			Valid:          false,
@@ -97,25 +113,43 @@ func VerifyReceipt(googleClient *playstore.Client, receipt *types.PremiumData) (
 	}
 }
 
-func initGoogle() *playstore.Client {
+func initGoogle() (*playstore.Client, error) {
 	jsonKey, err := os.ReadFile(utils.Config.Frontend.AppSubsGoogleJSONPath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, errors.Wrap(err, fmt.Sprintf("Can not read google json key file %v", utils.Config.Frontend.AppSubsGoogleJSONPath))
 	}
 
-	client, _ := playstore.New(jsonKey)
-	return client
+	client, err := playstore.New(jsonKey)
+	return client, err
+}
+
+func initApple() (*api.StoreClient, error) {
+	keyContent, err := os.ReadFile(utils.Config.Frontend.Apple.Certificate)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("can not load apple certificate for file %v", utils.Config.Frontend.Apple.Certificate))
+	}
+	return api.NewStoreClient(&api.StoreConfig{
+		KeyContent: keyContent,                          // Loads a .p8 certificate
+		KeyID:      utils.Config.Frontend.Apple.KeyID,   // Your private key ID from App Store Connect (Ex: 2X9R4HXF34)
+		BundleID:   "in.beaconcha.mobile",               // Your app’s bundle ID
+		Issuer:     utils.Config.Frontend.Apple.IssueID, // Your issuer ID from the Keys page in App Store Connect (Ex: "57246542-96fe-1a63-e053-0824d011072a")
+		Sandbox:    false,                               // default is Production
+	}), nil
 }
 
 func verifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {
+	response := &VerifyResponse{
+		Valid:          false,
+		ExpirationDate: 0,
+		RejectReason:   "",
+	}
+
 	if client == nil {
-		client = initGoogle()
-		if client == nil {
-			return &VerifyResponse{
-				Valid:          false,
-				ExpirationDate: 0,
-				RejectReason:   "gclient_init_exception",
-			}, errors.New("google client can't be initialized")
+		var err error
+		client, err = initGoogle()
+		if err != nil {
+			response.RejectReason = "gclient_init_exception"
+			return response, errors.New("google client can't be initialized")
 		}
 	}
 
@@ -123,21 +157,15 @@ func verifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*Verify
 	defer cancel()
 	resp, err := client.VerifySubscription(ctx, "in.beaconcha.mobile", receipt.ProductID, receipt.Receipt)
 	if err != nil || resp == nil {
-		return &VerifyResponse{
-			Valid:          false,
-			ExpirationDate: 0,
-			RejectReason:   "invalid_state",
-		}, err
+		response.RejectReason = "invalid_state"
+		return response, err
 	}
 
 	otherReceiptID, found := duplicateOrderMap[resp.OrderId]
 	if found {
 		if otherReceiptID != receipt.ID {
-			return &VerifyResponse{
-				Valid:          false,
-				ExpirationDate: 0,
-				RejectReason:   "duplicate",
-			}, err
+			response.RejectReason = "duplicate"
+			return response, err
 		}
 	}
 
@@ -173,17 +201,102 @@ func rejectReason(valid bool) string {
 	return "expired"
 }
 
-func verifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
-	appStoreSecret := utils.Config.Frontend.AppSubsAppleSecret
+func verifyApple(apple *api.StoreClient, receipt *types.PremiumData) (*VerifyResponse, error) {
+	response := &VerifyResponse{
+		Valid:          false,
+		ExpirationDate: 0,
+		RejectReason:   "",
+	}
+
+	if apple == nil {
+		var err error
+		apple, err = initApple()
+		if err != nil {
+			response.RejectReason = "aclient_init_exception"
+			return response, errors.New("apple client can't be initialized")
+		}
+	}
+
+	// legacy resolver for old receipts, can be removed at some point
+	if len(receipt.Receipt) > 100 {
+		transactionID, err := getLegacyAppstoreTransactionIDByReceipt(receipt.Receipt, receipt.ProductID)
+		if err != nil {
+			utils.LogError(err, "error resolving legacy appstore receipt", 0, nil)
+			response.RejectReason = "exception_legresolve"
+			return response, err
+		}
+		receipt.Receipt = transactionID
+		time.Sleep(50 * time.Millisecond) // avoid rate limiting
+	}
+
+	res, err := apple.GetALLSubscriptionStatuses(context.Background(), receipt.Receipt, nil)
+	if err != nil {
+		response.RejectReason = "exception"
+		return response, err
+	}
+
+	if res.BundleId != "in.beaconcha.mobile" {
+		response.RejectReason = "unknown_bundle"
+		return response, nil
+	}
+
+	client := appstore.New()
+
+	for _, val := range res.Data {
+		for _, last := range val.LastTransactions {
+
+			if last.Status == api.SubscriptionActive || last.Status == api.SubscriptionGracePeriod {
+				token := jwt.Token{}
+
+				err = client.ParseNotificationV2(last.SignedTransactionInfo, &token)
+				if err != nil {
+					response.RejectReason = "exception_parse"
+					return response, nil
+				}
+
+				claims, ok := token.Claims.(jwt.MapClaims)
+				if !ok {
+					response.RejectReason = "exception_cast"
+					return response, nil
+				}
+
+				productId, ok := claims["productId"].(string)
+				if !ok {
+					response.RejectReason = "invalid_product_id"
+					return response, nil
+				}
+				receipt.ProductID = productId
+
+				expiresDateFloat, ok := claims["expiresDate"].(float64)
+				if !ok {
+					response.RejectReason = "invalid_expires_date"
+					return response, nil
+				}
+				expiresDateUint64 := int64(math.Round(expiresDateFloat))
+
+				response.Valid = true
+				response.ExpirationDate = expiresDateUint64
+				return response, nil
+			}
+		}
+	}
+
+	// Return unknown here since expired would disable checking this purchase in the future.
+	// I could not find any remarks in apples doc if they reuse the original transaction id if at some
+	// point, fe. the user re-subs after a cancellation. So we just keep checking the receipt for now
+	// https://developer.apple.com/documentation/appstoreserverapi/originaltransactionid
+	response.RejectReason = "unknown"
+	return response, nil
+}
+
+// Can be removed in a future release once app adoption for new v2 purchase register has reached critical mass
+func getLegacyAppstoreTransactionIDByReceipt(receipt, premiumPkg string) (string, error) {
+	appStoreSecret := utils.Config.Frontend.Apple.LegacyAppSubsAppleSecret
 	client := storekit.NewVerificationClient().OnProductionEnv()
 
-	receiptData, err := base64.StdEncoding.DecodeString(receipt.Receipt)
+	receiptData, err := base64.StdEncoding.DecodeString(receipt)
 	if err != nil {
-		return &VerifyResponse{
-			Valid:          false,
-			ExpirationDate: 0,
-			RejectReason:   "exception_decode",
-		}, err
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -195,77 +308,46 @@ func verifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
 	})
 
 	if err != nil {
-		return &VerifyResponse{
-			Valid:          false,
-			ExpirationDate: 0,
-			RejectReason:   "exception",
-		}, err
+		return "", err
 	}
 
 	if resp.Status != 0 {
-		logger.Errorf("invalid_state %v", resp.Status)
-		return &VerifyResponse{
-			Valid:          false,
-			ExpirationDate: 0,
-			RejectReason:   "invalid_state",
-		}, nil
+		return "", errors.New("invalid state")
 	}
 
 	if len(resp.LatestReceiptInfo) == 0 {
-		return &VerifyResponse{
-			Valid:          false,
-			ExpirationDate: 0,
-			RejectReason:   "possible_jailbreak",
-		}, nil
+		return "", errors.New("not found")
 	}
 
 	for _, latestReceiptInfo := range resp.LatestReceiptInfo {
-		productID := latestReceiptInfo.ProductId
-
-		otherReceiptID, found := duplicateOrderMap[latestReceiptInfo.OriginalTransactionId]
-		if found {
-			if otherReceiptID != receipt.ID {
-				return &VerifyResponse{
-					Valid:          false,
-					ExpirationDate: 0,
-					RejectReason:   "duplicate",
-				}, err
-			}
-		}
-
-		duplicateOrderMap[latestReceiptInfo.OriginalTransactionId] = receipt.ID
-
-		if receipt.ProductID == productID {
-			expiresAtMs := latestReceiptInfo.ExpiresDateMs
-			if expiresAtMs == 0 {
-				return &VerifyResponse{
-					Valid:          false,
-					ExpirationDate: 0,
-					RejectReason:   "expires_0",
-				}, nil
-			}
-
-			valid := expiresAtMs > time.Now().Unix()*1000
-
-			return &VerifyResponse{
-				Valid:          valid,
-				ExpirationDate: expiresAtMs / 1000,
-				RejectReason:   rejectReason(valid),
-			}, nil
+		if premiumPkg == latestReceiptInfo.ProductId {
+			return latestReceiptInfo.OriginalTransactionId, nil
 		}
 	}
 
-	return &VerifyResponse{
-		Valid:          false,
-		ExpirationDate: 0,
-		RejectReason:   "unknown",
-	}, nil
+	return "", errors.New("not found")
 }
 
 func updateValidationState(receipt *types.PremiumData, validation *VerifyResponse) {
-	err := db.UpdateUserSubscription(nil, receipt.ID, validation.Valid, validation.ExpirationDate, validation.RejectReason)
+	err := db.UpdateUserSubscription(
+		nil,
+		receipt.ID,
+		validation.Valid,
+		validation.ExpirationDate,
+		validation.RejectReason,
+	)
 	if err != nil {
 		fmt.Printf("error updating subscription state %v", err)
+	}
+
+	// in case user upgrades downgrades package (fe on iOS) we can automatically update the product here too
+	err = db.UpdateUserSubscriptionProduct(
+		nil,
+		receipt.ID,
+		receipt.ProductID,
+	)
+	if err != nil {
+		fmt.Printf("error updating subscription product id %v", err)
 	}
 }
 

@@ -310,12 +310,14 @@ type MobileSubscriptionTransactionGeneric struct {
 }
 
 type PremiumData struct {
-	ID        uint64    `db:"id"`
-	Receipt   string    `db:"receipt"`
-	Store     string    `db:"store"`
-	Active    bool      `db:"active"`
-	ProductID string    `db:"product_id"`
-	ExpiresAt time.Time `db:"expires_at"`
+	ID               uint64    `db:"id"`
+	Receipt          string    `db:"receipt"`
+	Store            string    `db:"store"`
+	Active           bool      `db:"active"`
+	ValidateRemotely bool      `db:"validate_remotely"`
+	ProductID        string    `db:"product_id"`
+	UserID           uint64    `db:"user_id"`
+	ExpiresAt        time.Time `db:"expires_at"`
 }
 
 type UserWithPremium struct {

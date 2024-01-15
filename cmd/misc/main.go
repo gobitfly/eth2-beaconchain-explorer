@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"eth2-exporter/cmd/misc/commands"
 	"eth2-exporter/db"
@@ -31,6 +33,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"flag"
+
+	"github.com/Gurpartap/storekit-go"
 
 	"github.com/sirupsen/logrus"
 )
@@ -62,7 +66,7 @@ func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
 
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -273,6 +277,8 @@ func main() {
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
+	case "migrate-app-purchases":
+		err = migrateAppPurchases(opts.Key)
 	case "export-genesis-validators":
 		logrus.Infof("retrieving genesis validator state")
 		validators, err := rpcClient.GetValidatorState(0)
@@ -632,6 +638,147 @@ func fixEnsAddresses(erigonClient *rpc.ErigonClient) error {
 			}
 		}
 	}
+	return nil
+}
+
+func migrateAppPurchases(appStoreSecret string) error {
+	// This code runs once so please don't judge code style too harshly
+
+	if appStoreSecret == "" {
+		return fmt.Errorf("appStoreSecret is empty")
+	}
+
+	client := storekit.NewVerificationClient().OnProductionEnv()
+
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete marked as duplicate, though the duplicate reject reason is not always set - mainly missing on historical data
+	_, err = tx.Exec("DELETE FROM users_app_subscriptions WHERE store = 'ios-appstore' AND reject_reason = 'duplicate';")
+	if err != nil {
+		return errors.Wrap(err, "error deleting duplicate receipt")
+	}
+
+	// Backup legacy receipts into custom column
+	_, err = tx.Exec("UPDATE users_app_subscriptions set legacy_receipt = receipt where legacy_receipt is null;")
+	if err != nil {
+		return errors.Wrap(err, "error backing up legacy receipts")
+	}
+
+	receipts := []*types.PremiumData{}
+	err = tx.Select(&receipts,
+		"SELECT id, receipt, store, active, validate_remotely, expires_at, product_id, user_id from users_app_subscriptions order by id desc",
+	)
+	if err != nil {
+		return errors.Wrap(err, "error getting app subscriptions")
+	}
+
+	for _, receipt := range receipts {
+		if receipt.Store != "ios-appstore" { // only interested in migrating iOS
+			continue
+		}
+		if len(receipt.Receipt) < 100 { // dont migrate data that has already been migrated (new receipt is a number of a hand full of digits while old one is insanely large)
+			continue
+		}
+
+		receiptData, err := base64.StdEncoding.DecodeString(receipt.Receipt)
+		if err != nil {
+			return errors.Wrap(err, "error decoding receipt")
+		}
+
+		// Call old deprecated endpoint to get the origin transaction id (new receipt info for new endpoints)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		_, resp, err := client.Verify(ctx, &storekit.ReceiptRequest{
+			ReceiptData:            receiptData,
+			Password:               appStoreSecret,
+			ExcludeOldTransactions: true,
+		})
+
+		if err != nil {
+			return errors.Wrap(err, "error verifying receipt")
+		}
+
+		if resp.LatestReceiptInfo == nil || len(resp.LatestReceiptInfo) == 0 {
+			logrus.Infof("no receipt info for purchase id %v", receipt.ID)
+			if receipt.Active && receipt.ValidateRemotely { // sanity, if there is an active subscription without receipt info we cam't delete it.
+				return fmt.Errorf("no receipt info for active purchase id %v", receipt.ID)
+			}
+			// since it is not active any more and we don't get any new receipt info from apple, just drop the receipt info
+			// hash can stay the same since a collision is unlikely (new and old receipt info)
+			_, err = tx.Exec("UPDATE users_app_subscriptions SET receipt = '' WHERE id = $1", receipt.ID)
+			if err != nil {
+				return errors.Wrap(err, "error deleting duplicate receipt")
+			}
+			continue
+		}
+
+		latestReceiptInfo := resp.LatestReceiptInfo[0]
+		logrus.Infof("Update purchase id %v with new receipt %v", receipt.ID, latestReceiptInfo.OriginalTransactionId)
+
+		_, err = tx.Exec("UPDATE users_app_subscriptions SET receipt = $1, receipt_hash = $2 WHERE id = $3", latestReceiptInfo.OriginalTransactionId, utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId), receipt.ID)
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key") { // handle historic duplicates
+				// get the duplicate receipt
+				duplicateReceipt := types.PremiumData{}
+				err = tx.Get(&duplicateReceipt, "SELECT id, user_id, active FROM users_app_subscriptions WHERE receipt_hash = $1", utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId))
+				if err != nil {
+					return errors.Wrap(err, "error getting duplicate receipt")
+				}
+
+				// Keep the active receipt and delete the other one. In case both are inactive keep the newest
+				var deleteReceiptID uint64
+				if !duplicateReceipt.Active && receipt.Active {
+					deleteReceiptID = duplicateReceipt.ID
+				} else if duplicateReceipt.Active && !receipt.Active {
+					deleteReceiptID = receipt.ID
+				} else if !duplicateReceipt.Active && !receipt.Active {
+					if duplicateReceipt.ID > receipt.ID { // keep the newer one
+						deleteReceiptID = duplicateReceipt.ID
+					} else {
+						deleteReceiptID = receipt.ID
+					}
+				} else {
+					return fmt.Errorf("duplicate receipt has same active status: %v != %v for id: %v != %v", duplicateReceipt.Active, receipt.Active, duplicateReceipt.ID, receipt.ID)
+				}
+
+				// new ios handler will automatically update the product id if the user switched the package, so we will just drop this receipt
+				_, err = tx.Exec("DELETE FROM users_app_subscriptions WHERE id = $1", deleteReceiptID)
+				if err != nil {
+					return errors.Wrap(err, "error deleting duplicate receipt")
+				}
+				logrus.Infof("deleted duplicate receipt id %v", receipt.ID)
+
+				// the one we keep and update is opposite of the one we deleted
+				var updateReceiptID uint64
+				if deleteReceiptID == duplicateReceipt.ID {
+					updateReceiptID = receipt.ID
+				} else {
+					updateReceiptID = duplicateReceipt.ID
+				}
+
+				_, err = tx.Exec("UPDATE users_app_subscriptions SET receipt = $1, receipt_hash = $2 WHERE id = $3", latestReceiptInfo.OriginalTransactionId, utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId), updateReceiptID)
+				if err != nil {
+					return errors.Wrap(err, "error updating receipt")
+				}
+			} else {
+				return errors.Wrap(err, "error updating purchase id")
+			}
+		}
+
+		logrus.Infof("Migrated purchase id %v\n", receipt.ID)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return errors.Wrap(err, "error committing tx")
+	}
+
+	logrus.Infof("done migrating data")
 	return nil
 }
 
