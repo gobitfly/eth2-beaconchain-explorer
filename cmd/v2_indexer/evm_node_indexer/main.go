@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/gtuk/discordwebhook"
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -48,19 +49,20 @@ const BT_COLUMN_TRACES = "t"
 const BT_COLUMNFAMILY_UNCLES = "u"
 const BT_COLUMN_UNCLES = "u"
 
-// const MAINNET_CHAINID = 1
-// const GOERLI_CHAINID = 5
-// const OPTIMISM_CHAINID = 10
-// const GNOSIS_CHAINID = 100
-// const HOLESKY_CHAINID = 17000
-// const SEPOLIA_CHAINID = 11155111
+const MAINNET_CHAINID = 1
+const GOERLI_CHAINID = 5
+const OPTIMISM_CHAINID = 10
+const GNOSIS_CHAINID = 100
+const HOLESKY_CHAINID = 17000
 const ARBITRUM_CHAINID = 42161
 const ARBITRUM_NITRO_BLOCKNUMBER = 22207815
+const SEPOLIA_CHAINID = 11155111
 
 const HTTP_TIMEOUT_IN_SECONDS = 2 * 120
-const MAX_REORG_DEPTH = 256            // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
-const MAX_NODE_REQUESTS_AT_ONCE = 1024 // maximum node requests allowed
-const OUTPUT_CYCLE_IN_SECONDS = 8      // duration between 2 outputs / updates, just a visual thing
+const MAX_REORG_DEPTH = 256                 // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
+const MAX_NODE_REQUESTS_AT_ONCE = 1024      // maximum node requests allowed
+const OUTPUT_CYCLE_IN_SECONDS = 8           // duration between 2 outputs / updates, just a visual thing
+const REPORT_DISCORD_EVERY_X_BLOCKS = 10000 // report every x blocks to Discord (if set)
 
 // structs
 type jsonRpcReturnId struct {
@@ -111,6 +113,8 @@ func main() {
 	nodeRequestsAtOnce := flag.Int64("node-requests-at-once", 42, fmt.Sprintf("bulk size per node = bt = db request (MAX %s)", _formatInt64(MAX_NODE_REQUESTS_AT_ONCE)))
 	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes, doesn't go very well with only-hole-check")
 	onlyHoleCheck := flag.Bool("only-hole-check", false, "just check for holes and quit, can be used for a reexport running simulation to a normal setup, just remove entries in postgres and start with this flag, doesn't go very well with skip-hole-check")
+	discordWebhookReportUrl := flag.String("discord-url", "", "report progress to discord url")
+	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
 	flag.Parse()
 
 	// tell the user about all parameter
@@ -245,7 +249,7 @@ func main() {
 	// check if reexport requested
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
 		logrus.Infof("Found REEXPORT for block %s to %s...", _formatInt64(*startBlockNumber), _formatInt64(*endBlockNumber))
-		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce)
+		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser)
 		if err != nil {
 			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
 		}
@@ -273,7 +277,7 @@ func main() {
 				logrus.Warnf("%v<...>", missingBlocks[:10])
 			}
 			startTime = time.Now()
-			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce) // reexport the holes
+			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser) // reexport the holes
 			if err != nil {
 				utils.LogFatal(err, "error while reexport blocks for bigtable (fixing holes)", 0) // fatal, as if we wanna start with holes, we should set the skip-hole-check parameter
 			}
@@ -380,7 +384,7 @@ func main() {
 					logrus.Infof("%v", wrongHashRanges)
 
 					// export the hits again
-					err = bulkExportBlocksRange(tableBlocksRaw, wrongHashRanges, *concurrency, *nodeRequestsAtOnce)
+					err = bulkExportBlocksRange(tableBlocksRaw, wrongHashRanges, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser)
 					// we will retry again, but it's important to skip the export of new blocks in the case of an error
 					if err != nil {
 						consecutiveErrorCount++
@@ -402,7 +406,7 @@ func main() {
 					// fatal, as this is an impossible error
 					utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
 				}
-				err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce)
+				err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser)
 				// we can try again, as throw a fatal will result in try again anyway
 				if err != nil {
 					consecutiveErrorCount++
@@ -578,7 +582,7 @@ func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fu
 }
 
 // export all blocks, heavy use of bulk & concurrency, providing a range array
-func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int64, nodeRequestsAtOnce int64) error {
+func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int64, nodeRequestsAtOnce int64, discordWebhookReportUrl *string, discordWebhookUser *string) error {
 	{
 		var blocksTotalCount int64
 		l := len(blockRanges)
@@ -604,15 +608,15 @@ func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []int
 	gOuter := &errgroup.Group{}
 	gOuter.SetLimit(int(concurrency))
 
-	t := time.NewTicker(time.Second * OUTPUT_CYCLE_IN_SECONDS)
 	totalStart := time.Now()
 	exportStart := totalStart
+	var lastDiscordReportAtBlocksProcessedTotal int64
 	blocksProcessedTotal := atomic.Int64{}
 	blocksProcessedIntv := atomic.Int64{}
 
 	go func() {
 		for {
-			<-t.C
+			time.Sleep(time.Second * OUTPUT_CYCLE_IN_SECONDS)
 			if gOuterMustStop.Load() {
 				break
 			}
@@ -635,14 +639,12 @@ func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []int
 			blocksPerSecondTotal := float64(bpt) / time.Since(totalStart).Seconds()
 			durationRemainingTotal := time.Second * time.Duration(float64(totalBlocks-bpt)/float64(blocksPerSecondTotal))
 
-			logrus.Infof("current speed: %0.1f b/s, %0.1f t/s, %s remain, %s total, %0.2fh / %0.2fd to go",
-				blocksPerSecond,
-				blocksPerSecondTotal,
-				_formatInt64(totalBlocks-bpt),
-				_formatInt64(totalBlocks),
-				durationRemainingTotal.Hours(),
-				durationRemainingTotal.Hours()/24)
+			logrus.Infof("current speed: %0.1f b/s, %0.1f t/s, %s remain, %s total, %0.2fh (=%0.2fd to go)", blocksPerSecond, blocksPerSecondTotal, _formatInt64(totalBlocks-bpt), _formatInt64(totalBlocks), durationRemainingTotal.Hours(), durationRemainingTotal.Hours()/24)
 			exportStart = newStart
+			if lastDiscordReportAtBlocksProcessedTotal+REPORT_DISCORD_EVERY_X_BLOCKS <= bpt {
+				lastDiscordReportAtBlocksProcessedTotal += REPORT_DISCORD_EVERY_X_BLOCKS
+				sendMessage(fmt.Sprintf("%s NODE EXPORT: %0.1f block/s %s remaining (%0.1f day/s to go)", getChainNamePretty(), blocksPerSecondTotal, _formatInt64(totalBlocks-bpt), durationRemainingTotal.Hours()/24), discordWebhookReportUrl, discordWebhookUser)
+			}
 		}
 	}()
 	defer gOuterMustStop.Store(true) // kill the updater
@@ -705,6 +707,37 @@ Loop:
 // //////////
 // HELPERs //
 // //////////
+// Send message to discord
+func sendMessage(content string, webhookUrl *string, username *string) {
+	if len(*webhookUrl) > 0 {
+		err := discordwebhook.SendMessage(*webhookUrl, discordwebhook.Message{Username: username, Content: &content})
+		if err != nil {
+			utils.LogError(err, "error sending message to discord", 0, map[string]interface{}{"content": content, "webhookUrl": *webhookUrl, "username": *username})
+		}
+	}
+}
+
+// Get pretty name for chain
+func getChainNamePretty() string {
+	switch utils.Config.Chain.Id {
+	case MAINNET_CHAINID:
+		return "<:eth:1184470363967598623> ETHEREUM mainnet"
+	case GOERLI_CHAINID:
+		return "GOERLI testnet"
+	case OPTIMISM_CHAINID:
+		return "<:op:1184470125458489354> OPTIMISM mainnet"
+	case GNOSIS_CHAINID:
+		return "<:gnosis:1184470353947398155> GNOSIS mainnet"
+	case HOLESKY_CHAINID:
+		return "HOLESKY testnet"
+	case ARBITRUM_CHAINID:
+		return "<:arbitrum:1184470344506036334> ARBITRUM mainnet"
+	case SEPOLIA_CHAINID:
+		return "SEPOLIA testnet"
+	}
+	return fmt.Sprintf("%d", utils.Config.Chain.Id)
+}
+
 // format int for pretty output
 func _formatInt(value int) string {
 	return _formatInt64(int64(value))
@@ -717,13 +750,13 @@ func _formatInt64(value int64) string {
 		lastPart := value % 1000
 		value /= 1000
 		if len(result) > 0 {
-			result = fmt.Sprintf("%03d.%s", lastPart, result)
+			result = fmt.Sprintf("%03d,%s", lastPart, result)
 		} else {
 			result = fmt.Sprintf("%03d", lastPart)
 		}
 	}
 	if len(result) > 0 {
-		return fmt.Sprintf("%d.%s", value, result)
+		return fmt.Sprintf("%d,%s", value, result)
 	}
 	return fmt.Sprintf("%d", value)
 }
