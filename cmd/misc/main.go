@@ -650,20 +650,26 @@ func migrateAppPurchases(appStoreSecret string) error {
 
 	client := storekit.NewVerificationClient().OnProductionEnv()
 
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %w", err)
+	}
+	defer tx.Rollback()
+
 	// Delete marked as duplicate, though the duplicate reject reason is not always set - mainly missing on historical data
-	_, err := db.WriterDb.Exec("DELETE FROM users_app_subscriptions WHERE store = 'ios-appstore' AND reject_reason = 'duplicate';")
+	_, err = tx.Exec("DELETE FROM users_app_subscriptions WHERE store = 'ios-appstore' AND reject_reason = 'duplicate';")
 	if err != nil {
 		return errors.Wrap(err, "error deleting duplicate receipt")
 	}
 
 	// Backup legacy receipts into custom column
-	_, err = db.WriterDb.Exec("UPDATE users_app_subscriptions set legacy_receipt = receipt where legacy_receipt is null;")
+	_, err = tx.Exec("UPDATE users_app_subscriptions set legacy_receipt = receipt where legacy_receipt is null;")
 	if err != nil {
 		return errors.Wrap(err, "error backing up legacy receipts")
 	}
 
 	receipts := []*types.PremiumData{}
-	err = db.WriterDb.Select(&receipts,
+	err = tx.Select(&receipts,
 		"SELECT id, receipt, store, active, validate_remotely, expires_at, product_id, user_id from users_app_subscriptions order by id desc",
 	)
 	if err != nil {
@@ -703,7 +709,7 @@ func migrateAppPurchases(appStoreSecret string) error {
 			}
 			// since it is not active any more and we don't get any new receipt info from apple, just drop the receipt info
 			// hash can stay the same since a collision is unlikely (new and old receipt info)
-			_, err = db.WriterDb.Exec("UPDATE users_app_subscriptions SET receipt = '' WHERE id = $1", receipt.ID)
+			_, err = tx.Exec("UPDATE users_app_subscriptions SET receipt = '' WHERE id = $1", receipt.ID)
 			if err != nil {
 				return errors.Wrap(err, "error deleting duplicate receipt")
 			}
@@ -713,12 +719,12 @@ func migrateAppPurchases(appStoreSecret string) error {
 		latestReceiptInfo := resp.LatestReceiptInfo[0]
 		logrus.Infof("Update purchase id %v with new receipt %v", receipt.ID, latestReceiptInfo.OriginalTransactionId)
 
-		_, err = db.WriterDb.Exec("UPDATE users_app_subscriptions SET receipt = $1, receipt_hash = $2 WHERE id = $3", latestReceiptInfo.OriginalTransactionId, utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId), receipt.ID)
+		_, err = tx.Exec("UPDATE users_app_subscriptions SET receipt = $1, receipt_hash = $2 WHERE id = $3", latestReceiptInfo.OriginalTransactionId, utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId), receipt.ID)
 		if err != nil {
 			if strings.Contains(err.Error(), "duplicate key") { // handle historic duplicates
 				// get the duplicate receipt
 				duplicateReceipt := types.PremiumData{}
-				err = db.WriterDb.Get(&duplicateReceipt, "SELECT id, user_id, active FROM users_app_subscriptions WHERE receipt_hash = $1", utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId))
+				err = tx.Get(&duplicateReceipt, "SELECT id, user_id, active FROM users_app_subscriptions WHERE receipt_hash = $1", utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId))
 				if err != nil {
 					return errors.Wrap(err, "error getting duplicate receipt")
 				}
@@ -740,7 +746,7 @@ func migrateAppPurchases(appStoreSecret string) error {
 				}
 
 				// new ios handler will automatically update the product id if the user switched the package, so we will just drop this receipt
-				_, err = db.WriterDb.Exec("DELETE FROM users_app_subscriptions WHERE id = $1", deleteReceiptID)
+				_, err = tx.Exec("DELETE FROM users_app_subscriptions WHERE id = $1", deleteReceiptID)
 				if err != nil {
 					return errors.Wrap(err, "error deleting duplicate receipt")
 				}
@@ -754,7 +760,7 @@ func migrateAppPurchases(appStoreSecret string) error {
 					updateReceiptID = duplicateReceipt.ID
 				}
 
-				_, err = db.WriterDb.Exec("UPDATE users_app_subscriptions SET receipt = $1, receipt_hash = $2 WHERE id = $3", latestReceiptInfo.OriginalTransactionId, utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId), updateReceiptID)
+				_, err = tx.Exec("UPDATE users_app_subscriptions SET receipt = $1, receipt_hash = $2 WHERE id = $3", latestReceiptInfo.OriginalTransactionId, utils.HashAndEncode(latestReceiptInfo.OriginalTransactionId), updateReceiptID)
 				if err != nil {
 					return errors.Wrap(err, "error updating receipt")
 				}
@@ -762,8 +768,14 @@ func migrateAppPurchases(appStoreSecret string) error {
 				return errors.Wrap(err, "error updating purchase id")
 			}
 		}
+
 		logrus.Infof("Migrated purchase id %v\n", receipt.ID)
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return errors.Wrap(err, "error committing tx")
 	}
 
 	logrus.Infof("done migrating data")
