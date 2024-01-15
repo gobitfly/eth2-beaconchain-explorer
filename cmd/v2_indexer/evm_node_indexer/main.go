@@ -1,5 +1,7 @@
 package main
 
+// #RECY Arbitrum Classic WILL return ERRORs, this needs to be implemented correct
+
 // imports
 import (
 	"bytes"
@@ -23,6 +25,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
@@ -54,12 +58,9 @@ const ARBITRUM_CHAINID = 42161
 const ARBITRUM_NITRO_BLOCKNUMBER = 22207815
 
 const HTTP_TIMEOUT_IN_SECONDS = 2 * 120
-const MAX_REORG_DEPTH = 100           // that number of block we are looking 'back', includes latest block
-const MAX_NODE_REQUESTS_AT_ONCE = 100 // Maximum node requests allowed
-const OUTPUT_CYCLE_IN_SECONDS = 10    // duration between 2 outputs / updates, just a visual thing
-
-// errors
-var errContextDeadlineExceeded = errors.New("context deadline exceeded (Client.Timeout or context cancellation while reading body)")
+const MAX_REORG_DEPTH = 256            // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
+const MAX_NODE_REQUESTS_AT_ONCE = 1024 // maximum node requests allowed
+const OUTPUT_CYCLE_IN_SECONDS = 8      // duration between 2 outputs / updates, just a visual thing
 
 // structs
 type jsonRpcReturnId struct {
@@ -103,28 +104,32 @@ func init() {
 func main() {
 	// read / set parameter
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	startBlockNumber := flag.Int64("start-block-number", -1, "only working in combination with end-block-number, defined block is included")
-	endBlockNumber := flag.Int64("end-block-number", -1, "only working in combination with start-block-number, defined block is included")
-	reorgDepth = flag.Int64("reorg.depth", 20, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %d), you should NEVER reduce this after the first start, otherwise there will be unchecked areas", MAX_REORG_DEPTH))
-	concurrency := flag.Int("concurrency", 12, "maximum threads used")
-	nodeRequestsAtOnce := flag.Int("node-requests-at-once", 42, fmt.Sprintf("bulk size per node request (MAX %d)", MAX_NODE_REQUESTS_AT_ONCE))
-	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes")
+	startBlockNumber := flag.Int64("start-block-number", -1, "trigger a REEXPORT, only working in combination with end-block-number, defined block is included, will be the first action done and will quite afterwards, ignore every other action")
+	endBlockNumber := flag.Int64("end-block-number", -1, "trigger a REEXPORT, only working in combination with start-block-number, defined block is included, will be the first action done and will quite afterwards, ignore every other action")
+	reorgDepth = flag.Int64("reorg.depth", 20, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %s), you should NEVER reduce this after the first start, otherwise there will be unchecked areas", _formatInt64(MAX_REORG_DEPTH)))
+	concurrency := flag.Int64("concurrency", 12, "maximum threads used (running on maximum whenever possible)")
+	nodeRequestsAtOnce := flag.Int64("node-requests-at-once", 42, fmt.Sprintf("bulk size per node = bt = db request (MAX %s)", _formatInt64(MAX_NODE_REQUESTS_AT_ONCE)))
+	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes, doesn't go very well with only-hole-check")
+	onlyHoleCheck := flag.Bool("only-hole-check", false, "just check for holes and quit, can be used for a reexport running simulation to a normal setup, just remove entries in postgres and start with this flag, doesn't go very well with skip-hole-check")
 	flag.Parse()
 
 	// tell the user about all parameter
 	{
 		logrus.Infof("config set to '%s'", *configPath)
 		if *startBlockNumber >= 0 {
-			logrus.Infof("start-block-number set to '%d'", *startBlockNumber)
+			logrus.Infof("start-block-number set to '%s'", _formatInt64(*startBlockNumber))
 		}
 		if *endBlockNumber >= 0 {
-			logrus.Infof("end-block-number set to '%d'", *endBlockNumber)
+			logrus.Infof("end-block-number set to '%s'", _formatInt64(*endBlockNumber))
 		}
-		logrus.Infof("reorg.depth set to '%d'", *reorgDepth)
-		logrus.Infof("concurrency set to '%d'", *concurrency)
-		logrus.Infof("node-requests-at-once set to '%d'", *nodeRequestsAtOnce)
+		logrus.Infof("reorg.depth set to '%s'", _formatInt64(*reorgDepth))
+		logrus.Infof("concurrency set to '%s'", _formatInt64(*concurrency))
+		logrus.Infof("node-requests-at-once set to '%s'", _formatInt64(*nodeRequestsAtOnce))
 		if *skipHoleCheck {
 			logrus.Infof("skip-hole-check set true")
+		}
+		if *onlyHoleCheck {
+			logrus.Infof("only-hole-check set true")
 		}
 	}
 
@@ -143,19 +148,19 @@ func main() {
 
 	// check parameters
 	if *nodeRequestsAtOnce < 1 {
-		logrus.Warnf("node-requests-at-once set to %d, corrected to 1", *nodeRequestsAtOnce)
+		logrus.Warnf("node-requests-at-once set to %s, corrected to 1", _formatInt64(*nodeRequestsAtOnce))
 		*nodeRequestsAtOnce = 1
 	}
 	if *nodeRequestsAtOnce > MAX_NODE_REQUESTS_AT_ONCE {
-		logrus.Warnf("node-requests-at-once set to %d, corrected to %d", *nodeRequestsAtOnce, MAX_NODE_REQUESTS_AT_ONCE)
+		logrus.Warnf("node-requests-at-once set to %s, corrected to %s", _formatInt64(*nodeRequestsAtOnce), _formatInt64(MAX_NODE_REQUESTS_AT_ONCE))
 		*nodeRequestsAtOnce = MAX_NODE_REQUESTS_AT_ONCE
 	}
 	if *reorgDepth < 0 || *reorgDepth > MAX_REORG_DEPTH {
-		logrus.Warnf("reorg.depth parameter set to %d, corrected to %d", *reorgDepth, MAX_REORG_DEPTH)
+		logrus.Warnf("reorg.depth parameter set to %s, corrected to %s", _formatInt64(*reorgDepth), _formatInt64(MAX_REORG_DEPTH))
 		*reorgDepth = MAX_REORG_DEPTH
 	}
 	if *concurrency < 1 {
-		logrus.Warnf("concurrency parameter set to %d, corrected to 1", *concurrency)
+		logrus.Warnf("concurrency parameter set to %s, corrected to 1", _formatInt64(*concurrency))
 		*concurrency = 1
 	}
 
@@ -198,6 +203,7 @@ func main() {
 
 	// init el client
 	logrus.Info("init el client endpoint...")
+	// #RECY IMPROVE split http / ws endpoint, http is mandatory, ws optional (to use subscribe)
 	elClient, err = ethclient.Dial(utils.Config.Eth1RpcEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "error dialing eth url", 0) // fatal, no point to continue without node connection
@@ -220,8 +226,8 @@ func main() {
 
 	// get latest block (as it's global, so we have a initial value)
 	logrus.Info("get latest block from node...")
-	updateBlockNumber(false)
-	logrus.Info("...get latest block from node done.")
+	updateBlockNumber(true)
+	logrus.Infof("...get latest block (%s) from node done.", _formatInt64(currentNodeBlockNumber.Load()))
 
 	// //////////////////////////////////////////
 	// Config done, now actually "doing" stuff //
@@ -238,9 +244,8 @@ func main() {
 
 	// check if reexport requested
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
-		logrus.Infof("Found REEXPORT for block %v to %v...", *startBlockNumber, *endBlockNumber)
+		logrus.Infof("Found REEXPORT for block %s to %s...", _formatInt64(*startBlockNumber), _formatInt64(*endBlockNumber))
 		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce)
-		// #RECY IMPROVE retry on error, main issue here, to check what is current done :s
 		if err != nil {
 			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
 		}
@@ -261,7 +266,7 @@ func main() {
 		}
 		l := len(missingBlocks)
 		if l > 0 { // some holes found
-			logrus.Warnf("Found %d missing block ranges in %v, fixing them now...", l, findHolesTook)
+			logrus.Warnf("Found %s missing block ranges in %v, fixing them now...", _formatInt(l), findHolesTook)
 			if l <= 10 {
 				logrus.Warnf("%v", missingBlocks)
 			} else {
@@ -269,7 +274,6 @@ func main() {
 			}
 			startTime = time.Now()
 			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce) // reexport the holes
-			// #RECY IMPROVE retry on error, main issue here, to check what is current done :s
 			if err != nil {
 				utils.LogFatal(err, "error while reexport blocks for bigtable (fixing holes)", 0) // fatal, as if we wanna start with holes, we should set the skip-hole-check parameter
 			}
@@ -277,6 +281,10 @@ func main() {
 		} else {
 			logrus.Infof("...no missing block found in %v", findHolesTook)
 		}
+	}
+	if *onlyHoleCheck {
+		logrus.Info("only-hole-check set, job done, have a nice day :)")
+		return
 	}
 
 	// waiting for new blocks and export them, while checking reorg before every new block
@@ -368,7 +376,7 @@ func main() {
 						// fatal, as this is an impossible error
 						utils.LogFatal(err, "impossible error failureLength != len(blockRawData)-matchingLength", 0, map[string]interface{}{"failCounter": failCounter, "len(blockRawData)-matchingLength": len(blockRawData) - matchingLength})
 					}
-					logrus.Infof("found %d wrong hashes when checking for reorgs, reexporting them now...", failCounter)
+					logrus.Infof("found %s wrong hashes when checking for reorgs, reexporting them now...", _formatInt(failCounter))
 					logrus.Infof("%v", wrongHashRanges)
 
 					// export the hits again
@@ -458,7 +466,7 @@ func readBT(tableBlocksRaw *gcp_bigtable.Table, prefix string, family string, co
 }
 
 // improve the behaviour in case of an error
-func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int, deep int) error {
+func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int64, deep int) error {
 	err := _bulkExportBlocksImpl(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
 	if err != nil {
 		elementCount := len(blockRawData)
@@ -466,17 +474,12 @@ func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData [
 		// output the error
 		{
 			s := errorIdentifier.FindStringSubmatch(err.Error())
-			if len(s) >= 2 {
+			if len(s) >= 2 { // if we have a valid json error available, should be the case if it's a node issue
 				logrus.WithFields(logrus.Fields{
 					"deep":     deep,
 					"cause":    s[1],
 					"elements": elementCount}).Warnf("got an error and will try to fix it (sub)")
-			} else if len(s) == 1 {
-				logrus.WithFields(logrus.Fields{
-					"deep":     deep,
-					"cause":    s[0],
-					"elements": elementCount}).Warnf("got an error and will try to fix it (hit)")
-			} else {
+			} else { // if we have a no json error available, should be the case if it's a BT or Postgres issue
 				logrus.WithFields(logrus.Fields{
 					"deep":     deep,
 					"cause":    err,
@@ -500,14 +503,14 @@ func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData [
 }
 
 // export all blocks, heavy use of bulk & concurrency, providing a block raw data array (used by the other bulkExportBlocks+ functions)
-func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	// check values
 	{
 		if tableBlocksRaw == nil {
 			return fmt.Errorf("tableBlocksRaw == nil")
 		}
 
-		l := len(blockRawData)
+		l := int64(len(blockRawData))
 		if l < 1 || l > nodeRequestsAtOnce {
 			return fmt.Errorf("blockRawData length (%d) is 0 or greater 'node requests at once' (%d)", l, nodeRequestsAtOnce)
 		}
@@ -575,9 +578,9 @@ func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fu
 }
 
 // export all blocks, heavy use of bulk & concurrency, providing a range array
-func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int, nodeRequestsAtOnce int) error {
-	var blocksTotalCount int64
+func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int64, nodeRequestsAtOnce int64) error {
 	{
+		var blocksTotalCount int64
 		l := len(blockRanges)
 		if l <= 0 {
 			return fmt.Errorf("got empty blockRanges array")
@@ -586,12 +589,12 @@ func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []int
 			if v.start <= v.end {
 				blocksTotalCount += v.end - v.start + 1
 			} else {
-				return fmt.Errorf("blockRanges at index %d has wrong start (%d) > end (%d) combination", i, v.start, v.end)
+				return fmt.Errorf("blockRanges at index %d has wrong start (%s) > end (%s) combination", i, _formatInt64(v.start), _formatInt64(v.end))
 			}
 		}
 
 		if l == 1 {
-			logrus.Infof("Only 1 range found, started export of blocks %d to %d, total block amount %d, using an updater every %d seconds for more details.", blockRanges[0].start, blockRanges[0].end, blocksTotalCount, OUTPUT_CYCLE_IN_SECONDS)
+			logrus.Infof("Only 1 range found, started export of blocks %s to %s, total block amount %s, using an updater every %d seconds for more details.", _formatInt64(blockRanges[0].start), _formatInt64(blockRanges[0].end), _formatInt64(blocksTotalCount), OUTPUT_CYCLE_IN_SECONDS)
 		} else {
 			logrus.Infof("%d ranges found, total block amount %d, using an updater every %d seconds for more details.", l, blocksTotalCount, OUTPUT_CYCLE_IN_SECONDS)
 		}
@@ -599,7 +602,7 @@ func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []int
 
 	gOuterMustStop := atomic.Bool{}
 	gOuter := &errgroup.Group{}
-	gOuter.SetLimit(concurrency)
+	gOuter.SetLimit(int(concurrency))
 
 	t := time.NewTicker(time.Second * OUTPUT_CYCLE_IN_SECONDS)
 	totalStart := time.Now()
@@ -619,21 +622,33 @@ func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []int
 			blocksProcessedTotal.Add(bpi)
 			bpt := blocksProcessedTotal.Load()
 
-			remainingBlocks := blocksTotalCount - bpt
+			var totalBlocks int64
+			latestNodeBlock := currentNodeBlockNumber.Load()
+			for _, v := range blockRanges {
+				if v.end > latestNodeBlock {
+					totalBlocks += latestNodeBlock - v.start + 1
+				} else {
+					totalBlocks += v.end - v.start + 1
+				}
+			}
 			blocksPerSecond := float64(bpi) / time.Since(exportStart).Seconds()
 			blocksPerSecondTotal := float64(bpt) / time.Since(totalStart).Seconds()
-			secondsRemaining := float64(remainingBlocks) / float64(blocksPerSecond)
-			durationRemaining := time.Second * time.Duration(secondsRemaining)
-			durationRemainingTotal := time.Second * time.Duration(float64(remainingBlocks)/float64(blocksPerSecondTotal))
+			durationRemainingTotal := time.Second * time.Duration(float64(totalBlocks-bpt)/float64(blocksPerSecondTotal))
 
-			logrus.Infof("current speed: %0.1f blocks/sec, %0.1f total/sec, %d blocks remaining (%v / %v to go)", blocksPerSecond, blocksPerSecondTotal, remainingBlocks, durationRemaining, durationRemainingTotal)
+			logrus.Infof("current speed: %0.1f b/s, %0.1f t/s, %s remain, %s total, %0.2fh / %0.2fd to go",
+				blocksPerSecond,
+				blocksPerSecondTotal,
+				_formatInt64(totalBlocks-bpt),
+				_formatInt64(totalBlocks),
+				durationRemainingTotal.Hours(),
+				durationRemainingTotal.Hours()/24)
 			exportStart = newStart
 		}
 	}()
 	defer gOuterMustStop.Store(true) // kill the updater
 
 	blockRawData := make([]fullBlockRawData, 0, nodeRequestsAtOnce)
-	blockRawDataLen := 0
+	blockRawDataLen := int64(0)
 Loop:
 	for _, blockRange := range blockRanges {
 		current := blockRange.start
@@ -690,6 +705,29 @@ Loop:
 // //////////
 // HELPERs //
 // //////////
+// format int for pretty output
+func _formatInt(value int) string {
+	return _formatInt64(int64(value))
+}
+
+// format int64 for pretty output
+func _formatInt64(value int64) string {
+	result := ""
+	for value >= 1000 {
+		lastPart := value % 1000
+		value /= 1000
+		if len(result) > 0 {
+			result = fmt.Sprintf("%03d.%s", lastPart, result)
+		} else {
+			result = fmt.Sprintf("%03d", lastPart)
+		}
+	}
+	if len(result) > 0 {
+		return fmt.Sprintf("%d.%s", value, result)
+	}
+	return fmt.Sprintf("%d", value)
+}
+
 // compress given byte slice
 func compress(src []byte) []byte {
 	var buf bytes.Buffer
@@ -754,11 +792,11 @@ func _splitAndVerifyJsonArrayAddElement(r *[][]byte, element []byte, lastId int6
 }
 
 // split a bulk json request in single requests
-func _splitAndVerifyJsonArray(jArray []byte, providedElementCount int) ([][]byte, error) {
+func _splitAndVerifyJsonArray(jArray []byte, providedElementCount int64) ([][]byte, error) {
 	endDigit := byte('}')
 	searchValue := []byte(`{"jsonrpc":"`)
 	searchLen := len(searchValue)
-	foundElementCount := 0
+	foundElementCount := int64(0)
 
 	// remove everything before the first hit
 	i := bytes.Index(jArray, searchValue)
@@ -830,55 +868,105 @@ func joinIntRanges(iRange []intRange) []intRange {
 }
 */
 
-// get newest block number from node, should be called always with FALSE
-func updateBlockNumber(loop bool) {
-	/*
-		#RECY_ QUESTION wanna use eth_subscribe, but seems not possible?
-		Command: curl -X POST -H "Content-Type: application/json" --data '{"id":1,"jsonrpc":"2.0","method":"eth_subscribe","params":["newHeads"]}' localhost:18545
-		Result: {"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"notifications not supported"}}
-		Environment: our current Sepolia archive node
-		=> Look like we have to use ws:// endpoint to make this working
-	*/
-	sleepTime := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot/2) // checking twice in the avg duration
-	consecutivelyErrorCount := -1
-	noNewBlockCount := 0
-	for {
+// get newest block number from node, should be called always with TRUE
+func updateBlockNumber(firstCall bool) {
+	const NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE = 3
+	const WARN_TILL_NOBLOCK_COUNT_OF = 3
+	const ERROR_TILL_NOBLOCK_COUNT_OF = 10
+
+	if firstCall {
 		blockNumber, err := rpciGetLatestBlock()
-		if err == nil {
-			consecutivelyErrorCount = 0
-			if currentNodeBlockNumber.Load() != blockNumber {
-				currentNodeBlockNumber.Store(blockNumber)
-				noNewBlockCount = 0
+		if err != nil {
+			utils.LogFatal(err, "fatal, failed to get newest block from node, on first try", 0)
+		}
+		currentNodeBlockNumber.Store(blockNumber)
+		go updateBlockNumber(false)
+		return
+	}
+
+	var errorText string
+	gotNewBlockAt := time.Now()
+	timePerBlock := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
+	if strings.HasPrefix(utils.Config.Eth1RpcEndpoint, "ws") {
+		logrus.Infof("ws node endpoint found, will use subscribe")
+		var timer *time.Timer
+		for {
+			headers := make(chan *eth_types.Header)
+			sub, err := rpciSubscribeNewHead(headers)
+			if err != nil {
+				errorText = "error, init subscribe for new head"
 			} else {
-				noNewBlockCount++
-				if noNewBlockCount >= 5*60/int(sleepTime.Seconds()) { // 5 minutes
-					// fatal, as if it's not working after so many tries, it's very likly it will never work
-					utils.LogFatal(nil, "fatal, no new block from node for a while", 0, map[string]interface{}{"noNewBlockCount": noNewBlockCount, "blockNumber": blockNumber})
-				} else if noNewBlockCount >= 3*60/int(sleepTime.Seconds()) { // 3 minutes
-					utils.LogError(nil, "error, no new block from node for a while", 0, map[string]interface{}{"noNewBlockCount": noNewBlockCount, "blockNumber": blockNumber})
-				} else if noNewBlockCount >= 1*60/int(sleepTime.Seconds()) { // 1 minute
-					logrus.Warnf("warning, no new block from node for a while (%d tries), block number : %d", noNewBlockCount, blockNumber)
+			Loop:
+				for {
+					if timer != nil && !timer.Stop() {
+						<-timer.C
+					}
+					timer = time.NewTimer(timePerBlock * NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE)
+
+					select {
+					case err = <-sub.Err():
+						errorText = "error, subscribe new head was canceled"
+						break Loop
+					case <-timer.C:
+						errorText = "error, timer triggered for subscribe of new head"
+						break Loop
+					case header := <-headers:
+						previousBlock := currentNodeBlockNumber.Load()
+						newestBlock := header.Number.Int64()
+						if newestBlock <= previousBlock {
+							utils.LogFatal(nil, "impossible error, newest block <= previous block", 0, map[string]interface{}{"previousBlock": previousBlock, "newestBlock": newestBlock})
+						}
+						currentNodeBlockNumber.Store(newestBlock)
+						// logrus.Infof("Newest node block %d", currentNodeBlockNumber.Load()) // #RECY REMOVE after testing
+						gotNewBlockAt = time.Now()
+					}
 				}
 			}
-		} else if consecutivelyErrorCount < 0 {
-			// fatal, as we need an initial value, otherwise the result will be random
-			utils.LogFatal(err, "error get latest block number from node, first try", 0)
-		} else {
-			consecutivelyErrorCount++
-			if consecutivelyErrorCount <= 3 {
-				logrus.Warnf("error get latest block number from node. consecutivelyErrorCount: %d", consecutivelyErrorCount)
-			} else if consecutivelyErrorCount <= 10 {
-				utils.LogError(err, "error get latest block number from node", 0, map[string]interface{}{"consecutivelyErrorCount": consecutivelyErrorCount})
+
+			secondsSinceLastBlockReceived := time.Since(gotNewBlockAt)
+			if secondsSinceLastBlockReceived < timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
+				logrus.WithFields(logrus.Fields{
+					"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived,
+					"error":                         err,
+				}).Warn(errorText)
+			} else if secondsSinceLastBlockReceived < timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
+				utils.LogError(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
 			} else {
-				// fatal, as if it's not working after so many tries, it's very likly it will never work
-				utils.LogFatal(err, "error get latest block number from node", 0, map[string]interface{}{"consecutivelyErrorCount": consecutivelyErrorCount})
+				utils.LogFatal(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
+			}
+
+			close(headers)
+			sub.Unsubscribe()
+			time.Sleep(timePerBlock) // Sleep for 1 block in case of an error
+		}
+	} else { // no ws node endpoint available
+		logrus.Infof("no ws node endpoint found, can't use subscribe")
+		for {
+			time.Sleep(timePerBlock / 2) // wait half a block
+			previousBlock := currentNodeBlockNumber.Load()
+			newestBlock, err := rpciGetLatestBlock()
+			if err == nil {
+				if previousBlock > newestBlock {
+					utils.LogFatal(nil, "impossible error, newest block <= previous block", 0, map[string]interface{}{"previousBlock": previousBlock, "newestBlock": newestBlock})
+				} else if previousBlock < newestBlock {
+					currentNodeBlockNumber.Store(newestBlock)
+					// logrus.Infof("Newest node block %d", currentNodeBlockNumber.Load()) // #RECY REMOVE after testing
+					gotNewBlockAt = time.Now()
+				}
+			}
+
+			secondsSinceLastBlockReceived := time.Since(gotNewBlockAt)
+			if secondsSinceLastBlockReceived >= timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
+				utils.LogFatal(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
+			} else if secondsSinceLastBlockReceived >= timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
+				utils.LogError(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
+			} else if secondsSinceLastBlockReceived >= timePerBlock*NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE {
+				logrus.WithFields(logrus.Fields{
+					"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived,
+					"error":                         err,
+				}).Warn(errorText)
 			}
 		}
-		if !loop {
-			go updateBlockNumber(true)
-			break
-		}
-		time.Sleep(sleepTime)
 	}
 }
 
@@ -1126,9 +1214,13 @@ func rpciGetLatestBlock() (int64, error) {
 	return int64(latestBlockNumber), nil
 }
 
+// subscribe for latest block
+func rpciSubscribeNewHead(ch chan<- *eth_types.Header) (ethereum.Subscription, error) {
+	return elClient.SubscribeNewHead(context.Background(), ch)
+}
+
 // do all the http stuff
-func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int, count int) ([][]byte, error) {
-	startTime := time.Now()
+func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int64, count int64) ([][]byte, error) {
 	r, err := http.NewRequest("POST", utils.Config.Eth1RpcEndpoint, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("error creating post request: %w", err)
@@ -1147,10 +1239,6 @@ func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int, count int) ([][]byt
 	defer res.Body.Close()
 	resByte, err := io.ReadAll(res.Body)
 	if err != nil {
-		if strings.Compare(err.Error(), errContextDeadlineExceeded.Error()) == 0 {
-			err = errContextDeadlineExceeded
-			logrus.Warnf("Exceeded after %v, if this happens a lot, you might have increase the http timeout (currently at %d seconds), or reduce the 'node requests at once' count (currently at %d)", time.Second*time.Duration(time.Since(startTime).Seconds()), HTTP_TIMEOUT_IN_SECONDS, nodeRequestsAtOnce)
-		}
 		return nil, fmt.Errorf("error reading request body: %w", err)
 	}
 
@@ -1174,10 +1262,10 @@ func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int, count int) ([][]byt
 }
 
 // will fill only receipts_compressed based on block, used by rpciGetBulkRawReceipts function
-func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	// check
 	{
-		l := len(blockRawData)
+		l := int64(len(blockRawData))
 		if l < 1 {
 			return fmt.Errorf("empty blockRawData array received")
 		}
@@ -1198,7 +1286,7 @@ func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsA
 		}
 		bodyStr += "]"
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, int64(len(blockRawData)))
 		if err != nil {
 			return fmt.Errorf("error (_rpciGetBulkRawBlockReceipts) split and verify json array: %w", err)
 		}
@@ -1213,10 +1301,10 @@ func _rpciGetBulkRawBlockReceipts(blockRawData []fullBlockRawData, nodeRequestsA
 }
 
 // will fill only receipts_compressed based on transaction, used by rpciGetBulkRawReceipts function
-func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	// check
 	{
-		l := len(blockRawData)
+		l := int64(len(blockRawData))
 		if l < 1 {
 			return fmt.Errorf("empty blockRawData array received")
 		}
@@ -1227,10 +1315,10 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 
 	// iterate through array and get data when threshold reached
 	var blockRawDataWriteIndex int
-	var currentElementCount int
+	var currentElementCount int64
 	bodyStr := "["
 	for i, v := range blockRawData {
-		l := len(v.blockTxs)
+		l := int64(len(v.blockTxs))
 
 		// threshold reached, getting data...
 		if i != 0 {
@@ -1280,10 +1368,10 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 }
 
 // will fill only block_hash, block_unclesCount, block_compressed & block_txs
-func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	// check
 	{
-		l := len(blockRawData)
+		l := int64(len(blockRawData))
 		if l < 1 {
 			return fmt.Errorf("empty blockRawData array received")
 		}
@@ -1304,7 +1392,7 @@ func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 		}
 		bodyStr += "]"
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, int64(len(blockRawData)))
 		if err != nil {
 			return fmt.Errorf("error (rpciGetBulkBlockRawData) split and verify json array: %w", err)
 		}
@@ -1360,10 +1448,10 @@ func rpciGetBulkBlockRawData(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 }
 
 // will fill only block_hash
-func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	// check
 	{
-		l := len(blockRawData)
+		l := int64(len(blockRawData))
 		if l < 1 {
 			return fmt.Errorf("empty blockRawData array received")
 		}
@@ -1384,7 +1472,7 @@ func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 		}
 		bodyStr += "]"
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, int64(len(blockRawData)))
 		if err != nil {
 			return fmt.Errorf("error (rpciGetBulkBlockRawHash) split and verify json array: %w", err)
 		}
@@ -1416,10 +1504,10 @@ func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 }
 
 // will fill only uncles (if available)
-func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	// check
 	{
-		l := len(blockRawData)
+		l := int64(len(blockRawData))
 		if l < 1 {
 			return fmt.Errorf("empty blockRawData array received")
 		}
@@ -1432,7 +1520,7 @@ func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 	// get array
 	var rawData [][]byte
 	{
-		requestedCount := 0
+		requestedCount := int64(0)
 		firstElement := true
 		bodyStr := "["
 		for _, v := range blockRawData {
@@ -1483,7 +1571,7 @@ func rpciGetBulkRawUncles(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 }
 
 // will fill only receipts_compressed
-func rpciGetBulkRawReceipts(blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func rpciGetBulkRawReceipts(blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	if utils.Config.Chain.Id == ARBITRUM_CHAINID {
 		return _rpciGetBulkRawTransactionReceipts(blockRawData, nodeRequestsAtOnce)
 	}
@@ -1491,10 +1579,10 @@ func rpciGetBulkRawReceipts(blockRawData []fullBlockRawData, nodeRequestsAtOnce 
 }
 
 // will fill only traces_compressed
-func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce int) error {
+func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce int64) error {
 	// check
 	{
-		l := len(blockRawData)
+		l := int64(len(blockRawData))
 		if l < 1 {
 			return fmt.Errorf("empty blockRawData array received")
 		}
@@ -1519,7 +1607,7 @@ func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 		}
 		bodyStr += "]"
 		var err error
-		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, len(blockRawData))
+		rawData, err = _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, int64(len(blockRawData)))
 		if err != nil {
 			return fmt.Errorf("error (rpciGetBulkRawTraces) split and verify json array: %w", err)
 		}
