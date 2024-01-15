@@ -19,7 +19,7 @@ import (
 )
 
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
-const USER_SUBSCRIPTION_LIMIT = 5
+const USER_SUBSCRIPTION_LIMIT = 8
 
 type rewardsResp struct {
 	Currencies        []string

@@ -32,3 +32,4 @@ _gitignore/
 local-deployment/config.yml
 local-deployment/elconfig.json
 local-deployment/.env
+__gitignore

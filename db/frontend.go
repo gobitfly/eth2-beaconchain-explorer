@@ -405,12 +405,12 @@ func InsertMobileSubscription(tx *sql.Tx, userID uint64, paymentDetails types.Mo
 	var err error
 	if tx == nil {
 		_, err = FrontendWriterDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
-			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
+			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14) ON CONFLICT(receipt_hash) DO UPDATE SET product_id = $2, active = $7, updated_at = TO_TIMESTAMP($5);",
 			userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
 		)
 	} else {
 		_, err = tx.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
-			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
+			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14) ON CONFLICT(receipt_hash) DO UPDATE SET product_id = $2, active = $7, updated_at = TO_TIMESTAMP($5);",
 			userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
 		)
 	}
@@ -484,7 +484,7 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	data := []*types.PremiumData{}
 
 	err := FrontendWriterDB.Select(&data,
-		"SELECT id, receipt, store, active, expires_at, product_id from users_app_subscriptions WHERE validate_remotely = true order by id desc",
+		"SELECT id, receipt, store, active, expires_at, product_id, user_id, validate_remotely from users_app_subscriptions WHERE validate_remotely = true order by id desc",
 	)
 
 	return data, err
@@ -525,6 +525,21 @@ func UpdateUserSubscription(tx *sql.Tx, id uint64, valid bool, expiration int64,
 	} else {
 		_, err = tx.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
 			valid, nowTs, expiration, rejectReason, id,
+		)
+	}
+
+	return err
+}
+
+func UpdateUserSubscriptionProduct(tx *sql.Tx, id uint64, productID string) error {
+	var err error
+	if tx == nil {
+		_, err = FrontendWriterDB.Exec("UPDATE users_app_subscriptions SET product_id = $1 WHERE id = $2;",
+			productID, id,
+		)
+	} else {
+		_, err = tx.Exec("UPDATE users_app_subscriptions SET product_id = $1 WHERE id = $2",
+			productID, id,
 		)
 	}
 
