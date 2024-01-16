@@ -1,5 +1,9 @@
 {{ define "execution_transactions" }}
-  {{ with .Data.ExecutionData }}
+  {{ $data := .Data }}
+  {{ if $data.ExecutionData }}
+    {{ $data = $data.ExecutionData}}
+  {{ end }}
+  {{ with $data }}
     <style>
       #transactions_table td {
         max-width: 200px;
