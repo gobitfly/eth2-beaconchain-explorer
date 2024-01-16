@@ -42,16 +42,24 @@
     function filterItransactions(show) {
       if (show) {
         $('#itransactions').DataTable()
+        .column(0)
+        .search("")
         .column(3)
         .search("")
         .draw()
       } else {
-        regExSearch = '^(?!' + `0 ETH` + '$).*$';
+        // all but exact match would be:
+        //regExSearch = '^(?!' + `0 ETH` + '$).*$'
+        noZeroValue = '^(?!' + '0 ' + ')'
+        noDelegateCall = '^(?!' + 'delegatecall' + ')'
         $('#itransactions').DataTable()
+        .column(0)
+        .search(noDelegateCall, true, false)
         .column(3)
-        .search(regExSearch, true, false)
+        .search(noZeroValue, true, false)
         .draw()
       }
+      $('#itxCountLabel').text($('#itransactions').DataTable().rows( {search:'applied'} ).count());
     }
 
     $("#advanced-itx-toggle").on("click", async () => {
@@ -66,10 +74,12 @@
         ordering: false,
         searching: true,
         ajax: dataTableLoader('/tx/' + hash + '/data'),
-        dom: 'lrtip'
+        dom: 'lrtip',
+        initComplete: function(settings, json) {
+          filterItransactions(false)
+        }
       }
     $('#itransactions').DataTable(tblOpts)
-    filterItransactions(false)
     })
   </script>
 {{ end }}
@@ -118,7 +128,7 @@
             {{ if gt (len .InternalTxns) 0 }}
               <li class="nav-item">
                 <a class="nav-link" id="internal-txns-tab" data-toggle="tab" href="#internal-txns" role="tab" aria-controls="internal-txns" aria-selected="false">
-                  <i class="fas fa-sitemap"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white">{{ len .InternalTxns }}</span></span>
+                  <i class="fas fa-sitemap"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white" id="itxCountLabel"></span></span>
                 </a>
               </li>
             {{ end }}
