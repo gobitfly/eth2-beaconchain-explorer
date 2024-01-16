@@ -59,10 +59,9 @@ const ARBITRUM_NITRO_BLOCKNUMBER = 22207815
 const SEPOLIA_CHAINID = 11155111
 
 const HTTP_TIMEOUT_IN_SECONDS = 2 * 120
-const MAX_REORG_DEPTH = 256                 // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
-const MAX_NODE_REQUESTS_AT_ONCE = 1024      // maximum node requests allowed
-const OUTPUT_CYCLE_IN_SECONDS = 8           // duration between 2 outputs / updates, just a visual thing
-const REPORT_DISCORD_EVERY_X_BLOCKS = 10000 // report every x blocks to Discord (if set)
+const MAX_REORG_DEPTH = 256            // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
+const MAX_NODE_REQUESTS_AT_ONCE = 1024 // maximum node requests allowed
+const OUTPUT_CYCLE_IN_SECONDS = 8      // duration between 2 outputs / updates, just a visual thing
 
 // structs
 type jsonRpcReturnId struct {
@@ -113,6 +112,7 @@ func main() {
 	nodeRequestsAtOnce := flag.Int64("node-requests-at-once", 42, fmt.Sprintf("bulk size per node = bt = db request (MAX %s)", _formatInt64(MAX_NODE_REQUESTS_AT_ONCE)))
 	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes, doesn't go very well with only-hole-check")
 	onlyHoleCheck := flag.Bool("only-hole-check", false, "just check for holes and quit, can be used for a reexport running simulation to a normal setup, just remove entries in postgres and start with this flag, doesn't go very well with skip-hole-check")
+	discordWebhookBlockThreshold := flag.Int64("discord-block-threshold", 1000000, "every x blocks an update is send to Discord")
 	discordWebhookReportUrl := flag.String("discord-url", "", "report progress to discord url")
 	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
 	flag.Parse()
@@ -249,7 +249,7 @@ func main() {
 	// check if reexport requested
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
 		logrus.Infof("Found REEXPORT for block %s to %s...", _formatInt64(*startBlockNumber), _formatInt64(*endBlockNumber))
-		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser)
+		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce, discordWebhookBlockThreshold, discordWebhookReportUrl, discordWebhookUser)
 		if err != nil {
 			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
 		}
@@ -277,7 +277,7 @@ func main() {
 				logrus.Warnf("%v<...>", missingBlocks[:10])
 			}
 			startTime = time.Now()
-			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser) // reexport the holes
+			err := bulkExportBlocksRange(tableBlocksRaw, missingBlocks, *concurrency, *nodeRequestsAtOnce, discordWebhookBlockThreshold, discordWebhookReportUrl, discordWebhookUser) // reexport the holes
 			if err != nil {
 				utils.LogFatal(err, "error while reexport blocks for bigtable (fixing holes)", 0) // fatal, as if we wanna start with holes, we should set the skip-hole-check parameter
 			}
@@ -384,7 +384,7 @@ func main() {
 					logrus.Infof("%v", wrongHashRanges)
 
 					// export the hits again
-					err = bulkExportBlocksRange(tableBlocksRaw, wrongHashRanges, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser)
+					err = bulkExportBlocksRange(tableBlocksRaw, wrongHashRanges, *concurrency, *nodeRequestsAtOnce, discordWebhookBlockThreshold, discordWebhookReportUrl, discordWebhookUser)
 					// we will retry again, but it's important to skip the export of new blocks in the case of an error
 					if err != nil {
 						consecutiveErrorCount++
@@ -406,7 +406,7 @@ func main() {
 					// fatal, as this is an impossible error
 					utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
 				}
-				err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce, discordWebhookReportUrl, discordWebhookUser)
+				err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce, discordWebhookBlockThreshold, discordWebhookReportUrl, discordWebhookUser)
 				// we can try again, as throw a fatal will result in try again anyway
 				if err != nil {
 					consecutiveErrorCount++
@@ -582,7 +582,7 @@ func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fu
 }
 
 // export all blocks, heavy use of bulk & concurrency, providing a range array
-func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int64, nodeRequestsAtOnce int64, discordWebhookReportUrl *string, discordWebhookUser *string) error {
+func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []intRange, concurrency int64, nodeRequestsAtOnce int64, discordWebhookBlockThreshold *int64, discordWebhookReportUrl *string, discordWebhookUser *string) error {
 	{
 		var blocksTotalCount int64
 		l := len(blockRanges)
@@ -639,10 +639,10 @@ func bulkExportBlocksRange(tableBlocksRaw *gcp_bigtable.Table, blockRanges []int
 			blocksPerSecondTotal := float64(bpt) / time.Since(totalStart).Seconds()
 			durationRemainingTotal := time.Second * time.Duration(float64(totalBlocks-bpt)/float64(blocksPerSecondTotal))
 
-			logrus.Infof("current speed: %0.1f b/s, %0.1f t/s, %s remain, %s total, %0.2fh (=%0.2fd to go)", blocksPerSecond, blocksPerSecondTotal, _formatInt64(totalBlocks-bpt), _formatInt64(totalBlocks), durationRemainingTotal.Hours(), durationRemainingTotal.Hours()/24)
+			logrus.Infof("current speed: %0.1f b/s %0.1f t/s %s remain %s total %0.2fh (=%0.2fd to go)", blocksPerSecond, blocksPerSecondTotal, _formatInt64(totalBlocks-bpt), _formatInt64(totalBlocks), durationRemainingTotal.Hours(), durationRemainingTotal.Hours()/24)
 			exportStart = newStart
-			if lastDiscordReportAtBlocksProcessedTotal+REPORT_DISCORD_EVERY_X_BLOCKS <= bpt {
-				lastDiscordReportAtBlocksProcessedTotal += REPORT_DISCORD_EVERY_X_BLOCKS
+			if lastDiscordReportAtBlocksProcessedTotal+(*discordWebhookBlockThreshold) <= bpt {
+				lastDiscordReportAtBlocksProcessedTotal += (*discordWebhookBlockThreshold)
 				sendMessage(fmt.Sprintf("%s NODE EXPORT: %0.1f block/s %s remaining (%0.1f day/s to go)", getChainNamePretty(), blocksPerSecondTotal, _formatInt64(totalBlocks-bpt), durationRemainingTotal.Hours()/24), discordWebhookReportUrl, discordWebhookUser)
 			}
 		}
