@@ -53,6 +53,40 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TODO frontend API for pageData
+func PageData(w http.ResponseWriter, r *http.Request) {
+	var indexTemplateFiles = append(layoutTemplateFiles,
+		"index/index.html",
+		"index/depositProgress.html",
+		"index/depositChart.html",
+		"index/genesis.html",
+		"index/hero.html",
+		"index/networkStats.html",
+		"index/postGenesis.html",
+		"index/preGenesis.html",
+		"index/recentBlocks.html",
+		"index/recentEpochs.html",
+		"index/genesisCountdown.html",
+		"index/depositDistribution.html",
+		"svg/bricks.html",
+		"svg/professor.html",
+		"svg/timeline.html",
+		"components/rocket.html",
+		"slotViz.html",
+	)
+
+	w.Header().Set("Content-Type", "application/json")
+	data := InitPageData(w, r, "index", "", "", indexTemplateFiles)
+
+	err := json.NewEncoder(w).Encode(data)
+
+	if err != nil {
+		logger.Errorf("error sending latest index page data: %v", err)
+		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		return
+	}
+}
+
 // IndexPageData will show the main "index" page in json format
 func IndexPageData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
