@@ -1675,6 +1675,7 @@ type ITransaction struct {
 	To        template.HTML
 	Amount    template.HTML
 	TracePath template.HTML
+	Advanced  bool
 	Gas       struct {
 		Limit uint64
 		// Usage    uint64

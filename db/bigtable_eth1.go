@@ -2447,6 +2447,11 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
 
+		if t.Type == "suicide" {
+			// erigon's "suicide" might be misleading for users
+			t.Type = "selfdestruct"
+		}
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
@@ -2509,6 +2514,10 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		if string(value) == "\x00" {
 			continue
 		}
+		if tx_type == "suicide" {
+			// erigon's "suicide" might be misleading for users
+			tx_type = "selfdestruct"
+		}
 		fromName := names[parityTrace[i].Action.From]
 		toName := names[parityTrace[i].Action.To]
 		input := make([]byte, 0)
@@ -2523,6 +2532,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			To:        utils.FormatAddress(to, nil, toName, false, false, true),
 			Amount:    utils.FormatBytesAmount(value, utils.Config.Frontend.ElCurrency, 8),
 			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, true)),
+			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
 		}
 
 		gaslimit, err := strconv.ParseUint(parityTrace[i].Action.Gas, 0, 0)
