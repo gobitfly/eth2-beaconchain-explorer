@@ -1583,7 +1583,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	cutOffEpoch := utils.TimeToEpoch(cutOff)
 
 	additionalBurned := float64(0)
-	logger.Infof("using epoch limit %d", cutOffEpoch)
+	// logger.Infof("using epoch limit %d", cutOffEpoch)
 	err := db.ReaderDb.Get(&additionalBurned, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) AS burnedfees FROM blocks WHERE epoch > $1", cutOffEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
@@ -1591,7 +1591,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// logger.Infof("additonal burn: %v", additionalBurned)
 	data.TotalBurned += additionalBurned
 
-	logger.Infof("using epoch limit %d", lookbackEpoch)
+	// logger.Infof("using epoch limit %d", lookbackEpoch)
 	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", lookbackEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
@@ -1647,7 +1647,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
 	// logger.Infof("calculated emission: %v", data.Emission)
 
-	logger.Infof("using epoch limit %d", lookbackDayEpoch)
+	// logger.Infof("using epoch limit %d", lookbackDayEpoch)
 	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", lookbackDayEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)
