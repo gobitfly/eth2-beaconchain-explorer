@@ -409,13 +409,15 @@
                     </thead>
                     <tbody>
                       {{ range $index, $tx := .InternalTxns }}
-                        <tr>
-                          <td>{{ .TracePath }}</td>
-                          <td>{{ .From }}</td>
-                          <td>{{ .To }}</td>
-                          <td>{{ .Amount }}</td>
-                          <td>{{ .Gas.Limit }}</td>
-                        </tr>
+                        {{ if not .Advanced }}
+                          <tr>
+                            <td>{{ .TracePath }}</td>
+                            <td>{{ .From }}</td>
+                            <td>{{ .To }}</td>
+                            <td>{{ .Amount }}</td>
+                            <td>{{ .Gas.Limit }}</td>
+                          </tr>
+                        {{ end }}
                       {{ end }}
                     </tbody>
                   </table>
