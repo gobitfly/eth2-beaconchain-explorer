@@ -273,8 +273,8 @@ type ConfigJsonResponse struct {
 		BellatrixForkEpoch                      string `json:"BELLATRIX_FORK_EPOCH"`
 		CapellaForkVersion                      string `json:"CAPELLA_FORK_VERSION"`
 		CapellaForkEpoch                        string `json:"CAPELLA_FORK_EPOCH"`
-		DenebForkVersion                        string `yaml:"DENEB_FORK_VERSION"`
-		DenebForkEpoch                          string `yaml:"DENEB_FORK_EPOCH"`
+		DenebForkVersion                        string `json:"DENEB_FORK_VERSION"`
+		DenebForkEpoch                          string `json:"DENEB_FORK_EPOCH"`
 		SecondsPerSlot                          string `json:"SECONDS_PER_SLOT"`
 		SecondsPerEth1Block                     string `json:"SECONDS_PER_ETH1_BLOCK"`
 		MinValidatorWithdrawabilityDelay        string `json:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`
