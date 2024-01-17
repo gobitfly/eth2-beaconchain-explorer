@@ -22,6 +22,7 @@ fn_main() {
             start) shift; fn_start "$@"; exit;;
             stop) shift; fn_stop "$@"; exit;;
             sql) shift; fn_sql "$@"; exit;;
+            redis) shift; fn_redis "$@"; exit;;
             *) echo "$var_help"
         esac
         shift
@@ -30,6 +31,11 @@ fn_main() {
 
 fn_sql() {
     PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db
+}
+
+fn_redis() {
+    docker compose exec redis-sessions redis-cli
+    #redis-cli -h localhost -p $REDIS_PORT
 }
 
 fn_start() {
@@ -42,7 +48,7 @@ fn_start() {
 }
 
 fn_stop() {
-    docker compose down
+    docker compose down -v
     kurtosis clean -a
 }
 
