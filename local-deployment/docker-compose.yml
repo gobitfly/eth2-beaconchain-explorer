@@ -35,3 +35,12 @@ services:
     command: go run ./cmd/explorer -config /app/local-deployment/config.yml
     environment:
       - FRONTEND_ENABLED=true
+  redis-sessions:
+    image: redis:7
+    volumes:
+      - redis-sessions:/data
+    ports:
+      - "$REDIS_SESSIONS_PORT:6379"
+
+volumes:
+  redis-sessions:

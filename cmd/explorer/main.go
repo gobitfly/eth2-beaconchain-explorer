@@ -11,6 +11,7 @@ import (
 	"eth2-exporter/handlers"
 	"eth2-exporter/metrics"
 	"eth2-exporter/price"
+	"eth2-exporter/ratelimit"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/static"
@@ -605,6 +606,9 @@ func main() {
 		if utils.Config.Metrics.Enabled {
 			router.Use(metrics.HttpMiddleware)
 		}
+
+		ratelimit.Init(utils.Config.RedisSessionStoreEndpoint, "/api/")
+		router.Use(ratelimit.HttpMiddleware)
 
 		n := negroni.New(negroni.NewRecovery())
 		n.Use(gzip.Gzip(gzip.DefaultCompression))
