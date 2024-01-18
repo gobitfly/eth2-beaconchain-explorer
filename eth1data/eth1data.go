@@ -143,8 +143,7 @@ func GetEth1Transaction(hash common.Hash, currency string) (*types.Eth1TxData, e
 		if err == nil {
 			txPageData.ErrorMsg = errorMsg
 		}
-	}
-	if receipt.Status == 1 {
+	} else {
 		txPageData.Transfers, err = db.BigtableClient.GetArbitraryTokenTransfersForTransaction(tx.Hash().Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("error loading token transfers from tx: %w", err)

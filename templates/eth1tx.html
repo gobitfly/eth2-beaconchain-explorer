@@ -30,12 +30,27 @@
     }
 
     window.addEventListener("DOMContentLoaded", function (ev) {
-      window.navigation.addEventListener("navigate", (event) => {
-        if (!event.destination?.url || event.destination.url.split("#")[0] != event.srcElement?.currentEntry?.url?.split("#")[0]) {
+      if (window.navigation) {
+        window.navigation.addEventListener("navigate", (event) => {
+          if (!event.destination?.url || event.destination.url.split("#")[0] != event.srcElement?.currentEntry?.url?.split("#")[0]) {
+            return
+          }
+          handleTabChange(event.destination?.url)
+        })
+      } else {
+        //handle Firefox specific way as it does not support the navigation way
+        const tabBarContainer = $(`#eth1TxTabs`)
+        if (!tabBarContainer) {
           return
         }
-        handleTabChange(event.destination?.url)
-      })
+
+        tabBarContainer.find(`.nav-link`).on("click", event => {
+          var href = event.currentTarget.href
+          if (href) {
+            handleTabChange(href)
+          }
+        })
+      }
       handleTabChange(window.location.href)
     })
 
@@ -112,11 +127,11 @@
     {{ with .Data }}
       <div class="card">
         <div class="card-header">
-          <div id="advanced-itx" class="hide mr-20 float-right">
+          <div id="advanced-itx" class="mr-20 float-right" style="display: none;">
             <div class="float-right">
               <span class="text-monospace mr-2">Advanced</span>
               <label class="advanced-itx-switch float-right" for="advanced-itx-toggle">
-                <input type="checkbox" id="advanced-itx-toggle" />
+                <input type="checkbox" id="advanced-itx-toggle" autocomplete="off" />
                 <div class="slider round"></div>
               </label>
             </div>

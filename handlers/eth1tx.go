@@ -147,7 +147,7 @@ func getEth1TransactionTxData(txhash, currency string) *types.DataTableResponse 
 		txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash), currency)
 		its := txData.InternalTxns
 		if err != nil {
-			fmt.Println("hello")
+			utils.LogError(err, "error getting transaction data", 0, map[string]interface{}{"txhash": txHash})
 		} else {
 			for _, i := range its {
 				tableData = append(tableData, []interface{}{
