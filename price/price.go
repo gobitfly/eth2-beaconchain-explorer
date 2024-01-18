@@ -63,14 +63,12 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 	switch chainId {
 	case 1, 100:
 	default:
-		usd := "USD"
-		setPrice(clCurrency, usd, 2300)
+		setPrice(clCurrency, "USD", 2000.0)
 		setPrice(elCurrency, elCurrency, 1)
 		setPrice(clCurrency, clCurrency, 1)
-		availableCurrencies = []string{clCurrency, elCurrency, usd}
 		logger.Warnf("chainId not supported for fetching prices: %v", chainId)
 		runOnce.Do(func() { runOnceWg.Done() })
-		return
+		//return
 	}
 
 	clCurrency = clCurrencyParam
@@ -80,6 +78,20 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 	}
 	calcPairs[elCurrency] = true
 	calcPairs[clCurrency] = true
+
+	setPrice("DAI", "GNO", 1.0/200.0)
+	setPrice("GNO", "DAI", 200.0)
+	setPrice("GNO", "USD", 200.0)
+	setPrice("GNO", "ETH", 200.0/2000.0)
+	setPrice("mGNO", "GNO", float64(1)/float64(32))
+	setPrice("GNO", "mGNO", 32)
+	setPrice("mGNO", "mGNO", float64(1)/float64(32))
+	setPrice("GNO", "GNO", 1)
+
+	calcPairs["GNO"] = true
+
+	availableCurrencies = []string{"GNO", "mGNO", "DAI", "ETH", "USD"}
+	return
 
 	eClient, err := ethclient.Dial(eth1Endpoint)
 	if err != nil {
@@ -151,14 +163,13 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 		}
 		feeds[pair] = feed
 	}
-	/*
-		go func() {
-			for {
-				updatePrices()
-				time.Sleep(time.Minute)
-			}
-		}()
-	*/
+
+	go func() {
+		for {
+			updatePrices()
+			time.Sleep(time.Minute)
+		}
+	}()
 }
 
 func updatePrices() {

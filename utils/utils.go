@@ -708,31 +708,31 @@ func ReadConfig(cfg *types.Config, path string) error {
 	}
 
 	if cfg.Frontend.ClCurrency == "" {
-		switch cfg.Chain.Name {
-		case "gnosis":
-			cfg.Frontend.MainCurrency = "GNO"
-			cfg.Frontend.ClCurrency = "mGNO"
-			cfg.Frontend.ClCurrencyDecimals = 18
-			cfg.Frontend.ClCurrencyDivisor = 1e9
-		default:
+		//switch cfg.Chain.Name {
+		//case "gnosis":
+		cfg.Frontend.MainCurrency = "GNO"
+		cfg.Frontend.ClCurrency = "mGNO"
+		cfg.Frontend.ClCurrencyDecimals = 18
+		cfg.Frontend.ClCurrencyDivisor = 1e9
+		/*default:
 			cfg.Frontend.MainCurrency = "ETH"
 			cfg.Frontend.ClCurrency = "ETH"
 			cfg.Frontend.ClCurrencyDecimals = 18
 			cfg.Frontend.ClCurrencyDivisor = 1e9
-		}
+		}*/
 	}
 
 	if cfg.Frontend.ElCurrency == "" {
-		switch cfg.Chain.Name {
-		case "gnosis":
-			cfg.Frontend.ElCurrency = "xDAI"
-			cfg.Frontend.ElCurrencyDecimals = 18
-			cfg.Frontend.ElCurrencyDivisor = 1e18
-		default:
+		//switch cfg.Chain.Name {
+		//case "gnosis":
+		cfg.Frontend.ElCurrency = "xDAI"
+		cfg.Frontend.ElCurrencyDecimals = 18
+		cfg.Frontend.ElCurrencyDivisor = 1e18
+		/*default:
 			cfg.Frontend.ElCurrency = "ETH"
 			cfg.Frontend.ElCurrencyDecimals = 18
 			cfg.Frontend.ElCurrencyDivisor = 1e18
-		}
+		}*/
 	}
 
 	if cfg.Frontend.SiteTitle == "" {
