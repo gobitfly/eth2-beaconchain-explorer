@@ -66,7 +66,7 @@ func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
 
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases, update-ratelimits")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -391,6 +391,8 @@ func main() {
 		err = fixEns(erigonClient)
 	case "fix-ens-addresses":
 		err = fixEnsAddresses(erigonClient)
+	case "update-ratelimits":
+		err = updateRatelimits()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -1932,4 +1934,56 @@ func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
 
 		return tx.Commit()
 	}
+}
+
+func updateRatelimits() error {
+	var err error
+	_, err = db.WriterDb.Exec(
+		`insert into api_keys (user_id, api_key)
+		select id, api_key from users where api_key is not null
+		on conflict (user_id, api_key) do nothing`,
+	)
+	if err != nil {
+		return err
+	}
+	_, err = db.WriterDb.Exec(
+		`insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
+		
+		select 
+			id as user_id, 
+			case 
+				when product = 'free' then 5 
+				when product = $1 then 10
+				when product = $2 then 10
+				when product = $3 then 30
+				when product = $4 then 50
+				when product = 'plankton' then 20
+				when product = 'goldfish' then 20
+				when product = 'whale' then 25
+				else 50
+			end as second,
+			0 as hour,
+			case 
+				when product = 'free' then 120000 
+				when product = $1 then 500000
+				when product = $2 then 1000000
+				when product = $3 then 6000000
+				when product = $4 then 500000000
+				when product = 'plankton' then 120000
+				when product = 'goldfish' then 200000
+				when product = 'whale' then 700000
+				else 4000000000
+			end as month,
+			now() + interval '1 month' as valid_until,
+			now() as changed_at
+		from (
+			select id, price_id as product, api_key as key, coalesce(active,false) as active from users left join (select * from users_stripe_subscriptions where price_id = any('{$1,$2,$3,$4}')) as us on users.stripe_customer_id = us.customer_id where api_key is not null AND (price_id is not null OR id not in (select user_id from app_subs_view where app_subs_view.user_id = users.id AND active = true)) UNION SELECT user_id, product_id as product, api_key as key, active from app_subs_view left join users on users.id = app_subs_view.user_id where active = true AND api_key is not null AND (stripe_customer_id is null OR stripe_customer_id NOT IN (select customer_id from users_stripe_subscriptions where active = true and price_id = any('{$1,$2,$3,$4}')))) t where product is null or active = true
+		) x
+		where active = true`,
+		utils.Config.Frontend.Stripe.Sapphire,
+		utils.Config.Frontend.Stripe.Emerald,
+		utils.Config.Frontend.Stripe.Diamond,
+		utils.Config.Frontend.Stripe.Custom,
+	)
+	return err
 }
