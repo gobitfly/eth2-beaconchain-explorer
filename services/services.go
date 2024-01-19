@@ -15,6 +15,7 @@ import (
 	"math"
 	"math/big"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -1339,10 +1340,10 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	txPoolContent := &TxPoolContent{}
 	err = json.Unmarshal(raw, txPoolContent)
 	if err != nil {
-		utils.LogFatal(err, "unmarshal txpoolcontent json error", 0)
+		return nil, fmt.Errorf("unmarshal txpoolcontent json error: %w", err)
 	}
 
-	pendingTxs := make([]*geth_types.Transaction, 0, len(txPoolContent.Pending))
+	pendingTxs := make([]*TxPoolContentTransaction, 0, len(txPoolContent.Pending))
 
 	for _, account := range txPoolContent.Pending {
 		lowestNonce := 9223372036854775807
@@ -1355,21 +1356,29 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		pendingTxs = append(pendingTxs, account[lowestNonce])
 	}
 	sort.Slice(pendingTxs, func(i, j int) bool {
-		return pendingTxs[i].GasPrice().Cmp(pendingTxs[j].GasPrice()) > 0
+		return pendingTxs[i].GetGasPrice().Cmp(pendingTxs[j].GetGasPrice()) > 0
 	})
 
 	standardIndex := int(math.Max(float64(2*len(txs)), 500))
 
 	slowIndex := int(math.Max(float64(5*len(txs)), 1000))
 	if standardIndex < len(pendingTxs) {
-		gpoData.Data.Standard = pendingTxs[standardIndex].GasPrice()
+		gpoData.Data.Standard = pendingTxs[standardIndex].GetGasPrice()
 	} else {
 		gpoData.Data.Standard = header.BaseFee
 	}
 
+	if gpoData.Data.Standard.Cmp(header.BaseFee) < 0 {
+		gpoData.Data.Standard = header.BaseFee
+	}
+
 	if slowIndex < len(pendingTxs) {
-		gpoData.Data.Slow = pendingTxs[slowIndex].GasPrice()
+		gpoData.Data.Slow = pendingTxs[slowIndex].GetGasPrice()
 	} else {
+		gpoData.Data.Slow = header.BaseFee
+	}
+
+	if gpoData.Data.Slow.Cmp(header.BaseFee) < 0 {
 		gpoData.Data.Slow = header.BaseFee
 	}
 
@@ -1389,7 +1398,37 @@ func getGasNowData() (*types.GasNowPageData, error) {
 }
 
 type TxPoolContent struct {
-	Pending map[string]map[int]*geth_types.Transaction
+	Pending map[string]map[int]*TxPoolContentTransaction
+}
+
+type TxPoolContentTransaction struct {
+	GasPrice     string `json:"gasPrice"`
+	MaxFeePerGas string `json:"maxFeePerGas"`
+	Hash         string `json:"hash"`
+}
+
+func (tx *TxPoolContentTransaction) GetGasPrice() *big.Int {
+	if tx.MaxFeePerGas != "" {
+		gasPrice, ok := new(big.Int).SetString(strings.Replace(tx.MaxFeePerGas, "0x", "", 1), 16)
+		if !ok {
+			logger.Warnf("error parsing gas price value of %s in tx %s", tx.MaxFeePerGas, tx.Hash)
+			return big.NewInt(0)
+		}
+
+		return gasPrice
+	} else if tx.GasPrice != "" {
+		gasPrice, ok := new(big.Int).SetString(strings.Replace(tx.GasPrice, "0x", "", 1), 16)
+		if !ok {
+			logger.Warnf("error parsing gas price value of %s in tx %s", tx.GasPrice, tx.Hash)
+			return big.NewInt(0)
+		}
+		return gasPrice
+	} else {
+		big.NewInt(0)
+		//logger.Warnf("tx %v has neither gasPrice not maxFeePerGas set", tx.Hash)
+	}
+
+	return big.NewInt(0)
 }
 
 type rpcTransaction struct {
@@ -1552,6 +1591,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	cutOffEpoch := utils.TimeToEpoch(cutOff)
 
 	additionalBurned := float64(0)
+	// logger.Infof("using epoch limit %d", cutOffEpoch)
 	err := db.ReaderDb.Get(&additionalBurned, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric), 0) AS burnedfees FROM blocks WHERE epoch > $1", cutOffEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
@@ -1559,6 +1599,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	// logger.Infof("additonal burn: %v", additionalBurned)
 	data.TotalBurned += additionalBurned
 
+	// logger.Infof("using epoch limit %d", lookbackEpoch)
 	err = db.ReaderDb.Get(&data.BurnRate1h, "SELECT COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / 60, 0) AS burnedfees FROM blocks WHERE epoch > $1", lookbackEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (1h) from blocks table: %v", err)
@@ -1614,6 +1655,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	logger.Infof("burn rate per min: %v inflation per min: %v emission: %v", data.BurnRate1h, rewards.InexactFloat64(), data.Emission)
 	// logger.Infof("calculated emission: %v", data.Emission)
 
+	// logger.Infof("using epoch limit %d", lookbackDayEpoch)
 	err = db.ReaderDb.Get(&data.BurnRate24h, "select COALESCE(SUM(exec_base_fee_per_gas::numeric * exec_gas_used::numeric) / (60 * 24), 0) as burnedfees from blocks where epoch >= $1", lookbackDayEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving burn rate (24h) from blocks table: %v", err)

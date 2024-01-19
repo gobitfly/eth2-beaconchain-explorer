@@ -914,15 +914,18 @@ func CalculateTxFeesFromBlock(block *types.Eth1Block) *big.Int {
 func CalculateTxFeeFromTransaction(tx *types.Eth1Transaction, blockBaseFee *big.Int) *big.Int {
 	// calculate tx fee depending on tx type
 	txFee := new(big.Int).SetUint64(tx.GasUsed)
-	if tx.Type == uint32(2) {
+	switch tx.Type {
+	case 0, 1:
+		txFee.Mul(txFee, new(big.Int).SetBytes(tx.GasPrice))
+	case 2, 3:
 		// multiply gasused with min(baseFee + maxpriorityfee, maxfee)
 		if normalGasPrice, maxGasPrice := new(big.Int).Add(blockBaseFee, new(big.Int).SetBytes(tx.MaxPriorityFeePerGas)), new(big.Int).SetBytes(tx.MaxFeePerGas); normalGasPrice.Cmp(maxGasPrice) <= 0 {
 			txFee.Mul(txFee, normalGasPrice)
 		} else {
 			txFee.Mul(txFee, maxGasPrice)
 		}
-	} else {
-		txFee.Mul(txFee, new(big.Int).SetBytes(tx.GasPrice))
+	default:
+		logger.Errorf("unknown tx type %v", tx.Type)
 	}
 	return txFee
 }

@@ -1863,7 +1863,7 @@ func UpdateValidatorStatisticsSyncData(day uint64, client rpc.Client, dryRun boo
 				UPDATE validator_stats set
 				participated_sync = $1,
 				missed_sync = $2,
-				orphaned_sync = $3,
+				orphaned_sync = $3
 				WHERE day = $4 AND validatorindex = $5`,
 				data.ParticipatedSync,
 				data.MissedSync,

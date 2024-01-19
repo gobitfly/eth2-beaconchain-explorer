@@ -1545,11 +1545,15 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	totalTxSavings := decimal.NewFromInt(0)
 	totalTxFees := decimal.NewFromInt(0)
 	totalBurned := decimal.NewFromInt(0)
+	totalBurnedBlob := decimal.NewFromInt(0)
 	totalGasUsed := decimal.NewFromInt(0)
+	totalBlobGasUsed := decimal.NewFromInt(0)
+	totalBlobCount := decimal.NewFromInt(0)
 
 	legacyTxCount := int64(0)
 	accessListTxCount := int64(0)
 	eip1559TxCount := int64(0)
+	blobTxCount := int64(0)
 	failedTxCount := int64(0)
 	successTxCount := int64(0)
 
@@ -1617,6 +1621,19 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 				txFees = baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))
 				totalTxSavings = totalTxSavings.Add(maxFee.Mul(gasUsed).Sub(baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))))
 
+			case 3:
+				// priority fee is capped because the base fee is filled first
+				tipFee = decimal.Min(prioFee, maxFee.Sub(baseFee))
+				blobTxCount += 1
+				// totalMinerTips = totalMinerTips.Add(tipFee.Mul(gasUsed))
+				txFees = baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))
+				totalTxSavings = totalTxSavings.Add(maxFee.Mul(gasUsed).Sub(baseFee.Mul(gasUsed).Add(tipFee.Mul(gasUsed))))
+
+				blobGasUsed := decimal.NewFromBigInt(new(big.Int).SetUint64(tx.BlobGasUsed), 0)
+				totalBlobGasUsed = totalBlobGasUsed.Add(blobGasUsed)
+				totalBurnedBlob = blobGasUsed.Mul(decimal.NewFromBigInt(new(big.Int).SetBytes(tx.BlobGasPrice), 0))
+				totalBlobCount = totalBlobCount.Add(decimal.NewFromInt(int64(len(tx.BlobVersionedHashes))))
+
 			default:
 				logger.Fatalf("error unknown tx type %v hash: %x", tx.Status, tx.Hash)
 			}
@@ -1633,7 +1650,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 				logger.Fatalf("error unknown status code %v hash: %x", tx.Status, tx.Hash)
 			}
 			totalGasUsed = totalGasUsed.Add(gasUsed)
-			totalBurned = totalBurned.Add(baseFee.Mul(gasUsed))
+			totalBurned = totalBurned.Add(baseFee.Mul(gasUsed)).Add(totalBurnedBlob)
 			if blk.Number < 12244000 {
 				totalTips = totalTips.Add(gasUsed.Mul(gasPrice))
 			} else {
@@ -1657,9 +1674,15 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	logger.Infof("consensus rewards: %v", totalConsensusRewards)
 
 	logger.Infof("Exporting BURNED_FEES %v", totalBurned.String())
-	_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES ($1, 'BURNED_FEES', $2) on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value", dateTrunc, totalBurned.String())
+	err = SaveChartSeriesPoint(dateTrunc, "BURNED_FEES", totalBurned.String())
 	if err != nil {
 		return fmt.Errorf("error calculating BURNED_FEES chart_series: %w", err)
+	}
+
+	logger.Infof("Exporting BURNED_BLOB_FEES %v", totalBurnedBlob.String())
+	err = SaveChartSeriesPoint(dateTrunc, "BURNED_BLOB_FEES", totalBurnedBlob.String())
+	if err != nil {
+		return fmt.Errorf("error calculating BURNED_BLOB_FEES chart_series: %w", err)
 	}
 
 	logger.Infof("Exporting NON_FAILED_TX_GAS_USAGE %v", totalGasUsed.Sub(totalFailedGasUsed).String())
@@ -1667,10 +1690,17 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	if err != nil {
 		return fmt.Errorf("error calculating NON_FAILED_TX_GAS_USAGE chart_series: %w", err)
 	}
+
 	logger.Infof("Exporting BLOCK_COUNT %v", blockCount)
 	err = SaveChartSeriesPoint(dateTrunc, "BLOCK_COUNT", blockCount)
 	if err != nil {
 		return fmt.Errorf("error calculating BLOCK_COUNT chart_series: %w", err)
+	}
+
+	logger.Infof("Exporting BLOB_COUNT %v", blockCount)
+	err = SaveChartSeriesPoint(dateTrunc, "BLOB_COUNT", totalBlobCount)
+	if err != nil {
+		return fmt.Errorf("error calculating BLOB_COUNT chart_series: %w", err)
 	}
 
 	// convert microseconds to seconds
@@ -1697,7 +1727,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 
 	if totalGasPrice.GreaterThan(decimal.NewFromInt(0)) && decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)).GreaterThan(decimal.NewFromInt(0)) {
 		logger.Infof("Exporting AVG_GASPRICE")
-		_, err = WriterDb.Exec("INSERT INTO chart_series (time, indicator, value) VALUES($1, 'AVG_GASPRICE', $2) on conflict (time, indicator) do update set time = excluded.time, indicator = excluded.indicator, value = excluded.value", dateTrunc, totalGasPrice.Div((decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)))).String())
+		err = SaveChartSeriesPoint(dateTrunc, "AVG_GASPRICE", totalGasPrice.Div((decimal.NewFromInt(legacyTxCount).Add(decimal.NewFromInt(accessListTxCount)))).String())
 		if err != nil {
 			return fmt.Errorf("error calculating AVG_GASPRICE chart_series err: %w", err)
 		}
@@ -1715,6 +1745,12 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 	err = SaveChartSeriesPoint(dateTrunc, "TOTAL_GASUSED", totalGasUsed.String())
 	if err != nil {
 		return fmt.Errorf("error calculating TOTAL_GASUSED chart_series: %w", err)
+	}
+
+	logger.Infof("Exporting TOTAL_BLOB_GASUSED %v", totalBlobGasUsed.String())
+	err = SaveChartSeriesPoint(dateTrunc, "TOTAL_BLOB_GASUSED", totalBlobGasUsed.String())
+	if err != nil {
+		return fmt.Errorf("error calculating TOTAL_BLOB_GASUSED chart_series: %w", err)
 	}
 
 	if blockCount > 0 {
