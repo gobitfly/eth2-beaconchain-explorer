@@ -528,7 +528,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 		}
 		// temporarily disabled, see BIDS-2437 #TODO:patrick
 		// return fmt.Errorf("error could not resolve name [%v]: %w", name, err)
-		logger.Errorf("error could not resolve name [%v]: %w", name, err)
+		logger.Errorf("error could not resolve name [%v]: %v", name, err)
 		return nil
 	}
 
