@@ -4,7 +4,7 @@
   <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script>
     $(document).ready(function () {
-      $("#epochs").DataTable({
+      var tblOpts = {
         searchDelay: 0,
         processing: true,
         serverSide: true,
@@ -14,6 +14,7 @@
         pagingType: "input",
         stateSave: true,
         stateSaveCallback: function (settings, data) {
+          data.search.search = ""
           data.order = []
           fetch(`/tables/${settings.sTableId}/state`, {
             method: "PUT",
@@ -44,6 +45,9 @@
                 console.error("error loading table state, err:", data, "status: ", status)
               }
               var response = data !== "" ? data : JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+              if (q) {
+                response.search.search = q
+              }
               callback(response)
             })
             .catch((err) => {
@@ -72,8 +76,24 @@
         drawCallback: function (settings) {
           formatTimestamps()
         },
-      })
+      }
       // $("div.toolbar").html("<b>Custom tool bar! Text/images etc.</b>")
+      var usp = new URLSearchParams(window.location.search)
+      var q = usp.get("q")
+      var t = $("#epochs").DataTable(tblOpts)
+      if (q) {
+        t.search(q)
+        t.draw()
+      }
+
+      $(document).on("input", "#epochs_filter > label > input", function (ev) {
+        if (ev && ev.target && ev.target.value) {
+          var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+          window.history.replaceState(null, "Epochs", newUrl)
+        } else {
+          window.history.replaceState(null, "Epochs", window.location.pathname)
+        }
+      })
     })
   </script>
 {{ end }}
