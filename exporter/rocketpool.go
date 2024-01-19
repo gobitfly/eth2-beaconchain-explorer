@@ -1872,19 +1872,29 @@ func (b *QuotedBigInt) UnmarshalJSON(p []byte) error {
 }
 
 func DownloadRewardsFile(fileName string, interval uint64, cid string, isDaemon bool) ([]byte, error) {
-
 	ipfsFilename := fileName + ".zst"
+
+	split := strings.Split(fileName, "-")
+	var network string
+	if len(split) > 3 {
+		network = split[2]
+	}
+
+	client := &http.Client{
+		Timeout: 40 * time.Second,
+	}
 
 	// Create URL list
 	urls := []string{
 		fmt.Sprintf("https://%s.ipfs.dweb.link/%s", cid, ipfsFilename),
 		fmt.Sprintf("https://ipfs.io/ipfs/%s/%s", cid, ipfsFilename),
+		fmt.Sprintf("https://github.com/rocket-pool/rewards-trees/raw/main/%s/%s", network, fileName),
 	}
 
 	// Attempt downloads
 	errBuilder := strings.Builder{}
 	for _, url := range urls {
-		resp, err := http.Get(url)
+		resp, err := client.Get(url)
 		if err != nil {
 			errBuilder.WriteString(fmt.Sprintf("Downloading %s failed (%s)\n", url, err.Error()))
 			continue
@@ -1903,13 +1913,16 @@ func DownloadRewardsFile(fileName string, interval uint64, cid string, isDaemon 
 			}
 
 			// Decompress it
-			decompressedBytes, err := decompressFile(bytes)
-			if err != nil {
-				errBuilder.WriteString(fmt.Sprintf("Error decompressing %s: %s\n", url, err.Error()))
-				continue
+			writeBytes := bytes
+			if strings.HasSuffix(url, ".zst") {
+				writeBytes, err = decompressFile(bytes)
+				if err != nil {
+					errBuilder.WriteString(fmt.Sprintf("Error decompressing %s: %s\n", url, err.Error()))
+					continue
+				}
 			}
 
-			return decompressedBytes, nil
+			return writeBytes, nil
 		}
 	}
 
