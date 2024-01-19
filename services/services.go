@@ -1368,9 +1368,17 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		gpoData.Data.Standard = header.BaseFee
 	}
 
+	if gpoData.Data.Standard.Cmp(header.BaseFee) < 0 {
+		gpoData.Data.Standard = header.BaseFee
+	}
+
 	if slowIndex < len(pendingTxs) {
 		gpoData.Data.Slow = pendingTxs[slowIndex].GetGasPrice()
 	} else {
+		gpoData.Data.Slow = header.BaseFee
+	}
+
+	if gpoData.Data.Slow.Cmp(header.BaseFee) < 0 {
 		gpoData.Data.Slow = header.BaseFee
 	}
 
