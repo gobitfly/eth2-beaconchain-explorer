@@ -526,7 +526,10 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 			}
 			return nil
 		}
-		return fmt.Errorf("error could not resolve name [%v]: %w", name, err)
+		// temporarily disabled, see BIDS-2437 #TODO:patrick
+		// return fmt.Errorf("error could not resolve name [%v]: %w", name, err)
+		logger.Errorf("error could not resolve name [%v]: %w", name, err)
+		return nil
 	}
 
 	// we need to get the main domain to get the expiration date
