@@ -58,10 +58,11 @@ const ARBITRUM_CHAINID = 42161
 const ARBITRUM_NITRO_BLOCKNUMBER = 22207815
 const SEPOLIA_CHAINID = 11155111
 
-const HTTP_TIMEOUT_IN_SECONDS = 2 * 120
-const MAX_REORG_DEPTH = 256            // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
-const MAX_NODE_REQUESTS_AT_ONCE = 1024 // maximum node requests allowed
-const OUTPUT_CYCLE_IN_SECONDS = 8      // duration between 2 outputs / updates, just a visual thing
+const HTTP_TIMEOUT_IN_SECONDS = 120
+const MAX_REORG_DEPTH = 256             // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
+const MAX_NODE_REQUESTS_AT_ONCE = 1024  // maximum node requests allowed
+const OUTPUT_CYCLE_IN_SECONDS = 8       // duration between 2 outputs / updates, just a visual thing
+const TRY_TO_RECOVER_ON_ERROR_COUNT = 5 // total retries, so a value for 5 is 1 try + 5 retries
 
 // structs
 type jsonRpcReturnId struct {
@@ -112,9 +113,11 @@ func main() {
 	nodeRequestsAtOnce := flag.Int64("node-requests-at-once", 42, fmt.Sprintf("bulk size per node = bt = db request (MAX %s)", _formatInt64(MAX_NODE_REQUESTS_AT_ONCE)))
 	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes, doesn't go very well with only-hole-check")
 	onlyHoleCheck := flag.Bool("only-hole-check", false, "just check for holes and quit, can be used for a reexport running simulation to a normal setup, just remove entries in postgres and start with this flag, doesn't go very well with skip-hole-check")
+	noNewBlocks := flag.Bool("ignore-new-blocks", false, "there are no new blocks, at all")
 	discordWebhookBlockThreshold := flag.Int64("discord-block-threshold", 1000000, "every x blocks an update is send to Discord")
 	discordWebhookReportUrl := flag.String("discord-url", "", "report progress to discord url")
 	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
+	discordWebhookAddTextFatal := flag.String("discord-fatal-text", "", "this text will be added to the discord message in the case of an fatal")
 	flag.Parse()
 
 	// tell the user about all parameter
@@ -134,6 +137,9 @@ func main() {
 		}
 		if *onlyHoleCheck {
 			logrus.Infof("only-hole-check set true")
+		}
+		if *noNewBlocks {
+			logrus.Infof("ignore-new-blocks set true")
 		}
 	}
 
@@ -230,7 +236,7 @@ func main() {
 
 	// get latest block (as it's global, so we have a initial value)
 	logrus.Info("get latest block from node...")
-	updateBlockNumber(true)
+	updateBlockNumber(true, *noNewBlocks, discordWebhookReportUrl, discordWebhookUser, discordWebhookAddTextFatal)
 	logrus.Infof("...get latest block (%s) from node done.", _formatInt64(currentNodeBlockNumber.Load()))
 
 	// //////////////////////////////////////////
@@ -251,6 +257,7 @@ func main() {
 		logrus.Infof("Found REEXPORT for block %s to %s...", _formatInt64(*startBlockNumber), _formatInt64(*endBlockNumber))
 		err := bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: *startBlockNumber, end: *endBlockNumber}}, *concurrency, *nodeRequestsAtOnce, discordWebhookBlockThreshold, discordWebhookReportUrl, discordWebhookUser)
 		if err != nil {
+			sendMessage(fmt.Sprintf("%s NODE EXPORT: Fatal, reexport not completed, check logs %s", getChainNamePretty(), *discordWebhookAddTextFatal), discordWebhookReportUrl, discordWebhookUser)
 			utils.LogFatal(err, "error while reexport blocks for bigtable (reexport range)", 0) // fatal, as there is nothing more todo anyway
 		}
 		logrus.Info("Job done, have a nice day :)")
@@ -473,26 +480,28 @@ func readBT(tableBlocksRaw *gcp_bigtable.Table, prefix string, family string, co
 func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int64, deep int) error {
 	err := _bulkExportBlocksImpl(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
 	if err != nil {
-		elementCount := len(blockRawData)
+		if deep <= TRY_TO_RECOVER_ON_ERROR_COUNT {
+			elementCount := len(blockRawData)
 
-		// output the error
-		{
-			s := errorIdentifier.FindStringSubmatch(err.Error())
-			if len(s) >= 2 { // if we have a valid json error available, should be the case if it's a node issue
-				logrus.WithFields(logrus.Fields{
-					"deep":     deep,
-					"cause":    s[1],
-					"elements": elementCount}).Warnf("got an error and will try to fix it (sub)")
-			} else { // if we have a no json error available, should be the case if it's a BT or Postgres issue
-				logrus.WithFields(logrus.Fields{
-					"deep":     deep,
-					"cause":    err,
-					"elements": elementCount}).Warnf("got an error and will try to fix it (err)")
+			// output the error
+			{
+				s := errorIdentifier.FindStringSubmatch(err.Error())
+				if len(s) >= 2 { // if we have a valid json error available, should be the case if it's a node issue
+					logrus.WithFields(logrus.Fields{
+						"deep":     deep,
+						"cause":    s[1],
+						"0block":   blockRawData[0].blockNumber,
+						"elements": elementCount}).Warnf("got an error and will try to fix it (sub)")
+				} else { // if we have a no json error available, should be the case if it's a BT or Postgres issue
+					logrus.WithFields(logrus.Fields{
+						"deep":     deep,
+						"cause":    err,
+						"0block":   blockRawData[0].blockNumber,
+						"elements": elementCount}).Warnf("got an error and will try to fix it (err)")
+				}
 			}
-		}
 
-		// try to recover
-		if deep < 3 { // only try to recover 3 times in a row
+			// try to recover
 			if elementCount == 1 { // if there is only 1 element, no split possible
 				err = _bulkExportBlocksHandler(tableBlocksRaw, blockRawData, nodeRequestsAtOnce, deep+1)
 			} else if elementCount > 1 { // split the elements in half and try again to put less strain on the node
@@ -544,11 +553,15 @@ func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fu
 		muts := []*gcp_bigtable.Mutation{}
 		keys := []string{}
 		for _, v := range blockRawData {
-			if len(v.blockCompressed) == 0 || len(v.receiptsCompressed) == 0 || len(v.tracesCompressed) == 0 {
+			if len(v.blockCompressed) == 0 || len(v.tracesCompressed) == 0 {
 				utils.LogFatal(nil, "tried writing empty data to BT", 0, map[string]interface{}{"len(v.blockCompressed)": len(v.blockCompressed), "len(v.receiptsCompressed)": len(v.receiptsCompressed), "len(v.tracesCompressed)": len(v.tracesCompressed)}) // fatal, as if this is not working in the first place, it will never work
 			}
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), v.blockCompressed)
+			// #RECY emptry receipts possible on Arbitrum, but nowhere else?
+			if len(v.receiptsCompressed) < 1 {
+				logrus.Warnf("empty receipts at block %d lRec %d lTxs %d", v.blockNumber, len(v.receiptsCompressed), len(v.blockTxs))
+			}
 			mut.Set(BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS, gcp_bigtable.Timestamp(0), v.receiptsCompressed)
 			mut.Set(BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES, gcp_bigtable.Timestamp(0), v.tracesCompressed)
 			if v.blockUnclesCount > 0 {
@@ -902,18 +915,21 @@ func joinIntRanges(iRange []intRange) []intRange {
 */
 
 // get newest block number from node, should be called always with TRUE
-func updateBlockNumber(firstCall bool) {
+func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl *string, discordWebhookUser *string, discordWebhookAddTextFatal *string) {
 	const NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE = 3
-	const WARN_TILL_NOBLOCK_COUNT_OF = 3
-	const ERROR_TILL_NOBLOCK_COUNT_OF = 10
+	const WARN_TILL_NOBLOCK_COUNT_OF = 10
+	const ERROR_TILL_NOBLOCK_COUNT_OF = 20
 
 	if firstCall {
 		blockNumber, err := rpciGetLatestBlock()
 		if err != nil {
+			sendMessage(fmt.Sprintf("%s NODE EXPORT: Fatal, failed to get newest block from node, on first try %s", getChainNamePretty(), *discordWebhookAddTextFatal), discordWebhookReportUrl, discordWebhookUser)
 			utils.LogFatal(err, "fatal, failed to get newest block from node, on first try", 0)
 		}
 		currentNodeBlockNumber.Store(blockNumber)
-		go updateBlockNumber(false)
+		if !noNewBlocks {
+			go updateBlockNumber(false, false, discordWebhookReportUrl, discordWebhookUser, discordWebhookAddTextFatal)
+		}
 		return
 	}
 
@@ -923,6 +939,8 @@ func updateBlockNumber(firstCall bool) {
 	if strings.HasPrefix(utils.Config.Eth1RpcEndpoint, "ws") {
 		logrus.Infof("ws node endpoint found, will use subscribe")
 		var timer *time.Timer
+		previousBlock := int64(-1)
+		newestBlock := int64(-1)
 		for {
 			headers := make(chan *eth_types.Header)
 			sub, err := rpciSubscribeNewHead(headers)
@@ -944,8 +962,8 @@ func updateBlockNumber(firstCall bool) {
 						errorText = "error, timer triggered for subscribe of new head"
 						break Loop
 					case header := <-headers:
-						previousBlock := currentNodeBlockNumber.Load()
-						newestBlock := header.Number.Int64()
+						previousBlock = currentNodeBlockNumber.Load()
+						newestBlock = header.Number.Int64()
 						if newestBlock <= previousBlock {
 							utils.LogFatal(nil, "impossible error, newest block <= previous block", 0, map[string]interface{}{"previousBlock": previousBlock, "newestBlock": newestBlock})
 						}
@@ -956,16 +974,17 @@ func updateBlockNumber(firstCall bool) {
 				}
 			}
 
-			secondsSinceLastBlockReceived := time.Since(gotNewBlockAt)
-			if secondsSinceLastBlockReceived < timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
+			durationSinceLastBlockReceived := time.Since(gotNewBlockAt)
+			if durationSinceLastBlockReceived < timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
 				logrus.WithFields(logrus.Fields{
-					"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived,
-					"error":                         err,
+					"durationSinceLastBlockReceived": durationSinceLastBlockReceived,
+					"error":                          err,
 				}).Warn(errorText)
-			} else if secondsSinceLastBlockReceived < timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
-				utils.LogError(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
+			} else if durationSinceLastBlockReceived < timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
+				utils.LogError(err, errorText, 0, map[string]interface{}{"durationSinceLastBlockReceived": durationSinceLastBlockReceived, "previousBlock": previousBlock, "newestBlock": newestBlock})
 			} else {
-				utils.LogFatal(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
+				sendMessage(fmt.Sprintf("%s NODE EXPORT: Fatal, %s, %v, %v %s", getChainNamePretty(), errorText, err, durationSinceLastBlockReceived, *discordWebhookAddTextFatal), discordWebhookReportUrl, discordWebhookUser)
+				utils.LogFatal(err, errorText, 0, map[string]interface{}{"durationSinceLastBlockReceived": durationSinceLastBlockReceived, "previousBlock": previousBlock, "newestBlock": newestBlock})
 			}
 
 			close(headers)
@@ -974,6 +993,7 @@ func updateBlockNumber(firstCall bool) {
 		}
 	} else { // no ws node endpoint available
 		logrus.Infof("no ws node endpoint found, can't use subscribe")
+		errorText := "error, no new block for a longer time"
 		for {
 			time.Sleep(timePerBlock / 2) // wait half a block
 			previousBlock := currentNodeBlockNumber.Load()
@@ -985,18 +1005,22 @@ func updateBlockNumber(firstCall bool) {
 					currentNodeBlockNumber.Store(newestBlock)
 					// logrus.Infof("Newest node block %d", currentNodeBlockNumber.Load()) // #RECY REMOVE after testing
 					gotNewBlockAt = time.Now()
+					continue
 				}
 			}
 
-			secondsSinceLastBlockReceived := time.Since(gotNewBlockAt)
-			if secondsSinceLastBlockReceived >= timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
-				utils.LogFatal(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
-			} else if secondsSinceLastBlockReceived >= timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
-				utils.LogError(err, errorText, 0, map[string]interface{}{"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived})
-			} else if secondsSinceLastBlockReceived >= timePerBlock*NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE {
+			durationSinceLastBlockReceived := time.Since(gotNewBlockAt)
+			if durationSinceLastBlockReceived >= timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
+				sendMessage(fmt.Sprintf("%s NODE EXPORT: Fatal, %s, %d, %d, %v, %v %s", getChainNamePretty(), errorText, previousBlock, newestBlock, err, durationSinceLastBlockReceived, *discordWebhookAddTextFatal), discordWebhookReportUrl, discordWebhookUser)
+				utils.LogFatal(err, errorText, 0, map[string]interface{}{"durationSinceLastBlockReceived": durationSinceLastBlockReceived, "previousBlock": previousBlock, "newestBlock": newestBlock})
+			} else if durationSinceLastBlockReceived >= timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
+				utils.LogError(err, errorText, 0, map[string]interface{}{"durationSinceLastBlockReceived": durationSinceLastBlockReceived, "previousBlock": previousBlock, "newestBlock": newestBlock})
+			} else if durationSinceLastBlockReceived >= timePerBlock*NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE {
 				logrus.WithFields(logrus.Fields{
-					"secondsSinceLastBlockReceived": secondsSinceLastBlockReceived,
-					"error":                         err,
+					"durationSinceLastBlockReceived": durationSinceLastBlockReceived,
+					"error":                          err,
+					"previousBlock":                  previousBlock,
+					"newestBlock":                    newestBlock,
 				}).Warn(errorText)
 			}
 		}
@@ -1349,12 +1373,16 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 	// iterate through array and get data when threshold reached
 	var blockRawDataWriteIndex int
 	var currentElementCount int64
+	var dataAvailable bool
 	bodyStr := "["
 	for i, v := range blockRawData {
 		l := int64(len(v.blockTxs))
+		if l < 1 {
+			continue // skip empty
+		}
 
 		// threshold reached, getting data...
-		if i != 0 {
+		if dataAvailable {
 			if currentElementCount+l > nodeRequestsAtOnce {
 				bodyStr += "]"
 				rawData, err := _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, currentElementCount)
@@ -1362,10 +1390,13 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 					return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
 				}
 
-				for ii, vv := range rawData {
-					blockRawData[blockRawDataWriteIndex+ii].receiptsCompressed = compress(vv)
+				for _, vv := range rawData {
+					for len(blockRawData[blockRawDataWriteIndex].blockTxs) < 1 {
+						blockRawDataWriteIndex++
+					}
+					blockRawData[blockRawDataWriteIndex].receiptsCompressed = compress(vv)
+					blockRawDataWriteIndex++
 				}
-				blockRawDataWriteIndex += len(rawData)
 
 				currentElementCount = 0
 				bodyStr = "["
@@ -1375,6 +1406,7 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 		}
 
 		// adding txs of current block
+		dataAvailable = true
 		currentElementCount += l
 		for txIndex, txValue := range v.blockTxs {
 			if txIndex != 0 {
@@ -1392,8 +1424,12 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 			return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
 		}
 
-		for ii, vv := range rawData {
-			blockRawData[blockRawDataWriteIndex+ii].receiptsCompressed = compress(vv)
+		for _, vv := range rawData {
+			for len(blockRawData[blockRawDataWriteIndex].blockTxs) < 1 {
+				blockRawDataWriteIndex++
+			}
+			blockRawData[blockRawDataWriteIndex].receiptsCompressed = compress(vv)
+			blockRawDataWriteIndex++
 		}
 	}
 
