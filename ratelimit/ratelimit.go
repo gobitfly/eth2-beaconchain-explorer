@@ -1,4 +1,4 @@
-package RateLimit
+package ratelimit
 
 import (
 	"context"
@@ -22,6 +22,12 @@ import (
 type TimeWindow string
 
 const (
+	SecondTimeWindow = "second"
+	HourTimeWindow   = "hour"
+	MonthTimeWindow  = "month"
+)
+
+const (
 	HeaderRateLimitLimit     = "X-RateLimit-Limit"     // the rate limit ceiling that is applicable for the current request
 	HeaderRateLimitRemaining = "X-RateLimit-Remaining" // the number of requests left for the current rate-limit window
 	HeaderRateLimitReset     = "X-RateLimit-Reset"     // the number of seconds until the quota resets
@@ -31,12 +37,10 @@ const (
 	NokeyRateLimitHour   = 500 // RateLimit for requests without or with invalid apikey
 	NokeyRateLimitMonth  = 0   // RateLimit for requests without or with invalid apikey
 
-	FallbackRateLimitSecond = 20 // RateLimit for when redis is offline
-	FallbackRateLimitBurst  = 20 // RateLimit for when redis is offline
+	FallbackRateLimitSecond = 20 // RateLimit per second for when redis is offline
+	FallbackRateLimitBurst  = 20 // RateLimit burst for when redis is offline
 
-	SecondTimeWindow = "second"
-	HourTimeWindow   = "hour"
-	MonthTimeWindow  = "month"
+	ratelimitStatsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
 )
 
 var NoKeyRateLimit = &RateLimit{
@@ -64,10 +68,10 @@ var pathPrefix = "" // only requests with this prefix will be RateLimited
 var logger = logrus.StandardLogger().WithField("module", "ratelimit")
 
 type dbEntry struct {
-	Date  time.Time
-	Key   string
-	Path  string
-	Count int64
+	Date   time.Time
+	ApiKey string
+	Path   string
+	Count  int64
 }
 
 type RateLimit struct {
@@ -242,6 +246,11 @@ func HttpMiddleware(next http.Handler) http.Handler {
 
 // updateWeights gets the weights from postgres and updates the weights map.
 func updateWeights(firstRun bool) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("ratelimit_updateWeights").Observe(time.Since(start).Seconds())
+	}()
+
 	dbWeights := []struct {
 		Endpoint  string    `db:"endpoint"`
 		Weight    int64     `db:"weight"`
@@ -282,11 +291,22 @@ func updateRedisStatus() error {
 	return nil
 }
 
-// updateStats scans redis for ratelimit:stats:* keys and inserts them into postgres, if the key's date is in the past it will also delete the key in redis.
+// updateStats scans redis for ratelimit:stats:* keys and inserts them into postgres, if the key's truncated date is older than specified stats-truncation it will also delete the key in redis.
 func updateStats() error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("ratelimit_updateStats").Observe(time.Since(start).Seconds())
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*300)
+	defer cancel()
+
+	var err error
+	startTruncated := start.Truncate(ratelimitStatsTruncateDuration)
+
 	allKeys := []string{}
 	cursor := uint64(0)
-	ctx := context.Background()
+
 	for {
 		cmd := redisClient.Scan(ctx, cursor, "ratelimit:stats:*:*:*", 1000)
 		if cmd.Err() != nil {
@@ -310,43 +330,65 @@ func updateStats() error {
 		if end > len(allKeys) {
 			end = len(allKeys)
 		}
+		keysToDelete := []string{}
 		keys := allKeys[start:end]
 		entries := make([]dbEntry, len(keys))
-		values := make([]*redis.StringCmd, len(keys))
-		cmds, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
-			for i, k := range keys {
-				ks := strings.Split(k, ":")
-				if len(ks) != 5 {
-					return fmt.Errorf("error parsing key %s: split-len != 5", k)
-				}
-				dateString := ks[2]
-				date, err := time.Parse("2006-01-02", dateString)
-				if err != nil {
-					return fmt.Errorf("error parsing date in key %s: %v", k, err)
-				}
-				key := ks[3]
-				path := ks[4]
-				values[i] = pipe.Get(ctx, k)
-				entries[i] = dbEntry{
-					Date: date,
-					Key:  key,
-					Path: path,
-				}
+		for i, k := range keys {
+			ks := strings.Split(k, ":")
+			if len(ks) != 5 {
+				return fmt.Errorf("error parsing key %s: split-len != 5", k)
 			}
-			return nil
-		})
-		for i := range cmds {
-			entries[i].Count, err = values[i].Int64()
+			dateString := ks[2]
+			date, err := time.Parse("2006-01-02", dateString)
 			if err != nil {
-				return fmt.Errorf("error parsing count of key %s: %v: %w", entries[i].Key, entries[i].Count, err)
+				return fmt.Errorf("error parsing date in key %s: %v", k, err)
+			}
+			dateTruncated := date.Truncate(ratelimitStatsTruncateDuration)
+			if dateTruncated.Before(startTruncated) {
+				keysToDelete = append(keysToDelete, k)
+			}
+			entries[i] = dbEntry{
+				Date:   dateTruncated,
+				ApiKey: ks[3],
+				Path:   ks[4],
 			}
 		}
-		if err != nil {
-			return err
+
+		mgetSize := 500
+		for j := 0; j <= len(keys); j += mgetSize {
+			mgetStart := j
+			mgetEnd := j + mgetSize
+			if mgetEnd > len(keys) {
+				mgetEnd = len(keys)
+			}
+			mgetRes, err := redisClient.MGet(ctx, keys[mgetStart:mgetEnd]...).Result()
+			if err != nil {
+				return fmt.Errorf("error getting stats-count from redis: %w", err)
+			}
+			for k, v := range mgetRes {
+				entries[mgetStart+k].Count, err = v.(*redis.StringCmd).Int64()
+				if err != nil {
+					return err
+				}
+			}
 		}
+
 		err = updateStatsEntries(entries)
 		if err != nil {
-			return err
+			return fmt.Errorf("error updating stats entries: %w", err)
+		}
+
+		delSize := 500
+		for j := 0; j <= len(keys); j += delSize {
+			delStart := j
+			delEnd := j + delSize
+			if delEnd > len(keysToDelete) {
+				delEnd = len(keysToDelete)
+			}
+			_, err = redisClient.Del(ctx, keysToDelete[delStart:delEnd]...).Result()
+			if err != nil {
+				logger.Errorf("error deleting stats-keys from redis: %v", err)
+			}
 		}
 	}
 
@@ -373,17 +415,17 @@ func updateStatsEntries(entries []dbEntry) error {
 
 		valueStrings = append(valueStrings, "("+strings.Join(valueStringArr, ",")+")")
 		valueArgs = append(valueArgs, entry.Date)
-		valueArgs = append(valueArgs, entry.Key)
+		valueArgs = append(valueArgs, entry.ApiKey)
 		valueArgs = append(valueArgs, entry.Path)
 		valueArgs = append(valueArgs, entry.Count)
 
-		logger.WithFields(logrus.Fields{"count": entry.Count, "key": entry.Key}).Infof("inserting stats entry %v/%v", allIdx, len(entries))
+		logger.WithFields(logrus.Fields{"count": entry.Count, "apikey": entry.ApiKey, "path": entry.Path, "date": entry.Date}).Infof("inserting stats entry %v/%v", allIdx, len(entries))
 
 		batchIdx++
 		allIdx++
 
 		if batchIdx >= batchSize || allIdx >= len(entries) {
-			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, call, count) VALUES %s ON CONFLICT (ts, apikey, call) DO UPDATE SET count = excluded.count`, strings.Join(valueStrings, ","))
+			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, call, count) VALUES %s ON CONFLICT (ts, apikey, call) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
 			_, err := tx.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err
@@ -457,7 +499,6 @@ func postRateLimit(rl *RateLimitResult, status int) error {
 	if status == 200 {
 		return nil
 	}
-	// logger.WithFields(logrus.Fields{"key": rl.Key, "status": status}).Infof("decreasing key")
 	// if status is not 200 decrement keys since we do not count unsuccessful requests
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -477,7 +518,7 @@ func postRateLimit(rl *RateLimitResult, status int) error {
 func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	start := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("ratelimit_total").Observe(time.Since(start).Seconds())
+		metrics.TaskDuration.WithLabelValues("ratelimit_rateLimitRequest").Observe(time.Since(start).Seconds())
 	}()
 
 	ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*1000)
