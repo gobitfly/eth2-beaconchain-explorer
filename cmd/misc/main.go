@@ -1983,7 +1983,8 @@ func updateRatelimits() error {
 		utils.Config.Frontend.Stripe.Sapphire,
 		utils.Config.Frontend.Stripe.Emerald,
 		utils.Config.Frontend.Stripe.Diamond,
-		utils.Config.Frontend.Stripe.Custom,
+		// utils.Config.Frontend.Stripe.Custom1,
+		// utils.Config.Frontend.Stripe.Custom2,
 	)
 	return err
 }
