@@ -1,7 +1,7 @@
 {{ define "execution_transactions" }}
-  {{ $data := .Data }}
-  {{ if $data.ExecutionData }}
-    {{ $data = $data.ExecutionData}}
+  {{ $data := .Data}}
+  {{ if eq $.Active "blockchain" }}
+    {{ $data = .Data.ExecutionData}}
   {{ end }}
   {{ with $data }}
     <style>

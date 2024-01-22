@@ -494,7 +494,13 @@ func GetCurrency(r *http.Request) string {
 			return cookie.Value
 		}
 	}
-	return utils.Config.Frontend.MainCurrency
+	// here, the user did not select a currency to visualize the amounts, so we choose one by default
+	if utils.Config.Frontend.MainCurrency != "GNO" {
+		return utils.Config.Frontend.MainCurrency
+	} else {
+		// if the network is Gnosis, we show amounts in xDAI by default
+		return utils.Config.Frontend.ElCurrency
+	}
 }
 
 func GetCurrencySymbol(r *http.Request) string {

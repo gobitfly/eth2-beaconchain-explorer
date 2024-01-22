@@ -73,14 +73,12 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 
 	clCurrency = clCurrencyParam
 	elCurrency = elCurrencyParam
-	if elCurrency == "xDAI" {
-		elCurrency = "DAI"
-	}
+
 	calcPairs[elCurrency] = true
 	calcPairs[clCurrency] = true
 
-	setPrice("DAI", "GNO", 1.0/200.0)
-	setPrice("GNO", "DAI", 200.0)
+	setPrice("xDAI", "GNO", 1.0/200.0)
+	setPrice("GNO", "xDAI", 200.0)
 	setPrice("GNO", "USD", 200.0)
 	setPrice("GNO", "ETH", 200.0/2000.0)
 	setPrice("mGNO", "GNO", float64(1)/float64(32))
@@ -90,7 +88,7 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 
 	calcPairs["GNO"] = true
 
-	availableCurrencies = []string{"GNO", "mGNO", "DAI", "ETH", "USD"}
+	availableCurrencies = []string{"GNO", "mGNO", "xDAI", "ETH", "USD"}
 	return
 
 	eClient, err := ethclient.Dial(eth1Endpoint)
@@ -137,7 +135,7 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 	case 100:
 		// see: https://docs.chain.link/data-feeds/price-feeds/addresses/?network=gnosis-chain
 		feedAddrs["GNO/USD"] = "0x22441d81416430A54336aB28765abd31a792Ad37"
-		feedAddrs["DAI/USD"] = "0x678df3415fc31947dA4324eC63212874be5a82f8"
+		feedAddrs["xDAI/USD"] = "0x678df3415fc31947dA4324eC63212874be5a82f8"
 		feedAddrs["EUR/USD"] = "0xab70BCB260073d036d1660201e9d5405F5829b7a"
 		feedAddrs["JPY/USD"] = "0x2AfB993C670C01e9dA1550c58e8039C1D8b8A317"
 		// feedAddrs["CHFUSD"] = "0xFb00261Af80ADb1629D3869E377ae1EEC7bE659F"
@@ -150,7 +148,7 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 
 		calcPairs["GNO"] = true
 
-		availableCurrencies = []string{"GNO", "mGNO", "DAI", "ETH", "USD", "EUR", "JPY"}
+		availableCurrencies = []string{"GNO", "mGNO", "xDAI", "ETH", "USD", "EUR", "JPY"}
 	default:
 		logger.Fatalf("unsupported chainId %v", chainId)
 	}
@@ -240,12 +238,6 @@ func GetPrice(a, b string) float64 {
 	runOnceWg.Wait()
 	pricesMu.Lock()
 	defer pricesMu.Unlock()
-	if a == "xDAI" {
-		a = "DAI"
-	}
-	if b == "xDAI" {
-		b = "DAI"
-	}
 	price, exists := prices[a+"/"+b]
 	if !exists {
 		logrus.WithFields(logrus.Fields{"pair": a + "/" + b}).Warnf("price pair not found")
