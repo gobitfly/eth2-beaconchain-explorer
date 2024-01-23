@@ -28,19 +28,22 @@ const (
 )
 
 const (
-	HeaderRateLimitLimit     = "X-RateLimit-Limit"     // the rate limit ceiling that is applicable for the current request
-	HeaderRateLimitRemaining = "X-RateLimit-Remaining" // the number of requests left for the current rate-limit window
-	HeaderRateLimitReset     = "X-RateLimit-Reset"     // the number of seconds until the quota resets
-	HeaderRetryAfter         = "Retry-After"           // the number of seconds until the quota resets, same as HeaderRateLimitReset, RFC 7231, 7.1.3
+	HeaderRateLimitLimit       = "X-RateLimit-Limit"        // the rate limit ceiling that is applicable for the current request
+	HeaderRateLimitRemaining   = "X-RateLimit-Remaining"    // the number of requests left for the current rate-limit window
+	HeaderRateLimitReset       = "X-RateLimit-Reset"        // the number of seconds until the quota resets
+	HeaderRetryAfter           = "Retry-After"              // the number of seconds until the quota resets, same as HeaderRateLimitReset, RFC 7231, 7.1.3
+	HeaderRateLimitLimitSecond = "X-RateLimit-Limit-Second" // the rate limit ceiling that is applicable for the current user
+	HeaderRateLimitLimitHour   = "X-RateLimit-Limit-Hour"   // the rate limit ceiling that is applicable for the current user
+	HeaderRateLimitLimitMonth  = "X-RateLimit-Limit-Month"  // the rate limit ceiling that is applicable for the current user
 
-	NokeyRateLimitSecond = 5   // RateLimit for requests without or with invalid apikey
+	NokeyRateLimitSecond = 2   // RateLimit for requests without or with invalid apikey
 	NokeyRateLimitHour   = 500 // RateLimit for requests without or with invalid apikey
 	NokeyRateLimitMonth  = 0   // RateLimit for requests without or with invalid apikey
 
 	FallbackRateLimitSecond = 20 // RateLimit per second for when redis is offline
 	FallbackRateLimitBurst  = 20 // RateLimit burst for when redis is offline
 
-	ratelimitStatsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
+	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
 )
 
 var NoKeyRateLimit = &RateLimit{
@@ -52,18 +55,23 @@ var NoKeyRateLimit = &RateLimit{
 var redisClient *redis.Client
 var redisIsHealthy atomic.Bool
 
+var lastRateLimitUpdateKeys = time.Unix(0, 0)       // guarded by lastRateLimitUpdateMu
+var lastRateLimitUpdateRateLimits = time.Unix(0, 0) // guarded by lastRateLimitUpdateMu
+var lastRateLimitUpdateMu = &sync.Mutex{}
+
 var fallbackRateLimiter = NewFallbackRateLimiter() // if redis is offline, use this rate limiter
 
 var initializedWg = &sync.WaitGroup{} // wait for everything to be initialized before serving requests
 
 var rateLimitsMu = &sync.RWMutex{}
-var rateLimits = make(map[string]*RateLimit)      // guarded by RateLimitsMu
-var rateLimitsByKey = make(map[string]*RateLimit) // guarded by RateLimitsMu
+var rateLimits = map[string]*RateLimit{}        // guarded by rateLimitsMu
+var rateLimitsByUserId = map[int64]*RateLimit{} // guarded by rateLimitsMu
+var userIdByApiKey = map[string]int64{}         // guarded by rateLimitsMu
 
 var weightsMu = &sync.RWMutex{}
 var weights = map[string]int64{} // guarded by weightsMu
 
-var pathPrefix = "" // only requests with this prefix will be RateLimited
+var pathPrefix = "" // only requests with this prefix will be ratelimited
 
 var logger = logrus.StandardLogger().WithField("module", "ratelimit")
 
@@ -87,6 +95,7 @@ type RateLimitResult struct {
 	IP            string
 	Key           string
 	IsValidKey    bool
+	UserId        int64
 	RedisKeys     []RedisKey
 	RedisStatsKey string
 	RateLimit     *RateLimit
@@ -155,15 +164,14 @@ func Init(redisAddress, pathPrefixOpt string) {
 	}()
 	go func() {
 		firstRun := true
-		lastRunTime := time.Unix(0, 0)
+
 		for {
-			t, err := updateRateLimits(lastRunTime)
+			err := updateRateLimits()
 			if err != nil {
-				logger.WithError(err).Errorf("error updating RateLimits")
+				logger.WithError(err).Errorf("error updating rateLimits")
 				time.Sleep(time.Second * 2)
 				continue
 			}
-			lastRunTime = t
 			if firstRun {
 				initializedWg.Done()
 				firstRun = false
@@ -226,6 +234,17 @@ func HttpMiddleware(next http.Handler) http.Handler {
 		w.Header().Set(HeaderRateLimitLimit, strconv.FormatInt(rl.Limit, 10))
 		w.Header().Set(HeaderRateLimitRemaining, strconv.FormatInt(rl.Remaining, 10))
 		w.Header().Set(HeaderRateLimitReset, strconv.FormatInt(rl.Reset, 10))
+
+		if rl.RateLimit.Second > 0 {
+			w.Header().Set(HeaderRateLimitLimitSecond, strconv.FormatInt(rl.RateLimit.Second, 10))
+		}
+		if rl.RateLimit.Hour > 0 {
+			w.Header().Set(HeaderRateLimitLimitHour, strconv.FormatInt(rl.RateLimit.Hour, 10))
+		}
+		if rl.RateLimit.Month > 0 {
+			w.Header().Set(HeaderRateLimitLimitMonth, strconv.FormatInt(rl.RateLimit.Month, 10))
+		}
+
 		if rl.Weight > rl.Remaining {
 			w.Header().Set(HeaderRetryAfter, strconv.FormatInt(rl.Reset, 10))
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
@@ -302,7 +321,7 @@ func updateStats() error {
 	defer cancel()
 
 	var err error
-	startTruncated := start.Truncate(ratelimitStatsTruncateDuration)
+	startTruncated := start.Truncate(statsTruncateDuration)
 
 	allKeys := []string{}
 	cursor := uint64(0)
@@ -330,6 +349,11 @@ func updateStats() error {
 		if end > len(allKeys) {
 			end = len(allKeys)
 		}
+
+		if start == end {
+			break
+		}
+
 		keysToDelete := []string{}
 		keys := allKeys[start:end]
 		entries := make([]dbEntry, len(keys))
@@ -339,11 +363,11 @@ func updateStats() error {
 				return fmt.Errorf("error parsing key %s: split-len != 5", k)
 			}
 			dateString := ks[2]
-			date, err := time.Parse("2006-01-02", dateString)
+			date, err := time.Parse("2006-01-02-15", dateString)
 			if err != nil {
 				return fmt.Errorf("error parsing date in key %s: %v", k, err)
 			}
-			dateTruncated := date.Truncate(ratelimitStatsTruncateDuration)
+			dateTruncated := date.Truncate(statsTruncateDuration)
 			if dateTruncated.Before(startTruncated) {
 				keysToDelete = append(keysToDelete, k)
 			}
@@ -363,12 +387,16 @@ func updateStats() error {
 			}
 			mgetRes, err := redisClient.MGet(ctx, keys[mgetStart:mgetEnd]...).Result()
 			if err != nil {
-				return fmt.Errorf("error getting stats-count from redis: %w", err)
+				return fmt.Errorf("error getting stats-count from redis (%v-%v/%v): %w", mgetStart, mgetEnd, len(keys), err)
 			}
 			for k, v := range mgetRes {
-				entries[mgetStart+k].Count, err = v.(*redis.StringCmd).Int64()
+				vStr, ok := v.(string)
+				if !ok {
+					return fmt.Errorf("error parsing stats-count from redis: value is not string: %v: %v: %w", k, v, err)
+				}
+				entries[mgetStart+k].Count, err = strconv.ParseInt(vStr, 10, 64)
 				if err != nil {
-					return err
+					return fmt.Errorf("error parsing stats-count from redis: value is not int64: %v: %v: %w", k, v, err)
 				}
 			}
 		}
@@ -378,16 +406,18 @@ func updateStats() error {
 			return fmt.Errorf("error updating stats entries: %w", err)
 		}
 
-		delSize := 500
-		for j := 0; j <= len(keys); j += delSize {
-			delStart := j
-			delEnd := j + delSize
-			if delEnd > len(keysToDelete) {
-				delEnd = len(keysToDelete)
-			}
-			_, err = redisClient.Del(ctx, keysToDelete[delStart:delEnd]...).Result()
-			if err != nil {
-				logger.Errorf("error deleting stats-keys from redis: %v", err)
+		if len(keysToDelete) > 0 {
+			delSize := 500
+			for j := 0; j <= len(keys); j += delSize {
+				delStart := j
+				delEnd := j + delSize
+				if delEnd > len(keysToDelete) {
+					delEnd = len(keysToDelete)
+				}
+				_, err = redisClient.Del(ctx, keysToDelete[delStart:delEnd]...).Result()
+				if err != nil {
+					logger.Errorf("error deleting stats-keys from redis: %v", err)
+				}
 			}
 		}
 	}
@@ -419,7 +449,7 @@ func updateStatsEntries(entries []dbEntry) error {
 		valueArgs = append(valueArgs, entry.Path)
 		valueArgs = append(valueArgs, entry.Count)
 
-		logger.WithFields(logrus.Fields{"count": entry.Count, "apikey": entry.ApiKey, "path": entry.Path, "date": entry.Date}).Infof("inserting stats entry %v/%v", allIdx, len(entries))
+		// logger.WithFields(logrus.Fields{"count": entry.Count, "apikey": entry.ApiKey, "path": entry.Path, "date": entry.Date}).Infof("inserting stats entry %v/%v", allIdx+1, len(entries))
 
 		batchIdx++
 		allIdx++
@@ -444,32 +474,64 @@ func updateStatsEntries(entries []dbEntry) error {
 	return nil
 }
 
-// updateRateLimits gets the ratelimits from postgres and updates the ratelimits map. it will delete expired ratelimits and assumes that no other process deletes entries in the table api_ratelimits.
-func updateRateLimits(lastUpdate time.Time) (time.Time, error) {
+// updateRateLimits updates the maps rateLimits, rateLimitsByUserId and userIdByApiKey with data from postgres-tables api_keys and api_ratelimits.
+func updateRateLimits() error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateRateLimits").Observe(time.Since(start).Seconds())
 	}()
+
+	lastRateLimitUpdateMu.Lock()
+	lastTKeys := lastRateLimitUpdateKeys
+	lastTRateLimits := lastRateLimitUpdateRateLimits
+	lastRateLimitUpdateMu.Unlock()
+
+	var err error
+
+	dbApiKeys := []struct {
+		UserID     int64     `db:"user_id"`
+		ApiKey     string    `db:"api_key"`
+		ValidUntil time.Time `db:"valid_until"`
+		ChangedAt  time.Time `db:"changed_at"`
+	}{}
+
+	err = db.WriterDb.Select(&dbApiKeys, `SELECT user_id, api_key, valid_until, changed_at FROM api_keys WHERE changed_at > $1 OR valid_until < NOW()`, lastTKeys)
+	if err != nil {
+		return err
+	}
+
 	dbRateLimits := []struct {
 		UserID     int64     `db:"user_id"`
-		ApiKey     string    `db:"apikey"`
 		Second     int64     `db:"second"`
 		Hour       int64     `db:"hour"`
 		Month      int64     `db:"month"`
 		ValidUntil time.Time `db:"valid_until"`
 		ChangedAt  time.Time `db:"changed_at"`
 	}{}
-	err := db.WriterDb.Select(&dbRateLimits, "SELECT ar.user_id, ak.apikey, ar.second, ar.hour, ar.month, ar.valid_until, ar.changed_at FROM api_ratelimits ar LEFT JOIN users u ON u.id = ar.user_id LEFT JOIN api_keys ak ON ak.user_id = u.id WHERE ar.changed_at > $1", lastUpdate)
+
+	err = db.WriterDb.Select(&dbRateLimits, `SELECT user_id, second, hour, month, valid_until, changed_at FROM api_ratelimits WHERE changed_at > $1 OR valid_until < NOW()`, lastTRateLimits)
 	if err != nil {
-		return lastUpdate, fmt.Errorf("error getting ratelimits: %w", err)
+		return err
 	}
 
 	rateLimitsMu.Lock()
 	now := time.Now()
-	newestChange := time.Unix(0, 0)
+	for _, dbKey := range dbApiKeys {
+		if dbKey.ChangedAt.After(lastTKeys) {
+			lastTKeys = dbKey.ChangedAt
+		}
+		if dbKey.ValidUntil.Before(now) {
+			delete(userIdByApiKey, dbKey.ApiKey)
+		}
+		userIdByApiKey[dbKey.ApiKey] = dbKey.UserID
+	}
+
 	for _, dbRl := range dbRateLimits {
-		if dbRl.ChangedAt.After(newestChange) {
-			newestChange = dbRl.ChangedAt
+		if dbRl.ChangedAt.After(lastTRateLimits) {
+			lastTRateLimits = dbRl.ChangedAt
+		}
+		if dbRl.ValidUntil.Before(now) {
+			delete(rateLimitsByUserId, dbRl.UserID)
 		}
 		rlStr := fmt.Sprintf("%d/%d/%d", dbRl.Second, dbRl.Hour, dbRl.Month)
 		rl, exists := rateLimits[rlStr]
@@ -481,18 +543,16 @@ func updateRateLimits(lastUpdate time.Time) (time.Time, error) {
 			}
 			rateLimits[rlStr] = rl
 		}
-		_, exists = rateLimitsByKey[dbRl.ApiKey]
-		if !exists {
-			rateLimitsByKey[dbRl.ApiKey] = rl
-		}
-		if dbRl.ValidUntil.Before(now) {
-			delete(rateLimitsByKey, dbRl.ApiKey)
-		}
 	}
 	rateLimitsMu.Unlock()
 	metrics.TaskDuration.WithLabelValues("ratelimit_updateRateLimits_lock").Observe(time.Since(now).Seconds())
 
-	return newestChange, nil
+	lastRateLimitUpdateMu.Lock()
+	lastRateLimitUpdateKeys = lastTKeys
+	lastRateLimitUpdateRateLimits = lastTRateLimits
+	lastRateLimitUpdateMu.Unlock()
+
+	return nil
 }
 
 func postRateLimit(rl *RateLimitResult, status int) error {
@@ -531,19 +591,22 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	res.IP = ip
 
 	rateLimitsMu.RLock()
-	limit, ok := rateLimits[key]
-	rateLimitsMu.RUnlock()
+	userId, ok := userIdByApiKey[key]
 	if !ok {
+		res.UserId = -1
 		res.IsValidKey = false
-		res.RateLimit = &RateLimit{
-			Second: NokeyRateLimitSecond,
-			Hour:   NokeyRateLimitHour,
-			Month:  NokeyRateLimitMonth,
-		}
+		res.RateLimit = NoKeyRateLimit
 	} else {
+		res.UserId = userId
 		res.IsValidKey = true
-		res.RateLimit = limit
+		limit, ok := rateLimitsByUserId[userId]
+		if ok {
+			res.RateLimit = limit
+		} else {
+			res.RateLimit = NoKeyRateLimit
+		}
 	}
+	rateLimitsMu.RUnlock()
 
 	weight, path := getWeight(r)
 	res.Weight = weight
@@ -561,9 +624,9 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	RateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s", startUtc.Year(), startUtc.Month(), res.Key)
 	RateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d:%s", startUtc.Year(), startUtc.Month(), startUtc.Hour(), res.Key)
 
-	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), res.Key, path)
+	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Key, path)
 	if !res.IsValidKey {
-		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), "nokey", path)
+		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), "nokey", path)
 	}
 	res.RedisStatsKey = statsKey
 

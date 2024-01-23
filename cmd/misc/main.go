@@ -392,7 +392,7 @@ func main() {
 	case "fix-ens-addresses":
 		err = fixEnsAddresses(erigonClient)
 	case "update-ratelimits":
-		err = updateRatelimits()
+		err = updateRatelimitsLoop()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -1936,7 +1936,53 @@ func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
 	}
 }
 
+func addUsers() error {
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		logrus.Fatalf("error starting tx: %v", err)
+	}
+	defer tx.Rollback()
+	for i := 0; i < 100000; i++ {
+		_, err := tx.Exec(`INSERT INTO users (email, password, api_key) VALUES ($1, 'xxx', 'apikey_'+$3)`, i)
+		if err != nil {
+			return err
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func updateRatelimitsLoop() error {
+	for {
+		err := updateRatelimits()
+		if err != nil {
+			logrus.WithError(err).Errorf("error in updateRatelimits")
+			time.Sleep(time.Second * 10)
+			continue
+		} else {
+			logrus.Infof("updated ratelimits")
+		}
+		time.Sleep(time.Minute)
+	}
+	return nil
+}
+
 func updateRatelimits() error {
+	for _, k := range []string{
+		utils.Config.Frontend.Stripe.Sapphire,
+		utils.Config.Frontend.Stripe.Emerald,
+		utils.Config.Frontend.Stripe.Diamond,
+		utils.Config.Frontend.Stripe.Custom1,
+		utils.Config.Frontend.Stripe.Custom2,
+	} {
+		if k == "" {
+			logrus.Fatalf("invalid config.frontend.stripe key")
+		}
+	}
+
 	var err error
 	_, err = db.WriterDb.Exec(
 		`insert into api_keys (user_id, api_key)
@@ -1952,39 +1998,53 @@ func updateRatelimits() error {
 		select 
 			id as user_id, 
 			case 
-				when product = 'free' then 5 
-				when product = $1 then 10
-				when product = $2 then 10
-				when product = $3 then 30
-				when product = $4 then 50
+				when product = 'free'     then  5
+				when product = $1         then 10
+				when product = $2         then 10
+				when product = $3         then 30
+				when product = $4         then 50
 				when product = 'plankton' then 20
 				when product = 'goldfish' then 20
-				when product = 'whale' then 25
+				when product = 'whale'    then 25
 				else 50
 			end as second,
 			0 as hour,
 			case 
-				when product = 'free' then 120000 
-				when product = $1 then 500000
-				when product = $2 then 1000000
-				when product = $3 then 6000000
-				when product = $4 then 500000000
-				when product = 'plankton' then 120000
-				when product = 'goldfish' then 200000
-				when product = 'whale' then 700000
+				when product = 'free'     then    120000 
+				when product = $1         then    500000
+				when product = $2         then   1000000
+				when product = $3         then   6000000
+				when product = $4         then 500000000
+				when product = 'plankton' then    120000
+				when product = 'goldfish' then    200000
+				when product = 'whale'    then    700000
 				else 4000000000
 			end as month,
-			now() + interval '1 month' as valid_until,
+			case
+				when product = 'free' then to_timestamp('3000-01-01', 'YYYY-MM-DD')
+				when active = false then now()
+				else now() + interval '1 month'
+			end as valid_until,
 			now() as changed_at
 		from (
 			select id, price_id as product, api_key as key, coalesce(active,false) as active from users left join (select * from users_stripe_subscriptions where price_id = any('{$1,$2,$3,$4}')) as us on users.stripe_customer_id = us.customer_id where api_key is not null AND (price_id is not null OR id not in (select user_id from app_subs_view where app_subs_view.user_id = users.id AND active = true)) UNION SELECT user_id, product_id as product, api_key as key, active from app_subs_view left join users on users.id = app_subs_view.user_id where active = true AND api_key is not null AND (stripe_customer_id is null OR stripe_customer_id NOT IN (select customer_id from users_stripe_subscriptions where active = true and price_id = any('{$1,$2,$3,$4}')))) t where product is null or active = true
 		) x
-		where active = true`,
+		on conflict (user_id) do update set
+			second = excluded.second,
+			hour = excluded.hour,
+			month = excluded.month,
+			valid = excluded.valid_until,
+			changed_at = excluded.changed_at
+		where 
+			api_ratelimits.second != excluded.second 
+			or api_ratelimits.hour != excluded.hour 
+			or api_ratelimits.month != excluded.month
+		`,
 		utils.Config.Frontend.Stripe.Sapphire,
 		utils.Config.Frontend.Stripe.Emerald,
 		utils.Config.Frontend.Stripe.Diamond,
-		// utils.Config.Frontend.Stripe.Custom1,
-		// utils.Config.Frontend.Stripe.Custom2,
+		utils.Config.Frontend.Stripe.Custom1,
+		utils.Config.Frontend.Stripe.Custom2,
 	)
 	return err
 }
