@@ -160,23 +160,23 @@
             </div>
           </div>
           <div class="info-banner-right">
-              <div class="dropdown">
-                <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <div id="currencyFlagDropdown">
-                    <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.SelectedCurrency }}.svg" />
-                  </div>
-                  <div id="currencyDropdown">{{ .Rates.SelectedCurrency }}</div>
-                </a>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                  {{ range .AvailableCurrencies }}
-                    <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
-                      <img class="currency-flag-option" src="/img/{{ . }}.svg" />
-                      <span class="currency-name">{{ getCurrencyLabel . }}</span>
-                      <span class="currency-symbol">{{ . }}</span>
-                    </a>
-                  {{ end }}
+            <div class="dropdown">
+              <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <div id="currencyFlagDropdown">
+                  <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.SelectedCurrency }}.svg" />
                 </div>
+                <div id="currencyDropdown">{{ .Rates.SelectedCurrency }}</div>
+              </a>
+              <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
+                {{ range .AvailableCurrencies }}
+                  <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
+                    <img class="currency-flag-option" src="/img/{{ . }}.svg" />
+                    <span class="currency-name">{{ getCurrencyLabel . }}</span>
+                    <span class="currency-symbol">{{ . }}</span>
+                  </a>
+                {{ end }}
               </div>
+            </div>
             {{ if .User.Authenticated }}
               <div class="dropdown">
                 <a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

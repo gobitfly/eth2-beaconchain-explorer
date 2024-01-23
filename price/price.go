@@ -66,9 +66,10 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 		setPrice(clCurrency, "USD", 2000.0)
 		setPrice(elCurrency, elCurrency, 1)
 		setPrice(clCurrency, clCurrency, 1)
+		availableCurrencies = []string{"ETH", "USD"}
 		logger.Warnf("chainId not supported for fetching prices: %v", chainId)
 		runOnce.Do(func() { runOnceWg.Done() })
-		//return
+		return
 	}
 
 	clCurrency = clCurrencyParam
@@ -76,20 +77,6 @@ func Init(chainId uint64, eth1Endpoint, clCurrencyParam, elCurrencyParam string)
 
 	calcPairs[elCurrency] = true
 	calcPairs[clCurrency] = true
-
-	setPrice("xDAI", "GNO", 1.0/200.0)
-	setPrice("GNO", "xDAI", 200.0)
-	setPrice("GNO", "USD", 200.0)
-	setPrice("GNO", "ETH", 200.0/2000.0)
-	setPrice("mGNO", "GNO", float64(1)/float64(32))
-	setPrice("GNO", "mGNO", 32)
-	setPrice("mGNO", "mGNO", float64(1)/float64(32))
-	setPrice("GNO", "GNO", 1)
-
-	calcPairs["GNO"] = true
-
-	availableCurrencies = []string{"GNO", "mGNO", "xDAI", "ETH", "USD"}
-	return
 
 	eClient, err := ethclient.Dial(eth1Endpoint)
 	if err != nil {
