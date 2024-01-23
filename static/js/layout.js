@@ -223,7 +223,7 @@ $(document).ready(function () {
 
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
-  let requestNum = 10
+  let requestNum = 11
   var timeWait = 0
 
   // used to overwrite Bloodhounds "transport._get" function which handles the rateLimitWait parameter
@@ -608,7 +608,7 @@ $(document).ready(function () {
     } else if (sug.eth1_address !== undefined) {
       window.location = "/validators/deposits?q=" + sug.eth1_address
     } else if (sug.withdrawalcredentials !== undefined) {
-      window.location = "/validators/deposits?q=0x" + sug.withdrawalcredentials
+      window.location = "/validators/deposits?q=" + sug.withdrawalcredentials
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")

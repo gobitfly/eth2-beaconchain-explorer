@@ -43,6 +43,8 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	search = strings.Replace(search, "0x", "", -1)
 	if ensData != nil && len(ensData.Address) > 0 {
 		http.Redirect(w, r, "/address/"+ensData.Domain, http.StatusMovedPermanently)
+	} else if utils.IsValidWithdrawalCredentials(search) {
+		http.Redirect(w, r, "/validators/deposits?q="+search, http.StatusMovedPermanently)
 	} else if utils.IsValidEth1Tx(search) {
 		http.Redirect(w, r, "/tx/"+search, http.StatusMovedPermanently)
 	} else if len(search) == 96 {
@@ -249,7 +251,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if !searchLikeRE.MatchString(lowerStrippedSearch) {
 			break
 		}
-		// find validators per eth1-address (limit result by N addresses and M validators per address)
+		// find validators per eth1-address
 		result = &[]struct {
 			Eth1Address string `db:"from_address_text" json:"eth1_address"`
 			Count       uint64 `db:"count" json:"count"`
@@ -273,31 +275,35 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				lowerStrippedSearch = strings.ToLower(strings.Replace(ensData.Address, "0x", "", -1))
 			}
 		}
-		if !searchLikeRE.MatchString(lowerStrippedSearch) {
+		if len(lowerStrippedSearch) == 40 {
+			// when the user gives an address (that validators might withdraw to) we transform the address into credentials
+			lowerStrippedSearch = utils.BeginningOfSetWithdrawalCredentials + lowerStrippedSearch
+		}
+		if !utils.IsValidWithdrawalCredentials(lowerStrippedSearch) {
 			break
 		}
-		const beginningOfSetCredentials string = "010000000000000000000000"
-		if len(lowerStrippedSearch) <= 40 && lowerStrippedSearch[:24] != beginningOfSetCredentials {
-			lowerStrippedSearch = beginningOfSetCredentials + lowerStrippedSearch
+		decodedCredential, decodeErr := hex.DecodeString(lowerStrippedSearch)
+		if decodeErr != nil {
+			break
 		}
-		// find validators per withdrawal credential (limit result by N addresses and M validators per credential)
+		// find validators per withdrawal credential
 		dbFinding := []struct {
 			DecodedCredential []byte `db:"withdrawalcredentials"`
 			Count             uint64 `db:"count"`
 		}{}
 		err = db.ReaderDb.Select(&dbFinding, `
 			SELECT withdrawalcredentials, COUNT(*) FROM validators
-			WHERE ENCODE(withdrawalcredentials, 'hex') LIKE $1 || '%'
-			GROUP BY withdrawalcredentials`, lowerStrippedSearch)
+			WHERE withdrawalcredentials = $1
+			GROUP BY withdrawalcredentials`, decodedCredential)
 		if err == nil {
 			res := make([]struct {
 				EncodedCredential string `json:"withdrawalcredentials"`
 				Count             uint64 `json:"count"`
-			}, len(dbFinding))
+			},
+				len(dbFinding))
 			for i := range dbFinding {
 				res[i].EncodedCredential = fmt.Sprintf("%x", dbFinding[i].DecodedCredential)
 				res[i].Count = dbFinding[i].Count
-				fmt.Println(res[i].EncodedCredential)
 			}
 			result = &res
 		}
