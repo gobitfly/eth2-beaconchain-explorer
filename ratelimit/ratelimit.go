@@ -43,6 +43,8 @@ const (
 	FallbackRateLimitSecond = 20 // RateLimit per second for when redis is offline
 	FallbackRateLimitBurst  = 20 // RateLimit burst for when redis is offline
 
+	defaultBucket = "default"
+
 	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
 )
 
@@ -69,7 +71,8 @@ var rateLimitsByUserId = map[int64]*RateLimit{} // guarded by rateLimitsMu
 var userIdByApiKey = map[string]int64{}         // guarded by rateLimitsMu
 
 var weightsMu = &sync.RWMutex{}
-var weights = map[string]int64{} // guarded by weightsMu
+var weights = map[string]int64{}  // guarded by weightsMu
+var buckets = map[string]string{} // guarded by weightsMu
 
 var pathPrefix = "" // only requests with this prefix will be ratelimited
 
@@ -102,6 +105,7 @@ type RateLimitResult struct {
 	Limit         int64
 	Remaining     int64
 	Reset         int64
+	Bucket        string
 	Window        TimeWindow
 }
 
@@ -135,14 +139,23 @@ func (r *responseWriterDelegator) Status() int {
 	return r.status
 }
 
-// Init initializes the RateLimiting middleware, the RateLimiting middleware will not work without calling Init first.
-func Init(redisAddress, pathPrefixOpt string) {
-	pathPrefix = pathPrefixOpt
+var DefaultRequestCollector = func(req *http.Request) bool {
+	if req.URL == nil || !strings.HasPrefix(req.URL.Path, "/api") {
+		return false
+	}
+	return true
+}
 
+var requestSelector func(req *http.Request) bool
+
+// Init initializes the RateLimiting middleware, the rateLimiting middleware will not work without calling Init first. The second parameter is a function the will get called on every request, it will only apply ratelimiting to requests when this func returns true.
+func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:        redisAddress,
 		ReadTimeout: time.Second * 3,
 	})
+
+	requestSelector = requestSelectorOpt
 
 	initializedWg.Add(3)
 
@@ -168,7 +181,7 @@ func Init(redisAddress, pathPrefixOpt string) {
 		for {
 			err := updateRateLimits()
 			if err != nil {
-				logger.WithError(err).Errorf("error updating rateLimits")
+				logger.WithError(err).Errorf("error updating ratelimits")
 				time.Sleep(time.Second * 2)
 				continue
 			}
@@ -212,7 +225,7 @@ func Init(redisAddress, pathPrefixOpt string) {
 func HttpMiddleware(next http.Handler) http.Handler {
 	initializedWg.Wait()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, pathPrefix) {
+		if !requestSelector(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -229,7 +242,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// logrus.WithFields(logrus.Fields{"route": rl.Route, "key": rl.Key, "limit": rl.Limit, "remaining": rl.Remaining, "reset": rl.Reset, "window": rl.Window}).Infof("RateLimiting")
+		logrus.WithFields(logrus.Fields{"route": rl.Route, "key": rl.Key, "limit": rl.Limit, "remaining": rl.Remaining, "reset": rl.Reset, "window": rl.Window, "validKey": rl.IsValidKey}).Infof("rateLimiting")
 
 		w.Header().Set(HeaderRateLimitLimit, strconv.FormatInt(rl.Limit, 10))
 		w.Header().Set(HeaderRateLimitRemaining, strconv.FormatInt(rl.Remaining, 10))
@@ -245,6 +258,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 			w.Header().Set(HeaderRateLimitLimitMonth, strconv.FormatInt(rl.RateLimit.Month, 10))
 		}
 
+		// note: maybe just look for rl.Remaining > 0 instead of rl.Weight > rl.Remaining
 		if rl.Weight > rl.Remaining {
 			w.Header().Set(HeaderRetryAfter, strconv.FormatInt(rl.Reset, 10))
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
@@ -263,7 +277,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// updateWeights gets the weights from postgres and updates the weights map.
+// updateWeights gets the weights and buckets from postgres and updates the weights and buckets maps.
 func updateWeights(firstRun bool) error {
 	start := time.Now()
 	defer func() {
@@ -273,20 +287,29 @@ func updateWeights(firstRun bool) error {
 	dbWeights := []struct {
 		Endpoint  string    `db:"endpoint"`
 		Weight    int64     `db:"weight"`
+		Bucket    string    `db:"bucket"`
 		ValidFrom time.Time `db:"valid_from"`
 	}{}
-	err := db.WriterDb.Select(&dbWeights, "SELECT DISTINCT ON (endpoint) endpoint, weight, valid_from FROM api_weights WHERE valid_from <= NOW() ORDER BY endpoint, valid_from DESC")
+	err := db.WriterDb.Select(&dbWeights, "SELECT DISTINCT ON (endpoint) endpoint, bucket, weight, valid_from FROM api_weights WHERE valid_from <= NOW() ORDER BY endpoint, valid_from DESC")
 	if err != nil {
 		return err
 	}
 	weightsMu.Lock()
 	defer weightsMu.Unlock()
 	oldWeights := weights
+	oldBuckets := buckets
 	weights = make(map[string]int64, len(dbWeights))
 	for _, w := range dbWeights {
 		weights[w.Endpoint] = w.Weight
-		if !firstRun && oldWeights[w.Endpoint] != w.Weight {
+		if !firstRun && oldWeights[w.Endpoint] != weights[w.Endpoint] {
 			logger.WithFields(logrus.Fields{"endpoint": w.Endpoint, "weight": w.Weight, "oldWeight": oldWeights[w.Endpoint]}).Infof("weight changed")
+		}
+		buckets[w.Endpoint] = strings.ReplaceAll(w.Bucket, ":", "_")
+		if buckets[w.Endpoint] == "" {
+			buckets[w.Endpoint] = defaultBucket
+		}
+		if !firstRun && oldBuckets[w.Endpoint] != buckets[w.Endpoint] {
+			logger.WithFields(logrus.Fields{"endpoint": w.Endpoint, "bucket": w.Weight, "oldBucket": oldBuckets[w.Endpoint]}).Infof("bucket changed")
 		}
 	}
 	return nil
@@ -486,7 +509,11 @@ func updateRateLimits() error {
 	lastTRateLimits := lastRateLimitUpdateRateLimits
 	lastRateLimitUpdateMu.Unlock()
 
-	var err error
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
 	dbApiKeys := []struct {
 		UserID     int64     `db:"user_id"`
@@ -495,9 +522,9 @@ func updateRateLimits() error {
 		ChangedAt  time.Time `db:"changed_at"`
 	}{}
 
-	err = db.WriterDb.Select(&dbApiKeys, `SELECT user_id, api_key, valid_until, changed_at FROM api_keys WHERE changed_at > $1 OR valid_until < NOW()`, lastTKeys)
+	err = tx.Select(&dbApiKeys, `SELECT user_id, api_key, valid_until, changed_at FROM api_keys WHERE changed_at > $1 OR valid_until < NOW()`, lastTKeys)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting api_keys: %w", err)
 	}
 
 	dbRateLimits := []struct {
@@ -509,7 +536,12 @@ func updateRateLimits() error {
 		ChangedAt  time.Time `db:"changed_at"`
 	}{}
 
-	err = db.WriterDb.Select(&dbRateLimits, `SELECT user_id, second, hour, month, valid_until, changed_at FROM api_ratelimits WHERE changed_at > $1 OR valid_until < NOW()`, lastTRateLimits)
+	err = tx.Select(&dbRateLimits, `SELECT user_id, second, hour, month, valid_until, changed_at FROM api_ratelimits WHERE changed_at > $1 OR valid_until < NOW()`, lastTRateLimits)
+	if err != nil {
+		return fmt.Errorf("error getting api_ratelimits: %w", err)
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}
@@ -522,6 +554,7 @@ func updateRateLimits() error {
 		}
 		if dbKey.ValidUntil.Before(now) {
 			delete(userIdByApiKey, dbKey.ApiKey)
+			continue
 		}
 		userIdByApiKey[dbKey.ApiKey] = dbKey.UserID
 	}
@@ -532,6 +565,7 @@ func updateRateLimits() error {
 		}
 		if dbRl.ValidUntil.Before(now) {
 			delete(rateLimitsByUserId, dbRl.UserID)
+			continue
 		}
 		rlStr := fmt.Sprintf("%d/%d/%d", dbRl.Second, dbRl.Hour, dbRl.Month)
 		rl, exists := rateLimits[rlStr]
@@ -543,6 +577,7 @@ func updateRateLimits() error {
 			}
 			rateLimits[rlStr] = rl
 		}
+		rateLimitsByUserId[dbRl.UserID] = rl
 	}
 	rateLimitsMu.Unlock()
 	metrics.TaskDuration.WithLabelValues("ratelimit_updateRateLimits_lock").Observe(time.Since(now).Seconds())
@@ -608,9 +643,10 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	}
 	rateLimitsMu.RUnlock()
 
-	weight, path := getWeight(r)
+	weight, route, bucket := getWeight(r)
 	res.Weight = weight
-	res.Route = path
+	res.Route = route
+	res.Bucket = bucket
 
 	startUtc := start.UTC()
 	res.Time = startUtc
@@ -620,13 +656,15 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	endOfHourUtc := time.Now().Truncate(time.Hour).Add(time.Hour)
 	timeUntilEndOfHourUtc := endOfHourUtc.Sub(startUtc)
 
-	RateLimitSecondKey := "ratelimit:second:" + res.Key
-	RateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s", startUtc.Year(), startUtc.Month(), res.Key)
-	RateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d:%s", startUtc.Year(), startUtc.Month(), startUtc.Hour(), res.Key)
+	fmt.Printf("startUtc: %v, endOfMonthUtc: %v\n, diff: %v", startUtc, endOfMonthUtc, endOfMonthUtc.Sub(startUtc).Seconds())
 
-	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Key, path)
+	RateLimitSecondKey := fmt.Sprintf("ratelimit:second:%s:%s", res.Bucket, res.Key)
+	RateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Hour(), res.Bucket, res.Key)
+	RateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.Key)
+
+	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Key, res.Route)
 	if !res.IsValidKey {
-		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), "nokey", path)
+		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), "nokey", res.Route)
 	}
 	res.RedisStatsKey = statsKey
 
@@ -665,7 +703,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 			res.Window = SecondTimeWindow
 			return res, nil
 		} else if res.RateLimit.Second-RateLimitSecond.Val() > res.Limit {
-			res.Limit = res.RateLimit.Second - RateLimitSecond.Val()
+			res.Limit = res.RateLimit.Second
 			res.Remaining = res.RateLimit.Second - RateLimitSecond.Val()
 			res.Reset = int64(1)
 			res.Window = SecondTimeWindow
@@ -680,7 +718,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 			res.Window = HourTimeWindow
 			return res, nil
 		} else if res.RateLimit.Hour-RateLimitHour.Val() > res.Limit {
-			res.Limit = res.RateLimit.Hour - RateLimitHour.Val()
+			res.Limit = res.RateLimit.Hour
 			res.Remaining = res.RateLimit.Hour - RateLimitHour.Val()
 			res.Reset = int64(timeUntilEndOfHourUtc.Seconds())
 			res.Window = HourTimeWindow
@@ -695,7 +733,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 			res.Window = MonthTimeWindow
 			return res, nil
 		} else if res.RateLimit.Month-RateLimitMonth.Val() > res.Limit {
-			res.Limit = res.RateLimit.Month - RateLimitMonth.Val()
+			res.Limit = res.RateLimit.Month
 			res.Remaining = res.RateLimit.Month - RateLimitMonth.Val()
 			res.Reset = int64(timeUntilEndOfMonthUtc.Seconds())
 			res.Window = MonthTimeWindow
@@ -720,24 +758,28 @@ func getKey(r *http.Request) (key, ip string) {
 }
 
 // getWeight returns the weight of an endpoint. if the weight of the endpoint is not defined, it returns 1.
-func getWeight(r *http.Request) (cost int64, identifier string) {
+func getWeight(r *http.Request) (cost int64, identifier, bucket string) {
 	route := getRoute(r)
 	weightsMu.RLock()
-	weight, ok := weights[route]
+	weight, weightOk := weights[route]
+	bucket, bucketOk := buckets[route]
 	weightsMu.RUnlock()
-	if ok {
-		return weight, route
+	if !weightOk {
+		weight = 1
 	}
-	return 1, route
+	if !bucketOk {
+		bucket = defaultBucket
+	}
+	return weight, route, bucket
 }
 
 func getRoute(r *http.Request) string {
 	route := mux.CurrentRoute(r)
-	path, err := route.GetPathTemplate()
+	pathTpl, err := route.GetPathTemplate()
 	if err != nil {
-		path = "UNDEFINED"
+		return "UNDEFINED"
 	}
-	return path
+	return pathTpl
 }
 
 // getIP returns the ip address from the http request

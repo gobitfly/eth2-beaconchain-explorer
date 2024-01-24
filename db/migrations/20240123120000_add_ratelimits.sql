@@ -23,12 +23,29 @@ CREATE TABLE IF NOT EXISTS
 SELECT 'up SQL query - add table api_weights';
 CREATE TABLE IF NOT EXISTS
     api_weights (
+        bucket VARCHAR(20) NOT NULL,
         endpoint TEXT NOT NULL,
         method TEXT NOT NULL,
+        params TEXT NOT NULL,
         weight INT NOT NULL DEFAULT 0,
         valid_from TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT TO_TIMESTAMP(0),
         PRIMARY KEY (endpoint, valid_from)
     );
+
+SELECT 'up SQL query - add view app_subs_view';
+CREATE OR REPLACE VIEW app_subs_view AS
+    SELECT users_app_subscriptions.id,
+        users_app_subscriptions.user_id,
+        users_app_subscriptions.product_id,
+        users_app_subscriptions.created_at,
+        users_app_subscriptions.updated_at,
+        users_app_subscriptions.validate_remotely,
+        users_app_subscriptions.active,
+        users_app_subscriptions.store,
+        users_app_subscriptions.expires_at,
+        users_app_subscriptions.reject_reason,
+        users_app_subscriptions.receipt_hash
+    FROM users_app_subscriptions;
 -- +goose StatementEnd
 
 -- +goose Down

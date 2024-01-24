@@ -393,6 +393,8 @@ func main() {
 		err = fixEnsAddresses(erigonClient)
 	case "update-ratelimits":
 		err = updateRatelimitsLoop()
+	case "add-users":
+		err = addUsers()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -1937,13 +1939,21 @@ func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
 }
 
 func addUsers() error {
+	logrus.Infof("addUsers")
 	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		logrus.Fatalf("error starting tx: %v", err)
 	}
 	defer tx.Rollback()
-	for i := 0; i < 100000; i++ {
-		_, err := tx.Exec(`INSERT INTO users (email, password, api_key) VALUES ($1, 'xxx', 'apikey_'+$3)`, i)
+
+	for i := 0; i < 10000; i++ {
+		_, err = tx.Exec(`INSERT INTO users (email, password, api_key, stripe_customer_id) VALUES ($1, 'xxx', $2, $3)`, fmt.Sprintf("user%d@email.com", i), fmt.Sprintf("apikey_%d", i), fmt.Sprintf("stripe_customer_%d", i))
+		if err != nil {
+			return err
+		}
+	}
+	for i := 0; i < 100; i++ {
+		_, err = tx.Exec(`INSERT INTO users_stripe_subscriptions (subscription_id, customer_id, price_id, active, payload, purchase_group) VALUES ($1, $2, $3, $4, $5, $6)`, fmt.Sprintf("stripe_sub_%d", i), fmt.Sprintf("stripe_customer_%d", i), "price_diamond", true, "{}", "x")
 		if err != nil {
 			return err
 		}
@@ -1983,16 +1993,33 @@ func updateRatelimits() error {
 		}
 	}
 
+	now := time.Now()
 	var err error
-	_, err = db.WriterDb.Exec(
-		`insert into api_keys (user_id, api_key)
-		select id, api_key from users where api_key is not null
-		on conflict (user_id, api_key) do nothing`,
+	res, err := db.WriterDb.Exec(
+		`insert into api_keys (user_id, api_key, valid_until, changed_at)
+		select 
+			id as user_id, 
+			api_key,
+			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
+			now() as changed_at
+		from users 
+		where api_key is not null
+		on conflict (user_id, api_key) do update set
+			valid_until = excluded.valid_until,
+			changed_at = excluded.changed_at
+		where api_keys.valid_until != excluded.valid_until`,
 	)
+	if err != nil {
+		return fmt.Errorf("error updating api_keys: %w", err)
+	}
+	ra, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
-	_, err = db.WriterDb.Exec(
+	logrus.Infof("updated %v api_keys in %v", ra, time.Since(now))
+
+	now = time.Now()
+	res, err = db.WriterDb.Exec(
 		`insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
 		
 		select 
@@ -2003,22 +2030,24 @@ func updateRatelimits() error {
 				when product = $2         then 10
 				when product = $3         then 30
 				when product = $4         then 50
+				when product = $5         then 50
 				when product = 'plankton' then 20
 				when product = 'goldfish' then 20
 				when product = 'whale'    then 25
-				else 50
+				else                           50
 			end as second,
 			0 as hour,
 			case 
-				when product = 'free'     then    120000 
-				when product = $1         then    500000
-				when product = $2         then   1000000
-				when product = $3         then   6000000
-				when product = $4         then 500000000
-				when product = 'plankton' then    120000
-				when product = 'goldfish' then    200000
-				when product = 'whale'    then    700000
-				else 4000000000
+				when product = 'free'     then     120000 
+				when product = $1         then     500000
+				when product = $2         then    1000000
+				when product = $3         then    6000000
+				when product = $4         then  500000000
+				when product = $5         then   13000000
+				when product = 'plankton' then     120000
+				when product = 'goldfish' then     200000
+				when product = 'whale'    then     700000
+				else                           4000000000
 			end as month,
 			case
 				when product = 'free' then to_timestamp('3000-01-01', 'YYYY-MM-DD')
@@ -2027,13 +2056,13 @@ func updateRatelimits() error {
 			end as valid_until,
 			now() as changed_at
 		from (
-			select id, price_id as product, api_key as key, coalesce(active,false) as active from users left join (select * from users_stripe_subscriptions where price_id = any('{$1,$2,$3,$4}')) as us on users.stripe_customer_id = us.customer_id where api_key is not null AND (price_id is not null OR id not in (select user_id from app_subs_view where app_subs_view.user_id = users.id AND active = true)) UNION SELECT user_id, product_id as product, api_key as key, active from app_subs_view left join users on users.id = app_subs_view.user_id where active = true AND api_key is not null AND (stripe_customer_id is null OR stripe_customer_id NOT IN (select customer_id from users_stripe_subscriptions where active = true and price_id = any('{$1,$2,$3,$4}')))) t where product is null or active = true
+			select id, coalesce(product,'free') as product, key, active FROM (select id, price_id as product, api_key as key, coalesce(active,'f') as active from users left join (select * from users_stripe_subscriptions where price_id = any('{$1,$2,$3,$4,$5}')) as us on users.stripe_customer_id = us.customer_id where api_key is not null AND (price_id is not null OR id not in (select user_id from app_subs_view where app_subs_view.user_id = users.id AND active = true)) UNION SELECT user_id, product_id as product, api_key as key, active from app_subs_view left join users on users.id = app_subs_view.user_id where active = true AND api_key is not null AND (stripe_customer_id is null OR stripe_customer_id NOT IN (select customer_id from users_stripe_subscriptions where active = true and price_id = any('{$1,$2,$3,$4,$5}')))) t where product is null or active = true
 		) x
 		on conflict (user_id) do update set
 			second = excluded.second,
 			hour = excluded.hour,
 			month = excluded.month,
-			valid = excluded.valid_until,
+			valid_until = excluded.valid_until,
 			changed_at = excluded.changed_at
 		where 
 			api_ratelimits.second != excluded.second 
@@ -2046,5 +2075,27 @@ func updateRatelimits() error {
 		utils.Config.Frontend.Stripe.Custom1,
 		utils.Config.Frontend.Stripe.Custom2,
 	)
+	if err != nil {
+		return fmt.Errorf("error updating api_ratelimits: %w", err)
+	}
+	ra, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	logrus.Infof("updated %v api_ratelimits in %v", ra, time.Since(now))
+
+	res, err = db.WriterDb.Exec(`
+		update api_ratelimits 
+		set valid_until = now() 
+		where valid_until > now() and user_id not in (select id from users where api_key is not null)`)
+	if err != nil {
+		return fmt.Errorf("error invalidating api_ratelimits: %w", err)
+	}
+	ra, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	logrus.Infof("invalidated %v api_ratelimits in %v", ra, time.Since(now))
+
 	return err
 }

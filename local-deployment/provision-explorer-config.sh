@@ -97,6 +97,12 @@ frontend:
     termsOfServiceUrl: "tos.pdf"
     privacyPolicyUrl: "privacy.pdf"
     imprintTemplate: '{{ define "js" }}{{ end }}{{ define "css" }}{{ end }}{{ define "content" }}Imprint{{ end }}'
+  stripe:
+    sapphire: price_sapphire
+    emerald: price_emerald
+    diamond: price_diamond
+    custom1: price_custom1
+    custom2: price_custom2
 
 indexer:
   # fullIndexOnStartup: false # Perform a one time full db index on startup
