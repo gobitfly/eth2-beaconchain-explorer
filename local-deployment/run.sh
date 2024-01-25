@@ -35,7 +35,11 @@ fn_misc() {
 }
 
 fn_sql() {
-    PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db
+    if [ -z "${1}" ]; then
+        PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db
+    else
+        PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db -c "$@" --csv --pset=pager=off
+    fi
 }
 
 fn_redis() {
