@@ -242,7 +242,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		logrus.WithFields(logrus.Fields{"route": rl.Route, "key": rl.Key, "limit": rl.Limit, "remaining": rl.Remaining, "reset": rl.Reset, "window": rl.Window, "validKey": rl.IsValidKey}).Infof("rateLimiting")
+		// logrus.WithFields(logrus.Fields{"route": rl.Route, "key": rl.Key, "limit": rl.Limit, "remaining": rl.Remaining, "reset": rl.Reset, "window": rl.Window, "validKey": rl.IsValidKey}).Infof("rateLimiting")
 
 		w.Header().Set(HeaderRateLimitLimit, strconv.FormatInt(rl.Limit, 10))
 		w.Header().Set(HeaderRateLimitRemaining, strconv.FormatInt(rl.Remaining, 10))
@@ -650,13 +650,12 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 
 	startUtc := start.UTC()
 	res.Time = startUtc
-	t := startUtc.AddDate(0, 1, -startUtc.Day())
-	endOfMonthUtc := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
-	timeUntilEndOfMonthUtc := endOfMonthUtc.Sub(startUtc)
-	endOfHourUtc := time.Now().Truncate(time.Hour).Add(time.Hour)
-	timeUntilEndOfHourUtc := endOfHourUtc.Sub(startUtc)
 
-	fmt.Printf("startUtc: %v, endOfMonthUtc: %v\n, diff: %v", startUtc, endOfMonthUtc, endOfMonthUtc.Sub(startUtc).Seconds())
+	nextHourUtc := time.Now().Truncate(time.Hour).Add(time.Hour)
+	nextMonthUtc := time.Date(startUtc.Year(), startUtc.Month()+1, 1, 0, 0, 0, 0, time.UTC)
+
+	timeUntilNextHourUtc := nextHourUtc.Sub(startUtc)
+	timeUntilNextMonthUtc := nextMonthUtc.Sub(startUtc)
 
 	RateLimitSecondKey := fmt.Sprintf("ratelimit:second:%s:%s", res.Bucket, res.Key)
 	RateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Hour(), res.Bucket, res.Key)
@@ -679,14 +678,14 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 
 	if res.RateLimit.Hour > 0 {
 		RateLimitHour = pipe.IncrBy(ctx, RateLimitHourKey, weight)
-		pipe.ExpireAt(ctx, RateLimitHourKey, endOfHourUtc)
-		res.RedisKeys = append(res.RedisKeys, RedisKey{RateLimitHourKey, endOfHourUtc})
+		pipe.ExpireAt(ctx, RateLimitHourKey, nextHourUtc)
+		res.RedisKeys = append(res.RedisKeys, RedisKey{RateLimitHourKey, nextHourUtc})
 	}
 
 	if res.RateLimit.Month > 0 {
 		RateLimitMonth = pipe.IncrBy(ctx, RateLimitMonthKey, weight)
-		pipe.ExpireAt(ctx, RateLimitMonthKey, endOfMonthUtc)
-		res.RedisKeys = append(res.RedisKeys, RedisKey{RateLimitMonthKey, endOfMonthUtc})
+		pipe.ExpireAt(ctx, RateLimitMonthKey, nextMonthUtc)
+		res.RedisKeys = append(res.RedisKeys, RedisKey{RateLimitMonthKey, nextMonthUtc})
 	}
 
 	pipe.Incr(ctx, statsKey)
@@ -714,13 +713,13 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		if RateLimitSecond.Val() > res.RateLimit.Hour {
 			res.Limit = res.RateLimit.Hour
 			res.Remaining = 0
-			res.Reset = int64(timeUntilEndOfHourUtc.Seconds())
+			res.Reset = int64(timeUntilNextHourUtc.Seconds())
 			res.Window = HourTimeWindow
 			return res, nil
 		} else if res.RateLimit.Hour-RateLimitHour.Val() > res.Limit {
 			res.Limit = res.RateLimit.Hour
 			res.Remaining = res.RateLimit.Hour - RateLimitHour.Val()
-			res.Reset = int64(timeUntilEndOfHourUtc.Seconds())
+			res.Reset = int64(timeUntilNextHourUtc.Seconds())
 			res.Window = HourTimeWindow
 		}
 	}
@@ -729,13 +728,13 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		if RateLimitSecond.Val() > res.RateLimit.Month {
 			res.Limit = res.RateLimit.Month
 			res.Remaining = 0
-			res.Reset = int64(timeUntilEndOfMonthUtc.Seconds())
+			res.Reset = int64(timeUntilNextMonthUtc.Seconds())
 			res.Window = MonthTimeWindow
 			return res, nil
 		} else if res.RateLimit.Month-RateLimitMonth.Val() > res.Limit {
 			res.Limit = res.RateLimit.Month
 			res.Remaining = res.RateLimit.Month - RateLimitMonth.Val()
-			res.Reset = int64(timeUntilEndOfMonthUtc.Seconds())
+			res.Reset = int64(timeUntilNextMonthUtc.Seconds())
 			res.Window = MonthTimeWindow
 		}
 	}
