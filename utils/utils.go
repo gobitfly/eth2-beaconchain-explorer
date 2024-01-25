@@ -744,31 +744,6 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.Frontend.Keywords = "open source ethereum block explorer, ethereum block explorer, beacon chain explorer, ethereum blockchain explorer"
 	}
 
-	if cfg.Frontend.Ratelimits.FreeDay == 0 {
-		cfg.Frontend.Ratelimits.FreeDay = 30000
-	}
-	if cfg.Frontend.Ratelimits.FreeMonth == 0 {
-		cfg.Frontend.Ratelimits.FreeMonth = 30000
-	}
-	if cfg.Frontend.Ratelimits.SapphierDay == 0 {
-		cfg.Frontend.Ratelimits.SapphierDay = 100000
-	}
-	if cfg.Frontend.Ratelimits.SapphierMonth == 0 {
-		cfg.Frontend.Ratelimits.SapphierMonth = 500000
-	}
-	if cfg.Frontend.Ratelimits.EmeraldDay == 0 {
-		cfg.Frontend.Ratelimits.EmeraldDay = 200000
-	}
-	if cfg.Frontend.Ratelimits.EmeraldMonth == 0 {
-		cfg.Frontend.Ratelimits.EmeraldMonth = 1000000
-	}
-	if cfg.Frontend.Ratelimits.DiamondDay == 0 {
-		cfg.Frontend.Ratelimits.DiamondDay = 6000000
-	}
-	if cfg.Frontend.Ratelimits.DiamondMonth == 0 {
-		cfg.Frontend.Ratelimits.DiamondMonth = 6000000
-	}
-
 	if cfg.Chain.Id != 0 {
 		switch cfg.Chain.Name {
 		case "mainnet", "ethereum":

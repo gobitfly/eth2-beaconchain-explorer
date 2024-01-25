@@ -10,6 +10,7 @@ import (
 	"eth2-exporter/cmd/misc/commands"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
+	"eth2-exporter/ratelimit"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -392,7 +393,7 @@ func main() {
 	case "fix-ens-addresses":
 		err = fixEnsAddresses(erigonClient)
 	case "update-ratelimits":
-		err = updateRatelimitsLoop()
+		err = updateRatelimits()
 	case "add-users":
 		err = addUsers()
 	default:
@@ -1965,192 +1966,15 @@ func addUsers() error {
 	return nil
 }
 
-func updateRatelimitsLoop() error {
+func updateRatelimits() error {
 	for {
-		err := updateRatelimits()
+		err := ratelimit.DBUpdate()
 		if err != nil {
 			logrus.WithError(err).Errorf("error in updateRatelimits")
-			time.Sleep(time.Second * 10)
-			continue
 		} else {
 			logrus.Infof("updated ratelimits")
 		}
 		time.Sleep(time.Second * 10)
 	}
 	return nil
-}
-
-func updateRatelimits() error {
-	for _, k := range []string{
-		utils.Config.Frontend.Stripe.Sapphire,
-		utils.Config.Frontend.Stripe.Emerald,
-		utils.Config.Frontend.Stripe.Diamond,
-		utils.Config.Frontend.Stripe.Custom1,
-		utils.Config.Frontend.Stripe.Custom2,
-	} {
-		if k == "" {
-			logrus.Fatalf("invalid config.frontend.stripe key")
-		}
-	}
-
-	now := time.Now()
-	var err error
-	res, err := db.FrontendWriterDB.Exec(
-		`insert into api_keys (user_id, api_key, valid_until, changed_at)
-		select 
-			id as user_id, 
-			api_key,
-			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
-			now() as changed_at
-		from users 
-		where api_key is not null
-		on conflict (user_id, api_key) do update set
-			valid_until = excluded.valid_until,
-			changed_at = excluded.changed_at
-		where api_keys.valid_until != excluded.valid_until`,
-	)
-	if err != nil {
-		return fmt.Errorf("error updating api_keys: %w", err)
-	}
-	ra, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.Infof("updated %v api_keys in %v", ra, time.Since(now))
-
-	if false {
-		fmt.Printf(`insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
-		
-select 
-	id as user_id, 
-	case 
-		when product = 'free'     then  5
-		when product = '%[1]v'         then 10
-		when product = '%[2]v'         then 10
-		when product = '%[3]v'         then 30
-		when product = '%[4]v'         then 50
-		when product = '%[5]v'         then 50
-		when product = 'plankton' then 20
-		when product = 'goldfish' then 20
-		when product = 'whale'    then 25
-		else                           50
-	end as second,
-	0 as hour,
-	case 
-		when product = 'free'     then     120000 
-		when product = '%[1]v'        then     500000
-		when product = '%[2]v'        then    1000000
-		when product = '%[3]v'        then    6000000
-		when product = '%[4]v'        then  500000000
-		when product = '%[5]v'        then   13000000
-		when product = 'plankton' then     120000
-		when product = 'goldfish' then     200000
-		when product = 'whale'    then     700000
-		else                           4000000000
-	end as month,
-	case
-		when product = 'free' then to_timestamp('3000-01-01', 'YYYY-MM-DD')
-		when active = false then now()
-		else now() + interval '1 month'
-	end as valid_until,
-	now() as changed_at
-from (
-	select id, coalesce(product,'free') as product, key, active FROM (select id, price_id as product, api_key as key, coalesce(active,'f') as active from users left join (select * from users_stripe_subscriptions where price_id = any('{%[1]v,%[2]v,%[3]v,%[4]v,%[5]v}')) as us on users.stripe_customer_id = us.customer_id where api_key is not null AND (price_id is not null OR id not in (select user_id from app_subs_view where app_subs_view.user_id = users.id AND active = true)) UNION SELECT user_id, product_id as product, api_key as key, active from app_subs_view left join users on users.id = app_subs_view.user_id where active = true AND api_key is not null AND (stripe_customer_id is null OR stripe_customer_id NOT IN (select customer_id from users_stripe_subscriptions where active = true and price_id = any('{%[1]v,%[2]v,%[3]v,%[4]v,%[5]v}')))) t where product is null or active = true
-) x
-on conflict (user_id) do update set
-	second = excluded.second,
-	hour = excluded.hour,
-	month = excluded.month,
-	valid_until = excluded.valid_until,
-	changed_at = excluded.changed_at
-where 
-	api_ratelimits.second != excluded.second 
-	or api_ratelimits.hour != excluded.hour 
-	or api_ratelimits.month != excluded.month
-`+"\n", utils.Config.Frontend.Stripe.Sapphire,
-			utils.Config.Frontend.Stripe.Emerald,
-			utils.Config.Frontend.Stripe.Diamond,
-			utils.Config.Frontend.Stripe.Custom1,
-			utils.Config.Frontend.Stripe.Custom2)
-	}
-	now = time.Now()
-	res, err = db.FrontendWriterDB.Exec(
-		`insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
-		
-		select 
-			id as user_id, 
-			case 
-				when product = 'free'     then  5
-				when product = $1         then 10
-				when product = $2         then 10
-				when product = $3         then 30
-				when product = $4         then 50
-				when product = $5         then 50
-				when product = 'plankton' then 20
-				when product = 'goldfish' then 20
-				when product = 'whale'    then 25
-				else                           50
-			end as second,
-			0 as hour,
-			case 
-				when product = 'free'     then     120000 
-				when product = $1         then     500000
-				when product = $2         then    1000000
-				when product = $3         then    6000000
-				when product = $4         then  500000000
-				when product = $5         then   13000000
-				when product = 'plankton' then     120000
-				when product = 'goldfish' then     200000
-				when product = 'whale'    then     700000
-				else                           4000000000
-			end as month,
-			case
-				when product = 'free' then to_timestamp('3000-01-01', 'YYYY-MM-DD')
-				when active = false then now()
-				else now() + interval '1 month'
-			end as valid_until,
-			now() as changed_at
-		from (
-			select id, coalesce(product,'free') as product, key, active FROM (select id, price_id as product, api_key as key, coalesce(active,'f') as active from users left join (select * from users_stripe_subscriptions where price_id = any('{$1,$2,$3,$4,$5}')) as us on users.stripe_customer_id = us.customer_id where api_key is not null AND (price_id is not null OR id not in (select user_id from app_subs_view where app_subs_view.user_id = users.id AND active = true)) UNION SELECT user_id, product_id as product, api_key as key, active from app_subs_view left join users on users.id = app_subs_view.user_id where active = true AND api_key is not null AND (stripe_customer_id is null OR stripe_customer_id NOT IN (select customer_id from users_stripe_subscriptions where active = true and price_id = any('{$1,$2,$3,$4,$5}')))) t where product is null or active = true
-		) x
-		on conflict (user_id) do update set
-			second = excluded.second,
-			hour = excluded.hour,
-			month = excluded.month,
-			valid_until = excluded.valid_until,
-			changed_at = excluded.changed_at
-		where 
-			api_ratelimits.second != excluded.second 
-			or api_ratelimits.hour != excluded.hour 
-			or api_ratelimits.month != excluded.month
-		`,
-		utils.Config.Frontend.Stripe.Sapphire,
-		utils.Config.Frontend.Stripe.Emerald,
-		utils.Config.Frontend.Stripe.Diamond,
-		utils.Config.Frontend.Stripe.Custom1,
-		utils.Config.Frontend.Stripe.Custom2,
-	)
-	if err != nil {
-		return fmt.Errorf("error updating api_ratelimits: %w", err)
-	}
-	ra, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.Infof("updated %v api_ratelimits in %v", ra, time.Since(now))
-
-	res, err = db.FrontendWriterDB.Exec(`
-		update api_ratelimits 
-		set valid_until = now() 
-		where valid_until > now() and user_id not in (select id from users where api_key is not null)`)
-	if err != nil {
-		return fmt.Errorf("error invalidating api_ratelimits: %w", err)
-	}
-	ra, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.Infof("invalidated %v api_ratelimits in %v", ra, time.Since(now))
-
-	return err
 }
