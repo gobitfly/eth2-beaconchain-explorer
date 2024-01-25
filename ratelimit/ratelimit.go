@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"context"
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
 	"fmt"
@@ -172,7 +173,7 @@ func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) 
 				initializedWg.Done()
 				firstRun = false
 			}
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Second * 10)
 		}
 	}()
 	go func() {
@@ -189,7 +190,7 @@ func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) 
 				initializedWg.Done()
 				firstRun = false
 			}
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Second * 10)
 		}
 	}()
 	go func() {
@@ -214,7 +215,7 @@ func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) 
 			if err != nil {
 				logger.WithError(err).Errorf("error updating stats")
 			}
-			time.Sleep(time.Second * 60)
+			time.Sleep(time.Second * 10)
 		}
 	}()
 
@@ -242,6 +243,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+
 		// logrus.WithFields(logrus.Fields{"route": rl.Route, "key": rl.Key, "limit": rl.Limit, "remaining": rl.Remaining, "reset": rl.Reset, "window": rl.Window, "validKey": rl.IsValidKey}).Infof("rateLimiting")
 
 		w.Header().Set(HeaderRateLimitLimit, strconv.FormatInt(rl.Limit, 10))
@@ -258,7 +260,6 @@ func HttpMiddleware(next http.Handler) http.Handler {
 			w.Header().Set(HeaderRateLimitLimitMonth, strconv.FormatInt(rl.RateLimit.Month, 10))
 		}
 
-		// note: maybe just look for rl.Remaining > 0 instead of rl.Weight > rl.Remaining
 		if rl.Weight > rl.Remaining {
 			w.Header().Set(HeaderRetryAfter, strconv.FormatInt(rl.Reset, 10))
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
@@ -268,6 +269,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 			}
 			return
 		}
+
 		d := &responseWriterDelegator{ResponseWriter: w}
 		next.ServeHTTP(d, r)
 		err = postRateLimit(rl, d.Status())
@@ -640,6 +642,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		} else {
 			res.RateLimit = NoKeyRateLimit
 		}
+		logger.Infof("userId: %v, key: %v, ip: %v, ok: %v, limit: %+v", userId, key, ip, ok, res.RateLimit)
 	}
 	rateLimitsMu.RUnlock()
 
@@ -657,9 +660,9 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	timeUntilNextHourUtc := nextHourUtc.Sub(startUtc)
 	timeUntilNextMonthUtc := nextMonthUtc.Sub(startUtc)
 
-	RateLimitSecondKey := fmt.Sprintf("ratelimit:second:%s:%s", res.Bucket, res.Key)
-	RateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Hour(), res.Bucket, res.Key)
-	RateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.Key)
+	rateLimitSecondKey := fmt.Sprintf("ratelimit:second:%s:%s", res.Bucket, res.Key)
+	rateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Hour(), res.Bucket, res.Key)
+	rateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.Key)
 
 	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Key, res.Route)
 	if !res.IsValidKey {
@@ -669,23 +672,23 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 
 	pipe := redisClient.Pipeline()
 
-	var RateLimitSecond, RateLimitHour, RateLimitMonth *redis.IntCmd
+	var rateLimitSecond, rateLimitHour, rateLimitMonth *redis.IntCmd
 
 	if res.RateLimit.Second > 0 {
-		RateLimitSecond = pipe.IncrBy(ctx, RateLimitSecondKey, weight)
-		pipe.ExpireNX(ctx, RateLimitSecondKey, time.Second)
+		rateLimitSecond = pipe.IncrBy(ctx, rateLimitSecondKey, weight)
+		pipe.ExpireNX(ctx, rateLimitSecondKey, time.Second)
 	}
 
 	if res.RateLimit.Hour > 0 {
-		RateLimitHour = pipe.IncrBy(ctx, RateLimitHourKey, weight)
-		pipe.ExpireAt(ctx, RateLimitHourKey, nextHourUtc)
-		res.RedisKeys = append(res.RedisKeys, RedisKey{RateLimitHourKey, nextHourUtc})
+		rateLimitHour = pipe.IncrBy(ctx, rateLimitHourKey, weight)
+		pipe.ExpireAt(ctx, rateLimitHourKey, nextHourUtc.Add(time.Second*600))
+		res.RedisKeys = append(res.RedisKeys, RedisKey{rateLimitHourKey, nextHourUtc})
 	}
 
 	if res.RateLimit.Month > 0 {
-		RateLimitMonth = pipe.IncrBy(ctx, RateLimitMonthKey, weight)
-		pipe.ExpireAt(ctx, RateLimitMonthKey, nextMonthUtc)
-		res.RedisKeys = append(res.RedisKeys, RedisKey{RateLimitMonthKey, nextMonthUtc})
+		rateLimitMonth = pipe.IncrBy(ctx, rateLimitMonthKey, weight)
+		pipe.ExpireAt(ctx, rateLimitMonthKey, nextMonthUtc.Add(time.Second*600))
+		res.RedisKeys = append(res.RedisKeys, RedisKey{rateLimitMonthKey, nextMonthUtc})
 	}
 
 	pipe.Incr(ctx, statsKey)
@@ -694,46 +697,48 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		return nil, err
 	}
 
+	logger.Infof("ratelimit: %+v", res.RateLimit)
+
 	if res.RateLimit.Second > 0 {
-		if RateLimitSecond.Val() > res.RateLimit.Second {
+		if rateLimitSecond.Val() > res.RateLimit.Second {
 			res.Limit = res.RateLimit.Second
 			res.Remaining = 0
 			res.Reset = int64(1)
 			res.Window = SecondTimeWindow
 			return res, nil
-		} else if res.RateLimit.Second-RateLimitSecond.Val() > res.Limit {
+		} else if res.RateLimit.Second-rateLimitSecond.Val() > res.Limit {
 			res.Limit = res.RateLimit.Second
-			res.Remaining = res.RateLimit.Second - RateLimitSecond.Val()
+			res.Remaining = res.RateLimit.Second - rateLimitSecond.Val()
 			res.Reset = int64(1)
 			res.Window = SecondTimeWindow
 		}
 	}
 
 	if res.RateLimit.Hour > 0 {
-		if RateLimitSecond.Val() > res.RateLimit.Hour {
+		if rateLimitHour.Val() > res.RateLimit.Hour {
 			res.Limit = res.RateLimit.Hour
 			res.Remaining = 0
 			res.Reset = int64(timeUntilNextHourUtc.Seconds())
 			res.Window = HourTimeWindow
 			return res, nil
-		} else if res.RateLimit.Hour-RateLimitHour.Val() > res.Limit {
+		} else if res.RateLimit.Hour-rateLimitHour.Val() > res.Limit {
 			res.Limit = res.RateLimit.Hour
-			res.Remaining = res.RateLimit.Hour - RateLimitHour.Val()
+			res.Remaining = res.RateLimit.Hour - rateLimitHour.Val()
 			res.Reset = int64(timeUntilNextHourUtc.Seconds())
 			res.Window = HourTimeWindow
 		}
 	}
 
 	if res.RateLimit.Month > 0 {
-		if RateLimitSecond.Val() > res.RateLimit.Month {
+		if rateLimitMonth.Val() > res.RateLimit.Month {
 			res.Limit = res.RateLimit.Month
 			res.Remaining = 0
 			res.Reset = int64(timeUntilNextMonthUtc.Seconds())
 			res.Window = MonthTimeWindow
 			return res, nil
-		} else if res.RateLimit.Month-RateLimitMonth.Val() > res.Limit {
+		} else if res.RateLimit.Month-rateLimitMonth.Val() > res.Limit {
 			res.Limit = res.RateLimit.Month
-			res.Remaining = res.RateLimit.Month - RateLimitMonth.Val()
+			res.Remaining = res.RateLimit.Month - rateLimitMonth.Val()
 			res.Reset = int64(timeUntilNextMonthUtc.Seconds())
 			res.Window = MonthTimeWindow
 		}
@@ -859,4 +864,126 @@ func (rl *FallbackRateLimiter) Handle(w http.ResponseWriter, r *http.Request, ne
 	}
 	rl.mu.Unlock()
 	next(w, r)
+}
+
+type ApiProduct struct {
+	Name   string
+	Second int64
+	Hour   int64
+	Month  int64
+}
+
+func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
+	rl := &RateLimit{}
+	err := db.FrontendWriterDB.Get(rl, `
+		select second, hour, month 
+		from api_ratelimits 
+		where user_id = $1`, userId)
+	return rl, err
+}
+
+func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
+	apiProducts := []*ApiProduct{}
+	err := db.FrontendWriterDB.Select(&apiProducts, `
+		select distinct on (product) product, second, hour, month, valid_from 
+		from api_products 
+		where valid_from <= now()
+		order by product, valid_from desc`)
+	return apiProducts, err
+}
+
+func DBUpdate() error {
+	var err error
+	now := time.Now()
+	res, err := DBUpdateApiKeys()
+	if err != nil {
+		return err
+	}
+	ra, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	logrus.Infof("updated %v api_keys in %v", ra, time.Since(now))
+
+	_, err = DBUpdateApiRatelimits()
+	if err != nil {
+		return err
+	}
+	ra, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	logrus.Infof("updated %v api_ratelimits in %v", ra, time.Since(now))
+
+	_, err = DBInvalidateApiKeys()
+	if err != nil {
+		return err
+	}
+	ra, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	logrus.Infof("invalidated %v api_keys in %v", ra, time.Since(now))
+
+	return nil
+}
+
+func DBInvalidateApiKeys() (sql.Result, error) {
+	return db.FrontendWriterDB.Exec(`
+		update api_ratelimits 
+		set changed_at = now(), valid_until = now() 
+		where valid_until > now() 
+			and user_id not in (select user_id from api_keys where api_key is not null)`)
+}
+
+func DBUpdateApiKeys() (sql.Result, error) {
+	return db.FrontendWriterDB.Exec(
+		`insert into api_keys (user_id, api_key, valid_until, changed_at)
+		select 
+			id as user_id, 
+			api_key,
+			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
+			now() as changed_at
+		from users 
+		where api_key is not null
+		on conflict (user_id, api_key) do update set
+			valid_until = excluded.valid_until,
+			changed_at = excluded.changed_at
+		where api_keys.valid_until != excluded.valid_until`,
+	)
+}
+
+func DBUpdateApiRatelimits() (sql.Result, error) {
+	return db.FrontendWriterDB.Exec(
+		`with 
+			current_api_products as (
+				select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
+				from api_products 
+				where valid_from <= now()
+				order by product, valid_from desc
+			)
+		insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
+		select
+			u.id as user_id,
+			greatest(coalesce(cap1.second,0),coalesce(cap2.second,0)) as second,
+			greatest(coalesce(cap1.hour  ,0),coalesce(cap2.hour  ,0)) as hour,
+			greatest(coalesce(cap1.month ,0),coalesce(cap2.month ,0)) as month,
+			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
+			now() as changed_at
+		from users u
+			left join users_stripe_subscriptions uss on uss.customer_id = u.stripe_customer_id and uss.active = true
+			left join current_api_products cap on cap.stripe_price_id = uss.price_id
+			left join current_api_products cap1 on cap1.name = coalesce(cap.name,'free')
+			left join app_subs_view asv on asv.user_id = u.id and asv.active = true
+			left join current_api_products cap2 on cap2.name = coalesce(asv.product_id,'free')
+		on conflict (user_id) do update set
+			second = excluded.second,
+			hour = excluded.hour,
+			month = excluded.month,
+			valid_until = excluded.valid_until,
+			changed_at = now()
+		where
+			api_ratelimits.second != excluded.second 
+			or api_ratelimits.hour != excluded.hour 
+			or api_ratelimits.month != excluded.month`)
 }
