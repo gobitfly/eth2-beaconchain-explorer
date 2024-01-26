@@ -1278,6 +1278,15 @@ func rpciSubscribeNewHead(ch chan<- *eth_types.Header) (ethereum.Subscription, e
 
 // do all the http stuff
 func _rpciGetHttpResult(body []byte, nodeRequestsAtOnce int64, count int64) ([][]byte, error) {
+	/*
+		funny thing: EL call can crash with 'batch response exceeded limit of 10000000 bytes' even if there is only 1 element.
+		so to avoid a dead lock, we will remove the "batch" and make a single request, which doesn't have this error at all.
+		imho this is a EL bug and should be fixed there, but meanwhile this "workaround" will be fine as well.
+	*/
+	if count == 1 && len(body) > 2 && body[0] == byte('[') && body[len(body)-1] == byte(']') {
+		body = body[1 : len(body)-1]
+	}
+
 	r, err := http.NewRequest("POST", utils.Config.Eth1RpcEndpoint, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("error creating post request: %w", err)
