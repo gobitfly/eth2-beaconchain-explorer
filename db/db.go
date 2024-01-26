@@ -2392,6 +2392,10 @@ func GetValidatorsWithdrawalsByEpoch(validator []uint64, startEpoch uint64, endE
 
 // GetAddressWithdrawalsTotal returns the total withdrawals for an address
 func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
+	// #TODO: BIDS-2879
+	if true {
+		return 0, nil
+	}
 	var total uint64
 
 	err := ReaderDb.Get(&total, `
