@@ -1,7 +1,5 @@
 package main
 
-// #RECY Arbitrum Classic WILL return ERRORs, this needs to be implemented correct
-
 // imports
 import (
 	"bytes"
@@ -62,7 +60,7 @@ const HTTP_TIMEOUT_IN_SECONDS = 120
 const MAX_REORG_DEPTH = 256             // maxmimum value for reorg (that number of blocks we are looking 'back'), includes latest block
 const MAX_NODE_REQUESTS_AT_ONCE = 1024  // maximum node requests allowed
 const OUTPUT_CYCLE_IN_SECONDS = 8       // duration between 2 outputs / updates, just a visual thing
-const TRY_TO_RECOVER_ON_ERROR_COUNT = 5 // total retries, so a value for 5 is 1 try + 5 retries
+const TRY_TO_RECOVER_ON_ERROR_COUNT = 8 // total retries, so with a value of 4, it is 1 try + 4 retries
 
 // structs
 type jsonRpcReturnId struct {
@@ -480,7 +478,7 @@ func readBT(tableBlocksRaw *gcp_bigtable.Table, prefix string, family string, co
 func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fullBlockRawData, nodeRequestsAtOnce int64, deep int) error {
 	err := _bulkExportBlocksImpl(tableBlocksRaw, blockRawData, nodeRequestsAtOnce)
 	if err != nil {
-		if deep <= TRY_TO_RECOVER_ON_ERROR_COUNT {
+		if deep < TRY_TO_RECOVER_ON_ERROR_COUNT {
 			elementCount := len(blockRawData)
 
 			// output the error
@@ -501,6 +499,14 @@ func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData [
 				}
 			}
 
+			if deep > TRY_TO_RECOVER_ON_ERROR_COUNT/2 {
+				duration := deep - TRY_TO_RECOVER_ON_ERROR_COUNT/2
+				if duration > 8 {
+					duration = 8
+				}
+				time.Sleep(time.Second * time.Duration(duration))
+			}
+
 			// try to recover
 			if elementCount == 1 { // if there is only 1 element, no split possible
 				err = _bulkExportBlocksHandler(tableBlocksRaw, blockRawData, nodeRequestsAtOnce, deep+1)
@@ -512,7 +518,10 @@ func _bulkExportBlocksHandler(tableBlocksRaw *gcp_bigtable.Table, blockRawData [
 			}
 		}
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("_bulkExportBlocksHandler with deep (%d): %w", deep, err)
+	}
+	return nil
 }
 
 // export all blocks, heavy use of bulk & concurrency, providing a block raw data array (used by the other bulkExportBlocks+ functions)
@@ -532,19 +541,19 @@ func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fu
 	// get block_hash, block_unclesCount, block_compressed & block_txs
 	err := rpciGetBulkBlockRawData(blockRawData, nodeRequestsAtOnce)
 	if err != nil {
-		return err
+		return fmt.Errorf("rpciGetBulkBlockRawData: %w", err)
 	}
 	err = rpciGetBulkRawUncles(blockRawData, nodeRequestsAtOnce)
 	if err != nil {
-		return err
+		return fmt.Errorf("rpciGetBulkRawUncles: %w", err)
 	}
 	err = rpciGetBulkRawReceipts(blockRawData, nodeRequestsAtOnce)
 	if err != nil {
-		return err
+		return fmt.Errorf("rpciGetBulkRawReceipts: %w", err)
 	}
 	err = rpciGetBulkRawTraces(blockRawData, nodeRequestsAtOnce)
 	if err != nil {
-		return err
+		return fmt.Errorf("rpciGetBulkRawTraces: %w", err)
 	}
 
 	// write to bigtable
@@ -558,7 +567,6 @@ func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fu
 			}
 			mut := gcp_bigtable.NewMutation()
 			mut.Set(BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK, gcp_bigtable.Timestamp(0), v.blockCompressed)
-			// #RECY emptry receipts possible on Arbitrum, but nowhere else?
 			if len(v.receiptsCompressed) < 1 {
 				logrus.Warnf("empty receipts at block %d lRec %d lTxs %d", v.blockNumber, len(v.receiptsCompressed), len(v.blockTxs))
 			}
@@ -578,17 +586,17 @@ func _bulkExportBlocksImpl(tableBlocksRaw *gcp_bigtable.Table, blockRawData []fu
 		var errs []error
 		errs, err = tableBlocksRaw.ApplyBulk(ctx, keys, muts)
 		if err != nil {
-			return err
+			return fmt.Errorf("tableBlocksRaw.ApplyBulk err: %w", err)
 		}
-		for _, e := range errs {
-			return e
+		for i, e := range errs {
+			return fmt.Errorf("tableBlocksRaw.ApplyBulk errs(%d): %w", i, e)
 		}
 	}
 
 	// write to SQL
 	err = psqlAddElements(blockRawData)
 	if err != nil {
-		return err
+		return fmt.Errorf("psqlAddElements: %w", err)
 	}
 
 	return nil
@@ -1428,17 +1436,20 @@ func _rpciGetBulkRawTransactionReceipts(blockRawData []fullBlockRawData, nodeReq
 	// getting data for the rest...
 	{
 		bodyStr += "]"
-		rawData, err := _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, currentElementCount)
-		if err != nil {
-			return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
-		}
+		if len(bodyStr) > 2 {
+			rawData, err := _rpciGetHttpResult([]byte(bodyStr), nodeRequestsAtOnce, currentElementCount)
+			if err != nil {
+				return fmt.Errorf("error (_rpciGetBulkRawTransactionReceipts) split and verify json array: %w", err)
+			}
 
-		for _, vv := range rawData {
-			for len(blockRawData[blockRawDataWriteIndex].blockTxs) < 1 {
+			for _, vv := range rawData {
+				for len(blockRawData[blockRawDataWriteIndex].blockTxs) < 1 {
+					blockRawDataWriteIndex++
+				}
+				blockRawData[blockRawDataWriteIndex].receiptsCompressed = compress(vv)
 				blockRawDataWriteIndex++
 			}
-			blockRawData[blockRawDataWriteIndex].receiptsCompressed = compress(vv)
-			blockRawDataWriteIndex++
+
 		}
 	}
 
@@ -1677,7 +1688,7 @@ func rpciGetBulkRawTraces(blockRawData []fullBlockRawData, nodeRequestsAtOnce in
 			if i != 0 {
 				bodyStr += ","
 			}
-			if utils.Config.Chain.Id == ARBITRUM_CHAINID && v.blockNumber <= ARBITRUM_NITRO_BLOCKNUMBER {
+			if utils.Config.Chain.Id == ARBITRUM_CHAINID && v.blockNumber < ARBITRUM_NITRO_BLOCKNUMBER {
 				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"arbtrace_block","params":["0x%x"],"id":%d}`, v.blockNumber, i)
 			} else {
 				bodyStr += fmt.Sprintf(`{"jsonrpc":"2.0","method":"debug_traceBlockByNumber","params":["0x%x", {"tracer": "callTracer"}],"id":%d}`, v.blockNumber, i)
