@@ -13,7 +13,7 @@ import (
 
 func MempoolView(w http.ResponseWriter, r *http.Request) {
 	mempool := services.LatestMempoolTransactions()
-	formatedData := formatToTable(mempool)
+	formatedData := formatToTable(mempool, GetCurrency(r))
 	templateFiles := append(layoutTemplateFiles, "mempoolview.html")
 	var mempoolViewTemplate = templates.GetTemplate(templateFiles...)
 
@@ -38,33 +38,33 @@ func _isContractCreation(tx *common.Address) string {
 
 // This Function formats each Transaction into Html string.
 // This makes all calculations faster, reducing browser's rendering time.
-func formatToTable(content *types.RawMempoolResponse) *types.DataTableResponse {
+func formatToTable(content *types.RawMempoolResponse, currency string) *types.DataTableResponse {
 	dataTable := &types.DataTableResponse{}
 
 	for _, txs := range content.Pending {
 		for _, tx := range txs {
-			dataTable.Data = append(dataTable.Data, toTableDataRow(tx))
+			dataTable.Data = append(dataTable.Data, toTableDataRow(tx, currency))
 		}
 	}
 	for _, txs := range content.BaseFee {
 		for _, tx := range txs {
-			dataTable.Data = append(dataTable.Data, toTableDataRow(tx))
+			dataTable.Data = append(dataTable.Data, toTableDataRow(tx, currency))
 		}
 	}
 	for _, txs := range content.Queued {
 		for _, tx := range txs {
-			dataTable.Data = append(dataTable.Data, toTableDataRow(tx))
+			dataTable.Data = append(dataTable.Data, toTableDataRow(tx, currency))
 		}
 	}
 	return dataTable
 }
 
-func toTableDataRow(tx *types.RawMempoolTransaction) []interface{} {
+func toTableDataRow(tx *types.RawMempoolTransaction, currency string) []interface{} {
 	return []any{
 		utils.FormatAddressWithLimits(tx.Hash.Bytes(), "", false, "tx", 15, 18, true),
 		utils.FormatAddressAll(tx.From.Bytes(), "", false, "address", int(12), int(12), true),
 		_isContractCreation(tx.To),
-		utils.FormatAmount((*big.Int)(tx.Value), utils.Config.Frontend.ElCurrency, 5),
+		utils.FormatAmount((*big.Int)(tx.Value), currency, 5),
 		utils.FormatAddCommasFormatted(float64(tx.Gas.ToInt().Int64()), 0),
 		utils.FormatAmountFormatted(tx.GasPrice.ToInt(), "GWei", 5, 0, true, true, false),
 		tx.Nonce.ToInt(),

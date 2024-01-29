@@ -83,7 +83,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "")
+		txns, err = db.BigtableClient.GetAddressTransactionsTableData(addressBytes, "", currency)
 		if err != nil {
 			return fmt.Errorf("GetAddressTransactionsTableData: %w", err)
 		}
@@ -99,7 +99,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "")
+		internal, err = db.BigtableClient.GetAddressInternalTableData(addressBytes, "", currency)
 		if err != nil {
 			return fmt.Errorf("GetAddressInternalTableData: %w", err)
 		}
@@ -131,7 +131,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		blocksMined, err = db.BigtableClient.GetAddressBlocksMinedTableData(address, "")
+		blocksMined, err = db.BigtableClient.GetAddressBlocksMinedTableData(address, "", currency)
 		if err != nil {
 			return fmt.Errorf("GetAddressBlocksMinedTableData: %w", err)
 		}
@@ -139,7 +139,7 @@ func Eth1Address(w http.ResponseWriter, r *http.Request) {
 	})
 	g.Go(func() error {
 		var err error
-		unclesMined, err = db.BigtableClient.GetAddressUnclesMinedTableData(address, "")
+		unclesMined, err = db.BigtableClient.GetAddressUnclesMinedTableData(address, "", currency)
 		if err != nil {
 			return fmt.Errorf("GetAddressUnclesMinedTableData: %w", err)
 		}
@@ -282,7 +282,7 @@ func Eth1AddressTransactions(w http.ResponseWriter, r *http.Request) {
 
 	pageToken := q.Get("pageToken")
 
-	data, err := db.BigtableClient.GetAddressTransactionsTableData(addressBytes, pageToken)
+	data, err := db.BigtableClient.GetAddressTransactionsTableData(addressBytes, pageToken, GetCurrency(r))
 	if err != nil {
 		utils.LogError(err, "error getting eth1 tx table data", 0, errFields)
 	}
@@ -310,7 +310,7 @@ func Eth1AddressBlocksMined(w http.ResponseWriter, r *http.Request) {
 
 	pageToken := q.Get("pageToken")
 
-	data, err := db.BigtableClient.GetAddressBlocksMinedTableData(address, pageToken)
+	data, err := db.BigtableClient.GetAddressBlocksMinedTableData(address, pageToken, GetCurrency(r))
 	if err != nil {
 		utils.LogError(err, "error getting eth1 blocks mined table data", 0, errFields)
 	}
@@ -337,7 +337,7 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 
 	pageToken := q.Get("pageToken")
 
-	data, err := db.BigtableClient.GetAddressUnclesMinedTableData(address, pageToken)
+	data, err := db.BigtableClient.GetAddressUnclesMinedTableData(address, pageToken, GetCurrency(r))
 	if err != nil {
 		utils.LogError(err, "error getting eth1 uncles mined data", 0, errFields)
 	}
@@ -353,7 +353,6 @@ func Eth1AddressUnclesMined(w http.ResponseWriter, r *http.Request) {
 func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	currency := GetCurrency(r)
 	q := r.URL.Query()
 	address, err := lowerAddressFromRequest(w, r)
 	if err != nil {
@@ -363,7 +362,7 @@ func Eth1AddressWithdrawals(w http.ResponseWriter, r *http.Request) {
 	errFields := map[string]interface{}{
 		"route": r.URL.String()}
 
-	data, err := db.GetAddressWithdrawalTableData(common.HexToAddress(address).Bytes(), q.Get("pageToken"), currency)
+	data, err := db.GetAddressWithdrawalTableData(common.HexToAddress(address).Bytes(), q.Get("pageToken"), GetCurrency(r))
 	if err != nil {
 		utils.LogError(err, "error getting address withdrawals data", 0, errFields)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -419,7 +418,7 @@ func Eth1AddressInternalTransactions(w http.ResponseWriter, r *http.Request) {
 		"route": r.URL.String()}
 
 	pageToken := q.Get("pageToken")
-	data, err := db.BigtableClient.GetAddressInternalTableData(addressBytes, pageToken)
+	data, err := db.BigtableClient.GetAddressInternalTableData(addressBytes, pageToken, GetCurrency(r))
 	if err != nil {
 		utils.LogError(err, "error getting eth1 internal tx table data", 0, errFields)
 	}

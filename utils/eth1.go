@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
@@ -309,103 +310,105 @@ func FormatAddressLong(address string) template.HTML {
 
 }
 
-func FormatAmountFormatted(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	return formatAmount(amount, unit, digits, maxPreCommaDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
+func FormatAmountFormatted(amountInWei *big.Int, targetCurrency string, maxFractionalDigitsBeforeTrim int, maxIntegerDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+	return convertAndFormatWei(amountInWei, targetCurrency, maxFractionalDigitsBeforeTrim, maxIntegerDigitsBeforeTrim, fullAmountTooltip, smallUnit, newLineForUnit)
 }
-func FormatAmount(amount *big.Int, unit string, digits int) template.HTML {
-	return formatAmount(amount, unit, digits, 0, true, false, false)
+func FormatAmount(amountInWei *big.Int, targetCurrency string, maxFractionalDigitsBeforeTrim int) template.HTML {
+	return convertAndFormatWei(amountInWei, targetCurrency, maxFractionalDigitsBeforeTrim, 0, true, false, false)
 }
-func FormatBigAmount(amount *hexutil.Big, unit string, digits int) template.HTML {
-	return FormatAmount((*big.Int)(amount), unit, digits)
+func FormatBigAmount(amountInWei *hexutil.Big, targetCurrency string, maxFractionalDigitsBeforeTrim int) template.HTML {
+	return FormatAmount((*big.Int)(amountInWei), targetCurrency, maxFractionalDigitsBeforeTrim)
 }
-func FormatBytesAmount(amount []byte, unit string, digits int) template.HTML {
-	return FormatAmount(new(big.Int).SetBytes(amount), unit, digits)
+func FormatBytesAmount(amountInWei []byte, targetCurrency string, maxFractionalDigitsBeforeTrim int) template.HTML {
+	return FormatAmount(new(big.Int).SetBytes(amountInWei), targetCurrency, maxFractionalDigitsBeforeTrim)
 }
-func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
-	// define display unit & digits used per unit max
-	displayUnit := " " + unit
-	var unitDigits int
-	if unit == "ETH" || unit == "Ether" || unit == "xDAI" || unit == "GNO" {
-		unitDigits = 18
-	} else if unit == "GWei" {
-		unitDigits = 9
-	} else {
-		displayUnit = " ?"
-		unitDigits = 0
+
+func convertAndFormatWei(amountInWei *big.Int, targetCurrency string, maxFractionalDigitsBeforeTrim int, maxIntegerDigitsBeforeTrim int, fullAmountTooltip bool, smallUnit bool, newLineForUnit bool) template.HTML {
+	commaPositionFromEnd := int(Config.Frontend.ElCurrencyDecimals)
+	targetAmount := amountInWei
+	if targetCurrency == "GWei" {
+		commaPositionFromEnd /= 2
+	} else if targetCurrency != "xDAI" && targetCurrency != "GNO" {
+		// The currency to display with is a fiat. We convert the amount of Weis into it:
+		price := big.NewFloat(price.GetPrice(Config.Frontend.ElCurrency, targetCurrency))
+		new(big.Float).Mul(new(big.Float).SetInt(amountInWei), price).Int(targetAmount)
+		// Now, targetAmount contains the digits in the desired currency
 	}
 
+	formattedUnit := " " + targetCurrency
 	// small unit & new line for unit handling
 	{
-		unit = displayUnit
+		unit := formattedUnit
 		if newLineForUnit {
-			displayUnit = "<BR />"
+			formattedUnit = "<BR />"
 		} else {
-			displayUnit = ""
+			formattedUnit = ""
 		}
 		if smallUnit {
-			displayUnit += `<span style="font-size: .63rem;`
+			formattedUnit += `<span style="font-size: .63rem;`
 			if newLineForUnit {
-				displayUnit += `color: grey;`
+				formattedUnit += `color: grey;`
 			}
-			displayUnit += `">` + unit + `</span>`
+			formattedUnit += `">` + unit + `</span>`
 		} else {
-			displayUnit += unit
+			formattedUnit += unit
 		}
 	}
 
-	trimmedAmount, fullAmount := trimAmount(amount, unitDigits, maxPreCommaDigitsBeforeTrim, digits, false)
+	trimmedAmount, fullAmount := insertCommaAndTrim(targetAmount, commaPositionFromEnd, maxFractionalDigitsBeforeTrim, maxIntegerDigitsBeforeTrim, false)
 	tooltip := ""
 	if fullAmountTooltip {
-		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, fullAmount)
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s %s"`, fullAmount, targetCurrency)
 	}
 
 	// done, convert to HTML & return
-	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
+	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, formattedUnit))
 }
 
-func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
-	// Initialize trimmedAmount and postComma variables to "0"
+// This function takes a number without explicit comma in it. The function seperates the integer part from the fractional part with a comma, placing it as indicated by commaPositionFromEnd. This is returned in fullAmount.
+// trimmedAmount returns also the number with its comma, but the fractional part contains at most maxFractionalDigitsBeforeTrim digits. This part can be trimmed because of this limit or because the integer part is longer than maxIntegerDigitsBeforeTrim.
+func insertCommaAndTrim(amountWithoutComma *big.Int, commaPositionFromEnd int, maxFractionalDigitsBeforeTrim int, maxIntegerDigitsBeforeTrim int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
 	trimmedAmount = "0"
 	postComma := "0"
 	proceed := ""
 
-	if amount != nil {
-		s := amount.String()
-		if amount.Sign() > 0 && addPositiveSign {
+	if amountWithoutComma != nil {
+		s := amountWithoutComma.String()
+		if amountWithoutComma.Sign() > 0 && addPositiveSign {
 			proceed = "+"
-		} else if amount.Sign() < 0 {
+		} else if amountWithoutComma.Sign() < 0 {
 			proceed = "-"
 			s = strings.Replace(s, "-", "", 1)
 		}
 		l := len(s)
 
 		// Check if there is a part of the amount before the decimal point
-		if l > int(unitDigits) {
+		if l > int(commaPositionFromEnd) {
 			// Calculate length of preComma part
-			l -= unitDigits
+			l -= commaPositionFromEnd
 			// Set preComma to part of the string before the decimal point
 			trimmedAmount = s[:l]
 			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s[l:], "0")
 
 			// Check if the preComma part exceeds the maximum number of digits before the decimal point
-			if maxPreCommaDigitsBeforeTrim > 0 && l > maxPreCommaDigitsBeforeTrim {
+			if maxIntegerDigitsBeforeTrim > 0 && l > maxIntegerDigitsBeforeTrim {
 				// Reduce the number of digits after the decimal point by the excess number of digits in the preComma part
-				l -= maxPreCommaDigitsBeforeTrim
-				if digits < l {
-					digits = 0
+				l -= maxIntegerDigitsBeforeTrim
+				if maxFractionalDigitsBeforeTrim < l {
+					maxFractionalDigitsBeforeTrim = 0
 				} else {
-					digits -= l
+					maxFractionalDigitsBeforeTrim -= l
 				}
 			}
 			// Check if there is only a part of the amount after the decimal point, and no leading zeros need to be added
-		} else if l == unitDigits {
+		} else if l == commaPositionFromEnd {
 			// Set postComma to part of the string after the decimal point, after removing trailing zeros
 			postComma = strings.TrimRight(s, "0")
 			// Check if there is only a part of the amount after the decimal point, and leading zeros need to be added
 		} else if l != 0 {
 			// Use fmt package to add leading zeros to the string
-			d := fmt.Sprintf("%%0%dd", unitDigits-l)
+			d := fmt.Sprintf("%%0%dd", commaPositionFromEnd-l)
 			// Set postComma to resulting string, after removing trailing zeros
 			postComma = strings.TrimRight(fmt.Sprintf(d, 0)+s, "0")
 		}
@@ -416,10 +419,9 @@ func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int
 		}
 
 		// limit floating part
-		if len(postComma) > digits {
-			postComma = postComma[:digits]
+		if len(postComma) > maxFractionalDigitsBeforeTrim {
+			postComma = postComma[:maxFractionalDigitsBeforeTrim]
 		}
-
 		// set floating point
 		if len(postComma) > 0 {
 			trimmedAmount += "." + postComma

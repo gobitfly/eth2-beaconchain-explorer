@@ -225,18 +225,22 @@
                 <div class="col-md-3">Value:</div>
                 <div class="col-md-9">
                   {{ formatBytesAmount .Value config.Frontend.ElCurrency 8 }}
-                  <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value" {{ if .HistoricalEtherPrice }}onclick="togglePriceContent('{{ .CurrentEtherPrice }}','{{ .HistoricalEtherPrice }}')" style="cursor: pointer;"{{ end }}>
-                    {{ formatElCurrency .Value $.Rates.SelectedCurrency 2 true false false false }}
-                  </span>
+                  {{ if ne $.Rates.SelectedCurrency config.Frontend.ElCurrency }}
+                    <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value" {{ if .HistoricalEtherPrice }}onclick="togglePriceContent('{{ .CurrentEtherPrice }}','{{ .HistoricalEtherPrice }}')" style="cursor: pointer;"{{ end }}>
+                      {{ formatElCurrency .Value $.Rates.SelectedCurrency 2 true false false false }}
+                    </span>
+                  {{ end }}
                 </div>
               </div>
               <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
                 <div class="col-md-3">Transaction Fee:</div>
                 <div class="col-md-9">
                   {{ formatBytesAmount .Gas.TxFee config.Frontend.ElCurrency 8 }}
-                  <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value">
-                    {{ formatElCurrency .Gas.TxFee $.Rates.SelectedCurrency 2 true false false false }}
-                  </span>
+                  {{ if ne $.Rates.SelectedCurrency config.Frontend.ElCurrency }}
+                    <span id="valuePriceButton" class="badge badge-pill align-middle bg-dark text-white" data-html="true" data-toggle="tooltip" data-placement="bottom" data-original-title="Current Value">
+                      {{ formatElCurrency .Gas.TxFee $.Rates.SelectedCurrency 2 true false false false }}
+                    </span>
+                  {{ end }}
                 </div>
               </div>
               <div class="row border-bottom p-3 mx-0">

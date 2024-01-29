@@ -179,11 +179,6 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		filteredCount = withdrawalCount
 	}
 
-	formatCurrency := currency
-	if currency == "ETH" {
-		formatCurrency = "Ether"
-	}
-
 	var err error
 	names := make(map[string]string)
 	for _, v := range withdrawals {
@@ -203,7 +198,7 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 			utils.FormatValidator(w.ValidatorIndex),
 			utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()),
 			utils.FormatAddressWithLimits(w.Address, names[string(w.Address)], false, "address", visibleDigitsForHash+5, 18, true),
-			utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6),
+			utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), currency, 6),
 		}
 	}
 
