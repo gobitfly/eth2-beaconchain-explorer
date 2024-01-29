@@ -6,7 +6,7 @@ RUN go mod download
 RUN go install github.com/swaggo/swag/cmd/swag@v1.8.3
 ADD . /src
 ARG target=all
-RUN make -B $target
+RUN make -j 4 -B $target
 
 # final stage
 FROM ubuntu:22.04

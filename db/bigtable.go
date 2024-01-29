@@ -1904,7 +1904,7 @@ func (bigtable *Bigtable) GetValidatorEffectiveness(validators []uint64, epoch u
 	if end > lookback {
 		start = end - lookback
 	}
-	data, err := bigtable.GetValidatorAttestationHistory(validators, start, end)
+	data, err := GetValidatorAttestationHistory(validators, start, end)
 
 	if err != nil {
 		return nil, err

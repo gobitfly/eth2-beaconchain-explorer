@@ -10,6 +10,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"sort"
@@ -3258,4 +3259,103 @@ func GetValidatorAttestationHistoryForNotifications(startEpoch uint64, endEpoch 
 	}
 
 	return epochParticipation, nil
+}
+
+func GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorAttestation, error) {
+
+	if len(validators) == 0 {
+		return nil, fmt.Errorf("passing empty validator array is unsupported")
+	}
+	if endEpoch > math.MaxInt64 {
+		endEpoch = 0
+	}
+	if endEpoch < startEpoch { // handle overflows
+		startEpoch = 0
+	}
+
+	// first retrieve all attestation data for the range from startEpoch to endEpoch + 1 from the db
+	type fullAttestatationData struct {
+		AttestedSlot uint64        `db:"slot"`
+		IncludesSlot uint64        `db:"block_slot"`
+		Validators   pq.Int64Array `db:"validators"`
+	}
+
+	ret := make(map[uint64][]*types.ValidatorAttestation, len(validators))
+
+	startSlot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
+	endSlot := (endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch + utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
+
+	// logger.Infof("retrieving attestation data for epochs %d - %d (slot %d - %d)", startEpoch, endEpoch, startSlot, endSlot)
+	attestations := []fullAttestatationData{}
+	err := ReaderDb.Select(&attestations, `
+	SELECT                                                
+        blocks_attestations.slot,
+        blocks_attestations.block_slot,
+        blocks_attestations.validators
+        FROM blocks_attestations                                
+        LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
+		validators && $1 AND 
+        blocks_attestations.block_slot >= $2 AND blocks_attestations.block_slot <= $3 AND blocks.status = '1'
+        ORDER BY block_slot;
+	`, validators, startSlot, endSlot)
+
+	if err != nil {
+		return nil, fmt.Errorf("error querying full attestation data: %w", err)
+	}
+	// logger.Info("attestation data retrieved")
+
+	// retrieve activation epoch and exit epoch for all involved validators
+	type validatorInfo struct {
+		ValidatorIndex  uint64 `db:"validatorindex"`
+		ActivationEpoch uint64 `db:"activationepoch"`
+		ExitEpoch       uint64 `db:"exitepoch"`
+	}
+	validatorInfos := []validatorInfo{}
+	err = ReaderDb.Select(&validatorInfos, "SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex = ANY($1)", validators)
+	if err != nil {
+		return nil, fmt.Errorf("error querying validator activation and exit data: %w", err)
+	}
+
+	// convert supplied validators to a map for quicker lookup
+	validatorsMap := make(map[uint64]bool, len(validators))
+	for _, validatorindex := range validators {
+		validatorsMap[validatorindex] = true
+	}
+
+	// populate the result object with data from the validator info
+	for _, row := range validatorInfos {
+		if ret[row.ValidatorIndex] == nil {
+			ret[row.ValidatorIndex] = make([]*types.ValidatorAttestation, 0, endEpoch-startEpoch)
+		}
+
+		for epoch := startEpoch; epoch <= endEpoch; epoch++ {
+			if epoch >= row.ActivationEpoch && epoch < row.ExitEpoch { // validator has no duty during its exit epoch
+				ret[row.ValidatorIndex] = append(ret[row.ValidatorIndex], &types.ValidatorAttestation{
+					Index:  row.ValidatorIndex,
+					Epoch:  epoch,
+					Status: 0, // set as missing
+				})
+			}
+		}
+	}
+
+	// at that point we have all duties populated for each epoch in the result set
+	// next iterate over the fullfilled duties and add them to the result
+	for _, attestation := range attestations {
+		epoch := attestation.AttestedSlot / utils.Config.Chain.ClConfig.SlotsPerEpoch
+		for _, validator := range attestation.Validators {
+			if validatorsMap[uint64(validator)] {
+				for _, duty := range ret[uint64(validator)] {
+					if duty.Epoch == epoch && duty.Status == 0 {
+						duty.AttesterSlot = attestation.AttestedSlot
+						duty.InclusionSlot = attestation.IncludesSlot
+						duty.Status = 1
+						duty.Delay = int64(duty.InclusionSlot) - int64(duty.AttesterSlot) - 1
+					}
+				}
+			}
+		}
+	}
+
+	return ret, nil
 }
