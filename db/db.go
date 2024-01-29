@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -28,6 +29,7 @@ import (
 
 	"eth2-exporter/rpc"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,6 +54,11 @@ const MaxSqlInteger = 2147483647
 const DefaultInfScrollRows = 25
 
 var ErrNoStats = errors.New("no stats available")
+
+var attestationDataCache, _ = lru.NewWithEvict(5, func(key, value interface{}) {
+	logger.Infof("evicted entry %s from attestation data cache", key)
+})
+var attestationDataCacheMux = &sync.Mutex{}
 
 func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	// The golang sql driver does not properly implement PingContext
@@ -3285,23 +3292,35 @@ func GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, endE
 	startSlot := startEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 	endSlot := (endEpoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch + utils.Config.Chain.ClConfig.SlotsPerEpoch - 1
 
+	key := fmt.Sprintf("%d_%d", startEpoch, endEpoch)
+
 	// logger.Infof("retrieving attestation data for epochs %d - %d (slot %d - %d)", startEpoch, endEpoch, startSlot, endSlot)
 	attestations := []fullAttestatationData{}
-	err := ReaderDb.Select(&attestations, `
-	SELECT                                                
-        blocks_attestations.slot,
-        blocks_attestations.block_slot,
-        blocks_attestations.validators
-        FROM blocks_attestations                                
-        LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
-		validators && $1 AND 
-        blocks_attestations.block_slot >= $2 AND blocks_attestations.block_slot <= $3 AND blocks.status = '1'
-        ORDER BY block_slot;
-	`, validators, startSlot, endSlot)
 
-	if err != nil {
-		return nil, fmt.Errorf("error querying full attestation data: %w", err)
+	attestationDataCacheMux.Lock()
+	if attestationDataCache.Contains(key) {
+		logger.Infof("retrieved attestation data for key %s from cache", key)
+		attestationsValue, _ := attestationDataCache.Get(key)
+		attestations = attestationsValue.([]fullAttestatationData)
+	} else {
+		err := ReaderDb.Select(&attestations, `
+			SELECT                                                
+				blocks_attestations.slot,
+				blocks_attestations.block_slot,
+				blocks_attestations.validators
+				FROM blocks_attestations                                
+				LEFT JOIN blocks ON blocks_attestations.block_root = blocks.blockroot WHERE
+				blocks_attestations.block_slot >= $1 AND blocks_attestations.block_slot <= $2 AND blocks.status = '1'
+				ORDER BY block_slot;
+			`, startSlot, endSlot)
+		if err != nil {
+			attestationDataCacheMux.Unlock()
+			return nil, fmt.Errorf("error querying full attestation data: %w", err)
+		}
+		attestationDataCache.Add(key, attestations)
 	}
+	attestationDataCacheMux.Unlock()
+
 	// logger.Info("attestation data retrieved")
 
 	// retrieve activation epoch and exit epoch for all involved validators
@@ -3311,7 +3330,7 @@ func GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, endE
 		ExitEpoch       uint64 `db:"exitepoch"`
 	}
 	validatorInfos := []validatorInfo{}
-	err = ReaderDb.Select(&validatorInfos, "SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex = ANY($1)", validators)
+	err := ReaderDb.Select(&validatorInfos, "SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex = ANY($1)", validators)
 	if err != nil {
 		return nil, fmt.Errorf("error querying validator activation and exit data: %w", err)
 	}
