@@ -3376,5 +3376,11 @@ func GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, endE
 		}
 	}
 
+	for _, attestations := range ret {
+		sort.Slice(attestations, func(i, j int) bool {
+			return attestations[i].Epoch < attestations[j].Epoch
+		})
+	}
+
 	return ret, nil
 }
