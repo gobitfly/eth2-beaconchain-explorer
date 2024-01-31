@@ -223,7 +223,7 @@ $(document).ready(function () {
 
   // set maxParallelRequests to number of datasets queried in each search
   // make sure this is set in every one bloodhound object
-  let requestNum = 10
+  let requestNum = 11
   var timeWait = 0
 
   // used to overwrite Bloodhounds "transport._get" function which handles the rateLimitWait parameter
@@ -386,6 +386,20 @@ $(document).ready(function () {
   })
   bhValidatorsByAddress.remote.transport._get = debounce(bhValidatorsByAddress.remote.transport, bhValidatorsByAddress.remote.transport._get)
 
+  var bhValidatorsByWithdrawalCredential = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.withdrawalcredentials
+    },
+    remote: {
+      url: "/search/count_indexed_validators_by_withdrawal_credential/%QUERY",
+      wildcard: "%QUERY",
+      maxPendingRequests: requestNum,
+    },
+  })
+  bhValidatorsByWithdrawalCredential.remote.transport._get = debounce(bhValidatorsByWithdrawalCredential.remote.transport, bhValidatorsByWithdrawalCredential.remote.transport._get)
+
   var bhPubkey = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -529,6 +543,18 @@ $(document).ready(function () {
     },
     {
       limit: 5,
+      name: "validators-by-withdrawal-credential",
+      source: bhValidatorsByWithdrawalCredential,
+      display: "withdrawalcredentials",
+      templates: {
+        header: '<h3 class="h5">Validators by Withdrawal Credentials</h3>',
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate">${data.count}: 0x${data.withdrawalcredentials}</div>`
+        },
+      },
+    },
+    {
+      limit: 5,
       name: "graffiti",
       source: bhGraffiti,
       display: "graffiti",
@@ -581,6 +607,8 @@ $(document).ready(function () {
       window.location = "/address/" + sug.address
     } else if (sug.eth1_address !== undefined) {
       window.location = "/validators/deposits?q=" + sug.eth1_address
+    } else if (sug.withdrawalcredentials !== undefined) {
+      window.location = "/validators/deposits?q=" + sug.withdrawalcredentials
     } else if (sug.graffiti !== undefined) {
       // sug.graffiti is html-escaped to prevent xss, we need to unescape it
       var el = document.createElement("textarea")
