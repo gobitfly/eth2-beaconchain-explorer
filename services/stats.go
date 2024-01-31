@@ -198,7 +198,7 @@ func eth1UniqueValidatorsCount() (*uint64, error) {
 	return &count, nil
 }
 
-// getValidatorActivationChurnLimit returns the rate at which validators can enter the system
+// getValidatorActivationChurnLimit returns the rate at which validators can enter the system, see https://eips.ethereum.org/EIPS/eip-7514
 func getValidatorActivationChurnLimit(validatorCount, epoch uint64) (uint64, error) {
 	vcl, err := getValidatorChurnLimit(validatorCount)
 	if err != nil {
