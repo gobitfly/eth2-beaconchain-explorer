@@ -1994,7 +1994,7 @@ func (bigtable *Bigtable) rearrangeReversePaddedIndexZero(ctx context.Context, i
 	}
 
 	// first find out if we've a (sub)transaction with index 0 whose block/transaction has maybe not been completed by the request
-	// if we find one, make sure we do. So we won't miss that (i)tx next time (=> ignoring the query limit)
+	// if we find one, make sure we do complete the request by querying the remainder from bigtable. So we won't miss that (i)tx next time (=> ignoring the query limit)
 	for i := 0; i < len(indexes); i++ {
 		splits := strings.Split(indexes[i], ":")
 		if len(splits) < 7 {
