@@ -198,13 +198,13 @@ func eth1UniqueValidatorsCount() (*uint64, error) {
 	return &count, nil
 }
 
-// getValidatorActivationChurnLimit returns the rate at which validators can enter  the system
+// getValidatorActivationChurnLimit returns the rate at which validators can enter the system
 func getValidatorActivationChurnLimit(validatorCount, epoch uint64) (uint64, error) {
 	vcl, err := getValidatorChurnLimit(validatorCount)
 	if err != nil {
 		return 0, err
 	}
-	if utils.Config.Chain.ClConfig.DenebForkEpoch >= epoch {
+	if utils.Config.Chain.ClConfig.DenebForkEpoch > epoch {
 		return vcl, nil
 	}
 	if vcl > utils.Config.Chain.ClConfig.MaxPerEpochActivationChurnLimit {
