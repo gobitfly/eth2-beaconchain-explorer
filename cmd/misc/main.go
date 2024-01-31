@@ -264,7 +264,7 @@ func main() {
 	case "debug-blocks":
 		err = debugBlocks()
 	case "clear-bigtable":
-		clearBigtable(opts.Table, opts.Family, opts.Key, opts.DryRun, bt)
+		clearBigtable(opts.Table, opts.Family, opts.Columns, opts.Key, opts.DryRun, bt)
 	case "index-old-eth1-blocks":
 		indexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
@@ -1318,10 +1318,10 @@ func compareRewards(dayStart uint64, dayEnd uint64, validator uint64, bt *db.Big
 
 }
 
-func clearBigtable(table string, family string, key string, dryRun bool, bt *db.Bigtable) {
+func clearBigtable(table string, family string, columns string, key string, dryRun bool, bt *db.Bigtable) {
 
 	if !dryRun {
-		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v]?", key, family))
+		confirmation := utils.CmdPrompt(fmt.Sprintf("Are you sure you want to delete all big table entries starting with [%v] for family [%v] and columns [%v]?", key, family, columns))
 		if confirmation != "yes" {
 			logrus.Infof("Abort!")
 			return
@@ -1341,7 +1341,7 @@ func clearBigtable(table string, family string, key string, dryRun bool, bt *db.
 	// if err != nil {
 	// 	logrus.Fatal(err)
 	// }
-	err := bt.ClearByPrefix(table, family, key, dryRun)
+	err := bt.ClearByPrefix(table, family, columns, key, dryRun)
 
 	if err != nil {
 		logrus.Fatalf("error deleting from bigtable: %v", err)
@@ -1445,7 +1445,7 @@ func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
 	if transformerFlag == "all" {
-		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered"}
+		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered", "TransformContract"}
 	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
 		return
@@ -1478,6 +1478,8 @@ func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		case "TransformEnsNameRegistered":
 			transforms = append(transforms, bt.TransformEnsNameRegistered)
 			importENSChanges = true
+		case "TransformContract":
+			transforms = append(transforms, bt.TransformContract)
 		default:
 			utils.LogError(nil, "Invalid transformer flag %v", 0)
 			return
