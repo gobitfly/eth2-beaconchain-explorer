@@ -88,6 +88,14 @@ func calculateStats() (*types.Stats, error) {
 
 	stats.ValidatorChurnLimit = &validatorChurnLimit
 
+	epoch := LatestEpoch()
+	validatorActivationChurnLimit, err := getValidatorActivationChurnLimit(activeValidatorCount, epoch)
+	if err != nil {
+		logger.WithError(err).Error("error getting total validator churn limit")
+	}
+
+	stats.ValidatorActivationChurnLimit = &validatorActivationChurnLimit
+
 	LatestValidatorWithdrawalIndex, err := db.GetMostRecentWithdrawalValidator()
 	if err != nil {
 		logger.WithError(err).Error("error getting most recent withdrawal validator index")
@@ -95,7 +103,6 @@ func calculateStats() (*types.Stats, error) {
 
 	stats.LatestValidatorWithdrawalIndex = &LatestValidatorWithdrawalIndex
 
-	epoch := LatestEpoch()
 	WithdrawableValidatorCount, err := db.GetWithdrawableValidatorCount(epoch)
 	if err != nil {
 		logger.WithError(err).Error("error getting withdrawable validator count")
@@ -204,6 +211,7 @@ func getValidatorActivationChurnLimit(validatorCount, epoch uint64) (uint64, err
 	if err != nil {
 		return 0, err
 	}
+	logger.WithField("vcl", vcl).WithField("epoch", epoch).WithField("mpeacl", utils.Config.Chain.ClConfig.MaxPerEpochActivationChurnLimit).Info("getValidatorActivationChurnLimit")
 	if utils.Config.Chain.ClConfig.DenebForkEpoch > epoch {
 		return vcl, nil
 	}

@@ -103,6 +103,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.ChurnRate = *churnRate
 
+	activationChurnRate := stats.ValidatorActivationChurnLimit
+	if activationChurnRate == nil {
+		activationChurnRate = new(uint64)
+	}
+
+	if *activationChurnRate == 0 {
+		*activationChurnRate = 4
+		logger.Warning("Activation Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
+	}
+
 	pendingCount := stats.PendingValidatorCount
 	if pendingCount == nil {
 		pendingCount = new(uint64)
@@ -558,7 +568,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("failed to retrieve queue ahead of validator %v: %w", validatorPageData.ValidatorIndex, err)
 			}
 			validatorPageData.QueuePosition = queueAhead + 1
-			epochsToWait := queueAhead / *churnRate
+			epochsToWait := queueAhead / *activationChurnRate
 			// calculate dequeue epoch
 			estimatedActivationEpoch := validatorPageData.Epoch + epochsToWait + 1
 			// add activation offset
