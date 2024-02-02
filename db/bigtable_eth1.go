@@ -2450,6 +2450,11 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
 
+		if t.Type == "suicide" {
+			// erigon's "suicide" might be misleading for users
+			t.Type = "selfdestruct"
+		}
+
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.ParentHash, true),
 			utils.FormatBlockNumber(t.BlockNumber),
@@ -2470,86 +2475,79 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte) ([]types.Transfer, error) {
+func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult) ([]types.ITransaction, error) {
+	getTraceInfo := func(trace *rpc.ParityTraceResult) ([]byte, []byte, []byte, string) {
+		var from, to, value []byte
+		tx_type := trace.Type
 
-	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
-		logger.WithFields(logrus.Fields{
-			"transaction": transaction,
-			"from":        from,
-		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	})
-	defer tmr.Stop()
-
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
-
-	transfers := map[int]*types.Eth1InternalTransactionIndexed{}
-	mux := sync.Mutex{}
-
-	prefix := fmt.Sprintf("%s:ITX:%x:", bigtable.chainId, transaction)
-	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 3))
-
-	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
-		b := &types.Eth1InternalTransactionIndexed{}
-		row_ := row[DEFAULT_FAMILY][0]
-		err := proto.Unmarshal(row_.Value, b)
-		if err != nil {
-			logrus.Fatalf("error parsing Eth1InternalTransactionIndexed data: %v", err)
-			return false
+		switch trace.Type {
+		case "create":
+			from = common.FromHex(trace.Action.From)
+			to = common.FromHex(trace.Result.Address)
+			value = common.FromHex(trace.Action.Value)
+		case "suicide":
+			from = common.FromHex(trace.Action.Address)
+			to = common.FromHex(trace.Action.RefundAddress)
+			value = common.FromHex(trace.Action.Balance)
+		case "call":
+			from = common.FromHex(trace.Action.From)
+			to = common.FromHex(trace.Action.To)
+			value = common.FromHex(trace.Action.Value)
+			tx_type = trace.Action.CallType
+		default:
+			utils.LogError(nil, "unknown trace type", 0)
 		}
-		// geth traces include the initial transfer & zero-value staticalls
-		if bytes.Equal(b.From, from) || bytes.Equal(b.Value, []byte{}) {
-			return true
-		}
-		rowN, err := strconv.Atoi(strings.Split(row_.Row, ":")[3])
-		if err != nil {
-			logrus.Fatalf("error parsing Eth1InternalTransactionIndexed row number: %v", err)
-			return false
-		}
-		rowN = 100000 - rowN
-		mux.Lock()
-		transfers[rowN] = b
-		mux.Unlock()
-		return true
-	}, gcp_bigtable.LimitRows(256))
-
-	if err != nil {
-		return nil, err
+		return from, to, value, tx_type
 	}
-
 	names := make(map[string]string)
-	for _, t := range transfers {
-		names[string(t.From)] = ""
-		names[string(t.To)] = ""
+	for _, trace := range parityTrace {
+		from, to, _, _ := getTraceInfo(trace)
+		names[string(from)] = ""
+		names[string(to)] = ""
 	}
 
-	err = bigtable.GetAddressNames(names)
+	err := bigtable.GetAddressNames(names)
 	if err != nil {
 		return nil, err
 	}
 
-	data := make([]types.Transfer, len(transfers))
-
-	// sort by event id
-	keys := make([]int, 0, len(transfers))
-	for k := range transfers {
-		keys = append(keys, k)
-	}
-	sort.Ints(keys)
-
-	for i, k := range keys {
-		t := transfers[k]
-
-		fromName := names[string(t.From)]
-		toName := names[string(t.To)]
-		from := utils.FormatAddress(t.From, nil, fromName, false, false, true)
-		to := utils.FormatAddress(t.To, nil, toName, false, false, true)
-
-		data[i] = types.Transfer{
-			From:   from,
-			To:     to,
-			Amount: utils.FormatBytesAmount(t.Value, utils.Config.Frontend.ElCurrency, 8),
+	data := make([]types.ITransaction, 0, len(parityTrace)-1)
+	for i := 1; i < len(parityTrace); i++ {
+		from, to, value, tx_type := getTraceInfo(parityTrace[i])
+		if string(value) == "\x00" {
+			continue
 		}
+		if tx_type == "suicide" {
+			// erigon's "suicide" might be misleading for users
+			tx_type = "selfdestruct"
+		}
+		fromName := names[parityTrace[i].Action.From]
+		toName := names[parityTrace[i].Action.To]
+		input := make([]byte, 0)
+		if len(parityTrace[i].Action.Input) > 2 {
+			input, err = hex.DecodeString(parityTrace[i].Action.Input[2:])
+			if err != nil {
+				utils.LogError(err, "can't convert hex string", 0)
+			}
+		}
+		itx := types.ITransaction{
+			From:      utils.FormatAddress(from, nil, fromName, false, false, true),
+			To:        utils.FormatAddress(to, nil, toName, false, false, true),
+			Amount:    utils.FormatBytesAmount(value, utils.Config.Frontend.ElCurrency, 8),
+			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, true)),
+			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
+		}
+
+		gaslimit, err := strconv.ParseUint(parityTrace[i].Action.Gas, 0, 0)
+		if err == nil {
+			itx.Gas.Limit = gaslimit
+		}
+
+		data = append(data, itx)
+		// gasusage, err := strconv.ParseUint(parityTrace[i].Result.GasUsed, 0, 0)
+		// if err == nil {
+		// 	itx.Gas.Usage = gasusage
+		// }
 	}
 	return data, nil
 }

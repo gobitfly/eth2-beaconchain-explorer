@@ -166,15 +166,17 @@
                   {{ if gt (len .InternalTxns) 0 }}
                     <ul class="fa-ul mb-0 mt-2">
                       {{ range $i, $row := .InternalTxns }}
-                        <li class="mb-1">
-                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
-                          <span>Transfer</span>
-                          <span>{{ .Amount }}</span>
-                          <span>From</span>
-                          <span>{{ .From }}</span>
-                          <span>To</span>
-                          <span>{{ .To }}</span>
-                        </li>
+                        {{ if not .Advanced }}
+                          <li class="mb-1">
+                            <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                            <span>Transfer</span>
+                            <span>{{ .Amount }}</span>
+                            <span>From</span>
+                            <span>{{ .From }}</span>
+                            <span>To</span>
+                            <span>{{ .To }}</span>
+                          </li>
+                        {{ end }}
                       {{ end }}
                     </ul>
                   {{ end }}
@@ -399,17 +401,23 @@
                 <div class="table-responsive">
                   <table class="table table-borderless text-monospace">
                     <thead>
+                      <th>Type Trace Address</th>
                       <th>From</th>
                       <th>To</th>
                       <th>Value</th>
+                      <th>Gas Limit</th>
                     </thead>
                     <tbody>
                       {{ range $index, $tx := .InternalTxns }}
-                        <tr>
-                          <td>{{ .From }}</td>
-                          <td>{{ .To }}</td>
-                          <td>{{ .Amount }}</td>
-                        </tr>
+                        {{ if not .Advanced }}
+                          <tr>
+                            <td>{{ .TracePath }}</td>
+                            <td>{{ .From }}</td>
+                            <td>{{ .To }}</td>
+                            <td>{{ .Amount }}</td>
+                            <td>{{ .Gas.Limit }}</td>
+                          </tr>
+                        {{ end }}
                       {{ end }}
                     </tbody>
                   </table>

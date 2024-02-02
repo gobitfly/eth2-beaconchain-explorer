@@ -363,6 +363,23 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
 }
 
+func FormatTracePath(callType string, tracePath []int64, success bool, method string) template.HTML {
+	for _, trace := range tracePath {
+		callType = fmt.Sprintf("%s_%d", callType, trace)
+	}
+
+	tooltip := ""
+	if method != "" {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, method)
+	}
+
+	failedStr := ""
+	if !success {
+		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
+	}
+	return template.HTML(fmt.Sprintf(`<span%s class="text-monospace">%s</span>%s`, tooltip, callType, failedStr))
+}
+
 func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
 	// Initialize trimmedAmount and postComma variables to "0"
 	trimmedAmount = "0"
