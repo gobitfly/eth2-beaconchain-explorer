@@ -2475,7 +2475,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult) ([]types.ITransaction, error) {
+func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult, currency string) ([]types.ITransaction, error) {
 	getTraceInfo := func(trace *rpc.ParityTraceResult) ([]byte, []byte, []byte, string) {
 		var from, to, value []byte
 		tx_type := trace.Type
@@ -2514,9 +2514,6 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	data := make([]types.ITransaction, 0, len(parityTrace)-1)
 	for i := 1; i < len(parityTrace); i++ {
 		from, to, value, tx_type := getTraceInfo(parityTrace[i])
-		if string(value) == "\x00" {
-			continue
-		}
 		if tx_type == "suicide" {
 			// erigon's "suicide" might be misleading for users
 			tx_type = "selfdestruct"
@@ -2533,7 +2530,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		itx := types.ITransaction{
 			From:      utils.FormatAddress(from, nil, fromName, false, false, true),
 			To:        utils.FormatAddress(to, nil, toName, false, false, true),
-			Amount:    utils.FormatBytesAmount(value, utils.Config.Frontend.ElCurrency, 8),
+			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
 			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, true)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
 		}

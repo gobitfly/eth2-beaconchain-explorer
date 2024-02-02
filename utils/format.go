@@ -232,6 +232,9 @@ func formatCurrencyString(valIf interface{}, valueCurrency, targetCurrency strin
 		// add trailing zeros to always have the same amount of digits after the comma
 		dotIndex := strings.Index(valStr, ".")
 		if dotIndex >= 0 {
+			if !strings.Contains(amountStr, ".") {
+				amountStr += "."
+			}
 			missingZeros := digitsAfterComma - (len(amountStr) - dotIndex - 1)
 			if missingZeros > 0 {
 				amountStr += strings.Repeat("0", missingZeros)

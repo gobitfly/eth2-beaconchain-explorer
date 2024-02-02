@@ -410,6 +410,7 @@ func main() {
 			router.HandleFunc("/block/{block}", handlers.Eth1Block).Methods("GET")
 			router.HandleFunc("/block/{block}/transactions", handlers.BlockTransactionsData).Methods("GET")
 			router.HandleFunc("/tx/{hash}", handlers.Eth1TransactionTx).Methods("GET")
+			router.HandleFunc("/tx/{hash}/data", handlers.Eth1TransactionTxData).Methods("GET")
 			router.HandleFunc("/mempool", handlers.MempoolView).Methods("GET")
 			router.HandleFunc("/burn", handlers.Burn).Methods("GET")
 			router.HandleFunc("/burn/data", handlers.BurnPageData).Methods("GET")

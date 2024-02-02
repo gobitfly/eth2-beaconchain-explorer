@@ -27,7 +27,7 @@ import (
 var logger = logrus.New().WithField("module", "eth1data")
 var ErrTxIsPending = errors.New("error retrieving data for tx: tx is still pending")
 
-func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
+func GetEth1Transaction(hash common.Hash, currency string) (*types.Eth1TxData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -143,14 +143,13 @@ func GetEth1Transaction(hash common.Hash) (*types.Eth1TxData, error) {
 		if err == nil {
 			txPageData.ErrorMsg = errorMsg
 		}
-	}
-	if receipt.Status == 1 {
+	} else {
 		txPageData.Transfers, err = db.BigtableClient.GetArbitraryTokenTransfersForTransaction(tx.Hash().Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("error loading token transfers from tx: %w", err)
 		}
 	}
-	txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes(), data)
+	txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes(), data, currency)
 	if err != nil {
 		return nil, fmt.Errorf("error loading internal transfers from tx: %w", err)
 	}
