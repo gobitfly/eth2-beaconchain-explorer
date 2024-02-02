@@ -211,7 +211,7 @@ func main() {
 
 	// init el client
 	logrus.Info("init el client endpoint...")
-	// #RECY IMPROVE split http / ws endpoint, http is mandatory, ws optional (to use subscribe)
+	// #RECY IMPROVE split http / ws endpoint, http is mandatory, ws optional - So add an http/ws config entry, where ws is optional (to use subscribe)
 	elClient, err = ethclient.Dial(utils.Config.Eth1RpcEndpoint)
 	if err != nil {
 		utils.LogFatal(err, "error dialing eth url", 0) // fatal, no point to continue without node connection
@@ -220,9 +220,11 @@ func main() {
 
 	// check chain id
 	{
-		// utils.Config.Chain.Id = ARBITRUM_CHAINID // #RECY REMOVE
 		logrus.Info("check chain id...")
 		chainID, err := rpciGetChainId()
+		if chainID == ARBITRUM_CHAINID { // #RECY REMOVE currently necessary as there is no default config / setting in utils for Arbitrum
+			utils.Config.Chain.Id = ARBITRUM_CHAINID
+		}
 		if err != nil {
 			utils.LogFatal(err, "error get chain id", 0) // fatal, no point to continue without chain id
 		}
@@ -240,15 +242,6 @@ func main() {
 	// //////////////////////////////////////////
 	// Config done, now actually "doing" stuff //
 	// //////////////////////////////////////////
-
-	/* #RECY REMOVE
-	prefix := "42161:999930998874"
-	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK)
-	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS)
-	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES)
-	readBT(tableBlocksRaw, prefix, BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES)
-	return
-	/* */
 
 	// check if reexport requested
 	if *startBlockNumber >= 0 && *endBlockNumber >= 0 && *startBlockNumber <= *endBlockNumber {
@@ -443,35 +436,6 @@ func main() {
 			}
 		}
 	}
-}
-
-// #RECY REMOVE after testing
-func readBT(tableBlocksRaw *gcp_bigtable.Table, prefix string, family string, columnFilter string) error {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
-
-	rowRange := gcp_bigtable.PrefixRange(prefix)
-	rowHandler := func(row gcp_bigtable.Row) bool {
-		logrus.Warnf("%s %s %s", prefix, family, columnFilter)
-		if row == nil {
-			logrus.Warnf("row == nil")
-		} else if row[family] == nil {
-			logrus.Warnf("row[family] == nil")
-		} else if len(row[family]) == 0 {
-			logrus.Warnf("len(row[family]) == 0")
-		} else if len(row[family][0].Value) == 0 {
-			logrus.Warnf("len(row[family][0].Value) == 0")
-		}
-		logrus.Warnf("%s", decompress(row[family][0].Value))
-		return true
-	}
-
-	err := tableBlocksRaw.ReadRows(ctx, rowRange, rowHandler, gcp_bigtable.LimitRows(1), gcp_bigtable.RowFilter(gcp_bigtable.ColumnFilter(columnFilter)))
-	if err != nil {
-		logrus.Errorf("%v", err)
-	}
-
-	return nil
 }
 
 // improve the behaviour in case of an error
@@ -796,7 +760,7 @@ func compress(src []byte) []byte {
 }
 
 // decompress given byte slice
-func decompress(src []byte) []byte {
+/* func decompress(src []byte) []byte {
 	zr, err := gzip.NewReader(bytes.NewReader(src))
 	if err != nil {
 		utils.LogFatal(err, "error creating gzip reader", 0) // fatal, as if this is not working in the first place, it will never work
@@ -806,7 +770,7 @@ func decompress(src []byte) []byte {
 		utils.LogFatal(err, "error reading from gzip reader", 0) // fatal, as if this is not working in the first place, it will never work
 	}
 	return data
-}
+} */
 
 // used by splitAndVerifyJsonArray to add an element to the list depending on its Id
 func _splitAndVerifyJsonArrayAddElement(r *[][]byte, element []byte, lastId int64) (int64, error) {
@@ -896,32 +860,6 @@ func _splitAndVerifyJsonArray(jArray []byte, providedElementCount int64) ([][]by
 	return r, nil
 }
 
-// #RECY REMOVE after testing
-// join int ranges for a better "look"
-/*
-func joinIntRanges(iRange []intRange) []intRange {
-	if len(iRange) < 1 {
-		return iRange
-	}
-	for cleanRun := false; !cleanRun; {
-		cleanRun = true
-		l := len(iRange)
-		for i := 0; cleanRun && i < l; i++ {
-			for k, v := range iRange {
-				if i != k && iRange[i].end+1 == v.start {
-					iRange[i].end = v.end
-					iRange[k] = iRange[0]
-					iRange = iRange[1:]
-					cleanRun = false
-					break
-				}
-			}
-		}
-	}
-	return iRange
-}
-*/
-
 // get newest block number from node, should be called always with TRUE
 func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl *string, discordWebhookUser *string, discordWebhookAddTextFatal *string) {
 	const NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE = 3
@@ -976,7 +914,6 @@ func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl
 							utils.LogFatal(nil, "impossible error, newest block <= previous block", 0, map[string]interface{}{"previousBlock": previousBlock, "newestBlock": newestBlock})
 						}
 						currentNodeBlockNumber.Store(newestBlock)
-						// logrus.Infof("Newest node block %d", currentNodeBlockNumber.Load()) // #RECY REMOVE after testing
 						gotNewBlockAt = time.Now()
 					}
 				}
@@ -1011,7 +948,6 @@ func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl
 					utils.LogFatal(nil, "impossible error, newest block <= previous block", 0, map[string]interface{}{"previousBlock": previousBlock, "newestBlock": newestBlock})
 				} else if previousBlock < newestBlock {
 					currentNodeBlockNumber.Store(newestBlock)
-					// logrus.Infof("Newest node block %d", currentNodeBlockNumber.Load()) // #RECY REMOVE after testing
 					gotNewBlockAt = time.Now()
 					continue
 				}
@@ -1038,80 +974,14 @@ func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl
 // /////////////////////
 // Postgres interface //
 // /////////////////////
-
-// #RECY REMOVE after testing
-// used by findHoles function, doing recursion stuff
-/*
-func _psqlCheckHoles(start int64, end int64) ([]intRange, error) {
-	targetAmount := end - start + 1
-	if targetAmount < 1 {
-		return nil, fmt.Errorf("error end (%d) > start (%d) in _psqlCheckHoles", end, start)
-	}
-
-	var blockAmount int64
-	err := db.ReaderDb.Get(&blockAmount, `SELECT COUNT(*) FROM raw_block_status WHERE block_id >= $1 AND block_id <= $2;`, start, end)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			blockAmount = 0
-		} else {
-			return nil, fmt.Errorf("error at 'SELECT COUNT(*) FROM raw_block_status WHERE block_id >= %d AND block_id <= %d;': %w", start, end, err)
-		}
-	}
-
-	if targetAmount == blockAmount {
-		return nil, nil // best case, every as expected
-	} else if targetAmount > blockAmount {
-		// complete range not found
-		if blockAmount == 0 {
-			return []intRange{intRange{start: start, end: start + targetAmount - 1}}, nil
-		}
-
-		// split range in low / high
-		middle := start + targetAmount/2
-		lowBound, err := _psqlCheckHoles(start, middle-1)
-		if err != nil {
-			return nil, err
-		}
-		if blockAmount+int64(len(lowBound)) == targetAmount { // no need to check high bound, if already enough missing elements found
-			return lowBound, nil
-		}
-		highBound, err := _psqlCheckHoles(middle, end)
-		if err != nil {
-			return nil, err
-		}
-		return append(lowBound, highBound...), nil
-	}
-
-	return nil, fmt.Errorf("impossible error, targetAmount (%d) < blockAmount (%d)", targetAmount, blockAmount)
-}
-*/
-
-// #RECY REMOVE after testing
-// find holes (missing ids) in raw_block_status. Starting at 0 and ending at current highest index.
-// using _checkHoles function for the recursion stuff
-/*
-func psqlFindHoles() ([]intRange, error) {
-	latestBlock, err := psqlGetLatestBlock(false)
-	if err != nil {
-		return nil, err
-	} else if latestBlock < 0 { // no holes if no entries
-		return nil, nil
-	}
-	iRange, err := _psqlCheckHoles(0, latestBlock)
-	if err != nil {
-		return nil, err
-	}
-	return joinIntRanges(iRange), nil
-}
-*/
-
+// find gaps (missing ids) in raw_block_status
 func psqlFindGaps() ([]intRange, error) {
 	gaps := []intRange{}
 
 	// check for a gap at the beginning
 	{
 		var firstBlock int64
-		err := db.ReaderDb.Get(&firstBlock, `SELECT block_id FROM raw_block_status ORDER BY block_id LIMIT 1;`)
+		err := db.ReaderDb.Get(&firstBlock, `SELECT block_id FROM raw_block_status WHERE chain_id = $1 ORDER BY block_id LIMIT 1;`, utils.Config.Chain.Id)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) { // no entries = no gaps
 				return []intRange{}, nil
@@ -1134,11 +1004,13 @@ func psqlFindGaps() ([]intRange, error) {
 				block_id, LEAD(block_id) OVER (ORDER BY block_id) as nextNumber
 			FROM
 				raw_block_status
+			WHERE
+				chain_id = $1
 			) number
 		WHERE 
 			block_id + 1 <> nextNumber
 		ORDER BY
-			gapStart;`)
+			gapStart;`, utils.Config.Chain.Id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return gaps, nil
@@ -1163,11 +1035,11 @@ func psqlFindGaps() ([]intRange, error) {
 func psqlGetLatestBlock(useWriterDb bool) (int64, error) {
 	var err error
 	var latestBlock int64
-	query := `SELECT block_id FROM raw_block_status ORDER BY block_id DESC LIMIT 1;`
+	query := `SELECT block_id FROM raw_block_status WHERE chain_id = $1 ORDER BY block_id DESC LIMIT 1;`
 	if useWriterDb {
-		err = db.WriterDb.Get(&latestBlock, query)
+		err = db.WriterDb.Get(&latestBlock, query, utils.Config.Chain.Id)
 	} else {
-		err = db.ReaderDb.Get(&latestBlock, query)
+		err = db.ReaderDb.Get(&latestBlock, query, utils.Config.Chain.Id)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1195,17 +1067,18 @@ func psqlAddElements(blockRawData []fullBlockRawData) error {
 
 	_, err := db.WriterDb.Exec(`
 		INSERT INTO raw_block_status
-			(block_id, block_hash)
+			(chain_id, block_id, block_hash)
 		SELECT
-			UNNEST($1::int[]),
-			UNNEST($2::bytea[][])
-		ON CONFLICT (block_id) DO
+			$1,
+			UNNEST($2::int[]),
+			UNNEST($3::bytea[][])
+		ON CONFLICT (chain_id, block_id) DO
 			UPDATE SET
 				block_hash = excluded.block_hash,
 				indexed_bt = FALSE
 			WHERE
 				raw_block_status.block_hash != excluded.block_hash;`,
-		pq.Array(block_number), block_hash)
+		utils.Config.Chain.Id, pq.Array(block_number), block_hash)
 	return err
 }
 
@@ -1230,13 +1103,15 @@ func psqlGetHashHitsIdList(blockRawData []fullBlockRawData) ([]int64, error) {
 		FROM 
 			raw_block_status, 
 			(SELECT UNNEST($1::int[]) as block_id, UNNEST($2::bytea[][]) as block_hash) as node_block_status 
-		WHERE 
+		WHERE
+			chain_id = $3
+			AND
 			raw_block_status.block_id = node_block_status.block_id 
 			AND 
 			raw_block_status.block_hash = node_block_status.block_hash 
 		ORDER 
 			by raw_block_status.block_id;`,
-		pq.Array(block_number), block_hash)
+		pq.Array(block_number), block_hash, utils.Config.Chain.Id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return []int64{}, nil
