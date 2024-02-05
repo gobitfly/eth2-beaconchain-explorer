@@ -112,6 +112,7 @@ func main() {
 	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes, doesn't go very well with only-hole-check")
 	onlyHoleCheck := flag.Bool("only-hole-check", false, "just check for holes and quit, can be used for a reexport running simulation to a normal setup, just remove entries in postgres and start with this flag, doesn't go very well with skip-hole-check")
 	noNewBlocks := flag.Bool("ignore-new-blocks", false, "there are no new blocks, at all")
+	noNewBlocksThresholdSeconds := flag.Int("fatal-if-no-new-block-for-x-seconds", 600, "will fatal if there is no new block for x seconds (MIN 30), will start throwing errors at 2/3 of the time, will start throwing warnings at 1/3 of the time, doesn't go very well with ignore-new-blocks")
 	discordWebhookBlockThreshold := flag.Int64("discord-block-threshold", 1000000, "every x blocks an update is send to Discord")
 	discordWebhookReportUrl := flag.String("discord-url", "", "report progress to discord url")
 	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
@@ -139,6 +140,7 @@ func main() {
 		if *noNewBlocks {
 			logrus.Infof("ignore-new-blocks set true")
 		}
+		logrus.Infof("fatal-if-no-new-block-for-x-seconds set to '%d' seconds", *noNewBlocksThresholdSeconds)
 	}
 
 	// check config
@@ -170,6 +172,10 @@ func main() {
 	if *concurrency < 1 {
 		logrus.Warnf("concurrency parameter set to %s, corrected to 1", _formatInt64(*concurrency))
 		*concurrency = 1
+	}
+	if *noNewBlocksThresholdSeconds < 30 {
+		logrus.Warnf("fatal-if-no-new-block-for-x-seconds set to %d, corrected to 30", *noNewBlocksThresholdSeconds)
+		*noNewBlocksThresholdSeconds = 30
 	}
 
 	// init postgres
@@ -236,7 +242,7 @@ func main() {
 
 	// get latest block (as it's global, so we have a initial value)
 	logrus.Info("get latest block from node...")
-	updateBlockNumber(true, *noNewBlocks, discordWebhookReportUrl, discordWebhookUser, discordWebhookAddTextFatal)
+	updateBlockNumber(true, *noNewBlocks, time.Duration(*noNewBlocksThresholdSeconds)*time.Second, discordWebhookReportUrl, discordWebhookUser, discordWebhookAddTextFatal)
 	logrus.Infof("...get latest block (%s) from node done.", _formatInt64(currentNodeBlockNumber.Load()))
 
 	// //////////////////////////////////////////
@@ -360,7 +366,7 @@ func main() {
 						for i < matchingLength && v.blockNumber > matchingHashesBlockIdList[i] {
 							i++
 						}
-						if i > matchingLength || v.blockNumber != matchingHashesBlockIdList[i] {
+						if i >= matchingLength || v.blockNumber != matchingHashesBlockIdList[i] {
 							failCounter++
 							if wrongHashRanges[wrongHashRangesIndex].start < 0 {
 								wrongHashRanges[wrongHashRangesIndex].start = v.blockNumber
@@ -861,11 +867,7 @@ func _splitAndVerifyJsonArray(jArray []byte, providedElementCount int64) ([][]by
 }
 
 // get newest block number from node, should be called always with TRUE
-func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl *string, discordWebhookUser *string, discordWebhookAddTextFatal *string) {
-	const NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE = 3
-	const WARN_TILL_NOBLOCK_COUNT_OF = 10
-	const ERROR_TILL_NOBLOCK_COUNT_OF = 20
-
+func updateBlockNumber(firstCall bool, noNewBlocks bool, noNewBlocksThresholdDuration time.Duration, discordWebhookReportUrl *string, discordWebhookUser *string, discordWebhookAddTextFatal *string) {
 	if firstCall {
 		blockNumber, err := rpciGetLatestBlock()
 		if err != nil {
@@ -874,7 +876,7 @@ func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl
 		}
 		currentNodeBlockNumber.Store(blockNumber)
 		if !noNewBlocks {
-			go updateBlockNumber(false, false, discordWebhookReportUrl, discordWebhookUser, discordWebhookAddTextFatal)
+			go updateBlockNumber(false, false, noNewBlocksThresholdDuration, discordWebhookReportUrl, discordWebhookUser, discordWebhookAddTextFatal)
 		}
 		return
 	}
@@ -898,7 +900,7 @@ func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl
 					if timer != nil && !timer.Stop() {
 						<-timer.C
 					}
-					timer = time.NewTimer(timePerBlock * NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE)
+					timer = time.NewTimer(noNewBlocksThresholdDuration / 3)
 
 					select {
 					case err = <-sub.Err():
@@ -920,12 +922,12 @@ func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl
 			}
 
 			durationSinceLastBlockReceived := time.Since(gotNewBlockAt)
-			if durationSinceLastBlockReceived < timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
+			if durationSinceLastBlockReceived < noNewBlocksThresholdDuration/3*2 {
 				logrus.WithFields(logrus.Fields{
 					"durationSinceLastBlockReceived": durationSinceLastBlockReceived,
 					"error":                          err,
 				}).Warn(errorText)
-			} else if durationSinceLastBlockReceived < timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
+			} else if durationSinceLastBlockReceived < noNewBlocksThresholdDuration {
 				utils.LogError(err, errorText, 0, map[string]interface{}{"durationSinceLastBlockReceived": durationSinceLastBlockReceived, "previousBlock": previousBlock, "newestBlock": newestBlock})
 			} else {
 				sendMessage(fmt.Sprintf("%s NODE EXPORT: Fatal, %s, %v, %v %s", getChainNamePretty(), errorText, err, durationSinceLastBlockReceived, *discordWebhookAddTextFatal), discordWebhookReportUrl, discordWebhookUser)
@@ -954,12 +956,12 @@ func updateBlockNumber(firstCall bool, noNewBlocks bool, discordWebhookReportUrl
 			}
 
 			durationSinceLastBlockReceived := time.Since(gotNewBlockAt)
-			if durationSinceLastBlockReceived >= timePerBlock*ERROR_TILL_NOBLOCK_COUNT_OF {
+			if durationSinceLastBlockReceived >= noNewBlocksThresholdDuration {
 				sendMessage(fmt.Sprintf("%s NODE EXPORT: Fatal, %s, %d, %d, %v, %v %s", getChainNamePretty(), errorText, previousBlock, newestBlock, err, durationSinceLastBlockReceived, *discordWebhookAddTextFatal), discordWebhookReportUrl, discordWebhookUser)
 				utils.LogFatal(err, errorText, 0, map[string]interface{}{"durationSinceLastBlockReceived": durationSinceLastBlockReceived, "previousBlock": previousBlock, "newestBlock": newestBlock})
-			} else if durationSinceLastBlockReceived >= timePerBlock*WARN_TILL_NOBLOCK_COUNT_OF {
+			} else if durationSinceLastBlockReceived >= noNewBlocksThresholdDuration/3*2 {
 				utils.LogError(err, errorText, 0, map[string]interface{}{"durationSinceLastBlockReceived": durationSinceLastBlockReceived, "previousBlock": previousBlock, "newestBlock": newestBlock})
-			} else if durationSinceLastBlockReceived >= timePerBlock*NOBLOCK_COUNT_OF_WILL_BE_AN_ISSUE {
+			} else if durationSinceLastBlockReceived >= noNewBlocksThresholdDuration/3 {
 				logrus.WithFields(logrus.Fields{
 					"durationSinceLastBlockReceived": durationSinceLastBlockReceived,
 					"error":                          err,
