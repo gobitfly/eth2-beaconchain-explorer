@@ -99,7 +99,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	if *churnRate == 0 {
 		*churnRate = 4
-		logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
+		logger.Warning("Churn rate not set in config using 4 as default")
 	}
 	validatorPageData.ChurnRate = *churnRate
 
@@ -110,7 +110,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	if *activationChurnRate == 0 {
 		*activationChurnRate = 4
-		logger.Warning("Activation Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
+		logger.Warning("Activation Churn rate not set in config using 4 as default")
 	}
 
 	pendingCount := stats.PendingValidatorCount
