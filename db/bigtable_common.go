@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
@@ -106,7 +107,7 @@ func (bigtable *Bigtable) ClearByPrefix(table string, family, columns, prefix st
 
 	mutsDelete := types.NewBulkMutations(MAX_BATCH_MUTATIONS)
 
-	/*var filter gcp_bigtable.Filter
+	var filter gcp_bigtable.Filter
 	columnsSlice := strings.Split(columns, ",")
 	if len(columnsSlice) > 1 {
 		columnNames := make([]gcp_bigtable.Filter, len(columnsSlice))
@@ -114,14 +115,12 @@ func (bigtable *Bigtable) ClearByPrefix(table string, family, columns, prefix st
 			columnNames[i] = gcp_bigtable.ColumnFilter(f)
 		}
 		filter = gcp_bigtable.InterleaveFilters(columnNames...)
-	} else if columns == "*" {
-		filter = gcp_bigtable.ColumnFilter("")
 	} else {
 		filter = gcp_bigtable.ColumnFilter(columnsSlice[0])
-	}*/
+	}
 
 	keysCount := 0
-	err := btTable.ReadRows(context.Background(), rowRange, func(row gcp_bigtable.Row) bool {
+	deleteFunc := func(row gcp_bigtable.Row) bool {
 		var row_ string
 
 		if family == "*" {
@@ -134,13 +133,13 @@ func (bigtable *Bigtable) ClearByPrefix(table string, family, columns, prefix st
 		}
 
 		mutDelete := gcp_bigtable.NewMutation()
-		if columns == "" || columns == "*" {
+		if columns == "*" {
 			mutDelete.DeleteRow()
-		} /*else {
+		} else {
 			for _, column := range columnsSlice {
 				mutDelete.DeleteCellsInColumn(family, column)
 			}
-		}*/
+		}
 
 		mutsDelete.Keys = append(mutsDelete.Keys, row_)
 		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
@@ -160,7 +159,13 @@ func (bigtable *Bigtable) ClearByPrefix(table string, family, columns, prefix st
 			mutsDelete = types.NewBulkMutations(MAX_BATCH_MUTATIONS)
 		}
 		return true
-	} /*, gcp_bigtable.RowFilter(filter)*/)
+	}
+	var err error
+	if columns == "*" {
+		err = btTable.ReadRows(context.Background(), rowRange, deleteFunc)
+	} else {
+		err = btTable.ReadRows(context.Background(), rowRange, deleteFunc, gcp_bigtable.RowFilter(filter))
+	}
 	if err != nil {
 		return err
 	}
