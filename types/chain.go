@@ -45,6 +45,7 @@ type ClChainConfig struct {
 	EjectionBalance                  uint64 `yaml:"EJECTION_BALANCE"`
 	MinPerEpochChurnLimit            uint64 `yaml:"MIN_PER_EPOCH_CHURN_LIMIT"`
 	ChurnLimitQuotient               uint64 `yaml:"CHURN_LIMIT_QUOTIENT"`
+	MaxPerEpochActivationChurnLimit  uint64 `yaml:"MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT"`
 	// fork choice
 	ProposerScoreBoost uint64 `yaml:"PROPOSER_SCORE_BOOST"`
 	// deposit contract

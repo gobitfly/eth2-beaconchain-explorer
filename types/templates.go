@@ -143,6 +143,7 @@ type Stats struct {
 	ActiveValidatorCount           *uint64 `db:"count"`
 	PendingValidatorCount          *uint64 `db:"count"`
 	ValidatorChurnLimit            *uint64
+	ValidatorActivationChurnLimit  *uint64
 	LatestValidatorWithdrawalIndex *uint64 `db:"index"`
 	WithdrawableValidatorCount     *uint64 `db:"count"`
 	// WithdrawableAmount             *uint64 `db:"amount"`

@@ -776,7 +776,12 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	latestEpoch := services.LatestEpoch()
 
 	stats := services.GetLatestStats()
-	churnRate := stats.ValidatorChurnLimit
+	activationChurnRate := stats.ValidatorActivationChurnLimit
+	if activationChurnRate == nil {
+		utils.LogError(fmt.Errorf("activation churn rate not available"), "error retrieving validator activation churn rate", 0, errFieldMap)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	if len(validatorIndexArr) > 0 {
 		balances, err := db.BigtableClient.GetValidatorBalanceHistory(validatorIndexArr, latestEpoch, latestEpoch)
@@ -842,7 +847,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, "Internal server error", http.StatusInternalServerError)
 					return
 				}
-				epochsToWait := queueAhead / *churnRate
+				epochsToWait := queueAhead / *activationChurnRate
 				// calculate dequeue epoch
 				estimatedActivationEpoch := latestEpoch + epochsToWait + 1
 				// add activation offset
