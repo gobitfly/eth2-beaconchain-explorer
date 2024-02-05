@@ -2,7 +2,9 @@ package exporter
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
+	"encoding/gob"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
@@ -15,9 +17,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/go-redis/redis/v8"
 )
 
-func RunSlotExporter(client rpc.Client, firstRun bool) error {
+func RunSlotExporter(client rpc.Client, redisClient *redis.Client, firstRun bool) error {
 	// get the current chain head
 	head, err := client.GetChainHead()
 
@@ -41,7 +45,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 		if len(dbSlots) > 0 {
 			if dbSlots[0] != 0 {
 				logger.Infof("exporting genesis slot as it is missing in the database")
-				err := ExportSlot(client, 0, utils.EpochOfSlot(0) == head.HeadEpoch, tx)
+				err := ExportSlot(client, 0, utils.EpochOfSlot(0) == head.HeadEpoch, tx, redisClient)
 				if err != nil {
 					return fmt.Errorf("error exporting slot %v: %w", 0, err)
 				}
@@ -61,7 +65,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 				if previousSlot != currentSlot-1 {
 					logger.Infof("slots between %v and %v are missing, exporting them", previousSlot, currentSlot)
 					for slot := previousSlot + 1; slot <= currentSlot-1; slot++ {
-						err := ExportSlot(client, slot, false, tx)
+						err := ExportSlot(client, slot, false, tx, redisClient)
 
 						if err != nil {
 							return fmt.Errorf("error exporting slot %v: %w", slot, err)
@@ -79,7 +83,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			logger.Infof("db is empty, export genesis slot")
-			err := ExportSlot(client, 0, utils.EpochOfSlot(0) == head.HeadEpoch, tx)
+			err := ExportSlot(client, 0, utils.EpochOfSlot(0) == head.HeadEpoch, tx, redisClient)
 			if err != nil {
 				return fmt.Errorf("error exporting slot %v: %w", 0, err)
 			}
@@ -93,7 +97,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 	if lastDbSlot != head.HeadSlot {
 		slotsExported := 0
 		for slot := lastDbSlot + 1; slot <= head.HeadSlot; slot++ { // export any new slots
-			err := ExportSlot(client, slot, utils.EpochOfSlot(slot) == head.HeadEpoch, tx)
+			err := ExportSlot(client, slot, utils.EpochOfSlot(slot) == head.HeadEpoch, tx, redisClient)
 			if err != nil {
 				return fmt.Errorf("error exporting slot %v: %w", slot, err)
 			}
@@ -158,7 +162,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 				if err != nil {
 					return fmt.Errorf("error setting block %v as finalized (orphaned): %w", dbSlot.Slot, err)
 				}
-				err = ExportSlot(client, dbSlot.Slot, utils.EpochOfSlot(dbSlot.Slot) == head.HeadEpoch, tx)
+				err = ExportSlot(client, dbSlot.Slot, utils.EpochOfSlot(dbSlot.Slot) == head.HeadEpoch, tx, redisClient)
 				if err != nil {
 					return fmt.Errorf("error exporting slot %v: %w", dbSlot.Slot, err)
 				}
@@ -194,7 +198,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 		} else { // check if a late slot has been proposed in the meantime
 			if len(dbSlot.BlockRoot) < 32 && header != nil { // we have no slot in the db, but the node has a slot, export it
 				logger.Infof("exporting new slot %v", dbSlot.Slot)
-				err := ExportSlot(client, dbSlot.Slot, utils.EpochOfSlot(dbSlot.Slot) == head.HeadEpoch, tx)
+				err := ExportSlot(client, dbSlot.Slot, utils.EpochOfSlot(dbSlot.Slot) == head.HeadEpoch, tx, redisClient)
 				if err != nil {
 					return fmt.Errorf("error exporting slot %v: %w", dbSlot.Slot, err)
 				}
@@ -211,7 +215,7 @@ func RunSlotExporter(client rpc.Client, firstRun bool) error {
 
 }
 
-func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) error {
+func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx, redisClient *redis.Client) error {
 
 	isFirstSlotOfEpoch := slot%utils.Config.Chain.ClConfig.SlotsPerEpoch == 0
 	epoch := slot / utils.Config.Chain.ClConfig.SlotsPerEpoch
@@ -381,6 +385,54 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) e
 	err = db.BigtableClient.SaveProposal(block)
 	if err != nil {
 		return fmt.Errorf("error exporting proposal to bigtable for slot %v: %w", block.Slot, err)
+	}
+
+	// save the block to redis if it was produced during the last 60 minutes
+	if time.Since(utils.SlotToTime(block.Slot)) < time.Hour {
+		var serializedBlockData bytes.Buffer
+		enc := gob.NewEncoder(&serializedBlockData)
+
+		redisCachedBlock := &types.RedisCachedBlock{
+			Proposer:                   block.Proposer,
+			BlockRoot:                  block.BlockRoot,
+			Slot:                       block.Slot,
+			ParentRoot:                 block.ParentRoot,
+			StateRoot:                  block.StateRoot,
+			Signature:                  block.Signature,
+			RandaoReveal:               block.RandaoReveal,
+			Graffiti:                   block.Graffiti,
+			Eth1Data:                   block.Eth1Data,
+			BodyRoot:                   block.BodyRoot,
+			ProposerSlashings:          block.ProposerSlashings,
+			AttesterSlashings:          block.AttesterSlashings,
+			Attestations:               block.Attestations,
+			Deposits:                   block.Deposits,
+			VoluntaryExits:             block.VoluntaryExits,
+			SyncAggregate:              block.SyncAggregate,
+			SignedBLSToExecutionChange: block.SignedBLSToExecutionChange,
+			AttestationDuties:          block.AttestationDuties,
+			SyncDuties:                 block.SyncDuties,
+			Finalized:                  block.Finalized,
+			EpochAssignments:           block.EpochAssignments,
+		}
+		err := enc.Encode(redisCachedBlock)
+		if err != nil {
+			return fmt.Errorf("error serializing block to gob for slot %v: %w", block.Slot, err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+
+		key := fmt.Sprintf("%d:%s:%d", utils.Config.Chain.ClConfig.DepositChainID, "block", block.Slot)
+
+		expirationTime := utils.EpochToTime(epoch + 7) // keep it for at least 7 epochs in the cache
+		expirationDuration := time.Until(expirationTime)
+		logger.Infof("writing block to redis with a TTL of %v", expirationDuration)
+		err = redisClient.Set(ctx, key, serializedBlockData.Bytes(), expirationDuration).Err()
+		if err != nil {
+			return fmt.Errorf("error writing block to redis for slot %v: %w", block.Slot, err)
+		}
+		logger.Infof("writing block to redis completed")
 	}
 
 	// save the block data to the db

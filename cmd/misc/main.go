@@ -197,7 +197,7 @@ func main() {
 				logrus.Fatalf("error starting tx: %v", err)
 			}
 			for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
-				err = exporter.ExportSlot(rpcClient, slot, false, tx)
+				err = exporter.ExportSlot(rpcClient, slot, false, tx, nil)
 
 				if err != nil {
 					tx.Rollback()
@@ -246,7 +246,7 @@ func main() {
 				logrus.Fatalf("error starting tx: %v", err)
 			}
 			for slot := epoch * utils.Config.Chain.ClConfig.SlotsPerEpoch; slot < (epoch+1)*utils.Config.Chain.ClConfig.SlotsPerEpoch; slot++ {
-				err = exporter.ExportSlot(rpcClient, slot, false, tx)
+				err = exporter.ExportSlot(rpcClient, slot, false, tx, nil)
 
 				if err != nil {
 					tx.Rollback()

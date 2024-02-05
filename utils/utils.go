@@ -790,9 +790,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 
 	cfg.Chain.Id = cfg.Chain.ClConfig.DepositChainID
 
-	if cfg.RedisSessionStoreEndpoint == "" && cfg.RedisCacheEndpoint != "" {
+	if cfg.PersistentRedisStoreEndpoint == "" && cfg.RedisCacheEndpoint != "" {
 		logrus.Infof("using RedisCacheEndpoint %s as RedisSessionStoreEndpoint as no dedicated RedisSessionStoreEndpoint was provided", cfg.RedisCacheEndpoint)
-		cfg.RedisSessionStoreEndpoint = cfg.RedisCacheEndpoint
+		cfg.PersistentRedisStoreEndpoint = cfg.RedisCacheEndpoint
 	}
 
 	logrus.WithFields(logrus.Fields{

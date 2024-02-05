@@ -137,6 +137,30 @@ type Block struct {
 	Validators                 []*Validator
 }
 
+type RedisCachedBlock struct {
+	Proposer                   uint64
+	BlockRoot                  []byte
+	Slot                       uint64
+	ParentRoot                 []byte
+	StateRoot                  []byte
+	Signature                  []byte
+	RandaoReveal               []byte
+	Graffiti                   []byte
+	Eth1Data                   *Eth1Data
+	BodyRoot                   []byte
+	ProposerSlashings          []*ProposerSlashing
+	AttesterSlashings          []*AttesterSlashing
+	Attestations               []*Attestation
+	Deposits                   []*Deposit
+	VoluntaryExits             []*VoluntaryExit
+	SyncAggregate              *SyncAggregate // warning: sync aggregate may be nil, for phase0 blocks
+	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
+	AttestationDuties          map[ValidatorIndex][]Slot
+	SyncDuties                 map[ValidatorIndex]bool
+	Finalized                  bool
+	EpochAssignments           *EpochAssignments
+}
+
 type SignedBLSToExecutionChange struct {
 	Message   BLSToExecutionChange
 	Signature []byte

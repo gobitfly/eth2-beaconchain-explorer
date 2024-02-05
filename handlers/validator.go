@@ -619,7 +619,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			nextStatsDayFirstEpoch, _ := utils.GetFirstAndLastEpochForDay(lastStatsDay + 1)
 			if validatorPageData.Epoch > nextStatsDayFirstEpoch {
 				lookback := validatorPageData.Epoch - nextStatsDayFirstEpoch
-				missedAttestations, err := db.BigtableClient.GetValidatorMissedAttestationHistory([]uint64{index}, validatorPageData.Epoch-lookback, validatorPageData.Epoch-1)
+				missedAttestations, err := db.GetValidatorMissedAttestationHistory([]uint64{index}, validatorPageData.Epoch-lookback, validatorPageData.Epoch-1)
 				if err != nil {
 					return fmt.Errorf("error getting validator attestations not in stats from bigtable: %w", err)
 				}

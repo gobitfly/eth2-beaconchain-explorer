@@ -3270,6 +3270,7 @@ func GetValidatorAttestationHistoryForNotifications(startEpoch uint64, endEpoch 
 
 func GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorAttestation, error) {
 
+	logger.Infof("GetValidatorAttestationHistory called for validators %d for epochs %d - %d", validators, startEpoch, endEpoch)
 	if len(validators) == 0 {
 		return nil, fmt.Errorf("passing empty validator array is unsupported")
 	}
@@ -3378,8 +3379,34 @@ func GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, endE
 
 	for _, attestations := range ret {
 		sort.Slice(attestations, func(i, j int) bool {
-			return attestations[i].Epoch < attestations[j].Epoch
+			return attestations[i].Epoch > attestations[j].Epoch
 		})
+	}
+
+	logger.Infof("GetValidatorAttestationHistory call completed for validators %d for epochs %d - %d", validators, startEpoch, endEpoch)
+
+	return ret, nil
+}
+
+func GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
+
+	attestations, err := GetValidatorAttestationHistory(validators, startEpoch, endEpoch)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make(map[uint64]map[uint64]bool)
+
+	for validatorindex, attestations := range attestations {
+		for _, attestation := range attestations {
+			if attestation.Status == 0 {
+				if ret[validatorindex] == nil {
+					ret[validatorindex] = make(map[uint64]bool)
+				}
+				ret[validatorindex][attestation.AttesterSlot] = true
+			}
+		}
 	}
 
 	return ret, nil

@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"context"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
@@ -8,6 +9,8 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/go-redis/redis/v8"
 )
 
 var logger = logrus.New().WithField("module", "exporter")
@@ -50,9 +53,22 @@ func Start(client rpc.Client) {
 	firstRun := true
 
 	minWaitTimeBetweenRuns := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:        utils.Config.PersistentRedisStoreEndpoint,
+		ReadTimeout: time.Second * 20,
+	})
+
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		utils.LogFatal(err, "error connecting to persistent redis store", 0)
+	}
+
 	for {
 		start := time.Now()
-		err := RunSlotExporter(client, firstRun)
+		err := RunSlotExporter(client, redisClient, firstRun)
 		if err != nil {
 			logrus.Errorf("error during slot export run: %v", err)
 		} else if err == nil && firstRun {
