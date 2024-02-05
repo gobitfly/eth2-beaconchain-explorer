@@ -2627,32 +2627,10 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 }
 
 func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult, currency string) ([]types.ITransaction, error) {
-	getTraceInfo := func(trace *rpc.ParityTraceResult) ([]byte, []byte, []byte, string) {
-		var from, to, value []byte
-		tx_type := trace.Type
 
-		switch trace.Type {
-		case "create":
-			from = common.FromHex(trace.Action.From)
-			to = common.FromHex(trace.Result.Address)
-			value = common.FromHex(trace.Action.Value)
-		case "suicide":
-			from = common.FromHex(trace.Action.Address)
-			to = common.FromHex(trace.Action.RefundAddress)
-			value = common.FromHex(trace.Action.Balance)
-		case "call":
-			from = common.FromHex(trace.Action.From)
-			to = common.FromHex(trace.Action.To)
-			value = common.FromHex(trace.Action.Value)
-			tx_type = trace.Action.CallType
-		default:
-			utils.LogError(nil, "unknown trace type", 0)
-		}
-		return from, to, value, tx_type
-	}
 	names := make(map[string]string)
 	for _, trace := range parityTrace {
-		from, to, _, _ := getTraceInfo(trace)
+		from, to, _, _ := trace.ConvertFields()
 		names[string(from)] = ""
 		names[string(to)] = ""
 	}
@@ -2662,15 +2640,18 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		return nil, err
 	}
 
+	contractInteractionTypes, err := BigtableClient.GetAddressContractInteractionsAtParityTraces(parityTrace)
+	if err != nil {
+		utils.LogError(err, "error getting contract states", 0)
+	}
+
 	data := make([]types.ITransaction, 0, len(parityTrace)-1)
 	for i := 1; i < len(parityTrace); i++ {
-		from, to, value, tx_type := getTraceInfo(parityTrace[i])
+		from, to, value, tx_type := parityTrace[i].ConvertFields()
 		if tx_type == "suicide" {
 			// erigon's "suicide" might be misleading for users
 			tx_type = "selfdestruct"
 		}
-		fromName := names[parityTrace[i].Action.From]
-		toName := names[parityTrace[i].Action.To]
 		input := make([]byte, 0)
 		if len(parityTrace[i].Action.Input) > 2 {
 			input, err = hex.DecodeString(parityTrace[i].Action.Input[2:])
@@ -2678,9 +2659,19 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 				utils.LogError(err, "can't convert hex string", 0)
 			}
 		}
+
+		var from_contractInteraction, to_contractInteraction types.ContractInteractionType
+		if len(contractInteractionTypes) > i {
+			from_contractInteraction = contractInteractionTypes[i][0]
+			to_contractInteraction = contractInteractionTypes[i][1]
+		}
+
+		fromName := BigtableClient.GetAddressLabel(names[string(from)], from_contractInteraction)
+		toName := BigtableClient.GetAddressLabel(names[string(to)], from_contractInteraction)
+
 		itx := types.ITransaction{
-			From:      utils.FormatAddress(from, nil, fromName, false, false, true),
-			To:        utils.FormatAddress(to, nil, toName, false, false, true),
+			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
+			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
 			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, true)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
@@ -3791,6 +3782,37 @@ func (bigtable *Bigtable) GetAddressContractInteractionsAtITransactions(itransac
 	}
 
 	resultPairs := make([][2]types.ContractInteractionType, len(itransactions))
+	for i, v := range results {
+		resultPairs[i/2][i%2] = v
+	}
+	return resultPairs, nil
+}
+
+// convenience function to get contract interaction status per parity trace
+// 2nd parameter specifies [tx_idx, trace_idx] for each internal tx
+func (bigtable *Bigtable) GetAddressContractInteractionsAtParityTraces(traces []*rpc.ParityTraceResult) ([][2]types.ContractInteractionType, error) {
+	requests := make([]contractInteractionAtRequest, len(traces))
+	for i, itx := range traces {
+		from, to, _, _ := itx.ConvertFields()
+		requests = append(requests, contractInteractionAtRequest{
+			address:  fmt.Sprintf("%x", from),
+			block:    int64(itx.BlockNumber),
+			txIdx:    int64(itx.TransactionPosition),
+			traceIdx: int64(i),
+		})
+		requests = append(requests, contractInteractionAtRequest{
+			address:  fmt.Sprintf("%x", to),
+			block:    int64(itx.BlockNumber),
+			txIdx:    int64(itx.TransactionPosition),
+			traceIdx: int64(i),
+		})
+	}
+	results, err := bigtable.GetAddressContractInteractionsAt(requests)
+	if err != nil {
+		return nil, err
+	}
+
+	resultPairs := make([][2]types.ContractInteractionType, len(traces))
 	for i, v := range results {
 		resultPairs[i/2][i%2] = v
 	}
