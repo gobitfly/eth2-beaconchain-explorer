@@ -2073,7 +2073,7 @@ func skipBlockIfLastTxIndex(key string) string {
 	return key
 }
 
-func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, string, error) {
+func (bigtable *Bigtable) GetEth1TxsForAddress(prefix string, limit int64) ([]*types.Eth1TransactionIndexed, []string, error) {
 
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -2130,7 +2130,8 @@ func (bigtable *Bigtable) GetEth1TxForAddress(prefix string, limit int64) ([]*ty
 		}
 	}
 
-	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
+	indexes[len(indexes)-1] = skipBlockIfLastTxIndex(indexes[len(indexes)-1])
+	return data, indexes, nil
 }
 
 func (bigtable *Bigtable) GetAddressesNamesArMetadata(names *map[string]string, inputMetadata *map[string]*types.ERC20Metadata) (map[string]string, map[string]*types.ERC20Metadata, error) {
@@ -2662,7 +2663,8 @@ func (bigtable *Bigtable) GetEth1ItxsForAddress(prefix string, limit int64) ([]*
 		}
 	}
 
-	return data, skipBlockIfLastTxIndex(indexes[len(indexes)-1]), nil
+	indexes[len(indexes)-1] = skipBlockIfLastTxIndex(indexes[len(indexes)-1])
+	return data, indexes, nil
 }
 
 func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken string) (*types.DataTableResponse, error) {
