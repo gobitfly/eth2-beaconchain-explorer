@@ -2067,7 +2067,7 @@ func skipBlockIfLastTxIndex(key string) string {
 			utils.LogError(err, "error converting bigtable transaction index timestamp", 0, map[string]interface{}{"index": splits[5]})
 		} else {
 			splits[5] = fmt.Sprintf("%d", i+1)
-			return strings.Join(splits[:6], ":")
+			return strings.Join(splits[:6], ":") + ":"
 		}
 	}
 	return key
@@ -2130,7 +2130,6 @@ func (bigtable *Bigtable) GetEth1TxsForAddress(prefix string, limit int64) ([]*t
 		}
 	}
 
-	indexes[len(indexes)-1] = skipBlockIfLastTxIndex(indexes[len(indexes)-1])
 	return data, indexes, nil
 }
 
@@ -2239,6 +2238,10 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Eth1InternalTransactionIndexed tx index: %v", err)
 		}
+		if tx_idx == TX_PER_BLOCK_LIMIT {
+			// handle "reversePaddedIndex 0"-issue
+			tx_idx = 0
+		}
 		tx_idx = TX_PER_BLOCK_LIMIT - tx_idx
 		if tx_idx < 0 {
 			return nil, fmt.Errorf("invalid Eth1InternalTransactionIndexed tx index: %d", tx_idx)
@@ -2286,7 +2289,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 
 	token := ""
 	if len(keys) > 0 {
-		token = keys[len(keys)-1]
+		token = skipBlockIfLastTxIndex(keys[len(keys)-1])
 	}
 
 	data := &types.DataTableResponse{
@@ -2703,6 +2706,10 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Eth1InternalTransactionIndexed tx index: %v", err)
 		}
+		if tx_idx == TX_PER_BLOCK_LIMIT {
+			// handle "reversePaddedIndex 0"-issue
+			tx_idx = 0
+		}
 		tx_idx = TX_PER_BLOCK_LIMIT - tx_idx
 		if tx_idx < 0 {
 			return nil, fmt.Errorf("invalid Eth1InternalTransactionIndexed tx index: %d", tx_idx)
@@ -2711,6 +2718,10 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		trace_idx, err := strconv.Atoi(strings.Split(k, ":")[7])
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Eth1InternalTransactionIndexed trace index: %v", err)
+		}
+		if trace_idx == ITX_PER_TX_LIMIT {
+			// handle "reversePaddedIndex 0"-issue
+			trace_idx = 0
 		}
 		trace_idx = ITX_PER_TX_LIMIT - trace_idx
 		if tx_idx < 0 {
@@ -2754,7 +2765,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 
 	token := ""
 	if len(keys) > 0 {
-		token = keys[len(keys)-1]
+		token = skipBlockIfLastTxIndex(keys[len(keys)-1])
 	}
 
 	data := &types.DataTableResponse{
@@ -3934,7 +3945,6 @@ func (bigtable *Bigtable) GetAddressContractInteractionsAtITransactions(itransac
 }
 
 // convenience function to get contract interaction status per parity trace
-// 2nd parameter specifies [tx_idx, trace_idx] for each internal tx
 func (bigtable *Bigtable) GetAddressContractInteractionsAtParityTraces(traces []*rpc.ParityTraceResult) ([][2]types.ContractInteractionType, error) {
 	requests := make([]contractInteractionAtRequest, 0, len(traces)*2)
 	for i, itx := range traces {
