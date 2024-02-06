@@ -1971,15 +1971,15 @@ func (sbi SortByIndexes) Less(i, j int) bool {
 	}
 	// tx idx
 	if i_splits[6] != j_splits[6] {
-		if i_splits[6] == "10000" || j_splits[6] == "10000" {
-			return j_splits[6] == "10000"
+		if i_splits[6] == strconv.Itoa(TX_PER_BLOCK_LIMIT) || j_splits[6] == strconv.Itoa(TX_PER_BLOCK_LIMIT) {
+			return j_splits[6] == strconv.Itoa(TX_PER_BLOCK_LIMIT)
 		}
 		return i_splits[6] < j_splits[6]
 	}
 	// itx idx
 	if len(i_splits) > 7 && i_splits[7] != j_splits[7] {
-		if i_splits[7] == "100000" || j_splits[7] == "100000" {
-			return j_splits[7] == "100000"
+		if i_splits[7] == strconv.Itoa(ITX_PER_TX_LIMIT) || j_splits[7] == strconv.Itoa(ITX_PER_TX_LIMIT) {
+			return j_splits[7] == strconv.Itoa(ITX_PER_TX_LIMIT)
 		}
 		return i_splits[7] < j_splits[7]
 	}
@@ -2002,7 +2002,7 @@ func (bigtable *Bigtable) rearrangeReversePaddedIndexZero(ctx context.Context, i
 			continue
 		}
 
-		if splits[6] != "10000" && len(splits) > 7 && splits[7] != "100000" {
+		if splits[6] != strconv.Itoa(TX_PER_BLOCK_LIMIT) && len(splits) > 7 && splits[7] != strconv.Itoa(ITX_PER_TX_LIMIT) {
 			continue
 		}
 		// check if results list all following (i)txs already
@@ -2052,7 +2052,7 @@ func skipBlockIfLastTxIndex(key string) string {
 		utils.LogError(nil, "unexpected bigtable transaction index", 0, map[string]interface{}{"index": key})
 		return key
 	}
-	if len(splits) == 8 && splits[7] == "100000" && splits[6] != "10000" {
+	if len(splits) == 8 && splits[7] == strconv.Itoa(ITX_PER_TX_LIMIT) && splits[6] != strconv.Itoa(TX_PER_BLOCK_LIMIT) {
 		i, err := strconv.Atoi(splits[6])
 		if err != nil {
 			utils.LogError(err, "error converting bigtable transaction index", 0, map[string]interface{}{"index": splits[6]})
@@ -2061,7 +2061,7 @@ func skipBlockIfLastTxIndex(key string) string {
 		}
 		splits = splits[:7]
 	}
-	if splits[6] == "10000" {
+	if splits[6] == strconv.Itoa(TX_PER_BLOCK_LIMIT) {
 		i, err := strconv.Atoi(splits[5])
 		if err != nil {
 			utils.LogError(err, "error converting bigtable transaction index timestamp", 0, map[string]interface{}{"index": splits[5]})
