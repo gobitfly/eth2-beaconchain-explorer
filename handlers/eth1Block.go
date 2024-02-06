@@ -183,16 +183,6 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 			tx.To = tx.ContractAddress
 		}
 
-		method := "Transfer"
-		{
-			d := tx.GetData()
-			if len(d) > 3 {
-				m := d[:4]
-				invokesContract := len(tx.GetItx()) > 0 || tx.GetGasUsed() > 21000 || tx.GetErrorMsg() != ""
-				method = db.BigtableClient.GetMethodLabel(m, invokesContract)
-			}
-		}
-
 		var contractInteraction types.ContractInteractionType
 		if len(contractInteractionTypes) > i {
 			contractInteraction = contractInteractionTypes[i]
@@ -208,7 +198,7 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 			Value:         new(big.Int).SetBytes(tx.Value),
 			Fee:           txFee,
 			GasPrice:      effectiveGasPrice,
-			Method:        method,
+			Method:        db.BigtableClient.GetMethodLabel(tx.GetData(), contractInteraction),
 		})
 	}
 

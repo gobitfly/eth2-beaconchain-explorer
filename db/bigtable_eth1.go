@@ -2238,10 +2238,6 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Eth1InternalTransactionIndexed tx index: %v", err)
 		}
-		if tx_idx == TX_PER_BLOCK_LIMIT {
-			// handle "reversePaddedIndex 0"-issue
-			tx_idx = 0
-		}
 		tx_idx = TX_PER_BLOCK_LIMIT - tx_idx
 		if tx_idx < 0 {
 			return nil, fmt.Errorf("invalid Eth1InternalTransactionIndexed tx index: %d", tx_idx)
@@ -2273,11 +2269,10 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		if len(contractInteractionTypes) > i {
 			contractInteraction = contractInteractionTypes[i]
 		}
-		method := bigtable.GetMethodLabel(t.MethodId, contractInteraction != types.CONTRACT_NONE)
 
 		tableData[i] = []interface{}{
 			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
-			utils.FormatMethod(method),
+			utils.FormatMethod(bigtable.GetMethodLabel(t.MethodId, contractInteraction)),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2666,7 +2661,6 @@ func (bigtable *Bigtable) GetEth1ItxsForAddress(prefix string, limit int64) ([]*
 		}
 	}
 
-	indexes[len(indexes)-1] = skipBlockIfLastTxIndex(indexes[len(indexes)-1])
 	return data, indexes, nil
 }
 
@@ -2706,10 +2700,6 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Eth1InternalTransactionIndexed tx index: %v", err)
 		}
-		if tx_idx == TX_PER_BLOCK_LIMIT {
-			// handle "reversePaddedIndex 0"-issue
-			tx_idx = 0
-		}
 		tx_idx = TX_PER_BLOCK_LIMIT - tx_idx
 		if tx_idx < 0 {
 			return nil, fmt.Errorf("invalid Eth1InternalTransactionIndexed tx index: %d", tx_idx)
@@ -2718,10 +2708,6 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		trace_idx, err := strconv.Atoi(strings.Split(k, ":")[7])
 		if err != nil {
 			return nil, fmt.Errorf("error parsing Eth1InternalTransactionIndexed trace index: %v", err)
-		}
-		if trace_idx == ITX_PER_TX_LIMIT {
-			// handle "reversePaddedIndex 0"-issue
-			trace_idx = 0
 		}
 		trace_idx = ITX_PER_TX_LIMIT - trace_idx
 		if tx_idx < 0 {
@@ -2817,13 +2803,13 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		}
 
 		fromName := BigtableClient.GetAddressLabel(names[string(from)], from_contractInteraction)
-		toName := BigtableClient.GetAddressLabel(names[string(to)], from_contractInteraction)
+		toName := BigtableClient.GetAddressLabel(names[string(to)], to_contractInteraction)
 
 		itx := types.ITransaction{
 			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
 			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
-			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, true)),
+			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, from_contractInteraction)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
 		}
 
@@ -4593,24 +4579,34 @@ func (bigtable *Bigtable) GetSignature(hex string, st types.SignatureType) (*str
 }
 
 // get a method label for its byte signature with defaults
-func (bigtable *Bigtable) GetMethodLabel(id []byte, invokesContract bool) string {
-	method := "Transfer"
-	if len(id) > 0 {
-		if invokesContract {
-			method = fmt.Sprintf("0x%x", id)
+func (bigtable *Bigtable) GetMethodLabel(data []byte, interaction types.ContractInteractionType) string {
+	id := data
+	if len(data) > 3 {
+		id = data[:4]
+	}
+	method := fmt.Sprintf("0x%x", id)
+
+	switch interaction {
+	case types.CONTRACT_NONE:
+		return "Transfer"
+	case types.CONTRACT_CREATION:
+		return "Constructor"
+	case types.CONTRACT_DESTRUCTION:
+		return "Destruction"
+	case types.CONTRACT_PRESENT:
+		if len(id) == 4 {
 			cacheKey := fmt.Sprintf("M:H2L:%s", method)
 			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
-				sig, err := bigtable.GetSignature(method, types.MethodSignature)
-				if err == nil {
-					if sig != nil {
-						method = utils.RemoveRoundBracketsIncludingContent(*sig)
-					}
+				if sig, err := bigtable.GetSignature(method, types.MethodSignature); err == nil {
 					cache.TieredCache.Set(cacheKey, method, time.Hour)
+					if sig != nil {
+						return utils.RemoveRoundBracketsIncludingContent(*sig)
+					}
 				}
 			}
-		} else {
-			method = "Transfer*"
 		}
+	default:
+		utils.LogError(nil, "unknown contract interaction type", 0, map[string]interface{}{"type": interaction})
 	}
 	return method
 }
