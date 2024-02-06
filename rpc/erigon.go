@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/contracts/oneinchoracle"
 	"eth2-exporter/erc20"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"strings"
@@ -261,27 +262,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 						Path: fmt.Sprint(trace.TraceAddress),
 					}
 
-					if tracePb.Type == "call" {
-						tracePb.Type = trace.Action.CallType
-					}
-
-					if trace.Type == "create" {
-						tracePb.From = common.FromHex(trace.Action.From)
-						tracePb.To = common.FromHex(trace.Result.Address)
-						tracePb.Value = common.FromHex(trace.Action.Value)
-					} else if trace.Type == "suicide" {
-						tracePb.From = common.FromHex(trace.Action.Address)
-						tracePb.To = common.FromHex(trace.Action.RefundAddress)
-						tracePb.Value = common.FromHex(trace.Action.Balance)
-					} else if trace.Type == "call" {
-						tracePb.From = common.FromHex(trace.Action.From)
-						tracePb.To = common.FromHex(trace.Action.To)
-						tracePb.Value = common.FromHex(trace.Action.Value)
-					} else {
-						spew.Dump(trace)
-						logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionHash)
-					}
-
+					tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
 					c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 				}
 			}
@@ -492,6 +473,31 @@ type ParityTraceResult struct {
 	TransactionHash     string  `json:"transactionHash"`
 	TransactionPosition int     `json:"transactionPosition"`
 	Type                string  `json:"type"`
+}
+
+func (trace *ParityTraceResult) ConvertFields() ([]byte, []byte, []byte, string) {
+	var from, to, value []byte
+	tx_type := trace.Type
+
+	switch trace.Type {
+	case "create":
+		from = common.FromHex(trace.Action.From)
+		to = common.FromHex(trace.Result.Address)
+		value = common.FromHex(trace.Action.Value)
+	case "suicide":
+		from = common.FromHex(trace.Action.Address)
+		to = common.FromHex(trace.Action.RefundAddress)
+		value = common.FromHex(trace.Action.Balance)
+	case "call":
+		from = common.FromHex(trace.Action.From)
+		to = common.FromHex(trace.Action.To)
+		value = common.FromHex(trace.Action.Value)
+		tx_type = trace.Action.CallType
+	default:
+		spew.Dump(trace)
+		utils.LogFatal(nil, "unknown trace type", 0, map[string]interface{}{"trace type": trace.Type, "tx hash": trace.TransactionHash})
+	}
+	return from, to, value, tx_type
 }
 
 func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResult, error) {

@@ -67,6 +67,10 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			return nil
 		}
 		t := b.GetTransactions()
+		contractInteractionTypes, err := db.BigtableClient.GetAddressContractInteractionsAtBlock(b)
+		if err != nil {
+			utils.LogError(err, "error getting contract states", 0)
+		}
 
 		// retrieve metadata
 		names := make(map[string]string)
@@ -83,7 +87,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 		}
 
 		var wg errgroup.Group
-		for _, v := range t {
+		for i, v := range t {
 			wg.Go(func() error {
 				method := "Transfer"
 				{
@@ -94,30 +98,20 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 						method = db.BigtableClient.GetMethodLabel(m, invokesContract)
 					}
 				}
-
-				var toText template.HTML
-				{
-					to := v.GetTo()
-					if len(to) > 0 {
-						toText = utils.FormatAddressWithLimits(to, names[string(v.GetTo())], false, "address", visibleDigitsForHash+5, 18, true)
-					} else {
-						itx := v.GetItx()
-						if len(itx) > 0 && itx[0] != nil {
-							to = itx[0].GetTo()
-							if len(to) > 0 {
-								toText = utils.FormatAddressWithLimits(to, "Contract Creation", true, "address", visibleDigitsForHash+5, 18, true)
-							}
-						}
-					}
+				if v.GetTo() == nil {
+					v.To = v.ContractAddress
 				}
-
+				var contractInteraction types.ContractInteractionType
+				if len(contractInteractionTypes) > i {
+					contractInteraction = contractInteractionTypes[i]
+				}
 				tableData = append(tableData, []interface{}{
 					utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
 					utils.FormatMethod(method),
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
-					toText,
+					utils.FormatAddressWithLimits(v.GetTo(), db.BigtableClient.GetAddressLabel(names[string(v.GetTo())], contractInteraction), contractInteraction != types.CONTRACT_NONE, "address", 15, 20, true),
 					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 				})

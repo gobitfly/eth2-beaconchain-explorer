@@ -1594,6 +1594,15 @@ type Eth1AddressPageData struct {
 	Tabs               []Eth1AddressPageTabs
 }
 
+type ContractInteractionType uint8
+
+const (
+	CONTRACT_NONE        ContractInteractionType = 0
+	CONTRACT_CREATION    ContractInteractionType = 1
+	CONTRACT_PRESENT     ContractInteractionType = 2
+	CONTRACT_DESTRUCTION ContractInteractionType = 3
+)
+
 type Eth1AddressPageTabs struct {
 	Id   string
 	Href string

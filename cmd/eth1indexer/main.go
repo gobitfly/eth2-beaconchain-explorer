@@ -163,44 +163,10 @@ func main() {
 			}
 		}()
 	}
-	// err = UpdateTokenPrices(bt, client, "tokenlists/tokens.uniswap.org.json")
-	// if err != nil {
-	// 	logrus.Fatal(err)
-	// }
-	// return
+
 	if *enableFullBalanceUpdater {
 		ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
 		return
-		// currentKey := balanceUpdaterPrefix // "1:00028ebf7d36c5779c1deddf3ba72761fd46c8aa"
-		// for {
-		// 	keys, pairs, err := bt.GetMetadata(currentKey, *balanceUpdaterBatchSize)
-		// 	if err != nil {
-		// 		logrus.Fatal(err)
-		// 	}
-
-		// 	if len(keys) == 0 {
-		// 		logrus.Infof("done")
-		// 		return
-		// 	}
-		// 	// for _, pair := range pairs {
-		// 	// 	logrus.Info(pair)
-		// 	// }
-
-		// 	logrus.Infof("currently at %v, processing balances for %v pairs", currentKey, len(pairs))
-		// 	balances, err := client.GetBalances(pairs, 1, 4)
-		// 	if err != nil {
-		// 		logrus.Fatal(err)
-		// 	}
-		// 	// for _, balance := range balances {
-		// 	// 	logrus.Infof("%x %x %s", balance.Address, balance.Token, new(big.Int).SetBytes(balance.Balance))
-		// 	// }
-
-		// 	err = bt.SaveBalances(balances, []string{})
-		// 	if err != nil {
-		// 		logrus.Fatal(err)
-		// 	}
-		// 	currentKey = keys[len(keys)-1]
-		// }
 	}
 
 	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
@@ -214,7 +180,8 @@ func main() {
 		bt.TransformERC1155,
 		bt.TransformUncle,
 		bt.TransformWithdrawals,
-		bt.TransformEnsNameRegistered)
+		bt.TransformEnsNameRegistered,
+		bt.TransformContract)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
@@ -297,9 +264,9 @@ func main() {
 		continueAfterError := false
 		if lastBlockFromNode > 0 {
 			if lastBlockFromBlocksTable < int(lastBlockFromNode) {
-				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable, lastBlockFromNode)
+				logrus.Infof("missing blocks %v to %v in blocks table, indexing ...", lastBlockFromBlocksTable+1, lastBlockFromNode)
 
-				startBlock := int64(lastBlockFromBlocksTable) - *offsetBlocks
+				startBlock := int64(lastBlockFromBlocksTable+1) - *offsetBlocks
 				if startBlock < 0 {
 					startBlock = 0
 				}
@@ -340,9 +307,9 @@ func main() {
 			}
 
 			if lastBlockFromDataTable < int(lastBlockFromNode) {
-				logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable, lastBlockFromNode)
+				logrus.Infof("missing blocks %v to %v in data table, indexing ...", lastBlockFromDataTable+1, lastBlockFromNode)
 
-				startBlock := int64(lastBlockFromDataTable) - *offsetData
+				startBlock := int64(lastBlockFromDataTable+1) - *offsetData
 				if startBlock < 0 {
 					startBlock = 0
 				}
@@ -498,6 +465,9 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 	latestNodeBlockNumber := latestNodeBlock.NumberU64()
 
 	// for each block check if block node hash and block db hash match
+	if depth > int(latestNodeBlockNumber) {
+		depth = int(latestNodeBlockNumber)
+	}
 	for i := latestNodeBlockNumber - uint64(depth); i <= latestNodeBlockNumber; i++ {
 		nodeBlock, err := client.GetNativeClient().HeaderByNumber(ctx, big.NewInt(int64(i)))
 		if err != nil {
@@ -554,80 +524,6 @@ func HandleChainReorgs(bt *db.Bigtable, client *rpc.ErigonClient, depth int) err
 
 func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix string, batchSize int, iterations int) {
 	lastKey := prefix
-	// for {
-	// 	updates, err := bt.GetMetadataUpdates(lastKey, batchSize)
-	// 	if err != nil {
-	// 		logrus.Fatal(err)
-	// 	}
-
-	// 	currentAddress := ""
-	// 	tokens := make([]string, 0, 100)
-	// 	pairs := make([]string, 0, batchSize)
-	// 	for _, update := range updates {
-	// 		s := strings.Split(update, ":")
-
-	// 		if len(s) != 3 {
-	// 			logrus.Fatalf("%v has an invalid format", update)
-	// 		}
-
-	// 		if s[0] != "B" {
-	// 			logrus.Fatalf("%v has invalid balance update prefix", update)
-	// 		}
-
-	// 		address := s[1]
-	// 		token := s[2]
-	// 		pairs = append(pairs, update)
-
-	// 		if currentAddress == "" {
-	// 			currentAddress = address
-	// 		} else if address != currentAddress {
-	// 			logrus.Infof("retrieving %v token balances for address %v", len(tokens), currentAddress)
-	// 			start := time.Now()
-	// 			balances, err := client.GetBalancesForAddresse(currentAddress, tokens)
-
-	// 			if err != nil {
-	// 				logrus.Errorf("error during balance checker contract call: %v", err)
-	// 				logrus.Infof("retrieving balances via batch rpc calls")
-	// 				balances, err = client.GetBalances(pairs)
-	// 				if err != nil {
-	// 					logrus.Fatal(err)
-	// 				}
-	// 			}
-
-	// 			logrus.Infof("retrieved %v balances in %v", len(balances), time.Since(start))
-	// 			// for i, t := range tokens {
-	// 			// 	if len(balances[i]) > 0 {
-	// 			// 		logrus.Infof("balance of address %v of token %v is %x", currentAddress, t, balances[i])
-	// 			// 	}
-	// 			// }
-	// 			currentAddress = address
-	// 			tokens = make([]string, 0, 100)
-	// 			pairs = make([]string, 0, 1000)
-	// 		}
-
-	// 		tokens = append(tokens, token)
-	// 	}
-	// 	logrus.Infof("retrieving %v token balances for address %v", len(tokens), currentAddress)
-	// 	start := time.Now()
-	// 	balances, err := client.GetBalancesForAddresse(currentAddress, tokens)
-
-	// 	if err != nil {
-	// 		logrus.Errorf("error during balance checker contract call: %v", err)
-	// 		logrus.Infof("retrieving balances via batch rpc calls")
-	// 		balances, err = client.GetBalances(pairs)
-	// 		if err != nil {
-	// 			logrus.Fatal(err)
-	// 		}
-	// 	}
-
-	// 	logrus.Infof("retrieved %v balances in %v", len(balances), time.Since(start))
-	// 	// for i, t := range tokens {
-	// 	// 	if len(balances[i]) > 0 {
-	// 	// 		logrus.Infof("balance of address %v of token %v is %x", currentAddress, t, balances[i])
-	// 	// 	}
-	// 	// }
-	// 	lastKey = updates[len(updates)-1]
-	// }
 
 	its := 0
 	for {
@@ -641,10 +537,6 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		if len(keys) == 0 {
 			return
 		}
-
-		// for _, b := range balances {
-		// 	logrus.Infof("retrieved balance %x for token %x of address %x", b.Balance, b.Token, b.Address)
-		// }
 
 		balances := make([]*types.Eth1AddressBalance, 0, len(pairs))
 		for b := 0; b < len(pairs); b += batchSize {
@@ -670,12 +562,6 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			logrus.Errorf("error saving balances to bigtable: %v", err)
 			return
 		}
-		// for i, b := range balances {
-
-		// 	if len(b) > 0 {
-		// 		logrus.Infof("balance for key %v is %x", updates[i], b)
-		// 	}
-		// }
 
 		lastKey = keys[len(keys)-1]
 		logrus.Infof("retrieved %v balances in %v, currently at %v", len(balances), time.Since(start), lastKey)
@@ -686,58 +572,6 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			return
 		}
 	}
-	// g := new(errgroup.Group)
-	// g.SetLimit(batchSize)
-
-	// for _, update := range updates {
-	// 	update := update
-
-	// 	g.Go(func() error {
-	// 		// logrus.Infof("updating balance of key %v", update)
-	// 		s := strings.Split(update, ":")
-
-	// 		if len(s) != 3 {
-	// 			logrus.Fatalf("%v has an invalid format", update)
-	// 		}
-
-	// 		if s[0] != "B" {
-	// 			logrus.Fatalf("%v has invalid balance update prefix", update)
-	// 		}
-
-	// 		address := s[1]
-	// 		token := s[2]
-
-	// 		if token == "00" {
-	// 			balance, err := client.GetNativeBalance(address)
-	// 			if err != nil {
-	// 				logrus.Fatal(err)
-	// 			}
-
-	// 			balanceInt := new(big.Int).SetBytes(balance)
-
-	// 			if balanceInt.Cmp(big.NewInt(0)) != 0 {
-	// 				logrus.Infof("native balance of %v is %x", address, balanceInt.String())
-	// 			}
-	// 		} else {
-	// 			balance, err := client.GetERC20TokenBalance(address, token)
-	// 			if err != nil {
-	// 				logrus.Fatal(err)
-	// 			}
-
-	// 			balanceInt := new(big.Int).SetBytes(balance)
-	// 			if balanceInt.Cmp(big.NewInt(0)) != 0 {
-	// 				logrus.Infof("token %v balance of %v is %v", token, address, balanceInt.String())
-	// 			}
-	// 		}
-	// 		return nil
-	// 	})
-	// }
-
-	// err = g.Wait()
-
-	// if err != nil {
-	// 	logrus.Fatal(err)
-	// }
 }
 
 func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concurrency int64, traceMode string) error {
