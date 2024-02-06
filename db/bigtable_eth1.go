@@ -3791,7 +3791,7 @@ func (bigtable *Bigtable) GetAddressContractInteractionsAtITransactions(itransac
 // convenience function to get contract interaction status per parity trace
 // 2nd parameter specifies [tx_idx, trace_idx] for each internal tx
 func (bigtable *Bigtable) GetAddressContractInteractionsAtParityTraces(traces []*rpc.ParityTraceResult) ([][2]types.ContractInteractionType, error) {
-	requests := make([]contractInteractionAtRequest, len(traces))
+	requests := make([]contractInteractionAtRequest, 0, len(traces)*2)
 	for i, itx := range traces {
 		from, to, _, _ := itx.ConvertFields()
 		requests = append(requests, contractInteractionAtRequest{
