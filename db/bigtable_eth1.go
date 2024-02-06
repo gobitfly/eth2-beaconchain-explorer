@@ -4598,10 +4598,10 @@ func (bigtable *Bigtable) GetMethodLabel(data []byte, interaction types.Contract
 			cacheKey := fmt.Sprintf("M:H2L:%s", method)
 			if _, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Hour, &method); err != nil {
 				if sig, err := bigtable.GetSignature(method, types.MethodSignature); err == nil {
-					cache.TieredCache.Set(cacheKey, method, time.Hour)
 					if sig != nil {
-						return utils.RemoveRoundBracketsIncludingContent(*sig)
+						method = utils.RemoveRoundBracketsIncludingContent(*sig)
 					}
+					cache.TieredCache.Set(cacheKey, method, time.Hour)
 				}
 			}
 		}
