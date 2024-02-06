@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/contracts/oneinchoracle"
 	"eth2-exporter/erc20"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"strings"
@@ -494,7 +495,7 @@ func (trace *ParityTraceResult) ConvertFields() ([]byte, []byte, []byte, string)
 		tx_type = trace.Action.CallType
 	default:
 		spew.Dump(trace)
-		logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionHash)
+		utils.LogFatal(nil, "unknown trace type", 0, map[string]interface{}{"trace type": trace.Type, "tx hash": trace.TransactionHash})
 	}
 	return from, to, value, tx_type
 }
