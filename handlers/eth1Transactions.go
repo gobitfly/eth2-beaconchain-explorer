@@ -55,7 +55,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			}
 		}
 	}
-	if pageTokenId == 0 {
+	if pageTokenId == 0 && pageToken != "0" {
 		pageTokenId = services.LatestEth1BlockNumber()
 	}
 
@@ -87,7 +87,8 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 		}
 
 		var wg errgroup.Group
-		for i, v := range t {
+		for i := len(t) - 1; i >= 0; i-- {
+			v := t[i]
 			wg.Go(func() error {
 				method := "Transfer"
 				{
