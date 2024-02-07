@@ -96,7 +96,7 @@ func getSlotVizData(currentEpoch uint64) *types.SlotVizPageData {
 }
 
 func calculateChurn(page *types.IndexPageData) {
-	limit := services.GetLatestStats().ValidatorChurnLimit
+	limit := services.GetLatestStats().ValidatorActivationChurnLimit
 	pending_validators := services.GetLatestStats().PendingValidatorCount
 	// calculate daily new validators
 	limit_per_day := *limit * uint64(225)
