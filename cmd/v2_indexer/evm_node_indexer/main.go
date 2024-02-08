@@ -106,14 +106,14 @@ func main() {
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
 	startBlockNumber := flag.Int64("start-block-number", -1, "trigger a REEXPORT, only working in combination with end-block-number, defined block is included, will be the first action done and will quite afterwards, ignore every other action")
 	endBlockNumber := flag.Int64("end-block-number", -1, "trigger a REEXPORT, only working in combination with start-block-number, defined block is included, will be the first action done and will quite afterwards, ignore every other action")
-	reorgDepth = flag.Int64("reorg.depth", 20, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %s), you should NEVER reduce this after the first start, otherwise there will be unchecked areas", _formatInt64(MAX_REORG_DEPTH)))
-	concurrency := flag.Int64("concurrency", 12, "maximum threads used (running on maximum whenever possible)")
-	nodeRequestsAtOnce := flag.Int64("node-requests-at-once", 42, fmt.Sprintf("bulk size per node = bt = db request (MAX %s)", _formatInt64(MAX_NODE_REQUESTS_AT_ONCE)))
+	reorgDepth = flag.Int64("reorg.depth", 32, fmt.Sprintf("lookback to check and handle chain reorgs (MAX %s), you should NEVER reduce this after the first start, otherwise there will be unchecked areas", _formatInt64(MAX_REORG_DEPTH)))
+	concurrency := flag.Int64("concurrency", 8, "maximum threads used (running on maximum whenever possible)")
+	nodeRequestsAtOnce := flag.Int64("node-requests-at-once", 16, fmt.Sprintf("bulk size per node = bt = db request (MAX %s)", _formatInt64(MAX_NODE_REQUESTS_AT_ONCE)))
 	skipHoleCheck := flag.Bool("skip-hole-check", false, "skips the initial check for holes, doesn't go very well with only-hole-check")
 	onlyHoleCheck := flag.Bool("only-hole-check", false, "just check for holes and quit, can be used for a reexport running simulation to a normal setup, just remove entries in postgres and start with this flag, doesn't go very well with skip-hole-check")
 	noNewBlocks := flag.Bool("ignore-new-blocks", false, "there are no new blocks, at all")
 	noNewBlocksThresholdSeconds := flag.Int("fatal-if-no-new-block-for-x-seconds", 600, "will fatal if there is no new block for x seconds (MIN 30), will start throwing errors at 2/3 of the time, will start throwing warnings at 1/3 of the time, doesn't go very well with ignore-new-blocks")
-	discordWebhookBlockThreshold := flag.Int64("discord-block-threshold", 1000000, "every x blocks an update is send to Discord")
+	discordWebhookBlockThreshold := flag.Int64("discord-block-threshold", 100000, "every x blocks an update is send to Discord")
 	discordWebhookReportUrl := flag.String("discord-url", "", "report progress to discord url")
 	discordWebhookUser := flag.String("discord-user", "", "report progress to discord user")
 	discordWebhookAddTextFatal := flag.String("discord-fatal-text", "", "this text will be added to the discord message in the case of an fatal")
@@ -230,6 +230,9 @@ func main() {
 		chainID, err := rpciGetChainId()
 		if chainID == ARBITRUM_CHAINID { // #RECY REMOVE currently necessary as there is no default config / setting in utils for Arbitrum
 			utils.Config.Chain.Id = ARBITRUM_CHAINID
+		}
+		if chainID == OPTIMISM_CHAINID { // #RECY REMOVE currently necessary as there is no default config / setting in utils for Optimism
+			utils.Config.Chain.Id = OPTIMISM_CHAINID
 		}
 		if err != nil {
 			utils.LogFatal(err, "error get chain id", 0) // fatal, no point to continue without chain id
