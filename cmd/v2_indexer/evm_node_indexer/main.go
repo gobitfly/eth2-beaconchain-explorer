@@ -314,8 +314,6 @@ func main() {
 			time.Sleep(time.Second)
 			continue // still the same block
 		} else {
-			consecutiveErrorCountOld := consecutiveErrorCount
-
 			// checking for reorg
 			if *reorgDepth > 0 && latestPGBlock >= 0 {
 				// define length to check
@@ -339,6 +337,7 @@ func main() {
 					} else {
 						utils.LogFatal(err, "error when bulk getting raw block hashes", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
 					}
+					continue
 				}
 
 				// get a list of all block_ids where the hashes are fine
@@ -351,6 +350,7 @@ func main() {
 					} else {
 						utils.LogFatal(err, "error when getting hash hits id list", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock": latestPGBlock, "reorgDepth": *reorgDepth})
 					}
+					continue
 				}
 
 				matchingLength := len(matchingHashesBlockIdList)
@@ -400,6 +400,7 @@ func main() {
 						} else {
 							utils.LogFatal(err, "error exporting hits on reorg", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "len(blockRawData)": len(blockRawData), "reorgDepth": *reorgDepth, "matchingHashesBlockIdList": matchingHashesBlockIdList, "wrongHashRanges": wrongHashRanges})
 						}
+						continue
 					} else {
 						logrus.Info("...done. Everything fine with reorgs again.")
 					}
@@ -407,41 +408,41 @@ func main() {
 			}
 
 			// export all new blocks
-			if consecutiveErrorCountOld == consecutiveErrorCount { // if there is an error above, NOT export more blocks, otherwise we push the reorg maybe to far
-				newerNodeBN := currentNodeBlockNumber.Load() // just in case it took a while doing the reorg stuff, no problem if range > reorg limit, as the exported blocks will be newest also
-				if newerNodeBN < currentNodeBN {
-					// fatal, as this is an impossible error
-					utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
+			newerNodeBN := currentNodeBlockNumber.Load() // just in case it took a while doing the reorg stuff, no problem if range > reorg limit, as the exported blocks will be newest also
+			if newerNodeBN < currentNodeBN {
+				// fatal, as this is an impossible error
+				utils.LogFatal(err, "impossible error newerNodeBN < currentNodeBN", 0, map[string]interface{}{"newerNodeBN": newerNodeBN, "currentNodeBN": currentNodeBN})
+			}
+			err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce, discordWebhookBlockThreshold, discordWebhookReportUrl, discordWebhookUser)
+			// we can try again, as throw a fatal will result in try again anyway
+			if err != nil {
+				consecutiveErrorCount++
+				if consecutiveErrorCount <= consecutiveErrorCountThreshold {
+					utils.LogError(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
+				} else {
+					utils.LogFatal(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
 				}
-				err = bulkExportBlocksRange(tableBlocksRaw, []intRange{intRange{start: latestPGBlock + 1, end: newerNodeBN}}, *concurrency, *nodeRequestsAtOnce, discordWebhookBlockThreshold, discordWebhookReportUrl, discordWebhookUser)
-				// we can try again, as throw a fatal will result in try again anyway
+				continue
+			} else {
+				latestPGBlock, err = psqlGetLatestBlock(true)
 				if err != nil {
 					consecutiveErrorCount++
 					if consecutiveErrorCount <= consecutiveErrorCountThreshold {
-						utils.LogError(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
+						utils.LogError(err, "error while using psqlGetLatestBlock (ongoing / write)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount})
 					} else {
-						utils.LogFatal(err, "error while reexport blocks for bigtable (newest blocks)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount, "latestPGBlock+1": latestPGBlock + 1, "newerNodeBN": newerNodeBN})
+						utils.LogFatal(err, "error while using psqlGetLatestBlock (ongoing / write)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount})
 					}
-				} else {
-					latestPGBlock, err = psqlGetLatestBlock(true)
-					if err != nil {
-						consecutiveErrorCount++
-						if consecutiveErrorCount <= consecutiveErrorCountThreshold {
-							utils.LogError(err, "error while using psqlGetLatestBlock (ongoing / write)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount})
-						} else {
-							utils.LogFatal(err, "error while using psqlGetLatestBlock (ongoing / write)", 0, map[string]interface{}{"reorgErrorCount": consecutiveErrorCount})
-						}
-					} else if latestPGBlock != newerNodeBN {
-						// fatal, as this is a nearly impossible error
-						utils.LogFatal(err, "impossible error latestPGBlock != newerNodeBN", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "newerNodeBN": newerNodeBN})
-					}
+					continue
+				} else if latestPGBlock != newerNodeBN {
+					// fatal, as this is a nearly impossible error
+					utils.LogFatal(err, "impossible error latestPGBlock != newerNodeBN", 0, map[string]interface{}{"latestPGBlock": latestPGBlock, "newerNodeBN": newerNodeBN})
 				}
 			}
 
 			// reset consecutive error count if no change during this run
-			if consecutiveErrorCount > 0 && consecutiveErrorCountOld == consecutiveErrorCount {
+			if consecutiveErrorCount > 0 {
+				logrus.Infof("reset consecutive error count to 0, as no error in this run (was %d)", consecutiveErrorCount)
 				consecutiveErrorCount = 0
-				logrus.Infof("reset consecutive error count to 0, as no error in this run (was %d)", consecutiveErrorCountOld)
 			}
 		}
 	}
@@ -1424,8 +1425,12 @@ func rpciGetBulkBlockRawHash(blockRawData []fullBlockRawData, nodeRequestsAtOnce
 		if l < 1 {
 			return fmt.Errorf("empty blockRawData array received")
 		}
-		if l > nodeRequestsAtOnce {
-			return fmt.Errorf("blockRawData array received with more elements (%d) than allowed (%d)", l, nodeRequestsAtOnce)
+		if l > 1 && l > nodeRequestsAtOnce {
+			err := rpciGetBulkBlockRawHash(blockRawData[:l/2], nodeRequestsAtOnce)
+			if err == nil {
+				err = rpciGetBulkBlockRawHash(blockRawData[l/2:], nodeRequestsAtOnce)
+			}
+			return err
 		}
 	}
 
