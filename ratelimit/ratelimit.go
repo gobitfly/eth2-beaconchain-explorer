@@ -37,9 +37,9 @@ const (
 	HeaderRateLimitLimitHour   = "X-RateLimit-Limit-Hour"   // the rate limit ceiling that is applicable for the current user
 	HeaderRateLimitLimitMonth  = "X-RateLimit-Limit-Month"  // the rate limit ceiling that is applicable for the current user
 
-	NokeyRateLimitSecond = 2   // RateLimit for requests without or with invalid apikey
-	NokeyRateLimitHour   = 500 // RateLimit for requests without or with invalid apikey
-	NokeyRateLimitMonth  = 0   // RateLimit for requests without or with invalid apikey
+	DefaultRateLimitSecond = 2   // RateLimit per second if no ratelimits are set in database
+	DefaultRateLimitHour   = 500 // RateLimit per second if no ratelimits are set in database
+	DefaultRateLimitMonth  = 0   // RateLimit per second if no ratelimits are set in database
 
 	FallbackRateLimitSecond = 20 // RateLimit per second for when redis is offline
 	FallbackRateLimitBurst  = 20 // RateLimit burst for when redis is offline
@@ -50,10 +50,12 @@ const (
 )
 
 var NoKeyRateLimit = &RateLimit{
-	Second: NokeyRateLimitSecond,
-	Hour:   NokeyRateLimitHour,
-	Month:  NokeyRateLimitMonth,
+	Second: DefaultRateLimitSecond,
+	Hour:   DefaultRateLimitHour,
+	Month:  DefaultRateLimitMonth,
 }
+
+var FreeRatelimit = NoKeyRateLimit
 
 var redisClient *redis.Client
 var redisIsHealthy atomic.Bool
@@ -548,8 +550,27 @@ func updateRateLimits() error {
 		return err
 	}
 
+	dbApiProducts, err := DBGetCurrentApiProducts()
+	if err != nil {
+		return err
+	}
+
 	rateLimitsMu.Lock()
 	now := time.Now()
+
+	for _, dbApiProduct := range dbApiProducts {
+		if dbApiProduct.Name == "nokey" {
+			NoKeyRateLimit.Second = dbApiProduct.Second
+			NoKeyRateLimit.Hour = dbApiProduct.Hour
+			NoKeyRateLimit.Month = dbApiProduct.Month
+		}
+		if dbApiProduct.Name == "free" {
+			FreeRatelimit.Second = dbApiProduct.Second
+			FreeRatelimit.Hour = dbApiProduct.Hour
+			FreeRatelimit.Month = dbApiProduct.Month
+		}
+	}
+
 	for _, dbKey := range dbApiKeys {
 		if dbKey.ChangedAt.After(lastTKeys) {
 			lastTKeys = dbKey.ChangedAt
@@ -592,6 +613,7 @@ func updateRateLimits() error {
 	return nil
 }
 
+// postRateLimit decrements the rate limit keys in redis if the status is not 200.
 func postRateLimit(rl *RateLimitResult, status int) error {
 	if status == 200 {
 		return nil
@@ -612,6 +634,7 @@ func postRateLimit(rl *RateLimitResult, status int) error {
 	return nil
 }
 
+// rateLimitRequest is the main function for rate limiting, it will check the rate limits for the request and update the rate limits in redis.
 func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	start := time.Now()
 	defer func() {
@@ -622,6 +645,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	defer cancel()
 
 	res := &RateLimitResult{}
+	// defer func() { logger.Infof("rateLimitRequest: %+v", *res) }()
 
 	key, ip := getKey(r)
 	res.Key = key
@@ -640,9 +664,8 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		if ok {
 			res.RateLimit = limit
 		} else {
-			res.RateLimit = NoKeyRateLimit
+			res.RateLimit = FreeRatelimit
 		}
-		logger.Infof("userId: %v, key: %v, ip: %v, ok: %v, limit: %+v", userId, key, ip, ok, res.RateLimit)
 	}
 	rateLimitsMu.RUnlock()
 
@@ -660,11 +683,11 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	timeUntilNextHourUtc := nextHourUtc.Sub(startUtc)
 	timeUntilNextMonthUtc := nextMonthUtc.Sub(startUtc)
 
-	rateLimitSecondKey := fmt.Sprintf("ratelimit:second:%s:%s", res.Bucket, res.Key)
-	rateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Hour(), res.Bucket, res.Key)
-	rateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.Key)
+	rateLimitSecondKey := fmt.Sprintf("ratelimit:second:%s:%s", res.Bucket, res.UserId)
+	rateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.UserId)
+	rateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), res.Bucket, res.UserId)
 
-	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Key, res.Route)
+	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%d:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, res.Route)
 	if !res.IsValidKey {
 		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), "nokey", res.Route)
 	}
@@ -681,14 +704,14 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 
 	if res.RateLimit.Hour > 0 {
 		rateLimitHour = pipe.IncrBy(ctx, rateLimitHourKey, weight)
-		pipe.ExpireAt(ctx, rateLimitHourKey, nextHourUtc.Add(time.Second*600))
-		res.RedisKeys = append(res.RedisKeys, RedisKey{rateLimitHourKey, nextHourUtc})
+		pipe.ExpireAt(ctx, rateLimitHourKey, nextHourUtc.Add(time.Second*60)) // expire 1 minute after the window to make sure we do not miss any requests due to time-sync
+		res.RedisKeys = append(res.RedisKeys, RedisKey{rateLimitHourKey, nextHourUtc.Add(time.Second * 60)})
 	}
 
 	if res.RateLimit.Month > 0 {
 		rateLimitMonth = pipe.IncrBy(ctx, rateLimitMonthKey, weight)
-		pipe.ExpireAt(ctx, rateLimitMonthKey, nextMonthUtc.Add(time.Second*600))
-		res.RedisKeys = append(res.RedisKeys, RedisKey{rateLimitMonthKey, nextMonthUtc})
+		pipe.ExpireAt(ctx, rateLimitMonthKey, nextMonthUtc.Add(time.Second*60)) // expire 1 minute after the window to make sure we do not miss any requests due to time-sync
+		res.RedisKeys = append(res.RedisKeys, RedisKey{rateLimitMonthKey, nextMonthUtc.Add(time.Second * 60)})
 	}
 
 	pipe.Incr(ctx, statsKey)
@@ -696,8 +719,6 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Infof("ratelimit: %+v", res.RateLimit)
 
 	if res.RateLimit.Second > 0 {
 		if rateLimitSecond.Val() > res.RateLimit.Second {
@@ -867,10 +888,12 @@ func (rl *FallbackRateLimiter) Handle(w http.ResponseWriter, r *http.Request, ne
 }
 
 type ApiProduct struct {
-	Name   string
-	Second int64
-	Hour   int64
-	Month  int64
+	Name          string    `db:"name"`
+	StripePriceID string    `db:"stripe_price_id"`
+	Second        int64     `db:"second"`
+	Hour          int64     `db:"hour"`
+	Month         int64     `db:"month"`
+	ValidFrom     time.Time `db:"valid_from"`
 }
 
 func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
@@ -885,10 +908,10 @@ func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
 func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 	apiProducts := []*ApiProduct{}
 	err := db.FrontendWriterDB.Select(&apiProducts, `
-		select distinct on (product) product, second, hour, month, valid_from 
+		select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
 		from api_products 
 		where valid_from <= now()
-		order by product, valid_from desc`)
+		order by name, valid_from desc`)
 	return apiProducts, err
 }
 
@@ -960,7 +983,7 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
 				select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
 				from api_products 
 				where valid_from <= now()
-				order by product, valid_from desc
+				order by name, valid_from desc
 			)
 		insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
 		select

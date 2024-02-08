@@ -394,8 +394,6 @@ func main() {
 		err = fixEnsAddresses(erigonClient)
 	case "update-ratelimits":
 		err = updateRatelimits()
-	case "add-users":
-		err = addUsers()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -1937,33 +1935,6 @@ func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
 
 		return tx.Commit()
 	}
-}
-
-func addUsers() error {
-	logrus.Infof("addUsers")
-	tx, err := db.WriterDb.Beginx()
-	if err != nil {
-		logrus.Fatalf("error starting tx: %v", err)
-	}
-	defer tx.Rollback()
-
-	for i := 0; i < 10000; i++ {
-		_, err = tx.Exec(`INSERT INTO users (email, password, api_key, stripe_customer_id) VALUES ($1, 'xxx', $2, $3)`, fmt.Sprintf("user%d@email.com", i), fmt.Sprintf("apikey_%d", i), fmt.Sprintf("stripe_customer_%d", i))
-		if err != nil {
-			return err
-		}
-	}
-	for i := 0; i < 100; i++ {
-		_, err = tx.Exec(`INSERT INTO users_stripe_subscriptions (subscription_id, customer_id, price_id, active, payload, purchase_group) VALUES ($1, $2, $3, $4, $5, $6)`, fmt.Sprintf("stripe_sub_%d", i), fmt.Sprintf("stripe_customer_%d", i), "price_diamond", true, "{}", "x")
-		if err != nil {
-			return err
-		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func updateRatelimits() error {

@@ -45,16 +45,6 @@ CREATE TABLE IF NOT EXISTS
         valid_from TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT TO_TIMESTAMP(0),
         PRIMARY KEY (name, valid_from)
     ); 
-INSERT INTO api_products (name, stripe_price_id, second, hour, month) VALUES
-    ('free'    , 'price_free'    ,  5, 0,     30000),
-    ('sapphire', 'price_sapphire', 10, 0,    500000),
-    ('emerald' , 'price_emerald' , 10, 0,   1000000),
-    ('diamond' , 'price_diamond' , 30, 0,   6000000),
-    ('custom2' , 'price_custom2' , 50, 0,  13000000),
-    ('custom1' , 'price_custom1' , 50, 0, 500000000),
-    ('whale'   , 'price_whale'   , 25, 0,    700000),
-    ('goldfish', 'price_goldfish', 20, 0,    200000),
-    ('plankton', 'price_plankton', 20, 0,    120000);
 -- +goose StatementEnd
 
 -- +goose Down
@@ -65,4 +55,6 @@ SELECT 'down SQL query - drop table api_keys';
 DROP TABLE IF EXISTS api_keys;
 SELECT 'down SQL query - drop table api_weights';
 DROP TABLE IF EXISTS api_weights;
+SELECT 'down SQL query - drop table api_products';
+DROP TABLE IF EXISTS api_products;
 -- +goose StatementEnd
