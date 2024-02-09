@@ -285,6 +285,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 func updateWeights(firstRun bool) error {
 	start := time.Now()
 	defer func() {
+		logger.Infof("updateWeights took %v", time.Since(start).Seconds())
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateWeights").Observe(time.Since(start).Seconds())
 	}()
 
@@ -341,6 +342,7 @@ func updateRedisStatus() error {
 func updateStats() error {
 	start := time.Now()
 	defer func() {
+		logger.Infof("updateStats took %v", time.Since(start).Seconds())
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateStats").Observe(time.Since(start).Seconds())
 	}()
 
@@ -505,6 +507,7 @@ func updateStatsEntries(entries []dbEntry) error {
 func updateRateLimits() error {
 	start := time.Now()
 	defer func() {
+		logger.Infof("updateRateLimits took %v", time.Since(start).Seconds())
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateRateLimits").Observe(time.Since(start).Seconds())
 	}()
 
@@ -928,6 +931,7 @@ func DBUpdate() error {
 	}
 	logrus.Infof("updated %v api_keys in %v", ra, time.Since(now))
 
+	now = time.Now()
 	_, err = DBUpdateApiRatelimits()
 	if err != nil {
 		return err
@@ -938,15 +942,15 @@ func DBUpdate() error {
 	}
 	logrus.Infof("updated %v api_ratelimits in %v", ra, time.Since(now))
 
-	_, err = DBInvalidateApiKeys()
-	if err != nil {
-		return err
-	}
-	ra, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.Infof("invalidated %v api_keys in %v", ra, time.Since(now))
+	// _, err = DBInvalidateApiKeys()
+	// if err != nil {
+	// 	return err
+	// }
+	// ra, err = res.RowsAffected()
+	// if err != nil {
+	// 	return err
+	// }
+	// logrus.Infof("invalidated %v api_keys in %v", ra, time.Since(now))
 
 	return nil
 }
@@ -955,8 +959,7 @@ func DBInvalidateApiKeys() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(`
 		update api_ratelimits 
 		set changed_at = now(), valid_until = now() 
-		where valid_until > now() 
-			and user_id not in (select user_id from api_keys where api_key is not null)`)
+		where valid_until > now() and not exists (select id from api_keys where api_keys.user_id = api_ratelimits.user_id)`)
 }
 
 func DBUpdateApiKeys() (sql.Result, error) {
@@ -968,7 +971,7 @@ func DBUpdateApiKeys() (sql.Result, error) {
 			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
 			now() as changed_at
 		from users 
-		where api_key is not null
+		where api_key is not null and not exists (select user_id from api_keys where api_keys.user_id = users.id)
 		on conflict (user_id, api_key) do update set
 			valid_until = excluded.valid_until,
 			changed_at = excluded.changed_at
@@ -999,6 +1002,9 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
 			left join current_api_products cap1 on cap1.name = coalesce(cap.name,'free')
 			left join app_subs_view asv on asv.user_id = u.id and asv.active = true
 			left join current_api_products cap2 on cap2.name = coalesce(asv.product_id,'free')
+			left join api_ratelimits ar on ar.user_id = u.id
+		where
+			cap1.name != 'free' or cap2.name != 'free' or ar.user_id is not null
 		on conflict (user_id) do update set
 			second = excluded.second,
 			hour = excluded.hour,

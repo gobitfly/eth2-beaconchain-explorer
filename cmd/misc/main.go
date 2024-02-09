@@ -1942,8 +1942,6 @@ func updateRatelimits() error {
 		err := ratelimit.DBUpdate()
 		if err != nil {
 			logrus.WithError(err).Errorf("error in updateRatelimits")
-		} else {
-			logrus.Infof("updated ratelimits")
 		}
 		time.Sleep(time.Second * 10)
 	}

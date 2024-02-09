@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS
         PRIMARY KEY (user_id)
     );
 
+CREATE INDEX IF NOT EXISTS idx_api_ratelimits_changed_at ON api_ratelimits (changed_at);
+
 SELECT 'up SQL query - add table api_keys';
 CREATE TABLE IF NOT EXISTS
     api_keys (
@@ -21,6 +23,8 @@ CREATE TABLE IF NOT EXISTS
         changed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
         PRIMARY KEY (user_id, api_key)
     );
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_changed_at ON api_keys (changed_at);
 
 SELECT 'up SQL query - add table api_weights';
 CREATE TABLE IF NOT EXISTS
@@ -51,8 +55,12 @@ CREATE TABLE IF NOT EXISTS
 -- +goose StatementBegin
 SELECT 'down SQL query - drop table api_ratelimits';
 DROP TABLE IF EXISTS api_ratelimits;
+SELECT 'down SQL query - drop index idx_api_ratelimits_changed_at';
+DROP INDEX IF EXISTS idx_api_ratelimits_changed_at;
 SELECT 'down SQL query - drop table api_keys';
 DROP TABLE IF EXISTS api_keys;
+SELECT 'down SQL query - drop index idx_api_keys_changed_at';
+DROP INDEX IF EXISTS idx_api_keys_changed_at;
 SELECT 'down SQL query - drop table api_weights';
 DROP TABLE IF EXISTS api_weights;
 SELECT 'down SQL query - drop table api_products';
