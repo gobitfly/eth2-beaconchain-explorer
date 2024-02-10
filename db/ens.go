@@ -85,8 +85,8 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	keys := make(map[string]bool)
 
 	for i, tx := range blk.GetTransactions() {
-		if i > 9999 {
-			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most 9999 but got: %v, tx: %x", i, tx.GetHash())
+		if i >= TX_PER_BLOCK_LIMIT {
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most %d but got: %v, tx: %x", TX_PER_BLOCK_LIMIT-1, i, tx.GetHash())
 		}
 
 		// We look for the different ENS events,
@@ -101,8 +101,8 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		foundNewOwnerIndex := -1
 		logs := tx.GetLogs()
 		for j, log := range logs {
-			if j > 99999 {
-				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most 99999 but got: %v tx: %x", j, tx.GetHash())
+			if j >= ITX_PER_TX_LIMIT {
+				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most %d but got: %v tx: %x", ITX_PER_TX_LIMIT-1, j, tx.GetHash())
 			}
 			for _, lTopic := range log.GetTopics() {
 				if isRegistarContract {

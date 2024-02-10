@@ -1309,8 +1309,9 @@ func GetValidatorIncomeHistory(validatorIndices []uint64, lowerBoundDay uint64, 
 		}
 
 		result = append(result, types.ValidatorIncomeHistory{
-			Day:       int64(currentDay),
-			ClRewards: int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals),
+			Day:        int64(currentDay),
+			ClRewards:  int64(totalBalance - lastBalance - lastDeposits + lastWithdrawals),
+			EndBalance: sql.NullInt64{Int64: int64(totalBalance), Valid: true}, // show the latest balance for todays income
 		})
 	}
 

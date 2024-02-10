@@ -286,6 +286,7 @@ type ConfigJsonResponse struct {
 		EjectionBalance                         string `json:"EJECTION_BALANCE"`
 		MinPerEpochChurnLimit                   string `json:"MIN_PER_EPOCH_CHURN_LIMIT"`
 		ChurnLimitQuotient                      string `json:"CHURN_LIMIT_QUOTIENT"`
+		MaxPerEpochActivationChurnLimit         string `json:"MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT"`
 		ProposerScoreBoost                      string `json:"PROPOSER_SCORE_BOOST"`
 		DepositChainID                          string `json:"DEPOSIT_CHAIN_ID"`
 		DepositNetworkID                        string `json:"DEPOSIT_NETWORK_ID"`

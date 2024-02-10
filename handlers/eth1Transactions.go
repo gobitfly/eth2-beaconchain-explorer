@@ -55,7 +55,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			}
 		}
 	}
-	if pageTokenId == 0 {
+	if pageTokenId == 0 && pageToken != "0" {
 		pageTokenId = services.LatestEth1BlockNumber()
 	}
 
@@ -67,6 +67,10 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			return nil
 		}
 		t := b.GetTransactions()
+		contractInteractionTypes, err := db.BigtableClient.GetAddressContractInteractionsAtBlock(b)
+		if err != nil {
+			utils.LogError(err, "error getting contract states", 0)
+		}
 
 		// retrieve metadata
 		names := make(map[string]string)
@@ -83,41 +87,23 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 		}
 
 		var wg errgroup.Group
-		for _, v := range t {
+		for i := len(t) - 1; i >= 0; i-- {
+			v := t[i]
 			wg.Go(func() error {
-				method := "Transfer"
-				{
-					d := v.GetData()
-					if len(d) > 3 {
-						m := d[:4]
-						invokesContract := len(v.GetItx()) > 0 || v.GetGasUsed() > 21000 || v.GetErrorMsg() != ""
-						method = db.BigtableClient.GetMethodLabel(m, invokesContract)
-					}
+				if v.GetTo() == nil {
+					v.To = v.ContractAddress
 				}
-
-				var toText template.HTML
-				{
-					to := v.GetTo()
-					if len(to) > 0 {
-						toText = utils.FormatAddressWithLimits(to, names[string(v.GetTo())], false, "address", visibleDigitsForHash+5, 18, true)
-					} else {
-						itx := v.GetItx()
-						if len(itx) > 0 && itx[0] != nil {
-							to = itx[0].GetTo()
-							if len(to) > 0 {
-								toText = utils.FormatAddressWithLimits(to, "Contract Creation", true, "address", visibleDigitsForHash+5, 18, true)
-							}
-						}
-					}
+				var contractInteraction types.ContractInteractionType
+				if len(contractInteractionTypes) > i {
+					contractInteraction = contractInteractionTypes[i]
 				}
-
 				tableData = append(tableData, []interface{}{
 					utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
-					utils.FormatMethod(method),
+					utils.FormatMethod(db.BigtableClient.GetMethodLabel(v.GetData(), contractInteraction)),
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
-					toText,
+					utils.FormatAddressWithLimits(v.GetTo(), db.BigtableClient.GetAddressLabel(names[string(v.GetTo())], contractInteraction), contractInteraction != types.CONTRACT_NONE, "address", 15, 20, true),
 					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 				})

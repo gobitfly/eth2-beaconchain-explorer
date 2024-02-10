@@ -1,4 +1,7 @@
 {{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
+
   <script>
     function togglePriceContent(currentPrice, historicPrice) {
       var content = document.getElementById("valuePriceButton")
@@ -16,6 +19,83 @@
     }
 
     activateTabbarSwitcher("eth1tx-tab-content", "eth1TxTabs", "overview")
+
+    const handleTabChange = (url) => {
+      if ($(`#${"eth1tx-tab-content"}`).find(".tab-pane.active")[0] == $("#internal-txnsTabPanel")[0]) {
+        $("#advanced-itx").show()
+      }
+      else {
+        $("#advanced-itx").hide()
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", function (ev) {
+      if (window.navigation) {
+        window.navigation.addEventListener("navigate", (event) => {
+          if (!event.destination?.url || event.destination.url.split("#")[0] != event.srcElement?.currentEntry?.url?.split("#")[0]) {
+            return
+          }
+          handleTabChange(event.destination?.url)
+        })
+      } else {
+        //handle Firefox specific way as it does not support the navigation way
+        const tabBarContainer = $(`#eth1TxTabs`)
+        if (!tabBarContainer) {
+          return
+        }
+
+        tabBarContainer.find(`.nav-link`).on("click", event => {
+          var href = event.currentTarget.href
+          if (href) {
+            handleTabChange(href)
+          }
+        })
+      }
+      handleTabChange(window.location.href)
+    })
+
+    function filterItransactions(show) {
+      if (show) {
+        $('#itransactions').DataTable()
+        .column(0)
+        .search("")
+        .column(3)
+        .search("")
+        .draw()
+      } else {
+        // all but exact match would be:
+        //regExSearch = '^(?!' + `0 ETH` + '$).*$'
+        noZeroValue = '^(?!' + '0 ' + ')'
+        noDelegateCall = '^(?!' + 'delegatecall' + ')'
+        $('#itransactions').DataTable()
+        .column(0)
+        .search(noDelegateCall, true, false)
+        .column(3)
+        .search(noZeroValue, true, false)
+        .draw()
+      }
+      $('#itxCountLabel').text($('#itransactions').DataTable().rows( {search:'applied'} ).count());
+    }
+
+    $("#advanced-itx-toggle").on("click", async () => {
+      filterItransactions($("#advanced-itx-toggle").is(':checked'))
+    })
+
+    let hash = {{ .Hash }} || 0
+    $(document).ready(function () {
+      var tblOpts = {
+        processing: true,
+        paging: false,
+        ordering: false,
+        searching: true,
+        ajax: dataTableLoader('/tx/' + hash + '/data'),
+        dom: 'lrtip',
+        initComplete: function(settings, json) {
+          filterItransactions(false)
+        }
+      }
+    $('#itransactions').DataTable(tblOpts)
+    })
   </script>
 {{ end }}
 
@@ -47,6 +127,15 @@
     {{ with .Data }}
       <div class="card">
         <div class="card-header">
+          <div id="advanced-itx" class="mr-20 float-right" style="display: none;">
+            <div class="float-right">
+              <span class="text-monospace mr-2">Advanced</span>
+              <label class="advanced-itx-switch float-right" for="advanced-itx-toggle">
+                <input type="checkbox" id="advanced-itx-toggle" autocomplete="off" />
+                <div class="slider round"></div>
+              </label>
+            </div>
+          </div>
           <ul class="nav nav-tabs card-header-tabs border-bottom-0" id="eth1TxTabs" role="tablist">
             <li class="nav-item">
               <a class="nav-link show active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true"><i class="fas fa-info-circle"></i><span class="tab-text" style="margin-left: 6px;">Overview</span></a>
@@ -54,7 +143,7 @@
             {{ if gt (len .InternalTxns) 0 }}
               <li class="nav-item">
                 <a class="nav-link" id="internal-txns-tab" data-toggle="tab" href="#internal-txns" role="tab" aria-controls="internal-txns" aria-selected="false">
-                  <i class="fas fa-sitemap"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white">{{ len .InternalTxns }}</span></span>
+                  <i class="fas fa-sitemap"></i><span class="tab-text" style="margin-left: 6px;">Internal Transactions <span class="badge badge-dark align-middle text-white" id="itxCountLabel"></span></span>
                 </a>
               </li>
             {{ end }}
@@ -166,15 +255,17 @@
                   {{ if gt (len .InternalTxns) 0 }}
                     <ul class="fa-ul mb-0 mt-2">
                       {{ range $i, $row := .InternalTxns }}
-                        <li class="mb-1">
-                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
-                          <span>Transfer</span>
-                          <span>{{ .Amount }}</span>
-                          <span>From</span>
-                          <span>{{ .From }}</span>
-                          <span>To</span>
-                          <span>{{ .To }}</span>
-                        </li>
+                        {{ if not .Advanced }}
+                          <li class="mb-1">
+                            <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                            <span>Transfer</span>
+                            <span>{{ .Amount }}</span>
+                            <span>From</span>
+                            <span>{{ .From }}</span>
+                            <span>To</span>
+                            <span>{{ .To }}</span>
+                          </li>
+                        {{ end }}
                       {{ end }}
                     </ul>
                   {{ end }}
@@ -397,21 +488,17 @@
             {{ if .InternalTxns }}
               <div id="internal-txnsTabPanel" class="tab-pane fade" role="tabpanel" aria-labelledby="internal-txns-tab">
                 <div class="table-responsive">
-                  <table class="table table-borderless text-monospace">
+                  <table class="table dataTable no-footer" id="itransactions" role="grid">
                     <thead>
-                      <th>From</th>
-                      <th>To</th>
-                      <th>Value</th>
+                      <tr>
+                        <th>Type Trace Address</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Value</th>
+                        <th>Gas Limit</th>
+                      </tr>
                     </thead>
-                    <tbody>
-                      {{ range $index, $tx := .InternalTxns }}
-                        <tr>
-                          <td>{{ .From }}</td>
-                          <td>{{ .To }}</td>
-                          <td>{{ .Amount }}</td>
-                        </tr>
-                      {{ end }}
-                    </tbody>
+                    <tbody></tbody>
                   </table>
                 </div>
               </div>

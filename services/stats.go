@@ -88,6 +88,14 @@ func calculateStats() (*types.Stats, error) {
 
 	stats.ValidatorChurnLimit = &validatorChurnLimit
 
+	epoch := LatestEpoch()
+	validatorActivationChurnLimit, err := getValidatorActivationChurnLimit(activeValidatorCount, epoch)
+	if err != nil {
+		logger.WithError(err).Error("error getting total validator churn limit")
+	}
+
+	stats.ValidatorActivationChurnLimit = &validatorActivationChurnLimit
+
 	LatestValidatorWithdrawalIndex, err := db.GetMostRecentWithdrawalValidator()
 	if err != nil {
 		logger.WithError(err).Error("error getting most recent withdrawal validator index")
@@ -95,7 +103,6 @@ func calculateStats() (*types.Stats, error) {
 
 	stats.LatestValidatorWithdrawalIndex = &LatestValidatorWithdrawalIndex
 
-	epoch := LatestEpoch()
 	WithdrawableValidatorCount, err := db.GetWithdrawableValidatorCount(epoch)
 	if err != nil {
 		logger.WithError(err).Error("error getting withdrawable validator count")
@@ -198,7 +205,22 @@ func eth1UniqueValidatorsCount() (*uint64, error) {
 	return &count, nil
 }
 
-// GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
+// getValidatorActivationChurnLimit returns the rate at which validators can enter the system, see https://eips.ethereum.org/EIPS/eip-7514
+func getValidatorActivationChurnLimit(validatorCount, epoch uint64) (uint64, error) {
+	vcl, err := getValidatorChurnLimit(validatorCount)
+	if err != nil {
+		return 0, err
+	}
+	if utils.Config.Chain.ClConfig.DenebForkEpoch > epoch {
+		return vcl, nil
+	}
+	if vcl > utils.Config.Chain.ClConfig.MaxPerEpochActivationChurnLimit {
+		return utils.Config.Chain.ClConfig.MaxPerEpochActivationChurnLimit, nil
+	}
+	return vcl, nil
+}
+
+// getValidatorChurnLimit returns the rate at which validators can leave the system
 func getValidatorChurnLimit(validatorCount uint64) (uint64, error) {
 	min := utils.Config.Chain.ClConfig.MinPerEpochChurnLimit
 

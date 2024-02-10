@@ -1229,6 +1229,7 @@ func GetLatestStats() *types.Stats {
 		ActiveValidatorCount:           new(uint64),
 		PendingValidatorCount:          new(uint64),
 		ValidatorChurnLimit:            new(uint64),
+		ValidatorActivationChurnLimit:  new(uint64),
 		LatestValidatorWithdrawalIndex: new(uint64),
 	}
 }
