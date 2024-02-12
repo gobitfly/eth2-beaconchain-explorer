@@ -942,24 +942,26 @@ func DBUpdate() error {
 	}
 	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
 
-	// _, err = DBInvalidateApiKeys()
-	// if err != nil {
-	// 	return err
-	// }
-	// ra, err = res.RowsAffected()
-	// if err != nil {
-	// 	return err
-	// }
-	// logrus.Infof("invalidated %v api_keys in %v", ra, time.Since(now))
+	start = time.Now()
+	_, err = DBInvalidateApiKeys()
+	if err != nil {
+		return err
+	}
+	ra, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("invalidated api_keys")
 
 	return nil
 }
 
+// DBInvalidateApiKeys invalidates api-keys where there is no corresponding user
 func DBInvalidateApiKeys() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(`
-		update api_ratelimits 
+		update api_keys 
 		set changed_at = now(), valid_until = now() 
-		where valid_until > now() and not exists (select id from api_keys where api_keys.user_id = api_ratelimits.user_id)`)
+		where valid_until > now() and not exists (select apikey from users where aid = api_keys.user_id)`)
 }
 
 func DBUpdateApiKeys() (sql.Result, error) {
