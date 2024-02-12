@@ -192,69 +192,14 @@ func RunSlotExporter(firstRun bool) error {
 				epoch := utils.EpochOfSlot(dbSlot.Slot)
 
 				// a new epoch has been finalized, run all related tasks
-				// update epoch status
-				// export epoch rewards
 				wg := &errgroup.Group{}
 
 				wg.Go(func() error {
-					epochParticipationStats, err := clClient.GetValidatorParticipation(epoch - 1)
-					if err != nil {
-						return fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %w", epoch, err)
-					} else {
-						logger.Printf("updating epoch %v with participation rate %v", epoch, epochParticipationStats.GlobalParticipationRate)
-						err := db.UpdateEpochStatus(epochParticipationStats, tx)
-
-						if err != nil {
-							return err
-						}
-
-						logger.Infof("exporting validation queue")
-						queue, err := clClient.GetValidatorQueue()
-						if err != nil {
-							return fmt.Errorf("error retrieving validator queue data: %w", err)
-						}
-
-						err = db.SaveValidatorQueue(queue, tx)
-						if err != nil {
-							return fmt.Errorf("error saving validator queue data: %w", err)
-						}
-					}
-					return nil
+					return updateEpochStatusAndValidatorQueue(clClient, epoch, tx)
 				})
 
 				wg.Go(func() error {
-					if epoch == 0 {
-						return nil
-					}
-
-					rewardsEpoch := epoch - 1
-					start := time.Now()
-
-					logrus.Infof("retrieving rewards details for epoch %d", rewardsEpoch)
-					rewards, err := eth_rewards.GetRewardsForEpoch(epoch, clbClient, utils.Config.Eth1ErigonEndpoint)
-					if err != nil {
-						return fmt.Errorf("error retrieving reward details for epoch %v: %v", rewardsEpoch, err)
-					} else {
-						logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), rewardsEpoch, time.Since(start))
-					}
-
-					logrus.Infof("saving reward details for epoch %d", rewardsEpoch)
-					err = db.BigtableClient.SaveValidatorIncomeDetails(uint64(rewardsEpoch), rewards)
-					if err != nil {
-						return fmt.Errorf("error saving reward details to bigtable: %v", err)
-					}
-
-					_, err = tx.Exec("UPDATE epochs SET rewards_exported = true WHERE epoch = $1", rewardsEpoch)
-
-					if err != nil {
-						return fmt.Errorf("error marking rewards_exported as true for epoch %v: %v", rewardsEpoch, err)
-					}
-
-					logrus.Infof("completed exporting reward details for epoch %d", rewardsEpoch)
-
-					services.ReportStatus("rewardsExporter", "Running", nil)
-
-					return nil
+					return saveEpochRewards(epoch, clbClient, tx)
 				})
 
 				err := wg.Wait()
@@ -281,6 +226,67 @@ func RunSlotExporter(firstRun bool) error {
 
 	return nil
 
+}
+
+func saveEpochRewards(epoch uint64, clbClient *beacon.Client, tx *sqlx.Tx) error {
+	if epoch == 0 {
+		return nil
+	}
+
+	rewardsEpoch := epoch - 1
+	start := time.Now()
+
+	logrus.Infof("retrieving rewards details for epoch %d", rewardsEpoch)
+	rewards, err := eth_rewards.GetRewardsForEpoch(epoch, clbClient, utils.Config.Eth1ErigonEndpoint)
+	if err != nil {
+		return fmt.Errorf("error retrieving reward details for epoch %v: %v", rewardsEpoch, err)
+	} else {
+		logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), rewardsEpoch, time.Since(start))
+	}
+
+	logrus.Infof("saving reward details for epoch %d", rewardsEpoch)
+	err = db.BigtableClient.SaveValidatorIncomeDetails(uint64(rewardsEpoch), rewards)
+	if err != nil {
+		return fmt.Errorf("error saving reward details to bigtable: %v", err)
+	}
+
+	_, err = tx.Exec("UPDATE epochs SET rewards_exported = true WHERE epoch = $1", rewardsEpoch)
+
+	if err != nil {
+		return fmt.Errorf("error marking rewards_exported as true for epoch %v: %v", rewardsEpoch, err)
+	}
+
+	logrus.Infof("completed exporting reward details for epoch %d", rewardsEpoch)
+
+	services.ReportStatus("rewardsExporter", "Running", nil)
+
+	return nil
+}
+
+func updateEpochStatusAndValidatorQueue(clClient rpc.Client, epoch uint64, tx *sqlx.Tx) error {
+	epochParticipationStats, err := clClient.GetValidatorParticipation(epoch - 1)
+	if err != nil {
+		return fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %w", epoch, err)
+	} else {
+		logger.Printf("updating epoch %v with participation rate %v", epoch, epochParticipationStats.GlobalParticipationRate)
+		err := db.UpdateEpochStatus(epochParticipationStats, tx)
+
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("exporting validation queue")
+		queue, err := clClient.GetValidatorQueue()
+		if err != nil {
+			return fmt.Errorf("error retrieving validator queue data: %w", err)
+		}
+
+		err = db.SaveValidatorQueue(queue, tx)
+		if err != nil {
+			return fmt.Errorf("error saving validator queue data: %w", err)
+		}
+	}
+	return nil
 }
 
 func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) error {
