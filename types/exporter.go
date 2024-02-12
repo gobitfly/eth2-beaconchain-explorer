@@ -136,6 +136,60 @@ type Block struct {
 	EpochAssignments           *EpochAssignments
 	Validators                 []*Validator
 }
+type RedisCachedBlock struct {
+	Proposer                   uint64
+	BlockRoot                  []byte
+	Slot                       uint64
+	ParentRoot                 []byte
+	StateRoot                  []byte
+	Signature                  []byte
+	RandaoReveal               []byte
+	Graffiti                   []byte
+	Eth1Data                   *Eth1Data
+	BodyRoot                   []byte
+	ProposerSlashings          []*ProposerSlashing
+	AttesterSlashings          []*AttesterSlashing
+	Attestations               []*Attestation
+	Deposits                   []*Deposit
+	VoluntaryExits             []*VoluntaryExit
+	SyncAggregate              *SyncAggregate // warning: sync aggregate may be nil, for phase0 blocks
+	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
+	AttestationDuties          map[ValidatorIndex][]Slot
+	SyncDuties                 map[ValidatorIndex]bool
+	Finalized                  bool
+	EpochAssignments           *EpochAssignments
+}
+
+type ValidatorIndex32 uint32
+
+type RedisCachedBlockSlotViz struct {
+	Proposer             ValidatorIndex32
+	ProposerCLReward     int64 // negative in case missed
+	ProposerELReward     uint64
+	Slot                 uint64                                          // Slot/32 = epoch; to check for finality, slotviz needs epoch data as well (with sync committee participants usw) to work
+	AttestationSlashings map[ValidatorIndex32][]RedisCachedBlockSlashing // slasher index -> RedisCachedBlockSlashing
+	ProposerSlashings    map[ValidatorIndex32][]RedisCachedBlockSlashing
+	AttestationDuties    map[ValidatorIndex32][]RedisCachedBlockAttestations
+	SyncDuties           map[ValidatorIndex32]RedisCachedBlockSync
+}
+
+type RedisCachedBlockSlashing struct {
+	Slashed  ValidatorIndex32
+	Slot     Slot
+	Earnings uint64 // slasher perspective
+	Penalty  uint64 // slashed perspective
+}
+
+type RedisCachedBlockAttestations struct {
+	ForSlot        Slot
+	SourceEarnings int64 // negative in case missed
+	TargetEarnings int64
+	HeadEarnings   int64
+}
+
+type RedisCachedBlockSync struct {
+	Earnings int64
+}
 
 type SignedBLSToExecutionChange struct {
 	Message   BLSToExecutionChange
