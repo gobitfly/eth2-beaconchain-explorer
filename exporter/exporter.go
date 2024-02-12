@@ -52,7 +52,7 @@ func Start(client rpc.Client) {
 	minWaitTimeBetweenRuns := time.Second * time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot)
 	for {
 		start := time.Now()
-		err := RunSlotExporter(client, firstRun)
+		err := RunSlotExporter(firstRun)
 		if err != nil {
 			logrus.Errorf("error during slot export run: %v", err)
 		} else if err == nil && firstRun {
