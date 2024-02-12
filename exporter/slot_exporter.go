@@ -223,29 +223,34 @@ func RunSlotExporter(firstRun bool) error {
 				})
 
 				wg.Go(func() error {
-					start := time.Now()
-
-					logrus.Infof("retrieving rewards details for epoch %d", epoch)
-					rewards, err := eth_rewards.GetRewardsForEpoch(epoch, clbClient, utils.Config.Eth1ErigonEndpoint)
-					if err != nil {
-						return fmt.Errorf("error retrieving reward details for epoch %v: %v", epoch, err)
-					} else {
-						logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), epoch, time.Since(start))
+					if epoch == 0 {
+						return nil
 					}
 
-					logrus.Infof("saving reward details for epoch %d", epoch)
-					err = db.BigtableClient.SaveValidatorIncomeDetails(uint64(epoch), rewards)
+					rewardsEpoch := epoch - 1
+					start := time.Now()
+
+					logrus.Infof("retrieving rewards details for epoch %d", rewardsEpoch)
+					rewards, err := eth_rewards.GetRewardsForEpoch(epoch, clbClient, utils.Config.Eth1ErigonEndpoint)
+					if err != nil {
+						return fmt.Errorf("error retrieving reward details for epoch %v: %v", rewardsEpoch, err)
+					} else {
+						logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), rewardsEpoch, time.Since(start))
+					}
+
+					logrus.Infof("saving reward details for epoch %d", rewardsEpoch)
+					err = db.BigtableClient.SaveValidatorIncomeDetails(uint64(rewardsEpoch), rewards)
 					if err != nil {
 						return fmt.Errorf("error saving reward details to bigtable: %v", err)
 					}
 
-					_, err = db.WriterDb.Exec("UPDATE epochs SET rewards_exported = true WHERE epoch = $1", epoch)
+					_, err = tx.Exec("UPDATE epochs SET rewards_exported = true WHERE epoch = $1", rewardsEpoch)
 
 					if err != nil {
-						return fmt.Errorf("error marking rewards_exported as true for epoch %v: %v", epoch, err)
+						return fmt.Errorf("error marking rewards_exported as true for epoch %v: %v", rewardsEpoch, err)
 					}
 
-					logrus.Infof("completed exporting reward details for epoch %d", epoch)
+					logrus.Infof("completed exporting reward details for epoch %d", rewardsEpoch)
 
 					services.ReportStatus("rewardsExporter", "Running", nil)
 
