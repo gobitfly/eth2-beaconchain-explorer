@@ -285,7 +285,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 func updateWeights(firstRun bool) error {
 	start := time.Now()
 	defer func() {
-		logger.Infof("updateWeights took %v", time.Since(start).Seconds())
+		logger.WithField("duration", time.Since(start)).Infof("updateWeights")
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateWeights").Observe(time.Since(start).Seconds())
 	}()
 
@@ -342,7 +342,7 @@ func updateRedisStatus() error {
 func updateStats() error {
 	start := time.Now()
 	defer func() {
-		logger.Infof("updateStats took %v", time.Since(start).Seconds())
+		logger.WithField("duration", time.Since(start)).Infof("updateStats")
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateStats").Observe(time.Since(start).Seconds())
 	}()
 
@@ -507,7 +507,7 @@ func updateStatsEntries(entries []dbEntry) error {
 func updateRateLimits() error {
 	start := time.Now()
 	defer func() {
-		logger.Infof("updateRateLimits took %v", time.Since(start).Seconds())
+		logger.WithField("duration", time.Since(start)).Infof("updateRateLimits")
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateRateLimits").Observe(time.Since(start).Seconds())
 	}()
 
@@ -690,7 +690,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	rateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.UserId)
 	rateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), res.Bucket, res.UserId)
 
-	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%d:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, res.Route)
+	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Key, res.Route)
 	if !res.IsValidKey {
 		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), "nokey", res.Route)
 	}
@@ -920,7 +920,7 @@ func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 
 func DBUpdate() error {
 	var err error
-	now := time.Now()
+	start := time.Now()
 	res, err := DBUpdateApiKeys()
 	if err != nil {
 		return err
@@ -929,9 +929,9 @@ func DBUpdate() error {
 	if err != nil {
 		return err
 	}
-	logrus.Infof("updated %v api_keys in %v", ra, time.Since(now))
+	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_keys")
 
-	now = time.Now()
+	start = time.Now()
 	_, err = DBUpdateApiRatelimits()
 	if err != nil {
 		return err
@@ -940,7 +940,7 @@ func DBUpdate() error {
 	if err != nil {
 		return err
 	}
-	logrus.Infof("updated %v api_ratelimits in %v", ra, time.Since(now))
+	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
 
 	// _, err = DBInvalidateApiKeys()
 	// if err != nil {
