@@ -101,8 +101,6 @@ frontend:
     sapphire: price_sapphire
     emerald: price_emerald
     diamond: price_diamond
-    custom1: price_custom1
-    custom2: price_custom2
 
 indexer:
   # fullIndexOnStartup: false # Perform a one time full db index on startup

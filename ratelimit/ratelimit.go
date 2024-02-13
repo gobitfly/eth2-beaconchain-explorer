@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
+	"eth2-exporter/utils"
 	"fmt"
 	"net"
 	"net/http"
@@ -44,7 +45,7 @@ const (
 	FallbackRateLimitSecond = 20 // RateLimit per second for when redis is offline
 	FallbackRateLimitBurst  = 20 // RateLimit burst for when redis is offline
 
-	defaultBucket = "default"
+	defaultBucket = "default" // if no bucket is set for a route, use this one
 
 	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
 )
@@ -81,11 +82,12 @@ var pathPrefix = "" // only requests with this prefix will be ratelimited
 
 var logger = logrus.StandardLogger().WithField("module", "ratelimit")
 
-type dbEntry struct {
-	Date   time.Time
-	ApiKey string
-	Path   string
-	Count  int64
+type DbEntry struct {
+	Date     time.Time
+	UserId   int64
+	ApiKey   string
+	Endpoint string
+	Count    int64
 }
 
 type RateLimit struct {
@@ -117,6 +119,15 @@ type RedisKey struct {
 	ExpireAt time.Time
 }
 
+type ApiProduct struct {
+	Name          string    `db:"name"`
+	StripePriceID string    `db:"stripe_price_id"`
+	Second        int64     `db:"second"`
+	Hour          int64     `db:"hour"`
+	Month         int64     `db:"month"`
+	ValidFrom     time.Time `db:"valid_from"`
+}
+
 type responseWriterDelegator struct {
 	http.ResponseWriter
 	written     int64
@@ -136,29 +147,51 @@ func (r *responseWriterDelegator) Write(b []byte) (int, error) {
 func (r *responseWriterDelegator) WriteHeader(code int) {
 	r.status = code
 	r.ResponseWriter.WriteHeader(code)
+	r.wroteHeader = true
 }
 
 func (r *responseWriterDelegator) Status() int {
 	return r.status
 }
 
-var DefaultRequestCollector = func(req *http.Request) bool {
+var DefaultRequestFilter = func(req *http.Request) bool {
 	if req.URL == nil || !strings.HasPrefix(req.URL.Path, "/api") {
 		return false
 	}
 	return true
 }
 
-var requestSelector func(req *http.Request) bool
+var requestFilter = DefaultRequestFilter
+var requestFilterMu = &sync.RWMutex{}
+
+func SetRequestFilter(filter func(req *http.Request) bool) {
+	requestFilterMu.Lock()
+	defer requestFilterMu.Unlock()
+	requestFilter = filter
+}
+
+func GetRequestFilter() func(req *http.Request) bool {
+	requestFilterMu.RLock()
+	defer requestFilterMu.RUnlock()
+	return requestFilter
+}
+
+var maxBadRequestWeight int64 = 1
+
+func SetMaxBadRquestWeight(weight int64) {
+	atomic.StoreInt64(&maxBadRequestWeight, weight)
+}
+
+func GetMaxBadRquestWeight() int64 {
+	return atomic.LoadInt64(&maxBadRequestWeight)
+}
 
 // Init initializes the RateLimiting middleware, the rateLimiting middleware will not work without calling Init first. The second parameter is a function the will get called on every request, it will only apply ratelimiting to requests when this func returns true.
-func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) {
+func Init() {
 	redisClient = redis.NewClient(&redis.Options{
-		Addr:        redisAddress,
+		Addr:        utils.Config.RedisSessionStoreEndpoint,
 		ReadTimeout: time.Second * 3,
 	})
-
-	requestSelector = requestSelectorOpt
 
 	initializedWg.Add(3)
 
@@ -180,7 +213,6 @@ func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) 
 	}()
 	go func() {
 		firstRun := true
-
 		for {
 			err := updateRateLimits()
 			if err != nil {
@@ -211,15 +243,6 @@ func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) 
 			time.Sleep(time.Second * 1)
 		}
 	}()
-	go func() {
-		for {
-			err := updateStats()
-			if err != nil {
-				logger.WithError(err).Errorf("error updating stats")
-			}
-			time.Sleep(time.Second * 10)
-		}
-	}()
 
 	initializedWg.Wait()
 }
@@ -228,7 +251,8 @@ func Init(redisAddress string, requestSelectorOpt func(req *http.Request) bool) 
 func HttpMiddleware(next http.Handler) http.Handler {
 	initializedWg.Wait()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !requestSelector(r) {
+		f := GetRequestFilter()
+		if !f(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -339,10 +363,9 @@ func updateRedisStatus() error {
 }
 
 // updateStats scans redis for ratelimit:stats:* keys and inserts them into postgres, if the key's truncated date is older than specified stats-truncation it will also delete the key in redis.
-func updateStats() error {
+func updateStats(redisClient *redis.Client) error {
 	start := time.Now()
 	defer func() {
-		logger.WithField("duration", time.Since(start)).Infof("updateStats")
 		metrics.TaskDuration.WithLabelValues("ratelimit_updateStats").Observe(time.Since(start).Seconds())
 	}()
 
@@ -356,7 +379,8 @@ func updateStats() error {
 	cursor := uint64(0)
 
 	for {
-		cmd := redisClient.Scan(ctx, cursor, "ratelimit:stats:*:*:*", 1000)
+		// ratelimit:stats:<year>-<month>-<day>-<hour>:<userId>:<apikey>:<route>
+		cmd := redisClient.Scan(ctx, cursor, "ratelimit:stats:*:*:*:*", 1000)
 		if cmd.Err() != nil {
 			return cmd.Err()
 		}
@@ -385,10 +409,10 @@ func updateStats() error {
 
 		keysToDelete := []string{}
 		keys := allKeys[start:end]
-		entries := make([]dbEntry, len(keys))
+		entries := make([]DbEntry, len(keys))
 		for i, k := range keys {
 			ks := strings.Split(k, ":")
-			if len(ks) != 5 {
+			if len(ks) != 6 {
 				return fmt.Errorf("error parsing key %s: split-len != 5", k)
 			}
 			dateString := ks[2]
@@ -400,10 +424,16 @@ func updateStats() error {
 			if dateTruncated.Before(startTruncated) {
 				keysToDelete = append(keysToDelete, k)
 			}
-			entries[i] = dbEntry{
-				Date:   dateTruncated,
-				ApiKey: ks[3],
-				Path:   ks[4],
+			userIdStr := ks[3]
+			userId, err := strconv.ParseInt(userIdStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("error parsing userId in key %s: %v", k, err)
+			}
+			entries[i] = DbEntry{
+				Date:     dateTruncated,
+				UserId:   userId,
+				ApiKey:   ks[4],
+				Endpoint: ks[5],
 			}
 		}
 
@@ -454,14 +484,14 @@ func updateStats() error {
 	return nil
 }
 
-func updateStatsEntries(entries []dbEntry) error {
+func updateStatsEntries(entries []DbEntry) error {
 	tx, err := db.WriterDb.Beginx()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	numArgs := 4
+	numArgs := 5
 	batchSize := 65535 / numArgs // max 65535 params per batch, since postgres uses int16 for binding input params
 	valueArgs := make([]interface{}, 0, batchSize*numArgs)
 	valueStrings := make([]string, 0, batchSize)
@@ -474,8 +504,9 @@ func updateStatsEntries(entries []dbEntry) error {
 
 		valueStrings = append(valueStrings, "("+strings.Join(valueStringArr, ",")+")")
 		valueArgs = append(valueArgs, entry.Date)
+		valueArgs = append(valueArgs, entry.UserId)
 		valueArgs = append(valueArgs, entry.ApiKey)
-		valueArgs = append(valueArgs, entry.Path)
+		valueArgs = append(valueArgs, entry.Endpoint)
 		valueArgs = append(valueArgs, entry.Count)
 
 		// logger.WithFields(logrus.Fields{"count": entry.Count, "apikey": entry.ApiKey, "path": entry.Path, "date": entry.Date}).Infof("inserting stats entry %v/%v", allIdx+1, len(entries))
@@ -484,7 +515,7 @@ func updateStatsEntries(entries []dbEntry) error {
 		allIdx++
 
 		if batchIdx >= batchSize || allIdx >= len(entries) {
-			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, call, count) VALUES %s ON CONFLICT (ts, apikey, call) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
+			stmt := fmt.Sprintf(`INSERT INTO api_stats (ts, user_id, api_key, endpoint, count) VALUES %s ON CONFLICT (ts, user_id, api_key, endpoint) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
 			_, err := tx.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err
@@ -618,15 +649,23 @@ func updateRateLimits() error {
 
 // postRateLimit decrements the rate limit keys in redis if the status is not 200.
 func postRateLimit(rl *RateLimitResult, status int) error {
-	if status == 200 {
+	// if status == http.StatusOK {
+	if !(status >= 500 && status <= 599) {
+		// anything other than 5xx is considered successful and counts towards the rate limit
 		return nil
 	}
-	// if status is not 200 decrement keys since we do not count unsuccessful requests
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	pipe := redisClient.Pipeline()
+
+	decrByWeight := rl.Weight
+	mbrw := GetMaxBadRquestWeight()
+	if decrByWeight > mbrw {
+		decrByWeight = mbrw
+	}
+
 	for _, k := range rl.RedisKeys {
-		pipe.DecrBy(ctx, k.Key, rl.Weight)
+		pipe.DecrBy(ctx, k.Key, decrByWeight)
 		pipe.ExpireAt(ctx, k.Key, k.ExpireAt) // make sure all keys have a TTL
 	}
 	pipe.DecrBy(ctx, rl.RedisStatsKey, 1)
@@ -686,13 +725,15 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	timeUntilNextHourUtc := nextHourUtc.Sub(startUtc)
 	timeUntilNextMonthUtc := nextMonthUtc.Sub(startUtc)
 
-	rateLimitSecondKey := fmt.Sprintf("ratelimit:second:%s:%s", res.Bucket, res.UserId)
-	rateLimitHourKey := fmt.Sprintf("ratelimit:hour:%04d-%02d-%02d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.UserId)
-	rateLimitMonthKey := fmt.Sprintf("ratelimit:month:%04d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), res.Bucket, res.UserId)
-
-	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Key, res.Route)
+	rateLimitSecondKey := fmt.Sprintf("ratelimit:current:second:%s:%d", res.Bucket, res.UserId)
+	rateLimitHourKey := fmt.Sprintf("ratelimit:current:hour:%04d-%02d-%02d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.UserId)
+	rateLimitMonthKey := fmt.Sprintf("ratelimit:current:month:%04d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), res.Bucket, res.UserId)
+	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, res.Key, res.Route)
 	if !res.IsValidKey {
-		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), "nokey", res.Route)
+		rateLimitSecondKey = fmt.Sprintf("ratelimit:current:second:%s:%s", res.Bucket, res.IP)
+		rateLimitHourKey = fmt.Sprintf("ratelimit:current:hour:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.IP)
+		rateLimitMonthKey = fmt.Sprintf("ratelimit:current:month:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.IP)
+		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, "nokey", res.Route)
 	}
 	res.RedisStatsKey = statsKey
 
@@ -890,13 +931,18 @@ func (rl *FallbackRateLimiter) Handle(w http.ResponseWriter, r *http.Request, ne
 	next(w, r)
 }
 
-type ApiProduct struct {
-	Name          string    `db:"name"`
-	StripePriceID string    `db:"stripe_price_id"`
-	Second        int64     `db:"second"`
-	Hour          int64     `db:"hour"`
-	Month         int64     `db:"month"`
-	ValidFrom     time.Time `db:"valid_from"`
+func DBUpdater() {
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:        utils.Config.RedisSessionStoreEndpoint,
+		ReadTimeout: time.Second * 3,
+	})
+	for {
+		err := DBUpdate(redisClient)
+		if err != nil {
+			logger.WithError(err).Errorf("error updating ratelimits")
+		}
+		time.Sleep(time.Second * 10)
+	}
 }
 
 func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
@@ -918,12 +964,12 @@ func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 	return apiProducts, err
 }
 
-func DBUpdate() error {
+func DBUpdate(redisClient *redis.Client) error {
 	var err error
 	start := time.Now()
 	res, err := DBUpdateApiKeys()
 	if err != nil {
-		return err
+		return fmt.Errorf("error updating api_keys: %w", err)
 	}
 	ra, err := res.RowsAffected()
 	if err != nil {
@@ -932,9 +978,9 @@ func DBUpdate() error {
 	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_keys")
 
 	start = time.Now()
-	_, err = DBUpdateApiRatelimits()
+	res, err = DBUpdateApiRatelimits()
 	if err != nil {
-		return err
+		return fmt.Errorf("error updating api_ratelimit: %w", err)
 	}
 	ra, err = res.RowsAffected()
 	if err != nil {
@@ -943,15 +989,22 @@ func DBUpdate() error {
 	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
 
 	start = time.Now()
-	_, err = DBInvalidateApiKeys()
+	res, err = DBInvalidateApiKeys()
 	if err != nil {
-		return err
+		return fmt.Errorf("error invalidating api_keys: %w", err)
 	}
 	ra, err = res.RowsAffected()
 	if err != nil {
 		return err
 	}
 	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("invalidated api_keys")
+
+	start = time.Now()
+	err = updateStats(redisClient)
+	if err != nil {
+		return fmt.Errorf("error updating stats: %w", err)
+	}
+	logrus.WithField("duration", time.Since(start)).Infof("updated stats")
 
 	return nil
 }
@@ -961,7 +1014,7 @@ func DBInvalidateApiKeys() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(`
 		update api_keys 
 		set changed_at = now(), valid_until = now() 
-		where valid_until > now() and not exists (select apikey from users where aid = api_keys.user_id)`)
+		where valid_until > now() and not exists (select api_key from users where id = api_keys.user_id)`)
 }
 
 func DBUpdateApiKeys() (sql.Result, error) {

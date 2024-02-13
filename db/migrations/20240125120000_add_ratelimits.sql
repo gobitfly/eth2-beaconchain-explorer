@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS
         endpoint TEXT NOT NULL,
         method TEXT NOT NULL,
         params TEXT NOT NULL,
-        weight INT NOT NULL DEFAULT 0,
+        weight INT NOT NULL DEFAULT 1,
         valid_from TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT TO_TIMESTAMP(0),
         PRIMARY KEY (endpoint, valid_from)
     );
@@ -49,6 +49,19 @@ CREATE TABLE IF NOT EXISTS
         valid_from TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT TO_TIMESTAMP(0),
         PRIMARY KEY (name, valid_from)
     ); 
+
+SELECT 'up SQL query - add table api_products';
+CREATE TABLE IF NOT EXISTS
+    api_stats (
+        ts TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+        user_id INT NOT NULL,
+        api_key VARCHAR(256) NOT NULL,
+        endpoint TEXT NOT NULL,
+        count INT NOT NULL,
+        PRIMARY KEY (ts, user_id, api_key, endpoint)
+    ); 
+
+CREATE INDEX IF NOT EXISTS idx_api_stats_ts_user_id ON api_stats (ts, user_id);
 -- +goose StatementEnd
 
 -- +goose Down
@@ -65,4 +78,8 @@ SELECT 'down SQL query - drop table api_weights';
 DROP TABLE IF EXISTS api_weights;
 SELECT 'down SQL query - drop table api_products';
 DROP TABLE IF EXISTS api_products;
+SELECT 'down SQL query - drop table api_stats';
+DROP TABLE IF EXISTS api_stats;
+SELECT 'down SQL query - drop index idx_api_stats_ts_user_id';
+DROP INDEX IF EXISTS idx_api_stats_ts_user_id;
 -- +goose StatementEnd

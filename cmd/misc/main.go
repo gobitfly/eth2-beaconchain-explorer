@@ -393,7 +393,7 @@ func main() {
 	case "fix-ens-addresses":
 		err = fixEnsAddresses(erigonClient)
 	case "update-ratelimits":
-		err = updateRatelimits()
+		ratelimit.DBUpdater()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -1935,15 +1935,4 @@ func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
 
 		return tx.Commit()
 	}
-}
-
-func updateRatelimits() error {
-	for {
-		err := ratelimit.DBUpdate()
-		if err != nil {
-			logrus.WithError(err).Errorf("error in updateRatelimits")
-		}
-		time.Sleep(time.Second * 10)
-	}
-	return nil
 }

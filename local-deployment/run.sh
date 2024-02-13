@@ -43,7 +43,11 @@ fn_sql() {
 }
 
 fn_redis() {
-    docker compose exec redis-sessions redis-cli
+    if [ -z "${1}" ]; then
+        docker compose exec redis-sessions redis-cli
+    else
+        docker compose exec redis-sessions redis-cli "$@"
+    fi
     #redis-cli -h localhost -p $REDIS_PORT
 }
 

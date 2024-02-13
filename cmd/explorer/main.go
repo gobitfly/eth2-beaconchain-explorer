@@ -607,7 +607,7 @@ func main() {
 			router.Use(metrics.HttpMiddleware)
 		}
 
-		ratelimit.Init(utils.Config.RedisSessionStoreEndpoint, ratelimit.DefaultRequestCollector)
+		ratelimit.Init()
 		router.Use(ratelimit.HttpMiddleware)
 
 		n := negroni.New(negroni.NewRecovery())

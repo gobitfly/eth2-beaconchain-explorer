@@ -132,8 +132,6 @@ type Config struct {
 			Sapphire  string `yaml:"sapphire" envconfig:"FRONTEND_STRIPE_SAPPHIRE"`
 			Emerald   string `yaml:"emerald" envconfig:"FRONTEND_STRIPE_EMERALD"`
 			Diamond   string `yaml:"diamond" envconfig:"FRONTEND_STRIPE_DIAMOND"`
-			Custom1   string `yaml:"custom1" envconfig:"FRONTEND_STRIPE_CUSTOM_1"`
-			Custom2   string `yaml:"custom2" envconfig:"FRONTEND_STRIPE_CUSTOM_2"`
 			Whale     string `yaml:"whale" envconfig:"FRONTEND_STRIPE_WHALE"`
 			Goldfish  string `yaml:"goldfish" envconfig:"FRONTEND_STRIPE_GOLDFISH"`
 			Plankton  string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
