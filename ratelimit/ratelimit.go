@@ -1024,7 +1024,7 @@ func DBInvalidateApiKeys() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(`
         update api_keys 
         set changed_at = now(), valid_until = now() 
-        where valid_until > now() and not exists (select api_key from users where id = api_keys.user_id)`)
+        where valid_until > now() and not exists (select id from users where id = api_keys.user_id)`)
 }
 
 func DBUpdateApiKeys() (sql.Result, error) {
