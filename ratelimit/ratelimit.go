@@ -49,7 +49,7 @@ const (
 
 	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
 
-	updateInterval = time.Second * 2
+	updateInterval = time.Second * 60 // how often to update ratelimits, weights and stats
 )
 
 var NoKeyRateLimit = &RateLimit{

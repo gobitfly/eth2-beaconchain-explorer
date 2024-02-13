@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS
         PRIMARY KEY (name, valid_from)
     ); 
 
-SELECT 'up SQL query - add table api_products';
+SELECT 'up SQL query - add table api_stats';
 CREATE TABLE IF NOT EXISTS
     api_stats (
         ts TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
