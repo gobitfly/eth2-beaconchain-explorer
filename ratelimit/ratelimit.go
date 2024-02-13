@@ -49,7 +49,7 @@ const (
 
 	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
 
-	updateInterval = time.Second * 60 // how often to update ratelimits, weights and stats
+	updateInterval = time.Second * 1 // how often to update ratelimits, weights and stats
 )
 
 var NoKeyRateLimit = &RateLimit{
@@ -493,7 +493,7 @@ func updateStatsEntries(entries []DbEntry) error {
 	}
 	defer tx.Rollback()
 
-	numArgs := 5
+	numArgs := 4
 	batchSize := 65535 / numArgs // max 65535 params per batch, since postgres uses int16 for binding input params
 	valueArgs := make([]interface{}, 0, batchSize*numArgs)
 	valueStrings := make([]string, 0, batchSize)
@@ -506,7 +506,6 @@ func updateStatsEntries(entries []DbEntry) error {
 
 		valueStrings = append(valueStrings, "("+strings.Join(valueStringArr, ",")+")")
 		valueArgs = append(valueArgs, entry.Date)
-		valueArgs = append(valueArgs, entry.UserId)
 		valueArgs = append(valueArgs, entry.ApiKey)
 		valueArgs = append(valueArgs, entry.Endpoint)
 		valueArgs = append(valueArgs, entry.Count)
@@ -517,7 +516,7 @@ func updateStatsEntries(entries []DbEntry) error {
 		allIdx++
 
 		if batchIdx >= batchSize || allIdx >= len(entries) {
-			stmt := fmt.Sprintf(`INSERT INTO api_stats (ts, user_id, api_key, endpoint, count) VALUES %s ON CONFLICT (ts, user_id, api_key, endpoint) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
+			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, call, count) VALUES %s ON CONFLICT (ts, apikey, call) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
 			_, err := tx.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err
