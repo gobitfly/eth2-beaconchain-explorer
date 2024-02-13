@@ -48,6 +48,8 @@ const (
 	defaultBucket = "default" // if no bucket is set for a route, use this one
 
 	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
+
+	updateInterval = time.Second * 2
 )
 
 var NoKeyRateLimit = &RateLimit{
@@ -208,7 +210,7 @@ func Init() {
 				initializedWg.Done()
 				firstRun = false
 			}
-			time.Sleep(time.Second * 10)
+			time.Sleep(updateInterval)
 		}
 	}()
 	go func() {
@@ -224,7 +226,7 @@ func Init() {
 				initializedWg.Done()
 				firstRun = false
 			}
-			time.Sleep(time.Second * 10)
+			time.Sleep(updateInterval)
 		}
 	}()
 	go func() {
@@ -931,20 +933,6 @@ func (rl *FallbackRateLimiter) Handle(w http.ResponseWriter, r *http.Request, ne
 	next(w, r)
 }
 
-func DBUpdater() {
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:        utils.Config.RedisSessionStoreEndpoint,
-		ReadTimeout: time.Second * 3,
-	})
-	for {
-		err := DBUpdate(redisClient)
-		if err != nil {
-			logger.WithError(err).Errorf("error updating ratelimits")
-		}
-		time.Sleep(time.Second * 10)
-	}
-}
-
 func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
 	rl := &RateLimit{}
 	err := db.FrontendWriterDB.Get(rl, `
@@ -964,60 +952,85 @@ func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 	return apiProducts, err
 }
 
-func DBUpdate(redisClient *redis.Client) error {
-	var err error
-	start := time.Now()
-	res, err := DBUpdateApiKeys()
-	if err != nil {
-		return fmt.Errorf("error updating api_keys: %w", err)
+func DBUpdater() {
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:        utils.Config.RedisSessionStoreEndpoint,
+		ReadTimeout: time.Second * 3,
+	})
+	for {
+		DBUpdate(redisClient)
+		time.Sleep(updateInterval)
 	}
-	ra, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_keys")
+}
 
-	start = time.Now()
-	res, err = DBUpdateApiRatelimits()
-	if err != nil {
-		return fmt.Errorf("error updating api_ratelimit: %w", err)
-	}
-	ra, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
+func DBUpdate(redisClient *redis.Client) {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		err := updateStats(redisClient)
+		if err != nil {
+			logger.WithError(err).Errorf("error updating stats")
+			return
+		}
+		logrus.WithField("duration", time.Since(start)).Infof("updated stats")
+	}()
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		res, err := DBUpdateApiKeys()
+		if err != nil {
+			logger.WithError(err).Errorf("error updating api_keys")
+			return
+		}
+		ra, err := res.RowsAffected()
+		if err != nil {
+			logger.WithError(err).Errorf("error getting rows affected")
+			return
+		}
+		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_keys")
 
-	start = time.Now()
-	res, err = DBUpdateUnlimitedRatelimits()
-	if err != nil {
-		return fmt.Errorf("error updating unlikmited api_ratelimit: %w", err)
-	}
-	ra, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated unlimited api_ratelimits")
+		start = time.Now()
+		res, err = DBUpdateApiRatelimits()
+		if err != nil {
+			logger.WithError(err).Errorf("error updating api_ratelimit")
+			return
+		}
+		ra, err = res.RowsAffected()
+		if err != nil {
+			logger.WithError(err).Errorf("error getting rows affected")
+			return
+		}
+		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
 
-	start = time.Now()
-	res, err = DBInvalidateApiKeys()
-	if err != nil {
-		return fmt.Errorf("error invalidating api_keys: %w", err)
-	}
-	ra, err = res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("invalidated api_keys")
+		start = time.Now()
+		res, err = DBUpdateUnlimitedRatelimits()
+		if err != nil {
+			logger.WithError(err).Errorf("error updating unlikmited api_ratelimit")
+			return
+		}
+		ra, err = res.RowsAffected()
+		if err != nil {
+			logger.WithError(err).Errorf("error getting rows affected")
+			return
+		}
+		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated unlimited api_ratelimits")
 
-	start = time.Now()
-	err = updateStats(redisClient)
-	if err != nil {
-		return fmt.Errorf("error updating stats: %w", err)
-	}
-	logrus.WithField("duration", time.Since(start)).Infof("updated stats")
-
-	return nil
+		start = time.Now()
+		res, err = DBInvalidateApiKeys()
+		if err != nil {
+			logger.WithError(err).Errorf("error invalidating api_keys")
+			return
+		}
+		ra, err = res.RowsAffected()
+		if err != nil {
+			logger.WithError(err).Errorf("error getting rows affected")
+			return
+		}
+		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("invalidated api_keys")
+	}()
+	wg.Wait()
 }
 
 func DBInvalidateApiKeys() (sql.Result, error) {
