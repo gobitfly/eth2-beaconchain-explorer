@@ -948,19 +948,19 @@ func DBUpdater() {
 func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
 	rl := &RateLimit{}
 	err := db.FrontendWriterDB.Get(rl, `
-		select second, hour, month 
-		from api_ratelimits 
-		where user_id = $1`, userId)
+        select second, hour, month 
+        from api_ratelimits 
+        where user_id = $1`, userId)
 	return rl, err
 }
 
 func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 	apiProducts := []*ApiProduct{}
 	err := db.FrontendWriterDB.Select(&apiProducts, `
-		select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
-		from api_products 
-		where valid_from <= now()
-		order by name, valid_from desc`)
+        select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
+        from api_products 
+        where valid_from <= now()
+        order by name, valid_from desc`)
 	return apiProducts, err
 }
 
@@ -989,6 +989,17 @@ func DBUpdate(redisClient *redis.Client) error {
 	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
 
 	start = time.Now()
+	res, err = DBUpdateUnlimitedRatelimits()
+	if err != nil {
+		return fmt.Errorf("error updating unlikmited api_ratelimit: %w", err)
+	}
+	ra, err = res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated unlimited api_ratelimits")
+
+	start = time.Now()
 	res, err = DBInvalidateApiKeys()
 	if err != nil {
 		return fmt.Errorf("error invalidating api_keys: %w", err)
@@ -1009,65 +1020,96 @@ func DBUpdate(redisClient *redis.Client) error {
 	return nil
 }
 
-// DBInvalidateApiKeys invalidates api-keys where there is no corresponding user
 func DBInvalidateApiKeys() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(`
-		update api_keys 
-		set changed_at = now(), valid_until = now() 
-		where valid_until > now() and not exists (select api_key from users where id = api_keys.user_id)`)
+        update api_keys 
+        set changed_at = now(), valid_until = now() 
+        where valid_until > now() and not exists (select api_key from users where id = api_keys.user_id)`)
 }
 
 func DBUpdateApiKeys() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(
 		`insert into api_keys (user_id, api_key, valid_until, changed_at)
-		select 
-			id as user_id, 
-			api_key,
-			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
-			now() as changed_at
-		from users 
-		where api_key is not null and not exists (select user_id from api_keys where api_keys.user_id = users.id)
-		on conflict (user_id, api_key) do update set
-			valid_until = excluded.valid_until,
-			changed_at = excluded.changed_at
-		where api_keys.valid_until != excluded.valid_until`,
+        select 
+            id as user_id, 
+            api_key,
+            to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
+            now() as changed_at
+        from users 
+        where api_key is not null and not exists (select user_id from api_keys where api_keys.user_id = users.id)
+        on conflict (user_id, api_key) do update set
+            valid_until = excluded.valid_until,
+            changed_at = excluded.changed_at
+        where api_keys.valid_until != excluded.valid_until`,
 	)
 }
 
 func DBUpdateApiRatelimits() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(
 		`with 
-			current_api_products as (
-				select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
-				from api_products 
-				where valid_from <= now()
-				order by name, valid_from desc
-			)
-		insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
-		select
-			u.id as user_id,
-			greatest(coalesce(cap1.second,0),coalesce(cap2.second,0)) as second,
-			greatest(coalesce(cap1.hour  ,0),coalesce(cap2.hour  ,0)) as hour,
-			greatest(coalesce(cap1.month ,0),coalesce(cap2.month ,0)) as month,
-			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
-			now() as changed_at
-		from users u
-			left join users_stripe_subscriptions uss on uss.customer_id = u.stripe_customer_id and uss.active = true
-			left join current_api_products cap on cap.stripe_price_id = uss.price_id
-			left join current_api_products cap1 on cap1.name = coalesce(cap.name,'free')
-			left join app_subs_view asv on asv.user_id = u.id and asv.active = true
-			left join current_api_products cap2 on cap2.name = coalesce(asv.product_id,'free')
-			left join api_ratelimits ar on ar.user_id = u.id
-		where
-			cap1.name != 'free' or cap2.name != 'free' or ar.user_id is not null
-		on conflict (user_id) do update set
-			second = excluded.second,
-			hour = excluded.hour,
-			month = excluded.month,
-			valid_until = excluded.valid_until,
-			changed_at = now()
-		where
-			api_ratelimits.second != excluded.second 
-			or api_ratelimits.hour != excluded.hour 
-			or api_ratelimits.month != excluded.month`)
+            current_api_products as (
+                select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
+                from api_products 
+                where valid_from <= now()
+                order by name, valid_from desc
+            )
+        insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
+        select
+            u.id as user_id,
+            greatest(coalesce(cap1.second,0),coalesce(cap2.second,0)) as second,
+            greatest(coalesce(cap1.hour  ,0),coalesce(cap2.hour  ,0)) as hour,
+            greatest(coalesce(cap1.month ,0),coalesce(cap2.month ,0)) as month,
+            to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
+            now() as changed_at
+        from users u
+            left join users_stripe_subscriptions uss on uss.customer_id = u.stripe_customer_id and uss.active = true
+            left join current_api_products cap on cap.stripe_price_id = uss.price_id
+            left join current_api_products cap1 on cap1.name = coalesce(cap.name,'free')
+            left join app_subs_view asv on asv.user_id = u.id and asv.active = true
+            left join current_api_products cap2 on cap2.name = coalesce(asv.product_id,'free')
+            left join api_ratelimits ar on ar.user_id = u.id
+        where
+            cap1.name != 'free' or cap2.name != 'free' or ar.user_id is not null
+        on conflict (user_id) do update set
+            second = excluded.second,
+            hour = excluded.hour,
+            month = excluded.month,
+            valid_until = excluded.valid_until,
+            changed_at = now()
+        where
+            api_ratelimits.second != excluded.second 
+            or api_ratelimits.hour != excluded.hour 
+            or api_ratelimits.month != excluded.month`)
+}
+
+func DBUpdateUnlimitedRatelimits() (sql.Result, error) {
+	return db.FrontendWriterDB.Exec(
+		`with
+            unlimited_ratelimit as (
+                select second, hour, month
+                from api_products
+                where name = 'unlimited' and valid_from <= now()
+                order by valid_from desc
+                limit 1
+            )
+        insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
+        select
+            id as user_id,
+            unlimited_ratelimit.second,
+            unlimited_ratelimit.hour,
+            unlimited_ratelimit.month,
+            to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
+            now() as changed_at
+        from unlimited_ratelimit, users
+        where user_group = 'ADMIN'
+        on conflict (user_id) do update set
+            second = excluded.second,
+            hour = excluded.hour,
+            month = excluded.month,
+            valid_until = excluded.valid_until,
+            changed_at = now()
+        where
+            api_ratelimits.second != excluded.second 
+            or api_ratelimits.hour != excluded.hour 
+            or api_ratelimits.month != excluded.month`)
 }
