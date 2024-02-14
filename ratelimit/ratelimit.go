@@ -958,6 +958,11 @@ func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 }
 
 func DBUpdater() {
+	iv := utils.Config.Frontend.RatelimitUpdateInterval
+	if iv < time.Second {
+		logger.Warnf("updateInterval is below 1s, setting to 60s")
+		iv = time.Second * 60
+	}
 	logger.WithField("redis", utils.Config.RedisSessionStoreEndpoint).Infof("starting db updater")
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:        utils.Config.RedisSessionStoreEndpoint,
@@ -965,7 +970,7 @@ func DBUpdater() {
 	})
 	for {
 		DBUpdate(redisClient)
-		time.Sleep(updateInterval)
+		time.Sleep(iv)
 	}
 }
 
