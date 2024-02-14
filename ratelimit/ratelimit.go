@@ -516,7 +516,7 @@ func updateStatsEntries(entries []DbEntry) error {
 		valueArgs = append(valueArgs, entry.Endpoint)
 		valueArgs = append(valueArgs, entry.Count)
 
-		// logger.WithFields(logrus.Fields{"count": entry.Count, "apikey": entry.ApiKey, "path": entry.Path, "date": entry.Date}).Infof("inserting stats entry %v/%v", allIdx+1, len(entries))
+		// logger.WithFields(logger.Fields{"count": entry.Count, "apikey": entry.ApiKey, "path": entry.Path, "date": entry.Date}).Infof("inserting stats entry %v/%v", allIdx+1, len(entries))
 
 		batchIdx++
 		allIdx++
@@ -958,6 +958,7 @@ func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 }
 
 func DBUpdater() {
+	logger.WithField("redis", utils.Config.RedisSessionStoreEndpoint).Infof("starting db updater")
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:        utils.Config.RedisSessionStoreEndpoint,
 		ReadTimeout: time.Second * 3,
@@ -979,7 +980,7 @@ func DBUpdate(redisClient *redis.Client) {
 			logger.WithError(err).Errorf("error updating stats")
 			return
 		}
-		logrus.WithField("duration", time.Since(start)).Infof("updated stats")
+		logger.WithField("duration", time.Since(start)).Infof("updated stats")
 	}()
 	go func() {
 		defer wg.Done()
@@ -994,7 +995,7 @@ func DBUpdate(redisClient *redis.Client) {
 			logger.WithError(err).Errorf("error getting rows affected")
 			return
 		}
-		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_keys")
+		logger.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_keys")
 
 		start = time.Now()
 		res, err = DBUpdateApiRatelimits()
@@ -1007,7 +1008,7 @@ func DBUpdate(redisClient *redis.Client) {
 			logger.WithError(err).Errorf("error getting rows affected")
 			return
 		}
-		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
+		logger.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
 
 		start = time.Now()
 		res, err = DBUpdateUnlimitedRatelimits()
@@ -1020,7 +1021,7 @@ func DBUpdate(redisClient *redis.Client) {
 			logger.WithError(err).Errorf("error getting rows affected")
 			return
 		}
-		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated unlimited api_ratelimits")
+		logger.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated unlimited api_ratelimits")
 
 		start = time.Now()
 		res, err = DBInvalidateApiKeys()
@@ -1033,7 +1034,7 @@ func DBUpdate(redisClient *redis.Client) {
 			logger.WithError(err).Errorf("error getting rows affected")
 			return
 		}
-		logrus.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("invalidated api_keys")
+		logger.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("invalidated api_keys")
 	}()
 	wg.Wait()
 }
