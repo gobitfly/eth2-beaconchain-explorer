@@ -1075,9 +1075,9 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
         insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
         select
             u.id as user_id,
-            greatest(coalesce(cap1.second,0),coalesce(cap2.second,0)) as second,
-            greatest(coalesce(cap1.hour  ,0),coalesce(cap2.hour  ,0)) as hour,
-            greatest(coalesce(cap1.month ,0),coalesce(cap2.month ,0)) as month,
+            max(greatest(coalesce(cap1.second,0),coalesce(cap2.second,0))) as second,
+            max(greatest(coalesce(cap1.hour  ,0),coalesce(cap2.hour  ,0))) as hour,
+            max(greatest(coalesce(cap1.month ,0),coalesce(cap2.month ,0))) as month,
             to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
             now() as changed_at
         from users u
@@ -1089,6 +1089,7 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
             left join api_ratelimits ar on ar.user_id = u.id
         where
             cap1.name != 'free' or cap2.name != 'free' or ar.user_id is not null
+		group by u.id, valid_until, changed_at
         on conflict (user_id) do update set
             second = excluded.second,
             hour = excluded.hour,
