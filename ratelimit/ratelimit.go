@@ -48,8 +48,6 @@ const (
 	defaultBucket = "default" // if no bucket is set for a route, use this one
 
 	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
-
-	updateInterval = time.Second * 1 // how often to update ratelimits, weights and stats
 )
 
 var NoKeyRateLimit = &RateLimit{
@@ -57,6 +55,8 @@ var NoKeyRateLimit = &RateLimit{
 	Hour:   DefaultRateLimitHour,
 	Month:  DefaultRateLimitMonth,
 }
+
+var updateInterval = time.Second * 60 // how often to update ratelimits, weights and stats
 
 var FreeRatelimit = NoKeyRateLimit
 
@@ -194,6 +194,12 @@ func Init() {
 		Addr:        utils.Config.RedisSessionStoreEndpoint,
 		ReadTimeout: time.Second * 3,
 	})
+
+	updateInterval = utils.Config.Frontend.RatelimitUpdateInterval
+	if updateInterval == 0 {
+		logger.Warnf("updateInterval is not set, setting to 60s")
+		updateInterval = time.Second * 60
+	}
 
 	initializedWg.Add(3)
 
