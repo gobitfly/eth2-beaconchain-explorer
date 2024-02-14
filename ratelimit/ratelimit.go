@@ -196,8 +196,8 @@ func Init() {
 	})
 
 	updateInterval = utils.Config.Frontend.RatelimitUpdateInterval
-	if updateInterval == 0 {
-		logger.Warnf("updateInterval is not set, setting to 60s")
+	if updateInterval < time.Second {
+		logger.Warnf("updateInterval is below 1s, setting to 60s")
 		updateInterval = time.Second * 60
 	}
 
