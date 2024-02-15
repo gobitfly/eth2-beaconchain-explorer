@@ -125,7 +125,6 @@ type responseWriterDelegator struct {
 }
 
 func (r *responseWriterDelegator) WriteHeader(code int) {
-	logrus.Infof("metrics writeheader %v", code)
 	r.status = code
 	r.wroteHeader = true
 	r.ResponseWriter.WriteHeader(code)
