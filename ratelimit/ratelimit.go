@@ -80,8 +80,6 @@ var weightsMu = &sync.RWMutex{}
 var weights = map[string]int64{}  // guarded by weightsMu
 var buckets = map[string]string{} // guarded by weightsMu
 
-var pathPrefix = "" // only requests with this prefix will be ratelimited
-
 var logger = logrus.StandardLogger().WithField("module", "ratelimit")
 
 type DbEntry struct {
