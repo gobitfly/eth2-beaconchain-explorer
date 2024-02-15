@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/gob"
 	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
@@ -12,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-redis/redis/v8"
 	eth_rewards "github.com/gobitfly/eth-rewards"
 	"github.com/gobitfly/eth-rewards/beacon"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -95,6 +99,18 @@ func main() {
 
 	cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
 	logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
+
+	// Initialize the persistent redis client
+	rdc := redis.NewClient(&redis.Options{
+		Addr:        utils.Config.RedisSessionStoreEndpoint,
+		ReadTimeout: time.Second * 20,
+	})
+
+	if err := rdc.Ping(context.Background()).Err(); err != nil {
+		logrus.Fatalf("error connecting to persistent redis store: %v", err)
+	}
+
+	db.PersistentRedisDbClient = rdc
 
 	if *epochEnd != 0 {
 		latestFinalizedEpoch := services.LatestFinalizedEpoch()
@@ -224,6 +240,31 @@ func export(epoch uint64, bt *db.Bigtable, client *beacon.Client, elClient *stri
 	} else {
 		logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), epoch, time.Since(start))
 	}
+
+	redisCachedEpochRewards := &types.RedisCachedEpochRewards{
+		Epoch:   types.Epoch(epoch),
+		Rewards: rewards,
+	}
+
+	var serializedRewardsData bytes.Buffer
+	enc := gob.NewEncoder(&serializedRewardsData)
+	err = enc.Encode(redisCachedEpochRewards)
+	if err != nil {
+		return fmt.Errorf("error serializing rewards data for epoch %v: %w", epoch, err)
+	}
+
+	key := fmt.Sprintf("%d:%s:%d", utils.Config.Chain.ClConfig.DepositChainID, "er", epoch)
+
+	expirationTime := utils.EpochToTime(epoch + 7) // keep it for at least 7 epochs in the cache
+	expirationDuration := time.Until(expirationTime)
+	logrus.Infof("writing rewards data to redis with a TTL of %v", expirationDuration)
+	err = db.PersistentRedisDbClient.Set(context.Background(), key, serializedRewardsData.Bytes(), expirationDuration).Err()
+	if err != nil {
+		return fmt.Errorf("error writing rewards data to redis for epoch %v: %w", epoch, err)
+	}
+	logrus.Infof("writing epoch rewards to redis completed")
+
+	logrus.Infof("exporting duties & balances for epoch %v", epoch)
 
 	err = bt.SaveValidatorIncomeDetails(uint64(epoch), rewards)
 	if err != nil {

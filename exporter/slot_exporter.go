@@ -285,7 +285,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) e
 
 		expirationTime := utils.EpochToTime(epoch + 7) // keep it for at least 7 epochs in the cache
 		expirationDuration := time.Until(expirationTime)
-		logger.Infof("writing block to redis with a TTL of %v", expirationDuration)
+		logger.Infof("writing assignments data to redis with a TTL of %v", expirationDuration)
 		err = db.PersistentRedisDbClient.Set(context.Background(), key, serializedAssignmentsData.Bytes(), expirationDuration).Err()
 		if err != nil {
 			return fmt.Errorf("error writing assignments data to redis for epoch %v: %w", epoch, err)
