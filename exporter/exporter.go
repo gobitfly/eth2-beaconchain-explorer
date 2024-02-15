@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"context"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
@@ -8,6 +9,8 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/go-redis/redis/v8"
 )
 
 var logger = logrus.New().WithField("module", "exporter")
@@ -16,6 +19,19 @@ var Client *rpc.Client
 
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) {
+
+	// Initialize the persistent redis client
+	rdc := redis.NewClient(&redis.Options{
+		Addr:        utils.Config.RedisSessionStoreEndpoint,
+		ReadTimeout: time.Second * 20,
+	})
+
+	if err := rdc.Ping(context.Background()).Err(); err != nil {
+		logrus.Fatalf("error connecting to persistent redis store: %v", err)
+	}
+
+	db.PersistentRedisDbClient = rdc
+
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
 	go genesisDepositsExporter(client)

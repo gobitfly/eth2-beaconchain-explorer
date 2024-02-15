@@ -28,6 +28,8 @@ import (
 	"eth2-exporter/rpc"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/go-redis/redis/v8"
 )
 
 //go:embed migrations/*.sql
@@ -38,6 +40,7 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
+var PersistentRedisDbClient *redis.Client
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 

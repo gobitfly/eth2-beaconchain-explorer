@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
+
+	eth_rewards_types "github.com/gobitfly/eth-rewards/types"
 )
 
 // ChainHead is a struct to hold chain head data
@@ -135,6 +137,16 @@ type Block struct {
 	Finalized                  bool
 	EpochAssignments           *EpochAssignments
 	Validators                 []*Validator
+}
+
+type RedisCachedEpochRewards struct {
+	Epoch   Epoch
+	Rewards map[uint64]*eth_rewards_types.ValidatorEpochIncome
+}
+
+type RedisCachedEpochAssignments struct {
+	Epoch       Epoch
+	Assignments *EpochAssignments
 }
 
 type SignedBLSToExecutionChange struct {

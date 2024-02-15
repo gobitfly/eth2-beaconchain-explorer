@@ -2,10 +2,11 @@ package exporter
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
+	"encoding/gob"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -17,16 +18,12 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-
-	eth_rewards "github.com/gobitfly/eth-rewards"
-	"github.com/gobitfly/eth-rewards/beacon"
 )
 
 func RunSlotExporter(firstRun bool) error {
 
 	var err error
 	var clClient rpc.Client
-	var clbClient *beacon.Client
 
 	chainID := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 	if utils.Config.Indexer.Node.Type == "lighthouse" {
@@ -35,8 +32,6 @@ func RunSlotExporter(firstRun bool) error {
 		if err != nil {
 			utils.LogFatal(err, "new explorer lighthouse client error", 0)
 		}
-
-		clbClient = beacon.NewClient(clClientUrl, time.Minute*5)
 	} else {
 		logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
 	}
@@ -198,10 +193,6 @@ func RunSlotExporter(firstRun bool) error {
 					return updateEpochStatusAndValidatorQueue(clClient, epoch, tx)
 				})
 
-				wg.Go(func() error {
-					return saveEpochRewards(epoch, clbClient, tx)
-				})
-
 				err := wg.Wait()
 				if err != nil {
 					return err
@@ -226,41 +217,6 @@ func RunSlotExporter(firstRun bool) error {
 
 	return nil
 
-}
-
-func saveEpochRewards(epoch uint64, clbClient *beacon.Client, tx *sqlx.Tx) error {
-	if epoch == 0 {
-		return nil
-	}
-
-	rewardsEpoch := epoch - 1
-	start := time.Now()
-
-	logrus.Infof("retrieving rewards details for epoch %d", rewardsEpoch)
-	rewards, err := eth_rewards.GetRewardsForEpoch(epoch, clbClient, utils.Config.Eth1ErigonEndpoint)
-	if err != nil {
-		return fmt.Errorf("error retrieving reward details for epoch %v: %v", rewardsEpoch, err)
-	} else {
-		logrus.Infof("retrieved %v reward details for epoch %v in %v", len(rewards), rewardsEpoch, time.Since(start))
-	}
-
-	logrus.Infof("saving reward details for epoch %d", rewardsEpoch)
-	err = db.BigtableClient.SaveValidatorIncomeDetails(uint64(rewardsEpoch), rewards)
-	if err != nil {
-		return fmt.Errorf("error saving reward details to bigtable: %v", err)
-	}
-
-	_, err = tx.Exec("UPDATE epochs SET rewards_exported = true WHERE epoch = $1", rewardsEpoch)
-
-	if err != nil {
-		return fmt.Errorf("error marking rewards_exported as true for epoch %v: %v", rewardsEpoch, err)
-	}
-
-	logrus.Infof("completed exporting reward details for epoch %d", rewardsEpoch)
-
-	services.ReportStatus("rewardsExporter", "Running", nil)
-
-	return nil
 }
 
 func updateEpochStatusAndValidatorQueue(clClient rpc.Client, epoch uint64, tx *sqlx.Tx) error {
@@ -309,7 +265,34 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) e
 	}
 
 	if block.EpochAssignments != nil { // export the epoch assignments as they are included in the first slot of an epoch
-		logger.Infof("exporting duties & balances for epoch %v", utils.EpochOfSlot(slot))
+
+		epoch := utils.EpochOfSlot(block.Slot)
+
+		// store epoch assignments in redis
+		redisCachedEpochAssignments := &types.RedisCachedEpochAssignments{
+			Epoch:       types.Epoch(epoch),
+			Assignments: block.EpochAssignments,
+		}
+
+		var serializedAssignmentsData bytes.Buffer
+		enc := gob.NewEncoder(&serializedAssignmentsData)
+		err := enc.Encode(redisCachedEpochAssignments)
+		if err != nil {
+			return fmt.Errorf("error serializing block to gob for slot %v: %w", block.Slot, err)
+		}
+
+		key := fmt.Sprintf("%d:%s:%d", utils.Config.Chain.ClConfig.DepositChainID, "ea", utils.EpochOfSlot(block.Slot))
+
+		expirationTime := utils.EpochToTime(epoch + 7) // keep it for at least 7 epochs in the cache
+		expirationDuration := time.Until(expirationTime)
+		logger.Infof("writing block to redis with a TTL of %v", expirationDuration)
+		err = db.PersistentRedisDbClient.Set(context.Background(), key, serializedAssignmentsData.Bytes(), expirationDuration).Err()
+		if err != nil {
+			return fmt.Errorf("error writing assignments data to redis for epoch %v: %w", epoch, err)
+		}
+		logger.Infof("writing epoch assignments to redis completed")
+
+		logger.Infof("exporting duties & balances for epoch %v", epoch)
 
 		// prepare the duties for export to bigtable
 		syncDutiesEpoch := make(map[types.Slot]map[types.ValidatorIndex]bool)
@@ -466,7 +449,6 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) e
 	if err != nil {
 		return fmt.Errorf("error saving slot to the db: %w", err)
 	}
-	// time.Sleep(time.Second)
 
 	logger.WithFields(
 		logrus.Fields{

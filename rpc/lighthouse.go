@@ -36,6 +36,7 @@ type LighthouseClient struct {
 	slotsCache          *lru.Cache
 	slotsCacheMux       *sync.Mutex
 	signer              gtypes.Signer
+	httpClient          http.Client
 }
 
 // NewLighthouseClient is used to create a new Lighthouse client
@@ -46,6 +47,9 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 		assignmentsCacheMux: &sync.Mutex{},
 		slotsCacheMux:       &sync.Mutex{},
 		signer:              signer,
+		httpClient: http.Client{
+			Timeout: time.Minute * 2,
+		},
 	}
 	client.assignmentsCache, _ = lru.New(10)
 	client.slotsCache, _ = lru.New(128) // cache at most 128 slots
@@ -1270,8 +1274,7 @@ var errNotFound = errors.New("not found 404")
 func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	// t0 := time.Now()
 	// defer func() { fmt.Println(url, time.Since(t0)) }()
-	client := &http.Client{Timeout: time.Minute * 2}
-	resp, err := client.Get(url)
+	resp, err := lc.httpClient.Get(url)
 	if err != nil {
 		return nil, err
 	}
