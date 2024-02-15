@@ -1050,7 +1050,8 @@ func DBUpdateApiKeys() (sql.Result, error) {
             now() as changed_at
         from users 
         where api_key is not null and not exists (select user_id from api_keys where api_keys.user_id = users.id)
-        on conflict (user_id, api_key) do update set
+        on conflict (api_key) do update set
+			user_id = excluded.user_id,
             valid_until = excluded.valid_until,
             changed_at = excluded.changed_at
         where api_keys.valid_until != excluded.valid_until`,
