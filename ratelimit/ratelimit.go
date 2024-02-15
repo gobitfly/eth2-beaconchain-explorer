@@ -1070,9 +1070,9 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
 		insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
 		select 
 			user_id,
-			max(second) as second,
-			max(hour) as hour,
-			max(month) as month,
+			case when min(second) = 0 then 0 else max(second) end as second,
+			case when min(hour) = 0 then 0 else max(hour) end  as hour,
+			case when min(month) = 0 then 0 else max(month) end as month,
 			to_timestamp('9999-12-31 23:59:59', 'YYYY-MM-DD HH24:MI:SS') as valid_until,
 			now() as changed_at
 		from (
