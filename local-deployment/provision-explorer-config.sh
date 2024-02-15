@@ -101,7 +101,7 @@ frontend:
     sapphire: price_sapphire
     emerald: price_emerald
     diamond: price_diamond
-  rateLimitUpdateInterval: 1s
+  ratelimitUpdateInterval: 1s
 
 indexer:
   # fullIndexOnStartup: false # Perform a one time full db index on startup

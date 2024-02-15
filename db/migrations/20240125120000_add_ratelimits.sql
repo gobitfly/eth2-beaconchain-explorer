@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS
     api_keys (
         user_id INT NOT NULL,
         api_key VARCHAR(256) NOT NULL,
-        valid_until TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-        changed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        valid_until TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT '9999-12-31 23:59:59',
+        changed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (user_id, api_key)
     );
 
