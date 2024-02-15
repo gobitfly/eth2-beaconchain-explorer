@@ -1073,7 +1073,7 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
 			max(second) as second,
 			max(hour) as hour,
 			max(month) as month,
-			to_timestamp('3000-01-01', 'YYYY-MM-DD') as valid_until,
+			to_timestamp('9999-12-31 23:59:59', 'YYYY-MM-DD HH24:MI:SS') as valid_until,
 			now() as changed_at
 		from (
 			-- set all current ratelimits to free
