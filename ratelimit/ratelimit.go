@@ -1046,7 +1046,7 @@ func DBUpdateApiKeys() (sql.Result, error) {
         select 
             id as user_id, 
             api_key,
-            to_timestamp('9999-12-31 23:59:59', 'YYYY-MM-DD HH:MI:SS') as valid_until,
+            to_timestamp('9999-12-31 23:59:59', 'YYYY-MM-DD HH24:MI:SS') as valid_until,
             now() as changed_at
         from users 
         where api_key is not null and not exists (select user_id from api_keys where api_keys.user_id = users.id)
