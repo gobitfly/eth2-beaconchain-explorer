@@ -327,7 +327,7 @@ func updateWeights(firstRun bool) error {
 		Bucket    string    `db:"bucket"`
 		ValidFrom time.Time `db:"valid_from"`
 	}{}
-	err := db.WriterDb.Select(&dbWeights, "SELECT DISTINCT ON (endpoint) endpoint, bucket, weight, valid_from FROM api_weights WHERE valid_from <= NOW() ORDER BY endpoint, valid_from DESC")
+	err := db.FrontendWriterDB.Select(&dbWeights, "SELECT DISTINCT ON (endpoint) endpoint, bucket, weight, valid_from FROM api_weights WHERE valid_from <= NOW() ORDER BY endpoint, valid_from DESC")
 	if err != nil {
 		return err
 	}
@@ -493,7 +493,7 @@ func updateStats(redisClient *redis.Client) error {
 }
 
 func updateStatsEntries(entries []DbEntry) error {
-	tx, err := db.WriterDb.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		return err
 	}
@@ -554,7 +554,7 @@ func updateRateLimits() error {
 	lastTRateLimits := lastRateLimitUpdateRateLimits
 	lastRateLimitUpdateMu.Unlock()
 
-	tx, err := db.WriterDb.Beginx()
+	tx, err := db.FrontendWriterDB.Beginx()
 	if err != nil {
 		return err
 	}
