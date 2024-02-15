@@ -17,11 +17,11 @@ CREATE INDEX IF NOT EXISTS idx_api_ratelimits_changed_at_valid_until ON api_rate
 SELECT 'up SQL query - add table api_keys';
 CREATE TABLE IF NOT EXISTS
     api_keys (
+        api_key VARCHAR(256) NOT NULL UNIQUE,
         user_id INT NOT NULL,
-        api_key VARCHAR(256) NOT NULL,
         valid_until TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT '9999-12-31 23:59:59',
         changed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (user_id, api_key)
+        PRIMARY KEY (api_key)
     );
 
 CREATE INDEX IF NOT EXISTS idx_api_keys_changed_at_valid_until ON api_keys (changed_at, valid_until);
