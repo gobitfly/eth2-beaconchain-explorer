@@ -96,8 +96,11 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxDaily := int(rl.Hour * 24)
+	maxDaily := int(rl.Second * 24 * 3600)
 	maxMonthly := int(rl.Month)
+	if maxDaily > maxMonthly {
+		maxDaily = maxMonthly
+	}
 
 	userSettingsData.ApiStatistics = &types.ApiStatistics{}
 

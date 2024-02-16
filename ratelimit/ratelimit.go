@@ -58,7 +58,11 @@ var NoKeyRateLimit = &RateLimit{
 
 var updateInterval = time.Second * 60 // how often to update ratelimits, weights and stats
 
-var FreeRatelimit = NoKeyRateLimit
+var FreeRatelimit = &RateLimit{
+	Second: DefaultRateLimitSecond,
+	Hour:   DefaultRateLimitHour,
+	Month:  DefaultRateLimitMonth,
+}
 
 var redisClient *redis.Client
 var redisIsHealthy atomic.Bool
@@ -604,6 +608,9 @@ func updateRateLimits() error {
 			NoKeyRateLimit.Month = dbApiProduct.Month
 		}
 		if dbApiProduct.Name == "free" {
+			if FreeRatelimit.Second != dbApiProduct.Second || FreeRatelimit.Hour != dbApiProduct.Hour || FreeRatelimit.Month != dbApiProduct.Month {
+				logger.WithFields(logrus.Fields{"second": dbApiProduct.Second, "hour": dbApiProduct.Hour, "month": dbApiProduct.Month}).Infof("free ratelimit changed")
+			}
 			FreeRatelimit.Second = dbApiProduct.Second
 			FreeRatelimit.Hour = dbApiProduct.Hour
 			FreeRatelimit.Month = dbApiProduct.Month
@@ -939,9 +946,15 @@ func (rl *FallbackRateLimiter) Handle(w http.ResponseWriter, r *http.Request, ne
 func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
 	rl := &RateLimit{}
 	err := db.FrontendWriterDB.Get(rl, `
-        select second, hour, month 
-        from api_ratelimits 
+        select second, hour, month
+        from api_ratelimits
         where user_id = $1`, userId)
+	if err != nil && err == sql.ErrNoRows {
+		rl.Second = FreeRatelimit.Second
+		rl.Hour = FreeRatelimit.Hour
+		rl.Month = FreeRatelimit.Month
+		return rl, nil
+	}
 	return rl, err
 }
 
