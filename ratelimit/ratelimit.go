@@ -608,9 +608,6 @@ func updateRateLimits() error {
 			NoKeyRateLimit.Month = dbApiProduct.Month
 		}
 		if dbApiProduct.Name == "free" {
-			if FreeRatelimit.Second != dbApiProduct.Second || FreeRatelimit.Hour != dbApiProduct.Hour || FreeRatelimit.Month != dbApiProduct.Month {
-				logger.WithFields(logrus.Fields{"second": dbApiProduct.Second, "hour": dbApiProduct.Hour, "month": dbApiProduct.Month}).Infof("free ratelimit changed")
-			}
 			FreeRatelimit.Second = dbApiProduct.Second
 			FreeRatelimit.Hour = dbApiProduct.Hour
 			FreeRatelimit.Month = dbApiProduct.Month
