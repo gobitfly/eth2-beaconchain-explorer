@@ -42,13 +42,18 @@ SELECT 'up SQL query - add table api_products';
 CREATE TABLE IF NOT EXISTS
     api_products (
         name VARCHAR(20) NOT NULL,
-        stripe_price_id VARCHAR(256) NOT NULL,
+        stripe_price_id VARCHAR(256) NOT NULL DEFAULT '',
         second INT NOT NULL DEFAULT 0,
         hour INT NOT NULL DEFAULT 0,
         month INT NOT NULL DEFAULT 0,
         valid_from TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT TO_TIMESTAMP(0),
         PRIMARY KEY (name, valid_from)
-    ); 
+    );
+INSERT INTO api_products (name, second, hour, month) VALUES
+    ('nokey', 2, 1000, 0),
+    ('free', 10, 0, 0),
+    ('unlimited', 100, 0, 0)
+ON CONFLICT DO NOTHING;
 -- +goose StatementEnd
 
 -- +goose Down
