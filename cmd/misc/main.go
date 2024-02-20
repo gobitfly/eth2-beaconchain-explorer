@@ -65,7 +65,10 @@ var opts = struct {
 	Yes                 bool
 }{}
 
+var bt *db.Bigtable
+var erigonClient *rpc.ErigonClient
 var lighthouseClient *rpc.LighthouseClient
+var rpcClient *rpc.LighthouseClient
 
 func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
@@ -115,64 +118,89 @@ func main() {
 	utils.Config = cfg
 
 	chainIdString := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
-
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
-	if err != nil {
-		utils.LogFatal(err, "error initializing bigtable", 0)
-	}
-
 	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
-	rpcClient, err := rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
-	if err != nil {
-		utils.LogFatal(err, "lighthouse client error", 0)
-	}
-	lighthouseClient = rpcClient
 
-	erigonClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
-	if err != nil {
-		logrus.Fatalf("error initializing erigon client: %v", err)
-	}
+	wg := &sync.WaitGroup{}
+	wg.Add(5)
 
-	db.MustInitDB(&types.DatabaseConfig{
-		Username:     cfg.WriterDatabase.Username,
-		Password:     cfg.WriterDatabase.Password,
-		Name:         cfg.WriterDatabase.Name,
-		Host:         cfg.WriterDatabase.Host,
-		Port:         cfg.WriterDatabase.Port,
-		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
-		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
-		SSL:          cfg.WriterDatabase.SSL,
-	}, &types.DatabaseConfig{
-		Username:     cfg.ReaderDatabase.Username,
-		Password:     cfg.ReaderDatabase.Password,
-		Name:         cfg.ReaderDatabase.Name,
-		Host:         cfg.ReaderDatabase.Host,
-		Port:         cfg.ReaderDatabase.Port,
-		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
-		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
-		SSL:          cfg.ReaderDatabase.SSL,
-	}, "pgx", "postgres")
+	go func() {
+		defer wg.Done()
+		var err error
+		bt, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
+		if err != nil {
+			utils.LogFatal(err, "error initializing bigtable", 0)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
+		if err != nil {
+			utils.LogFatal(err, "lighthouse client error", 0)
+		}
+		lighthouseClient = rpcClient
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		erigonClient, err = rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
+		if err != nil {
+			logrus.Fatalf("error initializing erigon client: %v", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		db.MustInitDB(&types.DatabaseConfig{
+			Username:     cfg.WriterDatabase.Username,
+			Password:     cfg.WriterDatabase.Password,
+			Name:         cfg.WriterDatabase.Name,
+			Host:         cfg.WriterDatabase.Host,
+			Port:         cfg.WriterDatabase.Port,
+			MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
+			SSL:          cfg.WriterDatabase.SSL,
+		}, &types.DatabaseConfig{
+			Username:     cfg.ReaderDatabase.Username,
+			Password:     cfg.ReaderDatabase.Password,
+			Name:         cfg.ReaderDatabase.Name,
+			Host:         cfg.ReaderDatabase.Host,
+			Port:         cfg.ReaderDatabase.Port,
+			MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
+			SSL:          cfg.ReaderDatabase.SSL,
+		}, "pgx", "postgres")
+	}()
+
+	go func() {
+		defer wg.Done()
+		db.MustInitFrontendDB(&types.DatabaseConfig{
+			Username:     cfg.Frontend.WriterDatabase.Username,
+			Password:     cfg.Frontend.WriterDatabase.Password,
+			Name:         cfg.Frontend.WriterDatabase.Name,
+			Host:         cfg.Frontend.WriterDatabase.Host,
+			Port:         cfg.Frontend.WriterDatabase.Port,
+			MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns, +SSL: cfg.Frontend.WriterDatabase.SSL,
+		}, &types.DatabaseConfig{
+			Username:     cfg.Frontend.ReaderDatabase.Username,
+			Password:     cfg.Frontend.ReaderDatabase.Password,
+			Name:         cfg.Frontend.ReaderDatabase.Name,
+			Host:         cfg.Frontend.ReaderDatabase.Host,
+			Port:         cfg.Frontend.ReaderDatabase.Port,
+			MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
+			SSL:          cfg.Frontend.ReaderDatabase.SSL,
+		}, "pgx", "postgres")
+	}()
+
+	wg.Wait()
+
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
-	db.MustInitFrontendDB(&types.DatabaseConfig{
-		Username:     cfg.Frontend.WriterDatabase.Username,
-		Password:     cfg.Frontend.WriterDatabase.Password,
-		Name:         cfg.Frontend.WriterDatabase.Name,
-		Host:         cfg.Frontend.WriterDatabase.Host,
-		Port:         cfg.Frontend.WriterDatabase.Port,
-		MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
-		MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
-		SSL:          cfg.Frontend.WriterDatabase.SSL,
-	}, &types.DatabaseConfig{
-		Username:     cfg.Frontend.ReaderDatabase.Username,
-		Password:     cfg.Frontend.ReaderDatabase.Password,
-		Name:         cfg.Frontend.ReaderDatabase.Name,
-		Host:         cfg.Frontend.ReaderDatabase.Host,
-		Port:         cfg.Frontend.ReaderDatabase.Port,
-		MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
-		MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
-		SSL:          cfg.Frontend.ReaderDatabase.SSL,
-	}, "pgx", "postgres")
+
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 
@@ -512,7 +540,7 @@ func disableUserPerEmail() error {
 }
 
 func fixEns(erigonClient *rpc.ErigonClient) error {
-	logrus.Infof("command: fix-ens")
+	logrus.WithField("dry", opts.DryRun).Infof("command: fix-ens")
 	addrs := []struct {
 		Address []byte `db:"address"`
 		EnsName string `db:"ens_name"`
