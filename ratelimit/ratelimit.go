@@ -389,8 +389,8 @@ func updateStats(redisClient *redis.Client) error {
 	cursor := uint64(0)
 
 	for {
-		// ratelimit:stats:<year>-<month>-<day>-<hour>:<userId>:<apikey>:<route>
-		cmd := redisClient.Scan(ctx, cursor, "ratelimit:stats:*:*:*:*", 1000)
+		// rl:s:<year>-<month>-<day>-<hour>:<userId>:<apikey>:<route>
+		cmd := redisClient.Scan(ctx, cursor, "rl:s:*:*:*:*", 1000)
 		if cmd.Err() != nil {
 			return cmd.Err()
 		}
@@ -524,7 +524,7 @@ func updateStatsEntries(entries []DbEntry) error {
 		allIdx++
 
 		if batchIdx >= batchSize || allIdx >= len(entries) {
-			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, call, count) VALUES %s ON CONFLICT (ts, apikey, call) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
+			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, endpoint, count) VALUES %s ON CONFLICT (ts, apikey, endpoint) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
 			_, err := tx.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err
@@ -734,15 +734,15 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	timeUntilNextHourUtc := nextHourUtc.Sub(startUtc)
 	timeUntilNextMonthUtc := nextMonthUtc.Sub(startUtc)
 
-	rateLimitSecondKey := fmt.Sprintf("ratelimit:current:second:%s:%d", res.Bucket, res.UserId)
-	rateLimitHourKey := fmt.Sprintf("ratelimit:current:hour:%04d-%02d-%02d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.UserId)
-	rateLimitMonthKey := fmt.Sprintf("ratelimit:current:month:%04d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), res.Bucket, res.UserId)
-	statsKey := fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, res.Key, res.Route)
+	rateLimitSecondKey := fmt.Sprintf("rl:c:s:%s:%d", res.Bucket, res.UserId)
+	rateLimitHourKey := fmt.Sprintf("rl:c:h:%04d-%02d-%02d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.UserId)
+	rateLimitMonthKey := fmt.Sprintf("rl:c:m:%04d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), res.Bucket, res.UserId)
+	statsKey := fmt.Sprintf("rl:s:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, res.Key, res.Route)
 	if !res.IsValidKey {
-		rateLimitSecondKey = fmt.Sprintf("ratelimit:current:second:%s:%s", res.Bucket, res.IP)
-		rateLimitHourKey = fmt.Sprintf("ratelimit:current:hour:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.IP)
-		rateLimitMonthKey = fmt.Sprintf("ratelimit:current:month:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.IP)
-		statsKey = fmt.Sprintf("ratelimit:stats:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, "nokey", res.Route)
+		rateLimitSecondKey = fmt.Sprintf("rl:c:s:%s:%s", res.Bucket, res.IP)
+		rateLimitHourKey = fmt.Sprintf("rl:c:h:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.IP)
+		rateLimitMonthKey = fmt.Sprintf("rl:c:m:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.IP)
+		statsKey = fmt.Sprintf("rl:s:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, "nokey", res.Route)
 	}
 	res.RedisStatsKey = statsKey
 

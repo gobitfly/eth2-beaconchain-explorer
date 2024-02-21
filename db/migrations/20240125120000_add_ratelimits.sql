@@ -54,6 +54,11 @@ INSERT INTO api_products (name, second, hour, month) VALUES
     ('free', 10, 0, 0),
     ('unlimited', 100, 0, 0)
 ON CONFLICT DO NOTHING;
+
+ALTER TABLE api_statistics ADD COLUMN IF NOT EXISTS endpoint TEXT NOT NULL DEFAULT '';
+ALTER TABLE api_statistics DROP CONSTRAINT IF EXISTS api_statistics_pkey;
+ALTER TABLE api_statistics ADD PRIMARY KEY (ts, apikey, endpoint);
+ALTER TABLE api_statistics ALTER COLUMN call SET DEFAULT '';
 -- +goose StatementEnd
 
 -- +goose Down
@@ -70,4 +75,8 @@ SELECT 'down SQL query - drop table api_weights';
 DROP TABLE IF EXISTS api_weights;
 SELECT 'down SQL query - drop table api_products';
 DROP TABLE IF EXISTS api_products;
+SELECT 'down SQL query - drop column api_statistics.endpoint';
+ALTER TABLE api_statistics DROP COLUMN IF EXISTS endpoint;
+ALTER TABLE api_statistics DROP CONSTRAINT IF EXISTS api_statistics_pkey;
+ALTER TABLE api_statistics ADD PRIMARY KEY (ts, apikey, call);
 -- +goose StatementEnd
