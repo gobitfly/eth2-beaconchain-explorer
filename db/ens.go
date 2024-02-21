@@ -24,6 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	go_ens "github.com/wealdtech/go-ens/v3"
+	"github.com/wealdtech/go-ens/v3/contracts/registry"
 )
 
 // https://etherscan.io/tx/0x9fec76750a504e5610643d1882e3b07f4fc786acf7b9e6680697bb7165de1165#eventlog
@@ -695,4 +696,11 @@ func removeEnsName(client *ethclient.Client, name string) error {
 	}
 	logger.Infof("Ens name removed from db: %v", name)
 	return nil
+}
+
+func (bigtable *Bigtable) TransformEnsNameRegistered2(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	registrarFilterer, _ := registry.NewContractFilterer(common.Address{}, nil)
+	_ = registrarFilterer
+	registrarFilterer.
+	return nil, nil, nil
 }
