@@ -448,7 +448,7 @@ func updateStats(redisClient *redis.Client) error {
 		}
 
 		mgetSize := 500
-		for j := 0; j <= len(keys); j += mgetSize {
+		for j := 0; j < len(keys); j += mgetSize {
 			mgetStart := j
 			mgetEnd := j + mgetSize
 			if mgetEnd > len(keys) {
@@ -477,7 +477,7 @@ func updateStats(redisClient *redis.Client) error {
 
 		if len(keysToDelete) > 0 {
 			delSize := 500
-			for j := 0; j <= len(keys); j += delSize {
+			for j := 0; j < len(keys); j += delSize {
 				delStart := j
 				delEnd := j + delSize
 				if delEnd > len(keysToDelete) {
