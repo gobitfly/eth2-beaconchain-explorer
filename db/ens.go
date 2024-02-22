@@ -94,7 +94,20 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		// We look for the different ENS events,
 		// 	most will be triggered by a main registrar contract,
 		//  but some are triggered on a different contracts (like a resolver contract), these will be validated when loading the related events
-		var isRegistarContract = len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
+		isRegistarContract := false
+
+		if len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 {
+			isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
+			for _, itx := range tx.Itx {
+				if !isRegistarContract {
+					isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(itx.To).String())
+				}
+			}
+		}
+
+		// old
+		isRegistarContract = len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
+
 		foundNameIndex := -1
 		foundResolverIndex := -1
 		foundNameRenewedIndex := -1
@@ -326,6 +339,8 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 	return bulkData, bulkMetadataUpdates, nil
 }
+
+func transformEnsTx() {}
 
 func verifyName(name string) error {
 	// limited by max capacity of db (caused by btrees of indexes); tests showed maximum of 2684 (added buffer)
@@ -701,6 +716,5 @@ func removeEnsName(client *ethclient.Client, name string) error {
 func (bigtable *Bigtable) TransformEnsNameRegistered2(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	registrarFilterer, _ := registry.NewContractFilterer(common.Address{}, nil)
 	_ = registrarFilterer
-	registrarFilterer.
 	return nil, nil, nil
 }
