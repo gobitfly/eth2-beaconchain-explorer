@@ -3135,11 +3135,14 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	// we can ignore this error since it always returns a result object and err
 	// case is not needed on receipt insert
-	validationResult, _ := exporter.VerifyReceipt(nil, nil, verifyPackage)
+	validationResult, err := exporter.VerifyReceipt(nil, nil, verifyPackage)
+	if err != nil {
+		utils.LogError(err, "could not verify receipt %v", 0, map[string]interface{}{"receipt": verifyPackage.Receipt})
+	}
 	parsedBase.Valid = validationResult.Valid
 	parsedBase.ProductID = verifyPackage.ProductID // apple verify can change the product id
 
-	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
+	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, verifyPackage.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		SendBadRequestResponse(w, r.URL.String(), "Can not save subscription data")

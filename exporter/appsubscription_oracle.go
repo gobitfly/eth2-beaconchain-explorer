@@ -242,7 +242,7 @@ func verifyApple(apple *api.StoreClient, receipt *types.PremiumData) (*VerifyRes
 	if len(receipt.Receipt) > 100 {
 		transactionID, err := getLegacyAppstoreTransactionIDByReceipt(receipt.Receipt, receipt.ProductID)
 		if err != nil {
-			utils.LogError(err, "error resolving legacy appstore receipt", 0, nil)
+			utils.LogError(err, "error resolving legacy appstore receipt", 0, map[string]interface{}{"receipt": receipt.Receipt})
 			response.RejectReason = "exception_legresolve"
 			return response, err
 		}
