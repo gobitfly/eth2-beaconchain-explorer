@@ -101,12 +101,13 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			for _, itx := range tx.Itx {
 				if !isRegistarContract {
 					isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(itx.To).String())
+					break
 				}
 			}
 		}
 
 		// old
-		isRegistarContract = len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
+		// logrus.Infof("isRegistarContract: (new/old): %v/%v", isRegistarContract, len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String()))
 
 		foundNameIndex := -1
 		foundResolverIndex := -1
@@ -115,12 +116,15 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		foundNameChangedIndex := -1
 		foundNewOwnerIndex := -1
 		logs := tx.GetLogs()
-		logTx := false
+
 		for j, log := range logs {
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most %d but got: %v tx: %x", ITX_PER_TX_LIMIT-1, j, tx.GetHash())
 			}
 			for _, lTopic := range log.GetTopics() {
+				if "187a34bd4908e9064065cb5a7da82240557c5015dea1b63e4def7ca5270f8fa7" == fmt.Sprintf("%x", tx.GetHash()) {
+					fmt.Printf("%#x %#x\n", tx.GetHash(), lTopic)
+				}
 				if isRegistarContract {
 					if bytes.Equal(lTopic, ens.NameRegisteredTopic) || bytes.Equal(lTopic, ens.NameRegisteredV2Topic) {
 						foundNameIndex = j
@@ -128,22 +132,20 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 						foundResolverIndex = j
 					} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
 						foundNameRenewedIndex = j
+					} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
+						foundNameChangedIndex = j
 					}
-					logTx = true
 				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
 					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
-					logTx = true
 				} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
 					foundNameChangedIndex = j
-					logTx = true
 				} else if bytes.Equal(lTopic, ens.NewOwnerTopic) {
 					foundNewOwnerIndex = j
-					logTx = true
 				}
 			}
 		}
 
-		if logTx {
+		if foundNameIndex > -1 || foundResolverIndex > -1 || foundNameRenewedIndex > -1 || len(foundAddressChangedIndices) > 0 || foundNameChangedIndex > -1 || foundNewOwnerIndex > -1 {
 			logrus.WithFields(logrus.Fields{
 				"foundNameIndex":        foundNameIndex,
 				"foundResolverIndex":    foundResolverIndex,
@@ -151,6 +153,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				"foundAddressChanged":   foundAddressChangedIndices,
 				"foundNameChangedIndex": foundNameChangedIndex,
 				"foundNewOwnerIndex":    foundNewOwnerIndex,
+				"block":                 blk.GetNumber(),
 				"tx.hash":               fmt.Sprintf("%#x", tx.GetHash()),
 			}).Infof("transformed tx")
 		}
@@ -339,8 +342,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 
 	return bulkData, bulkMetadataUpdates, nil
 }
-
-func transformEnsTx() {}
 
 func verifyName(name string) error {
 	// limited by max capacity of db (caused by btrees of indexes); tests showed maximum of 2684 (added buffer)
@@ -564,7 +565,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
-		utils.LogError(err, "error, could not resolve name", 0, map[string]interface{}{"name": name})
+		logger.WithField("error", err).WithField("name", name).Warnf("could not resolve name")
 		if err.Error() == "unregistered name" ||
 			err.Error() == "no address" ||
 			err.Error() == "no resolver" ||
