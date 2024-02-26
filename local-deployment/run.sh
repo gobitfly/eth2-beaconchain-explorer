@@ -22,27 +22,48 @@ fn_main() {
             start) shift; fn_start "$@"; exit;;
             stop) shift; fn_stop "$@"; exit;;
             sql) shift; fn_sql "$@"; exit;;
+            redis) shift; fn_redis "$@"; exit;;
+            misc) shift; fn_misc "$@"; exit;;
             *) echo "$var_help"
         esac
         shift
     done
 }
 
+fn_misc() {
+    docker compose exec misc go run ./cmd/misc -config /app/local-deployment/config.yml $@
+}
+
 fn_sql() {
-    PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db
+    if [ -z "${1}" ]; then
+        PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db
+    else
+        PGPASSWORD=pass psql -h localhost -p$POSTGRES_PORT -U postgres -d db -c "$@" --csv --pset=pager=off
+    fi
+}
+
+fn_redis() {
+    if [ -z "${1}" ]; then
+        docker compose exec redis-sessions redis-cli
+    else
+        docker compose exec redis-sessions redis-cli "$@"
+    fi
+    #redis-cli -h localhost -p $REDIS_PORT
 }
 
 fn_start() {
     fn_stop
-    kurtosis run --enclave my-testnet . "$(cat network-params.json)"
+    # build once before starting all services to prevent multiple parallel builds
+    docker compose --profile=build-once run build-once &
+    kurtosis run --enclave my-testnet . "$(cat network-params.json)" &
+    wait
     bash provision-explorer-config.sh
-    docker compose --profile=build-once run build-once # build once before starting all services to prevent multiple parallel builds
     docker compose up -d
     echo "Waiting for explorer to start, then browse http://localhost:8080"
 }
 
 fn_stop() {
-    docker compose down
+    docker compose down -v
     kurtosis clean -a
 }
 
