@@ -2677,6 +2677,9 @@ func GetCurrentDayClIncome(validator_indices []uint64) (map[uint64]int64, error)
 	dayIncome := make(map[uint64]int64)
 	lastDay, err := GetLastExportedStatisticDay()
 	if err != nil {
+		if err == ErrNoStats {
+			return dayIncome, nil
+		}
 		return dayIncome, err
 	}
 
