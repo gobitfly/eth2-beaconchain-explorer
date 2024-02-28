@@ -137,22 +137,13 @@ type Config struct {
 			Plankton  string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
 			Webhook   string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
 		}
-		Ratelimits struct {
-			FreeDay       int `yaml:"freeDay" envconfig:"FRONTEND_RATELIMITS_FREE_DAY"`
-			FreeMonth     int `yaml:"freeMonth" envconfig:"FRONTEND_RATELIMITS_FREE_MONTH"`
-			SapphierDay   int `yaml:"sapphireDay" envconfig:"FRONTEND_RATELIMITS_SAPPHIRE_DAY"`
-			SapphierMonth int `yaml:"sapphireDay" envconfig:"FRONTEND_RATELIMITS_SAPPHIRE_MONTH"`
-			EmeraldDay    int `yaml:"emeraldDay" envconfig:"FRONTEND_RATELIMITS_EMERALD_DAY"`
-			EmeraldMonth  int `yaml:"emeraldMonth" envconfig:"FRONTEND_RATELIMITS_EMERALD_MONTH"`
-			DiamondDay    int `yaml:"diamondDay" envconfig:"FRONTEND_RATELIMITS_DIAMOND_DAY"`
-			DiamondMonth  int `yaml:"diamondMonth" envconfig:"FRONTEND_RATELIMITS_DIAMOND_MONTH"`
-		} `yaml:"ratelimits"`
-		SessionSecret          string `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
-		JwtSigningSecret       string `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
-		JwtIssuer              string `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
-		JwtValidityInMinutes   int    `yaml:"jwtValidityInMinutes" envconfig:"FRONTEND_JWT_VALIDITY_INMINUTES"`
-		MaxMailsPerEmailPerDay int    `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
-		Mail                   struct {
+		RatelimitUpdateInterval time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
+		SessionSecret           string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
+		JwtSigningSecret        string        `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
+		JwtIssuer               string        `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
+		JwtValidityInMinutes    int           `yaml:"jwtValidityInMinutes" envconfig:"FRONTEND_JWT_VALIDITY_INMINUTES"`
+		MaxMailsPerEmailPerDay  int           `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
+		Mail                    struct {
 			SMTP struct {
 				Server   string `yaml:"server" envconfig:"FRONTEND_MAIL_SMTP_SERVER"`
 				Host     string `yaml:"host" envconfig:"FRONTEND_MAIL_SMTP_HOST"`

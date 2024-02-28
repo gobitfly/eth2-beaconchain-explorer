@@ -1,4 +1,5 @@
 #! /bin/bash
+
 CL_PORT=$(kurtosis enclave inspect my-testnet | grep 4000/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/http\:\/\/127.0.0.1\://' | head -n 1)
 echo "CL Node port is $CL_PORT"
 
@@ -7,6 +8,9 @@ echo "EL Node port is $EL_PORT"
 
 REDIS_PORT=$(kurtosis enclave inspect my-testnet | grep 6379/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/tcp\:\/\/127.0.0.1\://' | head -n 1)
 echo "Redis port is $REDIS_PORT"
+
+REDIS_SESSIONS_PORT=$(comm -23 <(seq 49152 65535 | sort) <(ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1)
+echo "Redis sessions port is $REDIS_SESSIONS_PORT"
 
 POSTGRES_PORT=$(kurtosis enclave inspect my-testnet | grep 5432/tcp | tr -s ' ' | cut -d " " -f 6 | sed -e 's/postgresql\:\/\/127.0.0.1\://' | head -n 1)
 echo "Postgres port is $POSTGRES_PORT"
@@ -18,6 +22,7 @@ cat <<EOF > .env
 CL_PORT=$CL_PORT
 EL_PORT=$EL_PORT
 REDIS_PORT=$REDIS_PORT
+REDIS_SESSIONS_PORT=$REDIS_SESSIONS_PORT
 POSTGRES_PORT=$POSTGRES_PORT
 LBT_PORT=$LBT_PORT
 EOF
@@ -56,6 +61,7 @@ bigtable:
 eth1ErigonEndpoint: 'http://127.0.0.1:$EL_PORT'
 eth1GethEndpoint: 'http://127.0.0.1:$EL_PORT'
 redisCacheEndpoint: '127.0.0.1:$REDIS_PORT'
+redisSessionStoreEndpoint: '127.0.0.1:$REDIS_SESSIONS_PORT'
 tieredCacheProvider: 'redis'
 frontend:
   siteDomain: "localhost:8080"
@@ -91,6 +97,11 @@ frontend:
     termsOfServiceUrl: "tos.pdf"
     privacyPolicyUrl: "privacy.pdf"
     imprintTemplate: '{{ define "js" }}{{ end }}{{ define "css" }}{{ end }}{{ define "content" }}Imprint{{ end }}'
+  stripe:
+    sapphire: price_sapphire
+    emerald: price_emerald
+    diamond: price_diamond
+  ratelimitUpdateInterval: 1s
 
 indexer:
   # fullIndexOnStartup: false # Perform a one time full db index on startup
