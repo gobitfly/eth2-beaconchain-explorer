@@ -828,6 +828,10 @@ func getKey(r *http.Request) (key, ip string) {
 	if key != "" {
 		return key, ip
 	}
+	key = r.Header.Get("apikey")
+	if key != "" {
+		return key, ip
+	}
 	key = r.Header.Get("X-API-KEY")
 	if key != "" {
 		return key, ip

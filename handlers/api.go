@@ -1198,7 +1198,13 @@ func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.S
 		lastExportedEpoch = ((lastExportedDay + 1) * epochsPerDay) - 1
 	}
 
-	err = db.ReaderDb.Get(&syncStats, `SELECT SUM(COALESCE(participated_sync_total, 0)) AS participated, SUM(COALESCE(missed_sync_total, 0)) AS missed FROM validator_stats WHERE day = $1 AND validatorindex = ANY($2)`, lastExportedDay, pq.Array(validators))
+	err = db.ReaderDb.Get(&syncStats, `
+		SELECT 
+		COALESCE(SUM(COALESCE(participated_sync_total, 0)), 0) AS participated, 
+		COALESCE(SUM(COALESCE(missed_sync_total, 0)),0) AS missed 
+		FROM validator_stats 
+		WHERE day = $1 AND validatorindex = ANY($2)
+		`, lastExportedDay, pq.Array(validators))
 	if err != nil {
 		return types.SyncCommitteesStats{}, err
 	}
