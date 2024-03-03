@@ -105,9 +105,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 		}
 
-		// old
-		// logrus.Infof("isRegistarContract: (new/old): %v/%v", isRegistarContract, len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String()))
-
 		foundNameIndex := -1
 		foundResolverIndex := -1
 		foundNameRenewedIndex := -1
@@ -128,8 +125,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 						foundResolverIndex = j
 					} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
 						foundNameRenewedIndex = j
-					} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
-						foundNameChangedIndex = j
 					}
 				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
 					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
