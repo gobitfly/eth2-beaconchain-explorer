@@ -21,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/sirupsen/logrus"
 
 	go_ens "github.com/wealdtech/go-ens/v3"
 	"github.com/wealdtech/go-ens/v3/contracts/registry"
@@ -122,9 +121,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most %d but got: %v tx: %x", ITX_PER_TX_LIMIT-1, j, tx.GetHash())
 			}
 			for _, lTopic := range log.GetTopics() {
-				if "187a34bd4908e9064065cb5a7da82240557c5015dea1b63e4def7ca5270f8fa7" == fmt.Sprintf("%x", tx.GetHash()) {
-					fmt.Printf("%#x %#x\n", tx.GetHash(), lTopic)
-				}
 				if isRegistarContract {
 					if bytes.Equal(lTopic, ens.NameRegisteredTopic) || bytes.Equal(lTopic, ens.NameRegisteredV2Topic) {
 						foundNameIndex = j
@@ -145,18 +141,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			}
 		}
 
-		if foundNameIndex > -1 || foundResolverIndex > -1 || foundNameRenewedIndex > -1 || len(foundAddressChangedIndices) > 0 || foundNameChangedIndex > -1 || foundNewOwnerIndex > -1 {
-			logrus.WithFields(logrus.Fields{
-				"foundNameIndex":        foundNameIndex,
-				"foundResolverIndex":    foundResolverIndex,
-				"foundNameRenewedIndex": foundNameRenewedIndex,
-				"foundAddressChanged":   foundAddressChangedIndices,
-				"foundNameChangedIndex": foundNameChangedIndex,
-				"foundNewOwnerIndex":    foundNewOwnerIndex,
-				"block":                 blk.GetNumber(),
-				"tx.hash":               fmt.Sprintf("%#x", tx.GetHash()),
-			}).Infof("transformed tx")
-		}
 		// We found a register name event
 		if foundNameIndex > -1 && foundResolverIndex > -1 {
 
@@ -270,8 +254,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, nameHash, tx.GetHash())] = true
 			keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, nameRenewed.Name)] = true
 
-			// } else if foundNameChangedIndex > -1 && foundNewOwnerIndex > -1 { // we found a name change event
-		} else if foundNewOwnerIndex > -1 { // we found a name change event
+		} else if foundNameChangedIndex > -1 && foundNewOwnerIndex > -1 { // we found a name change event
 			log := logs[foundNewOwnerIndex]
 			topics := make([]common.Hash, 0, len(log.GetTopics()))
 

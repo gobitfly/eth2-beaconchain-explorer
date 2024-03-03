@@ -745,9 +745,10 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 	return nil
 }
 
-func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
+func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) ([]string, error) {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
+	keys := []string{}
 
 	logrus.Infof("indexing blocks from %d to %d", start, end)
 	batchSize := int64(1000)
@@ -796,9 +797,8 @@ func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, trans
 						}
 					}
 
-					for _, k := range bulkMutsData.Keys {
-						fmt.Println(k)
-					}
+					keys = append(keys, bulkMutsData.Keys...)
+
 					/*
 						if len(bulkMutsData.Keys) > 0 {
 							metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
@@ -833,13 +833,13 @@ func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, trans
 		logrus.Info("data table indexing completed")
 	} else {
 		utils.LogError(err, "wait group error", 0)
-		return err
+		return keys, err
 	}
 
 	err := g.Wait()
 
 	if err != nil {
-		return err
+		return keys, err
 	}
 
 	/*
@@ -856,7 +856,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, trans
 			}
 		}
 	*/
-	return nil
+	return keys, nil
 }
 
 // TransformBlock extracts blocks from bigtable more specifically from the table blocks.
