@@ -30,13 +30,23 @@ const (
 )
 
 const (
-	HeaderRateLimitLimit       = "X-RateLimit-Limit"        // the rate limit ceiling that is applicable for the current request
-	HeaderRateLimitRemaining   = "X-RateLimit-Remaining"    // the number of requests left for the current rate-limit window
-	HeaderRateLimitReset       = "X-RateLimit-Reset"        // the number of seconds until the quota resets
-	HeaderRetryAfter           = "Retry-After"              // the number of seconds until the quota resets, same as HeaderRateLimitReset, RFC 7231, 7.1.3
-	HeaderRateLimitLimitSecond = "X-RateLimit-Limit-Second" // the rate limit ceiling that is applicable for the current user
-	HeaderRateLimitLimitHour   = "X-RateLimit-Limit-Hour"   // the rate limit ceiling that is applicable for the current user
-	HeaderRateLimitLimitMonth  = "X-RateLimit-Limit-Month"  // the rate limit ceiling that is applicable for the current user
+	HeaderRateLimitLimit     = "ratelimit-limit"     // the rate limit ceiling that is applicable for the current request
+	HeaderRateLimitRemaining = "ratelimit-remaining" // the number of requests left for the current rate-limit window
+	HeaderRateLimitReset     = "ratelimit-reset"     // the number of seconds until the quota resets
+	HeaderRateLimitWindow    = "ratelimit-window"    // what window the ratelimit represents
+	HeaderRetryAfter         = "retry-after"         // the number of seconds until the quota resets, same as HeaderRateLimitReset, RFC 7231, 7.1.3
+
+	HeaderRateLimitRemainingSecond = "x-ratelimit-remaining-second" // the number of requests left for the current rate-limit window
+	HeaderRateLimitRemainingMinute = "x-ratelimit-remaining-minute" // the number of requests left for the current rate-limit window
+	HeaderRateLimitRemainingHour   = "x-ratelimit-remaining-hour"   // the number of requests left for the current rate-limit window
+	HeaderRateLimitRemainingDay    = "x-ratelimit-remaining-day"    // the number of requests left for the current rate-limit window
+	HeaderRateLimitRemainingMonth  = "x-ratelimit-remaining-month"  // the number of requests left for the current rate-limit window
+
+	HeaderRateLimitLimitSecond = "x-ratelimit-limit-second" // the rate limit ceiling that is applicable for the current user
+	HeaderRateLimitLimitMinute = "x-ratelimit-limit-minute" // the rate limit ceiling that is applicable for the current user
+	HeaderRateLimitLimitHour   = "x-ratelimit-limit-hour"   // the rate limit ceiling that is applicable for the current user
+	HeaderRateLimitLimitDay    = "x-ratelimit-limit-day"    // the rate limit ceiling that is applicable for the current user
+	HeaderRateLimitLimitMonth  = "x-ratelimit-limit-month"  // the rate limit ceiling that is applicable for the current user
 
 	DefaultRateLimitSecond = 2   // RateLimit per second if no ratelimits are set in database
 	DefaultRateLimitHour   = 500 // RateLimit per second if no ratelimits are set in database
@@ -111,11 +121,24 @@ type RateLimitResult struct {
 	RedisKeys     []RedisKey
 	RedisStatsKey string
 	RateLimit     *RateLimit
-	Limit         int64
-	Remaining     int64
-	Reset         int64
-	Bucket        string
-	Window        TimeWindow
+
+	Limit       int64
+	LimitSecond int64
+	LimitMinute int64
+	LimitHour   int64
+	LimitDay    int64
+	LimitMonth  int64
+
+	Remaining       int64
+	RemainingSecond int64
+	RemainingMinute int64
+	RemainingHour   int64
+	RemainingDay    int64
+	RemainingMonth  int64
+
+	Reset  int64
+	Bucket string
+	Window TimeWindow
 }
 
 type RedisKey struct {
@@ -286,15 +309,19 @@ func HttpMiddleware(next http.Handler) http.Handler {
 		w.Header().Set(HeaderRateLimitRemaining, strconv.FormatInt(rl.Remaining, 10))
 		w.Header().Set(HeaderRateLimitReset, strconv.FormatInt(rl.Reset, 10))
 
-		if rl.RateLimit.Second > 0 {
-			w.Header().Set(HeaderRateLimitLimitSecond, strconv.FormatInt(rl.RateLimit.Second, 10))
-		}
-		if rl.RateLimit.Hour > 0 {
-			w.Header().Set(HeaderRateLimitLimitHour, strconv.FormatInt(rl.RateLimit.Hour, 10))
-		}
-		if rl.RateLimit.Month > 0 {
-			w.Header().Set(HeaderRateLimitLimitMonth, strconv.FormatInt(rl.RateLimit.Month, 10))
-		}
+		w.Header().Set(HeaderRateLimitWindow, string(rl.Window))
+
+		w.Header().Set(HeaderRateLimitLimitMonth, strconv.FormatInt(rl.LimitMonth, 10))
+		w.Header().Set(HeaderRateLimitLimitDay, strconv.FormatInt(rl.LimitDay, 10))
+		w.Header().Set(HeaderRateLimitLimitHour, strconv.FormatInt(rl.LimitHour, 10))
+		w.Header().Set(HeaderRateLimitLimitMinute, strconv.FormatInt(rl.LimitMinute, 10))
+		w.Header().Set(HeaderRateLimitLimitSecond, strconv.FormatInt(rl.LimitSecond, 10))
+
+		w.Header().Set(HeaderRateLimitRemainingMonth, strconv.FormatInt(rl.RemainingMonth, 10))
+		w.Header().Set(HeaderRateLimitRemainingDay, strconv.FormatInt(rl.RemainingDay, 10))
+		w.Header().Set(HeaderRateLimitRemainingHour, strconv.FormatInt(rl.RemainingHour, 10))
+		w.Header().Set(HeaderRateLimitRemainingMinute, strconv.FormatInt(rl.RemainingMinute, 10))
+		w.Header().Set(HeaderRateLimitRemainingSecond, strconv.FormatInt(rl.RemainingSecond, 10))
 
 		if rl.Weight > rl.Remaining {
 			w.Header().Set(HeaderRetryAfter, strconv.FormatInt(rl.Reset, 10))
@@ -783,6 +810,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		} else if res.RateLimit.Second-rateLimitSecond.Val() > res.Limit {
 			res.Limit = res.RateLimit.Second
 			res.Remaining = res.RateLimit.Second - rateLimitSecond.Val()
+			res.RemainingSecond = res.Remaining
 			res.Reset = int64(1)
 			res.Window = SecondTimeWindow
 		}
@@ -798,6 +826,7 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		} else if res.RateLimit.Hour-rateLimitHour.Val() > res.Limit {
 			res.Limit = res.RateLimit.Hour
 			res.Remaining = res.RateLimit.Hour - rateLimitHour.Val()
+			res.RemainingHour = res.Remaining
 			res.Reset = int64(timeUntilNextHourUtc.Seconds())
 			res.Window = HourTimeWindow
 		}
@@ -813,12 +842,56 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		} else if res.RateLimit.Month-rateLimitMonth.Val() > res.Limit {
 			res.Limit = res.RateLimit.Month
 			res.Remaining = res.RateLimit.Month - rateLimitMonth.Val()
+			res.RemainingMonth = res.Remaining
 			res.Reset = int64(timeUntilNextMonthUtc.Seconds())
 			res.Window = MonthTimeWindow
 		}
 	}
 
+	// normalize limit-headers to keep them consistent with previous versions
+	if res.RateLimit.Month > 0 {
+		res.LimitMonth = res.RateLimit.Month
+	} else {
+		res.LimitMonth = max(res.RateLimit.Month, res.RateLimit.Hour, res.RateLimit.Second)
+	}
+	res.LimitDay = res.LimitMonth
+
+	if res.RateLimit.Hour > 0 {
+		res.LimitHour = res.RateLimit.Hour
+	} else {
+		res.LimitHour = res.LimitMonth
+	}
+	res.LimitMinute = res.LimitHour
+
+	if res.RateLimit.Second > 0 {
+		res.LimitSecond = res.RateLimit.Second
+	} else {
+		res.LimitSecond = res.LimitHour
+	}
+
+	if res.RemainingMonth == 0 {
+		res.RemainingMonth = max(res.RemainingMonth, res.RemainingHour, res.RemainingSecond)
+	}
+	res.RemainingDay = res.RemainingMonth
+	if res.RemainingHour == 0 {
+		res.RemainingHour = res.RemainingMonth
+	}
+	res.RemainingMinute = res.RemainingHour
+	if res.RemainingSecond == 0 {
+		res.RemainingSecond = res.RemainingMinute
+	}
+
 	return res, nil
+}
+
+func max(vals ...int64) int64 {
+	max := vals[0]
+	for _, v := range vals {
+		if v > max {
+			max = v
+		}
+	}
+	return max
 }
 
 // getKey returns the key used for RateLimiting. It first checks the query params, then the header and finally the ip address.
