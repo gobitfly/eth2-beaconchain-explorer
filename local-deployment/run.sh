@@ -54,7 +54,7 @@ fn_redis() {
 fn_start() {
     fn_stop
     # build once before starting all services to prevent multiple parallel builds
-    docker compose --profile=build-once run build-once &
+    docker compose --profile=build-once run -T build-once &
     kurtosis run --enclave my-testnet . "$(cat network-params.json)" &
     wait
     bash provision-explorer-config.sh

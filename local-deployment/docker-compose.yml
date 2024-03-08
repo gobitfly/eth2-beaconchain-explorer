@@ -12,7 +12,7 @@ services:
     <<: *default-service
     profiles:
       - build-once
-    command: /bin/bash -c "git config --global --add safe.directory '*' && make -j -B all"
+    command: /bin/bash -c "trap stopit SIGINT; stopit() { echo 'trapped SIGINT'; exit; }; git config --global --add safe.directory '*' && make -B all"
   indexer:
     <<: *default-service
     command: go run ./cmd/explorer -config /app/local-deployment/config.yml
@@ -40,7 +40,7 @@ services:
     command: go run ./cmd/misc -config /app/local-deployment/config.yml -command=update-ratelimits
   misc:
     <<: *default-service
-    command: /bin/bash -c "while true; do date; sleep 1; done"
+    command: /bin/bash -c "trap stopit SIGINT; stopit() { echo 'trapped SIGINT'; exit; }; while true; do date; sleep 1; done"
   redis-sessions:
     image: redis:7
     volumes:
