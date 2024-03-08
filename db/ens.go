@@ -274,8 +274,31 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				continue
 			}
 
+			nameChangedLog := logs[foundNameChangedIndex]
+			nameChangedTopics := make([]common.Hash, 0, len(nameChangedLog.GetTopics()))
+			for _, t := range nameChangedLog.GetTopics() {
+				nameChangedTopics = append(nameChangedTopics, common.BytesToHash(t))
+			}
+			nameChangedLogT := eth_types.Log{
+				Address:     common.BytesToAddress(nameChangedLog.GetAddress()),
+				Data:        nameChangedLog.Data,
+				Topics:      nameChangedTopics,
+				BlockNumber: blk.GetNumber(),
+				TxHash:      common.BytesToHash(tx.GetHash()),
+				TxIndex:     uint(i),
+				BlockHash:   common.BytesToHash(blk.GetHash()),
+				Index:       uint(foundNameChangedIndex),
+				Removed:     nameChangedLog.GetRemoved(),
+			}
+			newName, err := filterer.ParseNameChanged(nameChangedLogT)
+			if err != nil {
+				utils.LogError(err, fmt.Errorf("indexing of NameChanged event failed parse event at index %v on block [%v]", foundNameChangedIndex, blk.Number), 0)
+				continue
+			}
+
 			keys[fmt.Sprintf("%s:ENS:I:A:%x:%x", bigtable.chainId, newOwner.Owner, tx.GetHash())] = true
 			keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, newOwner.Owner)] = true
+			keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, newName.Name)] = true
 		}
 		// We found a change address event, there can be multiple within one transaction
 		for _, addressChangeIndex := range foundAddressChangedIndices {
