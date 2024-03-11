@@ -748,7 +748,7 @@ func sendPasswordResetEmail(email string) error {
 		return fmt.Errorf("error getting password_reset_not_allowed: %w", err)
 	}
 	if passwordResetNotAllowed {
-		return fmt.Errorf("password-reset not allowed for user: %v", email)
+		return &types.PasswordResetNotAllowedError{}
 	}
 
 	var lastTs *time.Time
