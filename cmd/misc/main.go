@@ -60,14 +60,16 @@ var opts = struct {
 	Family              string
 	Key                 string
 	ValidatorNameRanges string
+	Email               string
 	DryRun              bool
+	Yes                 bool
 }{}
 
 func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
 
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases, update-ratelimits")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases, update-ratelimits, disable-user-per-email")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -86,6 +88,8 @@ func main() {
 	flag.StringVar(&opts.ValidatorNameRanges, "validator-name-ranges", "https://config.dencun-devnet-8.ethpandaops.io/api/v1/nodes/validator-ranges", "url to or json of validator-ranges (format must be: {'ranges':{'X-Y':'name'}})")
 	flag.StringVar(&opts.Addresses, "addresses", "", "Comma separated list of addresses that should be processed by the command")
 	flag.StringVar(&opts.Columns, "columns", "", "Comma separated list of columns that should be affected by the command")
+	flag.StringVar(&opts.Email, "email", "", "Email of the user")
+	flag.BoolVar(&opts.Yes, "yes", false, "Answer yes to all questions")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 
@@ -394,6 +398,8 @@ func main() {
 		err = fixEnsAddresses(erigonClient)
 	case "update-ratelimits":
 		ratelimit.DBUpdater()
+	case "disable-user-per-email":
+		err = disableUserPerEmail()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -403,6 +409,60 @@ func main() {
 	} else {
 		logrus.Infof("command executed successfully")
 	}
+}
+
+func disableUserPerEmail() error {
+	if opts.Email == "" {
+		return errors.New("no email specified")
+	}
+	user := struct {
+		ID    uint64 `db:"id"`
+		Email string `db:"email"`
+	}{}
+	err := db.FrontendWriterDB.Get(&user, `select id, email from users where email = $1`, opts.Email)
+	if err != nil {
+		return err
+	}
+
+	if !askForConfirmation(fmt.Sprintf(`Do you want to disable the user with email: %v (id: %v)?
+
+- the user will get logged out
+- the password will change
+- the apikey will change
+- password-reset will be disabled
+`, user.Email, user.ID)) {
+		logrus.Warnf("aborted")
+		return nil
+	}
+
+	_, err = db.FrontendWriterDB.Exec(`update users set password = $3, api_key = $4, password_reset_not_allowed = true where id = $1 and email = $2`, user.ID, user.Email, utils.RandomString(128), utils.RandomString(32))
+	if err != nil {
+		return err
+	}
+	logrus.Infof("changed password and apikey and disallowed password-reset for user %v", user.ID)
+
+	ctx := context.Background()
+
+	// invalidate all sessions for this user
+	err = utils.SessionStore.SCS.Iterate(ctx, func(ctx context.Context) error {
+		sessionUserID, ok := utils.SessionStore.SCS.Get(ctx, "user_id").(uint64)
+		if !ok {
+			return nil
+		}
+
+		if user.ID == sessionUserID {
+			logrus.Infof("destroying a session of user %v", user.ID)
+			return utils.SessionStore.SCS.Destroy(ctx)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func fixEns(erigonClient *rpc.ErigonClient) error {
@@ -1935,4 +1995,28 @@ func reExportSyncCommittee(rpcClient rpc.Client, p uint64, dryRun bool) error {
 
 		return tx.Commit()
 	}
+}
+
+func askForConfirmation(q string) bool {
+	if opts.Yes {
+		return true
+	}
+	var s string
+
+	fmt.Printf("%s (y/N): ", q)
+	_, err := fmt.Scanln(&s)
+	if err != nil {
+		if err.Error() == "unexpected newline" {
+			return false
+		}
+		panic(err)
+	}
+
+	// s = strings.TrimSpace(s)
+	s = strings.ToLower(s)
+
+	if s == "y" || s == "yes" {
+		return true
+	}
+	return false
 }
