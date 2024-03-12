@@ -800,51 +800,44 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		return nil, err
 	}
 
+	if res.RateLimit.Month > 0 && rateLimitMonth.Val() > res.RateLimit.Month {
+		res.Limit = res.RateLimit.Month
+		res.Remaining = 0
+		res.Reset = int64(timeUntilNextMonthUtc.Seconds())
+		res.Window = MonthTimeWindow
+	} else if res.RateLimit.Hour > 0 && rateLimitHour.Val() > res.RateLimit.Hour {
+		res.Limit = res.RateLimit.Hour
+		res.Remaining = 0
+		res.Reset = int64(timeUntilNextHourUtc.Seconds())
+		res.Window = HourTimeWindow
+	} else if res.RateLimit.Second > 0 && rateLimitSecond.Val() > res.RateLimit.Second {
+		res.Limit = res.RateLimit.Second
+		res.Remaining = 0
+		res.Reset = int64(1)
+		res.Window = SecondTimeWindow
+	} else {
+		res.Limit = res.RateLimit.Second
+		res.Remaining = res.RateLimit.Second - rateLimitSecond.Val()
+		res.Reset = int64(1)
+		res.Window = SecondTimeWindow
+	}
+
 	if res.RateLimit.Second > 0 {
-		if rateLimitSecond.Val() > res.RateLimit.Second {
-			res.Limit = res.RateLimit.Second
-			res.Remaining = 0
-			res.Reset = int64(1)
-			res.Window = SecondTimeWindow
-			return res, nil
-		} else if res.RateLimit.Second-rateLimitSecond.Val() > res.Limit {
-			res.Limit = res.RateLimit.Second
-			res.Remaining = res.RateLimit.Second - rateLimitSecond.Val()
-			res.RemainingSecond = res.Remaining
-			res.Reset = int64(1)
-			res.Window = SecondTimeWindow
+		res.RemainingSecond = res.RateLimit.Second - rateLimitSecond.Val()
+		if res.RemainingSecond < 0 {
+			res.RemainingSecond = 0
 		}
 	}
-
 	if res.RateLimit.Hour > 0 {
-		if rateLimitHour.Val() > res.RateLimit.Hour {
-			res.Limit = res.RateLimit.Hour
-			res.Remaining = 0
-			res.Reset = int64(timeUntilNextHourUtc.Seconds())
-			res.Window = HourTimeWindow
-			return res, nil
-		} else if res.RateLimit.Hour-rateLimitHour.Val() > res.Limit {
-			res.Limit = res.RateLimit.Hour
-			res.Remaining = res.RateLimit.Hour - rateLimitHour.Val()
-			res.RemainingHour = res.Remaining
-			res.Reset = int64(timeUntilNextHourUtc.Seconds())
-			res.Window = HourTimeWindow
+		res.RemainingHour = res.RateLimit.Hour - rateLimitHour.Val()
+		if res.RemainingHour < 0 {
+			res.RemainingHour = 0
 		}
 	}
-
 	if res.RateLimit.Month > 0 {
-		if rateLimitMonth.Val() > res.RateLimit.Month {
-			res.Limit = res.RateLimit.Month
-			res.Remaining = 0
-			res.Reset = int64(timeUntilNextMonthUtc.Seconds())
-			res.Window = MonthTimeWindow
-			return res, nil
-		} else if res.RateLimit.Month-rateLimitMonth.Val() > res.Limit {
-			res.Limit = res.RateLimit.Month
-			res.Remaining = res.RateLimit.Month - rateLimitMonth.Val()
-			res.RemainingMonth = res.Remaining
-			res.Reset = int64(timeUntilNextMonthUtc.Seconds())
-			res.Window = MonthTimeWindow
+		res.RemainingMonth = res.RateLimit.Month - rateLimitMonth.Val()
+		if res.RemainingMonth < 0 {
+			res.RemainingMonth = 0
 		}
 	}
 
