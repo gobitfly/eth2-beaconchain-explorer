@@ -265,32 +265,7 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) e
 	}
 
 	if block.EpochAssignments != nil { // export the epoch assignments as they are included in the first slot of an epoch
-
 		epoch := utils.EpochOfSlot(block.Slot)
-
-		// store epoch assignments in redis
-		redisCachedEpochAssignments := &types.RedisCachedEpochAssignments{
-			Epoch:       types.Epoch(epoch),
-			Assignments: block.EpochAssignments,
-		}
-
-		var serializedAssignmentsData bytes.Buffer
-		enc := gob.NewEncoder(&serializedAssignmentsData)
-		err := enc.Encode(redisCachedEpochAssignments)
-		if err != nil {
-			return fmt.Errorf("error serializing block to gob for slot %v: %w", block.Slot, err)
-		}
-
-		key := fmt.Sprintf("%d:%s:%d", utils.Config.Chain.ClConfig.DepositChainID, "ea", utils.EpochOfSlot(block.Slot))
-
-		expirationTime := utils.EpochToTime(epoch + 7) // keep it for at least 7 epochs in the cache
-		expirationDuration := time.Until(expirationTime)
-		logger.Infof("writing assignments data to redis with a TTL of %v", expirationDuration)
-		err = db.PersistentRedisDbClient.Set(context.Background(), key, serializedAssignmentsData.Bytes(), expirationDuration).Err()
-		if err != nil {
-			return fmt.Errorf("error writing assignments data to redis for epoch %v: %w", epoch, err)
-		}
-		logger.Infof("writing epoch assignments to redis completed")
 
 		logger.Infof("exporting duties & balances for epoch %v", epoch)
 
@@ -322,6 +297,68 @@ func ExportSlot(client rpc.Client, slot uint64, isHeadEpoch bool, tx *sqlx.Tx) e
 		}
 
 		g := errgroup.Group{}
+
+		// store epoch assignments in redis
+		g.Go(func() error {
+			redisCachedEpochAssignments := &types.RedisCachedEpochAssignments{
+				Epoch:       types.Epoch(epoch),
+				Assignments: block.EpochAssignments,
+			}
+
+			var serializedAssignmentsData bytes.Buffer
+			enc := gob.NewEncoder(&serializedAssignmentsData)
+			err := enc.Encode(redisCachedEpochAssignments)
+			if err != nil {
+				return fmt.Errorf("error serializing assignments to gob for slot %v: %w", block.Slot, err)
+			}
+
+			key := fmt.Sprintf("%d:%s:%d", utils.Config.Chain.ClConfig.DepositChainID, "ea", epoch)
+
+			expirationTime := utils.EpochToTime(epoch + 7) // keep it for at least 7 epochs in the cache
+			expirationDuration := time.Until(expirationTime)
+			logger.Infof("writing assignments data to redis with a TTL of %v", expirationDuration)
+			err = db.PersistentRedisDbClient.Set(context.Background(), key, serializedAssignmentsData.Bytes(), expirationDuration).Err()
+			if err != nil {
+				return fmt.Errorf("error writing assignments data to redis for epoch %v: %w", epoch, err)
+			}
+
+			// publish the event to inform the api about the new data (todo)
+			// db.PersistentRedisDbClient.Publish(context.Background(), fmt.Sprintf("%d:slotViz", utils.Config.Chain.ClConfig.DepositChainID), fmt.Sprintf("%s:%d", "ea", epoch)).Err()
+			logger.Infof("writing current epoch assignments to redis completed")
+
+			if isHeadEpoch {
+				nextEpoch := epoch + 1
+				nextEpochAssignments, err := client.GetEpochAssignments(nextEpoch)
+
+				if err != nil {
+					return fmt.Errorf("error retrieving epoch assignments for head+1 epoch: %v", err)
+				}
+
+				redisCachedNextEpochAssignments := &types.RedisCachedEpochAssignments{
+					Epoch:       types.Epoch(nextEpoch),
+					Assignments: nextEpochAssignments,
+				}
+
+				var serializedAssignmentsData bytes.Buffer
+				enc := gob.NewEncoder(&serializedAssignmentsData)
+				err = enc.Encode(redisCachedNextEpochAssignments)
+				if err != nil {
+					return fmt.Errorf("error serializing assignments to gob for head+1 epoch %v: %w", block.Slot, err)
+				}
+
+				key := fmt.Sprintf("%d:%s:%d", utils.Config.Chain.ClConfig.DepositChainID, "ea", nextEpoch)
+
+				expirationTime := utils.EpochToTime(nextEpoch + 7) // keep it for at least 7 epochs in the cache
+				expirationDuration := time.Until(expirationTime)
+				logger.Infof("writing assignments data for head+1 epoch to redis with a TTL of %v", expirationDuration)
+				err = db.PersistentRedisDbClient.Set(context.Background(), key, serializedAssignmentsData.Bytes(), expirationDuration).Err()
+				if err != nil {
+					return fmt.Errorf("error writing assignments data for head+1 epoch to redis for epoch %v: %w", nextEpoch, err)
+				}
+			}
+
+			return nil
+		})
 
 		// save all duties to bigtable
 		g.Go(func() error {
