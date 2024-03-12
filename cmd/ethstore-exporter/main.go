@@ -28,6 +28,7 @@ func main() {
 	daysToReexport := flag.String("days", "", "Days to reexport")
 	receiptsModeStr := flag.String("receipts-mode", "single", "single or batch")
 	concurrency := flag.Int("concurrency", 1, "concurrency level to use (1 for no concurrency)")
+	debugLevel := flag.Uint64("debug-level", 0, "debug level to use for eth.store calculation output")
 
 	flag.Parse()
 
@@ -92,7 +93,7 @@ func main() {
 		receiptsMode = ethstore.RECEIPTS_MODE_BATCH
 	}
 
-	ethstore.SetDebugLevel(1000)
+	ethstore.SetDebugLevel(*debugLevel)
 	logrus.Infof("using receipts mode %s (%d)", *receiptsModeStr, receiptsMode)
 	exporter.StartEthStoreExporter(*bnAddress, *enAddress, *updateInterval, *errorInterval, *sleepInterval, startDayReexport, endDayReexport, *concurrency, receiptsMode)
 	logrus.Println("exiting...")
