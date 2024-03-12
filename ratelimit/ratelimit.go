@@ -111,6 +111,7 @@ type RateLimit struct {
 }
 
 type RateLimitResult struct {
+	BlockRequest  bool
 	Time          time.Time
 	Weight        int64
 	Route         string
@@ -323,7 +324,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 		w.Header().Set(HeaderRateLimitRemainingMinute, strconv.FormatInt(rl.RemainingMinute, 10))
 		w.Header().Set(HeaderRateLimitRemainingSecond, strconv.FormatInt(rl.RemainingSecond, 10))
 
-		if rl.Weight > rl.Remaining {
+		if rl.BlockRequest {
 			w.Header().Set(HeaderRetryAfter, strconv.FormatInt(rl.Reset, 10))
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			err = postRateLimit(rl, http.StatusTooManyRequests)
@@ -805,16 +806,19 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		res.Remaining = 0
 		res.Reset = int64(timeUntilNextMonthUtc.Seconds())
 		res.Window = MonthTimeWindow
+		res.BlockRequest = true
 	} else if res.RateLimit.Hour > 0 && rateLimitHour.Val() > res.RateLimit.Hour {
 		res.Limit = res.RateLimit.Hour
 		res.Remaining = 0
 		res.Reset = int64(timeUntilNextHourUtc.Seconds())
 		res.Window = HourTimeWindow
+		res.BlockRequest = true
 	} else if res.RateLimit.Second > 0 && rateLimitSecond.Val() > res.RateLimit.Second {
 		res.Limit = res.RateLimit.Second
 		res.Remaining = 0
 		res.Reset = int64(1)
 		res.Window = SecondTimeWindow
+		res.BlockRequest = true
 	} else {
 		res.Limit = res.RateLimit.Second
 		res.Remaining = res.RateLimit.Second - rateLimitSecond.Val()
@@ -846,32 +850,24 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 		res.LimitMonth = res.RateLimit.Month
 	} else {
 		res.LimitMonth = max(res.RateLimit.Month, res.RateLimit.Hour, res.RateLimit.Second)
+		res.RemainingMonth = max(res.RemainingMonth, res.RemainingHour, res.RemainingSecond)
 	}
 	res.LimitDay = res.LimitMonth
+	res.RemainingDay = res.RemainingMonth
 
 	if res.RateLimit.Hour > 0 {
 		res.LimitHour = res.RateLimit.Hour
 	} else {
 		res.LimitHour = res.LimitMonth
+		res.RemainingHour = res.RemainingMonth
 	}
 	res.LimitMinute = res.LimitHour
+	res.RemainingMinute = res.RemainingHour
 
 	if res.RateLimit.Second > 0 {
 		res.LimitSecond = res.RateLimit.Second
 	} else {
 		res.LimitSecond = res.LimitHour
-	}
-
-	if res.RemainingMonth == 0 {
-		res.RemainingMonth = max(res.RemainingMonth, res.RemainingHour, res.RemainingSecond)
-	}
-	res.RemainingDay = res.RemainingMonth
-	if res.RemainingHour == 0 {
-		res.RemainingHour = res.RemainingMonth
-	}
-	res.RemainingMinute = res.RemainingHour
-	if res.RemainingSecond == 0 {
-		res.RemainingSecond = res.RemainingMinute
 	}
 
 	return res, nil
