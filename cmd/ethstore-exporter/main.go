@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	ethstore "github.com/gobitfly/eth.store"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sirupsen/logrus"
 )
@@ -25,6 +26,10 @@ func main() {
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	dayToReexport := flag.Int64("day", -1, "Day to reexport")
 	daysToReexport := flag.String("days", "", "Days to reexport")
+	receiptsModeStr := flag.String("receipts-mode", "single", "single or batch")
+	concurrency := flag.Int("concurrency", 1, "concurrency level to use (1 for no concurrency)")
+	debugLevel := flag.Uint64("debug-level", 0, "debug level to use for eth.store calculation output")
+
 	flag.Parse()
 
 	if *versionFlag {
@@ -82,6 +87,14 @@ func main() {
 		endDayReexport = *dayToReexport
 	}
 
-	exporter.StartEthStoreExporter(*bnAddress, *enAddress, *updateInterval, *errorInterval, *sleepInterval, startDayReexport, endDayReexport)
+	receiptsMode := ethstore.RECEIPTS_MODE_SINGLE
+
+	if *receiptsModeStr == "batch" {
+		receiptsMode = ethstore.RECEIPTS_MODE_BATCH
+	}
+
+	ethstore.SetDebugLevel(*debugLevel)
+	logrus.Infof("using receipts mode %s (%d)", *receiptsModeStr, receiptsMode)
+	exporter.StartEthStoreExporter(*bnAddress, *enAddress, *updateInterval, *errorInterval, *sleepInterval, startDayReexport, endDayReexport, *concurrency, receiptsMode)
 	logrus.Println("exiting...")
 }
