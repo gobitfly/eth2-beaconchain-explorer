@@ -1046,18 +1046,26 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	pwdOld := r.FormValue("old-password")
 
 	currentUser := struct {
-		ID        int64  `db:"id"`
-		Email     string `db:"email"`
-		Password  string `db:"password"`
-		Confirmed bool   `db:"email_confirmed"`
+		ID                      int64  `db:"id"`
+		Email                   string `db:"email"`
+		Password                string `db:"password"`
+		Confirmed               bool   `db:"email_confirmed"`
+		PasswordResetNotAllowed bool   `db:"password_reset_not_allowed"`
 	}{}
 
-	err = db.FrontendWriterDB.Get(&currentUser, "SELECT id, email, password, email_confirmed FROM users WHERE id = $1", user.UserID)
+	err = db.FrontendWriterDB.Get(&currentUser, "SELECT id, email, password, email_confirmed, password_reset_not_allowed FROM users WHERE id = $1", user.UserID)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			logger.Errorf("error retrieving password for user %v: %v", user.UserID, err)
 		}
 		session.AddFlash("Error: Invalid password!")
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	if currentUser.PasswordResetNotAllowed {
+		session.AddFlash("Error: Password reset is not allowed for this account!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return

@@ -553,12 +553,18 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rateLimitError *types.RateLimitError
+	var passwordResetNotAllowedError *types.PasswordResetNotAllowedError
 	err = sendPasswordResetEmail(email)
-	if err != nil && !errors.As(err, &rateLimitError) {
-		logger.Errorf("error sending reset-email: %v", err)
-		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
-	} else if err != nil && errors.As(err, &rateLimitError) {
-		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
+	if err != nil {
+		switch {
+		case errors.As(err, &passwordResetNotAllowedError):
+			utils.SetFlash(w, r, authSessionName, "Error: Password reset is not allowed for this user.")
+		case errors.As(err, &rateLimitError):
+			utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
+		default:
+			logger.Errorf("error sending reset-email: %v", err)
+			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		}
 	} else {
 		utils.SetFlash(w, r, authSessionName, "An email has been sent which contains a link to reset your password.")
 	}
@@ -735,6 +741,15 @@ func sendPasswordResetEmail(email string) error {
 		return err
 	}
 	defer tx.Rollback()
+
+	var passwordResetNotAllowed bool
+	err = tx.Get(&passwordResetNotAllowed, "SELECT COALESCE(password_reset_not_allowed, true) FROM users WHERE email = $1", email)
+	if err != nil {
+		return fmt.Errorf("error getting password_reset_not_allowed: %w", err)
+	}
+	if passwordResetNotAllowed {
+		return &types.PasswordResetNotAllowedError{}
+	}
 
 	var lastTs *time.Time
 	err = tx.Get(&lastTs, "SELECT password_reset_ts FROM users WHERE email = $1", email)

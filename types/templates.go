@@ -1326,6 +1326,13 @@ type StakeWithUsPageData struct {
 	FlashMessage string
 	RecaptchaKey string
 }
+
+type PasswordResetNotAllowedError struct{}
+
+func (e *PasswordResetNotAllowedError) Error() string {
+	return "password reset not allowed for this account"
+}
+
 type RateLimitError struct {
 	TimeLeft time.Duration
 }
