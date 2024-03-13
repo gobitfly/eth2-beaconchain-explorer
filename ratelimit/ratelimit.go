@@ -183,7 +183,7 @@ func (r *responseWriterDelegator) Status() int {
 }
 
 var DefaultRequestFilter = func(req *http.Request) bool {
-	if req.URL == nil || !strings.HasPrefix(req.URL.Path, "/api") || strings.HasPrefix(req.URL.Path, "/api/i") || strings.HasPrefix(req.URL.Path, "/api/v1/docs") || strings.HasPrefix(req.URL.Path, "/api/v2/docs") {
+	if req.URL == nil || !strings.HasPrefix(req.URL.Path, "/api") || strings.HasPrefix(req.URL.Path, "/api/i/") || strings.HasPrefix(req.URL.Path, "/api/v1/docs/") || strings.HasPrefix(req.URL.Path, "/api/v2/docs/") {
 		return false
 	}
 	return true
