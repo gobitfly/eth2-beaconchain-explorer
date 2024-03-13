@@ -415,6 +415,15 @@ func disableUserPerEmail() error {
 	if opts.Email == "" {
 		return errors.New("no email specified")
 	}
+
+	if utils.Config.Frontend.SessionSecret == "" {
+		return fmt.Errorf("session secret is empty, please provide a secure random string")
+	}
+
+	logrus.Infof("initializing session store: %v", utils.Config.RedisSessionStoreEndpoint)
+
+	utils.InitSessionStore(utils.Config.Frontend.SessionSecret)
+
 	user := struct {
 		ID    uint64 `db:"id"`
 		Email string `db:"email"`
