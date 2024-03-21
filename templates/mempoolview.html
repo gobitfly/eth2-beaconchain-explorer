@@ -2,9 +2,9 @@
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
   <script type="text/javascript" src="/js/datatable_num-html.js"></script>
-
   <script>
-    $("#mempool").DataTable({
+    $(document).ready(function () {
+      var tblOpts = {
       searchDelay: 0,
       searching: true,
       pageLength: 25,
@@ -28,9 +28,29 @@
           targets: 5,
           orderable: true,
         }
-      ],
-    })
+      ]
+    }
+
+    var usp = new URLSearchParams(window.location.search)
+    var q = usp.get("q")
+    var t = $("#mempool").DataTable(tblOpts)
+
+    if (q) {
+      t.search(q)
+      t.draw()
+    }
+
     document.getElementById("mempool-body").classList.remove("d-none")
+
+    $(document).on("input", "#mempool_filter > label > input", function (ev) {
+        if (ev && ev.target && ev.target.value) {
+          var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+          window.history.replaceState(null, "Mempool", newUrl)
+        } else {
+          window.history.replaceState(null, "Mempool", window.location.pathname)
+        }
+    })
+    })
   </script>
 {{ end }}
 
