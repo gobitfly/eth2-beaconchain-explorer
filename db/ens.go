@@ -455,7 +455,7 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 
 	name, err := go_ens.ReverseResolve(client, address)
 	if err != nil {
-		if err.Error() == "not a resolver" || err.Error() == "no resolution" {
+		if err.Error() == "not a resolver" || err.Error() == "no resolution" || err.Error() == "execution reverted" {
 			logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", address, err.Error())
 			return nil
 		}
@@ -545,7 +545,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	if isPrimaryName == nil {
 		reverseName, err := go_ens.ReverseResolve(client, addr)
 		if err != nil {
-			if err.Error() == "not a resolver" || err.Error() == "no resolution" {
+			if err.Error() == "not a resolver" || err.Error() == "no resolution" || err.Error() == "execution reverted" {
 				logger.Warnf("reverse resolving address [%v] for name [%v] resulted in an error [%s], marking entry as not primary", addr, name, err.Error())
 			} else {
 				return fmt.Errorf("error could not reverse resolve address [%v]: %w", addr, err)
