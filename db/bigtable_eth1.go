@@ -750,7 +750,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, trans
 	g.SetLimit(int(concurrency))
 	keys := []string{}
 
-	logrus.Infof("indexing blocks from %d to %d", start, end)
+	// logrus.Infof("indexing blocks from %d to %d", start, end)
 	batchSize := int64(1000)
 	for i := start; i <= end; i += batchSize {
 		firstBlock := int64(i)
@@ -763,7 +763,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, trans
 			blocksChan := make(chan *types.Eth1Block, batchSize)
 
 			go func(stream chan *types.Eth1Block) {
-				logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
+				// logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
 				high := lastBlock
 				low := lastBlock - batchSize + 1
 				if int64(firstBlock) > low {
@@ -830,7 +830,7 @@ func (bigtable *Bigtable) IndexEventsWithTransformersDry(start, end int64, trans
 	}
 
 	if err := g.Wait(); err == nil {
-		logrus.Info("data table indexing completed")
+		// logrus.Info("data table indexing completed")
 	} else {
 		utils.LogError(err, "wait group error", 0)
 		return keys, err

@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/sirupsen/logrus"
 
 	go_ens "github.com/wealdtech/go-ens/v3"
 	"github.com/wealdtech/go-ens/v3/contracts/registry"
@@ -93,17 +94,18 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		// We look for the different ENS events,
 		// 	most will be triggered by a main registrar contract,
 		//  but some are triggered on a different contracts (like a resolver contract), these will be validated when loading the related events
-		isRegistarContract := false
-
-		if len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 {
-			isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
-			for _, itx := range tx.Itx {
-				if !isRegistarContract {
-					isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(itx.To).String())
-					break
-				}
-			}
-		}
+		// isRegistarContract := false
+		// if len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 {
+		// 	isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
+		// 	for _, itx := range tx.Itx {
+		// 		if !isRegistarContract {
+		// 			isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(itx.To).String())
+		// 			if isRegistarContract {
+		// 				break
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		foundNameIndex := -1
 		foundResolverIndex := -1
@@ -117,7 +119,8 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most %d but got: %v tx: %x", ITX_PER_TX_LIMIT-1, j, tx.GetHash())
 			}
-			for _, lTopic := range log.GetTopics() {
+			isRegistarContract := utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(log.Address).String())
+			for k, lTopic := range log.GetTopics() {
 				if isRegistarContract {
 					if bytes.Equal(lTopic, ens.NameRegisteredTopic) || bytes.Equal(lTopic, ens.NameRegisteredV2Topic) {
 						foundNameIndex = j
@@ -125,14 +128,33 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 						foundResolverIndex = j
 					} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
 						foundNameRenewedIndex = j
+					} else if bytes.Equal(lTopic, ens.NewOwnerTopic) {
+						foundNewOwnerIndex = j
 					}
 				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
 					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
 				} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
 					foundNameChangedIndex = j
-				} else if bytes.Equal(lTopic, ens.NewOwnerTopic) {
-					foundNewOwnerIndex = j
 				}
+				if fmt.Sprintf("%#x", tx.Hash) == "0xddd9f260af827039d9304e0b04aae45601f67d6c9658d6f9d5018195b1d18f4f" {
+					logrus.Infof("DEBUG: tx:%#x %v: %v: %#x", tx.Hash, j, k, lTopic)
+				}
+			}
+		}
+
+		if true {
+			switch {
+			case fmt.Sprintf("%#x", tx.Hash) == "0x6cb6cd3b5ceb992a6110bf2de0508989e12ac03876846bdbb3184ff4915b39c5":
+				fmt.Printf("DEBUG: itxs: %#x %v\n", tx.Hash, len(tx.Itx))
+				for i, itx := range tx.Itx {
+					fmt.Printf("DEBUG: itx: %v: %#x -> %#x %s %v\n", i, itx.From, itx.To, common.BytesToAddress(itx.To).String(), utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(itx.To).String()))
+				}
+			case fmt.Sprintf("%#x", tx.Hash) == "0x30d164ba6a9f8b45229d98f2c324fdc38b958d24d424ab6b2ea064a9045754d6":
+				fmt.Printf("DEBUG: itxs: %#x %v\n", tx.Hash, len(tx.Itx))
+				for i, itx := range tx.Itx {
+					fmt.Printf("DEBUG: itx: %v: %#x -> %#x %s %v\n", i, itx.From, itx.To, common.BytesToAddress(itx.To).String(), utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(itx.To).String()))
+				}
+			default:
 			}
 		}
 
@@ -566,7 +588,6 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	addr, err := go_ens.Resolve(client, name)
 	if err != nil {
-		logger.WithField("error", err).WithField("name", name).Warnf("could not resolve name")
 		if err.Error() == "unregistered name" ||
 			err.Error() == "no address" ||
 			err.Error() == "no resolver" ||
@@ -575,6 +596,7 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 			err.Error() == "invalid jump destination" ||
 			err.Error() == "invalid opcode: INVALID" {
 			// the given name is not available anymore or resolving it did not work properly => we can remove it from the db (if it is there)
+			logger.WithField("error", err).WithField("name", name).Warnf("could not resolve name")
 			err = removeEnsName(client, name)
 			if err != nil {
 				return fmt.Errorf("error removing ens name after resolve failed [%v]: %w", name, err)
