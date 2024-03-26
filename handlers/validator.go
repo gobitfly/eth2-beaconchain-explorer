@@ -731,8 +731,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if len(actualSyncPeriods) > 0 {
 			// get sync stats from validator_stats
 			syncStats := types.SyncCommitteesStats{}
-			// check if validator has been active in the last exported stats day
-			if lastStatsDay > 0 && validatorPageData.ActivationEpoch <= lastStatsDay*utils.EpochsPerDay() {
+			if lastStatsDay > 0 {
 				err = db.ReaderDb.Get(&syncStats, `
 					SELECT
 						COALESCE(participated_sync_total, 0) AS participated_sync,
@@ -740,7 +739,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 						COALESCE(orphaned_sync_total, 0) AS orphaned_sync
 					FROM validator_stats
 					WHERE validatorindex = $1 AND day = $2`, index, lastStatsDay)
-				if err != nil {
+				if err != nil && err != sql.ErrNoRows {
 					return fmt.Errorf("error getting validator syncStats: %w", err)
 				}
 			}
