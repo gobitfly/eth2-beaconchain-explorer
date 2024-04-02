@@ -21,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/sirupsen/logrus"
 
 	go_ens "github.com/wealdtech/go-ens/v3"
 	"github.com/wealdtech/go-ens/v3/contracts/registry"
@@ -75,6 +74,49 @@ import (
 //
 // ==================================================
 
+/*
+0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0 NewResolverTopic
+0xca6abbe9d7f11422cb6ca7629fbf6fe9efb1c621f71ce8f02b9f2a230097404f NameRegisteredTopic
+0x69e37f151eb98a09618ddaa80c8cfaf1ce5996867c489f45b555b412271ebf27 NameRegisteredV2Topic
+0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae NameRenewedTopic
+0x65412581168e88a1e60c6459d7f44ae83ad0832e670826c05a4e2476b57af752 AddressChangedTopic
+0xb7d29e911041e8d9b843369e890bcb72c9388692ba48b65ac54e7214c4c348f7 NameChangedTopic
+0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82 NewOwnerTopic
+
+
+0xb3d987963d01b2f68493b4bdb130988f157ea43070d4ad840fee0466ed9370d9 NameRegistered(uint256,address,uint256)
+0x9b87a00e30f1ac65d898f070f8a3488fe60517182d0a2098e1b4b93a54aa9bd6 NameRenewed(uint256,uint256)
+0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef Transfer(address,address,uint256)
+0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82 NewOwner(bytes32,bytes32,address)
+0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0 NewResolver(bytes32,address)
+0x1d4f9bbfc9cab89d66e1a1562f2233ccbf1308cb4f63de2ead5787adddb8fa68 NewTTL(bytes32,uint64)
+0xd4735d920b0f87494915f556dd9b54c8f309026070caea5c737245152564d266 Transfer(bytes32,address)
+0x69e37f151eb98a09618ddaa80c8cfaf1ce5996867c489f45b555b412271ebf27 NameRegistered(string,bytes32,address,uint256,uint256,uint256)
+0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae NameRenewed(string,bytes32,uint256,uint256)
+0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred(address,address)
+0x52d7d861f09ab3d26239d492e8968629f95e9e318cf0b73bfddc441522a15fd2 AddrChanged(bytes32,address)
+0x65412581168e88a1e60c6459d7f44ae83ad0832e670826c05a4e2476b57af752 AddressChanged(bytes32,uint256,bytes)
+*/
+
+var topicsMap = map[string]string{
+	// old-registrar
+	"0xca6abbe9d7f11422cb6ca7629fbf6fe9efb1c621f71ce8f02b9f2a230097404f": "NameRegistered(string,bytes32,address,uint256,uint256)",
+
+	// BaseRegistrarImplementation
+	"0x69e37f151eb98a09618ddaa80c8cfaf1ce5996867c489f45b555b412271ebf27": "NameRegistered(uint256,address,uint256)",
+	"0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae": "NameRenewed",
+	"0x65412581168e88a1e60c6459d7f44ae83ad0832e670826c05a4e2476b57af752": "AddressChanged",
+	"0xb7d29e911041e8d9b843369e890bcb72c9388692ba48b65ac54e7214c4c348f7": "NameChanged",
+
+	// ETHRegistrarController
+
+	// ENSRegistry
+	"0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82": "NewOwner(bytes32,bytes32,address)",
+	"0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0": "NewResolver(bytes32,address)",
+	"0x1d4f9bbfc9cab89d66e1a1562f2233ccbf1308cb4f63de2ead5787adddb8fa68": "NewTTL(bytes32,uint64)",
+	"0xd4735d920b0f87494915f556dd9b54c8f309026070caea5c737245152564d266": "Transfer(bytes32,address)",
+}
+
 func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
@@ -90,22 +132,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		if i >= TX_PER_BLOCK_LIMIT {
 			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most %d but got: %v, tx: %x", TX_PER_BLOCK_LIMIT-1, i, tx.GetHash())
 		}
-
-		// We look for the different ENS events,
-		// 	most will be triggered by a main registrar contract,
-		//  but some are triggered on a different contracts (like a resolver contract), these will be validated when loading the related events
-		// isRegistarContract := false
-		// if len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 {
-		// 	isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
-		// 	for _, itx := range tx.Itx {
-		// 		if !isRegistarContract {
-		// 			isRegistarContract = utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(itx.To).String())
-		// 			if isRegistarContract {
-		// 				break
-		// 			}
-		// 		}
-		// 	}
-		// }
 
 		foundNameIndex := -1
 		foundResolverIndex := -1
@@ -136,8 +162,9 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
 					foundNameChangedIndex = j
 				}
-				if fmt.Sprintf("%#x", tx.Hash) == "0xddd9f260af827039d9304e0b04aae45601f67d6c9658d6f9d5018195b1d18f4f" {
-					logrus.Infof("DEBUG: tx:%#x %v: %v: %#x", tx.Hash, j, k, lTopic)
+
+				if false && topicsMap[fmt.Sprintf("%#x", lTopic)] != "" {
+					fmt.Printf("DEBUG: tx:%#x %v: %v: %#x: %v\n", tx.Hash, j, k, lTopic, topicsMap[fmt.Sprintf("%#x", lTopic)])
 				}
 			}
 		}

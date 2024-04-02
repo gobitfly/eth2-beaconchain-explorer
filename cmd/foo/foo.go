@@ -55,6 +55,7 @@ var opts = struct {
 	Email               string
 	Data                string
 	DataHex             string
+	Name                string
 	DryRun              bool
 }{}
 
@@ -86,6 +87,7 @@ func main() {
 	flag.StringVar(&opts.Email, "email", "", "email to debug")
 	flag.StringVar(&opts.Data, "data", "", "data to debug")
 	flag.StringVar(&opts.DataHex, "data-hex", "", "data to debug")
+	flag.StringVar(&opts.Name, "name", "", "name")
 	dryRun := flag.String("dry-run", "true", "if 'false' it deletes all rows starting with the key, per default it only logs the rows that would be deleted, but does not really delete them")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
@@ -106,23 +108,12 @@ func main() {
 	}
 	utils.Config = cfg
 
-	chainIdString := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
-	chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
-
 	wg := &sync.WaitGroup{}
-	wg.Add(5)
+	wg.Add(2)
 	go func() {
+		chainIDBig := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 		var err error
-		bt, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
-		if err != nil {
-			utils.LogFatal(err, "error initializing bigtable", 0)
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		var err error
-		rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainIDBig)
+		rpcClient, err = rpc.NewLighthouseClient("http://"+utils.Config.Indexer.Node.Host+":"+utils.Config.Indexer.Node.Port, chainIDBig)
 		if err != nil {
 			utils.LogFatal(err, "lighthouse client error", 0)
 		}
@@ -137,58 +128,11 @@ func main() {
 		}
 		wg.Done()
 	}()
-
-	go func() {
-		db.MustInitDB(&types.DatabaseConfig{
-			Username:     cfg.WriterDatabase.Username,
-			Password:     cfg.WriterDatabase.Password,
-			Name:         cfg.WriterDatabase.Name,
-			Host:         cfg.WriterDatabase.Host,
-			Port:         cfg.WriterDatabase.Port,
-			MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
-			MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
-		}, &types.DatabaseConfig{
-			Username:     cfg.ReaderDatabase.Username,
-			Password:     cfg.ReaderDatabase.Password,
-			Name:         cfg.ReaderDatabase.Name,
-			Host:         cfg.ReaderDatabase.Host,
-			Port:         cfg.ReaderDatabase.Port,
-			MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
-			MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
-		})
-		wg.Done()
-	}()
-	go func() {
-		db.MustInitFrontendDB(&types.DatabaseConfig{
-			Username:     cfg.Frontend.WriterDatabase.Username,
-			Password:     cfg.Frontend.WriterDatabase.Password,
-			Name:         cfg.Frontend.WriterDatabase.Name,
-			Host:         cfg.Frontend.WriterDatabase.Host,
-			Port:         cfg.Frontend.WriterDatabase.Port,
-			MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
-			MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
-		}, &types.DatabaseConfig{
-			Username:     cfg.Frontend.ReaderDatabase.Username,
-			Password:     cfg.Frontend.ReaderDatabase.Password,
-			Name:         cfg.Frontend.ReaderDatabase.Name,
-			Host:         cfg.Frontend.ReaderDatabase.Host,
-			Port:         cfg.Frontend.ReaderDatabase.Port,
-			MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
-			MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
-		})
-		wg.Done()
-	}()
-
 	wg.Wait()
-
-	defer db.ReaderDb.Close()
-	defer db.WriterDb.Close()
-
-	defer db.FrontendReaderDB.Close()
-	defer db.FrontendWriterDB.Close()
 
 	switch opts.Command {
 	case "foo":
+		mustInitDbs()
 		err = Foo()
 	case "foo2":
 		err = Foo2()
@@ -206,6 +150,8 @@ func main() {
 		err = debugSessions()
 	case "bt-get-keys-by-prefix":
 		err = btGetKeysByPrefix()
+	case "ens-find-change-block":
+		err = ensFindChangeBlock()
 	case "keccak256":
 		err = keccak256()
 	default:
@@ -217,6 +163,75 @@ func main() {
 	} else {
 		logrus.Infof("command executed successfully")
 	}
+}
+
+func mustInitDbs() {
+	chainIdString := strconv.FormatUint(utils.Config.Chain.ClConfig.DepositChainID, 10)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
+	go func() {
+		var err error
+		bt, err = db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, chainIdString, utils.Config.RedisCacheEndpoint)
+		if err != nil {
+			utils.LogFatal(err, "error initializing bigtable", 0)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		db.MustInitDB(&types.DatabaseConfig{
+			Username:     utils.Config.WriterDatabase.Username,
+			Password:     utils.Config.WriterDatabase.Password,
+			Name:         utils.Config.WriterDatabase.Name,
+			Host:         utils.Config.WriterDatabase.Host,
+			Port:         utils.Config.WriterDatabase.Port,
+			MaxOpenConns: utils.Config.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: utils.Config.WriterDatabase.MaxIdleConns,
+		}, &types.DatabaseConfig{
+			Username:     utils.Config.ReaderDatabase.Username,
+			Password:     utils.Config.ReaderDatabase.Password,
+			Name:         utils.Config.ReaderDatabase.Name,
+			Host:         utils.Config.ReaderDatabase.Host,
+			Port:         utils.Config.ReaderDatabase.Port,
+			MaxOpenConns: utils.Config.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: utils.Config.ReaderDatabase.MaxIdleConns,
+		})
+		wg.Done()
+	}()
+	go func() {
+		db.MustInitFrontendDB(&types.DatabaseConfig{
+			Username:     utils.Config.Frontend.WriterDatabase.Username,
+			Password:     utils.Config.Frontend.WriterDatabase.Password,
+			Name:         utils.Config.Frontend.WriterDatabase.Name,
+			Host:         utils.Config.Frontend.WriterDatabase.Host,
+			Port:         utils.Config.Frontend.WriterDatabase.Port,
+			MaxOpenConns: utils.Config.Frontend.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: utils.Config.Frontend.WriterDatabase.MaxIdleConns,
+		}, &types.DatabaseConfig{
+			Username:     utils.Config.Frontend.ReaderDatabase.Username,
+			Password:     utils.Config.Frontend.ReaderDatabase.Password,
+			Name:         utils.Config.Frontend.ReaderDatabase.Name,
+			Host:         utils.Config.Frontend.ReaderDatabase.Host,
+			Port:         utils.Config.Frontend.ReaderDatabase.Port,
+			MaxOpenConns: utils.Config.Frontend.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: utils.Config.Frontend.ReaderDatabase.MaxIdleConns,
+		})
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	go func() {
+		utils.WaitForCtrlC()
+		logrus.Infof("closing db-connections")
+
+		db.ReaderDb.Close()
+		db.WriterDb.Close()
+
+		db.FrontendReaderDB.Close()
+		db.FrontendWriterDB.Close()
+	}()
 }
 
 func keccak256() error {
@@ -237,6 +252,10 @@ type ResolveAtBlockResult struct {
 	ResolverAddr        common.Address
 	Expires             time.Time
 	IsPrimary           bool
+}
+
+func (r *ResolveAtBlockResult) String() string {
+	return fmt.Sprintf("name: %v, nameHash: %#x, resolvedAddr: %v, expires: %v, isPrimary: %v, reverseResolvedName: %v", r.Name, r.NameHash, r.ResolvedAddr, r.Expires, r.IsPrimary, r.ReverseResolvedName)
 }
 
 func ResolveAtBlock(name string, block uint64) (*ResolveAtBlockResult, error) {
@@ -343,7 +362,7 @@ func ResolveAtBlock(name string, block uint64) (*ResolveAtBlockResult, error) {
 	_, err = reverseResolverContract.Name(callOpts, reverseNameHash0)
 	if err != nil {
 		// return nil, fmt.Errorf("not a resolver")
-		fmt.Printf("contract is not a reslover: %v\n", err)
+		// fmt.Printf("contract is not a reslover: %v\n", err)
 	} else {
 		reverseResolvedName, err = reverseResolverContract.Name(callOpts, reverseNameHash)
 		if err != nil {
@@ -363,6 +382,7 @@ func ResolveAtBlock(name string, block uint64) (*ResolveAtBlockResult, error) {
 }
 
 func Foo5() error {
+	mustInitDbs()
 	// for _, blockNumber := range []uint64{19517000} {
 	// 	res, err := ResolveAtBlock("vitalik.eth", blockNumber)
 	// 	if err != nil {
@@ -456,6 +476,7 @@ func btGetKeysByPrefix() error {
 }
 
 func debugSessions() error {
+	mustInitDbs()
 	if opts.Email == "" {
 		return errors.New("no email specified")
 	}
@@ -505,7 +526,7 @@ func debugSessions() error {
 }
 
 func debugEns() error {
-
+	mustInitDbs()
 	fmt.Printf("ctrcts: %v\n", utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
@@ -601,6 +622,7 @@ func extractGaps(data []uint64) []string {
 }
 
 func bids2555() error {
+	mustInitDbs()
 	/*
 		gnosis
 			v2SchemaCutOffEpoch: 725500
@@ -635,6 +657,7 @@ func bids2555() error {
 
 func Foo() error {
 	/*
+		mustInitDbs()
 		cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 		transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 		transforms = append(transforms, bt.TransformEnsNameRegistered)
@@ -716,7 +739,66 @@ func Foo() error {
 	return nil
 }
 
+func ensFindChangeBlock() error {
+	if opts.Name == "" {
+		return fmt.Errorf("no name specified")
+	}
+	if opts.StartBlock == 0 {
+		return fmt.Errorf("no start block specified")
+	}
+
+	latestBlockNumber, err := erigonClient.GetNativeClient().BlockNumber(context.Background())
+	if err != nil {
+		return fmt.Errorf("error getting latest block number: %w", err)
+	}
+
+	latestBlockRes, err := ResolveAtBlock(opts.Name, uint64(latestBlockNumber))
+	if err != nil {
+		return err
+	}
+
+	startBlockRes, err := ResolveAtBlock(opts.Name, opts.StartBlock)
+	if err != nil {
+		return err
+	}
+
+	check := func(a, b *ResolveAtBlockResult) bool {
+		return a.Expires.Equal(b.Expires)
+		// return a.IsPrimary == b.IsPrimary
+	}
+
+	if check(startBlockRes, latestBlockRes) {
+		return fmt.Errorf("no change between start block %v and latest block %v", opts.StartBlock, latestBlockNumber)
+	}
+
+	fmt.Printf("start block: %v (primary: %v), latest block: %v\n", opts.StartBlock, startBlockRes.IsPrimary, latestBlockNumber)
+
+	upperBound := latestBlockNumber
+	lowerBound := opts.StartBlock
+	n := lowerBound + (upperBound-lowerBound)/2
+	for {
+		res, err := ResolveAtBlock(opts.Name, n)
+		if err != nil {
+			return fmt.Errorf("error resolving at block %v: %w", upperBound, err)
+		}
+		if check(res, startBlockRes) {
+			lowerBound = lowerBound + (upperBound-lowerBound)/2
+			n = lowerBound + (upperBound-lowerBound)/2
+		} else {
+			upperBound = lowerBound + (upperBound-lowerBound)/2
+			n = lowerBound + (upperBound-lowerBound)/2
+		}
+		fmt.Printf("checked block %v: lower/upper: %v/%v: %v\n", n, lowerBound, upperBound, *res)
+		if upperBound-lowerBound <= 1 {
+			fmt.Printf("primary changed at block %v\n", upperBound)
+			return nil
+		}
+	}
+	return nil
+}
+
 func Foo4() error {
+	mustInitDbs()
 
 	// for i := 19294310; i < 19517650; i += 1 {
 	// 	res, err := ResolveAtBlock("mar-a-frogo.eth", uint64(i))
@@ -748,6 +830,11 @@ func Foo4() error {
 	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
 	transforms = append(transforms, bt.TransformEnsNameRegistered)
 
+	latestBlockNumber, err := erigonClient.GetNativeClient().BlockNumber(context.Background())
+	if err != nil {
+		return err
+	}
+
 	type DebugEnsName struct {
 		Name       string
 		AddressHex string
@@ -755,8 +842,14 @@ func Foo4() error {
 	}
 
 	debugEnsNames := []DebugEnsName{
+		// time="2024-03-25T22:02:43Z" level=warning msg="updating ens entry: is_primary_name = false" addr=0xd613cb815902a1a6c469b899a18ab9b1901e8c30 name=alexneto.eth reason="failed reverse-resolve: no resolution"
+		// {"alexneto.eth", "0xD613cb815902a1A6C469b899a18aB9B1901E8c30", []int64{16393744, 16393755, 17741613, 18185315, int64(latestBlockNumber)}},
+
+		// time="2024-03-25T18:38:24Z" level=warning msg="updating ens entry: is_primary_name = false" addr=0x1aa571bb84242a6acfb6df1a6f232266d0a753b8 name=mysets.eth reason="failed reverse-resolve: not a resolver"
+		{"mysets.eth", "0x1AA571bb84242A6ACfB6Df1A6f232266D0A753b8", []int64{8754994, 9432092, 15283509, int64(latestBlockNumber)}},
+
 		// {"mar-a-frogo.eth", "0x028B0363ffD8c9DC545A4eB60C085177cd31436B", []int64{14060476, 14060507, 17563418, 19294312, 19517650}},
-		{"mar-a-frogo.eth", "0x028B0363ffD8c9DC545A4eB60C085177cd31436B", []int64{19294312}},
+		// {"mar-a-frogo.eth", "0x028B0363ffD8c9DC545A4eB60C085177cd31436B", []int64{19294312}},
 		// {"mar-a-frogo.eth", "0x028B0363ffD8c9DC545A4eB60C085177cd31436B", []int64{19400000, 19517650}},
 
 		/*
@@ -855,6 +948,7 @@ func Foo4() error {
 }
 
 func Foo3() error {
+	mustInitDbs()
 	logrus.WithFields(logrus.Fields{"dry": opts.DryRun}).Infof("command: fix-ens")
 
 	addrs := []struct {
@@ -956,6 +1050,7 @@ func Foo3() error {
 }
 
 func Foo2() error {
+	mustInitDbs()
 	for _, name := range []string{
 		"kozzmozzg.eth",
 	} {
@@ -1042,6 +1137,7 @@ func Foo2() error {
 }
 
 func TransformEns(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	mustInitDbs()
 	// filterer, err := go_ens_contracts_resolver.NewContractFilterer(common.Address{}, nil)
 	// if err != nil {
 	// 	return nil, nil, err
@@ -1061,6 +1157,7 @@ func TransformEns(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types
 }
 
 func exportHistoricPrices(dayStart uint64, dayEnd uint64) {
+	mustInitDbs()
 	logrus.Infof("exporting historic prices for days %v - %v", dayStart, dayEnd)
 	for day := dayStart; day <= dayEnd; day++ {
 		timeStart := time.Now()
