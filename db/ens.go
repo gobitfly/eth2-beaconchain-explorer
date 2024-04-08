@@ -83,19 +83,250 @@ import (
 0xb7d29e911041e8d9b843369e890bcb72c9388692ba48b65ac54e7214c4c348f7 NameChangedTopic
 0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82 NewOwnerTopic
 
+0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5
+0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e
+0x253553366Da8546fC250F225fe3d25d0C782303b
 
-0xb3d987963d01b2f68493b4bdb130988f157ea43070d4ad840fee0466ed9370d9 NameRegistered(uint256,address,uint256)
-0x9b87a00e30f1ac65d898f070f8a3488fe60517182d0a2098e1b4b93a54aa9bd6 NameRenewed(uint256,uint256)
-0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef Transfer(address,address,uint256)
-0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82 NewOwner(bytes32,bytes32,address)
-0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0 NewResolver(bytes32,address)
-0x1d4f9bbfc9cab89d66e1a1562f2233ccbf1308cb4f63de2ead5787adddb8fa68 NewTTL(bytes32,uint64)
-0xd4735d920b0f87494915f556dd9b54c8f309026070caea5c737245152564d266 Transfer(bytes32,address)
-0x69e37f151eb98a09618ddaa80c8cfaf1ce5996867c489f45b555b412271ebf27 NameRegistered(string,bytes32,address,uint256,uint256,uint256)
-0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae NameRenewed(string,bytes32,uint256,uint256)
-0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred(address,address)
-0x52d7d861f09ab3d26239d492e8968629f95e9e318cf0b73bfddc441522a15fd2 AddrChanged(bytes32,address)
-0x65412581168e88a1e60c6459d7f44ae83ad0832e670826c05a4e2476b57af752 AddressChanged(bytes32,uint256,bytes)
+
+// https://go.dev/play/p/F-TVEguGcpK
+
+Registry                       E 0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82 NewOwner(bytes32,bytes32,address)
+Registry                       E 0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0 NewResolver(bytes32,address)
+Registry                       E 0x1d4f9bbfc9cab89d66e1a1562f2233ccbf1308cb4f63de2ead5787adddb8fa68 NewTTL(bytes32,uint64)
+Registry                       E 0xd4735d920b0f87494915f556dd9b54c8f309026070caea5c737245152564d266 Transfer(bytes32,address)
+Registry                       E 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31 ApprovalForAll(address,address,bool)
+Registry                       M 0x14ab9038 setTTL(bytes32,uint64)
+Registry                       M 0xe985e9c5 isApprovedForAll(address,address)
+Registry                       M 0xb83f8663 old()
+Registry                       M 0xf79fe538 recordExists(bytes32)
+Registry                       M 0x0178b8bf resolver(bytes32)
+Registry                       M 0xa22cb465 setApprovalForAll(address,bool)
+Registry                       M 0xcf408823 setRecord(bytes32,address,address,uint64)
+Registry                       M 0x06ab5923 setSubnodeOwner(bytes32,bytes32,address)
+Registry                       M 0x16a25cbd ttl(bytes32)
+Registry                       M 0x02571be3 owner(bytes32)
+Registry                       M 0x5b0fc9c3 setOwner(bytes32,address)
+Registry                       M 0x1896f70a setResolver(bytes32,address)
+Registry                       M 0x5ef2c7f0 setSubnodeRecord(bytes32,bytes32,address,address,uint64)
+BaseRegistrar                  E 0xb3d987963d01b2f68493b4bdb130988f157ea43070d4ad840fee0466ed9370d9 NameRegistered(uint256,address,uint256)
+BaseRegistrar                  E 0x9b87a00e30f1ac65d898f070f8a3488fe60517182d0a2098e1b4b93a54aa9bd6 NameRenewed(uint256,uint256)
+BaseRegistrar                  E 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef Transfer(address,address,uint256)
+BaseRegistrar                  E 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31 ApprovalForAll(address,address,bool)
+BaseRegistrar                  E 0x33d83959be2573f5453b12eb9d43b3499bc57d96bd2f067ba44803c859e81113 ControllerRemoved(address)
+BaseRegistrar                  E 0xea3d7e1195a15d2ddcd859b01abd4c6b960fa9f9264e499a70a90c7f0c64b717 NameMigrated(uint256,address,uint256)
+BaseRegistrar                  E 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925 Approval(address,address,uint256)
+BaseRegistrar                  E 0x0a8bb31534c0ed46f380cb867bd5c803a189ced9a764e30b3a4991a9901d7474 ControllerAdded(address)
+BaseRegistrar                  E 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred(address,address)
+BaseRegistrar                  M 0xa22cb465 setApprovalForAll(address,bool)
+BaseRegistrar                  M 0x4e543b26 setResolver(address)
+BaseRegistrar                  M 0x01ffc9a7 supportsInterface(bytes4)
+BaseRegistrar                  M 0xf2fde38b transferOwnership(address)
+BaseRegistrar                  M 0xc1a287e2 GRACE_PERIOD()
+BaseRegistrar                  M 0xa7fc7a07 addController(address)
+BaseRegistrar                  M 0x96e494e8 available(uint256)
+BaseRegistrar                  M 0x081812fc getApproved(uint256)
+BaseRegistrar                  M 0xc475abff renew(uint256,uint256)
+BaseRegistrar                  M 0x70a08231 balanceOf(address)
+BaseRegistrar                  M 0xda8c229e controllers(address)
+BaseRegistrar                  M 0xe985e9c5 isApprovedForAll(address,address)
+BaseRegistrar                  M 0x3f15457f ens()
+BaseRegistrar                  M 0xb88d4fde safeTransferFrom(address,address,uint256,bytes)
+BaseRegistrar                  M 0x23b872dd transferFrom(address,address,uint256)
+BaseRegistrar                  M 0xddf7fcb0 baseNode()
+BaseRegistrar                  M 0x6352211e ownerOf(uint256)
+BaseRegistrar                  M 0x095ea7b3 approve(address,uint256)
+BaseRegistrar                  M 0x0e297b45 registerOnly(uint256,address,uint256)
+BaseRegistrar                  M 0x42842e0e safeTransferFrom(address,address,uint256)
+BaseRegistrar                  M 0x8f32d59b isOwner()
+BaseRegistrar                  M 0xd6e4fa86 nameExpires(uint256)
+BaseRegistrar                  M 0x8da5cb5b owner()
+BaseRegistrar                  M 0xfca247ac register(uint256,address,uint256)
+BaseRegistrar                  M 0x715018a6 renounceOwnership()
+BaseRegistrar                  M 0x28ed4f6c reclaim(uint256,address)
+BaseRegistrar                  M 0xf6a74ed7 removeController(address)
+ETHRegistrarController         E 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred(address,address)
+ETHRegistrarController         E 0x69e37f151eb98a09618ddaa80c8cfaf1ce5996867c489f45b555b412271ebf27 NameRegistered(string,bytes32,address,uint256,uint256,uint256)
+ETHRegistrarController         E 0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae NameRenewed(string,bytes32,uint256,uint256)
+ETHRegistrarController         M 0x5d3590d5 recoverFunds(address,address,uint256)
+ETHRegistrarController         M 0x715018a6 renounceOwnership()
+ETHRegistrarController         M 0x83e7f6ff rentPrice(string,uint256)
+ETHRegistrarController         M 0x9791c097 valid(string)
+ETHRegistrarController         M 0x3ccfd60b withdraw()
+ETHRegistrarController         M 0xa8e5fbc0 nameWrapper()
+ETHRegistrarController         M 0x839df945 commitments(bytes32)
+ETHRegistrarController         M 0x8d839ffe minCommitmentAge()
+ETHRegistrarController         M 0x8da5cb5b owner()
+ETHRegistrarController         M 0x74694a2b register(string,address,uint256,bytes32,address,bytes[],bool,uint16)
+ETHRegistrarController         M 0x8a95b09f MIN_REGISTRATION_DURATION()
+ETHRegistrarController         M 0xacf1a841 renew(string,uint256)
+ETHRegistrarController         M 0x01ffc9a7 supportsInterface(bytes4)
+ETHRegistrarController         M 0xf2fde38b transferOwnership(address)
+ETHRegistrarController         M 0xf14fcbc8 commit(bytes32)
+ETHRegistrarController         M 0x65a69dcf makeCommitment(string,address,uint256,bytes32,address,bytes[],bool,uint16)
+ETHRegistrarController         M 0xce1e09c0 maxCommitmentAge()
+ETHRegistrarController         M 0xd3419bf3 prices()
+ETHRegistrarController         M 0x80869853 reverseRegistrar()
+ETHRegistrarController         M 0xaeb8ce9b available(string)
+DNSRegistrar                   E 0x87db02a0e483e2818060eddcbb3488ce44e35aff49a70d92c2aa6c8046cf01e2 Claim(bytes32,address,bytes,uint32)
+DNSRegistrar                   E 0x9176b7f47e4504df5e5516c99d90d82ac7cbd49cc77e7f22ba2ac2f2e3a3eba8 NewPublicSuffixList(address)
+DNSRegistrar                   M 0x6f951221 enableNode(bytes)
+DNSRegistrar                   M 0x3f15457f ens()
+DNSRegistrar                   M 0x25916d41 inceptions(bytes32)
+DNSRegistrar                   M 0x7dc0d1d0 oracle()
+DNSRegistrar                   M 0x29d56630 proveAndClaim(bytes,(bytes,bytes)[])
+DNSRegistrar                   M 0x04f3bcec resolver()
+DNSRegistrar                   M 0x1ecfc411 setPublicSuffixList(address)
+DNSRegistrar                   M 0x30349ebe suffixes()
+DNSRegistrar                   M 0x01ffc9a7 supportsInterface(bytes4)
+DNSRegistrar                   M 0xab14ec59 previousRegistrar()
+DNSRegistrar                   M 0x06963218 proveAndClaimWithResolver(bytes,(bytes,bytes)[],address,address)
+ReverseRegistrar               E 0x4c97694570a07277810af7e5669ffd5f6a2d6b74b6e9a274b8b870fd5114cf87 ControllerChanged(address,bool)
+ReverseRegistrar               E 0xeae17a84d9eb83d8c8eb317f9e7d64857bc363fa51674d996c023f4340c577cf DefaultResolverChanged(address)
+ReverseRegistrar               E 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred(address,address)
+ReverseRegistrar               E 0x6ada868dd3058cf77a48a74489fd7963688e5464b2b0fa957ace976243270e92 ReverseClaimed(address,bytes32)
+ReverseRegistrar               M 0xc66485b2 setDefaultResolver(address)
+ReverseRegistrar               M 0x0f5a5466 claimWithResolver(address,address)
+ReverseRegistrar               M 0xda8c229e controllers(address)
+ReverseRegistrar               M 0xe0dba60f setController(address,bool)
+ReverseRegistrar               M 0x715018a6 renounceOwnership()
+ReverseRegistrar               M 0x828eab0e defaultResolver()
+ReverseRegistrar               M 0x3f15457f ens()
+ReverseRegistrar               M 0x8da5cb5b owner()
+ReverseRegistrar               M 0x7a806d6b setNameForAddr(address,address,address,string)
+ReverseRegistrar               M 0xc47f0027 setName(string)
+ReverseRegistrar               M 0xf2fde38b transferOwnership(address)
+ReverseRegistrar               M 0x1e83409a claim(address)
+ReverseRegistrar               M 0x65669631 claimForAddr(address,address,address)
+ReverseRegistrar               M 0xbffbe61c node(address)
+NameWrapper                    E 0xee2ba1195c65bcf218a83d874335c6bf9d9067b4c672f3c3bf16cf40de7586c4 NameUnwrapped(bytes32,address)
+NameWrapper                    E 0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb TransferBatch(address,address,address,uint256[],uint256[])
+NameWrapper                    E 0x6bb7ff708619ba0610cba295a58592e0451dee2622938c8755667688daf3529b URI(string,uint256)
+NameWrapper                    E 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925 Approval(address,address,uint256)
+NameWrapper                    E 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31 ApprovalForAll(address,address,bool)
+NameWrapper                    E 0xf675815a0817338f93a7da433f6bd5f5542f1029b11b455191ac96c7f6a9b132 ExpiryExtended(bytes32,uint64)
+NameWrapper                    E 0x39873f00c80f4f94b7bd1594aebcf650f003545b74824d57ddf4939e3ff3a34b FusesSet(bytes32,uint32)
+NameWrapper                    E 0x4c97694570a07277810af7e5669ffd5f6a2d6b74b6e9a274b8b870fd5114cf87 ControllerChanged(address,bool)
+NameWrapper                    E 0x8ce7013e8abebc55c3890a68f5a27c67c3f7efa64e584de5fb22363c606fd340 NameWrapped(bytes32,bytes,address,uint32,uint64)
+NameWrapper                    E 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred(address,address)
+NameWrapper                    E 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62 TransferSingle(address,address,address,uint256,uint256)
+NameWrapper                    M 0xadf4960a allFusesBurned(bytes32,uint32)
+NameWrapper                    M 0x00fdd58e balanceOf(address,uint256)
+NameWrapper                    M 0xc475abff renew(uint256,uint256)
+NameWrapper                    M 0xd8c9921a unwrap(bytes32,bytes32,address)
+NameWrapper                    M 0x8b4dfa75 unwrapETH2LD(bytes32,address,address)
+NameWrapper                    M 0x8cf8b41e wrapETH2LD(string,address,uint16,address)
+NameWrapper                    M 0xeb8ae530 wrap(bytes,address,address)
+NameWrapper                    M 0x3f15457f ens()
+NameWrapper                    M 0x081812fc getApproved(uint256)
+NameWrapper                    M 0x20c38e2b names(bytes32)
+NameWrapper                    M 0x150b7a02 onERC721Received(address,address,uint256,bytes)
+NameWrapper                    M 0xc658e086 setSubnodeOwner(bytes32,string,address,uint32,uint64)
+NameWrapper                    M 0x24c1af44 setSubnodeRecord(bytes32,string,address,address,uint64,uint32,uint64)
+NameWrapper                    M 0xc93ab3fd upgrade(bytes,bytes)
+NameWrapper                    M 0xed70554d _tokens(uint256)
+NameWrapper                    M 0x6e5d6ad2 extendExpiry(bytes32,bytes32,uint64)
+NameWrapper                    M 0xd9a50c12 isWrapped(bytes32,bytes32)
+NameWrapper                    M 0xfd0cd0d9 isWrapped(bytes32)
+NameWrapper                    M 0x6352211e ownerOf(uint256)
+NameWrapper                    M 0x0e89341c uri(uint256)
+NameWrapper                    M 0x53095467 metadataService()
+NameWrapper                    M 0x2b20e397 registrar()
+NameWrapper                    M 0x2eb2c2d6 safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)
+NameWrapper                    M 0xa22cb465 setApprovalForAll(address,bool)
+NameWrapper                    M 0xe0dba60f setController(address,bool)
+NameWrapper                    M 0xcf408823 setRecord(bytes32,address,address,uint64)
+NameWrapper                    M 0x1896f70a setResolver(bytes32,address)
+NameWrapper                    M 0x1f4e1504 upgradeContract()
+NameWrapper                    M 0x41415eab canModifyName(bytes32,address)
+NameWrapper                    M 0xda8c229e controllers(address)
+NameWrapper                    M 0x0178fe3f getData(uint256)
+NameWrapper                    M 0x06fdde03 name()
+NameWrapper                    M 0x5d3590d5 recoverFunds(address,address,uint256)
+NameWrapper                    M 0xf242432a safeTransferFrom(address,address,uint256,uint256,bytes)
+NameWrapper                    M 0x402906fc setFuses(bytes32,uint16)
+NameWrapper                    M 0xa4014982 registerAndWrapETH2LD(string,address,uint256,address,uint16)
+NameWrapper                    M 0xb6bcad26 setUpgradeContract(address)
+NameWrapper                    M 0x095ea7b3 approve(address,uint256)
+NameWrapper                    M 0x8da5cb5b owner()
+NameWrapper                    M 0x715018a6 renounceOwnership()
+NameWrapper                    M 0x1534e177 setMetadataService(address)
+NameWrapper                    M 0x01ffc9a7 supportsInterface(bytes4)
+NameWrapper                    M 0xf2fde38b transferOwnership(address)
+NameWrapper                    M 0x4e1273f4 balanceOfBatch(address[],uint256[])
+NameWrapper                    M 0x0e4cd725 canExtendSubnames(bytes32,address)
+NameWrapper                    M 0xe985e9c5 isApprovedForAll(address,address)
+NameWrapper                    M 0x33c69ea9 setChildFuses(bytes32,bytes32,uint32,uint64)
+NameWrapper                    M 0x14ab9038 setTTL(bytes32,uint64)
+PublicResolver                 E 0xc6621ccb8f3f5a04bb6502154b2caf6adf5983fe76dfef1cfc9c42e3579db444 VersionChanged(bytes32,uint64)
+PublicResolver                 E 0x52d7d861f09ab3d26239d492e8968629f95e9e318cf0b73bfddc441522a15fd2 AddrChanged(bytes32,address)
+PublicResolver                 E 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31 ApprovalForAll(address,address,bool)
+PublicResolver                 E 0xf0ddb3b04746704017f9aa8bd728fcc2c1d11675041205350018915f5e4750a0 Approved(address,bytes32,address,bool)
+PublicResolver                 E 0x8f15ed4b723ef428f250961da8315675b507046737e19319fc1a4d81bfe87f85 DNSZonehashChanged(bytes32,bytes,bytes)
+PublicResolver                 E 0x52a608b3303a48862d07a73d82fa221318c0027fbbcfb1b2329bface3f19ff2b DNSRecordChanged(bytes32,bytes,uint16,bytes)
+PublicResolver                 E 0x03528ed0c2a3ebc993b12ce3c16bb382f9c7d88ef7d8a1bf290eaf35955a1207 DNSRecordDeleted(bytes32,bytes,uint16)
+PublicResolver                 E 0xb7d29e911041e8d9b843369e890bcb72c9388692ba48b65ac54e7214c4c348f7 NameChanged(bytes32,string)
+PublicResolver                 E 0x1d6f5e03d3f63eb58751986629a5439baee5079ff04f345becb66e23eb154e46 PubkeyChanged(bytes32,bytes32,bytes32)
+PublicResolver                 E 0x448bc014f1536726cf8d54ff3d6481ed3cbc683c2591ca204274009afa09b1a1 TextChanged(bytes32,string,string,string)
+PublicResolver                 E 0xaa121bbeef5f32f5961a2a28966e769023910fc9479059ee3495d4c1a696efe3 ABIChanged(bytes32,uint256)
+PublicResolver                 E 0x65412581168e88a1e60c6459d7f44ae83ad0832e670826c05a4e2476b57af752 AddressChanged(bytes32,uint256,bytes)
+PublicResolver                 E 0xe379c1624ed7e714cc0937528a32359d69d5281337765313dba4e081b72d7578 ContenthashChanged(bytes32,bytes)
+PublicResolver                 E 0x7c69f06bea0bdef565b709e93a147836b0063ba2dd89f02d0b7e8d931e6a6daa InterfaceChanged(bytes32,bytes4,address)
+PublicResolver                 M 0xa4b91a01 approve(bytes32,address,bool)
+PublicResolver                 M 0x4cbf6ba4 hasDNSRecords(bytes32,bytes32)
+PublicResolver                 M 0x124a319c interfaceImplementer(bytes32,bytes4)
+PublicResolver                 M 0x8b95dd71 setAddr(bytes32,uint256,bytes)
+PublicResolver                 M 0xd5fa2b00 setAddr(bytes32,address)
+PublicResolver                 M 0xe59d895d setInterface(bytes32,bytes4,address)
+PublicResolver                 M 0x29cd62ea setPubkey(bytes32,bytes32,bytes32)
+PublicResolver                 M 0x3603d758 clearRecords(bytes32)
+PublicResolver                 M 0xa8fa5682 dnsRecord(bytes32,bytes32,uint16)
+PublicResolver                 M 0x77372213 setName(bytes32,string)
+PublicResolver                 M 0x10f13a8c setText(bytes32,string,string)
+PublicResolver                 M 0x59d1d43c text(bytes32,string)
+PublicResolver                 M 0xf1cb7e06 addr(bytes32,uint256)
+PublicResolver                 M 0xe985e9c5 isApprovedForAll(address,address)
+PublicResolver                 M 0x3b3b57de addr(bytes32)
+PublicResolver                 M 0xbc1c58d1 contenthash(bytes32)
+PublicResolver                 M 0xe32954eb multicallWithNodeCheck(bytes32,bytes[])
+PublicResolver                 M 0x691f3431 name(bytes32)
+PublicResolver                 M 0xc8690233 pubkey(bytes32)
+PublicResolver                 M 0x304e6ade setContenthash(bytes32,bytes)
+PublicResolver                 M 0x0af179d7 setDNSRecords(bytes32,bytes)
+PublicResolver                 M 0x5c98042b zonehash(bytes32)
+PublicResolver                 M 0x2203ab56 ABI(bytes32,uint256)
+PublicResolver                 M 0xac9650d8 multicall(bytes[])
+PublicResolver                 M 0xa22cb465 setApprovalForAll(address,bool)
+PublicResolver                 M 0x01ffc9a7 supportsInterface(bytes4)
+PublicResolver                 M 0xa9784b3e isApprovedFor(address,bytes32,address)
+PublicResolver                 M 0xd700ff33 recordVersions(bytes32)
+PublicResolver                 M 0x623195b0 setABI(bytes32,uint256,bytes)
+PublicResolver                 M 0xce3decdc setZonehash(bytes32,bytes)
+OldEnsRegistrarController      E 0xca6abbe9d7f11422cb6ca7629fbf6fe9efb1c621f71ce8f02b9f2a230097404f NameRegistered(string,bytes32,address,uint256,uint256)
+OldEnsRegistrarController      E 0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae NameRenewed(string,bytes32,uint256,uint256)
+OldEnsRegistrarController      E 0xf261845a790fe29bbd6631e2ca4a5bdc83e6eed7c3271d9590d97287e00e9123 NewPriceOracle(address)
+OldEnsRegistrarController      E 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred(address,address)
+OldEnsRegistrarController      M 0x01ffc9a7 supportsInterface(bytes4)
+OldEnsRegistrarController      M 0x3ccfd60b withdraw()
+OldEnsRegistrarController      M 0x8a95b09f MIN_REGISTRATION_DURATION()
+OldEnsRegistrarController      M 0xaeb8ce9b available(string)
+OldEnsRegistrarController      M 0x8d839ffe minCommitmentAge()
+OldEnsRegistrarController      M 0xacf1a841 renew(string,uint256)
+OldEnsRegistrarController      M 0xf2fde38b transferOwnership(address)
+OldEnsRegistrarController      M 0x9791c097 valid(string)
+OldEnsRegistrarController      M 0x8f32d59b isOwner()
+OldEnsRegistrarController      M 0x8da5cb5b owner()
+OldEnsRegistrarController      M 0xf7a16963 registerWithConfig(string,address,uint256,bytes32,address,address)
+OldEnsRegistrarController      M 0x715018a6 renounceOwnership()
+OldEnsRegistrarController      M 0x83e7f6ff rentPrice(string,uint256)
+OldEnsRegistrarController      M 0x7e324479 setCommitmentAges(uint256,uint256)
+OldEnsRegistrarController      M 0x530e784f setPriceOracle(address)
+OldEnsRegistrarController      M 0xf14fcbc8 commit(bytes32)
+OldEnsRegistrarController      M 0xf49826be makeCommitment(string,address,bytes32)
+OldEnsRegistrarController      M 0x3d86c52f makeCommitmentWithConfig(string,address,bytes32,address,address)
+OldEnsRegistrarController      M 0x839df945 commitments(bytes32)
+OldEnsRegistrarController      M 0xce1e09c0 maxCommitmentAge()
+OldEnsRegistrarController      M 0x85f6d155 register(string,address,uint256,bytes32)
+
 */
 
 var topicsMap = map[string]string{
@@ -115,6 +346,17 @@ var topicsMap = map[string]string{
 	"0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0": "NewResolver(bytes32,address)",
 	"0x1d4f9bbfc9cab89d66e1a1562f2233ccbf1308cb4f63de2ead5787adddb8fa68": "NewTTL(bytes32,uint64)",
 	"0xd4735d920b0f87494915f556dd9b54c8f309026070caea5c737245152564d266": "Transfer(bytes32,address)",
+}
+
+var ensCrontractAddresses = map[string]string{
+	"0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e": "Registry", // <-
+	"0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85": "BaseRegistrar",
+	"0x253553366Da8546fC250F225fe3d25d0C782303b": "ETHRegistrarController", // <-
+	"0xB32cB5677a7C971689228EC835800432B339bA2B": "DNSRegistrar",
+	"0xa58E81fe9b61B5c3fE2AFD33CF304c454AbFc7Cb": "ReverseRegistrar",
+	"0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401": "NameWrapper",
+	"0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63": "PublicResolver",
+	"0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5": "OldEnsRegistrarController", // <-
 }
 
 func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
@@ -145,17 +387,34 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most %d but got: %v tx: %x", ITX_PER_TX_LIMIT-1, j, tx.GetHash())
 			}
-			isRegistarContract := utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(log.Address).String())
+			// isRegistarContract := utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(log.Address).String())
+			ensContract := ensCrontractAddresses[common.BytesToAddress(log.Address).String()]
 			for k, lTopic := range log.GetTopics() {
+				if ensContract == "Registry" {
+					// 0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0 NewResolver
+					// 0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82 NewOwner
+				} else if ensContract == "BaseRegistrar" {
+					// 0xb3d987963d01b2f68493b4bdb130988f157ea43070d4ad840fee0466ed9370d9 NameRegistered
+					// 0x9b87a00e30f1ac65d898f070f8a3488fe60517182d0a2098e1b4b93a54aa9bd6 NameRenewed
+					// 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred
+					// 0xea3d7e1195a15d2ddcd859b01abd4c6b960fa9f9264e499a70a90c7f0c64b717 NameMigrated
+				} else if ensContract == "OldEnsRegistrarController" {
+					// 0xca6abbe9d7f11422cb6ca7629fbf6fe9efb1c621f71ce8f02b9f2a230097404f NameRegistered
+					// 0x3da24c024582931cfaf8267d8ed24d13a82a8068d5bd337d30ec45cea4e506ae NameRenewed
+					// 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 OwnershipTransferred
+				} else {
+					// 0x65412581168e88a1e60c6459d7f44ae83ad0832e670826c05a4e2476b57af752 AddressChanged
+					// 0xb7d29e911041e8d9b843369e890bcb72c9388692ba48b65ac54e7214c4c348f7 NameChanged
+				}
+
 				if isRegistarContract {
+
 					if bytes.Equal(lTopic, ens.NameRegisteredTopic) || bytes.Equal(lTopic, ens.NameRegisteredV2Topic) {
 						foundNameIndex = j
 					} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
 						foundResolverIndex = j
 					} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
 						foundNameRenewedIndex = j
-					} else if bytes.Equal(lTopic, ens.NewOwnerTopic) {
-						foundNewOwnerIndex = j
 					}
 				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
 					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
