@@ -1240,7 +1240,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 			Epoch:                   epoch,
 			GlobalParticipationRate: float32(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / float32(prevEpochActiveGwei),
 			VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei),
-			EligibleEther:           uint64(parsedResponse.Data.PreviousEpochActiveGwei),
+			EligibleEther:           uint64(prevEpochActiveGwei),
 			Finalized:               epoch <= head.FinalizedEpoch && head.JustifiedEpoch > 0,
 		}
 	} else {
