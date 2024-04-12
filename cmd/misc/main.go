@@ -65,6 +65,8 @@ var opts = struct {
 	Yes                 bool
 }{}
 
+var lighthouseClient *rpc.LighthouseClient
+
 func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
 
@@ -124,6 +126,7 @@ func main() {
 	if err != nil {
 		utils.LogFatal(err, "lighthouse client error", 0)
 	}
+	lighthouseClient = rpcClient
 
 	erigonClient, err := rpc.NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
@@ -400,6 +403,8 @@ func main() {
 		ratelimit.DBUpdater()
 	case "disable-user-per-email":
 		err = disableUserPerEmail()
+	case "fix-epochs":
+		err = fixEpochs()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 0)
 	}
@@ -409,6 +414,34 @@ func main() {
 	} else {
 		logrus.Infof("command executed successfully")
 	}
+}
+
+func fixEpochs() error {
+	for e := opts.StartEpoch; e <= opts.EndEpoch; e++ {
+		err := fixEpoch(e)
+		if err != nil {
+			return fmt.Errorf("error fixingEpoch: %v: %w", e, err)
+		}
+		logrus.Infof("fixed epoch %v", e)
+	}
+	return nil
+}
+
+func fixEpoch(e uint64) error {
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting tx: %w", err)
+	}
+	defer tx.Rollback()
+	s, err := lighthouseClient.GetValidatorParticipation(e)
+	if err != nil {
+		return err
+	}
+	err = db.UpdateEpochStatus(s, tx)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func disableUserPerEmail() error {
