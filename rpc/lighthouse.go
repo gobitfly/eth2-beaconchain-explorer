@@ -1220,9 +1220,25 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 	var res *types.ValidatorParticipation
 	if epoch < request_epoch {
 		// we requested the next epoch, so we have to use the previous value for everything here
+
+		prevEpochActiveGwei := parsedResponse.Data.PreviousEpochActiveGwei
+		if prevEpochActiveGwei == 0 {
+			// lh@5.2.0+ has no previous_epoch_active_gwei field anymore, see https://github.com/sigp/lighthouse/pull/5279
+			prevResp, err := lc.get(fmt.Sprintf("%s/lighthouse/validator_inclusion/%d/global", lc.endpoint, request_epoch-1))
+			if err != nil {
+				return nil, fmt.Errorf("error retrieving validator participation data for prevEpoch %v: %w", request_epoch-1, err)
+			}
+			var parsedPrevResponse LighthouseValidatorParticipationResponse
+			err = json.Unmarshal(prevResp, &parsedPrevResponse)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing validator participation data for prevEpoch %v: %w", epoch, err)
+			}
+			prevEpochActiveGwei = parsedPrevResponse.Data.CurrentEpochActiveGwei
+		}
+
 		res = &types.ValidatorParticipation{
 			Epoch:                   epoch,
-			GlobalParticipationRate: float32(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / float32(parsedResponse.Data.PreviousEpochActiveGwei),
+			GlobalParticipationRate: float32(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / float32(prevEpochActiveGwei),
 			VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei),
 			EligibleEther:           uint64(parsedResponse.Data.PreviousEpochActiveGwei),
 			Finalized:               epoch <= head.FinalizedEpoch && head.JustifiedEpoch > 0,
