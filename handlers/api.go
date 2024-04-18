@@ -2334,6 +2334,10 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		if len(latestBalances[uint64(validatorIndex)]) == 0 {
+			logger.WithField("validatorIndex", validatorIndex).Errorf("error latestBalances map has no entry for validator")
+			continue
+		}
 		eMap["balance"] = latestBalances[uint64(validatorIndex)][0].Balance
 		eMap["performancetoday"] = currentDayIncome[uint64(validatorIndex)]
 		eMap["performancetotal"] = eMap["performancetotal"].(int64) + currentDayIncome[uint64(validatorIndex)]

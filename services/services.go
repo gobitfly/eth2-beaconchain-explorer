@@ -1023,14 +1023,19 @@ func LatestProposedSlot() uint64 {
 }
 
 func LatestMempoolTransactions() *types.RawMempoolResponse {
-	wanted := &types.RawMempoolResponse{}
-	cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.ClConfig.DepositChainID)
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute, wanted); err == nil {
-		return wanted.(*types.RawMempoolResponse)
-	} else {
+	cacheKey := fmt.Sprintf("%d:frontend:mempoolCompressed", utils.Config.Chain.ClConfig.DepositChainID)
+	mempoolCompressed, err := cache.TieredCache.GetBytesWithLocalTimeout(cacheKey, time.Minute)
+	if err != nil {
 		logger.Errorf("error retrieving mempool data from cache: %v", err)
+		return &types.RawMempoolResponse{}
 	}
-	return &types.RawMempoolResponse{}
+	mempool := &types.RawMempoolResponse{}
+	err = utils.Decompress(mempoolCompressed, mempool)
+	if err != nil {
+		logger.Errorf("error decompressing mempool data: %v", err)
+		return &types.RawMempoolResponse{}
+	}
+	return mempool
 }
 
 func LatestBurnData() *types.BurnPageData {
@@ -1297,7 +1302,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	var raw json.RawMessage
 	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
+		return nil, fmt.Errorf("error retrieving pending block data: %.1000w", err) // limit error message to 1000 characters
 	}
 
 	// var res map[string]interface{}
@@ -1518,8 +1523,17 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 			}
 		}
 
-		cacheKey := fmt.Sprintf("%d:frontend:mempool", utils.Config.Chain.ClConfig.DepositChainID)
-		err = cache.TieredCache.Set(cacheKey, mempoolTx, utils.Day)
+		cacheKey := fmt.Sprintf("%d:frontend:mempoolCompressed", utils.Config.Chain.ClConfig.DepositChainID)
+		mempoolTxCompressed, err := utils.Compress(mempoolTx)
+		if err != nil {
+			logger.Errorf("error compressing mempool data: %v", err)
+			continue
+		}
+		if len(mempoolTxCompressed) > 500_000_000 {
+			logger.Errorf("error mempool data is bigger than 500_000_000: %v", len(mempoolTxCompressed))
+			continue
+		}
+		err = cache.TieredCache.SetBytes(cacheKey, mempoolTxCompressed, utils.Day)
 		if err != nil {
 			logger.Errorf("error caching mempool data: %v", err)
 		}

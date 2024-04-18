@@ -20,11 +20,13 @@ type tieredCache struct {
 
 type RemoteCache interface {
 	Set(ctx context.Context, key string, value any, expiration time.Duration) error
+	SetBytes(ctx context.Context, key string, value []byte, expiration time.Duration) error
 	SetString(ctx context.Context, key, value string, expiration time.Duration) error
 	SetUint64(ctx context.Context, key string, value uint64, expiration time.Duration) error
 	SetBool(ctx context.Context, key string, value bool, expiration time.Duration) error
 
 	Get(ctx context.Context, key string, returnValue any) (any, error)
+	GetBytes(ctx context.Context, key string) ([]byte, error)
 	GetString(ctx context.Context, key string) (string, error)
 	GetUint64(ctx context.Context, key string) (uint64, error)
 	GetBool(ctx context.Context, key string) (bool, error)
@@ -45,6 +47,34 @@ func MustInitTieredCache(redisAddress string) {
 		remoteCache:  remoteCache,
 		localGoCache: freecache.NewCache(100 * 1024 * 1024), // 100 MB
 	}
+}
+
+func (cache *tieredCache) SetBytes(key string, value []byte, expiration time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	cache.localGoCache.Set([]byte(key), value, int(expiration.Seconds()))
+	return cache.remoteCache.SetBytes(ctx, key, value, expiration)
+}
+
+func (cache *tieredCache) GetBytesWithLocalTimeout(key string, localExpiration time.Duration) ([]byte, error) {
+	// try to retrieve the key from the local cache
+	wanted, err := cache.localGoCache.Get([]byte(key))
+	if err == nil {
+		return wanted, nil
+	}
+
+	// retrieve the key from the remote cache
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	value, err := cache.remoteCache.GetBytes(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+
+	cache.localGoCache.Set([]byte(key), value, int(localExpiration.Seconds()))
+	return value, nil
 }
 
 func (cache *tieredCache) SetString(key, value string, expiration time.Duration) error {

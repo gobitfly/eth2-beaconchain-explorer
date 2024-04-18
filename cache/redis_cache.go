@@ -31,17 +31,27 @@ func InitRedisCache(ctx context.Context, redisAddress string) (*RedisCache, erro
 	return r, nil
 }
 
+func (cache *RedisCache) SetBytes(ctx context.Context, key string, value []byte, expiration time.Duration) error {
+	return cache.redisRemoteCache.Set(ctx, key, value, expiration).Err()
+}
+
+func (cache *RedisCache) GetBytes(ctx context.Context, key string) ([]byte, error) {
+	value, err := cache.redisRemoteCache.Get(ctx, key).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
 func (cache *RedisCache) SetString(ctx context.Context, key, value string, expiration time.Duration) error {
 	return cache.redisRemoteCache.Set(ctx, key, value, expiration).Err()
 }
 
 func (cache *RedisCache) GetString(ctx context.Context, key string) (string, error) {
-
 	value, err := cache.redisRemoteCache.Get(ctx, key).Result()
 	if err != nil {
 		return "", err
 	}
-
 	return value, nil
 }
 
