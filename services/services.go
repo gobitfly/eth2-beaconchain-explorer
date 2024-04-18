@@ -1297,7 +1297,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	var raw json.RawMessage
 	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
+		return nil, fmt.Errorf("error retrieving pending block data: %.1000s", err) // limit error message to 1000 characters
 	}
 
 	// var res map[string]interface{}
