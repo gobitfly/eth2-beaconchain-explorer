@@ -1297,7 +1297,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	var raw json.RawMessage
 	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving pending block data: %v", err)
+		return nil, fmt.Errorf("error retrieving pending block data: %.1000s", err) // limit error message to 1000 characters
 	}
 
 	// var res map[string]interface{}
@@ -1497,6 +1497,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 				if tx.GasPrice == nil {
 					tx.GasPrice = tx.GasFeeCap
 				}
+				tx.Input = nil // nil inputs to save space
 			}
 		}
 		for _, txs := range mempoolTx.Queued {
@@ -1506,6 +1507,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 				if tx.GasPrice == nil {
 					tx.GasPrice = tx.GasFeeCap
 				}
+				tx.Input = nil // nil inputs to save space
 			}
 		}
 		for _, txs := range mempoolTx.BaseFee {
@@ -1515,6 +1517,7 @@ func mempoolUpdater(wg *sync.WaitGroup) {
 				if tx.GasPrice == nil {
 					tx.GasPrice = tx.GasFeeCap
 				}
+				tx.Input = nil // nil inputs to save space
 			}
 		}
 
