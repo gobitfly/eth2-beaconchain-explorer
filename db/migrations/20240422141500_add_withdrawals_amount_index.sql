@@ -1,3 +1,5 @@
+-- +goose NO TRANSACTION
+
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'up SQL query - add an index for the amount of the withdrawals';
