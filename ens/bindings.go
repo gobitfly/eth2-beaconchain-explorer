@@ -31,6 +31,12 @@ var ensResolverData = &bind.MetaData{
 	Bin: "",
 }
 
+type NewTTL struct {
+	Node [32]byte
+	Ttl  uint64
+	Raw  types.Log // Blockchain specific contextual infos
+}
+
 // NameRegistered represents an NameRegistered event raised by the Ens Registar contract.
 type NameRegistered struct {
 	Name    string
