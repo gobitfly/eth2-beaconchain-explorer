@@ -377,10 +377,6 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
-	c := ensRegistryContract.NewContract(common.Address{}, nil)
-	c.GetAbi()
-
-	filterer, err := ens.NewEnsRegistrarFilterer(common.Address{}, nil)
 	if err != nil {
 		log.Printf("error creating filterer: %v", err)
 		return nil, nil, err
