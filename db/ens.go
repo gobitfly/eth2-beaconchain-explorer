@@ -18,15 +18,14 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/coocood/freecache"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/sirupsen/logrus"
+
+	ensContracts "eth2-exporter/contracts/ens"
 
 	go_ens "github.com/wealdtech/go-ens/v3"
 	"github.com/wealdtech/go-ens/v3/contracts/registry"
-	ensRegistryContract "github.com/wealdtech/go-ens/v3/contracts/registry"
 )
 
 // https://etherscan.io/tx/0x9fec76750a504e5610643d1882e3b07f4fc786acf7b9e6680697bb7165de1165#eventlog
@@ -362,17 +361,6 @@ var ensCrontractAddresses = map[string]string{
 	"0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5": "OldEnsRegistrarController", // <-
 }
 
-var EnsRegistryABIJSON = `[{"inputs":[{"internalType":"contract ENS","name":"_old","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"node","type":"bytes32"},{"indexed":true,"internalType":"bytes32","name":"label","type":"bytes32"},{"indexed":false,"internalType":"address","name":"owner","type":"address"}],"name":"NewOwner","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"node","type":"bytes32"},{"indexed":false,"internalType":"address","name":"resolver","type":"address"}],"name":"NewResolver","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"node","type":"bytes32"},{"indexed":false,"internalType":"uint64","name":"ttl","type":"uint64"}],"name":"NewTTL","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"node","type":"bytes32"},{"indexed":false,"internalType":"address","name":"owner","type":"address"}],"name":"Transfer","type":"event"},{"constant":true,"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"old","outputs":[{"internalType":"contract ENS","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"}],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"}],"name":"recordExists","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"}],"name":"resolver","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"bool","name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"},{"internalType":"address","name":"owner","type":"address"}],"name":"setOwner","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"},{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"resolver","type":"address"},{"internalType":"uint64","name":"ttl","type":"uint64"}],"name":"setRecord","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"},{"internalType":"address","name":"resolver","type":"address"}],"name":"setResolver","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"},{"internalType":"bytes32","name":"label","type":"bytes32"},{"internalType":"address","name":"owner","type":"address"}],"name":"setSubnodeOwner","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"},{"internalType":"bytes32","name":"label","type":"bytes32"},{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"resolver","type":"address"},{"internalType":"uint64","name":"ttl","type":"uint64"}],"name":"setSubnodeRecord","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"},{"internalType":"uint64","name":"ttl","type":"uint64"}],"name":"setTTL","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"internalType":"bytes32","name":"node","type":"bytes32"}],"name":"ttl","outputs":[{"internalType":"uint64","name":"","type":"uint64"}],"payable":false,"stateMutability":"view","type":"function"}]`
-var EnsRegistryABI abi.ABI
-
-func init() {
-	var err error
-	EnsRegistryABI, err = abi.JSON(strings.NewReader(EnsRegistryABIJSON))
-	if err != nil {
-		logrus.Fatalf("failed to parse registry-ABI: %v", err)
-	}
-}
-
 func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
@@ -416,15 +404,15 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 				if ensContract == "Registry" {
 					// 0x335721b01866dc23fbee8b6b2c7b1e14d6f05c28cd35a2c934239f94095602a0 NewResolver
 					// 0xce0457fe73731f824cc272376169235128c118b49d344817417c6d108d155e82 NewOwner
-					if bytes.Equal(lTopic, EnsRegistryABI.Events["NewResolver"].ID.Bytes()) {
-						r := &ensRegistryContract.ContractNewResolver{}
-						err = EnsRegistryABI.UnpackIntoInterface(r, "NewResolver", log.Data)
-					} else if bytes.Equal(lTopic, EnsRegistryABI.Events["NewOwner"].ID.Bytes()) {
-						r := &ensRegistryContract.ContractNewOwner{}
-						err = EnsRegistryABI.UnpackIntoInterface(r, "NewOwner", log.Data)
-					} else if bytes.Equal(lTopic, EnsRegistryABI.Events["NewTTL"].ID.Bytes()) {
-						r := &ensRegistryContract.ContractNewTTL{}
-						err = EnsRegistryABI.UnpackIntoInterface(r, "NewTTL", log.Data)
+					if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewResolver"].ID.Bytes()) {
+						r := &ensContracts.ENSRegistryNewResolver{}
+						err = ensContracts.ENSRegistryParsedABI.UnpackIntoInterface(r, "NewResolver", log.Data)
+					} else if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewOwner"].ID.Bytes()) {
+						r := &ensContracts.ENSRegistryNewOwner{}
+						err = ensContracts.ENSRegistryParsedABI.UnpackIntoInterface(r, "NewOwner", log.Data)
+					} else if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewTTL"].ID.Bytes()) {
+						r := &ensContracts.ENSRegistryNewTTL{}
+						err = ensContracts.ENSRegistryParsedABI.UnpackIntoInterface(r, "NewTTL", log.Data)
 					}
 				} else if ensContract == "BaseRegistrar" {
 					if bytes.Equal(lTopic, EnsRegistryABI.Events["NameRegistered"].ID.Bytes()) {
@@ -432,7 +420,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 					} else if bytes.Equal(lTopic, EnsRegistryABI.Events["NameRenewed"].ID.Bytes()) {
 
 					} else if bytes.Equal(lTopic, EnsRegistryABI.Events["NameMigrated"].ID.Bytes()) {
-
+						r := &ensContracts.ENSBaseRegistrarNameMigrated{}
 					} else if bytes.Equal(lTopic, EnsRegistryABI.Events["OwnershipTransferred"].ID.Bytes()) {
 
 					}
