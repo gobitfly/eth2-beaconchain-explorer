@@ -358,12 +358,11 @@ func CreateVoluntaryExitNodeJob(nj *types.NodeJob) (*types.NodeJob, error) {
 	default:
 	}
 
-	forkVersion := utils.ForkVersionAtEpoch(uint64(njd.Message.Epoch))
-	err = utils.VerifyVoluntaryExitSignature(njd, forkVersion.CurrentVersion, vali.Pubkey)
+	forkVersion := utils.MustParseHex(utils.Config.Chain.ClConfig.CappellaForkVersion)
+	err = utils.VerifyVoluntaryExitSignature(njd, forkVersion, vali.Pubkey)
 	if err != nil {
 		return nil, err
 	}
-
 	_, err = WriterDb.Exec(`insert into node_jobs (id, type, status, data, created_time) values ($1, $2, $3, $4, now())`, nj.ID, nj.Type, nj.Status, nj.RawData)
 	if err != nil {
 		return nil, err
