@@ -90,7 +90,7 @@ func (nj *NodeJob) ParseData() error {
 		//var d *VoluntaryExitsNodeJobData
 		var d *phase0.SignedVoluntaryExit
 		err := json.Unmarshal(nj.RawData, &d)
-		if err == nil && d.Message.Epoch != 0 {
+		if err == nil {
 			if nj.Type != "" && nj.Type != UnknownNodeJobType && nj.Type != VoluntaryExitsNodeJobType {
 				return fmt.Errorf("nodejob.RawData mismatches nodejob.Type (%v)", nj.Type)
 			}
