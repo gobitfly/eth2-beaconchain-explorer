@@ -611,7 +611,7 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client, readBatchSi
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	logger.Info("Import of ENS updates completed")
+	logger.WithField("updates", total).Info("Import of ENS updates completed")
 	return nil
 }
 
