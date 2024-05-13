@@ -629,7 +629,7 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 		return err
 	}
 
-	if err != nil {
+	if err != nil && currentName != "" {
 		err = validateEnsName(client, currentName, alreadyChecked)
 		if err != nil {
 			return err
