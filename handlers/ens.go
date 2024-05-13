@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"eth2-exporter/cache"
@@ -62,10 +63,10 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 		data.Address = address.Hex()
 
 		name, err := db.GetEnsNameForAddress(*address)
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			return data, err // We want to return the data if it was a valid address even if there was an error getting the domain from bigtable. A valid address might be enough for the caller.
 		}
-		data.Domain = *name
+		data.Domain = name
 
 		err = cache.TieredCache.SetString(cacheKey, data.Address, time.Minute)
 		if err != nil {
@@ -82,10 +83,10 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 			return data, nil
 		}
 		name, err := db.GetEnsNameForAddress(common.HexToAddress(search))
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			return data, err // We want to return the data if it was a valid address even if there was an error getting the domain from bigtable. A valid address might be enough for the caller.
 		}
-		data.Domain = *name
+		data.Domain = name
 		err = cache.TieredCache.SetString(cacheKey, data.Domain, time.Minute)
 		if err != nil {
 			logger.Errorf("error caching ens address: %v", err)
