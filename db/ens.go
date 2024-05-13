@@ -74,33 +74,15 @@ import (
 //
 // ==================================================
 
-var ensCrontractAddressesEthereum = map[string]string{
-	"0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e": "Registry",
-	"0x253553366Da8546fC250F225fe3d25d0C782303b": "ETHRegistrarController",
-	"0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5": "OldEnsRegistrarController",
-}
-
-var ensCrontractAddressesHolesky = map[string]string{
-	"0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e": "Registry",
-	"0x179Be112b24Ad4cFC392eF8924DfA08C20Ad8583": "ETHRegistrarController",
-	"0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5": "OldEnsRegistrarController",
-}
-
-var ensCrontractAddressesSepolia = map[string]string{
-	"0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e": "Registry",
-	"0xFED6a969AaA60E4961FCD3EBF1A2e8913ac65B72": "ETHRegistrarController",
-	"0x283Af0B28c62C092C9727F1Ee09c02CA627EB7F5": "OldEnsRegistrarController",
-}
-
 func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
 	var ensCrontractAddresses map[string]string
 	switch bigtable.chainId {
 	case "1":
-		ensCrontractAddresses = ensCrontractAddressesEthereum
+		ensCrontractAddresses = ensContracts.ENSCrontractAddressesEthereum
 	case "17000":
-		ensCrontractAddresses = ensCrontractAddressesHolesky
+		ensCrontractAddresses = ensContracts.ENSCrontractAddressesHolesky
 	case "11155111":
-		ensCrontractAddresses = ensCrontractAddressesSepolia
+		ensCrontractAddresses = ensContracts.ENSCrontractAddressesSepolia
 	default:
 		return nil, nil, nil
 	}
@@ -146,7 +128,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:H:%x", bigtable.chainId, r.Node)] = true
-						logger.Infof("ENS:Registry:NewResolver block:%v tx:%#x node:%#x resolver:%x\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Resolver)
+						// logger.Infof("ENS:Registry:NewResolver block:%v tx:%#x node:%#x resolver:%x\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Resolver)
 					} else if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewOwner"].ID.Bytes()) {
 						r := &ensContracts.ENSRegistryNewOwner{}
 						err = ensContracts.ENSRegistryContract.UnpackLog(r, "NewOwner", ethLog)
@@ -155,7 +137,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, r.Owner)] = true
-						logger.Infof("ENS:Registry:NewOwner block:%v tx:%#x node:%#x owner:%#x\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Owner)
+						// logger.Infof("ENS:Registry:NewOwner block:%v tx:%#x node:%#x owner:%#x\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Owner)
 					} else if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewTTL"].ID.Bytes()) {
 						r := &ensContracts.ENSRegistryNewTTL{}
 						err = ensContracts.ENSRegistryContract.UnpackLog(r, "NewTTL", ethLog)
@@ -164,7 +146,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:H:%x", bigtable.chainId, r.Node)] = true
-						logger.Infof("ENS:Registry:NewTTL block:%v tx:%#x node:%#x ttl:%d\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Ttl)
+						// logger.Infof("ENS:Registry:NewTTL block:%v tx:%#x node:%#x ttl:%d\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Ttl)
 					}
 				} else if ensContract == "ETHRegistrarController" {
 					if bytes.Equal(lTopic, ensContracts.ENSETHRegistrarControllerParsedABI.Events["NameRegistered"].ID.Bytes()) {
@@ -176,7 +158,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
 						keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, r.Owner)] = true
-						logger.Infof("ENS:EthRegistrar:NameRegistered block:%v tx:%#x name:%s expires:%v\n", blk.GetNumber(), tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
+						// logger.Infof("ENS:EthRegistrar:NameRegistered block:%v tx:%#x name:%s expires:%v\n", blk.GetNumber(), tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
 					} else if bytes.Equal(lTopic, ensContracts.ENSETHRegistrarControllerParsedABI.Events["NameRenewed"].ID.Bytes()) {
 						r := &ensContracts.ENSETHRegistrarControllerNameRenewed{}
 						err = ensContracts.ENSETHRegistrarControllerContract.UnpackLog(r, "NameRenewed", ethLog)
@@ -185,7 +167,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
-						logger.Infof("ENS:EthRegistrar:NameRenewed block:%v tx:%#x name:%s expires:%v\n", blk.GetNumber(), tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
+						// logger.Infof("ENS:EthRegistrar:NameRenewed block:%v tx:%#x name:%s expires:%v\n", blk.GetNumber(), tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
 					}
 				} else if ensContract == "OldEnsRegistrarController" {
 					if bytes.Equal(lTopic, ensContracts.ENSOldRegistrarControllerParsedABI.Events["NameRegistered"].ID.Bytes()) {
@@ -197,7 +179,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
 						keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, r.Owner)] = true
-						logger.Infof("ENS:OldRegistrar:NameRegistered tx:%#x name:%s expires:%v\n", tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
+						// logger.Infof("ENS:OldRegistrar:NameRegistered tx:%#x name:%s expires:%v\n", tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
 					} else if bytes.Equal(lTopic, ensContracts.ENSOldRegistrarControllerParsedABI.Events["NameRenewed"].ID.Bytes()) {
 						r := &ensContracts.ENSOldRegistrarControllerNameRenewed{}
 						err = ensContracts.ENSOldRegistrarControllerContract.UnpackLog(r, "NameRenewed", ethLog)
@@ -217,7 +199,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
-						logger.Infof("ENS:Resolver:NameChanged tx:%#x name:%s node:%#x\n", tx.GetHash(), r.Name, r.Node)
+						// logger.Infof("ENS:Resolver:NameChanged tx:%#x name:%s node:%#x\n", tx.GetHash(), r.Name, r.Node)
 					} else if bytes.Equal(lTopic, ensContracts.ENSPublicResolverParsedABI.Events["AddressChanged"].ID.Bytes()) {
 						r := &ensContracts.ENSPublicResolverAddressChanged{}
 						err = ensContracts.ENSPublicResolverContract.UnpackLog(r, "AddressChanged", ethLog)
@@ -226,7 +208,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:H:%x", bigtable.chainId, r.Node)] = true
-						logger.Infof("ENS:Resolver:AddressChanged block:%v tx:%#x newAddr:%#x node:%#x\n", blk.GetNumber(), tx.GetHash(), r.NewAddress, r.Node)
+						// logger.Infof("ENS:Resolver:AddressChanged block:%v tx:%#x newAddr:%#x node:%#x\n", blk.GetNumber(), tx.GetHash(), r.NewAddress, r.Node)
 					}
 				}
 			}

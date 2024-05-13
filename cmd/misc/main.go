@@ -2106,6 +2106,12 @@ func askForConfirmation(q string) bool {
 
 func debugEns() error {
 
+	latestBlockNumber, err := erigonClient.GetNativeClient().BlockNumber(context.Background())
+	if err != nil {
+		return fmt.Errorf("error getting latest block number: %w", err)
+	}
+	_ = latestBlockNumber
+
 	n, err := db.GetEnsNameForAddress(common.Address{})
 	fmt.Println(n, err)
 
@@ -2182,7 +2188,8 @@ func debugEns() error {
 	// for _, i := range []int64{9413106, 9465947, 11407775, 13452504, 19015796} {
 	// for _, i := range []int64{9465947} {
 	// for _, i := range []int64{11407775} {
-	for i := int64(19818000); i < 19818000+1000; i++ {
+	// for i := int64(19818000); i < 19818000+1000; i++ {
+	for i := int64(latestBlockNumber) - 1000; i < int64(latestBlockNumber); i += 100 {
 		// for i := int64(9370000); i < 9370000+1000; i += 100 { // ens deployed
 		logrus.Infof("------- %v", i)
 
@@ -2191,8 +2198,10 @@ func debugEns() error {
 			utils.LogError(err, "error indexing from bigtable", 0)
 			return err
 		}
-		for _, key := range keys2 {
-			fmt.Printf("key2: %v\n", key)
+		if false {
+			for _, key := range keys2 {
+				fmt.Printf("key2: %v\n", key)
+			}
 		}
 
 		keys, err := bt.IndexEventsWithTransformersDry(i, i+100, transforms, 2, cache)
@@ -2203,21 +2212,59 @@ func debugEns() error {
 		if len(keys) == 0 {
 			logrus.Infof("no keys")
 		}
-		for _, key := range keys {
-			fmt.Println(key)
-			if !strings.HasPrefix(key, "1:ENS:V:") {
-				rows, err := bt.GetRowsByPrefix(key)
-				if err != nil {
-					utils.LogError(err, fmt.Sprintf("error getting rows by prefix for key %v", key), 0)
-					return err
+		if false {
+			for _, key := range keys {
+				fmt.Println(key)
+				if !strings.HasPrefix(key, "1:ENS:V:") {
+					rows, err := bt.GetRowsByPrefix(key)
+					if err != nil {
+						utils.LogError(err, fmt.Sprintf("error getting rows by prefix for key %v", key), 0)
+						return err
+					}
+					if len(rows) != 0 {
+						fmt.Printf("got rows for key %v\n", key)
+					}
 				}
-				if len(rows) != 0 {
-					fmt.Printf("got rows for key %v\n", key)
+				strings.Split(key, ":")
+			}
+		}
+		keysOnlyInA := []string{}
+		keysOnlyInB := []string{}
+		for _, key := range keys {
+			found := false
+			for _, key2 := range keys2 {
+				if key == key2 {
+					found = true
+					break
 				}
 			}
-
-			strings.Split(key, ":")
+			if !found {
+				keysOnlyInA = append(keysOnlyInA, key)
+			}
 		}
+		for _, key := range keys2 {
+			found := false
+			for _, key2 := range keys {
+				if key == key2 {
+					found = true
+					break
+				}
+			}
+			if !found {
+				keysOnlyInB = append(keysOnlyInB, key)
+			}
+		}
+		for _, key := range keysOnlyInA {
+			fmt.Println("only in A:", key)
+		}
+		for _, key := range keysOnlyInB {
+			fmt.Println("only in B:", key)
+		}
+
+		for _, key := range keys2 {
+			fmt.Println("key2:", key)
+		}
+
 	}
 
 	return nil
