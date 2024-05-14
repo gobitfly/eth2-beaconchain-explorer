@@ -99,6 +99,7 @@ func InitSessionStore(secret string) {
 	sessionManager.Cookie.Persist = true
 	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
 	sessionManager.Cookie.Secure = true
+	sessionManager.Cookie.Domain = Config.Frontend.SessionCookieDomain
 
 	sessionManager.Store = redisstore.New(pool)
 
