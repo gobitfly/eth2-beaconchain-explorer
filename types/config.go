@@ -139,6 +139,7 @@ type Config struct {
 		}
 		RatelimitUpdateInterval time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
 		SessionSecret           string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
+		SessionCookieDomain     string        `yaml:"sessionCookieDomain" envconfig:"FRONTEND_SESSION_COOKIE_DOMAIN"`
 		JwtSigningSecret        string        `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
 		JwtIssuer               string        `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
 		JwtValidityInMinutes    int           `yaml:"jwtValidityInMinutes" envconfig:"FRONTEND_JWT_VALIDITY_INMINUTES"`
