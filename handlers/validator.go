@@ -1061,7 +1061,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			parentroot, 
 			attestationscount, 
 			depositscount,
-			withdrawalcount, 
+			COALESCE(withdrawalcount,0) as withdrawalcount, 
 			voluntaryexitscount, 
 			proposerslashingscount, 
 			attesterslashingscount, 

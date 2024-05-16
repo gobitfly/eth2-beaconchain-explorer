@@ -85,7 +85,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				attesterslashingscount, 
 				attestationscount, 
 				depositscount, 
-				withdrawalcount,
+				COALESCE(withdrawalcount,0) as withdrawalcount,
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
