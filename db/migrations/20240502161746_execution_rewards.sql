@@ -28,6 +28,28 @@ SELECT('up SQL query - add foreign key constraint to blocks table');
 ALTER TABLE blocks ADD CONSTRAINT blocks_execution_payloads_fk FOREIGN KEY (exec_block_hash) REFERENCES execution_payloads(block_hash);
 -- +goose StatementEnd
 
+-- +goose StatementBegin
+SELECT('up SQL query - drop null & default exec_transactions_count');
+ALTER TABLE public.blocks ALTER COLUMN exec_transactions_count DROP NOT NULL;
+ALTER TABLE public.blocks ALTER COLUMN exec_transactions_count DROP DEFAULT;
+
+SELECT('up SQL query - drop null & default exec_blob_gas_used');
+ALTER TABLE public.blocks ALTER COLUMN exec_blob_gas_used DROP NOT NULL;
+ALTER TABLE public.blocks ALTER COLUMN exec_blob_gas_used DROP DEFAULT;
+
+SELECT('up SQL query - drop null & default exec_excess_blob_gas');
+ALTER TABLE public.blocks ALTER COLUMN exec_excess_blob_gas DROP NOT NULL;
+ALTER TABLE public.blocks ALTER COLUMN exec_excess_blob_gas DROP DEFAULT;
+
+SELECT('up SQL query - drop null & default exec_blob_transactions_count');
+ALTER TABLE public.blocks ALTER COLUMN exec_blob_transactions_count DROP NOT NULL;
+ALTER TABLE public.blocks ALTER COLUMN exec_blob_transactions_count DROP DEFAULT;
+
+SELECT('up SQL query - drop null & default withdrawalcount');
+ALTER TABLE public.blocks ALTER COLUMN withdrawalcount DROP NOT NULL;
+ALTER TABLE public.blocks ALTER COLUMN withdrawalcount DROP DEFAULT;
+-- +goose StatementEnd
+
 
 -- +goose Down
 -- +goose StatementBegin
