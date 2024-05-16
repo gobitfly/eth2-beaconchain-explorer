@@ -118,7 +118,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			blocks.parentroot, 
 			blocks.attestationscount, 
 			blocks.depositscount,
-			blocks.withdrawalcount, 
+			COALESCE(blocks.withdrawalcount,0) as withdrawalcount, 
 			blocks.voluntaryexitscount, 
 			blocks.proposerslashingscount, 
 			blocks.attesterslashingscount,

@@ -238,7 +238,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			blocks.attesterslashingscount,
 			blocks.attestationscount,
 			blocks.depositscount,
-			blocks.withdrawalcount,
+			COALESCE(blocks.withdrawalcount,0) as withdrawalcount,
 			blocks.voluntaryexitscount,
 			blocks.proposer,
 			blocks.status,
