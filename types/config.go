@@ -137,14 +137,15 @@ type Config struct {
 			Plankton  string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
 			Webhook   string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
 		}
-		RatelimitUpdateInterval time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
-		SessionSecret           string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
-		SessionCookieDomain     string        `yaml:"sessionCookieDomain" envconfig:"FRONTEND_SESSION_COOKIE_DOMAIN"`
-		JwtSigningSecret        string        `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
-		JwtIssuer               string        `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
-		JwtValidityInMinutes    int           `yaml:"jwtValidityInMinutes" envconfig:"FRONTEND_JWT_VALIDITY_INMINUTES"`
-		MaxMailsPerEmailPerDay  int           `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
-		Mail                    struct {
+		RatelimitUpdateInterval              time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
+		SessionSecret                        string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
+		SessionCookieDomain                  string        `yaml:"sessionCookieDomain" envconfig:"FRONTEND_SESSION_COOKIE_DOMAIN"`
+		SessionCookieDeriveDomainFromRequest bool          `yaml:"sessionCookieDeriveDomainFromRequest" envconfig:"FRONTEND_SESSION_COOKIE_DERIVE_DOMAIN_FROM_REQUEST"`
+		JwtSigningSecret                     string        `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
+		JwtIssuer                            string        `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
+		JwtValidityInMinutes                 int           `yaml:"jwtValidityInMinutes" envconfig:"FRONTEND_JWT_VALIDITY_INMINUTES"`
+		MaxMailsPerEmailPerDay               int           `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
+		Mail                                 struct {
 			SMTP struct {
 				Server   string `yaml:"server" envconfig:"FRONTEND_MAIL_SMTP_SERVER"`
 				Host     string `yaml:"host" envconfig:"FRONTEND_MAIL_SMTP_HOST"`

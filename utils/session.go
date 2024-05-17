@@ -6,8 +6,9 @@ import (
 	"net/http"
 
 	"github.com/alexedwards/scs/redisstore"
-	"github.com/alexedwards/scs/v2"
+	"github.com/gobitfly/scs/v2"
 	"github.com/gomodule/redigo/redis"
+	"golang.org/x/net/publicsuffix"
 )
 
 // SessionStore is a securecookie-based session-store.
@@ -100,6 +101,18 @@ func InitSessionStore(secret string) {
 	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
 	sessionManager.Cookie.Secure = true
 	sessionManager.Cookie.Domain = Config.Frontend.SessionCookieDomain
+
+	if Config.Frontend.SessionCookieDeriveDomainFromRequest {
+		logger.Infof("deriving cookie.domain from request")
+		sessionManager.CookieFunc = func(r *http.Request, c *http.Cookie) {
+			domainname, err := publicsuffix.EffectiveTLDPlusOne(r.Host)
+			if err != nil {
+				logger.Warnf("error deriving domain from request (host: %v): %v", r.Host, err)
+				return
+			}
+			c.Domain = "." + domainname
+		}
+	}
 
 	sessionManager.Store = redisstore.New(pool)
 
