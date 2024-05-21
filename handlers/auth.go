@@ -183,6 +183,20 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		RedirectData: redirectData}
 	data.Meta.NoTrack = true
 
+	if utils.Config.Frontend.SessionCookieDeriveDomainFromRequest {
+		// delete old cookie
+		// TODO:patrick delete this once all users have the new cookie
+		c := &http.Cookie{
+			Name:     utils.SessionStore.SCS.Cookie.Name,
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Unix(0, 0),
+			Domain:   utils.SessionStore.SCS.Cookie.Domain,
+			HttpOnly: true,
+		}
+		http.SetCookie(w, c)
+	}
+
 	if handleTemplateError(w, r, "auth.go", "Login", "", loginTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
