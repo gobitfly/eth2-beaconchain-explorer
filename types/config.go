@@ -126,16 +126,29 @@ type Config struct {
 			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_WRITER_DB_MAX_OPEN_CONNS"`
 			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
 		} `yaml:"writerDatabase"`
-		Stripe struct {
-			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
-			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
-			Sapphire  string `yaml:"sapphire" envconfig:"FRONTEND_STRIPE_SAPPHIRE"`
-			Emerald   string `yaml:"emerald" envconfig:"FRONTEND_STRIPE_EMERALD"`
-			Diamond   string `yaml:"diamond" envconfig:"FRONTEND_STRIPE_DIAMOND"`
-			Whale     string `yaml:"whale" envconfig:"FRONTEND_STRIPE_WHALE"`
-			Goldfish  string `yaml:"goldfish" envconfig:"FRONTEND_STRIPE_GOLDFISH"`
-			Plankton  string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
-			Webhook   string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
+		OldProductsDeadlineUnix int64 `yaml:"oldProductsDeadline" envconfig:"FRONTEND_OLD_PRODUCTS_DEADLINE_UNIX"`
+		Stripe                  struct {
+			SecretKey     string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
+			PublicKey     string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
+			Sapphire      string `yaml:"sapphire" envconfig:"FRONTEND_STRIPE_SAPPHIRE"`
+			Emerald       string `yaml:"emerald" envconfig:"FRONTEND_STRIPE_EMERALD"`
+			Diamond       string `yaml:"diamond" envconfig:"FRONTEND_STRIPE_DIAMOND"`
+			Whale         string `yaml:"whale" envconfig:"FRONTEND_STRIPE_WHALE"`
+			Goldfish      string `yaml:"goldfish" envconfig:"FRONTEND_STRIPE_GOLDFISH"`
+			Plankton      string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
+			Iron          string `yaml:"iron" envconfig:"FRONTEND_STRIPE_IRON"`
+			Silver        string `yaml:"silver" envconfig:"FRONTEND_STRIPE_SILVER"`
+			Gold          string `yaml:"gold" envconfig:"FRONTEND_STRIPE_GOLD"`
+			Guppy         string `yaml:"guppy" envconfig:"FRONTEND_STRIPE_GUPPY"`
+			Dolphin       string `yaml:"dolphin" envconfig:"FRONTEND_STRIPE_DOLPHIN"`
+			Orca          string `yaml:"orca" envconfig:"FRONTEND_STRIPE_ORCA"`
+			IronYearly    string `yaml:"iron" envconfig:"FRONTEND_STRIPE_IRON_YEARLY"`
+			SilverYearly  string `yaml:"silver" envconfig:"FRONTEND_STRIPE_SILVER_YEARLY"`
+			GoldYearly    string `yaml:"gold" envconfig:"FRONTEND_STRIPE_GOLD_YEARLY"`
+			GuppyYearly   string `yaml:"guppy" envconfig:"FRONTEND_STRIPE_GUPPY_YEARLY"`
+			DolphinYearly string `yaml:"dolphin" envconfig:"FRONTEND_STRIPE_DOLPHIN_YEARLY"`
+			OrcaYearly    string `yaml:"orca" envconfig:"FRONTEND_STRIPE_ORCA_YEARLY"`
+			Webhook       string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
 		}
 		RatelimitUpdateInterval              time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
 		SessionSecret                        string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`

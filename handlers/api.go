@@ -3203,6 +3203,8 @@ func GetUserPremiumByPackage(pkg string) PremiumUser {
 		NoAds:                  false,
 	}
 
+	pkg = utils.MapProductV2ToV1(pkg)
+
 	if pkg == "" || pkg == "standard" {
 		return result
 	}

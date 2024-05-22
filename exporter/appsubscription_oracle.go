@@ -98,6 +98,16 @@ func verifyManuall(receipt *types.PremiumData) (*VerifyResponse, error) {
 
 // Does not verify stripe or ethpool payments as those are handled differently
 func VerifyReceipt(googleClient *playstore.Client, appleClient *api.StoreClient, receipt *types.PremiumData) (*VerifyResponse, error) {
+	if utils.Config.Frontend.OldProductsDeadlineUnix > 0 && time.Now().Unix() > utils.Config.Frontend.OldProductsDeadlineUnix {
+		if _, found := utils.ProductsMapV1ToV2[receipt.ProductID]; found {
+			logger.WithField("id", receipt.ID).WithField("product_id", receipt.ProductID).WithField("store", receipt.Store).Warn("not verifying old product")
+			return &VerifyResponse{
+				Valid:          false,
+				ExpirationDate: 0,
+				RejectReason:   "old_product",
+			}, nil
+		}
+	}
 	if receipt.Store == "ios-appstore" {
 		return verifyApple(appleClient, receipt)
 	} else if receipt.Store == "android-playstore" {

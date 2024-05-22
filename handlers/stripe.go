@@ -20,19 +20,6 @@ import (
 	"github.com/stripe/stripe-go/v72/webhook"
 )
 
-func getCleanProductID(priceId string) string {
-	if priceId == utils.Config.Frontend.Stripe.Whale {
-		return "whale"
-	}
-	if priceId == utils.Config.Frontend.Stripe.Goldfish {
-		return "goldfish"
-	}
-	if priceId == utils.Config.Frontend.Stripe.Plankton {
-		return "plankton"
-	}
-	return ""
-}
-
 // StripeCreateCheckoutSession creates a session to checkout api pricing subscription
 func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	user := getUser(r)
@@ -340,7 +327,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if utils.GetPurchaseGroup(priceID) == utils.GROUP_MOBILE {
-			err := db.ChangeProductIDFromStripe(tx, subscription.ID, getCleanProductID(priceID))
+			err := db.ChangeProductIDFromStripe(tx, subscription.ID, utils.PriceIdToProductId(priceID))
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription", subscription.ID)
 				http.Error(w, "error updating stripe mobile subscription customer: "+subscription.Customer.ID, http.StatusInternalServerError)
@@ -498,7 +485,7 @@ func createNewStripeSubscription(subscription stripe.Subscription, event stripe.
 			return err
 		}
 		details := types.MobileSubscription{
-			ProductID:   getCleanProductID(subscription.Items.Data[0].Price.ID),
+			ProductID:   utils.PriceIdToProductId(subscription.Items.Data[0].Price.ID),
 			PriceMicros: uint64(subscription.Items.Data[0].Price.UnitAmount),
 			Currency:    string(subscription.Items.Data[0].Price.Currency),
 			Transaction: types.MobileSubscriptionTransactionGeneric{
@@ -541,6 +528,30 @@ func emailCustomerAboutPlanChange(email, plan string) {
 		p = "Goldfish"
 	} else if plan == utils.Config.Frontend.Stripe.Whale {
 		p = "Whale"
+	} else if plan == utils.Config.Frontend.Stripe.Iron {
+		p = "Iron"
+	} else if plan == utils.Config.Frontend.Stripe.Silver {
+		p = "Silver"
+	} else if plan == utils.Config.Frontend.Stripe.Gold {
+		p = "Gold"
+	} else if plan == utils.Config.Frontend.Stripe.Guppy {
+		p = "Guppy"
+	} else if plan == utils.Config.Frontend.Stripe.Dolphin {
+		p = "Dolphin"
+	} else if plan == utils.Config.Frontend.Stripe.Orca {
+		p = "Orca"
+	} else if plan == utils.Config.Frontend.Stripe.IronYearly {
+		p = "Iron (yearly)"
+	} else if plan == utils.Config.Frontend.Stripe.SilverYearly {
+		p = "Silver (yearly)"
+	} else if plan == utils.Config.Frontend.Stripe.GoldYearly {
+		p = "Gold (yearly)"
+	} else if plan == utils.Config.Frontend.Stripe.GuppyYearly {
+		p = "Guppy (yearly)"
+	} else if plan == utils.Config.Frontend.Stripe.DolphinYearly {
+		p = "Dolphin (yearly)"
+	} else if plan == utils.Config.Frontend.Stripe.OrcaYearly {
+		p = "Orca (yearly)"
 	}
 	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
 	// escape html

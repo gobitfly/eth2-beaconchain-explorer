@@ -454,6 +454,12 @@ func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 			WHEN 'whale' THEN 1
 			WHEN 'goldfish' THEN 2
 			WHEN 'plankton' THEN 3
+			WHEN 'guppy' THEN 1
+			WHEN 'dolphin' THEN 2
+			WHEN 'orca' THEN 3
+			WHEN 'guppy.yearly' THEN 1
+			WHEN 'dolphin.yearly' THEN 2
+			WHEN 'orca.yearly' THEN 3
 			ELSE 4  -- For any other product_id values
 		END, id desc`,
 		userID,
@@ -473,6 +479,12 @@ func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error
 			WHEN 'whale' THEN 1
 			WHEN 'goldfish' THEN 2
 			WHEN 'plankton' THEN 3
+			WHEN 'guppy' THEN 1
+			WHEN 'dolphin' THEN 2
+			WHEN 'orca' THEN 3
+			WHEN 'guppy.yearly' THEN 1
+			WHEN 'dolphin.yearly' THEN 2
+			WHEN 'orca.yearly' THEN 3
 			ELSE 4  -- For any other product_id values
 		END, 
 		id desc
