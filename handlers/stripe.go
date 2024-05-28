@@ -73,7 +73,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	var successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
 	var cancelUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing")
-	if purchaseGroup == utils.GROUP_MOBILE {
+	if purchaseGroup == utils.GROUP_MOBILE || purchaseGroup == utils.GROUP_ADDON {
 		successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#account")
 		cancelUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/premium")
 	}

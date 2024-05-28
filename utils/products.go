@@ -19,15 +19,19 @@ var ProductsMapV2ToV1 = map[string]string{
 
 const GROUP_API = "api"
 const GROUP_MOBILE = "mobile"
+const GROUP_ADDON = "addon"
 
 func GetPurchaseGroup(priceId string) string {
-	if priceId == Config.Frontend.Stripe.Sapphire || priceId == Config.Frontend.Stripe.Emerald || priceId == Config.Frontend.Stripe.Diamond || priceId == Config.Frontend.Stripe.Iron || priceId == Config.Frontend.Stripe.Silver || priceId == Config.Frontend.Stripe.Gold || priceId == Config.Frontend.Stripe.IronYearly || priceId == Config.Frontend.Stripe.SilverYearly || priceId == Config.Frontend.Stripe.GoldYearly {
+	switch priceId {
+	case Config.Frontend.Stripe.Sapphire, Config.Frontend.Stripe.Emerald, Config.Frontend.Stripe.Diamond, Config.Frontend.Stripe.Iron, Config.Frontend.Stripe.Silver, Config.Frontend.Stripe.Gold, Config.Frontend.Stripe.IronYearly, Config.Frontend.Stripe.SilverYearly, Config.Frontend.Stripe.GoldYearly:
 		return GROUP_API
-	}
-	if priceId == Config.Frontend.Stripe.Whale || priceId == Config.Frontend.Stripe.Goldfish || priceId == Config.Frontend.Stripe.Plankton || priceId == Config.Frontend.Stripe.Orca || priceId == Config.Frontend.Stripe.Dolphin || priceId == Config.Frontend.Stripe.Guppy || priceId == Config.Frontend.Stripe.OrcaYearly || priceId == Config.Frontend.Stripe.DolphinYearly || priceId == Config.Frontend.Stripe.GuppyYearly {
+	case Config.Frontend.Stripe.Whale, Config.Frontend.Stripe.Goldfish, Config.Frontend.Stripe.Plankton, Config.Frontend.Stripe.Orca, Config.Frontend.Stripe.Dolphin, Config.Frontend.Stripe.Guppy, Config.Frontend.Stripe.OrcaYearly, Config.Frontend.Stripe.DolphinYearly, Config.Frontend.Stripe.GuppyYearly:
 		return GROUP_MOBILE
+	case Config.Frontend.Stripe.VdbAddon1k, Config.Frontend.Stripe.VdbAddon1kYearly, Config.Frontend.Stripe.VdbAddon10k, Config.Frontend.Stripe.VdbAddon10kYearly:
+		return GROUP_ADDON
+	default:
+		return ""
 	}
-	return ""
 }
 
 func EffectiveProductId(productId string) string {
