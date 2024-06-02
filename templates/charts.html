@@ -218,10 +218,12 @@
 
         function fetchChart(chartHolderId) {
           return new Promise((resolve, reject) => {
-            fetch(`/charts/${chartHolderId}/data`)
-            .then(res => res.json())
-            .then(resolve)
-            .catch(reject)
+            waitForTurnstileToken(()=>{
+              fetch(`/charts/${chartHolderId}/data`,{ headers: {'X-TURNSTILE-TOKEN': window.turnstileToken}})
+              .then(res => res.json())
+              .then(resolve)
+              .catch(reject)
+            })
           })
         }
 
