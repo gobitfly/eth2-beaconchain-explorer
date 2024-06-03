@@ -78,16 +78,16 @@ func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
 			from users_app_subscriptions 
 			WHERE user_id = users.id AND active = true 
 			order by CASE product_id
-				WHEN 'whale' THEN 1
-				WHEN 'goldfish' THEN 2
-				WHEN 'plankton' THEN 3
-				WHEN 'orca' THEN 1
-				WHEN 'dolphin' THEN 2
-				WHEN 'guppy' THEN 3
-				WHEN 'orca.yearly' THEN 1
-				WHEN 'dolphin.yearly' THEN 2
-				WHEN 'guppy.yearly' THEN 3
-				ELSE 4  -- For any other product_id values
+				WHEN 'orca.yearly'    THEN  1
+				WHEN 'dolphin.yearly' THEN  2
+				WHEN 'guppy.yearly'   THEN  3
+				WHEN 'orca'           THEN  4
+				WHEN 'dolphin'        THEN  5
+				WHEN 'guppy'          THEN  6
+				WHEN 'whale'          THEN  7
+				WHEN 'goldfish'       THEN  8
+				WHEN 'plankton'       THEN  9
+				ELSE                       10  -- For any other product_id values
 			END, id desc limit 1
 		) FROM users 
 		WHERE api_key = $1`, apiKey)
@@ -457,16 +457,16 @@ func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 		from users_app_subscriptions 
 		WHERE user_id = $1 AND active = true 
 		order by CASE product_id
-			WHEN 'whale' THEN 1
-			WHEN 'goldfish' THEN 2
-			WHEN 'plankton' THEN 3
-			WHEN 'orca' THEN 1
-			WHEN 'dolphin' THEN 2
-			WHEN 'guppy' THEN 3
-			WHEN 'orca.yearly' THEN 1
-			WHEN 'dolphin.yearly' THEN 2
-			WHEN 'guppy.yearly' THEN 3
-			ELSE 4  -- For any other product_id values
+			WHEN 'orca.yearly'    THEN  1
+			WHEN 'dolphin.yearly' THEN  2
+			WHEN 'guppy.yearly'   THEN  3
+			WHEN 'orca'           THEN  4
+			WHEN 'dolphin'        THEN  5
+			WHEN 'guppy'          THEN  6
+			WHEN 'whale'          THEN  7
+			WHEN 'goldfish'       THEN  8
+			WHEN 'plankton'       THEN  9
+			ELSE                       10  -- For any other product_id values
 		END, id desc`,
 		userID,
 	)
@@ -482,16 +482,16 @@ func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error
 	ORDER BY 
 		active desc, 
 		CASE product_id
-			WHEN 'whale' THEN 1
-			WHEN 'goldfish' THEN 2
-			WHEN 'plankton' THEN 3
-			WHEN 'orca' THEN 1
-			WHEN 'dolphin' THEN 2
-			WHEN 'guppy' THEN 3
-			WHEN 'orca.yearly' THEN 1
-			WHEN 'dolphin.yearly' THEN 2
-			WHEN 'guppy.yearly' THEN 3
-			ELSE 4  -- For any other product_id values
+			WHEN 'orca.yearly'    THEN  1
+			WHEN 'dolphin.yearly' THEN  2
+			WHEN 'guppy.yearly'   THEN  3
+			WHEN 'orca'           THEN  4
+			WHEN 'dolphin'        THEN  5
+			WHEN 'guppy'          THEN  6
+			WHEN 'whale'          THEN  7
+			WHEN 'goldfish'       THEN  8
+			WHEN 'plankton'       THEN  9
+			ELSE                       10  -- For any other product_id values
 		END, 
 		id desc
 	LIMIT 1`, id)

@@ -51,16 +51,18 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// don't let the user checkout another subscription in the same group
-	if subscription.Active != nil && *subscription.Active {
-		logger.Errorf("error there is an active subscription cannot create another one %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, struct {
-			ErrorData string `json:"error"`
-		}{
-			ErrorData: "could not create a new stripe session",
-		})
-		return
+	if purchaseGroup != utils.GROUP_ADDON {
+		// don't let the user checkout another subscription in the same group
+		if subscription.Active != nil && *subscription.Active {
+			logger.Errorf("error there is an active subscription cannot create another one %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			writeJSON(w, struct {
+				ErrorData string `json:"error"`
+			}{
+				ErrorData: "could not create a new stripe session",
+			})
+			return
+		}
 	}
 
 	// taxRates := utils.StripeDynamicRatesLive

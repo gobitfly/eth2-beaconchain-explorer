@@ -2,6 +2,26 @@ package utils
 
 import "time"
 
+const GROUP_API = "api"
+const GROUP_MOBILE = "mobile"
+const GROUP_ADDON = "addon"
+
+var ProductsGroups = map[string]string{
+	"plankton":             GROUP_MOBILE,
+	"goldfish":             GROUP_MOBILE,
+	"whale":                GROUP_MOBILE,
+	"guppy":                GROUP_MOBILE,
+	"dolphin":              GROUP_MOBILE,
+	"orca":                 GROUP_MOBILE,
+	"guppy.yearly":         GROUP_MOBILE,
+	"dolphin.yearly":       GROUP_MOBILE,
+	"orca.yearly":          GROUP_MOBILE,
+	"vdb_addon_1k":         GROUP_ADDON,
+	"vdb_addon_1k.yearly":  GROUP_ADDON,
+	"vdb_addon_10k":        GROUP_ADDON,
+	"vdb_addon_10k.yearly": GROUP_ADDON,
+}
+
 var ProductsMapV1ToV2 = map[string]string{
 	"plankton": "guppy",
 	"goldfish": "guppy",
@@ -9,29 +29,24 @@ var ProductsMapV1ToV2 = map[string]string{
 }
 
 var ProductsMapV2ToV1 = map[string]string{
-	"guppy":          "goldfish",
-	"dolphin":        "whale",
-	"orca":           "whale",
-	"guppy.yearly":   "goldfish",
-	"dolphin.yearly": "whale",
-	"orca.yearly":    "whale",
+	"guppy":                "goldfish",
+	"dolphin":              "whale",
+	"orca":                 "whale",
+	"guppy.yearly":         "goldfish",
+	"dolphin.yearly":       "whale",
+	"orca.yearly":          "whale",
+	"vdb_addon_1k":         "",
+	"vdb_addon_1k.yearly":  "",
+	"vdb_addon_10k":        "",
+	"vdb_addon_10k.yearly": "",
 }
 
-const GROUP_API = "api"
-const GROUP_MOBILE = "mobile"
-const GROUP_ADDON = "addon"
-
 func GetPurchaseGroup(priceId string) string {
-	switch priceId {
-	case Config.Frontend.Stripe.Sapphire, Config.Frontend.Stripe.Emerald, Config.Frontend.Stripe.Diamond, Config.Frontend.Stripe.Iron, Config.Frontend.Stripe.Silver, Config.Frontend.Stripe.Gold, Config.Frontend.Stripe.IronYearly, Config.Frontend.Stripe.SilverYearly, Config.Frontend.Stripe.GoldYearly:
-		return GROUP_API
-	case Config.Frontend.Stripe.Whale, Config.Frontend.Stripe.Goldfish, Config.Frontend.Stripe.Plankton, Config.Frontend.Stripe.Orca, Config.Frontend.Stripe.Dolphin, Config.Frontend.Stripe.Guppy, Config.Frontend.Stripe.OrcaYearly, Config.Frontend.Stripe.DolphinYearly, Config.Frontend.Stripe.GuppyYearly:
-		return GROUP_MOBILE
-	case Config.Frontend.Stripe.VdbAddon1k, Config.Frontend.Stripe.VdbAddon1kYearly, Config.Frontend.Stripe.VdbAddon10k, Config.Frontend.Stripe.VdbAddon10kYearly:
-		return GROUP_ADDON
-	default:
-		return ""
+	productId := PriceIdToProductId(priceId)
+	if group, exists := ProductsGroups[productId]; exists {
+		return group
 	}
+	return ""
 }
 
 func EffectiveProductId(productId string) string {
@@ -87,6 +102,14 @@ func PriceIdToProductId(priceId string) string {
 		return "dolphin.yearly"
 	case Config.Frontend.Stripe.OrcaYearly:
 		return "orca.yearly"
+	case Config.Frontend.Stripe.VdbAddon1k:
+		return "vdb_addon_1k"
+	case Config.Frontend.Stripe.VdbAddon1kYearly:
+		return "vdb_addon_1k.yearly"
+	case Config.Frontend.Stripe.VdbAddon10k:
+		return "vdb_addon_10k"
+	case Config.Frontend.Stripe.VdbAddon10kYearly:
+		return "vdb_addon_10k.yearly"
 	default:
 		return ""
 	}
