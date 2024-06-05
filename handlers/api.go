@@ -3116,6 +3116,11 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if parsedBase.ProductID == "plankton" {
+		SendBadRequestResponse(w, r.URL.String(), "old product")
+		return
+	}
+
 	// Only allow ios and android purchases to be registered via this endpoint
 	if parsedBase.Transaction.Type != "ios-appstore" && parsedBase.Transaction.Type != "android-playstore" {
 		SendBadRequestResponse(w, r.URL.String(), "invalid transaction type")
