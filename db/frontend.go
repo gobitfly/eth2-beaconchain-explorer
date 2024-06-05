@@ -79,10 +79,10 @@ func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
 			WHERE user_id = users.id AND active = true 
 			order by CASE product_id
 				WHEN 'orca.yearly'    THEN  1
-				WHEN 'dolphin.yearly' THEN  2
-				WHEN 'guppy.yearly'   THEN  3
-				WHEN 'orca'           THEN  4
-				WHEN 'dolphin'        THEN  5
+				WHEN 'orca'           THEN  2
+				WHEN 'dolphin.yearly' THEN  3
+				WHEN 'dolphin'        THEN  4
+				WHEN 'guppy.yearly'   THEN  5
 				WHEN 'guppy'          THEN  6
 				WHEN 'whale'          THEN  7
 				WHEN 'goldfish'       THEN  8
@@ -458,10 +458,10 @@ func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 		WHERE user_id = $1 AND active = true 
 		order by CASE product_id
 			WHEN 'orca.yearly'    THEN  1
-			WHEN 'dolphin.yearly' THEN  2
-			WHEN 'guppy.yearly'   THEN  3
-			WHEN 'orca'           THEN  4
-			WHEN 'dolphin'        THEN  5
+			WHEN 'orca'           THEN  2
+			WHEN 'dolphin.yearly' THEN  3
+			WHEN 'dolphin'        THEN  4
+			WHEN 'guppy.yearly'   THEN  5
 			WHEN 'guppy'          THEN  6
 			WHEN 'whale'          THEN  7
 			WHEN 'goldfish'       THEN  8
@@ -483,10 +483,10 @@ func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error
 		active desc, 
 		CASE product_id
 			WHEN 'orca.yearly'    THEN  1
-			WHEN 'dolphin.yearly' THEN  2
-			WHEN 'guppy.yearly'   THEN  3
-			WHEN 'orca'           THEN  4
-			WHEN 'dolphin'        THEN  5
+			WHEN 'orca'           THEN  2
+			WHEN 'dolphin.yearly' THEN  3
+			WHEN 'dolphin'        THEN  4
+			WHEN 'guppy.yearly'   THEN  5
 			WHEN 'guppy'          THEN  6
 			WHEN 'whale'          THEN  7
 			WHEN 'goldfish'       THEN  8

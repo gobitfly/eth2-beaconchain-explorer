@@ -250,10 +250,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 				WHERE users.email = $1 AND active = true
 				ORDER BY CASE product_id
 					WHEN 'orca.yearly'    THEN  1
-					WHEN 'dolphin.yearly' THEN  2
-					WHEN 'guppy.yearly'   THEN  3
-					WHEN 'orca'           THEN  4
-					WHEN 'dolphin'        THEN  5
+					WHEN 'orca'           THEN  2
+					WHEN 'dolphin.yearly' THEN  3
+					WHEN 'dolphin'        THEN  4
+					WHEN 'guppy.yearly'   THEN  5
 					WHEN 'guppy'          THEN  6
 					WHEN 'whale'          THEN  7
 					WHEN 'goldfish'       THEN  8
