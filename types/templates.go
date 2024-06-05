@@ -253,7 +253,7 @@ type IndexPageEpochHistory struct {
 	AverageValidatorBalance uint64 `db:"averagevalidatorbalance"`
 }
 
-// IndexPageDataBlocks is a struct to hold detail data for the main web page
+// BlocksPageDataBlocks is a struct to hold detail data for the main web page
 type BlocksPageDataBlocks struct {
 	TotalCount           uint64        `db:"total_count"`
 	Epoch                uint64        `json:"epoch"`
@@ -501,7 +501,7 @@ type ValidatorBalanceHistory struct {
 	EffectiveBalance uint64 `db:"effectivebalance"`
 }
 
-// ValidatorBalanceHistory is a struct for the validator income history data
+// ValidatorIncomeHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
 	Day              int64         `db:"day"` // day can be -1 which is pre-genesis
 	ClRewards        int64         `db:"cl_rewards_gwei"`
@@ -885,7 +885,7 @@ type SearchAheadSlotsResult []struct {
 	Root string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
-// SearchAheadBlockssResult is a struct to hold the search ahead block results
+// SearchAheadBlocksResult is a struct to hold the search ahead block results
 type SearchAheadBlocksResult []struct {
 	Block string `json:"block,omitempty"`
 	Hash  string `json:"hash,omitempty"`

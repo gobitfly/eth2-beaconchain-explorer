@@ -91,7 +91,7 @@ type NewResolver struct {
 	Raw      types.Log // Blockchain specific contextual infos
 }
 
-// EnsFilterer is a log filtering Go binding around an Ethereum contract events.
+// EnsRegistrarFilterer is a log filtering Go binding around an Ethereum contract events.
 type EnsRegistrarFilterer struct {
 	contract                   *bind.BoundContract // Generic contract wrapper for the low level calls
 	contractV2                 *bind.BoundContract // Second version of registrar contract
