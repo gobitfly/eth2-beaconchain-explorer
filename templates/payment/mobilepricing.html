@@ -272,19 +272,20 @@
                   <li>Support us: <br /><i class="fas fa-check" style="color: var(--green);"></i></li>
                 </ul>
                 {{ if .User.Authenticated }}
-                  {{ if .Subscription.Active }}
-                    <form class="manage-billing-form">
-                      {{ .CsrfField }}
-                      <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
-                    </form>
-                  {{ else }}
-                    {{ if and .StripePK .Plankton (not .ActiveMobileStoreSub) }}
-                      <button id="plankton" class="btn btn-lg btn-block btn-outline-primary">Select</button>
-                    {{ end }}
-                  {{ end }}
-                {{ else }}
-                  <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+              {{ if .Subscription.Active }}
+                <form class="manage-billing-form">
+                  {{ .CsrfField }}
+                  <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
+                </form>
+              {{ else }}
+                {{ if and .StripePK .Plankton (not .ActiveMobileStoreSub) }}
+                  <button id="plankton" class="btn btn-lg btn-block btn-outline-primary">Select</button>
                 {{ end }}
+              {{ end }}
+            {{ else }}
+              <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+            {{ end }}
+            
 
               </div>
             </div -->
