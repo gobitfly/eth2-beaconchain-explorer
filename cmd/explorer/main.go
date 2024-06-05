@@ -371,11 +371,19 @@ func main() {
 			if err != nil {
 				logrus.WithError(err).Error("error decoding csrf auth key falling back to empty csrf key")
 			}
+
+			sameSite := csrf.SameSiteStrictMode
+			if utils.Config.Frontend.SessionSameSiteNone {
+				sameSite = csrf.SameSiteNoneMode
+			}
+
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
 				csrf.Secure(!cfg.Frontend.CsrfInsecure),
 				csrf.Path("/"),
+				csrf.Domain(cfg.Frontend.SessionCookieDomain),
+				csrf.SameSite(sameSite),
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -585,7 +593,7 @@ func main() {
 			}
 
 			authRouter.Use(handlers.UserAuthMiddleware)
-			authRouter.Use(csrfHandler)
+			// authRouter.Use(csrfHandler)
 
 			if utils.Config.Frontend.Debug {
 				// serve files from local directory when debugging, instead of from go embed file

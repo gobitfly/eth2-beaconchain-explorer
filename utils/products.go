@@ -82,6 +82,15 @@ func EffectiveProductName(productId string) string {
 	}
 }
 
+func ProductIsEligibleForAddons(productId string) bool {
+	switch productId {
+	case "orca", "orca.yearly":
+		return true
+	default:
+		return false
+	}
+}
+
 func PriceIdToProductId(priceId string) string {
 	switch priceId {
 	case Config.Frontend.Stripe.Plankton:

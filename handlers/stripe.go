@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-go/v72"
 	portalsession "github.com/stripe/stripe-go/v72/billingportal/session"
 	"github.com/stripe/stripe-go/v72/checkout/session"
@@ -26,7 +27,8 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	// get the product that the user wants to subscribe to
 	var req struct {
-		Price string `json:"priceId"`
+		Price         string `json:"priceId"`
+		AddonQuantity int64  `json:"addonQuantity"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -37,8 +39,12 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	purchaseGroup := utils.GetPurchaseGroup(req.Price)
 
+	if purchaseGroup != utils.GROUP_ADDON {
+		req.AddonQuantity = 1
+	}
+
 	if purchaseGroup == "" {
-		http.Error(w, "Error invalid price item provided. Must be the price ID of Sapphire, Emerald or Diamond", http.StatusBadRequest)
+		http.Error(w, "Error invalid price item provided.", http.StatusBadRequest)
 		logger.Errorf("error invalid stripe price id provided: %v, expected one of [%v, %v, %v]", req.Price, utils.Config.Frontend.Stripe.Sapphire, utils.Config.Frontend.Stripe.Emerald, utils.Config.Frontend.Stripe.Diamond)
 		return
 	}
@@ -62,6 +68,43 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 				ErrorData: "could not create a new stripe session",
 			})
 			return
+		}
+	} else {
+		addonSubs, err := db.StripeGetUserSubscriptions(user.UserID, utils.GROUP_ADDON)
+		if err != nil {
+			logger.Errorf("error retrieving user addon.subscriptions %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		totalAddonValidators := int64(0)
+		for _, s := range addonSubs {
+			p := utils.EffectiveProductId(utils.PriceIdToProductId(*s.PriceID))
+			switch p {
+			case "vdb_addon_1k", "vdb_addon_1k.yearly":
+				totalAddonValidators += 1_000
+			case "vdb_addon_10k", "vdb_addon_10k.yearly":
+				totalAddonValidators += 10_000
+			default:
+				logger.Warnf("unknown existing addon-product: %v", p)
+			}
+		}
+		p := utils.EffectiveProductId(utils.PriceIdToProductId(req.Price))
+		switch p {
+		case "vdb_addon_1k", "vdb_addon_1k.yearly":
+			totalAddonValidators += (1_000 * req.AddonQuantity)
+		case "vdb_addon_10k", "vdb_addon_10k.yearly":
+			totalAddonValidators += (10_000 * req.AddonQuantity)
+		default:
+			logger.Warnf("unknown new addon-product: %v", p)
+		}
+		if totalAddonValidators >= 100_000 {
+			logger.Errorf("error addon can not be purchased since limit has been reached: %v", totalAddonValidators)
+			w.WriteHeader(http.StatusBadRequest)
+			writeJSON(w, struct {
+				ErrorData string `json:"error"`
+			}{
+				ErrorData: "could not create a new stripe session",
+			})
 		}
 	}
 
@@ -95,7 +138,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				Price:    stripe.String(req.Price),
-				Quantity: stripe.Int64(1),
+				Quantity: stripe.Int64(req.AddonQuantity),
 				// DynamicTaxRates: taxRates,
 			},
 		},
@@ -196,6 +239,8 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error constructing webhook stripe signature event")
 		return
 	}
+
+	logger.WithFields(logrus.Fields{"type": event.Type}).Infof("received stripe webhook")
 
 	switch event.Type {
 	case "customer.created":
