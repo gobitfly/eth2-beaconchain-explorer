@@ -243,52 +243,6 @@
                 </ul>
               </div>
             </div>
-            <!-- div class="card mx-2 mb-4 box-shadow">
-              <div class="card-header">
-                <h4 class="my-0 font-weight-normal">Plankton</h4>
-              </div>
-              <div class="card-body">
-                <h1 class="card-title pricing-card-title">1.99€* <small class="text-muted">/ mo</small></h1>
-                <ul class="list-unstyled mt-3 mb-4">
-                  <li>
-                    Dashboard Validators:<br />
-                    <strong>100</strong>
-                  </li>
-                  <li>
-                    App Monitoring Machines:<br />
-                    <strong>1</strong>
-                  </li>
-                  <li>
-                    App Monitoring History: <br />
-                    <strong>30 days</strong>
-                  </li>
-                  <li>No Ads: <br /><i class="fas fa-check" style="color: var(--green);"></i></li>
-                  <li>
-                    Custom Alerts: <br />
-                    <i class="fas fa-check" style="color: var(--green);"></i>
-                  </li>
-                  <li>App Custom Themes: <br /><i class="fas fa-times" style="color: var(--red);"></i></li>
-                  <li>App Widget: <br /><i class="fas fa-times" style="color: var(--red);"></i></li>
-                  <li>Support us: <br /><i class="fas fa-check" style="color: var(--green);"></i></li>
-                </ul>
-                {{ if .User.Authenticated }}
-              {{ if .Subscription.Active }}
-                <form class="manage-billing-form">
-                  {{ .CsrfField }}
-                  <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
-                </form>
-              {{ else }}
-                {{ if and .StripePK .Plankton (not .ActiveMobileStoreSub) }}
-                  <button id="plankton" class="btn btn-lg btn-block btn-outline-primary">Select</button>
-                {{ end }}
-              {{ end }}
-            {{ else }}
-              <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
-            {{ end }}
-            
-
-              </div>
-            </div -->
           </div>
           <div style="margin: 0" class="row justify-content-center position-relative">
             <div class="card mx-2 mb-4 box-shadow hot-box">
