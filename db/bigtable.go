@@ -550,11 +550,9 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 
 		balanceEncoded := make([]byte, 8)
 		binary.LittleEndian.PutUint64(balanceEncoded, validator.Balance)
+		effectiveBalanceEncoded := uint8(validator.EffectiveBalance / 1e9) // we can encode the effective balance in 1 byte as it is capped at 32ETH and only decrements in 1 ETH steps
 
-		effectiveBalanceEncoded := make([]byte, 8)
-		binary.LittleEndian.PutUint64(effectiveBalanceEncoded, validator.EffectiveBalance)
-
-		combined := append(balanceEncoded, effectiveBalanceEncoded...)
+		combined := append(balanceEncoded, effectiveBalanceEncoded)
 		mut := &gcp_bigtable.Mutation{}
 		mut.Set(VALIDATOR_BALANCES_FAMILY, "b", ts, combined)
 		key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.Index), VALIDATOR_BALANCES_FAMILY, epochKey)
@@ -868,13 +866,17 @@ func (bigtable *Bigtable) getValidatorBalanceHistoryV2(validators []uint64, star
 				resMux.Unlock()
 
 				for _, ri := range r[VALIDATOR_BALANCES_FAMILY] {
-
 					balances := ri.Value
 
 					balanceBytes := balances[0:8]
-					effectiveBalanceBytes := balances[8:16]
 					balance := binary.LittleEndian.Uint64(balanceBytes)
-					effectiveBalance := binary.LittleEndian.Uint64(effectiveBalanceBytes)
+					var effectiveBalance uint64
+					if len(balances) == 9 { // in new schema the effective balance is encoded in 1 byte
+						effectiveBalance = uint64(balances[8]) * 1e9
+					} else {
+						effectiveBalanceBytes := balances[8:16]
+						effectiveBalance = binary.LittleEndian.Uint64(effectiveBalanceBytes)
+					}
 
 					resMux.Lock()
 					res[validator] = append(res[validator], &types.ValidatorBalance{
