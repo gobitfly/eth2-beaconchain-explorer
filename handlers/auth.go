@@ -249,10 +249,16 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 				left join users on users.id = user_id 
 				WHERE users.email = $1 AND active = true
 				ORDER BY CASE product_id
-					WHEN 'whale' THEN 1
-					WHEN 'goldfish' THEN 2
-					WHEN 'plankton' THEN 3
-					ELSE 4  -- For any other product_id values
+					WHEN 'orca.yearly'    THEN  1
+					WHEN 'orca'           THEN  2
+					WHEN 'dolphin.yearly' THEN  3
+					WHEN 'dolphin'        THEN  4
+					WHEN 'guppy.yearly'   THEN  5
+					WHEN 'guppy'          THEN  6
+					WHEN 'whale'          THEN  7
+					WHEN 'goldfish'       THEN  8
+					WHEN 'plankton'       THEN  9
+					ELSE                       10  -- For any other product_id values
 				END, users_app_subscriptions.created_at DESC LIMIT 1
 			)
 		SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active, COALESCE(user_group, '') AS user_group 

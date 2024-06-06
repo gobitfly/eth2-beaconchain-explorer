@@ -2921,6 +2921,9 @@ func getTokenByCode(w http.ResponseWriter, r *http.Request) {
 		pkg.Package = "standard"
 	}
 
+	// BIDS-3049 mobile app uses v1 package ids only
+	pkg.Package = utils.MapProductV2ToV1(pkg.Package)
+
 	var theme string = ""
 	if pkg.Store == "ethpool" {
 		theme = "ethpool"
@@ -2974,6 +2977,9 @@ func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		pkg.Package = "standard"
 	}
+
+	// BIDS-3049 mobile app uses v1 package ids only
+	pkg.Package = utils.MapProductV2ToV1(pkg.Package)
 
 	var theme string = ""
 	if pkg.Store == "ethpool" {
@@ -3110,6 +3116,11 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if parsedBase.ProductID == "plankton" {
+		SendBadRequestResponse(w, r.URL.String(), "old product")
+		return
+	}
+
 	// Only allow ios and android purchases to be registered via this endpoint
 	if parsedBase.Transaction.Type != "ios-appstore" && parsedBase.Transaction.Type != "android-playstore" {
 		SendBadRequestResponse(w, r.URL.String(), "invalid transaction type")
@@ -3202,6 +3213,8 @@ func GetUserPremiumByPackage(pkg string) PremiumUser {
 		NotificationThresholds: false,
 		NoAds:                  false,
 	}
+
+	pkg = utils.MapProductV2ToV1(pkg)
 
 	if pkg == "" || pkg == "standard" {
 		return result

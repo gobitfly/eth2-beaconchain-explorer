@@ -371,11 +371,14 @@ func main() {
 			if err != nil {
 				logrus.WithError(err).Error("error decoding csrf auth key falling back to empty csrf key")
 			}
+
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
 				csrf.Secure(!cfg.Frontend.CsrfInsecure),
 				csrf.Path("/"),
+				// csrf.Domain(cfg.Frontend.SessionCookieDomain),
+				csrf.SameSite(csrf.SameSiteNoneMode),
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")

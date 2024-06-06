@@ -354,8 +354,21 @@
                             {{ if eq .Premium.Package "goldfish" }}
                               <strong style="color: #d89a3e; font-size: 1.1em">Goldfish </strong>
                             {{ else }}
-                              {{ if eq .Premium.Package "whale" }}<strong style="color: #44a1c5; font-size: 1.1em">Whale </strong>{{ end }}
-
+                              {{ if eq .Premium.Package "whale" }}
+                                <strong style="color: #44a1c5; font-size: 1.1em">Whale </strong>
+                              {{ else }}
+                                {{ if or (eq .Premium.Package "guppy") (eq .Premium.Package "guppy.yearly") }}
+                                  <strong style="color: #50c878; font-size: 1.1em">Guppy {{ if eq .Premium.Package "guppy.yearly" }}(yearly){{ end }} </strong>
+                                {{ else }}
+                                  {{ if or (eq .Premium.Package "dolphin") (eq .Premium.Package "dolphin.yearly") }}
+                                    <strong style="color: #d89a3e; font-size: 1.1em">Dolphin {{ if eq .Premium.Package "dolphin.yearly" }}(yearly){{ end }} </strong>
+                                  {{ else }}
+                                    {{ if or (eq .Premium.Package "orca") (eq .Premium.Package "orca.yearly") }}
+                                      <strong style="color: #44a1c5; font-size: 1.1em">Orca {{ if eq .Premium.Package "orca.yearly" }}(yearly){{ end }} </strong>
+                                    {{ end }}
+                                  {{ end }}
+                                {{ end }}
+                              {{ end }}
                             {{ end }}
                           {{ end }}
                         {{ end }}
@@ -787,7 +800,6 @@
                               Emerald <i style="color: #50c878;" class="fas fa-gem"></i>
                             {{ else }}
                               {{ if eqsp .Subscription.PriceID .Diamond }}Diamond <i style="color: #b9f2ff" class="fas fa-gem"></i>{{ end }}
-
                             {{ end }}
                           {{ end }}
                         {{ end }}
