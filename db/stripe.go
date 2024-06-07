@@ -110,6 +110,13 @@ func StripeUpdateSubscriptionStatus(tx *sql.Tx, id string, status bool, payload 
 	return err
 }
 
+// StripeGetUserAPISubscriptions returns a users current subscriptions
+func StripeGetUserSubscriptions(id uint64, purchaseGroup string) ([]types.UserSubscription, error) {
+	userSubs := []types.UserSubscription{}
+	err := FrontendWriterDB.Select(&userSubs, "SELECT users.id, users.email, users.stripe_customer_id, us.subscription_id, us.price_id, us.active, users.api_key FROM users INNER JOIN (SELECT subscription_id, customer_id, price_id, active FROM users_stripe_subscriptions WHERE purchase_group = $2 and (payload->'ended_at')::text = 'null') as us ON users.stripe_customer_id = us.customer_id WHERE users.id = $1 ORDER BY active desc", id, purchaseGroup)
+	return userSubs, err
+}
+
 // StripeGetUserAPISubscription returns a users current subscription
 func StripeGetUserSubscription(id uint64, purchaseGroup string) (types.UserSubscription, error) {
 	userSub := types.UserSubscription{}

@@ -748,7 +748,7 @@ func SaveEpoch(epoch uint64, validators []*types.Validator, client rpc.Client, t
 			attesterslashingscount, 
 			attestationscount, 
 			depositscount,
-			COALESCE(withdrawalcount,0) as withdrawalcount,
+			withdrawalcount,
 			voluntaryexitscount, 
 			validatorscount, 
 			averagevalidatorbalance, 

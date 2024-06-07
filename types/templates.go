@@ -1319,6 +1319,12 @@ type MobilePricing struct {
 	Plankton             string
 	Goldfish             string
 	Whale                string
+	Guppy                string
+	GuppyYearly          string
+	Dolphin              string
+	DolphinYearly        string
+	Orca                 string
+	OrcaYearly           string
 	ActiveMobileStoreSub bool
 }
 
