@@ -75,7 +75,7 @@ func exportSSV() error {
 		}
 	}()
 
-	qryValidatorsTicker := time.NewTicker(time.Second * 600)
+	qryValidatorsTicker := time.NewTicker(time.Minute * 10)
 	defer qryValidatorsTicker.Stop()
 
 	for {

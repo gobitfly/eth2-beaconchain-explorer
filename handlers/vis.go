@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -41,13 +42,20 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 
 	sinceSlot := utils.TimeToSlot(uint64(since - 120))
 
+	// slot in postgres is limited to int
+	if sinceSlot > math.MaxInt32 {
+		logger.Warnf("error retrieving block tree data, slot too big: %v", err)
+		http.Error(w, "Error: Invalid parameter since.", http.StatusBadRequest)
+		return
+	}
+
 	var chartData []*types.VisChartData
 
 	err = db.ReaderDb.Select(&chartData, "select slot, blockroot, parentroot, proposer from blocks where slot >= $1 and status in ('1', '2') order by slot desc limit 50;", sinceSlot)
 
 	if err != nil {
 		logger.Errorf("error retrieving block tree data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -70,7 +78,7 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(chartData)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -101,7 +109,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving votes tree data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -112,7 +120,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 		err := rows.Scan(&data.Slot, &data.BlockRoot, &data.ParentRoot, &data.Validators)
 		if err != nil {
 			logger.Errorf("error scanning votes tree data: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		chartData = append(chartData, data)

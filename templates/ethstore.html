@@ -444,7 +444,7 @@
 				for (var i = 0; i < this.points.length; i++) {
 					if (this.points[i].series.name == "Total Staking Rewards") {
 						add += `<span style="color:${this.points[i].series.color};display: inline-block; width: 200px;">${this.points[i].series.name}: </span><b>${Highcharts.numberFormat(this.points[i].y, 6)} ETH</b><br/>`
-					} else if (this.points[i].series.name == "ETH.STORE") {
+					} else if (this.points[i].series.name == "ETH.STORE®") {
 						add += `<span style="color: ${this.points[i].series.color}; display: inline-block; width: 200px;">${this.points[i].series.name}: </span><b>${this.points[i].y.toFixed(3)} % p.a.</b><br/>`
 					} else {
 						add += `<span style="color: ${this.points[i].series.color}; display: inline-block; width: 200px;">${this.points[i].series.name}: </span><b>${Highcharts.numberFormat(this.points[i].y, 0)} ETH</b><br/>`

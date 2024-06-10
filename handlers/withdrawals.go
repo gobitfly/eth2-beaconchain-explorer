@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
@@ -13,11 +14,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Withdrawals will return information about recent withdrawals
 func Withdrawals(w http.ResponseWriter, r *http.Request) {
-	currency := GetCurrency(r)
 	templateFiles := append(layoutTemplateFiles, "withdrawals.html", "validator/withdrawalOverviewRow.html", "components/charts.html")
 	var withdrawalsTemplate = templates.GetTemplate(templateFiles...)
 
@@ -38,53 +41,9 @@ func Withdrawals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// withdrawalChartData, err := services.WithdrawalsChartData()
-	// if err != nil {
-	// 	logger.Errorf("error getting withdrawal chart data: %v", err)
-	// 	http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-	// 	return
-	// }
-	// pageData.WithdrawalChart = &types.ChartsPageDataChart{
-	// 	Data:   withdrawalChartData,
-	// 	Order:  17,
-	// 	Path:   "withdrawals",
-	// 	Height: 300,
-	// }
-
-	user, session, err := getUserSession(r)
-	if err != nil {
-		logger.WithError(err).Error("error getting user session")
-	}
-
-	withdrawalsState := GetDataTableState(user, session, "withdrawals")
-	if withdrawalsState.Length == 0 {
-		withdrawalsState.Length = 10
-	}
-
-	withdrawals, err := WithdrawalsTableData(1, withdrawalsState.Search.Search, withdrawalsState.Length, withdrawalsState.Start, "", "", currency)
-	if err != nil {
-		logger.Errorf("error getting withdrawals table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-	pageData.Withdrawals = withdrawals
-
-	blsChangeState := GetDataTableState(user, session, "blsChange")
-	if blsChangeState.Length == 0 {
-		blsChangeState.Length = 10
-	}
-
-	blsChange, err := BLSTableData(1, blsChangeState.Search.Search, blsChangeState.Length, blsChangeState.Start, "", "")
-	if err != nil {
-		logger.Errorf("error getting bls table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-	pageData.BlsChanges = blsChange
-
 	data.Data = pageData
 
-	err = withdrawalsTemplate.ExecuteTemplate(w, "layout", data)
+	err := withdrawalsTemplate.ExecuteTemplate(w, "layout", data)
 	if handleTemplateError(w, r, "withdrawals.go", "withdrawals", "", err) != nil {
 		return // an error has occurred and was processed
 	}
@@ -96,26 +55,28 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 	q := r.URL.Query()
 
-	search := q.Get("search[value]")
-	search = strings.Replace(search, "0x", "", -1)
+	search := ReplaceEnsNameWithAddress(q.Get("search[value]"))
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
+	}
+	if start > db.WithdrawalsQueryLimit {
+		start = db.WithdrawalsQueryLimit
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -128,19 +89,22 @@ func WithdrawalsData(w http.ResponseWriter, r *http.Request) {
 	data, err := WithdrawalsTableData(draw, search, length, start, orderBy, orderDir, currency)
 	if err != nil {
 		logger.Errorf("error getting withdrawal table data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
 
 func WithdrawalsTableData(draw uint64, search string, length, start uint64, orderBy, orderDir string, currency string) (*types.DataTableResponse, error) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
+
 	orderByMap := map[string]string{
 		"0": "epoch",
 		"1": "slot",
@@ -158,14 +122,61 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		orderDir = "desc"
 	}
 
-	withdrawalCount, err := db.GetTotalWithdrawals()
-	if err != nil {
-		return nil, fmt.Errorf("error getting total withdrawals: %w", err)
+	g, gCtx := errgroup.WithContext(ctx)
+	withdrawalCount := uint64(0)
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		withdrawalCount, err = db.GetTotalWithdrawals()
+		if err != nil {
+			return fmt.Errorf("error getting total withdrawals: %w", err)
+		}
+		return nil
+	})
+
+	filteredCount := uint64(0)
+	trimmedSearch := strings.ToLower(strings.TrimPrefix(search, "0x"))
+	if trimmedSearch != "" {
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
+			var err error
+			filteredCount, err = db.GetWithdrawalsCountForQuery(search)
+			if err != nil {
+				return fmt.Errorf("error getting withdrwal count for filter [%v]: %w", search, err)
+			}
+			return nil
+		})
 	}
 
-	withdrawals, err := db.GetWithdrawals(search, length, start, orderColumn, orderDir)
-	if err != nil {
-		return nil, fmt.Errorf("error getting withdrawals: %w", err)
+	withdrawals := []*types.Withdrawals{}
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		withdrawals, err = db.GetWithdrawals(search, length, start, orderColumn, orderDir)
+		if err != nil {
+			return fmt.Errorf("error getting withdrawals: %w", err)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	if trimmedSearch == "" {
+		filteredCount = withdrawalCount
 	}
 
 	formatCurrency := currency
@@ -173,23 +184,40 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		formatCurrency = "Ether"
 	}
 
+	var err error
+	names := make(map[string]string)
+	for _, v := range withdrawals {
+		names[string(v.Address)] = ""
+	}
+	names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	tableData := make([][]interface{}, len(withdrawals))
 	for i, w := range withdrawals {
 		tableData[i] = []interface{}{
-			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(w.Slot)))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(w.Slot))),
+			utils.FormatEpoch(utils.EpochOfSlot(w.Slot)),
+			utils.FormatBlockSlot(w.Slot),
 			template.HTML(fmt.Sprintf("%v", w.Index)),
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6))),
+			utils.FormatValidator(w.ValidatorIndex),
+			utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()),
+			utils.FormatAddressWithLimits(w.Address, names[string(w.Address)], false, "address", visibleDigitsForHash+5, 18, true),
+			utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), formatCurrency, 6),
 		}
+	}
+
+	if filteredCount > db.WithdrawalsQueryLimit {
+		filteredCount = db.WithdrawalsQueryLimit
+	}
+	if withdrawalCount > db.WithdrawalsQueryLimit {
+		withdrawalCount = db.WithdrawalsQueryLimit
 	}
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    withdrawalCount,
-		RecordsFiltered: withdrawalCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 		PageLength:      length,
 		DisplayStart:    start,
@@ -202,25 +230,28 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
 
-	search := q.Get("search[value]")
-	search = strings.Replace(search, "0x", "", -1)
+	search := ReplaceEnsNameWithAddress(q.Get("search[value]"))
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
+	}
+	if start > db.BlsChangeQueryLimit {
+		// limit offset to 10000, otherwise the query will be too slow
+		start = db.BlsChangeQueryLimit
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -233,20 +264,21 @@ func BLSChangeData(w http.ResponseWriter, r *http.Request) {
 	data, err := BLSTableData(draw, search, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("Error getting bls changes: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
 
 func BLSTableData(draw uint64, search string, length, start uint64, orderBy, orderDir string) (*types.DataTableResponse, error) {
-
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute*10))
+	defer cancel()
 	orderByMap := map[string]string{
 		"0": "block_slot",
 		"1": "block_slot",
@@ -261,32 +293,96 @@ func BLSTableData(draw uint64, search string, length, start uint64, orderBy, ord
 		orderDir = "desc"
 	}
 
-	total, err := db.GetTotalBLSChanges()
-	if err != nil {
-		return nil, fmt.Errorf("error getting total bls changes: %w", err)
+	g, gCtx := errgroup.WithContext(ctx)
+	totalCount := uint64(0)
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		totalCount, err = db.GetTotalBLSChanges()
+		if err != nil {
+			return fmt.Errorf("error getting total bls changes: %w", err)
+		}
+		return nil
+	})
+
+	filteredCount := uint64(0)
+	trimmedSearch := strings.ToLower(strings.TrimPrefix(search, "0x"))
+	if trimmedSearch != "" {
+		g.Go(func() error {
+			select {
+			case <-gCtx.Done():
+				return nil
+			default:
+			}
+			var err error
+			filteredCount, err = db.GetBLSChangesCountForQuery(search)
+			if err != nil {
+				return fmt.Errorf("error getting bls changes count for filter [%v]: %w", search, err)
+			}
+			return nil
+		})
 	}
 
-	blsChange, err := db.GetBLSChanges(search, length, start, orderVar, orderDir)
+	blsChange := []*types.BLSChange{}
+	g.Go(func() error {
+		select {
+		case <-gCtx.Done():
+			return nil
+		default:
+		}
+		var err error
+		blsChange, err = db.GetBLSChanges(search, length, start, orderVar, orderDir)
+		if err != nil {
+			return fmt.Errorf("error getting bls changes: %w", err)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	if trimmedSearch == "" {
+		filteredCount = totalCount
+	}
+
+	var err error
+	names := make(map[string]string)
+	for _, v := range blsChange {
+		names[string(v.Address)] = ""
+	}
+	names, _, err = db.BigtableClient.GetAddressesNamesArMetadata(&names, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error getting bls changes: %w", err)
+		return nil, err
 	}
 
 	tableData := make([][]interface{}, len(blsChange))
 	for i, bls := range blsChange {
 		tableData[i] = []interface{}{
-			template.HTML(fmt.Sprintf("%v", utils.FormatEpoch(utils.EpochOfSlot(bls.Slot)))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatBlockSlot(bls.Slot))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(bls.Validatorindex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(bls.Signature))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(bls.BlsPubkey))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(bls.Address, nil, "", false, false, true))),
+			utils.FormatEpoch(utils.EpochOfSlot(bls.Slot)),
+			utils.FormatBlockSlot(bls.Slot),
+			utils.FormatValidator(bls.Validatorindex),
+			utils.FormatHashWithCopy(bls.Signature),
+			utils.FormatHashWithCopy(bls.BlsPubkey),
+			utils.FormatAddressWithLimits(bls.Address, names[string(bls.Address)], false, "address", visibleDigitsForHash+5, 18, true),
 		}
+	}
+
+	if totalCount > db.BlsChangeQueryLimit {
+		totalCount = db.BlsChangeQueryLimit
+	}
+	if filteredCount > db.BlsChangeQueryLimit {
+		filteredCount = db.BlsChangeQueryLimit
 	}
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    total,
-		RecordsFiltered: total,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 		PageLength:      length,
 		DisplayStart:    start,

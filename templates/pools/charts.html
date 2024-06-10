@@ -108,7 +108,7 @@
   <script>
     // source: https://stackoverflow.com/questions/63343645/overriding-log-scale-with-highcharts-export-server/63375446#63375446
     window.addEventListener('load', function () {
-        Highcharts.stockChart('performance-chart', {
+        performanceChart = Highcharts.stockChart('performance-chart', {
             chart: {
                 type: {{.HistoricPoolPerformance.Data.Type}},
                 borderColor: null,

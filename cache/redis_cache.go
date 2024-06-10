@@ -3,12 +3,12 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/sirupsen/logrus"
 )
 
 type RedisCache struct {
@@ -98,7 +98,7 @@ func (cache *RedisCache) Get(ctx context.Context, key string, returnValue interf
 	err = json.Unmarshal([]byte(value), returnValue)
 	if err != nil {
 		cache.redisRemoteCache.Del(ctx, key).Err()
-		logrus.Errorf("error (redit_cache / Get) unmarshalling data for key %v: %v", key, err)
+		utils.LogError(err, "error unmarshalling data for key", 0, map[string]interface{}{"key": key})
 		return nil, err
 	}
 

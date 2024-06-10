@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/templates"
+	"eth2-exporter/utils"
 	"net/http"
 )
 
@@ -23,13 +24,11 @@ func Burn(w http.ResponseWriter, r *http.Request) {
 
 	currency := GetCurrency(r)
 
-	if currency == "ETH" {
+	if currency == utils.Config.Frontend.ElCurrency {
 		currency = "USD"
 	}
 
-	price := price.GetEthPrice(currency)
-
-	latestBurn.Price = price
+	latestBurn.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, currency)
 	latestBurn.Currency = currency
 
 	data.Data = latestBurn
@@ -48,15 +47,13 @@ func BurnPageData(w http.ResponseWriter, r *http.Request) {
 		currency = "USD"
 	}
 
-	price := price.GetEthPrice(currency)
-
-	latestBurn.Price = price
+	latestBurn.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, currency)
 	latestBurn.Currency = currency
 
 	err := json.NewEncoder(w).Encode(latestBurn)
 	if err != nil {
 		logger.Errorf("error sending latest burn page data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

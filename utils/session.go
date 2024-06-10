@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/alexedwards/scs/redisstore"
-	"github.com/alexedwards/scs/v2"
+	"github.com/gobitfly/scs/v2"
 	"github.com/gomodule/redigo/redis"
+	"golang.org/x/net/publicsuffix"
 )
 
 // SessionStore is a securecookie-based session-store.
@@ -89,17 +89,30 @@ func InitSessionStore(secret string) {
 	pool := &redis.Pool{
 		MaxIdle: 10,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", Config.RedisCacheEndpoint)
+			return redis.Dial("tcp", Config.RedisSessionStoreEndpoint)
 		},
 	}
 
 	sessionManager := scs.New()
-	sessionManager.Lifetime = time.Hour * 24 * 7
+	sessionManager.Lifetime = Week
 	sessionManager.Cookie.Name = "session_id"
 	sessionManager.Cookie.HttpOnly = true
 	sessionManager.Cookie.Persist = true
 	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
 	sessionManager.Cookie.Secure = true
+	sessionManager.Cookie.Domain = Config.Frontend.SessionCookieDomain
+
+	if Config.Frontend.SessionCookieDeriveDomainFromRequest {
+		logger.Infof("deriving cookie.domain from request")
+		sessionManager.CookieFunc = func(r *http.Request, c *http.Cookie) {
+			domainname, err := publicsuffix.EffectiveTLDPlusOne(r.Host)
+			if err != nil {
+				logger.Warnf("error deriving domain from request (host: %v): %v", r.Host, err)
+				return
+			}
+			c.Domain = "." + domainname
+		}
+	}
 
 	sessionManager.Store = redisstore.New(pool)
 
@@ -141,4 +154,25 @@ func GetFlashes(w http.ResponseWriter, r *http.Request, name string) []interface
 	flashes := session.Flashes()
 	session.Save(r, w)
 	return flashes
+}
+
+func HandleRecaptcha(w http.ResponseWriter, r *http.Request, errorRoute string) error {
+	if len(Config.Frontend.RecaptchaSecretKey) > 0 && len(Config.Frontend.RecaptchaSiteKey) > 0 {
+		recaptchaResponse := r.FormValue("g-recaptcha-response")
+		if len(recaptchaResponse) == 0 {
+			SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Warnf("error no recaptcha response present for route: %v", r.URL.String())
+			http.Redirect(w, r, errorRoute, http.StatusSeeOther)
+			return fmt.Errorf("no recaptcha")
+		}
+
+		valid, err := ValidateReCAPTCHA(recaptchaResponse)
+		if err != nil || !valid {
+			SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Warnf("error validating recaptcha %v route: %v -> %v", recaptchaResponse, r.URL.String(), err)
+			http.Redirect(w, r, errorRoute, http.StatusSeeOther)
+			return fmt.Errorf("invalid recaptcha")
+		}
+	}
+	return nil
 }

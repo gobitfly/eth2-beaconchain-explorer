@@ -1,66 +1,53 @@
 {{ define "genesisCountdown" }}
 <script>
-	function setTime(days, hour, min, second) {
-		if (second < 10) {
-			second = '0'+ second
-		}
-		if (min < 10) {
-			min = '0' + min
-		}
-		if (hour < 10) {
-			hour = '0' + hour
-		}
-		if (days < 10) {
-			days = '0' + days
-		}
+	function setTime(secondsLeft) {
+  		let [seconds, minutes, hours, days] = [0, 0, 0, 0];
+  		if (secondsLeft > 0) {
+  		  const duration = luxon.Duration.fromMillis(secondsLeft * 1000).shiftTo("days", "hours", "minutes", "seconds")
 
-		$('#clock').html(days+' days '+hour + ' hr ' + min + ' min ' + second + ' sec')
+  		  seconds = duration.seconds
+  		  minutes = duration.minutes
+  		  hours = duration.hours
+  		  days = duration.days
+  		}
+
+  		if (seconds < 10) {
+  		  seconds = "0" + seconds
+  		}
+  		if (minutes < 10) {
+  		  minutes = "0" + minutes
+  		}
+  		if (hours < 10) {
+  		  hours = "0" + hours
+  		}
+  		if (days < 10) {
+  		  days = "0" + days
+  		}
+
+		$('#clock').html(days+' days '+ hours + ' hr ' + minutes + ' min ' + seconds + ' sec')
 	}
 
 	document.addEventListener('DOMContentLoaded', function() {
 		var genesis = {{.NetworkStartTs}}
 		var now = Math.round((new Date()).getTime() / 1000)
 		var secondsLeft = genesis - now
-		var seconds = secondsLeft % 60
-		var min = ((secondsLeft - seconds) / 60) % 60
-		var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600) % 24
-		var days = Math.round((secondsLeft - seconds - (min * 60) - (hour * 60 * 60)) / 86400)
-		if (-1 < days && days <= 7) {
-			if (seconds > -1) {
-				setTime(days, hour, min, seconds)
-			} else {
-				setTime(0, 0, 0, 0)
-			}
+  		const duration = luxon.Duration.fromMillis(secondsLeft * 1000).shiftTo("days")
+		if (-1 < duration.days && duration.days <= 7) {
+			setTime(secondsLeft)
 			$('#estimated').html('Countdown')
 			$('#minGenesis').addClass('d-none')
 			$('#minGenesisAnd').addClass('d-none')
 			$('#networkStart').removeClass('d-none')
 			// $('#estimated+span').removeClass('d-none')
 			var countdownInterval = setInterval(function () {
-				if (hour <= 0 && min <= 0 && seconds <= 0 && days <= 0) {
+				if (secondsLeft <= 0) {
 					clearInterval(countdownInterval)
 					$('#rocket').removeClass('d-none')
 					return
 				}
 
-				if (seconds === 0 && min === 0 && hour === 0 && days > 0) {
-					hour = 24
-					days -= 1
-				}
-
-				if (seconds === 0 && min === 0 && hour > 0) {
-					min = 60
-					hour -= 1
-				}
-
-				if (seconds === 0 && min > 0) {
-					seconds = 60
-					min -= 1
-				}
-
-				seconds -= 1
-
-				setTime(days, hour, min, seconds)
+				secondsLeft -= 1
+				setTime(secondsLeft)
 			}, 1000)
 		}
 	})

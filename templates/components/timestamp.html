@@ -1,0 +1,10 @@
+{{ define "timestamp" }}
+  <div><span aria-ethereum-date="{{ .Unix }}" aria-ethereum-date-format="FROMNOW">{{ . }}</span> (<span id="timestamp" aria-ethereum-date="{{ .Unix }}" aria-ethereum-date-format="TIMESTAMP" aria-timestamp-options="timestampOptions">{{ . }}</span>) <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i></div>
+  <div class="flex-grow-1 text-right">
+    <div class="btn-group btn-group-toggle" data-toggle="buttons">
+      <label class="btn btn-light text-dark active btn-sm" onclick="setTs()"> <input type="radio" name="timestampOptions" id="optionTs" value="ts" autocomplete="off" /> Timestamp </label>
+      <label class="btn btn-light text-dark active btn-sm pl-4 pr-4" onclick="setTs()"> <input type="radio" name="timestampOptions" id="optionUtc" value="utc" autocomplete="off" /> UTC </label>
+      <label class="btn btn-light text-dark btn-sm pl-4 pr-4" onclick="setTs()"> <input type="radio" name="timestampOptions" id="optionLocal" value="local" autocomplete="off" checked /> Local </label>
+    </div>
+  </div>
+{{ end }}

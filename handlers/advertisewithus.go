@@ -26,7 +26,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "ad_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -39,27 +39,16 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		utils.LogError(err, "error parsing form", 0)
+		utils.LogError(err, "error parsing ad request form", 0, map[string]interface{}{
+			"route": r.URL.String(),
+		})
 		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
 		return
 	}
 
-	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
-		if len(r.FormValue("g-recaptcha-response")) == 0 {
-			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
-			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
-			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
-			return
-		}
-
-		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
-		if err != nil || !valid {
-			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
-			logger.Warnf("error validating recaptcha %v route: %v", r.URL.String(), err)
-			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
-			return
-		}
+	if err := utils.HandleRecaptcha(w, r, "/advertisewithus"); err != nil {
+		return
 	}
 
 	name := r.FormValue("name")
@@ -79,7 +68,7 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
-	err = mail.SendTextMail("support@beaconcha.in", "New ad inquiry", msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(utils.Config.Frontend.Mail.Contact.InquiryEmail, "New ad inquiry", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit ad request")

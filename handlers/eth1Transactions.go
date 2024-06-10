@@ -41,7 +41,7 @@ func Eth1TransactionsData(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(getTransactionDataStartingWithPageToken(r.URL.Query().Get("pageToken")))
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -55,7 +55,7 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			}
 		}
 	}
-	if pageTokenId == 0 {
+	if pageTokenId == 0 && pageToken != "0" {
 		pageTokenId = services.LatestEth1BlockNumber()
 	}
 
@@ -67,6 +67,10 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 			return nil
 		}
 		t := b.GetTransactions()
+		contractInteractionTypes, err := db.BigtableClient.GetAddressContractInteractionsAtBlock(b)
+		if err != nil {
+			utils.LogError(err, "error getting contract states", 0)
+		}
 
 		// retrieve metadata
 		names := make(map[string]string)
@@ -83,43 +87,25 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 		}
 
 		var wg errgroup.Group
-		for _, v := range t {
+		for i := len(t) - 1; i >= 0; i-- {
+			v := t[i]
 			wg.Go(func() error {
-				method := "Transfer"
-				{
-					d := v.GetData()
-					if len(d) > 3 {
-						m := d[:4]
-						invokesContract := len(v.GetItx()) > 0 || v.GetGasUsed() > 21000 || v.GetErrorMsg() != ""
-						method = db.BigtableClient.GetMethodLabel(m, invokesContract)
-					}
+				if v.GetTo() == nil {
+					v.To = v.ContractAddress
 				}
-
-				var toText template.HTML
-				{
-					to := v.GetTo()
-					if len(to) > 0 {
-						toText = utils.FormatAddressWithLimits(to, names[string(v.GetTo())], false, "address", visibleDigitsForHash+5, 18, true)
-					} else {
-						itx := v.GetItx()
-						if len(itx) > 0 && itx[0] != nil {
-							to = itx[0].GetTo()
-							if len(to) > 0 {
-								toText = utils.FormatAddressWithLimits(to, "Contract Creation", true, "address", visibleDigitsForHash+5, 18, true)
-							}
-						}
-					}
+				var contractInteraction types.ContractInteractionType
+				if len(contractInteractionTypes) > i {
+					contractInteraction = contractInteractionTypes[i]
 				}
-
 				tableData = append(tableData, []interface{}{
 					utils.FormatAddressWithLimits(v.GetHash(), "", false, "tx", visibleDigitsForHash+5, 18, true),
-					utils.FormatMethod(method),
+					utils.FormatMethod(db.BigtableClient.GetMethodLabel(v.GetData(), contractInteraction)),
 					template.HTML(fmt.Sprintf(`<A href="block/%d">%v</A>`, b.GetNumber(), utils.FormatAddCommas(b.GetNumber()))),
 					utils.FormatTimestamp(b.GetTime().AsTime().Unix()),
 					utils.FormatAddressWithLimits(v.GetFrom(), names[string(v.GetFrom())], false, "address", visibleDigitsForHash+5, 18, true),
-					toText,
-					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), "Ether", 8, 4, true, true, false),
-					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), "Ether", 8, 4, true, true, false),
+					utils.FormatAddressWithLimits(v.GetTo(), db.BigtableClient.GetAddressLabel(names[string(v.GetTo())], contractInteraction), contractInteraction != types.CONTRACT_NONE, "address", 15, 20, true),
+					utils.FormatAmountFormatted(new(big.Int).SetBytes(v.GetValue()), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
+					utils.FormatAmountFormatted(db.CalculateTxFeeFromTransaction(v, new(big.Int).SetBytes(b.GetBaseFee())), utils.Config.Frontend.ElCurrency, 8, 4, true, true, false),
 				})
 				return nil
 			})
@@ -135,8 +121,9 @@ func getTransactionDataStartingWithPageToken(pageToken string) *types.DataTableR
 	}
 }
 
-// Return given block, next block number and error
-// If block doesn't exists nil, 0, nil is returned
+// Returns the block requested via number and the number of the next block in our bigtable schema (i.e. the block that came chronologically before the requested block)
+//
+// If nextBlock doesn't exists nil, 0, nil is returned
 func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	block, err := db.BigtableClient.GetBlockFromBlocksTable(number)
 	if err != nil {
@@ -144,6 +131,10 @@ func getEth1BlockAndNext(number uint64) (*types.Eth1Block, uint64, error) {
 	}
 	if block == nil {
 		return nil, 0, fmt.Errorf("block %d not found", number)
+	}
+
+	if number == 0 {
+		return block, 0, nil
 	}
 
 	nextBlock := uint64(0)

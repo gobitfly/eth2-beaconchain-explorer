@@ -1,0 +1,52 @@
+version: '3'
+x-service: &default-service
+  image: golang:1.20
+  working_dir: /app
+  network_mode: "host"
+  volumes:
+    - ../.:/app
+    - /tmp/go-cache:/go
+    - /tmp/go-build-cache:/root/.cache/go-build
+services:
+  build-once:
+    <<: *default-service
+    profiles:
+      - build-once
+    command: /bin/bash -c "trap stopit SIGINT; stopit() { echo 'trapped SIGINT'; exit; }; git config --global --add safe.directory '*' && make -B all"
+  indexer:
+    <<: *default-service
+    command: go run ./cmd/explorer -config /app/local-deployment/config.yml
+    environment:
+      - INDEXER_ENABLED=true
+  eth1indexer:
+    <<: *default-service
+    command: go run ./cmd/eth1indexer -config /app/local-deployment/config.yml -blocks.concurrency 1 -blocks.tracemode 'geth' -data.concurrency 1 --balances.enabled
+  rewards-exporter:
+    <<: *default-service
+    command: go run ./cmd/rewards-exporter -config /app/local-deployment/config.yml
+  statistics:
+    <<: *default-service
+    command: go run ./cmd/statistics -config /app/local-deployment/config.yml --charts.enabled --graffiti.enabled -validators.enabled
+  frontend-data-updater:
+    <<: *default-service
+    command: go run ./cmd/frontend-data-updater -config /app/local-deployment/config.yml
+  frontend:
+    <<: *default-service
+    command: go run ./cmd/explorer -config /app/local-deployment/config.yml
+    environment:
+      - FRONTEND_ENABLED=true
+  ratelimits-updater:
+    <<: *default-service
+    command: go run ./cmd/misc -config /app/local-deployment/config.yml -command=update-ratelimits
+  misc:
+    <<: *default-service
+    command: /bin/bash -c "trap stopit SIGINT; stopit() { echo 'trapped SIGINT'; exit; }; while true; do date; sleep 1; done"
+  redis-sessions:
+    image: redis:7
+    volumes:
+      - redis-sessions:/data
+    ports:
+      - "$REDIS_SESSIONS_PORT:6379"
+
+volumes:
+  redis-sessions:

@@ -11,6 +11,7 @@ import (
 	"eth2-exporter/handlers"
 	"eth2-exporter/metrics"
 	"eth2-exporter/price"
+	"eth2-exporter/ratelimit"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/static"
@@ -34,7 +35,7 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/stripe/stripe-go/v72"
 	"github.com/urfave/negroni"
@@ -57,8 +58,14 @@ func init() {
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
-
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
+		return
+	}
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -69,15 +76,10 @@ func main() {
 	logrus.WithFields(logrus.Fields{
 		"config":    *configPath,
 		"version":   version.Version,
-		"chainName": utils.Config.Chain.Config.ConfigName}).Printf("starting")
+		"chainName": utils.Config.Chain.ClConfig.ConfigName}).Printf("starting")
 
-	if utils.Config.Chain.Config.SlotsPerEpoch == 0 || utils.Config.Chain.Config.SecondsPerSlot == 0 {
+	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
-	}
-
-	err = handlers.CheckAndPreloadImprint()
-	if err != nil {
-		logrus.Fatalf("error check / preload imprint: %v", err)
 	}
 
 	if utils.Config.Pprof.Enabled {
@@ -93,17 +95,21 @@ func main() {
 	go func() {
 		defer wg.Done()
 		db.MustInitDB(&types.DatabaseConfig{
-			Username: cfg.WriterDatabase.Username,
-			Password: cfg.WriterDatabase.Password,
-			Name:     cfg.WriterDatabase.Name,
-			Host:     cfg.WriterDatabase.Host,
-			Port:     cfg.WriterDatabase.Port,
+			Username:     cfg.WriterDatabase.Username,
+			Password:     cfg.WriterDatabase.Password,
+			Name:         cfg.WriterDatabase.Name,
+			Host:         cfg.WriterDatabase.Host,
+			Port:         cfg.WriterDatabase.Port,
+			MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 		}, &types.DatabaseConfig{
-			Username: cfg.ReaderDatabase.Username,
-			Password: cfg.ReaderDatabase.Password,
-			Name:     cfg.ReaderDatabase.Name,
-			Host:     cfg.ReaderDatabase.Host,
-			Port:     cfg.ReaderDatabase.Port,
+			Username:     cfg.ReaderDatabase.Username,
+			Password:     cfg.ReaderDatabase.Password,
+			Name:         cfg.ReaderDatabase.Name,
+			Host:         cfg.ReaderDatabase.Host,
+			Port:         cfg.ReaderDatabase.Port,
+			MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 		})
 	}()
 
@@ -111,17 +117,21 @@ func main() {
 	go func() {
 		defer wg.Done()
 		db.MustInitFrontendDB(&types.DatabaseConfig{
-			Username: cfg.Frontend.WriterDatabase.Username,
-			Password: cfg.Frontend.WriterDatabase.Password,
-			Name:     cfg.Frontend.WriterDatabase.Name,
-			Host:     cfg.Frontend.WriterDatabase.Host,
-			Port:     cfg.Frontend.WriterDatabase.Port,
+			Username:     cfg.Frontend.WriterDatabase.Username,
+			Password:     cfg.Frontend.WriterDatabase.Password,
+			Name:         cfg.Frontend.WriterDatabase.Name,
+			Host:         cfg.Frontend.WriterDatabase.Host,
+			Port:         cfg.Frontend.WriterDatabase.Port,
+			MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
 		}, &types.DatabaseConfig{
-			Username: cfg.Frontend.ReaderDatabase.Username,
-			Password: cfg.Frontend.ReaderDatabase.Password,
-			Name:     cfg.Frontend.ReaderDatabase.Name,
-			Host:     cfg.Frontend.ReaderDatabase.Host,
-			Port:     cfg.Frontend.ReaderDatabase.Port,
+			Username:     cfg.Frontend.ReaderDatabase.Username,
+			Password:     cfg.Frontend.ReaderDatabase.Password,
+			Name:         cfg.Frontend.ReaderDatabase.Name,
+			Host:         cfg.Frontend.ReaderDatabase.Host,
+			Port:         cfg.Frontend.ReaderDatabase.Port,
+			MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
+			MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
 		})
 	}()
 
@@ -151,15 +161,15 @@ func main() {
 			logrus.Fatalf("error retrieving geth chain id: %v", err)
 		}
 
-		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID)) {
-			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
+		if !(erigonChainId.String() == gethChainId.String() && erigonChainId.String() == fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID)) {
+			logrus.Fatalf("chain id mismatch: erigon chain id %v, geth chain id %v, requested chain id %v", erigonChainId.String(), gethChainId.String(), fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID))
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+		bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 		if err != nil {
 			logrus.Fatalf("error connecting to bigtable: %v", err)
 		}
@@ -171,19 +181,15 @@ func main() {
 		go func() {
 			defer wg.Done()
 			cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
-			logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
+			logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
 
 		}()
 	}
 
 	wg.Wait()
-	if utils.Config.TieredCacheProvider == "bigtable" && len(utils.Config.RedisCacheEndpoint) == 0 {
-		cache.MustInitTieredCacheBigtable(db.BigtableClient.GetClient(), fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID))
-		logrus.Infof("Tiered Cache initialized. Latest finalized epoch: %v", services.LatestFinalizedEpoch())
-	}
 
-	if utils.Config.TieredCacheProvider != "bigtable" && utils.Config.TieredCacheProvider != "redis" {
-		logrus.Fatalf("No cache provider set. Please set TierdCacheProvider (example redis, bigtable)")
+	if utils.Config.TieredCacheProvider != "redis" {
+		logrus.Fatalf("no cache provider set, please set TierdCacheProvider (example redis)")
 	}
 
 	defer db.ReaderDb.Close()
@@ -216,16 +222,9 @@ func main() {
 	logrus.Infof("database connection established")
 
 	if utils.Config.Indexer.Enabled {
-
-		err = services.InitLastAttestationCache(utils.Config.LastAttestationCachePath)
-
-		if err != nil {
-			logrus.Fatalf("error initializing last attesation cache: %v", err)
-		}
-
 		var rpcClient rpc.Client
 
-		chainID := new(big.Int).SetUint64(utils.Config.Chain.Config.DepositChainID)
+		chainID := new(big.Int).SetUint64(utils.Config.Chain.ClConfig.DepositChainID)
 		if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient("http://"+cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, chainID)
 			if err != nil {
@@ -233,27 +232,6 @@ func main() {
 			}
 		} else {
 			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
-		}
-
-		if utils.Config.Indexer.OneTimeExport.Enabled {
-			if len(utils.Config.Indexer.OneTimeExport.Epochs) > 0 {
-				logrus.Infof("onetimeexport epochs: %+v", utils.Config.Indexer.OneTimeExport.Epochs)
-				for _, epoch := range utils.Config.Indexer.OneTimeExport.Epochs {
-					err := exporter.ExportEpoch(epoch, rpcClient)
-					if err != nil {
-						utils.LogFatal(err, "exporting OneTimeExport epochs error", 0)
-					}
-				}
-			} else {
-				logrus.Infof("onetimeexport epochs: %v-%v", utils.Config.Indexer.OneTimeExport.StartEpoch, utils.Config.Indexer.OneTimeExport.EndEpoch)
-				for epoch := utils.Config.Indexer.OneTimeExport.StartEpoch; epoch <= utils.Config.Indexer.OneTimeExport.EndEpoch; epoch++ {
-					err := exporter.ExportEpoch(epoch, rpcClient)
-					if err != nil {
-						utils.LogFatal(err, "exporting OneTimeExport start to end epoch error", 0)
-					}
-				}
-			}
-			return
 		}
 
 		go services.StartHistoricPriceService()
@@ -312,6 +290,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}", handlers.ApiWithdrawalCredentialsValidators).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validators/queue", handlers.ApiValidatorQueue).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validators/proposalLuck", handlers.ApiProposalLuck).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/graffitiwall", handlers.ApiGraffitiwall).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
@@ -329,35 +308,15 @@ func main() {
 		apiV1Router.HandleFunc("/ethstore/{day}", handlers.ApiEthStoreDay).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/execution/gasnow", handlers.ApiEth1GasNowData).Methods("GET", "OPTIONS")
-		// query params: token
 		apiV1Router.HandleFunc("/execution/block/{blockNumber}", handlers.ApiETH1ExecBlocks).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/execution/{addressIndexOrPubkey}/produced", handlers.ApiETH1AccountProducedBlocks).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/execution/address/{address}", handlers.ApiEth1Address).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/transactions", handlers.ApiEth1AddressTx).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/internalTx", handlers.ApiEth1AddressItx).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/blocks", handlers.ApiEth1AddressBlocks).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/uncles", handlers.ApiEth1AddressUncles).Methods("GET", "OPTIONS")
-		apiV1Router.HandleFunc("/execution/address/{address}/tokens", handlers.ApiEth1AddressTokens).Methods("GET", "OPTIONS")
-		// // query params: type={erc20,erc721,erc1155}, address
-
-		// apiV1Router.HandleFunc("/execution/transactions", handlers.ApiEth1Tx).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/transaction/{txhash}/itx", handlers.ApiEth1TxItx).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/transaction/{txhash}/status", handlers.ApiEth1TxStatus).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/execution/token/{token}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/overall/epoch/{epoch}/rewards", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/overall/daily/eth-price?offset={timestamp}&limit={limit}&order={order}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/blocksize?offset={timestamp}&limit={limit}&order={order}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/daily/avg-gas-limit?offset={timestamp}&limit={limit}&order={order} OR ?timestamp={timestamp}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/daily/gas-used?offset={timestamp}&limit={limit}&order={order} OR ?timestamp={timestamp}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/execution/gas-orcale", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/stats/token/{token}/supply?block={block}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-		// apiV1Router.HandleFunc("/utils/execution/publish-txn?raw={txndata}", handlers.ApiEth1).Methods("GET", "OPTIONS")
-
-		// apiV1Router.HandleFunc("/execution/block/{blockNumber}", handlers.APIETH1).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/execution/address/{address}/erc20tokens", handlers.ApiEth1AddressERC20Tokens).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/widget", handlers.GetMobileWidgetStatsGet).Methods("GET")
 		apiV1Router.HandleFunc("/dashboard/widget", handlers.GetMobileWidgetStatsPost).Methods("POST")
+		apiV1Router.HandleFunc("/ens/lookup/{domain}", handlers.ResolveEnsDomain).Methods("GET", "OPTIONS")
 		apiV1Router.Use(utils.CORSMiddleware)
 
 		apiV1AuthRouter := apiV1Router.PathPrefix("/user").Subrouter()
@@ -370,6 +329,7 @@ func main() {
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/add", handlers.UserValidatorWatchlistAdd).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/dashboard/remove", handlers.UserDashboardWatchlistRemove).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribe).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/notifications/bundled/unsubscribe", handlers.MultipleUsersNotificationsUnsubscribe).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST", "OPTIONS")
@@ -385,12 +345,9 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
-		// logrus.Infof("initializing frontend services")
-		// services.Init() // Init frontend services
-		// logrus.Infof("frontend services initiated")
-
 		logrus.Infof("initializing prices")
-		price.Init(utils.Config.Chain.Config.DepositChainID, utils.Config.Eth1ErigonEndpoint)
+		price.Init(utils.Config.Chain.ClConfig.DepositChainID, utils.Config.Eth1ErigonEndpoint, utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
+
 		logrus.Infof("prices initialized")
 		if !utils.Config.Frontend.Debug {
 			logrus.Infof("initializing ethclients")
@@ -414,11 +371,14 @@ func main() {
 			if err != nil {
 				logrus.WithError(err).Error("error decoding csrf auth key falling back to empty csrf key")
 			}
+
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
 				csrf.Secure(!cfg.Frontend.CsrfInsecure),
 				csrf.Path("/"),
+				// csrf.Domain(cfg.Frontend.SessionCookieDomain),
+				csrf.SameSite(csrf.SameSiteNoneMode),
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -443,6 +403,7 @@ func main() {
 			router.HandleFunc("/address/{address}/withdrawals", handlers.Eth1AddressWithdrawals).Methods("GET")
 			router.HandleFunc("/address/{address}/transactions", handlers.Eth1AddressTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/internalTxns", handlers.Eth1AddressInternalTransactions).Methods("GET")
+			router.HandleFunc("/address/{address}/blobTxns", handlers.Eth1AddressBlobTransactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc20", handlers.Eth1AddressErc20Transactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc721", handlers.Eth1AddressErc721Transactions).Methods("GET")
 			router.HandleFunc("/address/{address}/erc1155", handlers.Eth1AddressErc1155Transactions).Methods("GET")
@@ -453,6 +414,7 @@ func main() {
 			router.HandleFunc("/block/{block}", handlers.Eth1Block).Methods("GET")
 			router.HandleFunc("/block/{block}/transactions", handlers.BlockTransactionsData).Methods("GET")
 			router.HandleFunc("/tx/{hash}", handlers.Eth1TransactionTx).Methods("GET")
+			router.HandleFunc("/tx/{hash}/data", handlers.Eth1TransactionTxData).Methods("GET")
 			router.HandleFunc("/mempool", handlers.MempoolView).Methods("GET")
 			router.HandleFunc("/burn", handlers.Burn).Methods("GET")
 			router.HandleFunc("/burn/data", handlers.BurnPageData).Methods("GET")
@@ -480,7 +442,7 @@ func main() {
 			router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 			router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
 			router.HandleFunc("/validator/{index}/effectiveness", handlers.ValidatorAttestationInclusionEffectiveness).Methods("GET")
-			router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")
+			router.HandleFunc("/validator/{pubkey}/name", handlers.SaveValidatorName).Methods("POST")
 			router.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
 			router.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST")
 			router.HandleFunc("/validator/{index}/stats", handlers.ValidatorStatsTable).Methods("GET")
@@ -490,8 +452,6 @@ func main() {
 			router.HandleFunc("/validators/slashings/data", handlers.ValidatorsSlashingsData).Methods("GET")
 			router.HandleFunc("/validators/leaderboard", handlers.ValidatorsLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
-			router.HandleFunc("/validators/streakleaderboard", handlers.ValidatorsStreakLeaderboard).Methods("GET")
-			router.HandleFunc("/validators/streakleaderboard/data", handlers.ValidatorsStreakLeaderboardData).Methods("GET")
 			router.HandleFunc("/validators/withdrawals", handlers.Withdrawals).Methods("GET")
 			router.HandleFunc("/validators/withdrawals/data", handlers.WithdrawalsData).Methods("GET")
 			router.HandleFunc("/validators/withdrawals/bls", handlers.BLSChangeData).Methods("GET")
@@ -509,7 +469,6 @@ func main() {
 			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
 			router.HandleFunc("/dashboard/data/allbalances", handlers.DashboardDataBalanceCombined).Methods("GET")
-			router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposalshistory", handlers.DashboardDataProposalsHistory).Methods("GET")
 			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")
@@ -520,24 +479,21 @@ func main() {
 			router.HandleFunc("/calculator", handlers.StakingCalculator).Methods("GET")
 			router.HandleFunc("/search", handlers.Search).Methods("POST")
 			router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
-			router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
-			router.HandleFunc("/poap", handlers.Poap).Methods("GET")
-			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
-			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 			router.HandleFunc("/tools/unitConverter", handlers.UnitConverter).Methods("GET")
 			router.HandleFunc("/tools/broadcast", handlers.Broadcast).Methods("GET")
 			router.HandleFunc("/tools/broadcast", handlers.BroadcastPost).Methods("POST")
 			router.HandleFunc("/tools/broadcast/status/{jobID}", handlers.BroadcastStatus).Methods("GET")
 
-			router.HandleFunc("/tables/state", handlers.DataTableStateChanges).Methods("POST")
+			router.HandleFunc("/tables/{tableId}/state", handlers.GetDataTableStateChanges).Methods("GET")
+			router.HandleFunc("/tables/{tableId}/state", handlers.SetDataTableStateChanges).Methods("PUT")
+			router.HandleFunc("/ens/{search}", handlers.EnsSearch).Methods("GET")
 
 			router.HandleFunc("/ethstore", handlers.EthStore).Methods("GET")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 
-			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")
@@ -561,8 +517,6 @@ func main() {
 
 			router.HandleFunc("/monitoring/{module}", handlers.Monitoring).Methods("GET", "OPTIONS")
 
-			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
-
 			signUpRouter := router.PathPrefix("/").Subrouter()
 			signUpRouter.HandleFunc("/login", handlers.Login).Methods("GET")
 			signUpRouter.HandleFunc("/login", handlers.LoginPost).Methods("POST")
@@ -584,7 +538,6 @@ func main() {
 
 			oauthRouter := router.PathPrefix("/user").Subrouter()
 			oauthRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirm).Methods("GET")
-			oauthRouter.HandleFunc("/cancel", handlers.UserAuthorizationCancel).Methods("GET")
 			oauthRouter.Use(csrfHandler)
 
 			authRouter := router.PathPrefix("/user").Subrouter()
@@ -616,9 +569,6 @@ func main() {
 
 			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
-			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
-			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
-			// authRouter.HandleFunc("/notifications-center/monitoring/updatesubs", handlers.UserUpdateMonitoringSubscriptions).Methods("POST")
 
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
@@ -651,10 +601,6 @@ func main() {
 				jsHandler := http.FileServer(http.Dir("static/js"))
 				router.PathPrefix("/js").Handler(http.StripPrefix("/js/", jsHandler))
 			}
-			legalFs := http.Dir(utils.Config.Frontend.LegalDir)
-			//router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", http.FileServer(legalFs)))
-			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", handlers.CustomFileServer(http.FileServer(legalFs), legalFs, handlers.NotFound)))
-			//router.PathPrefix("/").Handler(http.FileServer(http.FS(static.Files)))
 			fileSys := http.FS(static.Files)
 			router.PathPrefix("/").Handler(handlers.CustomFileServer(http.FileServer(fileSys), fileSys, handlers.NotFound))
 
@@ -664,23 +610,10 @@ func main() {
 			router.Use(metrics.HttpMiddleware)
 		}
 
-		// l := negroni.NewLogger()
-		// l.SetFormat(`{{.Request.Header.Get "X-Forwarded-For"}}, {{.Request.RemoteAddr}} | {{.StartTime}} | {{.Status}} | {{.Duration}} | {{.Hostname}} | {{.Method}} {{.Path}}{{if ne .Request.URL.RawQuery ""}}?{{.Request.URL.RawQuery}}{{end}}`)
+		ratelimit.Init()
+		router.Use(ratelimit.HttpMiddleware)
 
-		n := negroni.New(negroni.NewRecovery()) //, l
-
-		// Customize the logging middleware to include a proper module entry for the frontend
-		//frontendLogger := negronilogrus.NewMiddleware()
-		//frontendLogger.Before = func(entry *logrus.Entry, request *http.Request, s string) *logrus.Entry {
-		//	entry = negronilogrus.DefaultBefore(entry, request, s)
-		//	return entry.WithField("module", "frontend")
-		//}
-		//frontendLogger.After = func(entry *logrus.Entry, writer negroni.ResponseWriter, duration time.Duration, s string) *logrus.Entry {
-		//	entry = negronilogrus.DefaultAfter(entry, writer, duration, s)
-		//	return entry.WithField("module", "frontend")
-		//}
-		//n.Use(frontendLogger)
-
+		n := negroni.New(negroni.NewRecovery())
 		n.Use(gzip.Gzip(gzip.DefaultCompression))
 
 		pa := &proxyaddr.ProxyAddr{}
@@ -690,13 +623,13 @@ func main() {
 		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))
 
 		if utils.Config.Frontend.HttpWriteTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+			utils.Config.Frontend.HttpWriteTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpReadTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 15
+			utils.Config.Frontend.HttpReadTimeout = time.Second * 15
 		}
 		if utils.Config.Frontend.HttpIdleTimeout == 0 {
-			utils.Config.Frontend.HttpIdleTimeout = time.Second * 60
+			utils.Config.Frontend.HttpIdleTimeout = time.Minute
 		}
 		srv := &http.Server{
 			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,
@@ -713,13 +646,10 @@ func main() {
 			}
 		}()
 	}
-	if utils.Config.Notifications.Enabled {
-		services.InitNotifications(utils.Config.Notifications.PubkeyCachePath)
-	}
 
 	if utils.Config.Metrics.Enabled {
 		go func(addr string) {
-			logrus.Infof("Serving metrics on %v", addr)
+			logrus.Infof("serving metrics on %v", addr)
 			if err := metrics.Serve(addr); err != nil {
 				logrus.WithError(err).Fatal("Error serving metrics")
 			}

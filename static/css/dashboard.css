@@ -478,6 +478,7 @@ ul.multiselect input:focus {
   top: 0%;
   left: 1%;
   z-index: 99;
+  display: none;
 }
 
 .proposal-switch-selected {

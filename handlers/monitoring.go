@@ -41,12 +41,11 @@ func Monitoring(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "No monitoring data available", http.StatusServiceUnavailable)
-			return
+			http.Error(w, "No monitoring data available", http.StatusNotFound)
 		} else {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
 		}
+		return
 	}
 
 	if status == "OK" {

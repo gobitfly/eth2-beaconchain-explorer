@@ -21,7 +21,7 @@
                 <span class="d-block mt-3 heading-l4 text-left">Enter the index or pubkey of a validator to add it to your watchlist and optionally subscribe to receive email notifications.</span>
               {{ end }}
             </div>
-            <div id="add-validator-search-container" class="w-100 mb-sm-3">
+            <div id="add-validator-search-container" class="w-100 mb-sm-3 typeahead-container">
               <div class="my-3">
                 <input id="add-validator-input" {{ if .ValidatorIndex }}hidden value="{{ .ValidatorIndex }}"{{ end }} class="form-control validator-typeahead" type="text" autocomplete="off" spellcheck="false" placeholder="Search validator..." aria-label="Search validator" name="validator" required />
               </div>

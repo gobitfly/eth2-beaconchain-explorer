@@ -12,14 +12,13 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"math/big"
 	"net/http"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
+	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -40,18 +39,22 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 	title := fmt.Sprintf("Transaction %v", txHashString)
 	path := fmt.Sprintf("/tx/%v", txHashString)
 
+	errFields := map[string]interface{}{
+		"route":        r.URL.String(),
+		"txHashString": txHashString,
+	}
+
 	txHash, err := hex.DecodeString(strings.ReplaceAll(txHashString, "0x", ""))
 	if err != nil {
-		logger.Errorf("error parsing tx hash %v: %v", txHashString, err)
+		logger.Warnf("error parsing tx hash %v: %v", txHashString, err)
 		data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 		txTemplate = txNotFoundTemplate
 	} else {
-		txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash))
+		txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash), "ETH")
 		if err != nil {
 			mempool := services.LatestMempoolTransactions()
 			mempoolTx := mempool.FindTxByHash(txHashString)
 			if mempoolTx != nil {
-
 				data = InitPageData(w, r, "blockchain", path, title, mempoolTxTemplateFiles)
 				mempoolPageData := &types.MempoolTxPageData{RawMempoolTransaction: *mempoolTx}
 				txTemplate = mempoolTxTemplate
@@ -64,8 +67,8 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 				data.Data = mempoolPageData
 			} else {
-				if !errors.Is(err, ethereum.NotFound) {
-					logger.Errorf("error getting eth1 transaction data: %v", err)
+				if !errors.Is(err, ethereum.NotFound) && !errors.Is(err, eth1data.ErrTxIsPending) {
+					utils.LogError(err, "error getting eth1 transaction data", 0, errFields)
 				}
 				data = InitPageData(w, r, "blockchain", path, title, txNotFoundTemplateFiles)
 				txTemplate = txNotFoundTemplate
@@ -74,32 +77,34 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 			p := message.NewPrinter(language.English)
 
 			symbol := GetCurrencySymbol(r)
-			ef := new(big.Float).SetInt(new(big.Int).SetBytes(txData.Value))
-			etherValue := new(big.Float).Quo(ef, big.NewFloat(1e18))
+			etherValue := utils.WeiBytesToEther(txData.Value)
 
 			currentPrice := GetCurrentPrice(r)
-			currentEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(float64(currentPrice)))
-			cPrice, _ := currentEthPrice.Float64()
-			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, cPrice))
+			currentEthPrice := etherValue.Mul(decimal.NewFromInt(int64(currentPrice)))
+			txData.CurrentEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f</span>`, symbol, currentEthPrice.InexactFloat64()))
 
-			txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
-			latestEpoch, err := db.GetLatestEpoch()
-			if err != nil {
-				logrus.Error(err)
-			}
-
-			txData.HistoricEtherPrice = ""
-			currentDay := latestEpoch / utils.EpochsPerDay()
-
-			if txDay < currentDay {
-				// Do not show the historic price if it is the current day
-				price, err := db.GetHistoricPrice(GetCurrency(r), txDay)
+			txData.HistoricalEtherPrice = ""
+			if txData.Timestamp.Unix() >= int64(utils.Config.Chain.GenesisTimestamp) {
+				txDay := utils.TimeToDay(uint64(txData.Timestamp.Unix()))
+				errFields["txDay"] = txDay
+				latestEpoch, err := db.GetLatestEpoch()
 				if err != nil {
-					logrus.Errorf("error retrieving historic prices %v", err)
-				} else {
-					historicEthPrice := new(big.Float).Mul(etherValue, big.NewFloat(price))
-					hPrice, _ := historicEthPrice.Float64()
-					txData.HistoricEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, hPrice))
+					utils.LogError(err, "error retrieving latest epoch from db", 0, errFields)
+				}
+
+				currentDay := latestEpoch / utils.EpochsPerDay()
+
+				if txDay < currentDay {
+					// Do not show the historical price if it is the current day
+					currency := GetCurrency(r)
+					price, err := db.GetHistoricalPrice(utils.Config.Chain.ClConfig.DepositChainID, currency, txDay)
+					if err != nil {
+						errFields["currency"] = currency
+						utils.LogError(err, "error retrieving historical prices", 0, errFields)
+					} else {
+						historicalEthPrice := etherValue.Mul(decimal.NewFromFloat(price))
+						txData.HistoricalEtherPrice = template.HTML(p.Sprintf(`<span>%s%.2f <i class="far fa-clock"></i></span>`, symbol, historicalEthPrice.InexactFloat64()))
+					}
 				}
 			}
 
@@ -117,5 +122,46 @@ func Eth1TransactionTx(w http.ResponseWriter, r *http.Request) {
 
 	if handleTemplateError(w, r, "eth1tx.go", "Eth1TransactionTx", "Done", err) != nil {
 		return // an error has occurred and was processed
+	}
+}
+
+func Eth1TransactionTxData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	txHashString := vars["hash"]
+	currency := GetCurrency(r)
+	err := json.NewEncoder(w).Encode(getEth1TransactionTxData(txHashString, currency))
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func getEth1TransactionTxData(txhash, currency string) *types.DataTableResponse {
+	tableData := make([][]interface{}, 0, minimumTransactionsPerUpdate)
+	txHash, err := hex.DecodeString(strings.ReplaceAll(txhash, "0x", ""))
+	if err != nil {
+		logger.Warnf("error parsing tx hash %v: %v", txhash, err)
+	} else {
+		txData, err := eth1data.GetEth1Transaction(common.BytesToHash(txHash), currency)
+		its := txData.InternalTxns
+		if err != nil {
+			utils.LogError(err, "error getting transaction data", 0, map[string]interface{}{"txhash": txHash})
+		} else {
+			for _, i := range its {
+				tableData = append(tableData, []interface{}{
+					i.TracePath,
+					i.From,
+					i.To,
+					i.Amount,
+					i.Gas.Limit,
+				})
+			}
+		}
+	}
+
+	return &types.DataTableResponse{
+		Data: tableData,
 	}
 }

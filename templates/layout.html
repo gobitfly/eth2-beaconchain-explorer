@@ -4,7 +4,7 @@
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-      <meta name="keywords" content="open source ethereum block explorer, ethereum block explorer, beacon chain explorer, ethereum blockchain explorer" />
+      <meta name="keywords" content="config.Frontend.Keywords" />
       <meta name="description" content="{{ .Meta.Description }}" />
       <meta property="og:title" content="{{ .Meta.Title }}" />
       <meta property="og:type" content="website" />
@@ -19,6 +19,7 @@
       <meta property="twitter:description" content="{{ .Meta.Description }}" />
       <meta property="twitter:image" content="https://beaconcha.in/img/logo.png" />
       <meta property="twitter:image:alt" content="The beaconcha.in logo is a satellite dish expanding its signal." />
+      <meta name="format-detection" content="telephone=no" />
 
       <link rel="canonical" href="https://beaconcha.in{{ .Meta.Path }}" />
       <title>{{ .Meta.Title }}</title>
@@ -36,6 +37,14 @@
       <link rel="stylesheet" href="/css/layout/banner.css" />
       <link rel="stylesheet" href="/css/layout/herofeed.css" />
       <script>
+        var selectedCurrency = {{$.Rates.SelectedCurrency}}
+        var mainCurrency = {{config.Frontend.MainCurrency}}
+        var elCurrency = {{config.Frontend.ElCurrency}}
+        var clCurrency = {{config.Frontend.ClCurrency}}
+        var elPrice = {{$.Rates.ElCurrencyPrice}}
+        var clPrice = {{$.Rates.ClCurrencyPrice}}
+        var mainPrice = {{$.Rates.MainCurrencyPrice}}
+
         var mql = window.matchMedia("(prefers-color-scheme: light)")
         var lightScheme = mql.matches
         var currentTheme = localStorage.getItem("theme")
@@ -97,7 +106,7 @@
               </div>
             </div>
             {{ if .Mainnet }}
-              <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
+              <div data-toggle="tooltip" title="" data-original-title="Price: 1 {{ .Rates.MainCurrencySymbol }} = {{ .Rates.MainCurrencyTickerPriceKFormatted }} {{ .Rates.TickerCurrencySymbol }}" id="banner-eth-price">
                 <div class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
                     <span class="item-icon"><i class="fas fa-cubes"></i></span>
@@ -105,9 +114,9 @@
                   </div>
                   <div class="info-item-body">
                     <a id="banner-eth-price-data">
-                      <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.CurrentSymbol }}</span>
-                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.CurrentPriceKFormatted }}</span>
-                      <span id="currentCurrencyPrice" class="price">{{ .Rates.CurrentPriceFormatted }}</span>
+                      <span id="currentCurrencySymbol" class="currency-symbol">{{ .Rates.TickerCurrencySymbol }}</span>
+                      <span id="currentKFormattedPrice" class="k-formatted-price">{{ .Rates.MainCurrencyTickerPriceKFormatted }}</span>
+                      <span id="currentCurrencyPrice" class="price">{{ .Rates.MainCurrencyTickerPriceFormatted }}</span>
                     </a>
                   </div>
                 </div>
@@ -124,8 +133,8 @@
               {{- end }}
             {{ end }}
             {{ if not .ShowSyncingMessage }}
-              {{ if gt .FinalizationDelay 3 }}
-                <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
+              {{ if gt .FinalizationDelay 5 }}
+                <div data-toggle="tooltip" title="" data-original-title="Finality: The last finalized epoch was {{ .FinalizationDelay }} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
                   <div class="info-item-header mr-1">
                     <span class="item-icon"><i class="fas fa-exclamation-triangle"></i></span>
                   </div>
@@ -155,16 +164,16 @@
               <div class="dropdown">
                 <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <div id="currencyFlagDropdown">
-                    <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.Currency }}.svg" />
+                    <img class="currency-flag-dropdown-image" src="/img/{{ .Rates.SelectedCurrency }}.svg" />
                   </div>
-                  <div id="currencyDropdown">{{ .Rates.Currency }}</div>
+                  <div id="currencyDropdown">{{ .Rates.SelectedCurrency }}</div>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
                   {{ range .AvailableCurrencies }}
                     <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency({{ . }})">
                       <img class="currency-flag-option" src="/img/{{ . }}.svg" />
                       <span class="currency-name">{{ getCurrencyLabel . }}</span>
-                      {{ . }}
+                      <span class="currency-symbol">{{ . }}</span>
                     </a>
                   {{ end }}
                 </div>
@@ -256,7 +265,7 @@
             <div style="width: 80%; max-width: 600px;" class="card card-body row">
               <div class="row">
                 <div class="col">
-                  <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
+                  <span>By using our site you agree to our <a href="{{ $.PrivacyPolicyUrl }}">use of cookies</a> to deliver a better user experience.</span>
                 </div>
               </div>
               <div class="row">
@@ -277,13 +286,13 @@
             <div class="col-md-4 mb-2">
               <h5>Legal Notices</h5>
               <div class="d-flex flex-column">
-                <a class="my-1" href="/imprint">Imprint</a>
+                <a class="my-1" href="/imprint"><i class="fas fa-building mr-2"></i>Imprint</a>
               </div>
               <div class="d-flex flex-column">
-                <a class="my-1" href="/legal/tos.pdf">Terms</a>
+                <a class="my-1" href="{{ $.TermsOfServiceUrl }}"><i class="fas fa-file-contract mr-2"></i>Terms</a>
               </div>
               <div class="d-flex flex-column">
-                <a class="my-1" href="/legal/privacy.pdf">Privacy</a>
+                <a class="my-1" href="{{ $.PrivacyPolicyUrl }}"><i class="fas fa-user-secret mr-2"></i>Privacy</a>
               </div>
             </div>
             <div class="col-md-4 mb-2">
@@ -293,18 +302,16 @@
                 <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i>beaconcha.in Premium</a>
                 <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
                 <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i>API Pricing</a>
-                <!-- <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub</a> -->
+                <a class="my-1" href="https://status.beaconcha.in"><i class="fas fa-check-circle mr-2"></i>Site Status</a>
               </div>
             </div>
             <div class="col-md-4 mb-2">
               <h5>Links</h5>
               <div class="d-flex flex-column">
-                <a class="my-1" href="https://discord.io/beaconchain"><i class="fab fa-discord mr-2"></i>Discord</a>
+                <a class="my-1" href="https://dsc.gg/beaconchain"><i class="fab fa-discord mr-2"></i>Discord</a>
                 <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>beaconcha.in</a>
                 <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>GitHub Explorer</a>
                 <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>GitHub Mobile App</a>
-                <!-- <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a> -->
-                <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a> -->
               </div>
             </div>
           </div>
@@ -344,8 +351,7 @@
       <script src="/js/layout.js"></script>
       <script src="/js/banner.js"></script>
         <script>
-            var currency = {{.Rates.Currency}}
-            var exchangeRate = {{.Rates.ExchangeRate}}
+            var currency = {{.Rates.SelectedCurrency}}
 
             function slotToTime(slot) {
                 var gts = {{.ChainGenesisTimestamp}}

@@ -18,7 +18,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	total, err := db.GetTotalEligibleEther()
 	if err != nil {
 		logger.WithError(err).Error("error getting total staked ether")
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

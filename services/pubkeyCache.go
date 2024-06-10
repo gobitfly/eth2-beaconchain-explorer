@@ -27,7 +27,7 @@ func initPubkeyCache(path string) error {
 }
 
 // will retrieve the pubkey for a given validatorindex and store it for later use
-func GetGetPubkeyForIndex(index uint64) ([]byte, error) {
+func GetPubkeyForIndex(index uint64) ([]byte, error) {
 	key := []byte(fmt.Sprintf("%d", index))
 
 	pubkey, err := pubkeyCacheDb.Get(key, nil)

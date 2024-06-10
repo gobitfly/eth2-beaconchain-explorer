@@ -14,106 +14,14 @@ import (
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
-	templateFiles := append(layoutTemplateFiles, "epochs.html")
+	templateFiles := append(layoutTemplateFiles,
+		"epochs.html",
+		"components/timestamp.html")
 	var epochsTemplate = templates.GetTemplate(templateFiles...)
-
-	currency := GetCurrency(r)
 
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "blockchain", "/epochs", "Epochs", templateFiles)
-
-	var epochs []*types.EpochsPageData
-
-	epochsCount := services.LatestEpoch()
-
-	user, session, err := getUserSession(r)
-	if err != nil {
-		logger.WithError(err).Error("error getting user session")
-	}
-
-	state := GetDataTableState(user, session, "epochs")
-	length := uint64(50)
-	start := uint64(0)
-	var startEpoch uint64
-	var endEpoch uint64
-
-	// set start and end epoch from saved state
-	if state != nil && state.Length != 0 {
-		length = state.Length
-		start = state.Start
-		startEpoch = epochsCount - state.Start
-		endEpoch = epochsCount - state.Start - state.Length + 1
-	} else {
-		startEpoch = epochsCount
-		endEpoch = epochsCount - 50 + 1
-	}
-
-	if length < 10 {
-		length = 10
-	}
-
-	if length > 100 {
-		length = 100
-	}
-
-	if startEpoch > 9223372036854775807 {
-		startEpoch = epochsCount
-	}
-	if endEpoch > 9223372036854775807 {
-		endEpoch = 0
-	}
-
-	// logger.Infof("state: %+v", state)
-	// logger.Infof("start: %v end: %v", startEpoch, endEpoch)
-
-	err = db.ReaderDb.Select(&epochs, `
-	SELECT epoch, 
-		blockscount, 
-		proposerslashingscount, 
-		attesterslashingscount, 
-		attestationscount, 
-		depositscount,
-		withdrawalcount,
-		voluntaryexitscount, 
-		validatorscount, 
-		averagevalidatorbalance, 
-		finalized,
-		eligibleether,
-		globalparticipationrate,
-		votedether
-	FROM epochs 
-	WHERE epoch >= $1 AND epoch <= $2
-	ORDER BY epoch DESC`, endEpoch, startEpoch)
-	if err != nil {
-		logger.Errorf("error retrieving epoch data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
-		return
-	}
-
-	tableData := make([][]interface{}, len(epochs))
-	for i, b := range epochs {
-		// logger.Info("debug", b.Epoch, b.EligibleEther, b.VotedEther, b.GlobalParticipationRate, currency, utils.FormatBalance(b.EligibleEther, currency))
-		tableData[i] = []interface{}{
-			utils.FormatEpoch(b.Epoch),
-			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
-			b.AttestationsCount,
-			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
-			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
-			utils.FormatYesNo(b.Finalized),
-			utils.FormatBalance(b.EligibleEther, currency),
-			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency),
-		}
-	}
-
-	data.Data = &types.DataTableResponse{
-		Draw:            0,
-		RecordsTotal:    epochsCount,
-		RecordsFiltered: epochsCount,
-		Data:            tableData,
-		PageLength:      length,
-		DisplayStart:    start,
-	}
 
 	if handleTemplateError(w, r, "epochs.go", "Epochs", "Done", epochsTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
@@ -134,20 +42,20 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 	if length > 100 {
@@ -168,6 +76,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 
 	var epochs []*types.EpochsPageData
 
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
 	if search == -1 {
 		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
@@ -176,17 +85,17 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				attesterslashingscount, 
 				attestationscount, 
 				depositscount, 
-				withdrawalcount,
+				COALESCE(withdrawalcount,0) as withdrawalcount,
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
-				finalized,
+				(epoch <= $3) AS finalized,
 				eligibleether,
 				globalparticipationrate,
 				votedether
 			FROM epochs 
 			WHERE epoch >= $1 AND epoch <= $2
-			ORDER BY epoch DESC`, endEpoch, startEpoch)
+			ORDER BY epoch DESC`, endEpoch, startEpoch, latestFinalizedEpoch)
 	} else {
 		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
@@ -198,17 +107,17 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 				voluntaryexitscount, 
 				validatorscount, 
 				averagevalidatorbalance, 
-				finalized,
+				(epoch <= $2) AS finalized,
 				eligibleether,
 				globalparticipationrate,
 				votedether
 			FROM epochs 
 			WHERE epoch = $1
-			ORDER BY epoch DESC`, search)
+			ORDER BY epoch DESC`, search, latestFinalizedEpoch)
 	}
 	if err != nil {
 		logger.Errorf("error retrieving epoch data: %v", err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -218,26 +127,31 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
-			b.AttestationsCount,
-			fmt.Sprintf("%v / %v", b.DepositsCount, b.WithdrawalCount),
-			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
+			utils.FormatCount(b.AttestationsCount, b.Finalized, false),
+			fmt.Sprintf("%v / %v", utils.FormatCount(b.DepositsCount, b.Finalized, true), utils.FormatCount(b.WithdrawalCount, b.Finalized, true)),
+			fmt.Sprintf("%v / %v", utils.FormatCount(b.ProposerSlashingsCount, b.Finalized, true), utils.FormatCount(b.AttesterSlashingsCount, b.Finalized, true)),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),
 			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency),
 		}
 	}
 
+	filteredCount := epochsCount
+	if search > -1 {
+		filteredCount = uint64(len(epochs))
+	}
+
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    epochsCount,
-		RecordsFiltered: epochsCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 	}
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

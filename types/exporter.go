@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
-	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
@@ -45,13 +44,23 @@ type FinalityCheckpoints struct {
 	} `json:"finalized"`
 }
 
+type Slot uint64
+type Epoch uint64
+type ValidatorIndex uint64
+type SyncCommitteePeriod uint64
+type CommitteeIndex uint64
+
 // EpochData is a struct to hold epoch data
 type EpochData struct {
 	Epoch                   uint64
 	Validators              []*Validator
 	ValidatorAssignmentes   *EpochAssignments
 	Blocks                  map[uint64]map[string]*Block
+	FutureBlocks            map[uint64]map[string]*Block
 	EpochParticipationStats *ValidatorParticipation
+	AttestationDuties       map[Slot]map[ValidatorIndex][]Slot
+	SyncDuties              map[Slot]map[ValidatorIndex]bool
+	Finalized               bool
 }
 
 // ValidatorParticipation is a struct to hold validator participation data
@@ -60,11 +69,7 @@ type ValidatorParticipation struct {
 	GlobalParticipationRate float32
 	VotedEther              uint64
 	EligibleEther           uint64
-}
-
-// BeaconCommitteItem is a struct to hold beacon committee data
-type BeaconCommitteItem struct {
-	ValidatorIndices []uint64
+	Finalized               bool
 }
 
 // Validator is a struct to hold validator data
@@ -85,7 +90,6 @@ type Validator struct {
 	Status            string        `db:"status"`
 
 	LastAttestationSlot sql.NullInt64 `db:"lastattestationslot"`
-	LastProposalSlot    sql.NullInt64 `db:"lastproposalslot"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data
@@ -121,8 +125,16 @@ type Block struct {
 	VoluntaryExits             []*VoluntaryExit
 	SyncAggregate              *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
 	ExecutionPayload           *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
-	Canonical                  bool
 	SignedBLSToExecutionChange []*SignedBLSToExecutionChange
+	BlobGasUsed                uint64
+	ExcessBlobGas              uint64
+	BlobKZGCommitments         [][]byte
+	BlobKZGProofs              [][]byte
+	AttestationDuties          map[ValidatorIndex][]Slot
+	SyncDuties                 map[ValidatorIndex]bool
+	Finalized                  bool
+	EpochAssignments           *EpochAssignments
+	Validators                 []*Validator
 }
 
 type SignedBLSToExecutionChange struct {
@@ -152,6 +164,9 @@ type Transaction struct {
 
 	MaxPriorityFeePerGas uint64
 	MaxFeePerGas         uint64
+
+	MaxFeePerBlobGas    uint64
+	BlobVersionedHashes [][]byte
 }
 
 type ExecutionPayload struct {
@@ -170,6 +185,8 @@ type ExecutionPayload struct {
 	BlockHash     []byte
 	Transactions  []*Transaction
 	Withdrawals   []*Withdrawals
+	BlobGasUsed   uint64
+	ExcessBlobGas uint64
 }
 
 type Withdrawals struct {
@@ -262,14 +279,6 @@ type VoluntaryExit struct {
 	Signature      []byte
 }
 
-// BlockContainer is a struct to hold block container data
-type BlockContainer struct {
-	Status   uint64
-	Proposer uint64
-
-	Block *ethpb.BeaconBlockContainer
-}
-
 // MinimalBlock is a struct to hold minimal block data
 type MinimalBlock struct {
 	Epoch      uint64 `db:"epoch"`
@@ -284,13 +293,6 @@ type CanonBlock struct {
 	BlockRoot []byte `db:"blockroot"`
 	Slot      uint64 `db:"slot"`
 	Canonical bool   `db:"-"`
-}
-
-// BlockComparisonContainer is a struct to hold block comparison data
-type BlockComparisonContainer struct {
-	Epoch uint64
-	Db    *MinimalBlock
-	Node  *MinimalBlock
 }
 
 // EpochAssignments is a struct to hold epoch assignment data
@@ -308,6 +310,7 @@ type Eth1Deposit struct {
 	BlockNumber           uint64 `db:"block_number"`
 	BlockTs               int64  `db:"block_ts"`
 	FromAddress           []byte `db:"from_address"`
+	FromName              string
 	PublicKey             []byte `db:"publickey"`
 	WithdrawalCredentials []byte `db:"withdrawal_credentials"`
 	Amount                uint64 `db:"amount"`
@@ -533,26 +536,6 @@ type RelayBlock struct {
 	ProposerFeeRecipient string `db:"proposer_fee_recipient" json:"proposer_fee_recipient"`
 }
 
-type RelayBlockSlice []RelayBlock
-
-func (s *RelayBlockSlice) Scan(src interface{}) error {
-	switch v := src.(type) {
-	case []byte:
-		err := json.Unmarshal(v, s)
-		if err != nil {
-			return err
-		}
-		// if no tags were found we will get back an empty struct, we don't want that
-		if len(*s) == 1 && (*s)[0].ID == "" {
-			*s = nil
-		}
-		return nil
-	case string:
-		return json.Unmarshal([]byte(v), s)
-	}
-	return errors.New("type assertion failed")
-}
-
 type BlockTag struct {
 	ID        string `db:"tag_id"`
 	BlockSlot uint64 `db:"slot"`
@@ -624,5 +607,72 @@ func (b *WeiString) BigInt() *big.Int {
 	mul := &big.Int{}
 	mul.Exp(big.NewInt(10), big.NewInt(int64(b.Exp)), nil)
 	num.Mul(num, mul)
+
 	return num
+}
+
+type ValidatorStatsTableDbRow struct {
+	ValidatorIndex uint64 `db:"validatorindex"`
+	Day            int64  `db:"day"`
+
+	StartBalance          int64 `db:"start_balance"`
+	EndBalance            int64 `db:"end_balance"`
+	MinBalance            int64 `db:"min_balance"`
+	MaxBalance            int64 `db:"max_balance"`
+	StartEffectiveBalance int64 `db:"start_effective_balance"`
+	EndEffectiveBalance   int64 `db:"end_effective_balance"`
+	MinEffectiveBalance   int64 `db:"min_effective_balance"`
+	MaxEffectiveBalance   int64 `db:"max_effective_balance"`
+
+	MissedAttestations      int64 `db:"missed_attestations"`
+	MissedAttestationsTotal int64 `db:"missed_attestations_total"`
+	OrphanedAttestations    int64 `db:"orphaned_attestations"`
+
+	ParticipatedSync      int64 `db:"participated_sync"`
+	ParticipatedSyncTotal int64 `db:"participated_sync_total"`
+	MissedSync            int64 `db:"missed_sync"`
+	MissedSyncTotal       int64 `db:"missed_sync_total"`
+	OrphanedSync          int64 `db:"orphaned_sync"`
+	OrphanedSyncTotal     int64 `db:"orphaned_sync_total"`
+
+	ProposedBlocks int64 `db:"proposed_blocks"`
+	MissedBlocks   int64 `db:"missed_blocks"`
+	OrphanedBlocks int64 `db:"orphaned_blocks"`
+
+	AttesterSlashings int64 `db:"attester_slashings"`
+	ProposerSlashing  int64 `db:"proposer_slashings"`
+
+	Deposits            int64 `db:"deposits"`
+	DepositsTotal       int64 `db:"deposits_total"`
+	DepositsAmount      int64 `db:"deposits_amount"`
+	DepositsAmountTotal int64 `db:"deposits_amount_total"`
+
+	Withdrawals            int64 `db:"withdrawals"`
+	WithdrawalsTotal       int64 `db:"withdrawals_total"`
+	WithdrawalsAmount      int64 `db:"withdrawals_amount"`
+	WithdrawalsAmountTotal int64 `db:"withdrawals_amount_total"`
+
+	ClRewardsGWei      int64 `db:"cl_rewards_gwei"`
+	ClRewardsGWeiTotal int64 `db:"cl_rewards_gwei_total"`
+
+	ClPerformance1d   int64 `db:"-"`
+	ClPerformance7d   int64 `db:"-"`
+	ClPerformance31d  int64 `db:"-"`
+	ClPerformance365d int64 `db:"-"`
+
+	ElRewardsWei      decimal.Decimal `db:"el_rewards_wei"`
+	ElRewardsWeiTotal decimal.Decimal `db:"el_rewards_wei_total"`
+
+	ElPerformance1d   decimal.Decimal `db:"-"`
+	ElPerformance7d   decimal.Decimal `db:"-"`
+	ElPerformance31d  decimal.Decimal `db:"-"`
+	ElPerformance365d decimal.Decimal `db:"-"`
+
+	MEVRewardsWei      decimal.Decimal `db:"mev_rewards_wei"`
+	MEVRewardsWeiTotal decimal.Decimal `db:"mev_rewards_wei_total"`
+
+	MEVPerformance1d   decimal.Decimal `db:"-"`
+	MEVPerformance7d   decimal.Decimal `db:"-"`
+	MEVPerformance31d  decimal.Decimal `db:"-"`
+	MEVPerformance365d decimal.Decimal `db:"-"`
 }

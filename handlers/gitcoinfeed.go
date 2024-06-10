@@ -22,7 +22,7 @@ func GitcoinFeed(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

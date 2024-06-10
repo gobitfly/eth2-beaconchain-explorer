@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/templates"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -39,9 +41,13 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/attesterSlashing.html",
 		"slot/proposerSlashing.html",
 		"slot/exits.html",
+		"slot/blobs.html",
+		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html")
-	slotFutureTemplateFiles := append(layoutTemplateFiles, "slot/slotFuture.html")
+	slotFutureTemplateFiles := append(layoutTemplateFiles,
+		"slot/slotFuture.html",
+		"components/timestamp.html")
 	blockNotFoundTemplateFiles := append(layoutTemplateFiles, "slotnotfound.html")
 	var slotTemplate = templates.GetTemplate(slotTemplateFiles...)
 	var slotFutureTemplate = templates.GetTemplate(slotFutureTemplateFiles...)
@@ -57,7 +63,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
-		if err != nil || blockSlot >= 2147483648 { // block slot must be lower then max int4
+		if err != nil || blockSlot > math.MaxInt32 { // block slot must be lower than max int4
 			data := InitPageData(w, r, "blockchain", "/slots", fmt.Sprintf("Slot %v", slotOrHash), blockNotFoundTemplateFiles)
 			data.Data = "slot"
 			if handleTemplateError(w, r, "slot.go", "Slot", "blockSlot", blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)) != nil {
@@ -79,12 +85,12 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			logger.Errorf("error retrieving entry count of given block or state data: %v", err)
-			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	blockPageData, err := GetSlotPageData(uint64(blockSlot))
+	slotPageData, err := GetSlotPageData(uint64(blockSlot))
 	if err == sql.ErrNoRows {
 		slot := uint64(blockSlot)
 		//Slot not in database -> Show future block
@@ -122,17 +128,20 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if blockPageData.ExecBlockNumber.Int64 != 0 && blockPageData.Status == 1 {
+	// if the network started with PoS, slot 0 will contain block 0; checking for blockPageData.ExecBlockNumber.Int64 > 0 does not work in this case
+	isMergedSlot0 := slotPageData.Slot == 0 && slotPageData.Epoch >= utils.Config.Chain.ClConfig.BellatrixForkEpoch
+
+	if slotPageData.Status == 1 && (slotPageData.ExecBlockNumber.Int64 > 0 || isMergedSlot0) {
 		// slot has corresponding execution block, fetch execution data
-		eth1BlockPageData, err := GetExecutionBlockPageData(uint64(blockPageData.ExecBlockNumber.Int64), 10)
+		eth1BlockPageData, err := GetExecutionBlockPageData(uint64(slotPageData.ExecBlockNumber.Int64), 10)
 		// if err != nil, simply show slot view without block
 		if err == nil {
-			blockPageData.ExecutionData = eth1BlockPageData
-			blockPageData.ExecutionData.IsValidMev = blockPageData.IsValidMev
+			slotPageData.ExecutionData = eth1BlockPageData
+			slotPageData.ExecutionData.IsValidMev = slotPageData.IsValidMev
 		}
 	}
-	data := InitPageData(w, r, "blockchain", fmt.Sprintf("/slot/%v", blockPageData.Slot), fmt.Sprintf("Slot %v", slotOrHash), slotTemplateFiles)
-	data.Data = blockPageData
+	data := InitPageData(w, r, "blockchain", fmt.Sprintf("/slot/%v", slotPageData.Slot), fmt.Sprintf("Slot %v", slotOrHash), slotTemplateFiles)
+	data.Data = slotPageData
 
 	if utils.IsApiRequest(r) {
 		w.Header().Set("Content-Type", "application/json")
@@ -202,12 +211,15 @@ func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttesta
 }
 
 func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
-	blockPageData := types.BlockPageData{}
-	blockPageData.Mainnet = utils.Config.Chain.Config.ConfigName == "mainnet"
-	err := db.ReaderDb.Get(&blockPageData, `
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
+	slotPageData := types.BlockPageData{}
+	slotPageData.Mainnet = utils.Config.Chain.ClConfig.ConfigName == "mainnet"
+	// for the first slot in an epoch the previous epoch defines the finalized state
+	err := db.ReaderDb.Get(&slotPageData, `
 		SELECT
 			blocks.epoch,
-			COALESCE(epochs.finalized, false) AS epoch_finalized,
+			(COALESCE(epochs.epoch, 0) <= $3) AS epoch_finalized,
+			(GREATEST((blocks.slot-1)/$2-1,0) <= $3) AS prev_epoch_finalized,
 			COALESCE(epochs.globalparticipationrate, 0) AS epoch_participation_rate,
 			blocks.slot,
 			blocks.blockroot,
@@ -226,7 +238,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			blocks.attesterslashingscount,
 			blocks.attestationscount,
 			blocks.depositscount,
-			blocks.withdrawalcount,
+			COALESCE(blocks.withdrawalcount,0) as withdrawalcount,
 			blocks.voluntaryexitscount,
 			blocks.proposer,
 			blocks.status,
@@ -240,7 +252,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN blocks_tags ON blocks.slot = blocks_tags.slot and blocks.blockroot = blocks_tags.blockroot
 		LEFT JOIN tags ON blocks_tags.tag_id = tags.id
-		LEFT JOIN epochs ON blocks.epoch = epochs.epoch
+		LEFT JOIN epochs ON GREATEST((blocks.slot-1)/$2,0) = epochs.epoch
 		WHERE blocks.slot = $1 
 		group by
 			blocks.epoch,
@@ -251,22 +263,22 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			epoch_participation_rate
 		ORDER BY blocks.blockroot DESC, blocks.status ASC limit 1
 		`,
-		blockSlot)
+		blockSlot, utils.Config.Chain.ClConfig.SlotsPerEpoch, latestFinalizedEpoch)
 	if err != nil {
 		return nil, err
 	}
-	blockPageData.Slot = uint64(blockSlot)
+	slotPageData.Slot = uint64(blockSlot)
 
-	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
-	if blockPageData.ExecTimestamp.Valid {
-		blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp.Int64), 0)
+	slotPageData.Ts = utils.SlotToTime(slotPageData.Slot)
+	if slotPageData.ExecTimestamp.Valid {
+		slotPageData.ExecTime = time.Unix(int64(slotPageData.ExecTimestamp.Int64), 0)
 	}
-	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
+	slotPageData.SlashingsCount = slotPageData.AttesterSlashingsCount + slotPageData.ProposerSlashingsCount
 
-	blockPageData.NextSlot = blockPageData.Slot + 1
-	blockPageData.PreviousSlot = blockPageData.Slot - 1
+	slotPageData.NextSlot = slotPageData.Slot + 1
+	slotPageData.PreviousSlot = slotPageData.Slot - 1
 
-	blockPageData.Attestations, err = getAttestationsData(blockPageData.Slot, true)
+	slotPageData.Attestations, err = getAttestationsData(slotPageData.Slot, true)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +287,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		SELECT validators
 		FROM blocks_attestations
 		WHERE beaconblockroot = $1`,
-		blockPageData.BlockRoot)
+		slotPageData.BlockRoot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block votes data: %v", err)
 	}
@@ -299,15 +311,15 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			}
 		}
 	}
-	blockPageData.VotingValidatorsCount = uint64(len(votesPerValidator))
-	blockPageData.VotesCount = uint64(votesCount)
+	slotPageData.VotingValidatorsCount = uint64(len(votesPerValidator))
+	slotPageData.VotesCount = uint64(votesCount)
 
-	err = db.ReaderDb.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
+	err = db.ReaderDb.Select(&slotPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", slotPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block deposit data: %v", err)
 	}
 
-	err = db.ReaderDb.Select(&blockPageData.AttesterSlashings, `
+	err = db.ReaderDb.Select(&slotPageData.AttesterSlashings, `
 		SELECT
 			block_slot,
 			block_index,
@@ -330,12 +342,12 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			attestation2_target_epoch,
 			attestation2_target_root
 		FROM blocks_attesterslashings
-		WHERE block_slot = $1`, blockPageData.Slot)
+		WHERE block_slot = $1`, slotPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block attester slashings data: %v", err)
 	}
-	if len(blockPageData.AttesterSlashings) > 0 {
-		for _, slashing := range blockPageData.AttesterSlashings {
+	if len(slotPageData.AttesterSlashings) > 0 {
+		for _, slashing := range slotPageData.AttesterSlashings {
 			inter := intersect.Simple(slashing.Attestation1Indices, slashing.Attestation2Indices)
 
 			for _, i := range inter {
@@ -344,71 +356,22 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		}
 	}
 
-	err = db.ReaderDb.Select(&blockPageData.ProposerSlashings, "SELECT block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
+	err = db.ReaderDb.Select(&slotPageData.BlobSidecars, `SELECT block_slot, block_root, index, kzg_commitment, kzg_proof, blob_versioned_hash FROM blocks_blob_sidecars WHERE block_root = $1`, slotPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving block blob sidecars (slot: %d, blockroot: %#x): %w", slotPageData.Slot, slotPageData.BlockRoot, err)
+	}
+
+	err = db.ReaderDb.Select(&slotPageData.ProposerSlashings, "SELECT block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature FROM blocks_proposerslashings WHERE block_slot = $1", slotPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block proposer slashings data: %v", err)
 	}
 
-	// TODO: fix blockPageData data type to include SyncCommittee
-	err = db.ReaderDb.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
+	err = db.ReaderDb.Select(&slotPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(slotPageData.Epoch))
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
+		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", slotPageData.Slot, err)
 	}
 
-	// old code retrieving txs from postgres db
-	/* if retrieveTxsFromDb {
-			// retrieve transactions from db
-			var transactions []*types.BlockPageTransaction
-			rows, err = db.ReaderDb.Query(`
-				SELECT
-	    		block_slot,
-	    		block_index,
-	    		txhash,
-	    		nonce,
-	    		gas_price,
-	    		gas_limit,
-	    		sender,
-	    		recipient,
-	    		amount,
-	    		payload
-				FROM blocks_transactions
-				WHERE block_slot = $1
-				ORDER BY block_index`,
-				blockPageData.Slot)
-			if err != nil {
-				return nil, fmt.Errorf("error retrieving block transaction data: %v", err)
-			}
-			defer rows.Close()
-
-			for rows.Next() {
-				tx := &types.BlockPageTransaction{}
-
-				err := rows.Scan(
-					&tx.BlockSlot,
-					&tx.BlockIndex,
-					&tx.TxHash,
-					&tx.AccountNonce,
-					&tx.Price,
-					&tx.GasLimit,
-					&tx.Sender,
-					&tx.Recipient,
-					&tx.Amount,
-					&tx.Payload,
-				)
-				if err != nil {
-					return nil, fmt.Errorf("error scanning block transaction data: %v", err)
-				}
-				var amount, price big.Int
-				amount.SetBytes(tx.Amount)
-				price.SetBytes(tx.Price)
-				tx.AmountPretty = ToEth(&amount)
-				tx.PricePretty = ToGWei(&amount)
-				transactions = append(transactions, tx)
-			}
-			blockPageData.Transactions = transactions
-		}
-	*/
-	return &blockPageData, nil
+	return &slotPageData, nil
 }
 
 // SlotDepositData returns the deposits for a specific slot
@@ -423,8 +386,8 @@ func SlotDepositData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
-			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			logger.Warnf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
+			http.Error(w, "Error: Invalid parameter slotOrHash.", http.StatusBadRequest)
 			return
 		}
 	} else {
@@ -445,21 +408,21 @@ func SlotDepositData(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 
@@ -545,8 +508,8 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || len(slotOrHash) != 64 {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
-			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			logger.Warnf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
+			http.Error(w, "Error: Invalid parameter slotOrHash.", http.StatusBadRequest)
 			return
 		}
 		err = db.ReaderDb.Get(&blockRootHash, "select blocks.blockroot from blocks where blocks.slot = $1", blockSlot)
@@ -567,29 +530,29 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
-	searchIsUint64 := false
-	searchUint64, err := strconv.ParseUint(search, 10, 64)
-	if err == nil {
-		searchIsUint64 = true
+	searchIsInt32 := false
+	searchInt32, err := strconv.ParseInt(search, 10, 32)
+	if err == nil && searchInt32 >= 0 {
+		searchIsInt32 = true
 	}
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables draw parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
 		return
 	}
 
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
 		return
 	}
 
@@ -628,8 +591,8 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-	} else if searchIsUint64 {
-		err = db.ReaderDb.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1 AND $2 = ANY(validators)`, blockRootHash, searchUint64)
+	} else if searchIsInt32 {
+		err = db.ReaderDb.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1 AND $2 = ANY(validators)`, blockRootHash, searchInt32)
 		if err != nil {
 			logger.Errorf("error retrieving deposit count for slot %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -646,7 +609,7 @@ func SlotVoteData(w http.ResponseWriter, r *http.Request) {
 			ORDER BY committeeindex
 			LIMIT $3
 			OFFSET $4`,
-			blockRootHash, searchUint64, length, start)
+			blockRootHash, searchInt32, length, start)
 		if err != nil {
 			logger.Errorf("error retrieving block vote data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -702,8 +665,8 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slot, err := strconv.ParseUint(vars["block"], 10, 64)
 	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 
@@ -725,8 +688,8 @@ func BlockTransactionsData(w http.ResponseWriter, r *http.Request) {
 			Method:        methodFormatted,
 			FromFormatted: v.FromFormatted,
 			ToFormatted:   v.ToFormatted,
-			Value:         utils.FormatAmountFormatted(v.Value, "Ether", 5, 0, true, true, false),
-			Fee:           utils.FormatAmountFormatted(v.Fee, "Ether", 5, 0, true, true, false),
+			Value:         utils.FormatAmountFormatted(v.Value, utils.Config.Frontend.ElCurrency, 5, 0, true, true, false),
+			Fee:           utils.FormatAmountFormatted(v.Fee, utils.Config.Frontend.ElCurrency, 5, 0, true, true, false),
 			GasPrice:      utils.FormatAmountFormatted(v.GasPrice, "GWei", 5, 0, true, true, false),
 		}
 	}
@@ -759,9 +722,9 @@ func SlotAttestationsData(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || slot > math.MaxInt32 {
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 
@@ -804,11 +767,11 @@ func SlotAttestationsData(w http.ResponseWriter, r *http.Request) {
 func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
-
+	currency := GetCurrency(r)
 	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || slot > math.MaxInt32 {
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 	withdrawals, err := db.GetSlotWithdrawals(slot)
@@ -818,20 +781,18 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(withdrawals))
 	for _, w := range withdrawals {
-		// logger.Infof("w: %+v", w)
 		tableData = append(tableData, []interface{}{
 			template.HTML(fmt.Sprintf("%v", w.Index)),
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(w.ValidatorIndex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(w.Address, nil, "", false, false, true))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAmount(new(big.Int).Mul(new(big.Int).SetUint64(w.Amount), big.NewInt(1e9)), "Ether", 6))),
+			utils.FormatValidator(w.ValidatorIndex),
+			utils.FormatAddress(w.Address, nil, "", false, false, true),
+			utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true),
 		})
 	}
 
 	data := &types.DataTableResponse{
 		Draw:         1,
 		RecordsTotal: uint64(len(withdrawals)),
-		// RecordsFiltered: uint64(len(withdrawals)),
-		Data: tableData,
+		Data:         tableData,
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -847,9 +808,9 @@ func SlotBlsChangeData(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	slot, err := strconv.ParseUint(vars["slot"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing slot url parameter %v, err: %v", vars["slot"], err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	if err != nil || slot > math.MaxInt32 {
+		logger.Warnf("error parsing slot url parameter %v: %v", vars["slot"], err)
+		http.Error(w, "Error: Invalid parameter slot.", http.StatusBadRequest)
 		return
 	}
 	blsChange, err := db.GetSlotBLSChange(slot)
@@ -860,10 +821,10 @@ func SlotBlsChangeData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, 0, len(blsChange))
 	for _, c := range blsChange {
 		tableData = append(tableData, []interface{}{
-			template.HTML(fmt.Sprintf("%v", utils.FormatValidator(c.Validatorindex))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.Signature))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatHashWithCopy(c.BlsPubkey))),
-			template.HTML(fmt.Sprintf("%v", utils.FormatAddress(c.Address, nil, "", false, false, true))),
+			utils.FormatValidator(c.Validatorindex),
+			utils.FormatHashWithCopy(c.Signature),
+			utils.FormatHashWithCopy(c.BlsPubkey),
+			utils.FormatAddress(c.Address, nil, "", false, false, true),
 		})
 	}
 

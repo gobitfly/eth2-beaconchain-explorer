@@ -1,9 +1,11 @@
 {{ define "js" }}
   <script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script>
     $(document).ready(function () {
       var tblOpts = {
+        searchDelay: 0,
         processing: true,
         serverSide: true,
         ordering: true,
@@ -16,7 +18,7 @@
         stateLoadCallback: function (settings) {
           return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
         },
-        ajax: "/validators/leaderboard/data",
+        ajax: dataTableLoader("/validators/leaderboard/data"),
         pagingType: "input",
         language: {
           searchPlaceholder: "Search by Public Key / Index / Name",

@@ -33,7 +33,14 @@ func SendPushBatch(messages []*messaging.Message) error {
 	}
 
 	ctx := context.Background()
-	opt := option.WithCredentialsFile(credentialsPath)
+	var opt option.ClientOption
+
+	if strings.Contains(credentialsPath, ".json") && len(credentialsPath) < 200 {
+		opt = option.WithCredentialsFile(credentialsPath)
+	} else {
+		opt = option.WithCredentialsJSON([]byte(credentialsPath))
+	}
+
 	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		logger.Errorf("error initializing app:  %v", err)
@@ -90,6 +97,6 @@ func SendPushBatch(messages []*messaging.Message) error {
 		}
 	}
 
-	logger.Infof("Sent %d firebase notifications in %d of %d tries. Successful: %d | Failed: %d", len(messages), tries, len(waitBeforeTryInSeconds), resultSuccessCount, resultFailureCount)
+	logger.Infof("sent %d firebase notifications in %d of %d tries. successful: %d | failed: %d", len(messages), tries, len(waitBeforeTryInSeconds), resultSuccessCount, resultFailureCount)
 	return nil
 }

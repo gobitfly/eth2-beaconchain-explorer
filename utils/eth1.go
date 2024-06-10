@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -22,14 +22,18 @@ var Erc1155TransferSingleEventHash = common.HexToHash("0xc3d58168c5ae7397731d063
 
 func Eth1BlockReward(blockNumber uint64, difficulty []byte) *big.Int {
 
-	if len(difficulty) == 0 { // no block rewards for PoS blocks
+	// no block rewards for PoS blocks
+	// holesky genesis block has difficulty 1 and zero block reward (launched with pos)
+	if len(difficulty) == 0 || (len(difficulty) == 1 && difficulty[0] == 1) {
 		return big.NewInt(0)
 	}
 
-	if blockNumber < 4370000 {
+	if blockNumber < Config.Chain.ElConfig.ByzantiumBlock.Uint64() {
 		return big.NewInt(5e+18)
-	} else if blockNumber < 7280000 {
+	} else if blockNumber < Config.Chain.ElConfig.ConstantinopleBlock.Uint64() {
 		return big.NewInt(3e+18)
+	} else if Config.Chain.ClConfig.DepositChainID == 5 { // special case for goerli: https://github.com/eth-clients/goerli
+		return big.NewInt(0)
 	} else {
 		return big.NewInt(2e+18)
 	}
@@ -49,8 +53,7 @@ func StripPrefix(hexStr string) string {
 }
 
 func EthBytesToFloat(b []byte) float64 {
-	f, _ := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).SetBytes(b)), new(big.Float).SetInt(big.NewInt(params.Ether))).Float64()
-	return f
+	return WeiBytesToEther(b).InexactFloat64()
 }
 
 func FormatBlockNumber(number uint64) template.HTML {
@@ -83,11 +86,15 @@ func FormatBlockHash(hash []byte) template.HTML {
 	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/block/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
 }
 
-func FormatTransactionHash(hash []byte) template.HTML {
+func FormatTransactionHash(hash []byte, successful bool) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
-	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>`, hash, hash[:3], hash[len(hash)-3:]))
+	failedStr := ""
+	if !successful {
+		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
+	}
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>%s`, hash, hash[:3], hash[len(hash)-3:], failedStr))
 }
 
 func FormatInOutSelf(address, from, to []byte) template.HTML {
@@ -107,9 +114,9 @@ func FormatInOutSelf(address, from, to []byte) template.HTML {
 
 func FormatAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
 	if link {
-		return formatAddress(address, token, name, isContract, "address", "", 17, 0, false)
+		return formatAddress(address, token, name, isContract, "address", 17, 0, false)
 	}
-	return formatAddress(address, token, name, isContract, "", "", 17, 0, false)
+	return formatAddress(address, token, name, isContract, "", 17, 0, false)
 }
 
 func FormatBuilder(pubkey []byte) template.HTML {
@@ -120,17 +127,55 @@ func FormatBuilder(pubkey []byte) template.HTML {
 	return FormatAddress(pubkey, nil, name, false, false, false)
 }
 
-func FormatAddressWithLimits(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
-	return formatAddress(address, nil, name, isContract, link, "", digitsLimit, nameLimit, addCopyToClipboard)
+func FormatBytes(b []byte, addCopyToClipboard bool, link string) template.HTML {
+	bStr := fmt.Sprintf("%#x", b)
+	ret := ""
+	if len(bStr) <= 10 {
+		ret += fmt.Sprintf(`<span class="text-monospace">%s</span>`, bStr)
+	} else {
+		ret += fmt.Sprintf(`<span class="text-monospace" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s…%s</span>`, bStr, bStr[0:6], bStr[len(bStr)-4:])
+	}
+	if len(link) > 0 {
+		ret = fmt.Sprintf(`<a href="%s" target="_parent">%s</a>`, link, ret)
+	}
+	if addCopyToClipboard {
+		ret += ` <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="` + bStr + `"></i>`
+	}
+	return template.HTML(ret)
 }
 
-func FormatAddressAll(address []byte, name string, isContract bool, link string, urlFragment string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
-	return formatAddress(address, nil, name, isContract, link, urlFragment, digitsLimit, nameLimit, addCopyToClipboard)
+func FormatBlobVersionedHash(h []byte) template.HTML {
+	if Config.Frontend.BlobProviderUrl == "" {
+		return FormatBytes(h, true, "")
+	}
+	return FormatBytes(h, true, fmt.Sprintf("%s/%#x", Config.Frontend.BlobProviderUrl, h))
+}
+
+func FormatAddressWithLimits(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	return formatAddress(address, nil, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
+}
+
+func FormatAddressAll(address []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	return formatAddress(address, nil, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
+}
+
+// wrapper function of FormatAddressWithLimits used to format addresses in the address page's tables for txs
+//
+// no link to the given txAddress will be added if it is mainAddress of the page is formatted
+//
+//	otherwise, "address" will be passed as link
+func FormatAddressWithLimitsInAddressPageTable(mainAddress []byte, txAddress []byte, name string, isContract bool, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+	link := "address"
+	if bytes.Equal(mainAddress, txAddress) {
+		link = ""
+	}
+
+	return FormatAddressWithLimits(txAddress, name, isContract, link, digitsLimit, nameLimit, addCopyToClipboard)
 }
 
 // digitsLimit will limit the address output to that amount of total digits (including 0x & …)
 // nameLimit will limit the name, if existing to giving amount of letters, a limit of 0 will display the full name
-func formatAddress(address []byte, token []byte, name string, isContract bool, link string, urlFragment string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
+func formatAddress(address []byte, token []byte, name string, isContract bool, link string, digitsLimit int, nameLimit int, addCopyToClipboard bool) template.HTML {
 	name = template.HTMLEscapeString(name)
 
 	// we need at least 5 digits for 0x & …
@@ -159,6 +204,7 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		}
 		name = fmt.Sprintf(`<span class="text-monospace">%s</span>`, name)
 	} else { // name set
+		addCopyToClipboard = true
 		tooltip = fmt.Sprintf("%s\n%s", name, addressString) // set tool tip first, as we will change name
 		// limit name if necessary
 		if nameLimit > 0 && len(name) > nameLimit {
@@ -172,15 +218,16 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		ret = "<i class=\"fas fa-file-contract mr-1\"></i>" + ret
 	}
 
-	// not a link
-	if len(link) < 1 {
+	if len(link) == 0 {
+		// not a link
 		ret += fmt.Sprintf(`<span data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s" data-container="body">%s</span>`, tooltip, name)
 	} else {
-		// link & token
 		if token != nil {
-			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
-		} else { // just link
-			ret += fmt.Sprintf(`<a href="/`+link+`/0x%x`+urlFragment+`" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, address, tooltip, name)
+			// link & token
+			ret += fmt.Sprintf(`<a href="/%s/0x%x#erc20Txns" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, link, address, tooltip, name)
+		} else {
+			// just link
+			ret += fmt.Sprintf(`<a href="/%s/0x%x" target="_parent" data-html="true" data-toggle="tooltip" data-placement="bottom" title="" data-original-title="%s">%s</a>`, link, address, tooltip, name)
 		}
 	}
 
@@ -189,21 +236,16 @@ func formatAddress(address []byte, token []byte, name string, isContract bool, l
 		ret += ` <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="` + addressString + `"></i>`
 	}
 
-	// done
 	return template.HTML(ret)
 }
 
-func FormatAddressAsLink(address []byte, name string, verified bool, isContract bool) template.HTML {
+func FormatAddressAsLink(address []byte, name string, isContract bool) template.HTML {
 	ret := ""
 	name = template.HTMLEscapeString(name)
 	addressString := FixAddressCasing(fmt.Sprintf("%x", address))
 
 	if len(name) > 0 {
-		if verified {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">✔ %s (%s…%s)</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
-		} else {
-			ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s %s…%s</a> %v", addressString, name, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
-		}
+		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s</a> %v", addressString, name, CopyButton(addressString))
 	} else {
 		ret = fmt.Sprintf("<a class=\"text-monospace\" href=\"/address/%s\">%s…%s</a> %v", addressString, addressString[:8], addressString[len(addressString)-6:], CopyButton(addressString))
 	}
@@ -237,25 +279,30 @@ func FormatAddressAsTokenLink(token, address []byte, name string, verified bool,
 
 func FormatHashLong(hash common.Hash) template.HTML {
 	address := hash.String()
-	test := `
-	<div class="d-flex text-monospace">
-		<span class="">%s</span>
-		<span class="flex-shrink-1 text-truncate">%s</span>
-		<span class="">%s</span>
-	</div>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(test, address[:4], address[4:len(address)-4], address[len(address)-4:]))
+		htmlFormat := `
+		<div class="d-flex text-monospace">
+			%s
+			<span class="flex-shrink-1 text-truncate">%s</span>
+			%s
+		</div>`
+
+		return template.HTML(fmt.Sprintf(htmlFormat, address[:4], address[4:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)
 }
 
 func FormatAddressLong(address string) template.HTML {
+	if IsValidEnsDomain(address) {
+		return template.HTML(fmt.Sprintf(`<span data-truncate-middle="%s"></span>.eth`, strings.TrimSuffix(address, ".eth")))
+	}
 	address = FixAddressCasing(address)
-	test := `
-	<span class="text-monospace mw-100"><span class="text-primary">%s</span><span class="text-truncate">%s</span><span class="text-primary">%s</span></span>`
 	if len(address) > 4 {
-		return template.HTML(fmt.Sprintf(test, address[:6], address[6:len(address)-4], address[len(address)-4:]))
+		htmlFormat := `
+		<span class="text-monospace mw-100">%s<span class="text-primary">%s</span>%s<span class="text-primary">%s</span></span>`
+
+		return template.HTML(fmt.Sprintf(htmlFormat, address[:2], address[2:6], address[6:len(address)-4], address[len(address)-4:]))
 	}
 
 	return template.HTML(address)
@@ -278,7 +325,7 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 	// define display unit & digits used per unit max
 	displayUnit := " " + unit
 	var unitDigits int
-	if unit == "ETH" || unit == "Ether" {
+	if unit == "ETH" || unit == "Ether" || unit == "xDAI" || unit == "GNO" {
 		unitDigits = 18
 	} else if unit == "GWei" {
 		unitDigits = 9
@@ -314,6 +361,23 @@ func formatAmount(amount *big.Int, unit string, digits int, maxPreCommaDigitsBef
 
 	// done, convert to HTML & return
 	return template.HTML(fmt.Sprintf("<span%s>%s%s</span>", tooltip, trimmedAmount, displayUnit))
+}
+
+func FormatTracePath(callType string, tracePath []int64, success bool, method string) template.HTML {
+	for _, trace := range tracePath {
+		callType = fmt.Sprintf("%s_%d", callType, trace)
+	}
+
+	tooltip := ""
+	if method != "" {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, method)
+	}
+
+	failedStr := ""
+	if !success {
+		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
+	}
+	return template.HTML(fmt.Sprintf(`<span%s class="text-monospace">%s</span>%s`, tooltip, callType, failedStr))
 }
 
 func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
@@ -401,10 +465,7 @@ func FormatNumber(number interface{}) string {
 }
 
 func FormatDifficulty(number *big.Int) string {
-	f := new(big.Float).SetInt(number)
-	f.Quo(f, big.NewFloat(1e12))
-	r, _ := f.Float64()
-	return fmt.Sprintf("%.1f T", r)
+	return fmt.Sprintf("%.1f T", decimal.NewFromBigInt(number, -12).InexactFloat64())
 }
 
 func FormatHashrate(h float64) template.HTML {

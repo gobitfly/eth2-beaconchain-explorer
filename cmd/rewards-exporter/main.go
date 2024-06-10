@@ -1,6 +1,7 @@
 package main
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -13,7 +14,7 @@ import (
 
 	eth_rewards "github.com/gobitfly/eth-rewards"
 	"github.com/gobitfly/eth-rewards/beacon"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,7 +30,14 @@ func main() {
 	epochEnd := flag.Uint64("epoch-end", 0, "end epoch to export")
 	sleepDuration := flag.Duration("sleep", time.Minute, "duration to sleep between export runs")
 
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.Version)
+		fmt.Println(version.GoVersion)
+		return
+	}
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -37,40 +45,70 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.Config.ConfigName).Printf("starting")
+	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
 	db.MustInitDB(&types.DatabaseConfig{
-		Username: cfg.WriterDatabase.Username,
-		Password: cfg.WriterDatabase.Password,
-		Name:     cfg.WriterDatabase.Name,
-		Host:     cfg.WriterDatabase.Host,
-		Port:     cfg.WriterDatabase.Port,
+		Username:     cfg.WriterDatabase.Username,
+		Password:     cfg.WriterDatabase.Password,
+		Name:         cfg.WriterDatabase.Name,
+		Host:         cfg.WriterDatabase.Host,
+		Port:         cfg.WriterDatabase.Port,
+		MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
 	}, &types.DatabaseConfig{
-		Username: cfg.ReaderDatabase.Username,
-		Password: cfg.ReaderDatabase.Password,
-		Name:     cfg.ReaderDatabase.Name,
-		Host:     cfg.ReaderDatabase.Host,
-		Port:     cfg.ReaderDatabase.Port,
+		Username:     cfg.ReaderDatabase.Username,
+		Password:     cfg.ReaderDatabase.Password,
+		Name:         cfg.ReaderDatabase.Name,
+		Host:         cfg.ReaderDatabase.Host,
+		Port:         cfg.ReaderDatabase.Port,
+		MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
+		MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
 	})
 	defer db.ReaderDb.Close()
 	defer db.WriterDb.Close()
 
+	if bnAddress == nil || *bnAddress == "" {
+		if utils.Config.Indexer.Node.Host == "" {
+			utils.LogFatal(nil, "no beacon node url provided", 0)
+		} else {
+			logrus.Info("applying becon node endpoint from config")
+			*bnAddress = fmt.Sprintf("http://%s:%s", utils.Config.Indexer.Node.Host, utils.Config.Indexer.Node.Port)
+		}
+	}
+
+	if enAddress == nil || *enAddress == "" {
+		if utils.Config.Eth1ErigonEndpoint == "" {
+			utils.LogFatal(nil, "no execution node url provided", 0)
+		} else {
+			logrus.Info("applying execution node endpoint from config")
+			*enAddress = utils.Config.Eth1ErigonEndpoint
+		}
+	}
+
 	client := beacon.NewClient(*bnAddress, time.Minute*5)
 
-	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.Config.DepositChainID), utils.Config.RedisCacheEndpoint)
+	bt, err := db.InitBigtable(utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
 	if err != nil {
 		logrus.Fatalf("error connecting to bigtable: %v", err)
 	}
 	defer bt.Close()
 
+	cache.MustInitTieredCache(utils.Config.RedisCacheEndpoint)
+	logrus.Infof("tiered Cache initialized, latest finalized epoch: %v", services.LatestFinalizedEpoch())
+
 	if *epochEnd != 0 {
+		latestFinalizedEpoch := services.LatestFinalizedEpoch()
+		if *epochEnd > latestFinalizedEpoch {
+			logrus.Errorf("error epochEnd [%v] is greater then latestFinalizedEpoch [%v]", epochEnd, latestFinalizedEpoch)
+			return
+		}
 		g := errgroup.Group{}
 		g.SetLimit(*batchConcurrency)
 
 		start := time.Now()
 		epochsCompleted := int64(0)
 		notExportedEpochs := []uint64{}
-		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
+		err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch >= $1 AND epoch <= $2 ORDER BY epoch DESC", *epochStart, *epochEnd)
 		if err != nil {
 			logrus.Fatal(err)
 		}
@@ -132,8 +170,9 @@ func main() {
 	if *epoch == -1 {
 		lastExportedEpoch := uint64(0)
 		for {
+			latestFinalizedEpoch := services.LatestFinalizedEpoch()
 			notExportedEpochs := []uint64{}
-			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE finalized AND NOT rewards_exported AND epoch > $1 ORDER BY epoch desc LIMIT 10", lastExportedEpoch)
+			err = db.WriterDb.Select(&notExportedEpochs, "SELECT epoch FROM epochs WHERE NOT rewards_exported AND epoch > $1 AND epoch <= $2 ORDER BY epoch desc LIMIT 10", lastExportedEpoch, latestFinalizedEpoch)
 			if err != nil {
 				utils.LogFatal(err, "getting chain head from lighthouse error", 0)
 			}
@@ -163,6 +202,11 @@ func main() {
 		}
 	}
 
+	latestFinalizedEpoch := services.LatestFinalizedEpoch()
+	if *epoch > int64(latestFinalizedEpoch) {
+		logrus.Errorf("error epoch [%v] is greater then latestFinalizedEpoch [%v]", epoch, latestFinalizedEpoch)
+		return
+	}
 	err = export(uint64(*epoch), bt, client, enAddress)
 	if err != nil {
 		logrus.Fatal(err)
