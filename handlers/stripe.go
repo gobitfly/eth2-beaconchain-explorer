@@ -116,10 +116,10 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	enabled := true
 	auto := "auto"
 
-	var successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
+	var successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing")
 	var cancelUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing")
 	if purchaseGroup == utils.GROUP_MOBILE || purchaseGroup == utils.GROUP_ADDON {
-		successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#account")
+		successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/premium")
 		cancelUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/premium")
 	}
 
@@ -373,7 +373,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if utils.GetPurchaseGroup(priceID) == utils.GROUP_MOBILE {
+		if utils.GetPurchaseGroup(priceID) == utils.GROUP_MOBILE || utils.GetPurchaseGroup(priceID) == utils.GROUP_ADDON {
 			err := db.ChangeProductIDFromStripe(tx, subscription.ID, utils.PriceIdToProductId(priceID))
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription", subscription.ID)
@@ -421,7 +421,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE {
+		if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE || utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_ADDON {
 			appSubID, err := db.GetUserSubscriptionIDByStripe(subscription.ID)
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription, no users_app_subs id found for subscription id", subscription.ID)
@@ -481,14 +481,19 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if utils.GetPurchaseGroup(invoice.Lines.Data[0].Price.ID) == utils.GROUP_MOBILE {
+		if utils.GetPurchaseGroup(invoice.Lines.Data[0].Price.ID) == utils.GROUP_MOBILE || utils.GetPurchaseGroup(invoice.Lines.Data[0].Price.ID) == utils.GROUP_ADDON {
 			appSubID, err := db.GetUserSubscriptionIDByStripe(invoice.Lines.Data[0].Subscription)
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription (paid), no users_app_subs id found for subscription id", invoice.Lines.Data[0].Subscription)
 				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, http.StatusInternalServerError)
 				return
 			}
-			db.UpdateUserSubscription(tx, appSubID, true, 0, "")
+			err = db.UpdateUserSubscription(tx, appSubID, true, 0, "")
+			if err != nil {
+				logger.WithError(err).Error("error updating stripe mobile subscription (paid)", invoice.Lines.Data[0].Subscription)
+				http.Error(w, "error updating stripe mobile subscription customer: "+invoice.Customer.ID, http.StatusInternalServerError)
+				return
+			}
 		}
 
 		err = tx.Commit()
@@ -526,7 +531,7 @@ func createNewStripeSubscription(subscription stripe.Subscription, event stripe.
 		return err
 	}
 
-	if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE {
+	if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE || utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_ADDON {
 		userID, err := db.StripeGetCustomerUserId(subscription.Customer.ID)
 		if err != nil {
 			return err
@@ -565,22 +570,29 @@ func emailCustomerAboutFailedPayment(email string) {
 
 func emailCustomerAboutPlanChange(email, plan string) {
 	p := "Sapphire"
+	isApi := false
 	if plan == utils.Config.Frontend.Stripe.Emerald {
 		p = "Emerald"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.Diamond {
 		p = "Diamond"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.Plankton {
 		p = "Plankton"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.Goldfish {
 		p = "Goldfish"
 	} else if plan == utils.Config.Frontend.Stripe.Whale {
 		p = "Whale"
 	} else if plan == utils.Config.Frontend.Stripe.Iron {
 		p = "Iron"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.Silver {
 		p = "Silver"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.Gold {
 		p = "Gold"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.Guppy {
 		p = "Guppy"
 	} else if plan == utils.Config.Frontend.Stripe.Dolphin {
@@ -589,10 +601,13 @@ func emailCustomerAboutPlanChange(email, plan string) {
 		p = "Orca"
 	} else if plan == utils.Config.Frontend.Stripe.IronYearly {
 		p = "Iron (yearly)"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.SilverYearly {
 		p = "Silver (yearly)"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.GoldYearly {
 		p = "Gold (yearly)"
+		isApi = true
 	} else if plan == utils.Config.Frontend.Stripe.GuppyYearly {
 		p = "Guppy (yearly)"
 	} else if plan == utils.Config.Frontend.Stripe.DolphinYearly {
@@ -600,7 +615,11 @@ func emailCustomerAboutPlanChange(email, plan string) {
 	} else if plan == utils.Config.Frontend.Stripe.OrcaYearly {
 		p = "Orca (yearly)"
 	}
-	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
+	page := "/user/settings#api"
+	if !isApi {
+		page = "/premium"
+	}
+	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + page)
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 	err := mail.SendTextMail(email, "Payment Plan Change", msg, []types.EmailAttachment{})

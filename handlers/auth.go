@@ -247,7 +247,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 			latest_and_greatest_sub AS (
 				SELECT user_id, product_id, active, created_at FROM users_app_subscriptions 
 				left join users on users.id = user_id 
-				WHERE users.email = $1 AND active = true
+				WHERE users.email = $1 AND active = true AND product_id IN ('orca.yearly', 'orca', 'dolphin.yearly', 'dolphin', 'guppy.yearly', 'guppy', 'whale', 'goldfish', 'plankton')
 				ORDER BY CASE product_id
 					WHEN 'orca.yearly'    THEN  1
 					WHEN 'orca'           THEN  2

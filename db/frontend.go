@@ -75,9 +75,9 @@ func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
 	row := FrontendWriterDB.QueryRow(`
 		SELECT id, (
 			SELECT product_id 
-			from users_app_subscriptions 
-			WHERE user_id = users.id AND active = true 
-			order by CASE product_id
+			FROM users_app_subscriptions 
+			WHERE user_id = users.id AND active = true AND product_id IN ('orca.yearly', 'orca', 'dolphin.yearly', 'dolphin', 'guppy.yearly', 'guppy', 'whale', 'goldfish', 'plankton')
+			ORDER BY CASE product_id
 				WHEN 'orca.yearly'    THEN  1
 				WHEN 'orca'           THEN  2
 				WHEN 'dolphin.yearly' THEN  3
@@ -455,7 +455,7 @@ func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 	err := FrontendWriterDB.Get(&pkg, `
 		SELECT COALESCE(product_id, '') as product_id, COALESCE(store, '') as store 
 		from users_app_subscriptions 
-		WHERE user_id = $1 AND active = true 
+		WHERE user_id = $1 AND active = true AND product_id IN ('orca.yearly', 'orca', 'dolphin.yearly', 'dolphin', 'guppy.yearly', 'guppy', 'whale', 'goldfish', 'plankton')
 		order by CASE product_id
 			WHEN 'orca.yearly'    THEN  1
 			WHEN 'orca'           THEN  2
@@ -477,8 +477,8 @@ func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error
 	userSub := types.UserPremiumSubscription{}
 	err := FrontendWriterDB.Get(&userSub, `
 	SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason 
-	FROM users_app_subscriptions 
-	WHERE user_id = $1 
+	FROM users_app_subscriptions  
+	WHERE user_id = $1 AND product_id IN ('orca.yearly', 'orca', 'dolphin.yearly', 'dolphin', 'guppy.yearly', 'guppy', 'whale', 'goldfish', 'plankton')
 	ORDER BY 
 		active desc, 
 		CASE product_id
