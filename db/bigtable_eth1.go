@@ -3412,6 +3412,10 @@ func (bigtable *Bigtable) GetMetadataForAddress(address []byte, offset uint64, l
 
 	mux := sync.Mutex{}
 	for _, ri := range row {
+		if len(ri) > 5000 {
+			return nil, fmt.Errorf("retrieved an unusually large amount of token balances for address 0x%x: %v", address, len(ri))
+		}
+
 		for _, column := range ri {
 			if strings.HasPrefix(column.Column, ACCOUNT_METADATA_FAMILY+":B:") {
 				column := column
