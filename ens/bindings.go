@@ -133,7 +133,7 @@ func bindEnsRegistarController(address common.Address, caller bind.ContractCalle
 	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
 }
 
-// bindEnsRegistarController binds a generic wrapper to an already deployed contract.
+// bindEnsRegistarV2Controller binds a generic wrapper to an already deployed contract.
 func bindEnsRegistarV2Controller(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
 	parsed, err := abi.JSON(strings.NewReader(ensRegistarV2Data.ABI))
 	if err != nil {
