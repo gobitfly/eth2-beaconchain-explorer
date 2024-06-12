@@ -97,13 +97,13 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		default:
 			logger.Warnf("unknown new addon-product: %v", p)
 		}
-		if totalAddonValidators >= 100_000 {
+		if totalAddonValidators > 100_000 {
 			logger.Errorf("error addon can not be purchased since limit has been reached: %v", totalAddonValidators)
 			w.WriteHeader(http.StatusBadRequest)
 			writeJSON(w, struct {
 				ErrorData string `json:"error"`
 			}{
-				ErrorData: "could not create a new stripe session",
+				ErrorData: "could not create a new stripe session since dasboard-validators-limit has been reached",
 			})
 		}
 	}
