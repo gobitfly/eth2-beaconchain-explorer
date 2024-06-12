@@ -474,7 +474,23 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 		defer tx.Rollback()
 
-		err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
+		// retry updating subs if webhooks come out of order
+		retries := 0
+		for {
+			err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
+			if err == nil {
+				break
+			}
+			if err.Error() == "no rows affected" {
+				retries++
+				if retries > 5 {
+					break
+				}
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			break
+		}
 		if err != nil {
 			logger.WithError(err).Error("error processing invoice failed to activate subscription for customer", invoice.Customer.ID)
 			http.Error(w, "error processing invoice failed to activate subscription for customer", http.StatusInternalServerError)
