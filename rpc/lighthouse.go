@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/donovanhide/eventsource"
 	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"golang.org/x/sync/errgroup"
 
@@ -33,8 +32,6 @@ type LighthouseClient struct {
 	endpoint            string
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
-	slotsCache          *lru.Cache
-	slotsCacheMux       *sync.Mutex
 	signer              gtypes.Signer
 }
 
@@ -44,52 +41,11 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
-		slotsCacheMux:       &sync.Mutex{},
 		signer:              signer,
 	}
 	client.assignmentsCache, _ = lru.New(10)
-	client.slotsCache, _ = lru.New(128) // cache at most 128 slots
 
 	return client, nil
-}
-
-func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
-	blkCh := make(chan *types.Block, 10)
-	go func() {
-		stream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
-
-		if err != nil {
-			utils.LogFatal(err, "getting eventsource stream error", 0)
-		}
-		defer stream.Close()
-
-		for {
-			select {
-			// It is important to register to Errors, otherwise the stream does not reconnect if the connection was lost
-			case err := <-stream.Errors:
-				utils.LogError(err, "Lighthouse connection error (will automatically retry to connect)", 0)
-			case e := <-stream.Events:
-				// logger.Infof("retrieved %v via event stream", e.Data())
-				var parsed StreamedBlockEventData
-				err = json.Unmarshal([]byte(e.Data()), &parsed)
-				if err != nil {
-					logger.Warnf("failed to decode block event: %v", err)
-					continue
-				}
-
-				logger.Infof("retrieving data for slot %v", parsed.Slot)
-				block, err := lc.GetBlockBySlot(uint64(parsed.Slot))
-				if err != nil {
-					logger.Warnf("failed to fetch block for slot %d: %v", uint64(parsed.Slot), err)
-					continue
-				}
-				logger.Infof("retrieved block for slot %v", parsed.Slot)
-				// logger.Infof("pushing block %v", blk.Slot)
-				blkCh <- block
-			}
-		}
-	}()
-	return blkCh
 }
 
 // GetChainHead gets the chain head from Lighthouse
@@ -796,21 +752,6 @@ func (lc *LighthouseClient) GetBlockBySlot(slot uint64) (*types.Block, error) {
 		}
 	}
 
-	lc.slotsCacheMux.Lock()
-	cachedBlock, ok := lc.slotsCache.Get(parsedHeaders.Data.Root)
-	if ok {
-		lc.slotsCacheMux.Unlock()
-		block, ok := cachedBlock.(*types.Block)
-
-		if ok {
-			logger.Infof("retrieved slot %v (0x%x) from in memory cache", block.Slot, block.BlockRoot)
-			return block, nil
-		} else {
-			logger.Errorf("unable to convert cached block to block type")
-		}
-	}
-	lc.slotsCacheMux.Unlock()
-
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v2/beacon/blocks/%s", lc.endpoint, parsedHeaders.Data.Root))
 	if err != nil && slot == 0 {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %w", slot, err)
@@ -869,10 +810,6 @@ func (lc *LighthouseClient) GetBlockBySlot(slot uint64) (*types.Block, error) {
 			})
 		}
 	}
-
-	lc.slotsCacheMux.Lock()
-	lc.slotsCache.Add(parsedHeaders.Data.Root, block)
-	lc.slotsCacheMux.Unlock()
 
 	return block, nil
 }
