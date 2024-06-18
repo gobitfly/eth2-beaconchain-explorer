@@ -47,8 +47,8 @@ func initStripe(http *mux.Router) error {
 		return fmt.Errorf("error no config found")
 	}
 	stripe.Key = utils.Config.Frontend.Stripe.SecretKey
-	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
-	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
+	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST", "OPTIONS")
+	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST", "OPTIONS")
 	return nil
 }
 
@@ -590,6 +590,7 @@ func main() {
 
 			authRouter.Use(handlers.UserAuthMiddleware)
 			authRouter.Use(csrfHandler)
+			authRouter.Use(utils.CORSMiddleware)
 
 			if utils.Config.Frontend.Debug {
 				// serve files from local directory when debugging, instead of from go embed file

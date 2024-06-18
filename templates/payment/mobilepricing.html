@@ -66,28 +66,6 @@
                 var stripe = Stripe({{.StripePK}});
                 // Setup event handler to create a Checkout Session when button is clicked
                 document
-                    .getElementById("plankton")
-                    .addEventListener("click", function (evt) {
-                        createCheckoutSession({{.Plankton}}).then(function (data) {
-                            // Call Stripe.js method to redirect to the new Checkout page
-                            stripe
-                                .redirectToCheckout({
-                                    sessionId: data.sessionId
-                                })
-                                .then(handleResult)
-                                .catch(err => {
-                                    console.log("error: ", err)
-                                    showError("Failed to create Stripe Checkout Session")
-                                });
-                        }).catch(err => {
-                            console.log("error: ", err)
-                            showError("Failed to create Stripe Checkout Session")
-                        })
-
-                    });
-
-                // Setup event handler to create a Checkout Session when button is clicked
-                document
                     .getElementById("goldfish")
                     .addEventListener("click", function (evt) {
                         createCheckoutSession({{.Goldfish}}).then(function (data) {

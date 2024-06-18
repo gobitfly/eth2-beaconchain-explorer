@@ -112,9 +112,46 @@ func StripeUpdateSubscriptionStatus(tx *sql.Tx, id string, status bool, payload 
 
 // StripeGetUserAPISubscriptions returns a users current subscriptions
 func StripeGetUserSubscriptions(id uint64, purchaseGroup string) ([]types.UserSubscription, error) {
+	tmpUserSubs := []struct {
+		UserID         uint64  `db:"id"`
+		Email          string  `db:"email"`
+		Active         *bool   `db:"active"`
+		CustomerID     *string `db:"stripe_customer_id"`
+		SubscriptionID *string `db:"subscription_id"`
+		PriceID        *string `db:"price_id"`
+		ApiKey         *string `db:"api_key"`
+		Quantity       int     `db:"quantity"`
+	}{}
+
+	err := FrontendWriterDB.Select(&tmpUserSubs, `
+		SELECT users.id, users.email, users.stripe_customer_id, us.subscription_id, us.price_id, us.active, users.api_key, us.quantity 
+		FROM users 
+		INNER JOIN (
+			SELECT subscription_id, customer_id, price_id, active, COALESCE((payload->>'quantity')::int,1) AS quantity 
+			FROM users_stripe_subscriptions 
+			WHERE purchase_group = $2 and (payload->'ended_at')::text = 'null'
+		) as us ON users.stripe_customer_id = us.customer_id 
+		WHERE users.id = $1 ORDER BY active desc`, id, purchaseGroup)
+
+	if err != nil {
+		return nil, err
+	}
 	userSubs := []types.UserSubscription{}
-	err := FrontendWriterDB.Select(&userSubs, "SELECT users.id, users.email, users.stripe_customer_id, us.subscription_id, us.price_id, us.active, users.api_key FROM users INNER JOIN (SELECT subscription_id, customer_id, price_id, active FROM users_stripe_subscriptions WHERE purchase_group = $2 and (payload->'ended_at')::text = 'null') as us ON users.stripe_customer_id = us.customer_id WHERE users.id = $1 ORDER BY active desc", id, purchaseGroup)
-	return userSubs, err
+	for _, tmpUserSub := range tmpUserSubs {
+		for i := 0; i < tmpUserSub.Quantity; i++ {
+			userSub := types.UserSubscription{
+				UserID:         tmpUserSub.UserID,
+				Email:          tmpUserSub.Email,
+				Active:         tmpUserSub.Active,
+				CustomerID:     tmpUserSub.CustomerID,
+				SubscriptionID: tmpUserSub.SubscriptionID,
+				PriceID:        tmpUserSub.PriceID,
+				ApiKey:         tmpUserSub.ApiKey,
+			}
+			userSubs = append(userSubs, userSub)
+		}
+	}
+	return userSubs, nil
 }
 
 // StripeGetUserAPISubscription returns a users current subscription
