@@ -483,10 +483,10 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 			if err.Error() == "no rows affected" {
 				retries++
-				if retries > 5 {
+				if retries > 3 {
 					break
 				}
-				time.Sleep(1 * time.Second)
+				time.Sleep(1000 * time.Millisecond)
 				continue
 			}
 			break
