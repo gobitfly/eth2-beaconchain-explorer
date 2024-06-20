@@ -84,8 +84,12 @@ func Init() {
 
 func fetchClientData(repo string) *gitAPIResponse {
 	var gitAPI = new(gitAPIResponse)
-	resp, err := httpClient.Get("https://api.github.com/repos" + repo + "/releases/latest")
-	// resp, err := http.Get("http://localhost:5000/repos" + repo)
+
+	githubAPIHost := utils.Config.GithubApiHost
+	if githubAPIHost == "" {
+		githubAPIHost = "api.github.com"
+	}
+	resp, err := httpClient.Get(fmt.Sprintf("https://%s/repos%s/releases/latest", githubAPIHost, repo))
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH Client Data: %v", err)
