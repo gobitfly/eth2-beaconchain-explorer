@@ -16,7 +16,7 @@ require (
 	github.com/aybabtme/uniplot v0.0.0-20151203143629-039c559e5e7e
 	github.com/carlmjohnson/requests v0.23.4
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ethereum/go-ethereum v1.13.10
+	github.com/ethereum/go-ethereum v1.13.15
 	github.com/evanw/esbuild v0.8.23
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gobitfly/eth-rewards v0.1.2-0.20230403064929-411ddc40a5f7
