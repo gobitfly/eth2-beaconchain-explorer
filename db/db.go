@@ -1364,44 +1364,54 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 				// blockLog = blockLog.WithField("syncParticipation", b.SyncAggregate.SyncAggregateParticipation)
 			}
 
-			parentHash := []byte{}
-			feeRecipient := []byte{}
-			stateRoot := []byte{}
-			receiptRoot := []byte{}
-			logsBloom := []byte{}
-			random := []byte{}
-			blockNumber := uint64(0)
-			gasLimit := uint64(0)
-			gasUsed := uint64(0)
-			timestamp := uint64(0)
-			extraData := []byte{}
-			baseFeePerGas := uint64(0)
-			blockHash := []byte{}
-			txCount := 0
-			withdrawalCount := 0
-			blobGasUsed := uint64(0)
-			excessBlobGas := uint64(0)
-			blobTxCount := 0
+			type exectionPayloadData struct {
+				ParentHash      []byte
+				FeeRecipient    []byte
+				StateRoot       []byte
+				ReceiptRoot     []byte
+				LogsBloom       []byte
+				Random          []byte
+				BlockNumber     *uint64
+				GasLimit        *uint64
+				GasUsed         *uint64
+				Timestamp       *uint64
+				ExtraData       []byte
+				BaseFeePerGas   *uint64
+				BlockHash       []byte
+				TxCount         *int64
+				WithdrawalCount *int64
+				BlobGasUsed     *uint64
+				ExcessBlobGas   *uint64
+				BlobTxCount     *int64
+			}
+
+			execData := new(exectionPayloadData)
+
 			if b.ExecutionPayload != nil {
-				parentHash = b.ExecutionPayload.ParentHash
-				feeRecipient = b.ExecutionPayload.FeeRecipient
-				stateRoot = b.ExecutionPayload.StateRoot
-				receiptRoot = b.ExecutionPayload.ReceiptsRoot
-				logsBloom = b.ExecutionPayload.LogsBloom
-				random = b.ExecutionPayload.Random
-				blockNumber = b.ExecutionPayload.BlockNumber
-				gasLimit = b.ExecutionPayload.GasLimit
-				gasUsed = b.ExecutionPayload.GasUsed
-				timestamp = b.ExecutionPayload.Timestamp
-				extraData = b.ExecutionPayload.ExtraData
-				baseFeePerGas = b.ExecutionPayload.BaseFeePerGas
-				blockHash = b.ExecutionPayload.BlockHash
-				txCount = len(b.ExecutionPayload.Transactions)
-				withdrawalCount = len(b.ExecutionPayload.Withdrawals)
-				blobGasUsed = b.ExecutionPayload.BlobGasUsed
-				excessBlobGas = b.ExecutionPayload.ExcessBlobGas
-				blobTxCount = len(b.BlobKZGCommitments)
-				_, err = stmtExecutionPayload.Exec(blockHash)
+				txCount := int64(len(b.ExecutionPayload.Transactions))
+				withdrawalCount := int64(len(b.ExecutionPayload.Withdrawals))
+				blobTxCount := int64(len(b.BlobKZGCommitments))
+				execData = &exectionPayloadData{
+					ParentHash:      b.ExecutionPayload.ParentHash,
+					FeeRecipient:    b.ExecutionPayload.FeeRecipient,
+					StateRoot:       b.ExecutionPayload.StateRoot,
+					ReceiptRoot:     b.ExecutionPayload.ReceiptsRoot,
+					LogsBloom:       b.ExecutionPayload.LogsBloom,
+					Random:          b.ExecutionPayload.Random,
+					BlockNumber:     &b.ExecutionPayload.BlockNumber,
+					GasLimit:        &b.ExecutionPayload.GasLimit,
+					GasUsed:         &b.ExecutionPayload.GasUsed,
+					Timestamp:       &b.ExecutionPayload.Timestamp,
+					ExtraData:       b.ExecutionPayload.ExtraData,
+					BaseFeePerGas:   &b.ExecutionPayload.BaseFeePerGas,
+					BlockHash:       b.ExecutionPayload.BlockHash,
+					TxCount:         &txCount,
+					WithdrawalCount: &withdrawalCount,
+					BlobGasUsed:     &b.ExecutionPayload.BlobGasUsed,
+					ExcessBlobGas:   &b.ExecutionPayload.ExcessBlobGas,
+					BlobTxCount:     &blobTxCount,
+				}
+				_, err = stmtExecutionPayload.Exec(execData.BlockHash)
 				if err != nil {
 					return fmt.Errorf("error executing stmtExecutionPayload for block %v: %w", b.Slot, err)
 				}
@@ -1425,28 +1435,28 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 				len(b.AttesterSlashings),
 				len(b.Attestations),
 				len(b.Deposits),
-				withdrawalCount,
+				execData.WithdrawalCount,
 				len(b.VoluntaryExits),
 				syncAggParticipation,
 				b.Proposer,
 				strconv.FormatUint(b.Status, 10),
-				parentHash,
-				feeRecipient,
-				stateRoot,
-				receiptRoot,
-				logsBloom,
-				random,
-				blockNumber,
-				gasLimit,
-				gasUsed,
-				timestamp,
-				extraData,
-				baseFeePerGas,
-				blockHash,
-				txCount,
-				blobGasUsed,
-				excessBlobGas,
-				blobTxCount,
+				execData.ParentHash,
+				execData.FeeRecipient,
+				execData.StateRoot,
+				execData.ReceiptRoot,
+				execData.LogsBloom,
+				execData.Random,
+				execData.BlockNumber,
+				execData.GasLimit,
+				execData.GasUsed,
+				execData.Timestamp,
+				execData.ExtraData,
+				execData.BaseFeePerGas,
+				execData.BlockHash,
+				execData.TxCount,
+				execData.BlobGasUsed,
+				execData.ExcessBlobGas,
+				execData.BlobTxCount,
 			)
 			if err != nil {
 				return fmt.Errorf("error executing stmtBlocks for block %v: %w", b.Slot, err)
