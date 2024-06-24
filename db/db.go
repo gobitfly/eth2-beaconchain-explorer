@@ -1213,6 +1213,15 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 		return err
 	}
 
+	stmtExecutionPayload, err := tx.Prepare(`
+		INSERT INTO execution_payloads (block_hash)
+		VALUES ($1)
+		ON CONFLICT (block_hash) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtExecutionPayload.Close()
+
 	stmtBlock, err := tx.Prepare(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, withdrawalcount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parent_hash, exec_fee_recipient, exec_state_root, exec_receipts_root, exec_logs_bloom, exec_random, exec_block_number, exec_gas_limit, exec_gas_used, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_block_hash, exec_transactions_count, exec_blob_gas_used, exec_excess_blob_gas, exec_blob_transactions_count)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40)
@@ -1392,6 +1401,10 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 				blobGasUsed = b.ExecutionPayload.BlobGasUsed
 				excessBlobGas = b.ExecutionPayload.ExcessBlobGas
 				blobTxCount = len(b.BlobKZGCommitments)
+				_, err = stmtExecutionPayload.Exec(blockHash)
+				if err != nil {
+					return fmt.Errorf("error executing stmtExecutionPayload for block %v: %w", b.Slot, err)
+				}
 			}
 			_, err = stmtBlock.Exec(
 				b.Slot/utils.Config.Chain.ClConfig.SlotsPerEpoch,
