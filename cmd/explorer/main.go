@@ -250,6 +250,7 @@ func main() {
 
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
 		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
+		apiV1Router.HandleFunc("/latestState", handlers.ApiLatestState).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/epoch/{epoch}/blocks", handlers.ApiEpochSlots).Methods("GET", "OPTIONS")

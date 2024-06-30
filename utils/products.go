@@ -7,6 +7,9 @@ const GROUP_MOBILE = "mobile"
 const GROUP_ADDON = "addon"
 
 var ProductsGroups = map[string]string{
+	"sapphire":             GROUP_API,
+	"emerald":              GROUP_API,
+	"diamond":              GROUP_API,
 	"plankton":             GROUP_MOBILE,
 	"goldfish":             GROUP_MOBILE,
 	"whale":                GROUP_MOBILE,
@@ -93,6 +96,12 @@ func ProductIsEligibleForAddons(productId string) bool {
 
 func PriceIdToProductId(priceId string) string {
 	switch priceId {
+	case Config.Frontend.Stripe.Sapphire:
+		return "sapphire"
+	case Config.Frontend.Stripe.Emerald:
+		return "emerald"
+	case Config.Frontend.Stripe.Diamond:
+		return "diamond"
 	case Config.Frontend.Stripe.Plankton:
 		return "plankton"
 	case Config.Frontend.Stripe.Goldfish:

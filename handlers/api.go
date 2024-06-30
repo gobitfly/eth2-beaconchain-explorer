@@ -257,6 +257,34 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r, addDayTime)
 }
 
+// ApiLatestState godoc
+// @Summary Get the latest state of the network
+// @Tags Network
+// @Description Returns information on the current state of the network
+// @Produce  json
+// @Failure 400 {object} types.ApiResponse "Failure"
+// @Failure 500 {object} types.ApiResponse "Server Error"
+// @Router /api/v1/latestState [get]
+func ApiLatestState(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", utils.Config.Chain.ClConfig.SecondsPerSlot)) // set local cache to the seconds per slot interval
+
+	data := services.LatestState()
+	data.Rates = services.GetRates(GetCurrency(r))
+	userAgent := r.Header.Get("User-Agent")
+	userAgent = strings.ToLower(userAgent)
+	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
+		data.Rates.MainCurrencyPriceFormatted = utils.KFormatterEthPrice(uint64(data.Rates.MainCurrencyPrice))
+	}
+
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error sending latest index page data: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
 // ApiEpoch godoc
 // @Summary Get epoch by number, latest, finalized
 // @Tags Epoch
