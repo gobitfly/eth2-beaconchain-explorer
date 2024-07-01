@@ -640,10 +640,9 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 	if err != nil {
 		if err.Error() == "not a resolver" || err.Error() == "no resolution" || err.Error() == "execution reverted" {
 			logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", address, err.Error())
-			return nil
+		} else {
+			return fmt.Errorf("error could not reverse resolve address [%v]: %w", address, err)
 		}
-
-		return fmt.Errorf("error could not reverse resolve address [%v]: %w", address, err)
 	}
 
 	if reverseName == currentName {
