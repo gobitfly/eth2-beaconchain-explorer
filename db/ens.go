@@ -638,7 +638,10 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 
 	reverseName, err := go_ens.ReverseResolve(client, address)
 	if err != nil {
-		if err.Error() == "not a resolver" || err.Error() == "no resolution" || err.Error() == "execution reverted" {
+		if err.Error() == "not a resolver" ||
+			err.Error() == "no resolution" ||
+			err.Error() == "execution reverted" ||
+			strings.HasPrefix(err.Error(), "name is not valid") {
 			logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", address, err.Error())
 		} else {
 			return fmt.Errorf("error could not reverse resolve address [%v]: %w", address, err)
@@ -703,6 +706,10 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	mainName := strings.Join(parts[len(parts)-2:], ".")
 	ensName, err := go_ens.NewName(client, mainName)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "name is not valid") {
+			logger.WithField("error", err).WithField("name", name).Warnf("could not create name")
+			return nil
+		}
 		return fmt.Errorf("error could not create name via go_ens.NewName for [%v]: %w", name, err)
 	}
 
