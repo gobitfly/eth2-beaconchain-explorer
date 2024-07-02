@@ -11,6 +11,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
+	"net"
 	"regexp"
 	"sort"
 	"strconv"
@@ -70,8 +71,7 @@ func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 	dbConnectionTimeout.Stop()
 }
 
-func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sqlx.DB, *sqlx.DB) {
-
+func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) (*sqlx.DB, *sqlx.DB) {
 	if writer.MaxOpenConns == 0 {
 		writer.MaxOpenConns = 50
 	}
@@ -92,13 +92,28 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 		reader.MaxIdleConns = reader.MaxOpenConns
 	}
 
-	logger.Infof("initializing writer db connection to %v with %v/%v conn limit", writer.Host, writer.MaxIdleConns, writer.MaxOpenConns)
-	dbConnWriter, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", writer.Username, writer.Password, writer.Host, writer.Port, writer.Name))
-	if err != nil {
-		utils.LogFatal(err, "error getting Connection Writer database", 0)
+	var sslParam string
+	if driverName == "clickhouse" {
+		sslParam = "secure=false"
+		if writer.SSL {
+			sslParam = "secure=true"
+		}
+		// debug
+		// sslParam += "&debug=true"
+	} else {
+		sslParam = "sslmode=disable"
+		if writer.SSL {
+			sslParam = "sslmode=require"
+		}
 	}
 
-	dbTestConnection(dbConnWriter, "database")
+	logger.Infof("connecting to %s database %s:%s/%s as writer with %d/%d max open/idle connections", databaseBrand, writer.Host, writer.Port, writer.Name, writer.MaxOpenConns, writer.MaxIdleConns)
+	dbConnWriter, err := sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, writer.Username, writer.Password, net.JoinHostPort(writer.Host, writer.Port), writer.Name, sslParam))
+	if err != nil {
+		logger.Fatal(err, "error getting Connection Writer database", 0)
+	}
+
+	dbTestConnection(dbConnWriter, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
 	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
 	dbConnWriter.SetConnMaxLifetime(time.Minute)
 	dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
@@ -108,13 +123,27 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 		return dbConnWriter, dbConnWriter
 	}
 
-	logger.Infof("initializing reader db connection to %v with %v/%v conn limit", writer.Host, reader.MaxIdleConns, reader.MaxOpenConns)
-	dbConnReader, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", reader.Username, reader.Password, reader.Host, reader.Port, reader.Name))
-	if err != nil {
-		utils.LogFatal(err, "error getting Connection Reader database", 0)
+	if driverName == "clickhouse" {
+		sslParam = "secure=false"
+		if writer.SSL {
+			sslParam = "secure=true"
+		}
+		// debug
+		// sslParam += "&debug=true"
+	} else {
+		sslParam = "sslmode=disable"
+		if writer.SSL {
+			sslParam = "sslmode=require"
+		}
 	}
 
-	dbTestConnection(dbConnReader, "read replica database")
+	logger.Infof("connecting to %s database %s:%s/%s as reader with %d/%d max open/idle connections", databaseBrand, reader.Host, reader.Port, reader.Name, reader.MaxOpenConns, reader.MaxIdleConns)
+	dbConnReader, err := sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, reader.Username, reader.Password, net.JoinHostPort(reader.Host, reader.Port), reader.Name, sslParam))
+	if err != nil {
+		logger.Fatal(err, "error getting Connection Reader database", 0)
+	}
+
+	dbTestConnection(dbConnReader, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
 	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
 	dbConnReader.SetConnMaxLifetime(time.Minute)
 	dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
@@ -122,8 +151,8 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) (*sq
 	return dbConnWriter, dbConnReader
 }
 
-func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig) {
-	WriterDb, ReaderDb = mustInitDB(writer, reader)
+func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) {
+	WriterDb, ReaderDb = mustInitDB(writer, reader, driverName, databaseBrand)
 }
 
 func ApplyEmbeddedDbSchema(version int64) error {
