@@ -430,7 +430,12 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 			now := time.Now()
 			nowTs := now.Unix()
-			db.UpdateUserSubscription(tx, appSubID, false, nowTs, "user_canceled")
+			err = db.UpdateUserSubscription(tx, appSubID, false, nowTs, "user_canceled")
+			if err != nil {
+				logger.WithError(err).Error("error updating stripe mobile subscription (sub deleted)", subscription.ID)
+				http.Error(w, "error updating stripe mobile subscription customer: "+subscription.Customer.ID, http.StatusInternalServerError)
+				return
+			}
 		}
 
 		err = tx.Commit()
@@ -474,23 +479,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 		defer tx.Rollback()
 
-		// retry updating subs if webhooks come out of order
-		retries := 0
-		for {
-			err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
-			if err == nil {
-				break
-			}
-			if err.Error() == "no rows affected" {
-				retries++
-				if retries > 3 {
-					break
-				}
-				time.Sleep(1000 * time.Millisecond)
-				continue
-			}
-			break
-		}
+		err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
 		if err != nil {
 			logger.WithError(err).Error("error processing invoice failed to activate subscription for customer", invoice.Customer.ID)
 			http.Error(w, "error processing invoice failed to activate subscription for customer", http.StatusInternalServerError)
