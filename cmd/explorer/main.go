@@ -102,6 +102,7 @@ func main() {
 			Port:         cfg.WriterDatabase.Port,
 			MaxOpenConns: cfg.WriterDatabase.MaxOpenConns,
 			MaxIdleConns: cfg.WriterDatabase.MaxIdleConns,
+			SSL:          cfg.WriterDatabase.SSL,
 		}, &types.DatabaseConfig{
 			Username:     cfg.ReaderDatabase.Username,
 			Password:     cfg.ReaderDatabase.Password,
@@ -110,7 +111,8 @@ func main() {
 			Port:         cfg.ReaderDatabase.Port,
 			MaxOpenConns: cfg.ReaderDatabase.MaxOpenConns,
 			MaxIdleConns: cfg.ReaderDatabase.MaxIdleConns,
-		})
+			SSL:          cfg.ReaderDatabase.SSL,
+		}, "pgx", "postgres")
 	}()
 
 	wg.Add(1)
@@ -124,6 +126,7 @@ func main() {
 			Port:         cfg.Frontend.WriterDatabase.Port,
 			MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
 			MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
+			SSL:          cfg.Frontend.WriterDatabase.SSL,
 		}, &types.DatabaseConfig{
 			Username:     cfg.Frontend.ReaderDatabase.Username,
 			Password:     cfg.Frontend.ReaderDatabase.Password,
@@ -132,7 +135,8 @@ func main() {
 			Port:         cfg.Frontend.ReaderDatabase.Port,
 			MaxOpenConns: cfg.Frontend.ReaderDatabase.MaxOpenConns,
 			MaxIdleConns: cfg.Frontend.ReaderDatabase.MaxIdleConns,
-		})
+			SSL:          cfg.Frontend.ReaderDatabase.SSL,
+		}, "pgx", "postgres")
 	}()
 
 	wg.Add(1)

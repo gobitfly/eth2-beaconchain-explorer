@@ -17,6 +17,7 @@ type Config struct {
 		Port         string `yaml:"port" envconfig:"READER_DB_PORT"`
 		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"READER_DB_MAX_OPEN_CONNS"`
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"READER_DB_MAX_IDLE_CONNS"`
+		SSL          bool   `yaml:"ssl" envconfig:"READER_DB_SSL"`
 	} `yaml:"readerDatabase"`
 	WriterDatabase struct {
 		Username     string `yaml:"user" envconfig:"WRITER_DB_USERNAME"`
@@ -26,6 +27,7 @@ type Config struct {
 		Port         string `yaml:"port" envconfig:"WRITER_DB_PORT"`
 		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"WRITER_DB_MAX_OPEN_CONNS"`
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
+		SSL          bool   `yaml:"ssl" envconfig:"WRITER_DB_SSL"`
 	} `yaml:"writerDatabase"`
 	Bigtable struct {
 		Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
@@ -116,6 +118,7 @@ type Config struct {
 			Port         string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
 			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_READER_DB_MAX_OPEN_CONNS"`
 			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_READER_DB_MAX_IDLE_CONNS"`
+			SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_READER_DB_SSL"`
 		} `yaml:"readerDatabase"`
 		WriterDatabase struct {
 			Username     string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
@@ -125,6 +128,7 @@ type Config struct {
 			Port         string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
 			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_WRITER_DB_MAX_OPEN_CONNS"`
 			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
+			SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_WRITER_DB_SSL"`
 		} `yaml:"writerDatabase"`
 		OldProductsDeadlineUnix int64 `yaml:"oldProductsDeadline" envconfig:"FRONTEND_OLD_PRODUCTS_DEADLINE_UNIX"`
 		Stripe                  struct {
@@ -264,6 +268,7 @@ type DatabaseConfig struct {
 	Port         string
 	MaxOpenConns int
 	MaxIdleConns int
+	SSL          bool
 }
 
 type ServiceMonitoringConfiguration struct {
