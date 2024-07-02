@@ -55,8 +55,15 @@ func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, 
 
 func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 	blkCh := make(chan *types.Block, 10)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), nil)
+	if err != nil {
+		logger.Fatal(err, "error initializing event sse request", 0)
+	}
+	// disable gzip compression for sse
+	req.Header.Set("accept-encoding", "identity")
+
 	go func() {
-		stream, err := eventsource.Subscribe(fmt.Sprintf("%s/eth/v1/events?topics=head", lc.endpoint), "")
+		stream, err := eventsource.SubscribeWithRequest("", req)
 
 		if err != nil {
 			utils.LogFatal(err, "getting eventsource stream error", 0)
