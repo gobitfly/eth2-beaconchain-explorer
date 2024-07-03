@@ -127,12 +127,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 		err = db.ReaderDb.Select(graffiti, `
-			SELECT graffiti, count(*)
-			FROM blocks
-			WHERE graffiti_text ILIKE LOWER($1)
-			GROUP BY graffiti
-			ORDER BY count desc
-			LIMIT 10`, "%"+search+"%")
+			select graffiti, sum(count) as count 
+			from graffiti_stats 
+			where graffiti_text ilike lower($1) 
+			group by graffiti 
+			order by count desc 
+			limit 10`, "%"+search+"%")
 		if err != nil {
 			break
 		}
