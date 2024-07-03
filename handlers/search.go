@@ -315,19 +315,21 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			Count            uint64        `db:"count" json:"-"`
 		}{}
 		err = db.ReaderDb.Select(&res, `
+			WITH 
+				graffiti_days AS (SELECT day FROM (SELECT day FROM graffiti_stats WHERE graffiti_text ILIKE LOWER($1) ORDER BY DAY DESC LIMIT $2) a GROUP BY day),
+				graffiti_blocks AS (SELECT proposer, graffiti FROM blocks INNER JOIN graffiti_days ON blocks.epoch >= graffiti_days.day*$3 AND blocks.epoch < graffiti_days.day*$3+$3 WHERE blocks.graffiti_text ILIKE LOWER($1) ORDER BY slot DESC LIMIT $2)
 			SELECT graffiti, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
 					graffiti,
 					DENSE_RANK() OVER(PARTITION BY graffiti ORDER BY validatorindex) AS validatorrow,
 					DENSE_RANK() OVER(ORDER BY graffiti) AS graffitirow
-				FROM blocks 
-				LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-				WHERE graffiti_text ILIKE LOWER($1)
+				FROM graffiti_blocks 
+				LEFT JOIN validators ON graffiti_blocks.proposer = validators.validatorindex
 			) a 
 			WHERE validatorrow <= $2 AND graffitirow <= 10
 			GROUP BY graffiti
-			ORDER BY count DESC`, "%"+search+"%", searchValidatorsResultLimit)
+			ORDER BY count DESC`, "%"+search+"%", searchValidatorsResultLimit, utils.EpochsPerDay())
 		if err != nil {
 			break
 		}
