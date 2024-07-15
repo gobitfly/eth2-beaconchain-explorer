@@ -188,7 +188,8 @@ func main() {
 			Host:         cfg.Frontend.WriterDatabase.Host,
 			Port:         cfg.Frontend.WriterDatabase.Port,
 			MaxOpenConns: cfg.Frontend.WriterDatabase.MaxOpenConns,
-			MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns, +SSL: cfg.Frontend.WriterDatabase.SSL,
+			MaxIdleConns: cfg.Frontend.WriterDatabase.MaxIdleConns,
+			SSL:          cfg.Frontend.WriterDatabase.SSL,
 		}, &types.DatabaseConfig{
 			Username:     cfg.Frontend.ReaderDatabase.Username,
 			Password:     cfg.Frontend.ReaderDatabase.Password,
