@@ -1477,6 +1477,12 @@ func LogError(err error, errorMsg interface{}, callerSkip int, additionalInfos .
 	logErrorInfo(err, callerSkip, additionalInfos...).Error(errorMsg)
 }
 
+// LogError logs a warning with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// callerSkip equal to 0 gives you info directly where LogError is called.
+func LogWarn(err error, errorMsg interface{}, callerSkip int, additionalInfos ...map[string]interface{}) {
+	logErrorInfo(err, callerSkip, additionalInfos...).Warn(errorMsg)
+}
+
 func logErrorInfo(err error, callerSkip int, additionalInfos ...map[string]interface{}) *logrus.Entry {
 	logFields := logrus.NewEntry(logrus.New())
 

@@ -5,11 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"eth2-exporter/ens"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -119,334 +117,118 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 			ethLog.Removed = log.GetRemoved()
 
 			for _, lTopic := range topics {
+				logFields := map[string]interface{}{
+					"block":       blk.GetNumber(),
+					"tx":          tx.GetHash(),
+					"logIndex":    j,
+					"ensContract": ensContract,
+				}
+
 				if ensContract == "Registry" {
 					if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewResolver"].ID.Bytes()) {
+						logFields["event"] = "NewResolver"
 						r := &ensContracts.ENSRegistryNewResolver{}
 						err = ensContracts.ENSRegistryContract.UnpackLog(r, "NewResolver", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NewResolver"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:H:%x", bigtable.chainId, r.Node)] = true
-						// logger.Infof("ENS:Registry:NewResolver block:%v tx:%#x node:%#x resolver:%x\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Resolver)
 					} else if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewOwner"].ID.Bytes()) {
+						logFields["event"] = "NewOwner"
 						r := &ensContracts.ENSRegistryNewOwner{}
 						err = ensContracts.ENSRegistryContract.UnpackLog(r, "NewOwner", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NewTTL"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, r.Owner)] = true
-						// logger.Infof("ENS:Registry:NewOwner block:%v tx:%#x node:%#x owner:%#x\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Owner)
 					} else if bytes.Equal(lTopic, ensContracts.ENSRegistryParsedABI.Events["NewTTL"].ID.Bytes()) {
+						logFields["event"] = "NewTTL"
 						r := &ensContracts.ENSRegistryNewTTL{}
 						err = ensContracts.ENSRegistryContract.UnpackLog(r, "NewTTL", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NewTTL"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:H:%x", bigtable.chainId, r.Node)] = true
-						// logger.Infof("ENS:Registry:NewTTL block:%v tx:%#x node:%#x ttl:%d\n", blk.GetNumber(), tx.GetHash(), r.Node, r.Ttl)
 					}
 				} else if ensContract == "ETHRegistrarController" {
 					if bytes.Equal(lTopic, ensContracts.ENSETHRegistrarControllerParsedABI.Events["NameRegistered"].ID.Bytes()) {
+						logFields["event"] = "NameRegistered"
 						r := &ensContracts.ENSETHRegistrarControllerNameRegistered{}
 						err = ensContracts.ENSETHRegistrarControllerContract.UnpackLog(r, "NameRegistered", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NameRegistered"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
 						keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, r.Owner)] = true
-						// logger.Infof("ENS:EthRegistrar:NameRegistered block:%v tx:%#x name:%s expires:%v\n", blk.GetNumber(), tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
 					} else if bytes.Equal(lTopic, ensContracts.ENSETHRegistrarControllerParsedABI.Events["NameRenewed"].ID.Bytes()) {
+						logFields["event"] = "NameRenewed"
 						r := &ensContracts.ENSETHRegistrarControllerNameRenewed{}
 						err = ensContracts.ENSETHRegistrarControllerContract.UnpackLog(r, "NameRenewed", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NameRenewed"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
-						// logger.Infof("ENS:EthRegistrar:NameRenewed block:%v tx:%#x name:%s expires:%v\n", blk.GetNumber(), tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
 					}
 				} else if ensContract == "OldEnsRegistrarController" {
 					if bytes.Equal(lTopic, ensContracts.ENSOldRegistrarControllerParsedABI.Events["NameRegistered"].ID.Bytes()) {
+						logFields["event"] = "NameRegistered"
 						r := &ensContracts.ENSOldRegistrarControllerNameRegistered{}
 						err = ensContracts.ENSOldRegistrarControllerContract.UnpackLog(r, "NameRegistered", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NameRegistered"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
+							continue
+						}
+						if err = verifyName(r.Name); err != nil {
+							utils.LogWarn(err, "error verifying ens-name", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
 						keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, r.Owner)] = true
-						// logger.Infof("ENS:OldRegistrar:NameRegistered tx:%#x name:%s expires:%v\n", tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
 					} else if bytes.Equal(lTopic, ensContracts.ENSOldRegistrarControllerParsedABI.Events["NameRenewed"].ID.Bytes()) {
+						logFields["event"] = "NameRenewed"
 						r := &ensContracts.ENSOldRegistrarControllerNameRenewed{}
 						err = ensContracts.ENSOldRegistrarControllerContract.UnpackLog(r, "NameRenewed", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NameRenewed"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
+							continue
+						}
+						if err = verifyName(r.Name); err != nil {
+							utils.LogWarn(err, "error verifying ens-name", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
-						logger.Infof("ENS:OldRegistrar:NameRenewed block:%v tx:%#x name:%s expires:%v\n", blk.GetNumber(), tx.GetHash(), r.Name, time.Unix(r.Expires.Int64(), 0))
 					}
 				} else {
 					if bytes.Equal(lTopic, ensContracts.ENSPublicResolverParsedABI.Events["NameChanged"].ID.Bytes()) {
+						logFields["event"] = "NameChanged"
 						r := &ensContracts.ENSPublicResolverNameChanged{}
 						err = ensContracts.ENSPublicResolverContract.UnpackLog(r, "NameChanged", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "NameChanged"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
+							continue
+						}
+						if err = verifyName(r.Name); err != nil {
+							utils.LogWarn(err, "error verifying ens-name", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, r.Name)] = true
-						// logger.Infof("ENS:Resolver:NameChanged tx:%#x name:%s node:%#x\n", tx.GetHash(), r.Name, r.Node)
 					} else if bytes.Equal(lTopic, ensContracts.ENSPublicResolverParsedABI.Events["AddressChanged"].ID.Bytes()) {
+						logFields["event"] = "AddressChanged"
 						r := &ensContracts.ENSPublicResolverAddressChanged{}
 						err = ensContracts.ENSPublicResolverContract.UnpackLog(r, "AddressChanged", ethLog)
 						if err != nil {
-							utils.LogError(err, fmt.Sprintf("error unpacking ens-event: block:%v tx:%#x logIndex:%v event:%v", blk.GetNumber(), tx.GetHash(), j, "AddressChanged"), 0)
+							utils.LogWarn(err, "error unpacking ens-log", 0, logFields)
 							continue
 						}
 						keys[fmt.Sprintf("%s:ENS:V:H:%x", bigtable.chainId, r.Node)] = true
-						// logger.Infof("ENS:Resolver:AddressChanged block:%v tx:%#x newAddr:%#x node:%#x\n", blk.GetNumber(), tx.GetHash(), r.NewAddress, r.Node)
 					}
 				}
 			}
-		}
-	}
-	for key := range keys {
-		mut := gcp_bigtable.NewMutation()
-		mut.Set(DEFAULT_FAMILY, key, gcp_bigtable.Timestamp(0), nil)
-
-		bulkData.Keys = append(bulkData.Keys, key)
-		bulkData.Muts = append(bulkData.Muts, mut)
-	}
-
-	return bulkData, bulkMetadataUpdates, nil
-}
-
-func (bigtable *Bigtable) TransformEnsNameRegistered2(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
-	bulkData = &types.BulkMutations{}
-	bulkMetadataUpdates = &types.BulkMutations{}
-
-	filterer, err := ens.NewEnsRegistrarFilterer(common.Address{}, nil)
-	if err != nil {
-		log.Printf("error creating filterer: %v", err)
-		return nil, nil, err
-	}
-	keys := make(map[string]bool)
-
-	for i, tx := range blk.GetTransactions() {
-		if i >= TX_PER_BLOCK_LIMIT {
-			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most %d but got: %v, tx: %x", TX_PER_BLOCK_LIMIT-1, i, tx.GetHash())
-		}
-
-		// We look for the different ENS events,
-		// 	most will be triggered by a main registrar contract,
-		//  but some are triggered on a different contracts (like a resolver contract), these will be validated when loading the related events
-		var isRegistarContract = len(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts) > 0 && utils.SliceContains(utils.Config.Indexer.EnsTransformer.ValidRegistrarContracts, common.BytesToAddress(tx.To).String())
-		foundNameIndex := -1
-		foundResolverIndex := -1
-		foundNameRenewedIndex := -1
-		foundAddressChangedIndices := []int{}
-		foundNameChangedIndex := -1
-		foundNewOwnerIndex := -1
-		logs := tx.GetLogs()
-		for j, log := range logs {
-			if j >= ITX_PER_TX_LIMIT {
-				return nil, nil, fmt.Errorf("unexpected number of logs in block expected at most %d but got: %v tx: %x", ITX_PER_TX_LIMIT-1, j, tx.GetHash())
-			}
-			for _, lTopic := range log.GetTopics() {
-				if isRegistarContract {
-					if bytes.Equal(lTopic, ens.NameRegisteredTopic) || bytes.Equal(lTopic, ens.NameRegisteredV2Topic) {
-						foundNameIndex = j
-					} else if bytes.Equal(lTopic, ens.NewResolverTopic) {
-						foundResolverIndex = j
-					} else if bytes.Equal(lTopic, ens.NameRenewedTopic) {
-						foundNameRenewedIndex = j
-					}
-				} else if bytes.Equal(lTopic, ens.AddressChangedTopic) {
-					foundAddressChangedIndices = append(foundAddressChangedIndices, j)
-				} else if bytes.Equal(lTopic, ens.NameChangedTopic) {
-					foundNameChangedIndex = j
-				} else if bytes.Equal(lTopic, ens.NewOwnerTopic) {
-					foundNewOwnerIndex = j
-				}
-			}
-		}
-		// We found a register name event
-		if foundNameIndex > -1 && foundResolverIndex > -1 {
-
-			log := logs[foundNameIndex]
-			topics := make([]common.Hash, 0, len(log.GetTopics()))
-
-			for _, lTopic := range log.GetTopics() {
-				topics = append(topics, common.BytesToHash(lTopic))
-			}
-
-			nameLog := eth_types.Log{
-				Address:     common.BytesToAddress(log.GetAddress()),
-				Data:        log.Data,
-				Topics:      topics,
-				BlockNumber: blk.GetNumber(),
-				TxHash:      common.BytesToHash(tx.GetHash()),
-				TxIndex:     uint(i),
-				BlockHash:   common.BytesToHash(blk.GetHash()),
-				Index:       uint(foundNameIndex),
-				Removed:     log.GetRemoved(),
-			}
-
-			log = logs[foundResolverIndex]
-			topics = make([]common.Hash, 0, len(log.GetTopics()))
-
-			for _, lTopic := range log.GetTopics() {
-				topics = append(topics, common.BytesToHash(lTopic))
-			}
-
-			resolverLog := eth_types.Log{
-				Address:     common.BytesToAddress(log.GetAddress()),
-				Data:        log.Data,
-				Topics:      topics,
-				BlockNumber: blk.GetNumber(),
-				TxHash:      common.BytesToHash(tx.GetHash()),
-				TxIndex:     uint(i),
-				BlockHash:   common.BytesToHash(blk.GetHash()),
-				Index:       uint(foundResolverIndex),
-				Removed:     log.GetRemoved(),
-			}
-
-			var owner common.Address
-			var name string
-
-			nameRegistered, err := filterer.ParseNameRegistered(nameLog)
-			if err != nil {
-				nameRegisteredV2, err := filterer.ParseNameRegisteredV2(nameLog)
-				if err != nil {
-					utils.LogError(err, fmt.Sprintf("indexing of register event failed parse register event at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number), 0)
-					continue
-				}
-				owner = nameRegisteredV2.Owner
-				name = nameRegisteredV2.Name
-			} else {
-				owner = nameRegistered.Owner
-				name = nameRegistered.Name
-			}
-
-			if err = verifyName(name); err != nil {
-				logger.Warnf("indexing of register event failed because of invalid name at tx [%v] index [%v] on block [%v]: %v", i, foundNameIndex, blk.Number, err)
-				continue
-			}
-
-			resolver, err := filterer.ParseNewResolver(resolverLog)
-			if err != nil {
-				utils.LogError(err, fmt.Sprintf("indexing of register event failed parse resolver event at tx [%v] index [%v] on block [%v]", i, foundNameIndex, blk.Number), 0)
-				continue
-			}
-
-			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, resolver.Node, tx.GetHash())] = true
-			keys[fmt.Sprintf("%s:ENS:I:A:%x:%x", bigtable.chainId, owner, tx.GetHash())] = true
-			keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, owner)] = true
-			keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, name)] = true
-
-		} else if foundNameRenewedIndex > -1 { // We found a renew name event
-			log := logs[foundNameRenewedIndex]
-			topics := make([]common.Hash, 0, len(log.GetTopics()))
-
-			for _, lTopic := range log.GetTopics() {
-				topics = append(topics, common.BytesToHash(lTopic))
-			}
-
-			nameRenewedLog := eth_types.Log{
-				Address:     common.BytesToAddress(log.GetAddress()),
-				Data:        log.Data,
-				Topics:      topics,
-				BlockNumber: blk.GetNumber(),
-				TxHash:      common.BytesToHash(tx.GetHash()),
-				TxIndex:     uint(i),
-				BlockHash:   common.BytesToHash(blk.GetHash()),
-				Index:       uint(foundNameRenewedIndex),
-				Removed:     log.GetRemoved(),
-			}
-
-			nameRenewed, err := filterer.ParseNameRenewed(nameRenewedLog)
-			if err != nil {
-				utils.LogError(err, fmt.Sprintf("indexing of renew event failed parse event at tx [%v] index [%v] on block [%v]", i, foundNameRenewedIndex, blk.Number), 0)
-				continue
-			}
-
-			if err = verifyName(nameRenewed.Name); err != nil {
-				logger.Warnf("indexing of renew event failed because of invalid name at tx [%v] index [%v] on block [%v]: %v", i, foundNameIndex, blk.Number, err)
-				continue
-			}
-
-			nameHash, err := go_ens.NameHash(nameRenewed.Name)
-			if err != nil {
-				utils.LogError(err, fmt.Sprintf("error hashing ens name [%v] at tx [%v] index [%v] on block [%v]", nameRenewed.Name, i, foundNameRenewedIndex, blk.Number), 0)
-				continue
-			}
-			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, nameHash, tx.GetHash())] = true
-			keys[fmt.Sprintf("%s:ENS:V:N:%s", bigtable.chainId, nameRenewed.Name)] = true
-
-		} else if foundNameChangedIndex > -1 && foundNewOwnerIndex > -1 { // we found a name change event
-
-			log := logs[foundNewOwnerIndex]
-			topics := make([]common.Hash, 0, len(log.GetTopics()))
-
-			for _, lTopic := range log.GetTopics() {
-				topics = append(topics, common.BytesToHash(lTopic))
-			}
-			newOwnerLog := eth_types.Log{
-				Address:     common.BytesToAddress(log.GetAddress()),
-				Data:        log.Data,
-				Topics:      topics,
-				BlockNumber: blk.GetNumber(),
-				TxHash:      common.BytesToHash(tx.GetHash()),
-				TxIndex:     uint(i),
-				BlockHash:   common.BytesToHash(blk.GetHash()),
-				Index:       uint(foundNewOwnerIndex),
-				Removed:     log.GetRemoved(),
-			}
-
-			newOwner, err := filterer.ParseNewOwner(newOwnerLog)
-			if err != nil {
-				utils.LogError(err, fmt.Errorf("indexing of new owner event failed parse event at index %v on block [%v]", foundNewOwnerIndex, blk.Number), 0)
-				continue
-			}
-
-			keys[fmt.Sprintf("%s:ENS:I:A:%x:%x", bigtable.chainId, newOwner.Owner, tx.GetHash())] = true
-			keys[fmt.Sprintf("%s:ENS:V:A:%x", bigtable.chainId, newOwner.Owner)] = true
-		}
-		// We found a change address event, there can be multiple within one transaction
-		for _, addressChangeIndex := range foundAddressChangedIndices {
-
-			log := logs[addressChangeIndex]
-			topics := make([]common.Hash, 0, len(log.GetTopics()))
-
-			for _, lTopic := range log.GetTopics() {
-				topics = append(topics, common.BytesToHash(lTopic))
-			}
-
-			addressChangedLog := eth_types.Log{
-				Address:     common.BytesToAddress(log.GetAddress()),
-				Data:        log.Data,
-				Topics:      topics,
-				BlockNumber: blk.GetNumber(),
-				TxHash:      common.BytesToHash(tx.GetHash()),
-				TxIndex:     uint(i),
-				BlockHash:   common.BytesToHash(blk.GetHash()),
-				Index:       uint(addressChangeIndex),
-				Removed:     log.GetRemoved(),
-			}
-
-			addressChanged, err := filterer.ParseAddressChanged(addressChangedLog)
-			if err != nil {
-				utils.LogError(err, fmt.Sprintf("indexing of address change event failed parse event at index [%v] on block [%v]", addressChangeIndex, blk.Number), 0)
-				continue
-			}
-
-			keys[fmt.Sprintf("%s:ENS:I:H:%x:%x", bigtable.chainId, addressChanged.Node, tx.GetHash())] = true
-			keys[fmt.Sprintf("%s:ENS:V:H:%x", bigtable.chainId, addressChanged.Node)] = true
-
 		}
 	}
 	for key := range keys {
