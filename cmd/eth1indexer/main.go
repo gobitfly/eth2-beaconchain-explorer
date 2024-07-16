@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/erc20"
+	"eth2-exporter/metrics"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -616,11 +617,20 @@ func IndexFromNode(bt *db.Bigtable, client *rpc.ErigonClient, start, end, concur
 			default:
 			}
 
+			startTime := time.Now()
+			defer func() {
+				metrics.TaskDuration.WithLabelValues("bt_index_from_node").Observe(time.Since(startTime).Seconds())
+			}()
+
 			blockStartTs := time.Now()
 			bc, timings, err := client.GetBlock(i, traceMode)
 			if err != nil {
 				return fmt.Errorf("error getting block: %v from ethereum node err: %w", i, err)
 			}
+
+			metrics.TaskDuration.WithLabelValues("rpc_get_block_headers").Observe(timings.Headers.Seconds())
+			metrics.TaskDuration.WithLabelValues("rpc_get_block_receipts").Observe(timings.Receipts.Seconds())
+			metrics.TaskDuration.WithLabelValues("rpc_get_block_traces").Observe(timings.Traces.Seconds())
 
 			dbStart := time.Now()
 			err = bt.SaveBlock(bc)
