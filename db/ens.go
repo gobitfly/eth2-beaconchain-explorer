@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -75,6 +76,11 @@ import (
 // ==================================================
 
 func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("bt_transform_ens").Observe(time.Since(startTime).Seconds())
+	}()
+
 	var ensCrontractAddresses map[string]string
 	switch bigtable.chainId {
 	case "1":
@@ -278,6 +284,11 @@ func (bigtable *Bigtable) GetRowsByPrefix(prefix string) ([]string, error) {
 }
 
 func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client, readBatchSize int64) error {
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("bt_import_ens_updates").Observe(time.Since(startTime).Seconds())
+	}()
+
 	key := fmt.Sprintf("%s:ENS:V", bigtable.chainId)
 
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
@@ -458,6 +469,11 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	alreadyChecked.name[name] = true
 	alreadyChecked.mux.Unlock()
 
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("ens_validate_ens_name").Observe(time.Since(startTime).Seconds())
+	}()
+
 	nameHash, err := go_ens.NameHash(name)
 	if err != nil {
 		logger.Warnf("error could not hash name [%v]: %v -> removing ens entry", name, err)
@@ -552,6 +568,11 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 }
 
 func GetEnsExpiration(client *ethclient.Client, name string) (time.Time, error) {
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("ens_get_expiration").Observe(time.Since(startTime).Seconds())
+	}()
+
 	normName, err := go_ens.NormaliseDomain(name)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error calling go_ens.NormaliseDomain: %w", err)
