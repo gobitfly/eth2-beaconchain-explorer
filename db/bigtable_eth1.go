@@ -2223,8 +2223,11 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 	})
 	defer tmr.Stop()
 
+	defaultPageToken := fmt.Sprintf("%s:I:TX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:TX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressTransactionsTableData: %s", pageToken)
 	}
 
 	transactions, keys, err := BigtableClient.GetEth1TxsForAddress(pageToken, DefaultInfScrollRows)
@@ -2363,8 +2366,11 @@ func (bigtable *Bigtable) GetAddressBlocksMinedTableData(address string, pageTok
 	})
 	defer tmr.Stop()
 
+	defaultPageToken := fmt.Sprintf("%s:I:B:%s:", bigtable.chainId, address)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:B:%s:", bigtable.chainId, address)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressBlocksMinedTableData: %s", pageToken)
 	}
 
 	blocks, lastKey, err := BigtableClient.GetEth1BlocksForAddress(pageToken, DefaultInfScrollRows)
@@ -2460,8 +2466,11 @@ func (bigtable *Bigtable) GetAddressUnclesMinedTableData(address string, pageTok
 	})
 	defer tmr.Stop()
 
+	defaultPageToken := fmt.Sprintf("%s:I:U:%s:", bigtable.chainId, address)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:U:%s:", bigtable.chainId, address)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressUnclesMinedTableData: %s", pageToken)
 	}
 
 	uncles, lastKey, err := BigtableClient.GetEth1UnclesForAddress(pageToken, DefaultInfScrollRows)
@@ -2555,8 +2564,11 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken stri
 	defer tmr.Stop()
 
 	// defaults to most recent
+	defaultPageToken := fmt.Sprintf("%s:I:BTX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:BTX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressBlobTableData: %s", pageToken)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1BtxForAddress(pageToken, DefaultInfScrollRows)
@@ -2675,8 +2687,11 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 	defer tmr.Stop()
 
 	// defaults to most recent
+	defaultPageToken := fmt.Sprintf("%s:I:ITX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ITX:%x:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressInternalTableData: %s", pageToken)
 	}
 
 	itransactions, keys, err := bigtable.GetEth1ItxsForAddress(pageToken, DefaultInfScrollRows)
@@ -3013,8 +3028,11 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken str
 	})
 	defer tmr.Stop()
 
+	defaultPageToken := fmt.Sprintf("%s:I:ERC20:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC20:%x:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressErc20TableData: %s", pageToken)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC20ForAddress(pageToken, DefaultInfScrollRows)
@@ -3141,8 +3159,11 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken st
 	})
 	defer tmr.Stop()
 
+	defaultPageToken := fmt.Sprintf("%s:I:ERC721:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC721:%x:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressErc721TableData: %s", pageToken)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC721ForAddress(pageToken, DefaultInfScrollRows)
@@ -3253,8 +3274,11 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken s
 	})
 	defer tmr.Stop()
 
+	defaultPageToken := fmt.Sprintf("%s:I:ERC1155:%x:%s:", bigtable.chainId, address, FILTER_TIME)
 	if pageToken == "" {
-		pageToken = fmt.Sprintf("%s:I:ERC1155:%x:%s:", bigtable.chainId, address, FILTER_TIME)
+		pageToken = defaultPageToken
+	} else if !strings.HasPrefix(pageToken, defaultPageToken) {
+		return nil, fmt.Errorf("invalid pageToken for function GetAddressErc1155TableData: %s", pageToken)
 	}
 
 	transactions, lastKey, err := bigtable.GetEth1ERC1155ForAddress(pageToken, DefaultInfScrollRows)
@@ -4350,11 +4374,19 @@ func (bigtable *Bigtable) GetEth1TxForToken(prefix string, limit int64) ([]*type
 }
 
 func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []byte, pageToken string) (*types.DataTableResponse, error) {
+
+	defaultPageToken := ""
+	if len(address) == 0 {
+		defaultPageToken = fmt.Sprintf("%s:I:ERC20:%x:ALL:%s", bigtable.chainId, token, FILTER_TIME)
+	} else {
+		defaultPageToken = fmt.Sprintf("%s:I:ERC20:%x:%x:%s", bigtable.chainId, token, address, FILTER_TIME)
+	}
+
 	if pageToken == "" {
-		if len(address) == 0 {
-			pageToken = fmt.Sprintf("%s:I:ERC20:%x:ALL:%s", bigtable.chainId, token, FILTER_TIME)
-		} else {
-			pageToken = fmt.Sprintf("%s:I:ERC20:%x:%x:%s", bigtable.chainId, token, address, FILTER_TIME)
+		pageToken = defaultPageToken
+	} else {
+		if !strings.HasPrefix(pageToken, defaultPageToken) {
+			return nil, fmt.Errorf("invalid pageToken for function GetTokenTransactionsTableData: %s", pageToken)
 		}
 	}
 
