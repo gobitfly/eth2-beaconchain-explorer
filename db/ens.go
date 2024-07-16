@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/coocood/freecache"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -441,6 +443,9 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 }
 
 func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsCheckedDictionary) error {
+	if name == "" || name == ".eth" {
+		return nil
+	}
 	// For now only .eth is supported other ens domains use different techniques and require and individual implementation
 	if !strings.HasSuffix(name, ".eth") {
 		name = fmt.Sprintf("%s.eth", name)
@@ -486,19 +491,24 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 	// we need to get the main domain to get the expiration date
 	parts := strings.Split(name, ".")
 	mainName := strings.Join(parts[len(parts)-2:], ".")
-	ensName, err := go_ens.NewName(client, mainName)
-	if err != nil {
-		if strings.HasPrefix(err.Error(), "name is not valid") {
-			logger.WithField("error", err).WithField("name", name).Warnf("could not create name")
-			return nil
-		}
-		return fmt.Errorf("error could not create name via go_ens.NewName for [%v]: %w", name, err)
-	}
 
-	expires, err := ensName.Expires()
+	expires, err := GetEnsExpiration(client, mainName)
 	if err != nil {
 		return fmt.Errorf("error could not get ens expire date for [%v]: %w", name, err)
 	}
+
+	// ensName, err := go_ens.NewName(client, mainName)
+	// if err != nil {
+	// 	if strings.HasPrefix(err.Error(), "name is not valid") {
+	// 		logger.WithField("error", err).WithField("name", name).Warnf("could not create name")
+	// 		return nil
+	// 	}
+	// 	return fmt.Errorf("error could not create name via go_ens.NewName for [%v]: %w", name, err)
+	// }
+	// expires, err := ensName.Expires()
+	// if err != nil {
+	// 	return fmt.Errorf("error could not get ens expire date for [%v]: %w", name, err)
+	// }
 
 	isPrimary := false
 	reverseName, err := go_ens.ReverseResolve(client, addr)
@@ -539,6 +549,36 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 
 	logger.Infof("Name [%v] resolved -> %x, expires: %v, is primary: %v", name, addr, expires, isPrimary)
 	return nil
+}
+
+func GetEnsExpiration(client *ethclient.Client, name string) (time.Time, error) {
+	normName, err := go_ens.NormaliseDomain(name)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error calling go_ens.NormaliseDomain: %w", err)
+	}
+	domain := go_ens.Domain(normName)
+	label, err := go_ens.DomainPart(normName, 1)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error calling go_ens.DomainPart: %w", err)
+	}
+	registrar, err := go_ens.NewBaseRegistrar(client, domain)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error calling go_ens.NewBaseRegistrar: %w", err)
+	}
+	uqName, err := go_ens.UnqualifiedName(label, domain)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error calling go_ens.UnqualifiedName: %w", err)
+	}
+	labelHash, err := go_ens.LabelHash(uqName)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error calling go_ens.LabelHash: %w", err)
+	}
+	id := new(big.Int).SetBytes(labelHash[:])
+	ts, err := registrar.Contract.NameExpires(&bind.CallOpts{}, id)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(ts.Int64(), 0), nil
 }
 
 func GetAddressForEnsName(name string) (address *common.Address, err error) {
