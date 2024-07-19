@@ -233,7 +233,7 @@ func updateEthClient() {
 	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
 	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
-	ethClients.Erigon.ClientReleaseVersion, ethClients.Erigon.ClientReleaseDate = prepareEthClientData("/ledgerwatch/erigon", "Erigon", curTime)
+	ethClients.Erigon.ClientReleaseVersion, ethClients.Erigon.ClientReleaseDate = prepareEthClientData("/erigontech/erigon", "Erigon", curTime)
 
 	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
 	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
