@@ -189,7 +189,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 // @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
 // @Description See https://github.com/gobitfly/eth.store for further information.
 // @Produce json
-// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE® for. Must be a number or the string 'latest'."
+// @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the ETH.STORE® for. Must be a number or the string 'latest'."
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/ethstore/{day} [get]

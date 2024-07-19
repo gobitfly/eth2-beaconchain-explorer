@@ -1584,7 +1584,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sqlx.Tx, forceSlo
 			}
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposalAssignments")
 
-			// save the graffitiwall data of the block the the db
+			// save the graffitiwall data of the block the db
 			t = time.Now()
 			err = saveGraffitiwall(b, tx)
 			if err != nil {
