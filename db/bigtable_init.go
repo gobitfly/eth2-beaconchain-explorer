@@ -2,9 +2,10 @@ package db
 
 import (
 	"context"
-	"eth2-exporter/utils"
 	"fmt"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 )

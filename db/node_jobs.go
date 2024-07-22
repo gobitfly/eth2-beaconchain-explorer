@@ -3,13 +3,14 @@ package db
 import (
 	"bytes"
 	"database/sql"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/google/uuid"

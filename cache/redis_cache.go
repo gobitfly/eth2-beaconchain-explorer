@@ -3,10 +3,11 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/go-redis/redis/v8"
 )

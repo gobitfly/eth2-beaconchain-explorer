@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
-	"eth2-exporter/cache"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/cache"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"

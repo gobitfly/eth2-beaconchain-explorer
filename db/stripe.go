@@ -3,10 +3,11 @@ package db
 import (
 	"database/sql"
 	"encoding/json"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 )
 
 // StripeRemoveCustomer removes the stripe customer and sets all subscriptions to inactive

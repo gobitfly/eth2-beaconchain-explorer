@@ -2,9 +2,10 @@ package notify
 
 import (
 	"context"
-	"eth2-exporter/utils"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"

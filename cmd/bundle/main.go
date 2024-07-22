@@ -2,12 +2,13 @@ package main
 
 import (
 	"crypto/md5"
-	"eth2-exporter/utils"
 	"fmt"
 	"log"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/evanw/esbuild/pkg/api"
 )

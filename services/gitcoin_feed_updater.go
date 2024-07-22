@@ -2,9 +2,10 @@ package services
 
 import (
 	"encoding/json"
-	"eth2-exporter/utils"
 	"net/http"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"sync"
 )

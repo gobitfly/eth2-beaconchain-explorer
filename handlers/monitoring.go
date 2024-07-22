@@ -3,9 +3,10 @@ package handlers
 import (
 	"database/sql"
 	"errors"
-	"eth2-exporter/db"
 	"fmt"
 	"net/http"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 
 	"github.com/gorilla/mux"
 )

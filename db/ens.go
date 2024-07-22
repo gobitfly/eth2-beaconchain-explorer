@@ -5,14 +5,16 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"eth2-exporter/metrics"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
+
+	ensContracts "github.com/gobitfly/eth2-beaconchain-explorer/contracts/ens"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"golang.org/x/sync/errgroup"
@@ -21,8 +23,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-
-	ensContracts "eth2-exporter/contracts/ens"
 
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	go_ens "github.com/wealdtech/go-ens/v3"

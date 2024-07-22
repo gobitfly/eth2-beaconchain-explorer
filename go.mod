@@ -1,4 +1,4 @@
-module eth2-exporter
+module github.com/gobitfly/eth2-beaconchain-explorer
 
 go 1.21
 

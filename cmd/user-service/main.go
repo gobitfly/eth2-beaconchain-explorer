@@ -1,21 +1,23 @@
 package main
 
 import (
-	"eth2-exporter/db"
-	"eth2-exporter/metrics"
-	"eth2-exporter/types"
-	"eth2-exporter/userService"
-	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"net/http"
 	"sync"
 
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/userService"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/gobitfly/eth2-beaconchain-explorer/version"
+
 	"github.com/sirupsen/logrus"
 
-	_ "eth2-exporter/docs"
 	_ "net/http/pprof"
+
+	_ "github.com/gobitfly/eth2-beaconchain-explorer/docs"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )

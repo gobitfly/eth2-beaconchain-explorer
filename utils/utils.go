@@ -11,9 +11,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"eth2-exporter/config"
-	"eth2-exporter/price"
-	"eth2-exporter/types"
 	"fmt"
 	"html/template"
 	"image/color"
@@ -33,6 +30,10 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/config"
+	"github.com/gobitfly/eth2-beaconchain-explorer/price"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

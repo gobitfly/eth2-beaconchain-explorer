@@ -1,8 +1,9 @@
 package rpc
 
 import (
-	"eth2-exporter/types"
 	"math/big"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 
 	"github.com/sirupsen/logrus"
 )

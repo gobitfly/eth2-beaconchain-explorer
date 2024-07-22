@@ -2,11 +2,12 @@ package erc20
 
 import (
 	"encoding/json"
-	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"os"
 	"strings"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/shopspring/decimal"

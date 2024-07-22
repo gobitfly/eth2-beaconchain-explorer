@@ -2,14 +2,15 @@ package metrics
 
 import (
 	"database/sql"
-	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"net/http"
 	"net/http/pprof"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/gobitfly/eth2-beaconchain-explorer/version"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"

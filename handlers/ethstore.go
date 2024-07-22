@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"eth2-exporter/services"
-	"eth2-exporter/templates"
-	"eth2-exporter/types"
 	"net/http"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/services"
+	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 )
 
 func EthStore(w http.ResponseWriter, r *http.Request) {

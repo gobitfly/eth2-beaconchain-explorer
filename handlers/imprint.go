@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"eth2-exporter/templates"
-	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 )
 
 var imprintTemplate *template.Template

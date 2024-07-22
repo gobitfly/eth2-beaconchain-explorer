@@ -2,8 +2,9 @@ package utils
 
 import (
 	"encoding/json"
-	"eth2-exporter/types"
 	"testing"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 
 	capella "github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
