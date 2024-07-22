@@ -1160,13 +1160,13 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
 			select u.id as user_id, cap.second, cap.hour, cap.month
 			from users_stripe_subscriptions uss
 			left join users u on u.stripe_customer_id = uss.customer_id
-			left join current_api_products cap on cap.stripe_price_id = uss.price_id
+			inner join current_api_products cap on cap.stripe_price_id = uss.price_id
 			where uss.active = true and u.id is not null
 		union
 			-- set ratelimits for app subscriptions
 			select asv.user_id, cap.second, cap.hour, cap.month
 			from app_subs_view asv
-			left join current_api_products cap on cap.name = asv.product_id
+			inner join current_api_products cap on cap.name = asv.product_id
 			where asv.active = true
 		union
 			-- set ratelimits for admins to unlimited
