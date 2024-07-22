@@ -2,13 +2,14 @@ package services
 
 import (
 	"bytes"
-	"eth2-exporter/db"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/jung-kurt/gofpdf"
 	"github.com/lib/pq"

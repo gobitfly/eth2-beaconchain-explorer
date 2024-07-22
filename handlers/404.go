@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"errors"
-	"eth2-exporter/templates"
 	"io/fs"
 	"net/http"
 	"path"
 	"strings"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
 )
 
 type customFileServer struct {

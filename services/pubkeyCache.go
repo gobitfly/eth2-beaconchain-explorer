@@ -1,10 +1,11 @@
 package services
 
 import (
-	"eth2-exporter/db"
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )

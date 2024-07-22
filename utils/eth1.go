@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"eth2-exporter/types"
 	"fmt"
 	"html/template"
 	"math/big"
 	"strings"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

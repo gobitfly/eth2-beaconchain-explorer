@@ -6,9 +6,6 @@ import (
 	"embed"
 	"encoding/hex"
 	"errors"
-	"eth2-exporter/metrics"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"net"
@@ -18,6 +15,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -26,7 +27,7 @@ import (
 	ethpb "github.com/prysmaticlabs/prysm/v3/proto/prysm/v1alpha1"
 	"github.com/sirupsen/logrus"
 
-	"eth2-exporter/rpc"
+	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

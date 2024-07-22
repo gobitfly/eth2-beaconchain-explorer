@@ -3,9 +3,6 @@ package ratelimit
 import (
 	"context"
 	"database/sql"
-	"eth2-exporter/db"
-	"eth2-exporter/metrics"
-	"eth2-exporter/utils"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +11,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"

@@ -3,14 +3,15 @@ package exporter
 import (
 	"context"
 	"encoding/base64"
-	"eth2-exporter/db"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"math"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/Gurpartap/storekit-go"
 	"github.com/awa/go-iap/appstore"

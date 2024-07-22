@@ -2,12 +2,13 @@ package db
 
 import (
 	"context"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"github.com/sirupsen/logrus"

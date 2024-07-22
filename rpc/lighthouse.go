@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"io"
 	"math"
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/donovanhide/eventsource"
 	gtypes "github.com/ethereum/go-ethereum/core/types"

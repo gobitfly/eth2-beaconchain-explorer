@@ -2,12 +2,13 @@ package price
 
 import (
 	"context"
-	"eth2-exporter/contracts/chainlink_feed"
 	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/contracts/chainlink_feed"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"

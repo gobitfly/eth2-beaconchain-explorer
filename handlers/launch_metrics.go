@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
-	"eth2-exporter/services"
-	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/services"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 )
 
 // var currentEpoch uint64

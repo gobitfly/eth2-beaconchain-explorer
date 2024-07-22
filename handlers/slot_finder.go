@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"eth2-exporter/templates"
 	"net/http"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
 )
 
 // Will return the slot finder page

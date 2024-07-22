@@ -3,14 +3,15 @@ package exporter
 import (
 	"bytes"
 	"database/sql"
-	"eth2-exporter/db"
-	"eth2-exporter/rpc"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"

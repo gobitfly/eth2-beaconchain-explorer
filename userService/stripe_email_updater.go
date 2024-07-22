@@ -2,13 +2,14 @@ package userService
 
 import (
 	"bytes"
-	"eth2-exporter/db"
-	"eth2-exporter/utils"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/lib/pq"
 )

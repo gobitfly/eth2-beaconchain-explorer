@@ -2,7 +2,6 @@ package ethclients
 
 import (
 	"encoding/json"
-	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/sirupsen/logrus"
 )

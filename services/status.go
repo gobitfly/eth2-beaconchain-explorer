@@ -2,10 +2,11 @@ package services
 
 import (
 	"encoding/json"
-	"eth2-exporter/db"
-	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"os"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/gobitfly/eth2-beaconchain-explorer/version"
 )
 
 // Report the status of a particular service, will add current Pid and executable name

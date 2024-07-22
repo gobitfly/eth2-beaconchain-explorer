@@ -1,9 +1,10 @@
 package exporter
 
 import (
-	"eth2-exporter/db"
-	"eth2-exporter/metrics"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 )
 
 func UpdatePubkeyTag() {

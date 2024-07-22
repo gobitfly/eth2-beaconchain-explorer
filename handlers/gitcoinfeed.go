@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"eth2-exporter/services"
 	"net/http"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 )
 
 func GitcoinFeed(w http.ResponseWriter, r *http.Request) {

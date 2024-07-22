@@ -3,8 +3,6 @@ package db
 import (
 	"context"
 	"encoding/binary"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"math"
 	"os"
@@ -13,6 +11,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"github.com/go-redis/redis/v8"

@@ -2,13 +2,14 @@ package templates
 
 import (
 	"embed"
-	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/sirupsen/logrus"
 )

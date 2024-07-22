@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
-	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/gorilla/context"
 )

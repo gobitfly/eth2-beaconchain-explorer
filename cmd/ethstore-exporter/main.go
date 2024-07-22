@@ -1,15 +1,16 @@
 package main
 
 import (
-	"eth2-exporter/db"
-	"eth2-exporter/exporter"
-	"eth2-exporter/types"
-	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/exporter"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/gobitfly/eth2-beaconchain-explorer/version"
 
 	ethstore "github.com/gobitfly/eth.store"
 	_ "github.com/jackc/pgx/v5/stdlib"
