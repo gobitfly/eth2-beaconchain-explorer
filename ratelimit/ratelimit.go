@@ -28,9 +28,7 @@ const (
 	SecondTimeWindow = "second"
 	HourTimeWindow   = "hour"
 	MonthTimeWindow  = "month"
-)
 
-const (
 	HeaderRateLimitLimit     = "ratelimit-limit"     // the rate limit ceiling that is applicable for the current request
 	HeaderRateLimitRemaining = "ratelimit-remaining" // the number of requests left for the current rate-limit window
 	HeaderRateLimitReset     = "ratelimit-reset"     // the number of seconds until the quota resets
@@ -61,19 +59,10 @@ const (
 	statsTruncateDuration = time.Hour * 1 // ratelimit-stats are truncated to this duration
 )
 
-var NoKeyRateLimit = &RateLimit{
-	Second: DefaultRateLimitSecond,
-	Hour:   DefaultRateLimitHour,
-	Month:  DefaultRateLimitMonth,
-}
-
 var updateInterval = time.Second * 60 // how often to update ratelimits, weights and stats
 
-var FreeRatelimit = &RateLimit{
-	Second: DefaultRateLimitSecond,
-	Hour:   DefaultRateLimitHour,
-	Month:  DefaultRateLimitMonth,
-}
+var apiProducts = map[string]*ApiProduct{} // key: <bucket>:<product_name>
+var apiProductsMu = &sync.RWMutex{}
 
 var redisClient *redis.Client
 var redisIsHealthy atomic.Bool
@@ -87,9 +76,9 @@ var fallbackRateLimiter = NewFallbackRateLimiter() // if redis is offline, use t
 var initializedWg = &sync.WaitGroup{} // wait for everything to be initialized before serving requests
 
 var rateLimitsMu = &sync.RWMutex{}
-var rateLimits = map[string]*RateLimit{}        // guarded by rateLimitsMu
-var rateLimitsByUserId = map[int64]*RateLimit{} // guarded by rateLimitsMu
-var userIdByApiKey = map[string]int64{}         // guarded by rateLimitsMu
+var rateLimits = map[string]*RateLimit{}         // guarded by rateLimitsMu
+var rateLimitsByUserId = map[string]*RateLimit{} // guarded by rateLimitsMu, key: <bucket>:<userId>
+var userIdByApiKey = map[string]int64{}          // guarded by rateLimitsMu
 
 var weightsMu = &sync.RWMutex{}
 var weights = map[string]int64{}  // guarded by weightsMu
@@ -103,6 +92,7 @@ type DbEntry struct {
 	ApiKey   string
 	Endpoint string
 	Count    int64
+	Bucket   string
 }
 
 type RateLimit struct {
@@ -150,6 +140,7 @@ type RedisKey struct {
 
 type ApiProduct struct {
 	Name          string    `db:"name"`
+	Bucket        string    `db:"bucket"`
 	StripePriceID string    `db:"stripe_price_id"`
 	Second        int64     `db:"second"`
 	Hour          int64     `db:"hour"`
@@ -451,8 +442,12 @@ func updateStats(redisClient *redis.Client) error {
 		entries := make([]DbEntry, len(keys))
 		for i, k := range keys {
 			ks := strings.Split(k, ":")
-			if len(ks) != 6 {
-				return fmt.Errorf("error parsing key %s: split-len != 5", k)
+			if len(ks) < 6 {
+				return fmt.Errorf("error parsing key %s: split-len < 6", k)
+			}
+			bucket := "default" // older implementation did not have bucket in the key
+			if len(ks) == 7 {
+				bucket = ks[6]
 			}
 			dateString := ks[2]
 			date, err := time.Parse("2006-01-02-15", dateString)
@@ -473,6 +468,7 @@ func updateStats(redisClient *redis.Client) error {
 				UserId:   userId,
 				ApiKey:   ks[4],
 				Endpoint: ks[5],
+				Bucket:   bucket,
 			}
 		}
 
@@ -530,7 +526,7 @@ func updateStatsEntries(entries []DbEntry) error {
 	}
 	defer tx.Rollback()
 
-	numArgs := 4
+	numArgs := 5
 	batchSize := 65535 / numArgs // max 65535 params per batch, since postgres uses int16 for binding input params
 	valueArgs := make([]interface{}, 0, batchSize*numArgs)
 	valueStrings := make([]string, 0, batchSize)
@@ -546,6 +542,7 @@ func updateStatsEntries(entries []DbEntry) error {
 		valueArgs = append(valueArgs, entry.ApiKey)
 		valueArgs = append(valueArgs, entry.Endpoint)
 		valueArgs = append(valueArgs, entry.Count)
+		valueArgs = append(valueArgs, entry.Bucket)
 
 		// logger.WithFields(logger.Fields{"count": entry.Count, "apikey": entry.ApiKey, "path": entry.Path, "date": entry.Date}).Infof("inserting stats entry %v/%v", allIdx+1, len(entries))
 
@@ -553,7 +550,7 @@ func updateStatsEntries(entries []DbEntry) error {
 		allIdx++
 
 		if batchIdx >= batchSize || allIdx >= len(entries) {
-			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, endpoint, count) VALUES %s ON CONFLICT (ts, apikey, endpoint) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
+			stmt := fmt.Sprintf(`INSERT INTO api_statistics (ts, apikey, endpoint, count, bucket) VALUES %s ON CONFLICT (ts, apikey, endpoint, bucket) DO UPDATE SET count = EXCLUDED.count`, strings.Join(valueStrings, ","))
 			_, err := tx.Exec(stmt, valueArgs...)
 			if err != nil {
 				return err
@@ -605,6 +602,7 @@ func updateRateLimits() error {
 
 	dbRateLimits := []struct {
 		UserID     int64     `db:"user_id"`
+		Bucket     string    `db:"bucket"`
 		Second     int64     `db:"second"`
 		Hour       int64     `db:"hour"`
 		Month      int64     `db:"month"`
@@ -612,7 +610,7 @@ func updateRateLimits() error {
 		ChangedAt  time.Time `db:"changed_at"`
 	}{}
 
-	err = tx.Select(&dbRateLimits, `SELECT user_id, second, hour, month, valid_until, changed_at FROM api_ratelimits WHERE changed_at > $1 OR valid_until < NOW()`, lastTRateLimits)
+	err = tx.Select(&dbRateLimits, `SELECT user_id, bucket, second, hour, month, valid_until, changed_at FROM api_ratelimits WHERE changed_at > $1 OR valid_until < NOW()`, lastTRateLimits)
 	if err != nil {
 		return fmt.Errorf("error getting api_ratelimits: %w", err)
 	}
@@ -626,23 +624,14 @@ func updateRateLimits() error {
 	if err != nil {
 		return err
 	}
+	apiProductsMu.Lock()
+	for _, dbApiProduct := range dbApiProducts {
+		apiProducts[fmt.Sprintf("%s:%s", dbApiProduct.Bucket, dbApiProduct.Name)] = dbApiProduct
+	}
+	apiProductsMu.Unlock()
 
 	rateLimitsMu.Lock()
 	now := time.Now()
-
-	for _, dbApiProduct := range dbApiProducts {
-		if dbApiProduct.Name == "nokey" {
-			NoKeyRateLimit.Second = dbApiProduct.Second
-			NoKeyRateLimit.Hour = dbApiProduct.Hour
-			NoKeyRateLimit.Month = dbApiProduct.Month
-		}
-		if dbApiProduct.Name == "free" {
-			FreeRatelimit.Second = dbApiProduct.Second
-			FreeRatelimit.Hour = dbApiProduct.Hour
-			FreeRatelimit.Month = dbApiProduct.Month
-		}
-	}
-
 	for _, dbKey := range dbApiKeys {
 		if dbKey.ChangedAt.After(lastTKeys) {
 			lastTKeys = dbKey.ChangedAt
@@ -655,11 +644,12 @@ func updateRateLimits() error {
 	}
 
 	for _, dbRl := range dbRateLimits {
+		k := fmt.Sprintf("%s/%d", dbRl.Bucket, dbRl.UserID)
 		if dbRl.ChangedAt.After(lastTRateLimits) {
 			lastTRateLimits = dbRl.ChangedAt
 		}
 		if dbRl.ValidUntil.Before(now) {
-			delete(rateLimitsByUserId, dbRl.UserID)
+			delete(rateLimitsByUserId, k)
 			continue
 		}
 		rlStr := fmt.Sprintf("%d/%d/%d", dbRl.Second, dbRl.Hour, dbRl.Month)
@@ -672,7 +662,7 @@ func updateRateLimits() error {
 			}
 			rateLimits[rlStr] = rl
 		}
-		rateLimitsByUserId[dbRl.UserID] = rl
+		rateLimitsByUserId[k] = rl
 	}
 	rateLimitsMu.Unlock()
 	metrics.TaskDuration.WithLabelValues("ratelimit_updateRateLimits_lock").Observe(time.Since(now).Seconds())
@@ -687,9 +677,8 @@ func updateRateLimits() error {
 
 // postRateLimit decrements the rate limit keys in redis if the status is not 200.
 func postRateLimit(rl *RateLimitResult, status int) error {
-	// if status == http.StatusOK {
-	if !(status >= 500 && status <= 599) {
-		// anything other than 5xx is considered successful and counts towards the rate limit
+	if !(status >= 500 && status <= 599) && status != 429 {
+		// any statuscode but 5xx or 429 will count towards the ratelimit
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -731,28 +720,30 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	res.Key = key
 	res.IP = ip
 
+	weight, route, bucket := getWeight(r)
+	res.Weight = weight
+	res.Route = route
+	res.Bucket = bucket
+
+	nokeyRatelimit, freeRatelimit := getDefaultRatelimit(bucket)
+
 	rateLimitsMu.RLock()
 	userId, ok := userIdByApiKey[key]
 	if !ok {
 		res.UserId = -1
 		res.IsValidKey = false
-		res.RateLimit = NoKeyRateLimit
+		res.RateLimit = nokeyRatelimit
 	} else {
 		res.UserId = userId
 		res.IsValidKey = true
-		limit, ok := rateLimitsByUserId[userId]
+		limit, ok := rateLimitsByUserId[fmt.Sprintf("%s/%d", bucket, userId)]
 		if ok {
 			res.RateLimit = limit
 		} else {
-			res.RateLimit = FreeRatelimit
+			res.RateLimit = freeRatelimit
 		}
 	}
 	rateLimitsMu.RUnlock()
-
-	weight, route, bucket := getWeight(r)
-	res.Weight = weight
-	res.Route = route
-	res.Bucket = bucket
 
 	startUtc := start.UTC()
 	res.Time = startUtc
@@ -766,12 +757,13 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	rateLimitSecondKey := fmt.Sprintf("rl:c:s:%s:%d", res.Bucket, res.UserId)
 	rateLimitHourKey := fmt.Sprintf("rl:c:h:%04d-%02d-%02d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.UserId)
 	rateLimitMonthKey := fmt.Sprintf("rl:c:m:%04d-%02d:%s:%d", startUtc.Year(), startUtc.Month(), res.Bucket, res.UserId)
-	statsKey := fmt.Sprintf("rl:s:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, res.Key, res.Route)
+	statsKey := fmt.Sprintf("rl:s:%04d-%02d-%02d-%02d:%d:%s:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, res.Key, res.Route, res.Bucket)
 	if !res.IsValidKey {
-		rateLimitSecondKey = fmt.Sprintf("rl:c:s:%s:%s", res.Bucket, res.IP)
-		rateLimitHourKey = fmt.Sprintf("rl:c:h:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, res.IP)
-		rateLimitMonthKey = fmt.Sprintf("rl:c:m:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, res.IP)
-		statsKey = fmt.Sprintf("rl:s:%04d-%02d-%02d-%02d:%d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, "nokey", res.Route)
+		normedIP := "ip_" + strings.ReplaceAll(ip, ":", "_")
+		rateLimitSecondKey = fmt.Sprintf("rl:c:s:%s:%s", res.Bucket, normedIP)
+		rateLimitHourKey = fmt.Sprintf("rl:c:h:%04d-%02d-%02d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.Bucket, normedIP)
+		rateLimitMonthKey = fmt.Sprintf("rl:c:m:%04d-%02d:%s:%s", startUtc.Year(), startUtc.Month(), res.Bucket, normedIP)
+		statsKey = fmt.Sprintf("rl:s:%04d-%02d-%02d-%02d:%d:%s:%s:%s", startUtc.Year(), startUtc.Month(), startUtc.Day(), startUtc.Hour(), res.UserId, "nokey", res.Route, res.Bucket)
 	}
 	res.RedisStatsKey = statsKey
 
@@ -874,6 +866,37 @@ func rateLimitRequest(r *http.Request) (*RateLimitResult, error) {
 	return res, nil
 }
 
+func getDefaultRatelimit(bucket string) (freeRatelimit, nokeyRatelimit *RateLimit) {
+	nokeyRatelimit = &RateLimit{
+		Second: DefaultRateLimitSecond,
+		Hour:   DefaultRateLimitHour,
+		Month:  DefaultRateLimitMonth,
+	}
+
+	freeRatelimit = &RateLimit{
+		Second: DefaultRateLimitSecond,
+		Hour:   DefaultRateLimitHour,
+		Month:  DefaultRateLimitMonth,
+	}
+
+	apiProductsMu.RLock()
+	apiProduct, ok := apiProducts[fmt.Sprintf("%s:%s", bucket, "nokey")]
+	if ok {
+		nokeyRatelimit.Second = apiProduct.Second
+		nokeyRatelimit.Hour = apiProduct.Hour
+		nokeyRatelimit.Month = apiProduct.Month
+	}
+	apiProduct, ok = apiProducts[fmt.Sprintf("%s:%s", bucket, "free")]
+	if ok {
+		freeRatelimit.Second = apiProduct.Second
+		freeRatelimit.Hour = apiProduct.Hour
+		freeRatelimit.Month = apiProduct.Month
+	}
+	apiProductsMu.RUnlock()
+
+	return freeRatelimit, nokeyRatelimit
+}
+
 func max(vals ...int64) int64 {
 	max := vals[0]
 	for _, v := range vals {
@@ -899,7 +922,7 @@ func getKey(r *http.Request) (key, ip string) {
 	if key != "" {
 		return key, ip
 	}
-	return "ip_" + strings.ReplaceAll(ip, ":", "_"), ip
+	return "nokey", ip
 }
 
 // getWeight returns the weight of an endpoint. if the weight of the endpoint is not defined, it returns 1.
@@ -1012,12 +1035,10 @@ func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
 	err := db.FrontendWriterDB.Get(rl, `
         select second, hour, month
         from api_ratelimits
-        where user_id = $1`, userId)
+        where user_id = $1 and bucket = 'default'`, userId)
 	if err != nil && err == sql.ErrNoRows {
-		rl.Second = FreeRatelimit.Second
-		rl.Hour = FreeRatelimit.Hour
-		rl.Month = FreeRatelimit.Month
-		return rl, nil
+		_, freeRatelimit := getDefaultRatelimit("default")
+		return freeRatelimit, nil
 	}
 	return rl, err
 }
@@ -1025,7 +1046,7 @@ func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
 func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 	apiProducts := []*ApiProduct{}
 	err := db.FrontendWriterDB.Select(&apiProducts, `
-        select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
+        select distinct on (name) name, bucket, stripe_price_id, second, hour, month, valid_from 
         from api_products 
         where valid_from <= now()
         order by name, valid_from desc`)
@@ -1137,14 +1158,15 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
 	return db.FrontendWriterDB.Exec(
 		`with 
 			current_api_products as (
-				select distinct on (name) name, stripe_price_id, second, hour, month, valid_from 
+				select distinct on (name, bucket) name, bucket, stripe_price_id, second, hour, month, valid_from 
 				from api_products 
 				where valid_from <= now()
-				order by name, valid_from desc
+				order by name, bucket, valid_from desc
 			)
-		insert into api_ratelimits (user_id, second, hour, month, valid_until, changed_at)
+		insert into api_ratelimits (user_id, bucket, second, hour, month, valid_until, changed_at)
 		select 
 			user_id,
+			bucket,
 			case when min(second) = 0 then 0 else max(second) end as second,
 			case when min(hour) = 0 then 0 else max(hour) end as hour,
 			case when min(month) = 0 then 0 else max(month) end as month,
@@ -1152,31 +1174,31 @@ func DBUpdateApiRatelimits() (sql.Result, error) {
 			now() as changed_at
 		from (
 			-- set all current ratelimits to free
-			select user_id, cap.second, cap.hour, cap.month
+			select user_id, cap.bucket, cap.second, cap.hour, cap.month
 			from api_ratelimits
 			left join current_api_products cap on cap.name = 'free'
 		union
 			-- set ratelimits for stripe subscriptions
-			select u.id as user_id, cap.second, cap.hour, cap.month
+			select u.id as user_id, cap.bucket, cap.second, cap.hour, cap.month
 			from users_stripe_subscriptions uss
 			left join users u on u.stripe_customer_id = uss.customer_id
 			inner join current_api_products cap on cap.stripe_price_id = uss.price_id
 			where uss.active = true and u.id is not null
 		union
 			-- set ratelimits for app subscriptions
-			select asv.user_id, cap.second, cap.hour, cap.month
+			select asv.user_id, cap.bucket, cap.second, cap.hour, cap.month
 			from app_subs_view asv
 			inner join current_api_products cap on cap.name = asv.product_id
 			where asv.active = true
 		union
 			-- set ratelimits for admins to unlimited
-			select u.id as user_id, cap.second, cap.hour, cap.month
+			select u.id as user_id, cap.bucket, cap.second, cap.hour, cap.month
 			from users u
 			left join current_api_products cap on cap.name = 'unlimited'
 			where u.user_group = 'ADMIN' and cap.second is not null
 		) a
-		group by user_id
-		on conflict (user_id) do update set
+		group by user_id, bucket
+		on conflict (user_id, bucket) do update set
 			second = excluded.second,
 			hour = excluded.hour,
 			month = excluded.month,
