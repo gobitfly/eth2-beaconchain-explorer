@@ -448,7 +448,7 @@ func updateStats(redisClient *redis.Client) error {
 			if len(ks) < 6 {
 				return fmt.Errorf("error parsing key %s: split-len < 6", k)
 			}
-			bucket := "default" // older implementation did not have bucket in the key
+			bucket := "x" // older implementation did not have bucket in the key
 			if len(ks) == 7 {
 				bucket = ks[6]
 			}
@@ -1049,10 +1049,10 @@ func DBGetUserApiRateLimit(userId int64) (*RateLimit, error) {
 func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 	apiProducts := []*ApiProduct{}
 	err := db.FrontendWriterDB.Select(&apiProducts, `
-        select distinct on (name) name, bucket, stripe_price_id, second, hour, month, valid_from 
+        select distinct on (name, bucket) name, bucket, stripe_price_id, second, hour, month, valid_from 
         from api_products 
         where valid_from <= now()
-        order by name, valid_from desc`)
+        order by name, bucket, valid_from desc`)
 	return apiProducts, err
 }
 
