@@ -66,6 +66,10 @@ var (
 		Name: "notifications_sent",
 		Help: "Counter of notifications sent with the channel and notification type in the label",
 	}, []string{"channel", "status"})
+	Counter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "counter",
+		Help: "Counter of events with name in labels",
+	}, []string{"name"})
 )
 
 var logger = logrus.New().WithField("module", "metrics")

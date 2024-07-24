@@ -284,6 +284,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 		}
 
 		if !redisIsHealthy.Load() {
+			metrics.Counter.WithLabelValues("ratelimit_fallback").Inc()
 			fallbackRateLimiter.Handle(w, r, next.ServeHTTP)
 			return
 		}
@@ -292,6 +293,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			// just serve the request if there is a problem with getting the rate limit
 			logger.WithFields(logrus.Fields{"error": err}).Errorf("error getting rate limit")
+			metrics.Errors.WithLabelValues("ratelimit_rateLimitRequest").Inc()
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -317,6 +319,7 @@ func HttpMiddleware(next http.Handler) http.Handler {
 		w.Header().Set(HeaderRateLimitRemainingSecond, strconv.FormatInt(rl.RemainingSecond, 10))
 
 		if rl.BlockRequest {
+			metrics.Counter.WithLabelValues("ratelimit_block").Inc()
 			w.Header().Set(HeaderRetryAfter, strconv.FormatInt(rl.Reset, 10))
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			err = postRateLimit(rl, http.StatusTooManyRequests)
