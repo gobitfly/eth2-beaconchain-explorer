@@ -715,14 +715,14 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 		FROM 
 			api_statistics 
 		WHERE 
-			ts >= DATE_TRUNC('day', NOW()) AND apikey = $1
+			ts >= DATE_TRUNC('day', NOW()) AND apikey = $1 AND bucket = 'default'
 	), (
 		SELECT 
 			COALESCE(SUM(count),0) as monthly 
 		FROM 
 			api_statistics 
 		WHERE 
-			ts >= DATE_TRUNC('month', NOW()) AND apikey = $1
+			ts >= DATE_TRUNC('month', NOW()) AND apikey = $1 AND bucket = 'default'
 	)`
 
 	err := FrontendWriterDB.Get(stats, query, apikey)
