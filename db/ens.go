@@ -15,6 +15,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/sirupsen/logrus"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"golang.org/x/sync/errgroup"
@@ -419,36 +420,37 @@ func validateEnsAddress(client *ethclient.Client, address common.Address, alread
 	alreadyChecked.address[address] = true
 	alreadyChecked.mux.Unlock()
 
-	currentName, err := GetEnsNameForAddress(address)
+	names := []string{}
+	err := ReaderDb.Select(&names, `SELECT ens_name FROM ens WHERE address = $1 AND is_primary_name AND valid_to >= now()`, address.Bytes())
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
 
-	if err != nil && currentName != "" {
-		err = validateEnsName(client, currentName, alreadyChecked)
+	for _, name := range names {
+		if name != "" {
+			err = validateEnsName(client, name, alreadyChecked)
+			if err != nil {
+				return err
+			}
+		}
+		reverseName, err := go_ens.ReverseResolve(client, address)
 		if err != nil {
-			return err
+			if err.Error() == "not a resolver" ||
+				err.Error() == "no resolution" ||
+				err.Error() == "execution reverted" ||
+				strings.HasPrefix(err.Error(), "name is not valid") {
+				logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", address, err.Error())
+			} else {
+				return fmt.Errorf("error could not reverse resolve address [%v]: %w", address, err)
+			}
 		}
-	}
 
-	reverseName, err := go_ens.ReverseResolve(client, address)
-	if err != nil {
-		if err.Error() == "not a resolver" ||
-			err.Error() == "no resolution" ||
-			err.Error() == "execution reverted" ||
-			strings.HasPrefix(err.Error(), "name is not valid") {
-			logger.Warnf("reverse resolving address [%v] resulted in a skippable error [%s], skipping it", address, err.Error())
-		} else {
-			return fmt.Errorf("error could not reverse resolve address [%v]: %w", address, err)
+		if reverseName != name {
+			err = validateEnsName(client, reverseName, alreadyChecked)
+			if err != nil {
+				return err
+			}
 		}
-	}
-
-	if reverseName == currentName {
-		return nil
-	}
-	err = validateEnsName(client, reverseName, alreadyChecked)
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -563,7 +565,12 @@ func validateEnsName(client *ethclient.Client, name string, alreadyChecked *EnsC
 		return fmt.Errorf("error writing ens data for name [%v]: %w", name, err)
 	}
 
-	logger.Infof("Name [%v] resolved -> %x, expires: %v, is primary: %v", name, addr, expires, isPrimary)
+	logrus.WithFields(logrus.Fields{
+		"name":        name,
+		"address":     addr,
+		"expires":     expires,
+		"reverseName": reverseName,
+	}).Infof("validated ens name")
 	return nil
 }
 
