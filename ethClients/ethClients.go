@@ -64,6 +64,7 @@ type EthClientServicesPageData struct {
 	Nimbus              EthClients
 	Lighthouse          EthClients
 	Erigon              EthClients
+	Reth                EthClients
 	RocketpoolSmartnode EthClients
 	MevBoost            EthClients
 	Lodestar            EthClients
@@ -210,6 +211,8 @@ func updateEthClientNetShare() {
 			ethClients.Besu.NetworkShare = share
 		case "erigon":
 			ethClients.Erigon.NetworkShare = share
+		case "reth":
+			ethClients.Reth.NetworkShare = share
 		default:
 			continue
 		}
@@ -235,6 +238,7 @@ func updateEthClient() {
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
 	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 	ethClients.Erigon.ClientReleaseVersion, ethClients.Erigon.ClientReleaseDate = prepareEthClientData("/erigontech/erigon", "Erigon", curTime)
+	ethClients.Reth.ClientReleaseVersion, ethClients.Reth.ClientReleaseDate = prepareEthClientData("/paradigmxyz/reth", "Reth", curTime)
 
 	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
 	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)

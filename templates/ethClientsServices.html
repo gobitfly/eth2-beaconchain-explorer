@@ -129,6 +129,19 @@
                       <td><input id="erigon-checkbox" type="checkbox" data-toggle="toggle" {{ if .Erigon.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('erigon-checkbox', 'eth_client_update', 'erigon')" /></td>
                     {{ end }}
                   </tr>
+                  <tr>
+                    <td data-column="Name"><a href="https://github.com/paradigmxyz/reth">Reth </a></td>
+                    <td data-column="Language">Rust</td>
+                    <td data-column="Network share"><a href="https://ethernodes.org">{{ if .Reth.NetworkShare }}{{ .Reth.NetworkShare }}{{ else }}N/a{{ end }}</a></td>
+                    <td data-column="Latest update"><a href="https://github.com/paradigmxyz/reth/releases">{{ .Reth.ClientReleaseVersion }}</a> - {{ .Reth.ClientReleaseDate }}</td>
+                    <td data-column="Social media">
+                      <a href="https://t.me/paradigm_reth" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a>
+                    </td>
+                    <td data-column="Support">N/A</td>
+                    {{ if $.User.Authenticated }}
+                      <td><input id="reth-checkbox" type="checkbox" data-toggle="toggle" {{ if .Reth.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('reth-checkbox', 'eth_client_update', 'reth')" /></td>
+                    {{ end }}
+                  </tr>
                 </tbody>
               </table>
             </div>
