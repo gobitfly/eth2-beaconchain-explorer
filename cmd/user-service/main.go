@@ -42,6 +42,15 @@ func main() {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
 	}
 
+	if utils.Config.Metrics.Enabled {
+		go func(addr string) {
+			logrus.Infof("serving metrics on %v", addr)
+			if err := metrics.Serve(addr); err != nil {
+				logrus.WithError(err).Fatal("Error serving metrics")
+			}
+		}(utils.Config.Metrics.Address)
+	}
+
 	if utils.Config.Pprof.Enabled {
 		go func() {
 			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
@@ -81,10 +90,6 @@ func main() {
 
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
-
-	if utils.Config.Metrics.Enabled {
-		go metrics.MonitorDB(db.FrontendWriterDB)
-	}
 
 	logrus.Infof("database connection established")
 

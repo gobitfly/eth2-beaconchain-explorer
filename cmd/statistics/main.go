@@ -10,6 +10,7 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/cache"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/price"
 	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
@@ -59,6 +60,15 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
+
+	if utils.Config.Metrics.Enabled {
+		go func(addr string) {
+			logrus.Infof("serving metrics on %v", addr)
+			if err := metrics.Serve(addr); err != nil {
+				logrus.WithError(err).Fatal("Error serving metrics")
+			}
+		}(utils.Config.Metrics.Address)
+	}
 
 	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
 		utils.LogFatal(fmt.Errorf("error ether SlotsPerEpoch [%v] or SecondsPerSlot [%v] are not set", utils.Config.Chain.ClConfig.SlotsPerEpoch, utils.Config.Chain.ClConfig.SecondsPerSlot), "", 0)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/cache"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/price"
 	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
@@ -46,6 +47,15 @@ func main() {
 			logrus.Infof("starting pprof http server on port %s", utils.Config.Pprof.Port)
 			logrus.Info(http.ListenAndServe(fmt.Sprintf("localhost:%s", utils.Config.Pprof.Port), nil))
 		}()
+	}
+
+	if utils.Config.Metrics.Enabled {
+		go func(addr string) {
+			logrus.Infof("serving metrics on %v", addr)
+			if err := metrics.Serve(addr); err != nil {
+				logrus.WithError(err).Fatal("Error serving metrics")
+			}
+		}(utils.Config.Metrics.Address)
 	}
 
 	_, err = db.InitBigtable(cfg.Bigtable.Project, cfg.Bigtable.Instance, fmt.Sprintf("%d", utils.Config.Chain.ClConfig.DepositChainID), utils.Config.RedisCacheEndpoint)
