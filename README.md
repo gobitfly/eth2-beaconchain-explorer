@@ -91,7 +91,63 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 - Connect to `golang` instance by running `docker exec -ti golang bash` and run `make all`
 - Start the explorer binary and pass the path to the config file as argument 
 
-      ./bin/explorer --config your_config.yml   
+      ./bin/explorer --config your_config.yml
+  ```javascript
+{
+    "status":"1",
+    "message":"OK",
+    "result":[
+        {
+            "blockNumber":"15364697",
+            "timeStamp":"1622899655",
+            "hash":"0x2993627de1b1c10005e0b73e9a813134c3c0ff0d064375a51c655c2fe3ef524d",
+            "from":"0x9d67e0660f5056fdbf97106e39b79f0682a92d13",
+            "to":"0xfa1db6794de6e994b60741decae0567946992181",
+            "value":"118800000000000000",
+            "contractAddress":"",
+            "input":"",
+            "type":"call",
+            "gas":"0",
+            "gasUsed":"0",
+            "traceId":"0_1",
+            "isError":"0",
+            "errCode":""
+        },
+        {
+            "blockNumber":"15364771",
+            "timeStamp":"1622899807",
+            "hash":"0xb0e61900aee46eb8f6531a1ca855e65bb0d7105d08fed3c2c4c1fa81875358a7",
+            "from":"0x9d67e0660f5056fdbf97106e39b79f0682a92d13",
+            "to":"0xfa1db6794de6e994b60741decae0567946992181",
+            "value":"118800000000000000",
+            "contractAddress":"",
+            "input":"",
+            "type":"call",
+            "gas":"0",
+            "gasUsed":"0",
+            "traceId":"0_1",
+            "isError":"0",
+            "errCode":""
+        },
+        {
+            "blockNumber":"15366114",
+            "timeStamp":"1622902705",
+            "hash":"0x4d8cc0a7ceeee6b5dfb2fd2e7edcc1cec15d482e3e0f13d37debbae748d4f10c",
+            "from":"0x9d67e0660f5056fdbf97106e39b79f0682a92d13",
+            "to":"0xfa1db6794de6e994b60741decae0567946992181",
+            "value":"396000000000000000",
+            "contractAddress":"",
+            "input":"",
+            "type":"call",
+            "gas":"0",
+            "gasUsed":"0",
+            "traceId":"0_1",
+            "isError":"0",
+            "errCode":""
+        }
+    ]
+}
+``` 
 
 ## Development
 
