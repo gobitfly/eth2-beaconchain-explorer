@@ -73,8 +73,6 @@ func main() {
 	enableEnsUpdater := flag.Bool("ens.enabled", false, "Enable ens update process")
 	ensBatchSize := flag.Int64("ens.batch", 200, "Batch size for ens updates")
 
-	metricsAddr := flag.String("metrics.addr", "", "Metrics address to listen on (eg: :8080)")
-
 	flag.Parse()
 
 	if *versionFlag {
@@ -91,13 +89,13 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("version", version.Version).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
-	if *metricsAddr != "" {
+	if utils.Config.Metrics.Enabled {
 		go func(addr string) {
 			logrus.Infof("serving metrics on %v", addr)
 			if err := metrics.Serve(addr); err != nil {
 				logrus.WithError(err).Fatal("Error serving metrics")
 			}
-		}(*metricsAddr)
+		}(utils.Config.Metrics.Address)
 	}
 
 	// enable pprof endpoint if requested

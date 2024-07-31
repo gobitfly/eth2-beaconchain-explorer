@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/cache"
@@ -50,6 +49,15 @@ func main() {
 
 	if utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 || utils.Config.Chain.ClConfig.SecondsPerSlot == 0 {
 		utils.LogFatal(err, "invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file", 0)
+	}
+
+	if utils.Config.Metrics.Enabled {
+		go func(addr string) {
+			logrus.Infof("serving metrics on %v", addr)
+			if err := metrics.Serve(addr); err != nil {
+				logrus.WithError(err).Fatal("Error serving metrics")
+			}
+		}(utils.Config.Metrics.Address)
 	}
 
 	if utils.Config.Pprof.Enabled {
@@ -142,34 +150,6 @@ func main() {
 	defer db.FrontendReaderDB.Close()
 	defer db.FrontendWriterDB.Close()
 	defer db.BigtableClient.Close()
-
-	if utils.Config.Metrics.Enabled {
-		go metrics.MonitorDB(db.WriterDb)
-		DBInfo := []string{
-			cfg.WriterDatabase.Username,
-			cfg.WriterDatabase.Password,
-			cfg.WriterDatabase.Host,
-			cfg.WriterDatabase.Port,
-			cfg.WriterDatabase.Name}
-		DBStr := strings.Join(DBInfo, "-")
-		frontendDBInfo := []string{
-			cfg.Frontend.WriterDatabase.Username,
-			cfg.Frontend.WriterDatabase.Password,
-			cfg.Frontend.WriterDatabase.Host,
-			cfg.Frontend.WriterDatabase.Port,
-			cfg.Frontend.WriterDatabase.Name}
-		frontendDBStr := strings.Join(frontendDBInfo, "-")
-		if DBStr != frontendDBStr {
-			go metrics.MonitorDB(db.FrontendWriterDB)
-		}
-		// serve prometheus metrics
-		go func(addr string) {
-			logrus.Infof("serving metrics on %v", addr)
-			if err := metrics.Serve(addr); err != nil {
-				logrus.WithError(err).Fatal("Error serving metrics")
-			}
-		}(utils.Config.Metrics.Address)
-	}
 
 	logrus.Infof("database connection established")
 

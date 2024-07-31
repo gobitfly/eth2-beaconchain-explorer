@@ -47,6 +47,15 @@ func main() {
 	utils.Config = cfg
 	logrus.WithField("config", *configPath).WithField("chainName", utils.Config.Chain.ClConfig.ConfigName).Printf("starting")
 
+	if utils.Config.Metrics.Enabled {
+		go func(addr string) {
+			logrus.Infof("serving metrics on %v", addr)
+			if err := metrics.Serve(addr); err != nil {
+				logrus.WithError(err).Fatal("Error serving metrics")
+			}
+		}(utils.Config.Metrics.Address)
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
 		Password:     cfg.WriterDatabase.Password,
