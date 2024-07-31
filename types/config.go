@@ -235,6 +235,10 @@ type Config struct {
 		MachineEventFirstRatioThreshold               float64 `yaml:"machineEventFirstRatioThreshold" envconfig:"MACHINE_EVENT_FIRST_RATIO_THRESHOLD"`
 		MachineEventSecondRatioThreshold              float64 `yaml:"machineEventSecondRatioThreshold" envconfig:"MACHINE_EVENT_SECOND_RATIO_THRESHOLD"`
 	} `yaml:"notifications"`
+	RatelimitUpdater struct {
+		Enabled        bool          `yaml:"enabled" envconfig:"RATELIMIT_UPDATER_ENABLED"`
+		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"RATELIMIT_UPDATER_UPDATE_INTERVAL"`
+	}
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
 		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`

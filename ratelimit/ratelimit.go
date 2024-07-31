@@ -1057,7 +1057,7 @@ func DBGetCurrentApiProducts() ([]*ApiProduct, error) {
 }
 
 func DBUpdater() {
-	iv := utils.Config.Frontend.RatelimitUpdateInterval
+	iv := utils.Config.RatelimitUpdater.UpdateInterval
 	if iv < time.Second {
 		logger.Warnf("updateInterval is below 1s, setting to 60s")
 		iv = time.Second * 60
