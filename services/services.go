@@ -17,6 +17,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	ethclients "github.com/gobitfly/eth2-beaconchain-explorer/ethClients"
 	"github.com/gobitfly/eth2-beaconchain-explorer/price"
+	"github.com/gobitfly/eth2-beaconchain-explorer/ratelimit"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
@@ -85,6 +86,10 @@ func Init() {
 
 	ready.Add(1)
 	go latestExportedStatisticDayUpdater(ready)
+
+	if utils.Config.RatelimitUpdater.Enabled {
+		go ratelimit.DBUpdater()
+	}
 
 	ready.Wait()
 }
