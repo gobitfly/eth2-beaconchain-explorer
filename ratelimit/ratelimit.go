@@ -14,11 +14,13 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
+	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 )
 
@@ -1068,36 +1070,39 @@ func DBUpdater() {
 		ReadTimeout: time.Second * 3,
 	})
 	for {
-		DBUpdate(redisClient)
+		err := DBUpdate(redisClient)
+		if err != nil {
+			services.ReportStatus("ratelimitUpdater", fmt.Errorf("error: %w", err).Error(), nil)
+		} else {
+			services.ReportStatus("ratelimitUpdater", "Running", nil)
+		}
 		time.Sleep(iv)
 	}
 }
 
-func DBUpdate(redisClient *redis.Client) {
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
+func DBUpdate(redisClient *redis.Client) error {
+	g := new(errgroup.Group)
+	g.Go(func() error {
 		start := time.Now()
 		err := updateStats(redisClient)
 		if err != nil {
 			logger.WithError(err).Errorf("error updating stats")
-			return
+			return err
 		}
 		logger.WithField("duration", time.Since(start)).Infof("updated stats")
-	}()
-	go func() {
-		defer wg.Done()
+		return nil
+	})
+	g.Go(func() error {
 		start := time.Now()
 		res, err := DBUpdateApiKeys()
 		if err != nil {
 			logger.WithError(err).Errorf("error updating api_keys")
-			return
+			return err
 		}
 		ra, err := res.RowsAffected()
 		if err != nil {
 			logger.WithError(err).Errorf("error getting rows affected")
-			return
+			return err
 		}
 		logger.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_keys")
 
@@ -1105,12 +1110,12 @@ func DBUpdate(redisClient *redis.Client) {
 		res, err = DBUpdateApiRatelimits()
 		if err != nil {
 			logger.WithError(err).Errorf("error updating api_ratelimit")
-			return
+			return err
 		}
 		ra, err = res.RowsAffected()
 		if err != nil {
 			logger.WithError(err).Errorf("error getting rows affected")
-			return
+			return err
 		}
 		logger.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("updated api_ratelimits")
 
@@ -1118,16 +1123,17 @@ func DBUpdate(redisClient *redis.Client) {
 		res, err = DBInvalidateApiKeys()
 		if err != nil {
 			logger.WithError(err).Errorf("error invalidating api_keys")
-			return
+			return err
 		}
 		ra, err = res.RowsAffected()
 		if err != nil {
 			logger.WithError(err).Errorf("error getting rows affected")
-			return
+			return err
 		}
 		logger.WithField("duration", time.Since(start)).WithField("updates", ra).Infof("invalidated api_keys")
-	}()
-	wg.Wait()
+		return nil
+	})
+	return g.Wait()
 }
 
 // DBInvalidateApiKeys invalidates api_keys that are not associated with a user. This func is only needed until api-key-mgmt is fully implemented - where users.apikey column is not used anymore.
