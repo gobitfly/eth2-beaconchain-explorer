@@ -238,7 +238,7 @@ type Config struct {
 	RatelimitUpdater struct {
 		Enabled        bool          `yaml:"enabled" envconfig:"RATELIMIT_UPDATER_ENABLED"`
 		UpdateInterval time.Duration `yaml:"updateInterval" envconfig:"RATELIMIT_UPDATER_UPDATE_INTERVAL"`
-	}
+	} `yaml:"ratelimitUpdater"`
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
 		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`
