@@ -58,6 +58,8 @@ func init() {
 	gob.Register(types.DataTableSaveState{})
 }
 
+var frontendHttpServer *http.Server
+
 func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
@@ -639,7 +641,7 @@ func main() {
 		if utils.Config.Frontend.HttpIdleTimeout == 0 {
 			utils.Config.Frontend.HttpIdleTimeout = time.Minute
 		}
-		srv := &http.Server{
+		frontendHttpServer = &http.Server{
 			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,
 			WriteTimeout: utils.Config.Frontend.HttpWriteTimeout,
 			ReadTimeout:  utils.Config.Frontend.HttpReadTimeout,
@@ -647,9 +649,9 @@ func main() {
 			Handler:      n,
 		}
 
-		logrus.Printf("http server listening on %v", srv.Addr)
+		logrus.Printf("http server listening on %v", frontendHttpServer.Addr)
 		go func() {
-			if err := srv.ListenAndServe(); err != nil {
+			if err := frontendHttpServer.ListenAndServe(); err != nil {
 				logrus.WithError(err).Fatal("Error serving frontend")
 			}
 		}()
@@ -669,6 +671,15 @@ func main() {
 	}
 
 	utils.WaitForCtrlC()
+
+	if frontendHttpServer != nil {
+		logrus.Infof("shutting down frontendHttpServer")
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		if err := frontendHttpServer.Shutdown(ctx); err != nil {
+			logrus.WithError(err).Fatal("error shutting down frontend server")
+		}
+	}
 
 	logrus.Println("exiting...")
 }
