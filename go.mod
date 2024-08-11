@@ -34,7 +34,6 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/jackc/pgx-shopspring-decimal v0.0.0-20220624020537-1d36b5a1853e
-	github.com/jackc/pgx/v4 v4.18.1
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/juliangruber/go-intersect v1.1.0
@@ -62,13 +61,12 @@ require (
 	github.com/skygeario/go-confusable-homoglyphs v0.0.0-20191212061114-e2b2a60df110
 	github.com/stripe/stripe-go/v72 v72.50.0
 	github.com/swaggo/http-swagger v1.3.0
-	github.com/swaggo/swag v1.8.3
 	github.com/urfave/negroni v1.0.0
 	github.com/wealdtech/go-ens/v3 v3.6.0
 	github.com/wealdtech/go-eth2-types/v2 v2.8.1
 	github.com/wealdtech/go-eth2-util v1.8.1
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
-	golang.org/x/crypto v0.19.0
+	golang.org/x/crypto v0.20.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/text v0.14.0
 	golang.org/x/time v0.3.0
@@ -155,9 +153,7 @@ require (
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipld/go-codec-dagpb v1.6.0 // indirect
 	github.com/ipld/go-ipld-prime v0.20.0 // indirect
-	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.14.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.3.2 // indirect
+	github.com/jackc/pgx/v4 v4.18.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
@@ -183,6 +179,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
+	github.com/swaggo/swag v1.8.3 // indirect
 	github.com/wealdtech/go-bytesutil v1.2.1 // indirect
 	github.com/wealdtech/go-merkletree v1.0.1-0.20190605192610-2bb163c2ea2a // indirect
 	github.com/wealdtech/go-multicodec v1.4.0 // indirect
