@@ -390,15 +390,14 @@ func main() {
 }
 
 func ImportEnsUpdatesLoop(bt *db.Bigtable, client *rpc.ErigonClient, batchSize int64) {
-	time.Sleep(time.Second * 5)
 	for {
+		time.Sleep(time.Second * 5)
 		err := bt.ImportEnsUpdates(client.GetNativeClient(), batchSize)
 		if err != nil {
 			logrus.WithError(err).Errorf("error importing ens updates")
 		} else {
 			services.ReportStatus("ensIndexer", "Running", nil)
 		}
-		time.Sleep(time.Second * 5)
 	}
 }
 
