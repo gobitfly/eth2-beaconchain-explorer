@@ -178,6 +178,10 @@ func main() {
 		}()
 	}
 
+	if *enableEnsUpdater {
+		go ImportEnsUpdatesLoop(bt, client, *ensBatchSize)
+	}
+
 	if *enableFullBalanceUpdater {
 		ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, -1)
 		return
@@ -378,19 +382,23 @@ func main() {
 			ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
 		}
 
-		if *enableEnsUpdater {
-			err := bt.ImportEnsUpdates(client.GetNativeClient(), *ensBatchSize)
-			if err != nil {
-				utils.LogError(err, "error importing ens updates", 0, nil)
-				continue
-			}
-		}
-
 		logrus.Infof("index run completed")
 		services.ReportStatus("eth1indexer", "Running", nil)
 	}
 
 	// utils.WaitForCtrlC()
+}
+
+func ImportEnsUpdatesLoop(bt *db.Bigtable, client *rpc.ErigonClient, batchSize int64) {
+	for {
+		time.Sleep(time.Second * 5)
+		err := bt.ImportEnsUpdates(client.GetNativeClient(), batchSize)
+		if err != nil {
+			logrus.WithError(err).Errorf("error importing ens updates")
+		} else {
+			services.ReportStatus("ensIndexer", "Running", nil)
+		}
+	}
 }
 
 func UpdateTokenPrices(bt *db.Bigtable, client *rpc.ErigonClient, tokenListPath string) error {
