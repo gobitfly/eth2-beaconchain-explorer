@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -395,7 +396,7 @@ func GWeiBytesToEther(gwei []byte) decimal.Decimal {
 // WaitForCtrlC will block/wait until a control-c is pressed
 func WaitForCtrlC() {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-c
 }
 
