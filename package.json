@@ -32,7 +32,7 @@
   "dependencies": {
     "eslint": "^8.18.0",
     "eslint-plugin-html": "^6.2.0",
-    "prettier-plugin-go-template": "^0.0.13"
+    "prettier-plugin-go-template": "^0.0.15"
   },
   "devDependencies": {
     "espree": "^9.3.2",
