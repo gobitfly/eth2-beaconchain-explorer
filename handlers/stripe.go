@@ -19,6 +19,7 @@ import (
 	"github.com/stripe/stripe-go/v72"
 	portalsession "github.com/stripe/stripe-go/v72/billingportal/session"
 	"github.com/stripe/stripe-go/v72/checkout/session"
+	"github.com/stripe/stripe-go/v72/promotioncode"
 	"github.com/stripe/stripe-go/v72/webhook"
 )
 
@@ -161,16 +162,49 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.PromotionCode != "" {
-		params.Discounts = []*stripe.CheckoutSessionDiscountParams{
-			{
-				Coupon: stripe.String(req.PromotionCode),
-			},
+		it := promotioncode.List(&stripe.PromotionCodeListParams{
+			Code:   stripe.String(req.PromotionCode),
+			Active: stripe.Bool(true),
+		})
+		if it.Err() != nil {
+			logger.WithError(it.Err()).Error("error retrieving stripe promotion code")
+			w.WriteHeader(http.StatusInternalServerError)
+			writeJSON(w, struct {
+				ErrorData string `json:"error"`
+			}{
+				ErrorData: "could not create a new stripe session, please try again later",
+			})
+			return
+		}
+
+		var pc *stripe.PromotionCode
+
+		for it.Next() {
+			currPc := it.PromotionCode()
+			if currPc == nil {
+				continue
+			}
+			// use the latest promotion code
+			if pc != nil && currPc.Created < pc.Created {
+				continue
+			}
+			pc = currPc
+		}
+
+		// if promotion code is not found just ignore it
+		if pc != nil {
+			params.AllowPromotionCodes = nil
+			params.Discounts = []*stripe.CheckoutSessionDiscountParams{
+				{
+					PromotionCode: stripe.String(pc.ID),
+				},
+			}
 		}
 	}
 
 	s, err := session.New(params)
 	if err != nil {
-		logger.WithError(err).Error("failed to create a new stripe checkout session")
+		logger.WithError(err).Warn("failed to create a new stripe checkout session")
 		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(w, struct {
 			ErrorData string `json:"error"`
