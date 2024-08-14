@@ -30,6 +30,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Price         string `json:"priceId"`
 		AddonQuantity int64  `json:"addonQuantity"`
+		PromotionCode string `json:"promotionCode"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -156,6 +157,14 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		params.CustomerUpdate = &stripe.CheckoutSessionCustomerUpdateParams{
 			Name:    &auto,
 			Address: &auto,
+		}
+	}
+
+	if req.PromotionCode != "" {
+		params.Discounts = []*stripe.CheckoutSessionDiscountParams{
+			{
+				Coupon: stripe.String(req.PromotionCode),
+			},
 		}
 	}
 
