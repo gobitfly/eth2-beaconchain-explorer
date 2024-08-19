@@ -213,10 +213,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 			if pc != nil && currPc.Created < pc.Created {
 				continue
 			}
-			if currPc.Coupon == nil {
-				continue
-			}
-			if currPc.Coupon.AppliesTo == nil {
+			if currPc.Coupon == nil || currPc.Coupon.AppliesTo == nil {
 				continue
 			}
 			for _, p := range currPc.Coupon.AppliesTo.Products {
