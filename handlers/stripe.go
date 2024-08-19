@@ -162,10 +162,12 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.PromotionCode != "" {
-		it := promotioncode.List(&stripe.PromotionCodeListParams{
+		pcListParams := &stripe.PromotionCodeListParams{
 			Code:   stripe.String(req.PromotionCode),
 			Active: stripe.Bool(true),
-		})
+		}
+		pcListParams.AddExpand("applies_to")
+		it := promotioncode.List(pcListParams)
 		if it.Err() != nil {
 			logger.WithError(it.Err()).Error("error retrieving stripe promotion code")
 			w.WriteHeader(http.StatusInternalServerError)
