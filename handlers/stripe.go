@@ -164,18 +164,8 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 	if req.PromotionCode != "" {
 		stripePrice, err := price.Get(req.Price, nil)
-		if err != nil {
-			logger.WithError(err).Error("error retrieving stripe product for promotion code")
-			w.WriteHeader(http.StatusInternalServerError)
-			writeJSON(w, struct {
-				ErrorData string `json:"error"`
-			}{
-				ErrorData: "could not create a new stripe session, please try again later",
-			})
-			return
-		}
-		if stripePrice == nil || stripePrice.Product == nil {
-			logger.WithError(fmt.Errorf("product is nil")).Error("error retrieving stripe product for promotion code")
+		if err != nil || stripePrice == nil || stripePrice.Product == nil {
+			logger.WithError(err).WithField("stripePrice", stripePrice).Error("error retrieving stripe product for promotion code")
 			w.WriteHeader(http.StatusInternalServerError)
 			writeJSON(w, struct {
 				ErrorData string `json:"error"`
