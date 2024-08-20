@@ -19,6 +19,7 @@ import (
 	"github.com/stripe/stripe-go/v72"
 	portalsession "github.com/stripe/stripe-go/v72/billingportal/session"
 	"github.com/stripe/stripe-go/v72/checkout/session"
+	"github.com/stripe/stripe-go/v72/price"
 	"github.com/stripe/stripe-go/v72/promotioncode"
 	"github.com/stripe/stripe-go/v72/webhook"
 )
@@ -162,10 +163,24 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.PromotionCode != "" {
-		it := promotioncode.List(&stripe.PromotionCodeListParams{
+		stripePrice, err := price.Get(req.Price, nil)
+		if err != nil || stripePrice == nil || stripePrice.Product == nil {
+			logger.WithError(err).WithField("stripePrice", stripePrice).Error("error retrieving stripe product for promotion code")
+			w.WriteHeader(http.StatusInternalServerError)
+			writeJSON(w, struct {
+				ErrorData string `json:"error"`
+			}{
+				ErrorData: "could not create a new stripe session, please try again later",
+			})
+			return
+		}
+
+		pcListParams := &stripe.PromotionCodeListParams{
 			Code:   stripe.String(req.PromotionCode),
 			Active: stripe.Bool(true),
-		})
+		}
+		pcListParams.AddExpand("data.coupon.applies_to")
+		it := promotioncode.List(pcListParams)
 		if it.Err() != nil {
 			logger.WithError(it.Err()).Error("error retrieving stripe promotion code")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -188,7 +203,15 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 			if pc != nil && currPc.Created < pc.Created {
 				continue
 			}
-			pc = currPc
+			if currPc.Coupon == nil || currPc.Coupon.AppliesTo == nil {
+				continue
+			}
+			for _, p := range currPc.Coupon.AppliesTo.Products {
+				if stripePrice.Product.ID == p {
+					pc = currPc
+					break
+				}
+			}
 		}
 
 		// if promotion code is not found just ignore it
