@@ -29,11 +29,13 @@ const (
 	HourTimeWindow   = "hour"
 	MonthTimeWindow  = "month"
 
-	HeaderRateLimitLimit     = "ratelimit-limit"     // the rate limit ceiling that is applicable for the current request
-	HeaderRateLimitRemaining = "ratelimit-remaining" // the number of requests left for the current rate-limit window
-	HeaderRateLimitReset     = "ratelimit-reset"     // the number of seconds until the quota resets
-	HeaderRateLimitWindow    = "ratelimit-window"    // what window the ratelimit represents
-	HeaderRetryAfter         = "retry-after"         // the number of seconds until the quota resets, same as HeaderRateLimitReset, RFC 7231, 7.1.3
+	HeaderRateLimitLimit       = "ratelimit-limit"       // the rate limit ceiling that is applicable for the current request
+	HeaderRateLimitRemaining   = "ratelimit-remaining"   // the number of requests left for the current rate-limit window
+	HeaderRateLimitReset       = "ratelimit-reset"       // the number of seconds until the quota resets
+	HeaderRateLimitWindow      = "ratelimit-window"      // what window the ratelimit represents
+	HeaderRateLimitBucket      = "ratelimit-bucket"      // bucket for the rate limit
+	HeaderRateLimitValidApiKey = "ratelimit-validapikey" // if the apikey is valid
+	HeaderRetryAfter           = "retry-after"           // the number of seconds until the quota resets, same as HeaderRateLimitReset, RFC 7231, 7.1.3
 
 	HeaderRateLimitRemainingSecond = "x-ratelimit-remaining-second" // the number of requests left for the current rate-limit window
 	HeaderRateLimitRemainingMinute = "x-ratelimit-remaining-minute" // the number of requests left for the current rate-limit window
@@ -320,6 +322,9 @@ func HttpMiddleware(next http.Handler) http.Handler {
 		w.Header().Set(HeaderRateLimitRemainingHour, strconv.FormatInt(rl.RemainingHour, 10))
 		w.Header().Set(HeaderRateLimitRemainingMinute, strconv.FormatInt(rl.RemainingMinute, 10))
 		w.Header().Set(HeaderRateLimitRemainingSecond, strconv.FormatInt(rl.RemainingSecond, 10))
+
+		w.Header().Set(HeaderRateLimitBucket, rl.Bucket)
+		w.Header().Set(HeaderRateLimitValidApiKey, strconv.FormatBool(rl.IsValidKey))
 
 		if rl.BlockRequest {
 			metrics.Counter.WithLabelValues("ratelimit_block").Inc()
