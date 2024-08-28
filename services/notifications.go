@@ -600,10 +600,17 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
 
-	logger.WithField("notifications", len(notificationQueueItem)).Info("processing push notifications")
+	totalMessageCount := 0
+	for _, n := range notificationQueueItem {
+		totalMessageCount += len(n.Content.Messages)
+	}
+
+	logger = logger.WithField("items", len(notificationQueueItem))
+	logger = logger.WithField("messages", totalMessageCount)
+	logger.Info("processing push notifications")
 	start := time.Now()
 	defer func() {
-		logger.WithField("notifications", len(notificationQueueItem)).WithField("duration", time.Since(start)).Info("processed push notifications")
+		logger.WithField("duration", time.Since(start)).Info("processed push notifications")
 	}()
 
 	batchSize := 500
