@@ -638,9 +638,13 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 					metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
 				}
 			}
-			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() WHERE id = any($1)`, ids)
+			res, err := useDB.Exec(`UPDATE notification_queue SET sent = now() WHERE id = any($1)`, ids)
 			if err != nil {
 				return fmt.Errorf("error updating sent status for push notification for ids: %v, err: %w", ids, err)
+			}
+			rowsAffected, err := res.RowsAffected()
+			if err == nil {
+				logger.WithField("rows_affected", rowsAffected).Info("updated sent status for push notification")
 			}
 			// reset the slices
 			messages = messages[:0]
