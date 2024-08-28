@@ -482,10 +482,10 @@ func dispatchNotifications(useDB *sqlx.DB) error {
 		return fmt.Errorf("error sending email notifications, err: %w", err)
 	}
 
-	// err = sendPushNotifications(useDB)
-	// if err != nil {
-	// 	return fmt.Errorf("error sending push notifications, err: %w", err)
-	// }
+	err = sendPushNotifications(useDB)
+	if err != nil {
+		return fmt.Errorf("error sending push notifications, err: %w", err)
+	}
 
 	err = sendWebhookNotifications(useDB)
 	if err != nil {
@@ -600,31 +600,47 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 		return fmt.Errorf("error querying notification queue, err: %w", err)
 	}
 
-	logger.Infof("processing %v push notifications", len(notificationQueueItem))
+	logger.WithField("notifications", len(notificationQueueItem)).Info("processing push notifications")
+	start := time.Now()
+	defer func() {
+		logger.WithField("notifications", len(notificationQueueItem)).WithField("duration", time.Since(start)).Info("processed push notifications")
+	}()
 
 	batchSize := 500
-	for _, n := range notificationQueueItem {
-		for b := 0; b < len(n.Content.Messages); b += batchSize {
-			start := b
-			end := b + batchSize
-			if len(n.Content.Messages) < end {
-				end = len(n.Content.Messages)
-			}
 
-			err = notify.SendPushBatch(n.Content.Messages[start:end])
-			if err != nil {
-				metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
-				logger.WithError(err).Error("error sending firebase batch job")
-			} else {
-				metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
-			}
+	messages := []*messaging.Message{}
+	ids := []uint64{}
 
-			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() WHERE id = $1`, n.Id)
-			if err != nil {
-				return fmt.Errorf("error updating sent status for push notification with id: %v, err: %w", n.Id, err)
+	for i, n := range notificationQueueItem {
+		messages = append(messages, n.Content.Messages...)
+		ids = append(ids, n.Id)
+		if len(messages) >= batchSize || i == len(notificationQueueItem)-1 {
+			for b := 0; b < len(messages); b += batchSize {
+				start := b
+				end := b + batchSize
+				if len(messages) < end {
+					end = len(messages)
+				}
+
+				err = notify.SendPushBatch(messages[start:end])
+				if err != nil {
+					metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
+					logger.WithError(err).Error("error sending firebase batch job")
+				} else {
+					// #TODO ask what this label means
+					metrics.NotificationsSent.WithLabelValues("push", "200").Add(float64(len(n.Content.Messages)))
+				}
 			}
+			_, err = useDB.Exec(`UPDATE notification_queue SET sent = now() WHERE id = any($1)`, ids)
+			if err != nil {
+				return fmt.Errorf("error updating sent status for push notification for ids: %v, err: %w", ids, err)
+			}
+			// reset the slices
+			messages = messages[:0]
+			ids = ids[:0]
 		}
 	}
+
 	return nil
 }
 
