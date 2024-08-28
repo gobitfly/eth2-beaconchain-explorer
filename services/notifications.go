@@ -482,10 +482,10 @@ func dispatchNotifications(useDB *sqlx.DB) error {
 		return fmt.Errorf("error sending email notifications, err: %w", err)
 	}
 
-	err = sendPushNotifications(useDB)
-	if err != nil {
-		return fmt.Errorf("error sending push notifications, err: %w", err)
-	}
+	// err = sendPushNotifications(useDB)
+	// if err != nil {
+	// 	return fmt.Errorf("error sending push notifications, err: %w", err)
+	// }
 
 	err = sendWebhookNotifications(useDB)
 	if err != nil {
