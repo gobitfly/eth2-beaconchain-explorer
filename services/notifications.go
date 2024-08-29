@@ -29,7 +29,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
-	"firebase.google.com/go/messaging"
+	"firebase.google.com/go/v4/messaging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -611,7 +611,7 @@ func sendPushNotifications(useDB *sqlx.DB) error {
 				end = len(n.Content.Messages)
 			}
 
-			err = notify.SendPushBatch(n.Content.Messages[start:end])
+			err = notify.SendPushBatch(n.Content.Messages[start:end], false)
 			if err != nil {
 				metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 				logger.WithError(err).Error("error sending firebase batch job")
