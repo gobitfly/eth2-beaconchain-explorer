@@ -9,6 +9,7 @@ import (
 
 // Config is a struct to hold the configuration data
 type Config struct {
+	// DB config for the network specific read-replica PostgreSQL database (can be the same as the writer DB if no read-replica is used)
 	ReaderDatabase struct {
 		Username     string `yaml:"user" envconfig:"READER_DB_USERNAME"`
 		Password     string `yaml:"password" envconfig:"READER_DB_PASSWORD"`
@@ -19,6 +20,7 @@ type Config struct {
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"READER_DB_MAX_IDLE_CONNS"`
 		SSL          bool   `yaml:"ssl" envconfig:"READER_DB_SSL"`
 	} `yaml:"readerDatabase"`
+	// DB config for the network specific PostgreSQL database
 	WriterDatabase struct {
 		Username     string `yaml:"user" envconfig:"WRITER_DB_USERNAME"`
 		Password     string `yaml:"password" envconfig:"WRITER_DB_PASSWORD"`
@@ -29,15 +31,16 @@ type Config struct {
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 		SSL          bool   `yaml:"ssl" envconfig:"WRITER_DB_SSL"`
 	} `yaml:"writerDatabase"`
+	// Config on how to connect to bigtable
 	Bigtable struct {
-		Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
-		Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
-		Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
-		EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
-		EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
-		V2SchemaCutOffEpoch uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
+		Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`                              // GCP project id
+		Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`                            // Bigtable instance id
+		Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`                            // If a bigtable emulator is used (for small, local deployments of the explorer)
+		EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`                   // Emulator host
+		EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`                   // Emulator port
+		V2SchemaCutOffEpoch uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"` // Epoch from which on the v2 bigtable schema is used
 	} `yaml:"bigtable"`
-	BlobIndexer struct {
+	BlobIndexer struct { // Storace access config for the blob indexer
 		S3 struct {
 			Endpoint        string `yaml:"endpoint" envconfig:"BLOB_INDEXER_S3_ENDPOINT"`
 			Bucket          string `yaml:"bucket" envconfig:"BLOB_INDEXER_S3_BUCKET"`
@@ -46,71 +49,70 @@ type Config struct {
 		} `yaml:"s3"`
 	} `yaml:"blobIndexer"`
 	Chain struct {
-		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
-		Id                         uint64 `yaml:"id" envconfig:"CHAIN_ID"`
-		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
-		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
-		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
-		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
-		ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
-		ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
+		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`                                                 // Name of the chain the explorer is running for
+		ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`                               // Path to the chain config file, can be "node" to fetch the config from the backing cl node
+		Id                         uint64 `yaml:"id" envconfig:"CHAIN_ID"`                                                     // ID of the chain (optional)
+		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`                        // Timestamp of the genesis block (optional)
+		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`             // Root of the genesis validators (optional)
+		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"` // Domain for the BLS to execution change
+		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`                 // Domain for the voluntary exit
+		ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`                               // Path to the chain config file, can be empty if a well known chain is used
 		ClConfig                   ClChainConfig
 		ElConfig                   *params.ChainConfig
 	} `yaml:"chain"`
-	Eth1ErigonEndpoint        string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
-	Eth1GethEndpoint          string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
-	EtherscanAPIKey           string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
-	EtherscanAPIBaseURL       string `yaml:"etherscanApiBaseUrl" envconfig:"ETHERSCAN_API_BASEURL"`
-	RedisCacheEndpoint        string `yaml:"redisCacheEndpoint" envconfig:"REDIS_CACHE_ENDPOINT"`
-	RedisSessionStoreEndpoint string `yaml:"redisSessionStoreEndpoint" envconfig:"REDIS_SESSION_STORE_ENDPOINT"`
-	TieredCacheProvider       string `yaml:"tieredCacheProvider" envconfig:"CACHE_PROVIDER"`
-	ReportServiceStatus       bool   `yaml:"reportServiceStatus" envconfig:"REPORT_SERVICE_STATUS"`
+	Eth1ErigonEndpoint        string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`                // RPC endpoint for the backing erigon node
+	Eth1GethEndpoint          string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`                    // RPC endpoint for the backing erigon/geth node
+	EtherscanAPIKey           string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`                      // Etherscan API key for fetching contract ABI data
+	EtherscanAPIBaseURL       string `yaml:"etherscanApiBaseUrl" envconfig:"ETHERSCAN_API_BASEURL"`              // Etherscan API base URL
+	RedisCacheEndpoint        string `yaml:"redisCacheEndpoint" envconfig:"REDIS_CACHE_ENDPOINT"`                // Redis endpoint for the LRU cache
+	RedisSessionStoreEndpoint string `yaml:"redisSessionStoreEndpoint" envconfig:"REDIS_SESSION_STORE_ENDPOINT"` // Redis endpoint for the persistent in memory store
+	TieredCacheProvider       string `yaml:"tieredCacheProvider" envconfig:"CACHE_PROVIDER"`                     // Must be set to "redis"
+	ReportServiceStatus       bool   `yaml:"reportServiceStatus" envconfig:"REPORT_SERVICE_STATUS"`              // Write service status reports to the service_status table
 	Indexer                   struct {
-		Enabled bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
-		Node    struct {
+		Enabled bool     `yaml:"enabled" envconfig:"INDEXER_ENABLED"` // Enable the consensus layer chain indexer
+		Node    struct { // Config for the node used for indexing
 			Port     string `yaml:"port" envconfig:"INDEXER_NODE_PORT"`
 			Host     string `yaml:"host" envconfig:"INDEXER_NODE_HOST"`
-			Type     string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`
-			PageSize int32  `yaml:"pageSize" envconfig:"INDEXER_NODE_PAGE_SIZE"`
+			Type     string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`          // Must be lighthouse
+			PageSize int32  `yaml:"pageSize" envconfig:"INDEXER_NODE_PAGE_SIZE"` // Obsolete, can be removed
 		} `yaml:"node"`
-		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
+		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"` // Block the ETH1 deposit contract was deployed
 		PubKeyTagsExporter            struct {
-			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
+			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"` // Enable the pubkey tags exporter
 		} `yaml:"pubkeyTagsExporter"`
-		EnsTransformer struct {
+		EnsTransformer struct { // Obsolete, can be removed
 			ValidRegistrarContracts []string `yaml:"validRegistrarContracts" envconfig:"ENS_VALID_REGISTRAR_CONTRACTS"`
 		} `yaml:"ensTransformer"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
-		BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"`
-		Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`
-		OnlyAPI                        bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
-		CsrfAuthKey                    string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY"`
-		CsrfInsecure                   bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
-		DisableCharts                  bool   `yaml:"disableCharts" envconfig:"disableCharts"`
-		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
-		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
-		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
-		BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`
-		SiteBrand                      string `yaml:"siteBrand" envconfig:"FRONTEND_SITE_BRAND"`
-		Keywords                       string `yaml:"keywords" envconfig:"FRONTEND_KEYWORDS"`
-		// Imprint is deprdecated place imprint file into the legal directory
-		Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
-		Legal   struct {
-			TermsOfServiceUrl string `yaml:"termsOfServiceUrl" envconfig:"FRONTEND_LEGAL_TERMS_OF_SERVICE_URL"`
-			PrivacyPolicyUrl  string `yaml:"privacyPolicyUrl" envconfig:"FRONTEND_LEGAL_PRIVACY_POLICY_URL"`
-			ImprintTemplate   string `yaml:"imprintTemplate" envconfig:"FRONTEND_LEGAL_IMPRINT_TEMPLATE"`
+		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`                                                      // Enable debug mode (disabled CSRF protection)
+		BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"` // Previously used for giving ethpool users free premium perks, can be removed
+		Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`                                                        // Obsolete, can be removed
+		OnlyAPI                        bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`                                                 // Run only the API part of the frontend
+		CsrfAuthKey                    string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY"`                                         // Signing key for the CSRF tokens
+		CsrfInsecure                   bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`                                       // Allow CSRF tokens to be sent over HTTP
+		DisableCharts                  bool   `yaml:"disableCharts" envconfig:"disableCharts"`                                               // obsolete, can be removed
+		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`                               // Recaptcha site key
+		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`                           // Recaptcha secret key
+		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`                                                  // Enable the frontend
+		BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`                                // URL to link blob data to
+		SiteBrand                      string `yaml:"siteBrand" envconfig:"FRONTEND_SITE_BRAND"`                                             // Brand name of the site, defaults to beaconcha.in
+		Keywords                       string `yaml:"keywords" envconfig:"FRONTEND_KEYWORDS"`                                                // SEO keywords for the site
+		Imprint                        string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`                                                  // Imprint is obsolete place imprint file into the legal directory
+		Legal                          struct {
+			TermsOfServiceUrl string `yaml:"termsOfServiceUrl" envconfig:"FRONTEND_LEGAL_TERMS_OF_SERVICE_URL"` // URL to the terms of service pdf file
+			PrivacyPolicyUrl  string `yaml:"privacyPolicyUrl" envconfig:"FRONTEND_LEGAL_PRIVACY_POLICY_URL"`    // URL to the privacy policy pdf file
+			ImprintTemplate   string `yaml:"imprintTemplate" envconfig:"FRONTEND_LEGAL_IMPRINT_TEMPLATE"`       // Template string for the imprint
 		} `yaml:"legal"`
-		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
-		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
-		SiteTitle    string `yaml:"siteTitle" envconfig:"FRONTEND_SITE_TITLE"`
-		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
-		Server       struct {
+		SiteDomain   string   `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`     // Domain of the site, defaults to beaconcha.in
+		SiteName     string   `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`         // Site name to use in the page titles
+		SiteTitle    string   `yaml:"siteTitle" envconfig:"FRONTEND_SITE_TITLE"`       // Site title to use on the frontpage
+		SiteSubtitle string   `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"` // Site subtitle to use on the frontpage
+		Server       struct { // Frontend http server host & port
 			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`
-		ReaderDatabase struct {
+		ReaderDatabase struct { // DB config for the read replica of the global user PosgresSQL database (can be the same as the writer DB if no read-replica is used)
 			Username     string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
 			Password     string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
 			Name         string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
@@ -120,7 +122,7 @@ type Config struct {
 			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_READER_DB_MAX_IDLE_CONNS"`
 			SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_READER_DB_SSL"`
 		} `yaml:"readerDatabase"`
-		WriterDatabase struct {
+		WriterDatabase struct { // DB config for the global user PosgresSQL database
 			Username     string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
 			Password     string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
 			Name         string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
@@ -130,8 +132,8 @@ type Config struct {
 			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
 			SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_WRITER_DB_SSL"`
 		} `yaml:"writerDatabase"`
-		OldProductsDeadlineUnix int64 `yaml:"oldProductsDeadline" envconfig:"FRONTEND_OLD_PRODUCTS_DEADLINE_UNIX"`
-		Stripe                  struct {
+		OldProductsDeadlineUnix int64    `yaml:"oldProductsDeadline" envconfig:"FRONTEND_OLD_PRODUCTS_DEADLINE_UNIX"` // TODO: patrick
+		Stripe                  struct { // TODO: patrick
 			Webhook   string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
 			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
@@ -162,7 +164,7 @@ type Config struct {
 			VdbAddon10k       string `yaml:"vdbAddon10k" envconfig:"FRONTEND_STRIPE_VDB_ADDON_10K"`
 			VdbAddon10kYearly string `yaml:"vdbAddon10kYearly" envconfig:"FRONTEND_STRIPE_VDB_ADDON_10K_YEARLY"`
 		}
-		RatelimitUpdateInterval              time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
+		RatelimitUpdateInterval              time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"` // TODO: patrick
 		SessionSameSiteNone                  bool          `yaml:"sessionSameSiteNone" envconfig:"FRONTEND_SESSION_SAMESITE_NONE"`
 		SessionSecret                        string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
 		SessionCookieDomain                  string        `yaml:"sessionCookieDomain" envconfig:"FRONTEND_SESSION_COOKIE_DOMAIN"`
@@ -227,7 +229,7 @@ type Config struct {
 	Notifications struct {
 		UserDBNotifications                           bool    `yaml:"userDbNotifications" envconfig:"USERDB_NOTIFICATIONS_ENABLED"`
 		FirebaseCredentialsPath                       string  `yaml:"firebaseCredentialsPath" envconfig:"NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		ValidatorBalanceDecreasedNotificationsEnabled bool    `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool    `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"` // obsolete, can be removed
 		PubkeyCachePath                               string  `yaml:"pubkeyCachePath" envconfig:"NOTIFICATIONS_PUBKEY_CACHE_PATH"`
 		OnlineDetectionLimit                          int     `yaml:"onlineDetectionLimit" envconfig:"ONLINE_DETECTION_LIMIT"`
 		OfflineDetectionLimit                         int     `yaml:"offlineDetectionLimit" envconfig:"OFFLINE_DETECTION_LIMIT"`
