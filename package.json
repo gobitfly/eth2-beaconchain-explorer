@@ -31,7 +31,7 @@
   "homepage": "https://github.com/gobitfly/eth2-beaconchain-explorer#readme",
   "dependencies": {
     "eslint": "^8.18.0",
-    "eslint-plugin-html": "^6.2.0",
+    "eslint-plugin-html": "^8.1.1",
     "prettier-plugin-go-template": "^0.0.13"
   },
   "devDependencies": {
