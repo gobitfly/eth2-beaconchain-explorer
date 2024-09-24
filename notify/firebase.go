@@ -7,8 +7,8 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
-	firebase "firebase.google.com/go"
-	"firebase.google.com/go/messaging"
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/messaging"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/option"
 )
@@ -19,14 +19,16 @@ func isRelevantError(response *messaging.SendResponse) bool {
 	if !response.Success && response.Error != nil {
 		// Ignore https://stackoverflow.com/questions/58308835/using-firebase-for-notifications-getting-app-instance-has-been-unregistered
 		// Errors since they indicate that the user token is expired
-		if !strings.Contains(response.Error.Error(), "registration-token-not-registered") {
+		if !strings.Contains(response.Error.Error(), "registration-token-not-registered") &&
+			!strings.Contains(response.Error.Error(), "Requested entity was not found.") &&
+			!strings.Contains(response.Error.Error(), "Request contains an invalid argument.") {
 			return true
 		}
 	}
 	return false
 }
 
-func SendPushBatch(messages []*messaging.Message) error {
+func SendPushBatch(messages []*messaging.Message, dryRun bool) error {
 	credentialsPath := utils.Config.Notifications.FirebaseCredentialsPath
 	if credentialsPath == "" {
 		logger.Errorf("firebase credentials path not provided, disabling push notifications")
@@ -58,13 +60,23 @@ func SendPushBatch(messages []*messaging.Message) error {
 	var resultSuccessCount, resultFailureCount int = 0, 0
 	var result *messaging.BatchResponse
 
+	// badgeValue := 0
+	// for i := range messages {
+	// 	if messages[i].APNS == nil && messages[i].APNS.Payload == nil {
+	// 		messages[i].APNS.Payload.Aps.Badge = &badgeValue
+	// 	}
+	// }
+
 	currentMessages := messages
 	tries := 0
 	for _, s := range waitBeforeTryInSeconds {
 		time.Sleep(s * time.Second)
 		tries++
-
-		result, err = client.SendAll(context.Background(), currentMessages)
+		if dryRun {
+			result, err = client.SendEachDryRun(context.Background(), currentMessages)
+		} else {
+			result, err = client.SendEach(context.Background(), currentMessages)
+		}
 		if err != nil {
 			logger.Errorf("error sending push notifications: %v", err)
 			return err
@@ -76,7 +88,9 @@ func SendPushBatch(messages []*messaging.Message) error {
 		newMessages := make([]*messaging.Message, 0, result.FailureCount)
 		if result.FailureCount > 0 {
 			for i, response := range result.Responses {
+				logger.Info(response)
 				if isRelevantError(response) {
+					logger.Infof("retrying message %d", i)
 					newMessages = append(newMessages, currentMessages[i])
 					resultFailureCount--
 				}
