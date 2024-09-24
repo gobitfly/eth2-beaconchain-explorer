@@ -16,9 +16,11 @@ import (
 	"sync"
 	"time"
 
+	"firebase.google.com/go/v4/messaging"
 	"github.com/gobitfly/eth2-beaconchain-explorer/cmd/misc/commands"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/exporter"
+	"github.com/gobitfly/eth2-beaconchain-explorer/notify"
 	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
@@ -75,7 +77,7 @@ func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
 
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases, disable-user-per-email")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases, disable-user-per-email, validate-firebase-tokens")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -438,6 +440,8 @@ func main() {
 		err = disableUserPerEmail()
 	case "fix-epochs":
 		err = fixEpochs()
+	case "validate-firebase-tokens":
+		err = validateFirebaseTokens()
 	default:
 		utils.LogFatal(nil, fmt.Sprintf("unknown command %s", opts.Command), 2)
 	}
@@ -2094,4 +2098,50 @@ func askForConfirmation(q string) bool {
 		return true
 	}
 	return false
+}
+
+func validateFirebaseTokens() error {
+	// retrieve all userIds and tokens from the database
+
+	var users []struct {
+		ID    uint64 `db:"user_id"`
+		Token string `db:"notification_token"`
+	}
+
+	err := db.FrontendWriterDB.Select(&users, `select DISTINCT ON (user_id, notification_token) user_id, notification_token from users_devices where length(notification_token) > 20 and user_id = xxx;`)
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	// badge := 1
+	for _, user := range users {
+		// validate the token by trying to send a message to the user
+
+		notification := new(messaging.Notification)
+		notification.Title = "test"
+		notification.Body = "this is a test message"
+
+		message := new(messaging.Message)
+		message.Notification = notification
+		message.Token = user.Token
+
+		message.APNS = new(messaging.APNSConfig)
+		message.APNS.Payload = new(messaging.APNSPayload)
+		message.APNS.Payload.Aps = new(messaging.Aps)
+		message.APNS.Payload.Aps.Sound = "default"
+		// message.APNS.Payload.Aps.Badge = &badge
+		// message.APNS.Payload.Aps.AlertString = "test"
+
+		meassages := []*messaging.Message{
+			message,
+		}
+
+		err := notify.SendPushBatch(meassages, false)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+	}
+
+	return nil
 }
