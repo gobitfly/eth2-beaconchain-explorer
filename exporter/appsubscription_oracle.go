@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
@@ -65,6 +66,7 @@ func checkSubscriptions() {
 			valid, err := VerifyReceipt(googleClient, appleClient, receipt)
 
 			if err != nil {
+				metrics.Errors.WithLabelValues("app_subscriptions").Inc()
 				errors = append(errors, err)
 
 				// error might indicate a connection problem, ignore validation response
