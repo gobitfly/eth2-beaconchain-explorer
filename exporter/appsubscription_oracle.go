@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
@@ -50,6 +51,7 @@ func checkSubscriptions() {
 			return
 		}
 
+		errors := []error{}
 		for _, receipt := range receipts {
 			// TODO: At some point we can drop the loop validator approach for iOS purchases and replace it with
 			// the notifications approach.
@@ -63,6 +65,8 @@ func checkSubscriptions() {
 			valid, err := VerifyReceipt(googleClient, appleClient, receipt)
 
 			if err != nil {
+				errors = append(errors, err)
+
 				// error might indicate a connection problem, ignore validation response
 				// for this iteration
 				if strings.Contains(err.Error(), "expired") {
@@ -80,7 +84,16 @@ func checkSubscriptions() {
 			if valid.RejectReason == "invalid_store" {
 				continue
 			}
-			updateValidationState(receipt, valid)
+			err = updateValidationState(receipt, valid)
+			if err != nil {
+				errors = append(errors, err)
+			}
+		}
+
+		if len(errors) > 0 {
+			services.ReportStatus("app_subscriptions", fmt.Sprintf("checking app_subscriptions had %d errors", len(errors)), nil)
+		} else {
+			services.ReportStatus("app_subscriptions", "Running", nil)
 		}
 
 		logger.WithField("subscriptions", len(receipts)).WithField("duration", time.Since(start)).Info("subscription update completed")
@@ -350,7 +363,7 @@ func getLegacyAppstoreTransactionIDByReceipt(receipt, premiumPkg string) (string
 	return "", errors.New("not found")
 }
 
-func updateValidationState(receipt *types.PremiumData, validation *VerifyResponse) {
+func updateValidationState(receipt *types.PremiumData, validation *VerifyResponse) error {
 	err := db.UpdateUserSubscription(
 		nil,
 		receipt.ID,
@@ -360,6 +373,7 @@ func updateValidationState(receipt *types.PremiumData, validation *VerifyRespons
 	)
 	if err != nil {
 		fmt.Printf("error updating subscription state %v", err)
+		return err
 	}
 
 	// in case user upgrades downgrades package (fe on iOS) we can automatically update the product here too
@@ -370,7 +384,9 @@ func updateValidationState(receipt *types.PremiumData, validation *VerifyRespons
 	)
 	if err != nil {
 		fmt.Printf("error updating subscription product id %v", err)
+		return err
 	}
+	return nil
 }
 
 type VerifyResponse struct {
