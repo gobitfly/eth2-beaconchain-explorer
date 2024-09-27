@@ -154,7 +154,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 // ApiHealthzLoadbalancer godoc
 // @Summary Health of the explorer-api regarding having a healthy connection to the database
 // @Tags Misc
-// @Description Health endpoint for montitoring if the explorer-api
+// @Description Health endpoint for monitoring if the explorer-api
 // @Produce  text/plain
 // @Success 200 {object} types.ApiResponse
 // @Router /api/healthz-loadbalancer [get]
