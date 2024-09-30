@@ -28,7 +28,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	currentStateCounts := services.LatestValidatorStateCounts()
 
-	for _, state := range currentStateCounts {
+	for _, state := range *currentStateCounts {
 		switch state.Name {
 		case "pending":
 			validatorsPageData.PendingCount = state.Count
