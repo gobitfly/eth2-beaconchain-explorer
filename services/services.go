@@ -1797,7 +1797,7 @@ func validatorStateCountsUpdater(wg *sync.WaitGroup) {
 			}
 		}
 		ReportStatus("validatorStateCountsUpdater", "Running", nil)
-		time.Sleep(time.Minute)
+		time.Sleep(time.Minute * 60)
 	}
 }
 

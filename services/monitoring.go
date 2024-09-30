@@ -268,7 +268,7 @@ func startServicesMonitoringService() {
 		"statistics":                  time.Minute * 90,
 		"ethStoreStatistics":          time.Minute * 15,
 		"lastExportedStatisticDay":    time.Minute * 15,
-		"validatorStateCountsUpdater": time.Minute * 15,
+		"validatorStateCountsUpdater": time.Minute * 90,
 		//"notification-sender", //exclude for now as the sender is only running on mainnet
 	}
 
