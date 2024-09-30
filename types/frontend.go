@@ -615,3 +615,8 @@ type SearchValidatorsByEth1Result []struct {
 	ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 	Count            uint64        `db:"count" json:"-"`
 }
+
+type ValidatorStateCountRow struct {
+	Name  string `db:"statename"`
+	Count uint64 `db:"statecount"`
+}
