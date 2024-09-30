@@ -176,10 +176,8 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		} else {
 			err = db.ReaderDb.Select(result, `
 			SELECT validatorindex AS index, pubkeyhex AS pubkey
-			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE LOWER(validator_names.name) LIKE LOWER($1)
-			ORDER BY index LIMIT 10`, search+"%")
+			FROM validators WHERE pubkey IN 
+				(SELECT publickey FROM validator_names WHERE LOWER(validator_names.name) LIKE LOWER($1) LIMIT 10)`, search+"%")
 		}
 	case "eth1_addresses":
 		if utils.IsValidEnsDomain(search) {
@@ -216,12 +214,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		} else if thresholdHexLikeRE.MatchString(lowerStrippedSearch) {
 			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex as pubkey FROM validators WHERE pubkeyhex LIKE ($1 || '%')`, lowerStrippedSearch)
 		} else {
-			err = db.ReaderDb.Select(result, `
-			SELECT validatorindex AS index, pubkeyhex AS pubkey
-			FROM validators
-			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE LOWER(validator_names.name) LIKE LOWER($1)
-			ORDER BY index LIMIT 10`, search+"%")
+			err = db.ReaderDb.Select(result, `SELECT validatorindex AS index, pubkeyhex AS pubkey
+			FROM validators WHERE pubkey IN 
+				(SELECT publickey FROM validator_names WHERE LOWER(validator_names.name) LIKE LOWER($1) LIMIT 10)`, search+"%")
 		}
 	case "validators_by_pubkey":
 		if !thresholdHexLikeRE.MatchString(lowerStrippedSearch) {
