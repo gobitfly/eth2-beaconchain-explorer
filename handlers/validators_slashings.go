@@ -103,6 +103,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 
 	validatorsForNameSearch := []uint64{}
 	for _, slashing := range slashings {
+		validatorsForNameSearch = append(validatorsForNameSearch, slashing.Proposer)
 		if slashing.Type == "Attestation Violation" {
 			inter := intersect.Simple(slashing.Attestestation1Indices, slashing.Attestestation2Indices)
 			if len(inter) == 0 {

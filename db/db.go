@@ -1768,6 +1768,7 @@ func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 }
 
 func GetValidatorNames(validators []uint64) (map[uint64]string, error) {
+	logger.Infof("getting validator names for %d validators", len(validators))
 	rows, err := ReaderDb.Query(`
 		SELECT validatorindex, validator_names.name 
 		FROM validators 
