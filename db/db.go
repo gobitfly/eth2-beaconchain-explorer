@@ -1767,12 +1767,13 @@ func GetQueueAheadOfValidator(validatorIndex uint64) (uint64, error) {
 	return res, err
 }
 
-func GetValidatorNames() (map[uint64]string, error) {
+func GetValidatorNames(validators []uint64) (map[uint64]string, error) {
+	logger.Infof("getting validator names for %d validators", len(validators))
 	rows, err := ReaderDb.Query(`
 		SELECT validatorindex, validator_names.name 
 		FROM validators 
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		WHERE validator_names.name IS NOT NULL`)
+		WHERE validators.validatorindex = ANY($1) AND validator_names.name IS NOT NULL`, pq.Array(validators))
 
 	if err != nil {
 		return nil, err
