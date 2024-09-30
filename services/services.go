@@ -1797,17 +1797,17 @@ func validatorStateCountsUpdater(wg *sync.WaitGroup) {
 			}
 		}
 		ReportStatus("validatorStateCountsUpdater", "Running", nil)
-		time.Sleep(time.Minute)
+		time.Sleep(time.Minute * 60)
 	}
 }
 
-func LatestValidatorStateCounts() []types.ValidatorStateCountRow {
+func LatestValidatorStateCounts() *[]types.ValidatorStateCountRow {
 	wanted := []types.ValidatorStateCountRow{}
 	cacheKey := fmt.Sprintf("%d:frontend:validator_state_counts", utils.Config.Chain.ClConfig.DepositChainID)
-	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute, wanted); err == nil {
-		return wanted.([]types.ValidatorStateCountRow)
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute, &wanted); err == nil {
+		return wanted.(*[]types.ValidatorStateCountRow)
 	} else {
 		logger.Errorf("error retrieving validator state count data from cache: %v", err)
 	}
-	return wanted
+	return &wanted
 }
