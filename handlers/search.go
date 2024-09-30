@@ -423,4 +423,4 @@ func FindValidatorIndicesByEth1Address(search string) (types.SearchValidatorsByE
 		return nil, fmt.Errorf("error reading result data: %v", err)
 	}
 	return *result, nil
-} 
+}
