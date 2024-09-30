@@ -87,6 +87,9 @@ func Init() {
 	ready.Add(1)
 	go latestExportedStatisticDayUpdater(ready)
 
+	ready.Add(1)
+	go validatorStateCountsUpdater(ready)
+
 	if utils.Config.RatelimitUpdater.Enabled {
 		go ratelimit.DBUpdater()
 	}
@@ -1765,4 +1768,46 @@ func LatestExportedStatisticDay() (uint64, error) {
 		return 0, err
 	}
 	return wanted, nil
+}
+
+func validatorStateCountsUpdater(wg *sync.WaitGroup) {
+	firstRun := true
+
+	for {
+		var currentStateCounts []types.ValidatorStateCountRow
+		qry := "SELECT status AS statename, COUNT(*) AS statecount FROM validators GROUP BY status"
+		err := db.ReaderDb.Select(&currentStateCounts, qry)
+
+		if err != nil {
+			logger.Errorf("error retrieving validator state counts from the database: %v", err)
+
+			if err.Error() == "sql: database is closed" {
+				logger.Fatalf("error retrieving validator state counts from the database: %v", err)
+			}
+		} else {
+			cacheKey := fmt.Sprintf("%d:frontend:validator_state_counts", utils.Config.Chain.ClConfig.DepositChainID)
+			err := cache.TieredCache.Set(cacheKey, currentStateCounts, utils.Day)
+			if err != nil {
+				logger.Errorf("error caching validator state counts: %v", err)
+			}
+			if firstRun {
+				logger.Info("initialized validator state counts updater")
+				wg.Done()
+				firstRun = false
+			}
+		}
+		ReportStatus("validatorStateCountsUpdater", "Running", nil)
+		time.Sleep(time.Minute)
+	}
+}
+
+func LatestValidatorStateCounts() []types.ValidatorStateCountRow {
+	wanted := []types.ValidatorStateCountRow{}
+	cacheKey := fmt.Sprintf("%d:frontend:validator_state_counts", utils.Config.Chain.ClConfig.DepositChainID)
+	if wanted, err := cache.TieredCache.GetWithLocalTimeout(cacheKey, time.Minute, wanted); err == nil {
+		return wanted.([]types.ValidatorStateCountRow)
+	} else {
+		logger.Errorf("error retrieving validator state count data from cache: %v", err)
+	}
+	return wanted
 }

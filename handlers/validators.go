@@ -17,11 +17,6 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 )
 
-type states struct {
-	Name  string `db:"statename"`
-	Count uint64 `db:"statecount"`
-}
-
 // Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "validators.html")
@@ -31,15 +26,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	validatorsPageData := types.ValidatorsPageData{}
 
-	var currentStateCounts []*states
-
-	qry := "SELECT status AS statename, COUNT(*) AS statecount FROM validators GROUP BY status"
-	err := db.ReaderDb.Select(&currentStateCounts, qry)
-	if err != nil {
-		utils.LogError(err, "error retrieving validators data", 0)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	currentStateCounts := services.LatestValidatorStateCounts()
 
 	for _, state := range currentStateCounts {
 		switch state.Name {
