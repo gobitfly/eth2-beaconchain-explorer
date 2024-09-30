@@ -17,11 +17,6 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 )
 
-type states struct {
-	Name  string `db:"statename"`
-	Count uint64 `db:"statecount"`
-}
-
 // Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "validators.html")
