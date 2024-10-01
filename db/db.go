@@ -37,9 +37,17 @@ var EmbedMigrations embed.FS
 
 var DBPGX *pgxpool.Conn
 
+type SQLReaderDb interface {
+	Close() error
+	Get(dest interface{}, query string, args ...interface{}) error
+	Select(dest interface{}, query string, args ...interface{}) error
+	Query(query string, args ...any) (*sql.Rows, error)
+	Preparex(query string) (*sqlx.Stmt, error)
+}
+
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
-var ReaderDb *sqlx.DB
+var ReaderDb SQLReaderDb
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 

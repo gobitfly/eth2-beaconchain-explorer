@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,8 +24,6 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
-
-	"strconv"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"golang.org/x/sync/errgroup"
@@ -2869,7 +2868,17 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	}
 
 	data := make([]types.ITransaction, 0, len(parityTrace)-1)
+	var revertSource []int64
 	for i := 1; i < len(parityTrace); i++ {
+		var reverted bool
+		if parityTrace[i].Error != "" {
+			reverted = true
+			revertSource = parityTrace[i].TraceAddress
+		}
+		if isSubset(parityTrace[i].TraceAddress, revertSource) {
+			reverted = true
+		}
+
 		from, to, value, tx_type := parityTrace[i].ConvertFields()
 		if tx_type == "suicide" {
 			// erigon's "suicide" might be misleading for users
@@ -2896,7 +2905,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
 			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
-			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, from_contractInteraction)),
+			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, !reverted, bigtable.GetMethodLabel(input, from_contractInteraction)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
 		}
 
