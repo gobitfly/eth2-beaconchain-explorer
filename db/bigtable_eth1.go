@@ -2873,7 +2873,10 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		var reverted bool
 		if parityTrace[i].Error != "" {
 			reverted = true
-			revertSource = parityTrace[i].TraceAddress
+			// only save the highest root revert
+			if !isSubset(parityTrace[i].TraceAddress, revertSource) {
+				revertSource = parityTrace[i].TraceAddress
+			}
 		}
 		if isSubset(parityTrace[i].TraceAddress, revertSource) {
 			reverted = true
