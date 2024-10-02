@@ -62,7 +62,7 @@ func TestGetEth1Transaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := db.InitBigtableSchema(); err != nil {
-		if !errors.Is(err, db.TableAlreadyExistErr) {
+		if !errors.Is(err, db.ErrTableAlreadyExist) {
 			t.Fatal(err)
 		}
 	}
