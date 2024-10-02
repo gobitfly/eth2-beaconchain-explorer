@@ -2852,10 +2852,20 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult, currency string) ([]types.ITransaction, error) {
 
 	names := make(map[string]string)
-	for _, trace := range parityTrace {
+	internalTxFailed := make([]bool, len(parityTrace))
+
+	for t, trace := range parityTrace {
 		from, to, _, _ := trace.ConvertFields()
 		names[string(from)] = ""
 		names[string(to)] = ""
+
+		if t > 0 {
+			if parityTrace[t].Error != "" {
+				internalTxFailed[t] = true
+			} else if internalTxFailed[t-1] { // check if parent transfer has failed
+				internalTxFailed[t] = true
+			}
+		}
 	}
 
 	err := bigtable.GetAddressNames(names)
@@ -2896,7 +2906,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
 			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
-			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, from_contractInteraction)),
+			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, !internalTxFailed[i], bigtable.GetMethodLabel(input, from_contractInteraction)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
 		}
 
@@ -2931,7 +2941,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	mux := sync.Mutex{}
 
 	// get erc20 rows
-	prefix := fmt.Sprintf("%s:ERC20:%x:", bigtable.chainId, transaction)
+	prefix := fmt.Sprintf("%s:ERC20:%x:", "1", transaction)
 	rowRange := gcp_bigtable.NewRange(prefix+"\x00", prefixSuccessor(prefix, 3))
 	err := bigtable.tableData.ReadRows(ctx, rowRange, func(row gcp_bigtable.Row) bool {
 		b := &types.Eth1ERC20Indexed{}
