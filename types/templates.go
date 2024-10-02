@@ -1704,6 +1704,7 @@ type ITransaction struct {
 		// Usage    uint64
 		// UsedPerc float64
 	}
+	Reverted bool
 }
 
 type Transfer struct {

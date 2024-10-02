@@ -2907,6 +2907,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
 			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, !reverted, bigtable.GetMethodLabel(input, from_contractInteraction)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
+			Reverted:  reverted,
 		}
 
 		gaslimit, err := strconv.ParseUint(parityTrace[i].Action.Gas, 0, 0)
