@@ -2860,11 +2860,8 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		names[string(to)] = ""
 
 		if t > 0 {
-			if parityTrace[t].Error != "" {
-				internalTxFailed[t] = true
-			} else if internalTxFailed[t-1] { // check if parent transfer has failed
-				internalTxFailed[t] = true
-			}
+			// check if parent transfer has failed
+			internalTxFailed[t] = trace.Error != "" || internalTxFailed[t-1]
 		}
 	}
 
@@ -2885,7 +2882,7 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			// erigon's "suicide" might be misleading for users
 			tx_type = "selfdestruct"
 		}
-		input := make([]byte, 0)
+		var input []byte
 		if len(parityTrace[i].Action.Input) > 2 {
 			input, err = hex.DecodeString(parityTrace[i].Action.Input[2:])
 			if err != nil {
@@ -2901,6 +2898,9 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 
 		fromName := BigtableClient.GetAddressLabel(names[string(from)], from_contractInteraction)
 		toName := BigtableClient.GetAddressLabel(names[string(to)], to_contractInteraction)
+
+		transferHasError := parityTrace[i].Error != ""
+		internalTxFailed[i] = transferHasError || (i > 0 && internalTxFailed[i-1])
 
 		itx := types.ITransaction{
 			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
