@@ -221,3 +221,13 @@ func (n noSQLReaderDb) Preparex(query string) (*sqlx.Stmt, error) {
 	//TODO implement me
 	panic("implement me")
 }
+
+func (n noSQLReaderDb) SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (n noSQLReaderDb) Rebind(query string) string {
+	//TODO implement me
+	panic("implement me")
+}

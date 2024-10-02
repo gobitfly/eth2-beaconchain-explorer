@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"embed"
 	"encoding/hex"
@@ -41,8 +42,10 @@ type SQLReaderDb interface {
 	Close() error
 	Get(dest interface{}, query string, args ...interface{}) error
 	Select(dest interface{}, query string, args ...interface{}) error
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	Query(query string, args ...any) (*sql.Rows, error)
 	Preparex(query string) (*sqlx.Stmt, error)
+	Rebind(query string) string
 }
 
 // DB is a pointer to the explorer-database
