@@ -26,30 +26,36 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	validatorsPageData := types.ValidatorsPageData{}
 
-	currentStateCounts := services.LatestValidatorStateCounts()
+	var currentStateCounts []*types.ValidatorStateCountRow
+	err := db.ReaderDb.Select(&currentStateCounts, "SELECT status, validator_count FROM validators_status_counts")
+	if err != nil {
+		utils.LogError(err, "error retrieving validators state counts", 0, nil)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-	for _, state := range *currentStateCounts {
-		switch state.Name {
+	for _, status := range currentStateCounts {
+		switch status.Name {
 		case "pending":
-			validatorsPageData.PendingCount = state.Count
+			validatorsPageData.PendingCount = status.Count
 		case "active_online":
-			validatorsPageData.ActiveOnlineCount = state.Count
+			validatorsPageData.ActiveOnlineCount = status.Count
 		case "active_offline":
-			validatorsPageData.ActiveOfflineCount = state.Count
+			validatorsPageData.ActiveOfflineCount = status.Count
 		case "slashing_online":
-			validatorsPageData.SlashingOnlineCount = state.Count
+			validatorsPageData.SlashingOnlineCount = status.Count
 		case "slashing_offline":
-			validatorsPageData.SlashingOfflineCount = state.Count
+			validatorsPageData.SlashingOfflineCount = status.Count
 		case "slashed":
-			validatorsPageData.Slashed = state.Count
+			validatorsPageData.Slashed = status.Count
 		case "exiting_online":
-			validatorsPageData.ExitingOnlineCount = state.Count
+			validatorsPageData.ExitingOnlineCount = status.Count
 		case "exiting_offline":
-			validatorsPageData.ExitingOfflineCount = state.Count
+			validatorsPageData.ExitingOfflineCount = status.Count
 		case "exited":
-			validatorsPageData.VoluntaryExitsCount = state.Count
+			validatorsPageData.VoluntaryExitsCount = status.Count
 		case "deposited":
-			validatorsPageData.DepositedCount = state.Count
+			validatorsPageData.DepositedCount = status.Count
 		}
 	}
 
@@ -352,7 +358,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 	countFiltered := uint64(0)
 	if dataQuery.StateFilter != "" {
-		qry = fmt.Sprintf(`SELECT COUNT(*) FROM validators %s`, dataQuery.StateFilter)
+		qry = fmt.Sprintf(`SELECT SUM(validator_count) FROM validators_status_counts AS validators %s`, dataQuery.StateFilter)
 		err = db.ReaderDb.Get(&countFiltered, qry)
 		if err != nil {
 			utils.LogError(err, "error retrieving validators total count", 0, errFields)
