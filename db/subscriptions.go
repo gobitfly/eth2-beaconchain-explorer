@@ -252,8 +252,8 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 }
 
 // UpdateSubscriptionsLastSent updates `last_sent_ts` column of the `users_subscriptions` table.
-func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch uint64, useDB *sqlx.DB) error {
-	_, err := useDB.Exec(`
+func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch uint64) error {
+	_, err := FrontendWriterDB.Exec(`
 		UPDATE users_subscriptions
 		SET last_sent_ts = TO_TIMESTAMP($1), last_sent_epoch = $2
 		WHERE id = ANY($3)`, sent.Unix(), epoch, pq.Array(subscriptionIDs))
