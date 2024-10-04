@@ -102,6 +102,7 @@ message Eth1InternalTransaction {
     bytes value = 4;
     string error_msg = 5;
     string path = 6;
+    bool reverted = 7;
 }
 
 // Indexed structs stored in the data table
