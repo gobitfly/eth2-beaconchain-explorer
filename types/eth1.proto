@@ -183,6 +183,7 @@ message Eth1InternalTransactionIndexed {
     bytes from = 5;
     bytes to = 6;
     bytes value = 7;
+    bool reverted = 8;
 }
 
 // https://eips.ethereum.org/EIPS/eip-4844
