@@ -257,20 +257,53 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 						return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 					}
 
+					// @TODO check error value here
+					// check the previous value before updating status
+					// check if tx fails partially here
 					if trace.Error == "" {
 						c.Transactions[trace.TransactionPosition].Status = 1
+
+						tracePb := &types.Eth1InternalTransaction{
+							Type: trace.Type,
+							Path: fmt.Sprint(trace.TraceAddress),
+						}
+
+						tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
+						c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+
+					} else if trace.Error == "Reverted" {
+
+						for _, internalTx := range traces {
+							if internalTx.TransactionPosition == trace.TransactionPosition {
+
+								tracePb := &types.Eth1InternalTransaction{
+									Type:     internalTx.Type,
+									Path:     fmt.Sprint(internalTx.TraceAddress),
+									ErrorMsg: internalTx.Error,
+									Reverted: internalTx.Error != "Reverted", // @TODO ensure we only check for reverted error
+								}
+
+								tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = internalTx.ConvertFields()
+								c.Transactions[internalTx.TransactionPosition].Itx = append(c.Transactions[internalTx.TransactionPosition].Itx, tracePb)
+
+							}
+						}
+
+						c.Transactions[trace.TransactionPosition].Status = 2 // set status 2 if tx failed partially
+						c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
+
 					} else {
 						c.Transactions[trace.TransactionPosition].Status = 0
 						c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
-					}
 
-					tracePb := &types.Eth1InternalTransaction{
-						Type: trace.Type,
-						Path: fmt.Sprint(trace.TraceAddress),
-					}
+						tracePb := &types.Eth1InternalTransaction{
+							Type: trace.Type,
+							Path: fmt.Sprint(trace.TraceAddress),
+						}
 
-					tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
-					c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+						tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
+						c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+					}
 				}
 			}
 		}
@@ -344,6 +377,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		c.Transactions[i].GasUsed = r.GasUsed
 		c.Transactions[i].LogsBloom = r.Bloom[:]
 		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
+		// c.Transactions[i]. // @TODO update receipts
 
 		if r.BlobGasPrice != nil {
 			c.Transactions[i].BlobGasPrice = r.BlobGasPrice.Bytes()
