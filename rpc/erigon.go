@@ -271,38 +271,51 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 						tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
 						c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 
-					} else if trace.Error == "Reverted" {
-
-						for _, internalTx := range traces {
-							if internalTx.TransactionPosition == trace.TransactionPosition {
-
-								tracePb := &types.Eth1InternalTransaction{
-									Type:     internalTx.Type,
-									Path:     fmt.Sprint(internalTx.TraceAddress),
-									ErrorMsg: internalTx.Error,
-									Reverted: internalTx.Error != "Reverted", // @TODO ensure we only check for reverted error
-								}
-
-								tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = internalTx.ConvertFields()
-								c.Transactions[internalTx.TransactionPosition].Itx = append(c.Transactions[internalTx.TransactionPosition].Itx, tracePb)
-
-							}
-						}
-
-						c.Transactions[trace.TransactionPosition].Status = 2 // set status 2 if tx failed partially
-						c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
-
 					} else {
-						c.Transactions[trace.TransactionPosition].Status = 0
-						c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
+						if trace.Error == "Reverted" {
+							containsSuccesfulInternalTx := false
 
-						tracePb := &types.Eth1InternalTransaction{
-							Type: trace.Type,
-							Path: fmt.Sprint(trace.TraceAddress),
+							// check internal txs
+							for _, internalTx := range traces {
+								if internalTx.TransactionPosition == trace.TransactionPosition {
+									// check if tx contains any successful internal txs
+									// if it doesn't then set tx status to 0
+									if internalTx.Error == "" {
+										containsSuccesfulInternalTx = true
+									}
+
+									tracePb := &types.Eth1InternalTransaction{
+										Type:     internalTx.Type,
+										Path:     fmt.Sprint(internalTx.TraceAddress),
+										ErrorMsg: internalTx.Error,
+										Reverted: internalTx.Error == "Reverted", // @TODO ensure we only check for reverted error
+									}
+
+									tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
+									c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+								}
+							}
+
+							if containsSuccesfulInternalTx {
+								c.Transactions[trace.TransactionPosition].Status = 2 // set status to 2 if tx failed partially
+							} else {
+								c.Transactions[trace.TransactionPosition].Status = 0 // set status to 0 if all internal txs failed
+							}
+
+							c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
+
+						} else {
+							c.Transactions[trace.TransactionPosition].Status = 0
+							c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
+
+							tracePb := &types.Eth1InternalTransaction{
+								Type: trace.Type,
+								Path: fmt.Sprint(trace.TraceAddress),
+							}
+
+							tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
+							c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 						}
-
-						tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
-						c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 					}
 				}
 			}
