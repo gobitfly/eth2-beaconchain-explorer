@@ -756,13 +756,12 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
 	transactionPosition := 0
-	//var revertSource []int64
-	for index, trace := range traces {
+	toRevert := make(map[*GethTraceCallResult]struct{})
+	for i, trace := range traces {
 		if trace.TransactionPosition != transactionPosition {
-			//revertSource = []int64{}
+			toRevert = make(map[*GethTraceCallResult]struct{})
 		}
 		transactionPosition = trace.TransactionPosition
-
 		if trace.Type == "CREATE2" {
 		}
 		switch trace.Type {
@@ -778,19 +777,20 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 			logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
 		}
 
-		logger.Tracef("appending trace %v to tx %d:%x from %v to %v value %v", index, block.Number(), trace.TransactionPosition, trace.From, trace.To, trace.Value)
+		logger.Tracef("appending trace %v to tx %d:%x from %v to %v value %v", i, block.Number(), trace.TransactionPosition, trace.From, trace.To, trace.Value)
 
 		var reverted bool
-		/*	if trace.Error != "" {
-				reverted = true
-				// only save the highest root revert
-				if !isSubset(trace.TraceAddress, revertSource) {
-					revertSource = trace.TraceAddress
-				}
+		if trace.Error != "" {
+			reverted = true
+			calls := trace.Calls
+			for len(calls) != 0 {
+				toRevert[calls[0]] = struct{}{}
+				calls = append(calls[1:], calls[0].Calls...)
 			}
-			if isSubset(trace.TraceAddress, revertSource) {
-				reverted = true
-			}*/
+		}
+		if _, exist := toRevert[trace]; exist {
+			reverted = true
+		}
 
 		indexedTraces = append(indexedTraces, &Eth1InternalTransactionWithPosition{
 			Eth1InternalTransaction: types.Eth1InternalTransaction{
