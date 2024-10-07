@@ -87,12 +87,26 @@ func FormatBlockHash(hash []byte) template.HTML {
 	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/block/0x%x">0x%x…%x</a> %v`, hash, hash[:2], hash[len(hash)-2:], CopyButton(hex.EncodeToString(hash))))
 }
 
-func FormatTransactionHash(hash []byte, successful bool) template.HTML {
+func FormatTransactionHashFromStatus(hash []byte, status types.StatusType) template.HTML {
 	if len(hash) < 20 {
 		return template.HTML("N/A")
 	}
 	failedStr := ""
-	if !successful {
+	switch status {
+	case types.StatusType_FAILED:
+		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
+	case types.StatusType_PARTIAL:
+		failedStr = `<span data-toggle="tooltip" title="Transaction partially executed">❕</span>`
+	}
+	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>%s`, hash, hash[:3], hash[len(hash)-3:], failedStr))
+}
+
+func FormatTransactionHash(hash []byte, success bool) template.HTML {
+	if len(hash) < 20 {
+		return template.HTML("N/A")
+	}
+	failedStr := ""
+	if !success {
 		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
 	}
 	return template.HTML(fmt.Sprintf(`<a class="text-monospace" href="/tx/0x%x">0x%x…%x</a>%s`, hash, hash[:3], hash[len(hash)-3:], failedStr))

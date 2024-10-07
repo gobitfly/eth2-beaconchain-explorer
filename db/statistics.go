@@ -1637,7 +1637,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 				totalBlobCount = totalBlobCount.Add(decimal.NewFromInt(int64(len(tx.BlobVersionedHashes))))
 
 			default:
-				logger.Fatalf("error unknown tx type %v hash: %x", tx.Status, tx.Hash)
+				logger.Fatalf("error unknown tx type %v hash: %x", tx.Type, tx.Hash)
 			}
 			totalTxFees = totalTxFees.Add(txFees)
 
@@ -1646,7 +1646,7 @@ func WriteExecutionChartSeriesForDay(day int64) error {
 				failedTxCount += 1
 				totalFailedGasUsed = totalFailedGasUsed.Add(gasUsed)
 				totalFailedTxFee = totalFailedTxFee.Add(txFees)
-			case 1:
+			case 1, 2:
 				successTxCount += 1
 			default:
 				logger.Fatalf("error unknown status code %v hash: %x", tx.Status, tx.Hash)

@@ -40,6 +40,12 @@ message Eth1Withdrawal {
     bytes amount = 4;
 }
 
+enum StatusType {
+    FAILED = 0;
+    SUCCESS = 1;
+    PARTIAL = 2;
+}
+
 message Eth1Transaction {
     uint32 type = 1;
     uint64 nonce = 2;
@@ -63,7 +69,7 @@ message Eth1Transaction {
     uint64 commulative_gas_used = 18;
     uint64 gas_used = 19;
     bytes logs_bloom = 20;
-    uint64 status = 21;
+    StatusType status = 21;
     string error_msg = 22;
     repeated Eth1Log logs = 23;
 
@@ -102,6 +108,7 @@ message Eth1InternalTransaction {
     bytes value = 4;
     string error_msg = 5;
     string path = 6;
+    bool reverted = 7;
 }
 
 // Indexed structs stored in the data table
@@ -173,6 +180,8 @@ message Eth1TransactionIndexed {
     // EIP 4844
     bytes blob_tx_fee = 13;
     bytes blob_gas_price = 14;
+
+    StatusType status = 15;
 }
 
 message Eth1InternalTransactionIndexed {
@@ -183,6 +192,7 @@ message Eth1InternalTransactionIndexed {
     bytes from = 5;
     bytes to = 6;
     bytes value = 7;
+    bool reverted = 8;
 }
 
 // https://eips.ethereum.org/EIPS/eip-4844
