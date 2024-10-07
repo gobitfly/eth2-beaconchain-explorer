@@ -257,64 +257,55 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 						return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 					}
 
-					// check if tx fails partially here
-					if trace.Error == "" {
-						c.Transactions[trace.TransactionPosition].Status = 1
+					var tracePb *types.Eth1InternalTransaction
 
-						tracePb := &types.Eth1InternalTransaction{
-							Type: trace.Type,
-							Path: fmt.Sprint(trace.TraceAddress),
+					if c.Transactions[trace.TransactionPosition].Status == 0 {
+						tracePb = &types.Eth1InternalTransaction{
+							Type:     trace.Type,
+							Path:     fmt.Sprint(trace.TraceAddress),
+							Reverted: false,
+							ErrorMsg: trace.Error,
 						}
-
-						tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
-						c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
-
+					} else if c.Transactions[trace.TransactionPosition].Status == 2 {
+						tracePb = &types.Eth1InternalTransaction{
+							Type:     trace.Type,
+							Path:     fmt.Sprint(trace.TraceAddress),
+							Reverted: true,
+							ErrorMsg: trace.Error,
+						}
 					} else {
-						if trace.Error == "Reverted" {
-							containsSuccesfulInternalTx := false
-
-							// check internal txs
-							for _, internalTx := range traces {
-								if internalTx.TransactionPosition == trace.TransactionPosition {
-									// check if tx contains any successful internal txs
-									// if it doesn't then set tx status to 0
-									if internalTx.Error == "" {
-										containsSuccesfulInternalTx = true
-									}
-
-									tracePb := &types.Eth1InternalTransaction{
-										Type:     internalTx.Type,
-										Path:     fmt.Sprint(internalTx.TraceAddress),
-										ErrorMsg: internalTx.Error,
-										Reverted: internalTx.Error == "Reverted",
-									}
-
-									tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
-									c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+						if trace.Error != "" {
+							if trace.Error == "Reverted" {
+								c.Transactions[trace.TransactionPosition].Status = 2
+								tracePb = &types.Eth1InternalTransaction{
+									Type:     trace.Type,
+									Path:     fmt.Sprint(trace.TraceAddress),
+									Reverted: true,
+									ErrorMsg: trace.Error,
+								}
+							} else {
+								c.Transactions[trace.TransactionPosition].Status = 0
+								tracePb = &types.Eth1InternalTransaction{
+									Type:     trace.Type,
+									Path:     fmt.Sprint(trace.TraceAddress),
+									Reverted: false,
+									ErrorMsg: trace.Error,
 								}
 							}
-
-							if containsSuccesfulInternalTx {
-								c.Transactions[trace.TransactionPosition].Status = 2 // set status to 2 if tx failed partially
-							} else {
-								c.Transactions[trace.TransactionPosition].Status = 0 // set status to 0 if all internal txs failed
-							}
-
-							c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
-
 						} else {
-							c.Transactions[trace.TransactionPosition].Status = 0
-							c.Transactions[trace.TransactionPosition].ErrorMsg = trace.Error
-
-							tracePb := &types.Eth1InternalTransaction{
-								Type: trace.Type,
-								Path: fmt.Sprint(trace.TraceAddress),
+							c.Transactions[trace.TransactionPosition].Status = 1
+							tracePb = &types.Eth1InternalTransaction{
+								Type:     trace.Type,
+								Path:     fmt.Sprint(trace.TraceAddress),
+								Reverted: false,
+								ErrorMsg: trace.Error,
 							}
-
-							tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
-							c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 						}
 					}
+
+					tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
+					c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
+
 				}
 			}
 		}
