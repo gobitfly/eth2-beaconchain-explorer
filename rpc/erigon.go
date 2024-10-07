@@ -257,8 +257,6 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 						return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 					}
 
-					// @TODO check error value here
-					// check the previous value before updating status
 					// check if tx fails partially here
 					if trace.Error == "" {
 						c.Transactions[trace.TransactionPosition].Status = 1
@@ -288,7 +286,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 										Type:     internalTx.Type,
 										Path:     fmt.Sprint(internalTx.TraceAddress),
 										ErrorMsg: internalTx.Error,
-										Reverted: internalTx.Error == "Reverted", // @TODO ensure we only check for reverted error
+										Reverted: internalTx.Error == "Reverted",
 									}
 
 									tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
@@ -390,7 +388,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		c.Transactions[i].GasUsed = r.GasUsed
 		c.Transactions[i].LogsBloom = r.Bloom[:]
 		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
-		// c.Transactions[i]. // @TODO update receipts
+		c.Transactions[i].Status = r.Status
 
 		if r.BlobGasPrice != nil {
 			c.Transactions[i].BlobGasPrice = r.BlobGasPrice.Bytes()

@@ -1014,6 +1014,7 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			BlobGasPrice:       tx.GetBlobGasPrice(),
 			IsContractCreation: isContract,
 			ErrorMsg:           tx.GetErrorMsg(),
+			Status:             tx.Status,
 		}
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -2346,7 +2347,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
+			utils.FormatTransactionHash(t.Hash, t.Status),
 			utils.FormatMethod(bigtable.GetMethodLabel(t.MethodId, contractInteraction)),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
@@ -2664,8 +2665,15 @@ func (bigtable *Bigtable) GetAddressBlobTableData(address []byte, pageToken stri
 		fromName := names[string(t.From)]
 		toName := names[string(t.To)]
 
+		var status uint64
+		if t.ErrorMsg == "" {
+			status = 1
+		} else {
+			status = 0
+		}
+
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
+			utils.FormatTransactionHash(t.Hash, status),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2824,8 +2832,15 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 			t.Type = "selfdestruct"
 		}
 
+		var status uint64
+		if t.Reverted {
+			status = 0
+		} else {
+			status = 1
+		}
+
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash, !t.Reverted),
+			utils.FormatTransactionHash(t.ParentHash, status),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, BigtableClient.GetAddressLabel(fromName, from_contractInteraction), from_contractInteraction != types.CONTRACT_NONE, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -3153,7 +3168,7 @@ func (bigtable *Bigtable) GetAddressErc20TableData(address []byte, pageToken str
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash, true),
+			utils.FormatTransactionHash(t.ParentHash, 1),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -3273,7 +3288,7 @@ func (bigtable *Bigtable) GetAddressErc721TableData(address []byte, pageToken st
 		toName := names[string(t.To)]
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash, true),
+			utils.FormatTransactionHash(t.ParentHash, 1),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -3389,7 +3404,7 @@ func (bigtable *Bigtable) GetAddressErc1155TableData(address []byte, pageToken s
 		toName := names[string(t.To)]
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash, true),
+			utils.FormatTransactionHash(t.ParentHash, 1),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, fromName, false, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -4522,7 +4537,7 @@ func (bigtable *Bigtable) GetTokenTransactionsTableData(token []byte, address []
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash, true),
+			utils.FormatTransactionHash(t.ParentHash, 1),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			from,
 			utils.FormatInOutSelf(address, t.From, t.To),
