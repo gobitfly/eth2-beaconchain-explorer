@@ -762,8 +762,6 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 			toRevert = make(map[*GethTraceCallResult]struct{})
 		}
 		transactionPosition = trace.TransactionPosition
-		if trace.Type == "CREATE2" {
-		}
 		switch trace.Type {
 		case "CREATE2":
 			trace.Type = "CREATE"
