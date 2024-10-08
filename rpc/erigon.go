@@ -224,6 +224,41 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 
 	}
 
+	if err = client.rpcClient.CallContext(ctx, &receipts, "eth_getBlockReceipts", fmt.Sprintf("0x%x", block.NumberU64())); err != nil {
+		return nil, nil, fmt.Errorf("error retrieving receipts for block %v: %w", block.Number(), err)
+	}
+
+	timings.Receipts = time.Since(start)
+	start = time.Now()
+
+	for i, r := range receipts {
+		c.Transactions[i].ContractAddress = r.ContractAddress[:]
+		c.Transactions[i].CommulativeGasUsed = r.CumulativeGasUsed
+		c.Transactions[i].GasUsed = r.GasUsed
+		c.Transactions[i].LogsBloom = r.Bloom[:]
+		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
+		c.Transactions[i].Status = r.Status
+
+		if r.BlobGasPrice != nil {
+			c.Transactions[i].BlobGasPrice = r.BlobGasPrice.Bytes()
+		}
+		c.Transactions[i].BlobGasUsed = r.BlobGasUsed
+
+		for _, l := range r.Logs {
+			pbLog := &types.Eth1Log{
+				Address: l.Address.Bytes(),
+				Data:    l.Data,
+				Removed: l.Removed,
+				Topics:  make([][]byte, 0, len(l.Topics)),
+			}
+
+			for _, t := range l.Topics {
+				pbLog.Topics = append(pbLog.Topics, t.Bytes())
+			}
+			c.Transactions[i].Logs = append(c.Transactions[i].Logs, pbLog)
+		}
+	}
+
 	g := new(errgroup.Group)
 
 	g.Go(func() error {
@@ -244,7 +279,9 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				}
 				traceError = err
 			} else {
+				revertSource := make([][]int64, len(c.Transactions))
 				for _, trace := range traces {
+
 					if trace.Type == "reward" {
 						continue
 					}
@@ -257,56 +294,33 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 						return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 					}
 
-					var tracePb *types.Eth1InternalTransaction
+					tracePb := &types.Eth1InternalTransaction{
+						Type:     trace.Type,
+						Path:     fmt.Sprint(trace.TraceAddress),
+						Reverted: false,
+						ErrorMsg: trace.Error,
+					}
 
-					if c.Transactions[trace.TransactionPosition].Status == 0 {
-						tracePb = &types.Eth1InternalTransaction{
-							Type:     trace.Type,
-							Path:     fmt.Sprint(trace.TraceAddress),
-							Reverted: false,
-							ErrorMsg: trace.Error,
+					if trace.Error != "" {
+
+						if !isSubset(trace.TraceAddress, revertSource[trace.TransactionPosition]) {
+							revertSource[trace.TransactionPosition] = trace.TraceAddress
 						}
-					} else if c.Transactions[trace.TransactionPosition].Status == 2 {
-						tracePb = &types.Eth1InternalTransaction{
-							Type:     trace.Type,
-							Path:     fmt.Sprint(trace.TraceAddress),
-							Reverted: true,
-							ErrorMsg: trace.Error,
+						if c.Transactions[trace.TransactionPosition].Status == 1 {
+							c.Transactions[trace.TransactionPosition].Status = 2
 						}
-					} else {
-						if trace.Error != "" {
-							if trace.Error == "Reverted" {
-								c.Transactions[trace.TransactionPosition].Status = 2
-								tracePb = &types.Eth1InternalTransaction{
-									Type:     trace.Type,
-									Path:     fmt.Sprint(trace.TraceAddress),
-									Reverted: true,
-									ErrorMsg: trace.Error,
-								}
-							} else {
-								c.Transactions[trace.TransactionPosition].Status = 0
-								tracePb = &types.Eth1InternalTransaction{
-									Type:     trace.Type,
-									Path:     fmt.Sprint(trace.TraceAddress),
-									Reverted: false,
-									ErrorMsg: trace.Error,
-								}
-							}
-						} else {
-							c.Transactions[trace.TransactionPosition].Status = 1
-							tracePb = &types.Eth1InternalTransaction{
-								Type:     trace.Type,
-								Path:     fmt.Sprint(trace.TraceAddress),
-								Reverted: false,
-								ErrorMsg: trace.Error,
-							}
-						}
+
+					}
+
+					if isSubset(trace.TraceAddress, revertSource[trace.TransactionPosition]) {
+						tracePb.Reverted = true
 					}
 
 					tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
 					c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 
 				}
+
 			}
 		}
 
@@ -365,41 +379,6 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 
 		return nil
 	})
-
-	if err = client.rpcClient.CallContext(ctx, &receipts, "eth_getBlockReceipts", fmt.Sprintf("0x%x", block.NumberU64())); err != nil {
-		return nil, nil, fmt.Errorf("error retrieving receipts for block %v: %w", block.Number(), err)
-	}
-
-	timings.Receipts = time.Since(start)
-	start = time.Now()
-
-	for i, r := range receipts {
-		c.Transactions[i].ContractAddress = r.ContractAddress[:]
-		c.Transactions[i].CommulativeGasUsed = r.CumulativeGasUsed
-		c.Transactions[i].GasUsed = r.GasUsed
-		c.Transactions[i].LogsBloom = r.Bloom[:]
-		c.Transactions[i].Logs = make([]*types.Eth1Log, 0, len(r.Logs))
-		c.Transactions[i].Status = r.Status
-
-		if r.BlobGasPrice != nil {
-			c.Transactions[i].BlobGasPrice = r.BlobGasPrice.Bytes()
-		}
-		c.Transactions[i].BlobGasUsed = r.BlobGasUsed
-
-		for _, l := range r.Logs {
-			pbLog := &types.Eth1Log{
-				Address: l.Address.Bytes(),
-				Data:    l.Data,
-				Removed: l.Removed,
-				Topics:  make([][]byte, 0, len(l.Topics)),
-			}
-
-			for _, t := range l.Topics {
-				pbLog.Topics = append(pbLog.Topics, t.Bytes())
-			}
-			c.Transactions[i].Logs = append(c.Transactions[i].Logs, pbLog)
-		}
-	}
 
 	if err := g.Wait(); err != nil {
 		return nil, nil, fmt.Errorf("error retrieving traces for block %v: %w", block.Number(), err)
@@ -791,4 +770,19 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 		arg["gasPrice"] = (*hexutil.Big)(msg.GasPrice)
 	}
 	return arg
+}
+
+func isSubset[E comparable](big []E, short []E) bool {
+	if len(short) == 0 {
+		return false
+	}
+	if len(big) < len(short) {
+		return false
+	}
+	for i := 0; i < len(short); i++ {
+		if big[i] != short[i] {
+			return false
+		}
+	}
+	return true
 }
