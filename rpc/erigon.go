@@ -279,7 +279,9 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				}
 				traceError = err
 			} else {
-				revertSource := make([][]int64, len(c.Transactions))
+				revertSource := make([]int64, len(c.Transactions))
+				currentTxIndex := 0
+
 				for _, trace := range traces {
 
 					if trace.Type == "reward" {
@@ -294,6 +296,10 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 						return fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 					}
 
+					if currentTxIndex != trace.TransactionPosition {
+						revertSource = []int64{}
+					}
+
 					tracePb := &types.Eth1InternalTransaction{
 						Type:     trace.Type,
 						Path:     fmt.Sprint(trace.TraceAddress),
@@ -303,8 +309,8 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 
 					if trace.Error != "" {
 
-						if !isSubset(trace.TraceAddress, revertSource[trace.TransactionPosition]) {
-							revertSource[trace.TransactionPosition] = trace.TraceAddress
+						if !isSubset(trace.TraceAddress, revertSource) {
+							revertSource = trace.TraceAddress
 						}
 						if c.Transactions[trace.TransactionPosition].Status == 1 {
 							c.Transactions[trace.TransactionPosition].Status = 2
@@ -312,13 +318,14 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 
 					}
 
-					if isSubset(trace.TraceAddress, revertSource[trace.TransactionPosition]) {
+					if isSubset(trace.TraceAddress, revertSource) {
 						tracePb.Reverted = true
 					}
 
 					tracePb.From, tracePb.To, tracePb.Value, tracePb.Type = trace.ConvertFields()
 					c.Transactions[trace.TransactionPosition].Itx = append(c.Transactions[trace.TransactionPosition].Itx, tracePb)
 
+					currentTxIndex = trace.TransactionPosition
 				}
 
 			}
@@ -772,15 +779,15 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 	return arg
 }
 
-func isSubset[E comparable](big []E, short []E) bool {
-	if len(short) == 0 {
+func isSubset[E comparable](big []E, subset []E) bool {
+	if len(subset) == 0 {
 		return false
 	}
-	if len(big) < len(short) {
+	if len(big) < len(subset) {
 		return false
 	}
-	for i := 0; i < len(short); i++ {
-		if big[i] != short[i] {
+	for i := 0; i < len(subset); i++ {
+		if big[i] != subset[i] {
 			return false
 		}
 	}
