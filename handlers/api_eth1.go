@@ -22,6 +22,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"golang.org/x/exp/maps"
+	"golang.org/x/sync/errgroup"
 )
 
 // ApiEth1Deposit godoc
@@ -483,6 +484,11 @@ func formatBlocksForApiResponse(blocks []*types.Eth1BlockIndexed, relaysData map
 }
 
 func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionPerformanceResponse, error) {
+	obs := utils.NewTimingsObserver("getValidatorExecutionPerformance")
+	defer obs.End(time.Second * 10)
+
+	g := errgroup.Group{}
+
 	latestEpoch := services.LatestEpoch()
 	last31dTimestamp := time.Now().Add(-31 * utils.Day)
 	last7dTimestamp := time.Now().Add(-7 * utils.Day)
@@ -494,36 +500,44 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 	}
 	validatorsPQArray := pq.Array(queryIndices)
 
-	var execBlocks []types.ExecBlockProposer
-	err := db.ReaderDb.Select(&execBlocks,
-		`SELECT 
-			exec_block_number, 
-			proposer 
-			FROM blocks 
-		WHERE proposer = ANY($1) 
-		AND exec_block_number IS NOT NULL 
-		AND exec_block_number > 0 
-		AND epoch > $2`,
-		validatorsPQArray,
-		monthRange, // 32d range
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error cannot get proposed blocks from db with indicies: %+v and epoch: %v, err: %w", queryIndices, latestEpoch, err)
-	}
+	var blocks []*types.Eth1BlockIndexed
+	var blockList []uint64
+	var blockToProposerMap map[uint64]types.ExecBlockProposer
+	var relaysData map[common.Hash]types.RelaysData
+	g.Go(func() error {
+		defer obs.Timer("getBlocks")()
+		var execBlocks []types.ExecBlockProposer
+		err := db.ReaderDb.Select(&execBlocks,
+			`SELECT 
+				exec_block_number, 
+				proposer 
+				FROM blocks 
+			WHERE proposer = ANY($1) 
+			AND exec_block_number IS NOT NULL 
+			AND exec_block_number > 0 
+			AND epoch > $2`,
+			validatorsPQArray,
+			monthRange, // 32d range
+		)
+		if err != nil {
+			return fmt.Errorf("error cannot get proposed blocks from db with indicies: %+v and epoch: %v, err: %w", queryIndices, latestEpoch, err)
+		}
 
-	blockList, blockToProposerMap := getBlockNumbersAndMapProposer(execBlocks)
+		blockList, blockToProposerMap = getBlockNumbersAndMapProposer(execBlocks)
 
-	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
-	if err != nil {
-		return nil, fmt.Errorf("error cannot get blocks from bigtable using GetBlocksIndexedMultiple: %w", err)
-	}
+		blocks, err = db.BigtableClient.GetBlocksIndexedMultiple(blockList, 10000)
+		if err != nil {
+			return fmt.Errorf("error cannot get blocks from bigtable using GetBlocksIndexedMultiple: %w", err)
+		}
+
+		relaysData, err = db.GetRelayDataForIndexedBlocks(blocks)
+		if err != nil {
+			return fmt.Errorf("error can not get relays data: %w", err)
+		}
+		return nil
+	})
 
 	resultPerProposer := make(map[uint64]types.ExecutionPerformanceResponse)
-
-	relaysData, err := db.GetRelayDataForIndexedBlocks(blocks)
-	if err != nil {
-		return nil, fmt.Errorf("error can not get relays data: %w", err)
-	}
 
 	type LongPerformanceResponse struct {
 		Performance365d  string `db:"el_performance_365d" json:"performance365d"`
@@ -533,34 +547,47 @@ func getValidatorExecutionPerformance(queryIndices []uint64) ([]types.ExecutionP
 
 	performanceList := []LongPerformanceResponse{}
 
-	err = db.ReaderDb.Select(&performanceList, `
+	g.Go(func() error {
+		defer obs.Timer("getPerformance")()
+		err := db.ReaderDb.Select(&performanceList, `
 		SELECT 
 		validatorindex,
 		CAST(COALESCE(mev_performance_365d, 0) AS text) AS el_performance_365d,
 		CAST(COALESCE(mev_performance_total, 0) AS text) AS el_performance_total
 		FROM validator_performance WHERE validatorindex = ANY($1)`, validatorsPQArray)
-	if err != nil {
-		return nil, fmt.Errorf("error can cl performance from db: %w", err)
-	}
-	for _, val := range performanceList {
-		performance365d, _ := new(big.Int).SetString(val.Performance365d, 10)
-		performanceTotal, _ := new(big.Int).SetString(val.PerformanceTotal, 10)
-		resultPerProposer[val.ValidatorIndex] = types.ExecutionPerformanceResponse{
-			Performance1d:    big.NewInt(0),
-			Performance7d:    big.NewInt(0),
-			Performance31d:   big.NewInt(0),
-			Performance365d:  performance365d,
-			PerformanceTotal: performanceTotal,
-			ValidatorIndex:   val.ValidatorIndex,
+		if err != nil {
+			return fmt.Errorf("error can cl performance from db: %w", err)
 		}
-	}
+		for _, val := range performanceList {
+			performance365d, _ := new(big.Int).SetString(val.Performance365d, 10)
+			performanceTotal, _ := new(big.Int).SetString(val.PerformanceTotal, 10)
+			resultPerProposer[val.ValidatorIndex] = types.ExecutionPerformanceResponse{
+				Performance1d:    big.NewInt(0),
+				Performance7d:    big.NewInt(0),
+				Performance31d:   big.NewInt(0),
+				Performance365d:  performance365d,
+				PerformanceTotal: performanceTotal,
+				ValidatorIndex:   val.ValidatorIndex,
+			}
+		}
+		return nil
+	})
 
 	firstEpochTime := utils.EpochToTime(0)
-	lastStatsDay, err := services.LatestExportedStatisticDay()
-	if err != nil && err != db.ErrNoStats {
-		return nil, fmt.Errorf("error retrieving latest exported statistics day: %v", err)
-	} else if err == nil {
-		firstEpochTime = utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
+	g.Go(func() error {
+		defer obs.Timer("getFirstEpochTime")()
+		lastStatsDay, err := services.LatestExportedStatisticDay()
+		if err != nil && err != db.ErrNoStats {
+			return fmt.Errorf("error retrieving latest exported statistics day: %v", err)
+		} else if err == nil {
+			firstEpochTime = utils.EpochToTime((lastStatsDay + 1) * utils.EpochsPerDay())
+		}
+		return nil
+	})
+
+	err := g.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	for _, block := range blocks {
