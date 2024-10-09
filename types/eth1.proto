@@ -40,12 +40,6 @@ message Eth1Withdrawal {
     bytes amount = 4;
 }
 
-enum StatusType {
-    FAILED = 0;
-    SUCCESS = 1;
-    PARTIAL = 2;
-}
-
 message Eth1Transaction {
     uint32 type = 1;
     uint64 nonce = 2;
@@ -69,7 +63,7 @@ message Eth1Transaction {
     uint64 commulative_gas_used = 18;
     uint64 gas_used = 19;
     bytes logs_bloom = 20;
-    StatusType status = 21;
+    uint64 status = 21;
     string error_msg = 22;
     repeated Eth1Log logs = 23;
 
@@ -108,7 +102,6 @@ message Eth1InternalTransaction {
     bytes value = 4;
     string error_msg = 5;
     string path = 6;
-    bool reverted = 7;
 }
 
 // Indexed structs stored in the data table
@@ -160,6 +153,12 @@ message Eth1WithdrawalIndexed {
     bytes address = 4;
     bytes amount = 5;
     google.protobuf.Timestamp time = 6;
+}
+
+enum StatusType {
+    FAILED = 0;
+    SUCCESS = 1;
+    PARTIAL = 2;
 }
 
 message Eth1TransactionIndexed {

@@ -256,7 +256,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		c.Transactions[txPosition].GasUsed = receipt.GasUsed
 		c.Transactions[txPosition].LogsBloom = receipt.Bloom[:]
 		c.Transactions[txPosition].Logs = make([]*types.Eth1Log, 0, len(receipt.Logs))
-		c.Transactions[txPosition].Status = types.StatusType(receipt.Status)
+		c.Transactions[txPosition].Status = receipt.Status
 
 		if receipt.BlobGasPrice != nil {
 			c.Transactions[txPosition].BlobGasPrice = receipt.BlobGasPrice.Bytes()
@@ -280,9 +280,6 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		}
 		for ; traceIndex < len(traces) && traces[traceIndex].txPosition == txPosition; traceIndex++ {
 			c.Transactions[txPosition].Itx = append(c.Transactions[txPosition].Itx, &traces[traceIndex].Eth1InternalTransaction)
-			if traces[traceIndex].Reverted && c.Transactions[txPosition].Status == types.StatusType_SUCCESS {
-				c.Transactions[txPosition].Status = types.StatusType_PARTIAL
-			}
 		}
 	}
 	return c, timings, nil
@@ -702,13 +699,7 @@ func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1Inte
 	}
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
-	transactionPosition := 0
-	var revertSource []int64
 	for _, trace := range traces {
-		if trace.TransactionPosition != transactionPosition {
-			revertSource = []int64{}
-		}
-		transactionPosition = trace.TransactionPosition
 		if trace.Type == "reward" {
 			continue
 		}
@@ -717,18 +708,6 @@ func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1Inte
 		}
 		if trace.TransactionPosition >= len(block.Transactions()) {
 			return nil, fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
-		}
-
-		var reverted bool
-		if trace.Error != "" {
-			reverted = true
-			// only save the highest root revert
-			if !isSubset(trace.TraceAddress, revertSource) {
-				revertSource = trace.TraceAddress
-			}
-		}
-		if isSubset(trace.TraceAddress, revertSource) {
-			reverted = true
 		}
 
 		from, to, value, traceType := trace.ConvertFields()
@@ -740,7 +719,6 @@ func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1Inte
 				Value:    value,
 				ErrorMsg: trace.Error,
 				Path:     fmt.Sprint(trace.TraceAddress),
-				Reverted: reverted,
 			},
 			txPosition: trace.TransactionPosition,
 		})
@@ -755,13 +733,7 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 	}
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
-	transactionPosition := 0
-	toRevert := make(map[*GethTraceCallResult]struct{})
 	for i, trace := range traces {
-		if trace.TransactionPosition != transactionPosition {
-			toRevert = make(map[*GethTraceCallResult]struct{})
-		}
-		transactionPosition = trace.TransactionPosition
 		switch trace.Type {
 		case "CREATE2":
 			trace.Type = "CREATE"
@@ -777,19 +749,6 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 
 		logger.Tracef("appending trace %v to tx %d:%x from %v to %v value %v", i, block.Number(), trace.TransactionPosition, trace.From, trace.To, trace.Value)
 
-		var reverted bool
-		if trace.Error != "" {
-			reverted = true
-			calls := trace.Calls
-			for len(calls) != 0 {
-				toRevert[calls[0]] = struct{}{}
-				calls = append(calls[1:], calls[0].Calls...)
-			}
-		}
-		if _, exist := toRevert[trace]; exist {
-			reverted = true
-		}
-
 		indexedTraces = append(indexedTraces, &Eth1InternalTransactionWithPosition{
 			Eth1InternalTransaction: types.Eth1InternalTransaction{
 				Type:     strings.ToLower(trace.Type),
@@ -798,27 +757,11 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 				Value:    common.FromHex(trace.Value),
 				ErrorMsg: trace.Error,
 				Path:     "0",
-				Reverted: reverted,
 			},
 			txPosition: trace.TransactionPosition,
 		})
 	}
 	return indexedTraces, nil
-}
-
-func isSubset[E comparable](big []E, short []E) bool {
-	if len(short) == 0 {
-		return false
-	}
-	if len(big) < len(short) {
-		return false
-	}
-	for i := 0; i < len(short); i++ {
-		if big[i] != short[i] {
-			return false
-		}
-	}
-	return true
 }
 
 type Eth1InternalTransactionWithPosition struct {

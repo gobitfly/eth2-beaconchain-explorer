@@ -1014,8 +1014,17 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			BlobGasPrice:       tx.GetBlobGasPrice(),
 			IsContractCreation: isContract,
 			ErrorMsg:           tx.GetErrorMsg(),
-			Status:             tx.Status,
+			Status:             types.StatusType(tx.Status),
 		}
+		if indexedTx.Status == types.StatusType_SUCCESS {
+			for _, itx := range tx.Itx {
+				if itx.ErrorMsg != "" {
+					indexedTx.Status = types.StatusType_PARTIAL
+					break
+				}
+			}
+		}
+
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -1286,6 +1295,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 		}
 		iReversed := reversePaddedIndex(i, TX_PER_BLOCK_LIMIT)
 
+		var revertSource string
 		for j, itx := range tx.GetItx() {
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
@@ -1294,6 +1304,18 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 
 			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level and empty calls
 				continue
+			}
+
+			var reverted bool
+			if itx.ErrorMsg != "" {
+				reverted = true
+				// only save the highest root revert
+				if !strings.HasPrefix(itx.Path, revertSource) {
+					revertSource = strings.TrimSuffix(itx.Path, "]")
+				}
+			}
+			if strings.HasPrefix(itx.Path, revertSource) {
+				reverted = true
 			}
 
 			key := fmt.Sprintf("%s:ITX:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
@@ -1305,7 +1327,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				From:        itx.GetFrom(),
 				To:          itx.GetTo(),
 				Value:       itx.GetValue(),
-				Reverted:    itx.GetReverted(),
+				Reverted:    reverted,
 			}
 
 			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
