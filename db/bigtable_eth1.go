@@ -1016,6 +1016,13 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			ErrorMsg:           tx.GetErrorMsg(),
 			Status:             tx.Status,
 		}
+
+		for _, itx := range tx.Itx {
+			if itx.ErrorMsg != "" && indexedTx.Status == types.StatusType_SUCCESS {
+				indexedTx.Status = types.StatusType_PARTIAL
+			}
+		}
+
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -1271,7 +1278,7 @@ func (bigtable *Bigtable) TransformContract(blk *types.Eth1Block, cache *freecac
 // Family: f
 // Column: <chainID>:ITX:<HASH>:<paddedITXIndex>
 // Cell:   nil
-func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) { // test
 	startTime := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("bt_transform_itx").Observe(time.Since(startTime).Seconds())
@@ -1286,6 +1293,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 		}
 		iReversed := reversePaddedIndex(i, TX_PER_BLOCK_LIMIT)
 
+		var revertSource []int64
 		for j, itx := range tx.GetItx() {
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
@@ -1307,6 +1315,42 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				Value:       itx.GetValue(),
 				Reverted:    itx.GetReverted(),
 			}
+
+			var itxPath []int64
+			trimPath := strings.Trim(itx.Path, "[]")
+			if trimPath == "" {
+				fmt.Printf("\n path is empty %v \n", trimPath)
+				return
+			}
+			trimPath = strings.ReplaceAll(trimPath, " ", ",")
+			splitPath := strings.Split(trimPath, ",")
+
+			for _, p := range splitPath {
+				trimP := strings.TrimSpace(p)
+				parsedPath, err := strconv.ParseInt(trimP, 10, 64)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				itxPath = append(itxPath, parsedPath)
+			}
+
+			if tx.ErrorMsg != "" {
+				itx.Reverted = true
+
+				if !isSubset(itxPath, revertSource) {
+					revertSource = itxPath
+				}
+			}
+
+			if isSubset(itxPath, revertSource) {
+				itx.Reverted = true
+			}
+
+			fmt.Printf("\n Block Number: %d\n", blk.GetNumber())
+			fmt.Printf("\n itx.Path: %s \n ", itx.Path)
+			fmt.Printf("\n itxPath: %v \n ", itxPath)
+			fmt.Printf("\n itx.Reverted %v \n ", itx.Reverted)
 
 			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
 			bigtable.markBalanceUpdate(indexedItx.From, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -4879,3 +4923,30 @@ func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNow
 	}
 	return history, nil
 }
+
+// func (bigtable *Bigtable) Get() (int, error) {
+
+// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+// 	defer cancel()
+
+// 	prefix := bigtable.chainId + ":"
+// 	lastBlock := 0
+// 	err := bigtable.tableBlocks.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
+// 		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+
+// 		if err != nil {
+// 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
+// 			return false
+// 		}
+// 		c = MAX_EL_BLOCK_NUMBER - c
+
+// 		lastBlock = c
+// 		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
+// 	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+
+// 	if err != nil {
+// 		return 0, err
+// 	}
+
+// 	return lastBlock, nil
+// }
