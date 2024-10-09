@@ -34,8 +34,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
+	eth_rpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/go-redis/redis/v8"
-
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -4924,29 +4924,106 @@ func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNow
 	return history, nil
 }
 
-// func (bigtable *Bigtable) Get() (int, error) {
+func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency int64, cache *freecache.Cache) error {
+	g := new(errgroup.Group)
+	g.SetLimit(int(concurrency))
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-// 	defer cancel()
+	logrus.Infof("reindexing txs for blocks from %d to %d", start, end)
 
-// 	prefix := bigtable.chainId + ":"
-// 	lastBlock := 0
-// 	err := bigtable.tableBlocks.ReadRows(ctx, gcp_bigtable.PrefixRange(prefix), func(r gcp_bigtable.Row) bool {
-// 		c, err := strconv.Atoi(strings.Replace(r.Key(), prefix, "", 1))
+	for i := start; i <= end; i += batchSize {
+		firstBlock := int64(i)
+		lastBlock := firstBlock + batchSize - 1
+		if lastBlock > end {
+			lastBlock = end
+		}
 
-// 		if err != nil {
-// 			logger.Errorf("error parsing block number from key %v: %v", r.Key(), err)
-// 			return false
-// 		}
-// 		c = MAX_EL_BLOCK_NUMBER - c
+		// create batch request for each block height
+		g.Go(func() error {
+			blocksChan := make(chan *types.Eth1Block, batchSize)
 
-// 		lastBlock = c
-// 		return c == 0 // required as the block with number 0 will be returned as first block before the most recent one
-// 	}, gcp_bigtable.LimitRows(2), gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+			go func(stream chan *types.Eth1Block) {
+				logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
+				high := lastBlock
+				low := lastBlock - batchSize + 1
+				if int64(firstBlock) > low {
+					low = firstBlock
+				}
 
-// 	if err != nil {
-// 		return 0, err
-// 	}
+				err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
+				if err != nil {
+					logger.Errorf("error getting blocks descending high: %v low: %v err: %v", high, low, err)
+				}
+				close(stream)
+			}(blocksChan)
+			subG := new(errgroup.Group)
+			subG.SetLimit(int(concurrency))
+			var batchCall []eth_rpc.BatchElem
 
-// 	return lastBlock, nil
-// }
+			for block := range blocksChan {
+
+				batchCall = append(batchCall, eth_rpc.BatchElem{
+					Method: "eth_getBlockByNumber",
+					Args:   []interface{}{block.Number, true},
+					Result: new(map[string]interface{}),
+				})
+
+				batchCall = append(batchCall, eth_rpc.BatchElem{
+					Method: "eth_getBlockReceipts",
+					Args:   []interface{}{block.Number},
+					Result: new([]interface{}),
+				})
+
+				batchCall = append(batchCall, eth_rpc.BatchElem{
+					Method: "trace_block",
+					Args:   []interface{}{block.Number},
+					Result: new([]interface{}),
+				})
+			}
+
+			err := rpc.CurrentGethClient.GetRPCClient().BatchCall(batchCall)
+			if err != nil {
+				logger.Errorf("error while batch calling rpc, error: %s", err)
+			}
+
+			for i, b := range batchCall {
+				if b.Error != nil {
+					logger.Errorf("error in batch call %d, error: %s", i, err)
+				}
+
+				switch i {
+				case 0:
+					blockResults := (b.Result.(map[string]interface{}))
+					fmt.Printf("\n Block: %v \n", blockResults)
+					// @TODO process block results
+				case 1:
+					blockReceipts := (b.Result.([]interface{}))
+					fmt.Printf("\n Receipts: %v \n", blockReceipts)
+					// @TODO process block receipts
+
+				case 2:
+					tracesResults := (b.Result.([]interface{}))
+					fmt.Printf("\n Traces: %v \n", tracesResults)
+					// @TODO process block traces
+
+				}
+			}
+			return subG.Wait()
+		})
+
+	}
+
+	if err := g.Wait(); err == nil {
+		logrus.Info("data table indexing completed")
+	} else {
+		utils.LogError(err, "wait group error", 0)
+		return err
+	}
+
+	err := g.Wait()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
