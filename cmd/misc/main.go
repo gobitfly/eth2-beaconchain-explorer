@@ -441,7 +441,7 @@ func main() {
 	case "fix-epochs":
 		err = fixEpochs()
 	case "fix-internal-txs":
-		fixInternalTxs(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, erigonClient)
+		fixInternalTxs(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, bt, erigonClient)
 	case "validate-firebase-tokens":
 		err = validateFirebaseTokens()
 	default:
