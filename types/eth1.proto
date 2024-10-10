@@ -64,7 +64,8 @@ message Eth1Transaction {
     uint64 gas_used = 19;
     bytes logs_bloom = 20;
     uint64 status = 21;
-    string error_msg = 22;
+    reserved 22; // string error_msg = 22;
+
     repeated Eth1Log logs = 23;
 
     // Internal transactions
@@ -172,8 +173,8 @@ message Eth1TransactionIndexed {
     bytes tx_fee = 8;
     bytes gas_price = 9;
     bool is_contract_creation = 10;
-    // invokes_contract is unused, should mark reserved!
-    bool invokes_contract = 11;
+    reserved 11; // bool invokes_contract = 11;
+
     string error_msg = 12;
 
     // EIP 4844
