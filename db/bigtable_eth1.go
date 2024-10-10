@@ -4980,7 +4980,12 @@ func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency i
 				})
 			}
 
-			err := rpc.CurrentGethClient.GetRPCClient().BatchCall(batchCall)
+			client, err := rpc.NewGethClient(utils.Config.Eth1ErigonEndpoint)
+			if err != nil {
+				logger.Errorf("error when connecting to client, error: %s", err)
+			}
+
+			err = client.GetRPCClient().BatchCall(batchCall)
 			if err != nil {
 				logger.Errorf("error while batch calling rpc, error: %s", err)
 			}
@@ -4992,16 +4997,16 @@ func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency i
 
 				switch i {
 				case 0:
-					blockResults := (b.Result.(map[string]interface{}))
+					blockResults := (*b.Result.(*map[string]interface{}))
 					fmt.Printf("\n Block: %v \n", blockResults)
 					// @TODO process block results
 				case 1:
-					blockReceipts := (b.Result.([]interface{}))
+					blockReceipts := (*b.Result.(*[]interface{}))
 					fmt.Printf("\n Receipts: %v \n", blockReceipts)
 					// @TODO process block receipts
 
 				case 2:
-					tracesResults := (b.Result.([]interface{}))
+					tracesResults := (*b.Result.(*[]interface{}))
 					fmt.Printf("\n Traces: %v \n", tracesResults)
 					// @TODO process block traces
 
