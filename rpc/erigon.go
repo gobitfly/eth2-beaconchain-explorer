@@ -825,3 +825,61 @@ type Eth1InternalTransactionWithPosition struct {
 	types.Eth1InternalTransaction
 	txPosition int
 }
+
+func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) error {
+	var batchCall []geth_rpc.BatchElem
+
+	for block := range blocksChan {
+		fmt.Printf("'n blockNumber %d \n ", block.Number)
+
+		batchCall = append(batchCall, geth_rpc.BatchElem{
+			Method: "eth_getBlockByNumber",
+			Args:   []interface{}{block.Number, true},
+			Result: new(map[string]interface{}),
+		})
+
+		batchCall = append(batchCall, geth_rpc.BatchElem{
+			Method: "eth_getBlockReceipts",
+			Args:   []interface{}{block.Number},
+			Result: new([]interface{}),
+		})
+
+		batchCall = append(batchCall, geth_rpc.BatchElem{
+			Method: "trace_block",
+			Args:   []interface{}{block.Number},
+			Result: new([]interface{}),
+		})
+	}
+
+	fmt.Printf("\n batchCall %v \n", batchCall)
+	err := client.GetRPCClient().BatchCall(batchCall)
+	if err != nil {
+		logger.Errorf("error while batch calling rpc, error: %s", err)
+	}
+
+	for i, b := range batchCall {
+		if b.Error != nil {
+			logger.Errorf("error in batch call %d, error: %s", i, err)
+		}
+
+		switch i {
+		case 0:
+			blockResults := (*b.Result.(*geth_types.Block))
+			fmt.Printf("\n Block: %v \n", blockResults)
+			// @TODO process block results
+		case 1:
+			blockReceipts := (*b.Result.(*[]interface{}))
+			fmt.Printf("\n Receipts: %v \n", blockReceipts)
+			// @TODO process block receipts
+
+		case 2:
+			tracesResults := (*b.Result.(*[]interface{}))
+			fmt.Printf("\n Traces: %v \n", tracesResults)
+			// @TODO process block traces
+
+		}
+	}
+
+	return nil
+
+}
