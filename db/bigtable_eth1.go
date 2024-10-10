@@ -1310,20 +1310,21 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 			}
 			jReversed := reversePaddedIndex(j, ITX_PER_TX_LIMIT)
 
-			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level and empty calls
-				continue
-			}
-
+			// check for error before skipping, otherwise we loose track of cascading reverts
 			var reverted bool
 			if itx.ErrorMsg != "" {
 				reverted = true
 				// only save the highest root revert
-				if !strings.HasPrefix(itx.Path, revertSource) {
+				if revertSource == "" || !strings.HasPrefix(itx.Path, revertSource) {
 					revertSource = strings.TrimSuffix(itx.Path, "]")
 				}
 			}
-			if strings.HasPrefix(itx.Path, revertSource) {
+			if revertSource != "" && strings.HasPrefix(itx.Path, revertSource) {
 				reverted = true
+			}
+
+			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level and empty calls
+				continue
 			}
 
 			key := fmt.Sprintf("%s:ITX:%x:%s", bigtable.chainId, tx.GetHash(), jReversed)
