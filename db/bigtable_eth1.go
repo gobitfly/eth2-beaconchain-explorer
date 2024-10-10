@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,8 +24,6 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
-
-	"strconv"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"golang.org/x/sync/errgroup"
@@ -1011,11 +1010,22 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			Value:              tx.GetValue(),
 			TxFee:              fee,
 			GasPrice:           tx.GetGasPrice(),
+			IsContractCreation: isContract,
+			ErrorMsg:           "",
 			BlobTxFee:          blobFee,
 			BlobGasPrice:       tx.GetBlobGasPrice(),
-			IsContractCreation: isContract,
-			ErrorMsg:           tx.GetErrorMsg(),
+			Status:             types.StatusType(tx.Status),
 		}
+		for _, itx := range tx.Itx {
+			if itx.ErrorMsg != "" {
+				indexedTx.ErrorMsg = itx.ErrorMsg
+				if indexedTx.Status == types.StatusType_SUCCESS {
+					indexedTx.Status = types.StatusType_PARTIAL
+				}
+				break
+			}
+		}
+
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -1107,9 +1117,16 @@ func (bigtable *Bigtable) TransformBlobTx(blk *types.Eth1Block, cache *freecache
 			GasPrice:            tx.GetGasPrice(),
 			BlobTxFee:           blobFee,
 			BlobGasPrice:        tx.GetBlobGasPrice(),
-			ErrorMsg:            tx.GetErrorMsg(),
+			ErrorMsg:            "",
 			BlobVersionedHashes: tx.GetBlobVersionedHashes(),
 		}
+		for _, itx := range tx.Itx {
+			if itx.ErrorMsg != "" {
+				indexedTx.ErrorMsg = itx.ErrorMsg
+				break
+			}
+		}
+
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -1218,7 +1235,7 @@ func (bigtable *Bigtable) TransformContract(blk *types.Eth1Block, cache *freecac
 				contractUpdate := &types.IsContractUpdate{
 					IsContract: itx.GetType() == "create",
 					// also use success status of enclosing transaction, as even successful sub-calls can still be reverted later in the tx
-					Success: itx.GetErrorMsg() == "" && tx.GetErrorMsg() == "",
+					Success: itx.GetErrorMsg() == "" && tx.GetStatus() == 1,
 				}
 				b, err := proto.Marshal(contractUpdate)
 				if err != nil {
@@ -1286,11 +1303,25 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 		}
 		iReversed := reversePaddedIndex(i, TX_PER_BLOCK_LIMIT)
 
+		var revertSource string
 		for j, itx := range tx.GetItx() {
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
 			}
 			jReversed := reversePaddedIndex(j, ITX_PER_TX_LIMIT)
+
+			// check for error before skipping, otherwise we loose track of cascading reverts
+			var reverted bool
+			if itx.ErrorMsg != "" {
+				reverted = true
+				// only save the highest root revert
+				if revertSource == "" || !strings.HasPrefix(itx.Path, revertSource) {
+					revertSource = strings.TrimSuffix(itx.Path, "]")
+				}
+			}
+			if revertSource != "" && strings.HasPrefix(itx.Path, revertSource) {
+				reverted = true
+			}
 
 			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level and empty calls
 				continue
@@ -1305,6 +1336,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				From:        itx.GetFrom(),
 				To:          itx.GetTo(),
 				Value:       itx.GetValue(),
+				Reverted:    reverted,
 			}
 
 			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -2346,7 +2378,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
+			utils.FormatTransactionHashFromStatus(t.Hash, t.Status),
 			utils.FormatMethod(bigtable.GetMethodLabel(t.MethodId, contractInteraction)),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
@@ -2825,7 +2857,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash, true),
+			utils.FormatTransactionHash(t.ParentHash, !t.Reverted),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, BigtableClient.GetAddressLabel(fromName, from_contractInteraction), from_contractInteraction != types.CONTRACT_NONE, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2869,7 +2901,20 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	}
 
 	data := make([]types.ITransaction, 0, len(parityTrace)-1)
+	var revertSource []int64
 	for i := 1; i < len(parityTrace); i++ {
+		var reverted bool
+		if parityTrace[i].Error != "" {
+			reverted = true
+			// only save the highest root revert
+			if !isSubset(parityTrace[i].TraceAddress, revertSource) {
+				revertSource = parityTrace[i].TraceAddress
+			}
+		}
+		if isSubset(parityTrace[i].TraceAddress, revertSource) {
+			reverted = true
+		}
+
 		from, to, value, tx_type := parityTrace[i].ConvertFields()
 		if tx_type == "suicide" {
 			// erigon's "suicide" might be misleading for users
@@ -2896,8 +2941,9 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
 			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
-			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, from_contractInteraction)),
+			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, !reverted, bigtable.GetMethodLabel(input, from_contractInteraction)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
+			Reverted:  reverted,
 		}
 
 		gaslimit, err := strconv.ParseUint(parityTrace[i].Action.Gas, 0, 0)

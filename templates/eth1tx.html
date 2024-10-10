@@ -255,7 +255,7 @@
                   {{ if gt (len .InternalTxns) 0 }}
                     <ul class="fa-ul mb-0 mt-2">
                       {{ range $i, $row := .InternalTxns }}
-                        {{ if not .Advanced }}
+                        {{ if and (not .Reverted) (not .Advanced) }}
                           <li class="mb-1">
                             <i class="fa-li fas fa-long-arrow-alt-right"></i>
                             <span>Transfer</span>
