@@ -47,7 +47,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 		endpoint: endpoint,
 	}
 
-	rpcClient, err := geth_rpc.Dial(client.endpoint)
+	rpcClient, err := geth_rpc.Dial(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("error dialing rpc node: %w", err)
 	}
@@ -873,7 +873,6 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) (
 		batchCall = append(batchCall, geth_rpc.BatchElem{
 			Method: "eth_getBlockByNumber",
 			Args:   []interface{}{block.Number, true},
-			// Result: new(geth_types.Block),
 			Result: new(json.RawMessage),
 		})
 
@@ -890,12 +889,12 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) (
 		})
 	}
 
-	gethClient, err := NewGethClient(utils.Config.Eth1ErigonEndpoint) // for testing only
+	client, err := NewErigonClient(utils.Config.Eth1ErigonEndpoint)
 	if err != nil {
 		logger.Errorf("error when connecting to the client, error: %s", err)
 	}
 
-	err = gethClient.rpcClient.BatchCallContext(ctx, batchCall)
+	err = client.rpcClient.BatchCallContext(ctx, batchCall)
 	if err != nil {
 		logger.Errorf("error while batch calling rpc, error: %s", err)
 	}
