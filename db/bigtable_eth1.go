@@ -4964,13 +4964,14 @@ func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency i
 			}
 
 			for _, block := range blocks {
+				currentBlock := block
 				subG.Go(func() error {
 					bulkMutsData := types.BulkMutations{}
 					bulkMutsMetadataUpdate := types.BulkMutations{}
 					for _, transform := range transforms {
-						mutsData, mutsMetadataUpdate, err := transform(block, cache)
+						mutsData, mutsMetadataUpdate, err := transform(currentBlock, cache)
 						if err != nil {
-							logrus.WithError(err).Errorf("error transforming block [%v]", block.Number)
+							logrus.WithError(err).Errorf("error transforming block [%v]", currentBlock.Number)
 						}
 						bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
 						bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
@@ -4983,21 +4984,21 @@ func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency i
 
 					if len(bulkMutsData.Keys) > 0 {
 						metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
-						err := bigtable.SaveBlockKeys(block.Number, block.Hash, metaKeys)
+						err := bigtable.SaveBlockKeys(currentBlock.Number, currentBlock.Hash, metaKeys)
 						if err != nil {
-							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", block.Number, err)
+							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", currentBlock.Number, err)
 						}
 
 						err = bigtable.WriteBulk(&bulkMutsData, bigtable.tableData, DEFAULT_BATCH_INSERTS)
 						if err != nil {
-							return fmt.Errorf("error writing block [%v] to bigtable data table: %w", block.Number, err)
+							return fmt.Errorf("error writing block [%v] to bigtable data table: %w", currentBlock.Number, err)
 						}
 					}
 
 					if len(bulkMutsMetadataUpdate.Keys) > 0 {
 						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.tableMetadataUpdates, DEFAULT_BATCH_INSERTS)
 						if err != nil {
-							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", block.Number, err)
+							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", currentBlock.Number, err)
 						}
 					}
 
