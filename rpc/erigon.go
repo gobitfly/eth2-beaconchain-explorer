@@ -3,8 +3,10 @@ package rpc
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -827,37 +829,43 @@ type Eth1InternalTransactionWithPosition struct {
 }
 
 type BlockResponse struct {
-	Hash         string                    `json:"hash"`
-	ParentHash   string                    `json:"parentHash"`
-	UncleHash    string                    `json:"uncleHash"`
-	Coinbase     string                    `json:"coinbase"`
-	Root         string                    `json:"stateRoot"`
-	TxHash       string                    `json:"transactionsHash"`
-	ReceiptHash  string                    `json:"receiptsHash"`
-	Difficulty   string                    `json:"difficulty"`
-	Number       string                    `json:"number"`
-	GasLimit     string                    `json:"gasLimit"`
-	GasUsed      string                    `json:"gasUsed"`
-	Time         string                    `json:"timestamp"`
-	Extra        string                    `json:"extraData"`
-	MixDigest    string                    `json:"mixHash"`
-	Bloom        string                    `json:"logsBloom"`
-	Uncles       []*geth_types.Block       `json:"uncles"`
-	Transactions []*geth_types.Transaction `json:"transactions"`
-	Withdrawals  []*geth_types.Withdrawal  `json:"withdrawals"`
+	Hash          string                    `json:"hash"`
+	ParentHash    string                    `json:"parentHash"`
+	UncleHash     string                    `json:"uncleHash"`
+	Coinbase      string                    `json:"coinbase"`
+	Root          string                    `json:"stateRoot"`
+	TxHash        string                    `json:"transactionsHash"`
+	ReceiptHash   string                    `json:"receiptsHash"`
+	Difficulty    string                    `json:"difficulty"`
+	Number        string                    `json:"number"`
+	GasLimit      string                    `json:"gasLimit"`
+	GasUsed       string                    `json:"gasUsed"`
+	Time          string                    `json:"timestamp"`
+	Extra         string                    `json:"extraData"`
+	MixDigest     string                    `json:"mixHash"`
+	Bloom         string                    `json:"logsBloom"`
+	Uncles        []*geth_types.Block       `json:"uncles"`
+	Transactions  []*geth_types.Transaction `json:"transactions"`
+	Withdrawals   []*geth_types.Withdrawal  `json:"withdrawals"`
+	BlobGasUsed   string                    `json:"blobGasUsed"`
+	ExcessBlobGas string                    `json:"excessBlobGas"`
+	BaseFee       string                    `json:"baseFee"`
 }
 
-func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) error {
+func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) ([]*types.Eth1Block, *types.GetBlockTimings, error) {
 	startTime := time.Now()
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("rpc_el_get_block").Observe(time.Since(startTime).Seconds())
+		metrics.TaskDuration.WithLabelValues("rpc_el_get_blocks_by_batch").Observe(time.Since(startTime).Seconds())
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	// timings := &types.GetBlockTimings{}
+	timings := &types.GetBlockTimings{}
+
+	var blockDetails []*types.Eth1Block
 	var batchCall []geth_rpc.BatchElem
+	batchCallNums := 3
 
 	for block := range blocksChan {
 		fmt.Printf("'n blockNumber %d \n ", block.Number)
@@ -866,39 +874,21 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) e
 			Method: "eth_getBlockByNumber",
 			Args:   []interface{}{block.Number, true},
 			// Result: new(geth_types.Block),
-			Result: new(map[string]interface{}),
+			Result: new(json.RawMessage),
 		})
 
 		batchCall = append(batchCall, geth_rpc.BatchElem{
 			Method: "eth_getBlockReceipts",
 			Args:   []interface{}{block.Number},
-			Result: new([]interface{}),
+			Result: new([]geth_types.Receipt),
 		})
 
 		batchCall = append(batchCall, geth_rpc.BatchElem{
 			Method: "trace_block",
 			Args:   []interface{}{block.Number},
-			Result: new([]interface{}),
+			Result: new([]ParityTraceResult),
 		})
 	}
-
-	headers := make(map[uint64]*geth_types.Block, len(blocksChan))
-	errors := make([]error, 0, len(blocksChan))
-
-	for block := range blocksChan {
-		result := &geth_types.Block{}
-		err := error(nil)
-		batchCall = append(batchCall, geth_rpc.BatchElem{
-			Method: "eth_getBlockByNumber",
-			Args:   []interface{}{block.Number, true},
-			Result: result,
-			Error:  err,
-		})
-		headers[block.Number] = result
-		errors = append(errors, err)
-	}
-
-	fmt.Printf("\n batchCall %v \n", batchCall)
 
 	gethClient, err := NewGethClient(utils.Config.Eth1ErigonEndpoint) // for testing only
 	if err != nil {
@@ -910,107 +900,83 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) e
 		logger.Errorf("error while batch calling rpc, error: %s", err)
 	}
 
-	batchCallNums := 3
-
 	for i := 0; i < len(batchCall)/batchCallNums; i++ {
-		blockResult := batchCall[i*batchCallNums].Result.(*geth_types.Block)
-		receiptsResult := batchCall[i*batchCallNums+1].Result.([]*geth_types.Receipt)
-		tracesResults := batchCall[i*batchCallNums+2].Result.([]*ParityTraceResult)
+		blockResult := batchCall[i*batchCallNums].Result.(*json.RawMessage)
+		receiptsResult := batchCall[i*batchCallNums+1].Result.(*[]geth_types.Receipt)
+		tracesResults := batchCall[i*batchCallNums+2].Result.(*[]ParityTraceResult)
 
-		fmt.Printf("\n Block Results %v \n ", blockResult)
-
-		blockDetails := client.processBlockResult(*blockResult)
-		blockDetails = client.processReceiptsAndTraces(blockDetails, receiptsResult, tracesResults)
-
-		// blockDetails := client.processBlockResult(&blockResult)
-
-		// var blockResponse *geth_types.Block
-
-		// brJSON, err := json.Marshal(blockResult)
-		// if err != nil {
-		// 	logger.Errorf("error while marshaling block results, error: %s", err)
-		// }
-
-		// err = json.Unmarshal(brJSON, &blockResponse)
-		// if err != nil {
-		// 	logger.Errorf("error while unmarshaling block results, error: %s", err)
-		// }
-		// fmt.Printf("\n blockResponse %v \n  ", blockResponse)
-
-	}
-
-	return nil
-
-}
-
-func (client *ErigonClient) processBlockResult(block geth_types.Block) *types.Eth1Block {
-	startTime := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("rpc_el_process_block").Observe(time.Since(startTime).Seconds())
-	}()
-
-	timings := &types.GetBlockTimings{}
-
-	timings.Headers = time.Since(startTime)
-
-	ethBlock := &types.Eth1Block{
-		Hash:         block.Hash().Bytes(),
-		ParentHash:   block.ParentHash().Bytes(),
-		UncleHash:    block.UncleHash().Bytes(),
-		Coinbase:     block.Coinbase().Bytes(),
-		Root:         block.Root().Bytes(),
-		TxHash:       block.TxHash().Bytes(),
-		ReceiptHash:  block.ReceiptHash().Bytes(),
-		Difficulty:   block.Difficulty().Bytes(),
-		Number:       block.NumberU64(),
-		GasLimit:     block.GasLimit(),
-		GasUsed:      block.GasUsed(),
-		Time:         timestamppb.New(time.Unix(int64(block.Time()), 0)),
-		Extra:        block.Extra(),
-		MixDigest:    block.MixDigest().Bytes(),
-		Bloom:        block.Bloom().Bytes(),
-		Uncles:       []*types.Eth1Block{},
-		Transactions: []*types.Eth1Transaction{},
-		Withdrawals:  []*types.Eth1Withdrawal{},
-	}
-	blobGasUsed := block.BlobGasUsed()
-	if blobGasUsed != nil {
-		ethBlock.BlobGasUsed = *blobGasUsed
-	}
-	excessBlobGas := block.ExcessBlobGas()
-	if excessBlobGas != nil {
-		ethBlock.ExcessBlobGas = *excessBlobGas
-	}
-
-	if block.BaseFee() != nil {
-		ethBlock.BaseFee = block.BaseFee().Bytes()
-	}
-
-	for _, uncle := range block.Uncles() {
-		pbUncle := &types.Eth1Block{
-			Hash:        uncle.Hash().Bytes(),
-			ParentHash:  uncle.ParentHash.Bytes(),
-			UncleHash:   uncle.UncleHash.Bytes(),
-			Coinbase:    uncle.Coinbase.Bytes(),
-			Root:        uncle.Root.Bytes(),
-			TxHash:      uncle.TxHash.Bytes(),
-			ReceiptHash: uncle.ReceiptHash.Bytes(),
-			Difficulty:  uncle.Difficulty.Bytes(),
-			Number:      uncle.Number.Uint64(),
-			GasLimit:    uncle.GasLimit,
-			GasUsed:     uncle.GasUsed,
-			Time:        timestamppb.New(time.Unix(int64(uncle.Time), 0)),
-			Extra:       uncle.Extra,
-			MixDigest:   uncle.MixDigest.Bytes(),
-			Bloom:       uncle.Bloom.Bytes(),
+		var blockResponse BlockResponse
+		err := json.Unmarshal(*blockResult, &blockResponse)
+		if err != nil {
+			fmt.Printf("\n errror while unmarshalling block results %s\n", err)
 		}
 
-		ethBlock.Uncles = append(ethBlock.Uncles, pbUncle)
+		blockDetail, timings := client.processBlockResult(blockResponse, timings)
+		blockDetail, timings = client.processReceiptsAndTraces(blockDetail, *receiptsResult, *tracesResults, timings)
+		blockDetails = append(blockDetails, blockDetail)
 	}
 
-	if len(block.Withdrawals()) > 0 {
-		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(block.Withdrawals()))
-		for _, w := range block.Withdrawals() {
+	return blockDetails, timings, nil
+}
+
+func (client *ErigonClient) processBlockResult(block BlockResponse, timings *types.GetBlockTimings) (*types.Eth1Block, *types.GetBlockTimings) {
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("rpc_el_process_block_results").Observe(time.Since(startTime).Seconds())
+	}()
+
+	blockNumber, err := strconv.ParseUint(block.Number, 0, 64)
+	if err != nil {
+		logger.Errorf("error while parsing block number to uint64, error: %s", err)
+	}
+	gasLimit, err := strconv.ParseUint(block.GasLimit, 0, 64)
+	if err != nil {
+		logger.Errorf("error while parsing gas limit to uint64, error: %s", err)
+	}
+	gasUsed, err := strconv.ParseUint(block.GasUsed, 0, 64)
+	if err != nil {
+		logger.Errorf("error while parsing gas used to uint64, error: %s", err)
+	}
+	blockTime, err := strconv.ParseInt(block.Time, 0, 64)
+	if err != nil {
+		logger.Errorf("error while parsing block time to int64, error: %s", err)
+	}
+	blobGasUsed, err := strconv.ParseUint(block.BlobGasUsed, 0, 64)
+	if err != nil {
+		logger.Errorf("error while parsing blob gas used to uint64, error: %s", err)
+	}
+	excessBlobGas, err := strconv.ParseUint(block.ExcessBlobGas, 0, 64)
+	if err != nil {
+		logger.Errorf("error while parsing excess blob gas to uint64, error: %s", err)
+	}
+
+	ethBlock := &types.Eth1Block{
+		Hash:          []byte(block.Hash),
+		ParentHash:    []byte(block.ParentHash),
+		UncleHash:     []byte(block.UncleHash),
+		Coinbase:      []byte(block.Coinbase),
+		Root:          []byte(block.Root),
+		TxHash:        []byte(block.TxHash),
+		ReceiptHash:   []byte(block.ReceiptHash),
+		Difficulty:    []byte(block.Difficulty),
+		Number:        blockNumber,
+		GasLimit:      gasLimit,
+		GasUsed:       gasUsed,
+		Time:          timestamppb.New(time.Unix(blockTime, 0)),
+		Extra:         []byte(block.Extra),
+		MixDigest:     []byte(block.MixDigest),
+		Bloom:         []byte(block.Bloom),
+		Uncles:        []*types.Eth1Block{},
+		Transactions:  []*types.Eth1Transaction{},
+		Withdrawals:   []*types.Eth1Withdrawal{},
+		BlobGasUsed:   blobGasUsed,
+		ExcessBlobGas: excessBlobGas,
+		BaseFee:       []byte(block.BaseFee),
+	}
+
+	if len(block.Withdrawals) > 0 {
+		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(block.Withdrawals))
+		for _, w := range block.Withdrawals {
 			withdrawalsIndexed = append(withdrawalsIndexed, &types.Eth1Withdrawal{
 				Index:          w.Index,
 				ValidatorIndex: w.Validator,
@@ -1021,7 +987,7 @@ func (client *ErigonClient) processBlockResult(block geth_types.Block) *types.Et
 		ethBlock.Withdrawals = withdrawalsIndexed
 	}
 
-	txs := block.Transactions()
+	txs := block.Transactions
 
 	for _, tx := range txs {
 
@@ -1065,16 +1031,67 @@ func (client *ErigonClient) processBlockResult(block geth_types.Block) *types.Et
 		ethBlock.Transactions = append(ethBlock.Transactions, pbTx)
 
 	}
+	timings.Headers = time.Since(startTime)
 
-	return ethBlock
-
+	return ethBlock, timings
 }
 
-// @TODO update processReceiptsAndTraces method to correctly parse traces
-func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, receipts []*geth_types.Receipt, traces []*ParityTraceResult) *types.Eth1Block {
-	traceIndex := 0
-	var traces []*Eth1InternalTransactionWithPosition
+func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, receipts []geth_types.Receipt, traces []ParityTraceResult, timings *types.GetBlockTimings) (*types.Eth1Block, *types.GetBlockTimings) {
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("rpc_el_process_receipts_and_traces").Observe(time.Since(startTime).Seconds())
+	}()
 
+	traceIndex := 0
+	var indexedTraces []*Eth1InternalTransactionWithPosition
+	transactionPosition := 0
+	var revertSource []int64
+
+	for _, trace := range traces {
+		if trace.TransactionPosition != transactionPosition {
+			revertSource = []int64{}
+		}
+		transactionPosition = trace.TransactionPosition
+		if trace.Type == "reward" {
+			continue
+		}
+		if trace.TransactionHash == "" {
+			continue
+		}
+		if trace.TransactionPosition >= len(ethBlock.Transactions) {
+			logrus.Errorf("error transaction position %v out of range", trace.TransactionPosition)
+			return nil, timings
+		}
+
+		var reverted bool
+		if trace.Error != "" {
+			reverted = true
+			// only save the highest root revert
+			if !isSubset(trace.TraceAddress, revertSource) {
+				revertSource = trace.TraceAddress
+			}
+		}
+		if isSubset(trace.TraceAddress, revertSource) {
+			reverted = true
+		}
+
+		from, to, value, traceType := trace.ConvertFields()
+		indexedTraces = append(indexedTraces, &Eth1InternalTransactionWithPosition{
+			Eth1InternalTransaction: types.Eth1InternalTransaction{
+				Type:     traceType,
+				From:     from,
+				To:       to,
+				Value:    value,
+				ErrorMsg: trace.Error,
+				Path:     fmt.Sprint(trace.TraceAddress),
+				Reverted: reverted,
+			},
+			txPosition: trace.TransactionPosition,
+		})
+	}
+	timings.Traces = time.Since(startTime)
+
+	start := time.Now()
 	for txPosition, receipt := range receipts {
 		ethBlock.Transactions[txPosition].ContractAddress = receipt.ContractAddress[:]
 		ethBlock.Transactions[txPosition].CommulativeGasUsed = receipt.CumulativeGasUsed
@@ -1093,23 +1110,24 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 			for _, t := range l.Topics {
 				topics = append(topics, t.Bytes())
 			}
-			ethBlock.Transactions[txPosition].Logs = append(c.Transactions[txPosition].Logs, &types.Eth1Log{
+			ethBlock.Transactions[txPosition].Logs = append(ethBlock.Transactions[txPosition].Logs, &types.Eth1Log{
 				Address: l.Address.Bytes(),
 				Data:    l.Data,
 				Removed: l.Removed,
 				Topics:  topics,
 			})
 		}
-		if len(traces) == 0 {
+		if len(indexedTraces) == 0 {
 			continue
 		}
-		for ; traceIndex < len(traces) && traces[traceIndex].txPosition == txPosition; traceIndex++ {
-			ethBlock.Transactions[txPosition].Itx = append(ethBlock.Transactions[txPosition].Itx, &traces[traceIndex].Eth1InternalTransaction)
-			if traces[traceIndex].Reverted && ethBlock.Transactions[txPosition].Status == types.StatusType_SUCCESS {
+		for ; traceIndex < len(indexedTraces) && indexedTraces[traceIndex].txPosition == txPosition; traceIndex++ {
+			ethBlock.Transactions[txPosition].Itx = append(ethBlock.Transactions[txPosition].Itx, &indexedTraces[traceIndex].Eth1InternalTransaction)
+			if indexedTraces[traceIndex].Reverted && ethBlock.Transactions[txPosition].Status == types.StatusType_SUCCESS {
 				ethBlock.Transactions[txPosition].Status = types.StatusType_PARTIAL
 			}
 		}
 	}
+	timings.Receipts = time.Since(start)
 
-	return ethBlock
+	return ethBlock, timings
 }
