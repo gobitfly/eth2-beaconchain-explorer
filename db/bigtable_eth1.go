@@ -4927,10 +4927,43 @@ func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency i
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
+	if start == 0 && end == 0 {
+		lastBlockInCache, err := bigtable.GetLastBlockInDataTable()
+		if err != nil {
+			return fmt.Errorf("error getting last block in database, err: %v", err)
+		}
+
+		firstBlockInCacheChan := make(chan *types.Eth1Block)
+
+		go func() {
+			defer close(firstBlockInCacheChan)
+			err := bigtable.GetFullBlocksDescending(firstBlockInCacheChan, uint64(lastBlockInCache), 1)
+			if err != nil {
+				logrus.Infof("error while retrieving lowest block in db %d", err)
+				return
+			}
+		}()
+
+		var firstBlockInCache *types.Eth1Block
+		for block := range firstBlockInCacheChan {
+			firstBlockInCache = block
+		}
+
+		if firstBlockInCache != nil {
+			start = int64(firstBlockInCache.Number)
+		}
+
+		end = int64(lastBlockInCache)
+	}
+
+	if end < start {
+		return fmt.Errorf("end block must be grater or equal to start block")
+	}
+
 	logrus.Infof("reindexing txs for blocks from %d to %d", start, end)
 
 	for i := start; i <= end; i += batchSize {
-		firstBlock := int64(i)
+		firstBlock := i
 		lastBlock := firstBlock + batchSize - 1
 		if lastBlock > end {
 			lastBlock = end
