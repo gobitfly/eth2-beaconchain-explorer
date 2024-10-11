@@ -560,6 +560,9 @@ func fixInternalTxs(startBlock, endBlock, batchSize, concurrency uint64, bt *db.
 		return
 	}
 
+	transformers := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+	transformers = append(transformers, bt.TransformBlock, bt.TransformTx, bt.TransformItx)
+
 	to := endBlock
 	if endBlock == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
@@ -579,7 +582,7 @@ func fixInternalTxs(startBlock, endBlock, batchSize, concurrency uint64, bt *db.
 		toBlock := utilMath.MinU64(to, from+blockCount-1)
 
 		logrus.Infof("reindexing txs for blocks from height %v to %v in data table ...", from, toBlock)
-		err := bt.ReindexITxs(int64(from), int64(toBlock), int64(batchSize), int64(concurrency), cache)
+		err := bt.ReindexITxs(int64(from), int64(toBlock), int64(batchSize), int64(concurrency), transformers, cache)
 		if err != nil {
 			utils.LogError(err, "error indexing from bigtable", 0)
 		}
