@@ -1292,7 +1292,6 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 		}
 		iReversed := reversePaddedIndex(i, TX_PER_BLOCK_LIMIT)
 
-		var revertSource []int64
 		for j, itx := range tx.GetItx() {
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
@@ -1314,42 +1313,6 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				Value:       itx.GetValue(),
 				Reverted:    itx.GetReverted(),
 			}
-
-			var itxPath []int64
-			trimPath := strings.Trim(itx.Path, "[]")
-			if trimPath == "" {
-				fmt.Printf("\n path is empty %v \n", trimPath)
-				return
-			}
-			trimPath = strings.ReplaceAll(trimPath, " ", ",")
-			splitPath := strings.Split(trimPath, ",")
-
-			for _, p := range splitPath {
-				trimP := strings.TrimSpace(p)
-				parsedPath, err := strconv.ParseInt(trimP, 10, 64)
-				if err != nil {
-					return nil, nil, err
-				}
-
-				itxPath = append(itxPath, parsedPath)
-			}
-
-			if tx.ErrorMsg != "" {
-				itx.Reverted = true
-
-				if !isSubset(itxPath, revertSource) {
-					revertSource = itxPath
-				}
-			}
-
-			if isSubset(itxPath, revertSource) {
-				itx.Reverted = true
-			}
-
-			fmt.Printf("\n Block Number: %d\n", blk.GetNumber())
-			fmt.Printf("\n itx.Path: %s \n ", itx.Path)
-			fmt.Printf("\n itxPath: %v \n ", itxPath)
-			fmt.Printf("\n itx.Reverted %v \n ", itx.Reverted)
 
 			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
 			bigtable.markBalanceUpdate(indexedItx.From, []byte{0x0}, bulkMetadataUpdates, cache)
