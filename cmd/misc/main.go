@@ -549,6 +549,7 @@ func disableUserPerEmail() error {
 func fixInternalTxs(startBlock, endBlock, batchSize, concurrency uint64, bt *db.Bigtable, erigonClient *rpc.ErigonClient) {
 	if endBlock > 0 && endBlock < startBlock {
 		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
+		return
 	}
 
 	if concurrency == 0 {
@@ -582,7 +583,7 @@ func fixInternalTxs(startBlock, endBlock, batchSize, concurrency uint64, bt *db.
 		toBlock := utilMath.MinU64(to, from+blockCount-1)
 
 		logrus.Infof("reindexing txs for blocks from height %v to %v in data table ...", from, toBlock)
-		err := bt.ReindexITxs(int64(from), int64(toBlock), int64(batchSize), int64(concurrency), transformers, cache)
+		err := bt.ReindexITxs(int64(from), int64(toBlock), int64(batchSize), int64(concurrency), transformers, erigonClient, cache)
 		if err != nil {
 			utils.LogError(err, "error indexing from bigtable", 0)
 		}

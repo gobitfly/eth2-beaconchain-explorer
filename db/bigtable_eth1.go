@@ -4923,7 +4923,7 @@ func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNow
 	return history, nil
 }
 
-func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), cache *freecache.Cache) error {
+func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), erigonClient *rpc.ErigonClient, cache *freecache.Cache) error {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
@@ -4990,7 +4990,7 @@ func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency i
 			subG := new(errgroup.Group)
 			subG.SetLimit(int(concurrency))
 
-			blocks, _, err := rpc.CurrentErigonClient.GetBlocksByBatch(blocksChan)
+			blocks, _, err := rpc.CurrentErigonClient.GetBlocksByBatch(blocksChan, erigonClient)
 			if err != nil {
 				logger.Errorf("error while querying blocks by batch, error: %v", err)
 

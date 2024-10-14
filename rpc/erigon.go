@@ -852,7 +852,7 @@ type BlockResponse struct {
 	BaseFee       string                    `json:"baseFee"`
 }
 
-func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) ([]*types.Eth1Block, *types.GetBlockTimings, error) {
+func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block, erigonClient *ErigonClient) ([]*types.Eth1Block, *types.GetBlockTimings, error) {
 	startTime := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("rpc_el_get_blocks_by_batch").Observe(time.Since(startTime).Seconds())
@@ -867,9 +867,11 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) (
 	var batchCall []geth_rpc.BatchElem
 	batchCallNums := 3
 
-	for block := range blocksChan {
-		fmt.Printf("'n blockNumber %d \n ", block.Number)
+	if blocksChan == nil {
+		fmt.Printf("block channel is empty")
+	}
 
+	for block := range blocksChan {
 		batchCall = append(batchCall, geth_rpc.BatchElem{
 			Method: "eth_getBlockByNumber",
 			Args:   []interface{}{block.Number, true},
@@ -889,12 +891,11 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) (
 		})
 	}
 
-	client, err := NewErigonClient(utils.Config.Eth1ErigonEndpoint)
-	if err != nil {
-		logger.Errorf("error when connecting to the client, error: %s", err)
+	if len(batchCall) == 0 {
+		return blockDetails, timings, nil
 	}
 
-	err = client.rpcClient.BatchCallContext(ctx, batchCall)
+	err := erigonClient.rpcClient.BatchCallContext(ctx, batchCall)
 	if err != nil {
 		logger.Errorf("error while batch calling rpc, error: %s", err)
 	}
