@@ -47,7 +47,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 		endpoint: endpoint,
 	}
 
-	rpcClient, err := geth_rpc.Dial(utils.Config.Eth1ErigonEndpoint)
+	rpcClient, err := geth_rpc.Dial(client.endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("error dialing rpc node: %w", err)
 	}
