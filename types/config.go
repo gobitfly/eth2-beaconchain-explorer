@@ -29,7 +29,8 @@ type Config struct {
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 		SSL          bool   `yaml:"ssl" envconfig:"WRITER_DB_SSL"`
 	} `yaml:"writerDatabase"`
-	Bigtable    `yaml:"bigtable"`
+	Bigtable    Bigtable `yaml:"bigtable"`
+	RawBigtable Bigtable `yaml:"rawBigtable"`
 	BlobIndexer struct {
 		S3 struct {
 			Endpoint        string `yaml:"endpoint" envconfig:"BLOB_INDEXER_S3_ENDPOINT"`

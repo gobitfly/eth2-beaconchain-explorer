@@ -5,11 +5,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/contracts/oneinchoracle"
+	"github.com/gobitfly/eth2-beaconchain-explorer/db2"
+	"github.com/gobitfly/eth2-beaconchain-explorer/db2/store"
 	"github.com/gobitfly/eth2-beaconchain-explorer/erc20"
 	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
@@ -45,17 +48,28 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 		endpoint: endpoint,
 	}
 
-	rpcClient, err := geth_rpc.Dial(client.endpoint)
+	var opts []geth_rpc.ClientOption
+	if utils.Config != nil {
+		if utils.Config.RawBigtable.Project != "" && utils.Config.RawBigtable.Instance != "" {
+			project, instance := utils.Config.RawBigtable.Project, utils.Config.RawBigtable.Instance
+			bg, err := store.NewBigTable(project, instance, nil)
+			if err != nil {
+				return nil, err
+			}
+			rawStore := db2.NewRawStore(store.Wrap(bg, db2.BlocRawTable, ""))
+			roundTripper := db2.NewBigTableEthRaw(rawStore, utils.Config.Chain.Id)
+			opts = append(opts, geth_rpc.WithHTTPClient(&http.Client{
+				Transport: db2.NewWithFallback(roundTripper, http.DefaultTransport),
+			}))
+		}
+	}
+
+	rpcClient, err := geth_rpc.DialOptions(context.Background(), client.endpoint, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error dialing rpc node: %w", err)
 	}
 	client.rpcClient = rpcClient
-
-	ethClient, err := ethclient.Dial(client.endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("error dialing rpc node: %w", err)
-	}
-	client.ethClient = ethClient
+	client.ethClient = ethclient.NewClient(rpcClient)
 
 	client.multiChecker, err = NewBalance(common.HexToAddress("0xb1F8e55c7f64D203C1400B9D8555d050F94aDF39"), client.ethClient)
 	if err != nil {
