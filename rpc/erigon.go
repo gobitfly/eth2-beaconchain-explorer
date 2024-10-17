@@ -690,9 +690,9 @@ func (client *ErigonClient) getTrace(traceMode string, block *geth_types.Block) 
 	}
 	switch traceMode {
 	case "parity":
-		return client.getTraceParity(block)
+		return client.getTraceParity(block.Number(), block.Hash(), len(block.Transactions()))
 	case "parity/geth":
-		traces, err := client.getTraceParity(block)
+		traces, err := client.getTraceParity(block.Number(), block.Hash(), len(block.Transactions()))
 		if err == nil {
 			return traces, nil
 		}
@@ -700,16 +700,17 @@ func (client *ErigonClient) getTrace(traceMode string, block *geth_types.Block) 
 		// fallback to geth traces
 		fallthrough
 	case "geth":
-		return client.getTraceGeth(block)
+		return client.getTraceGeth(block.Number(), block.Hash())
 	}
 	return nil, fmt.Errorf("unknown trace mode '%s'", traceMode)
 }
 
-func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1InternalTransactionWithPosition, error) {
-	traces, err := client.TraceParity(block.NumberU64())
+func (client *ErigonClient) getTraceParity(blockNumber *big.Int, blockHash common.Hash, txsLen int) ([]*Eth1InternalTransactionWithPosition, error) {
+	traces, err := client.TraceParity(blockNumber.Uint64())
+	fmt.Println("getTraceParity", len(traces))
 
 	if err != nil {
-		return nil, fmt.Errorf("error tracing block via parity style traces (%v), %v: %w", block.Number(), block.Hash(), err)
+		return nil, fmt.Errorf("error tracing block via parity style traces (%v), %v: %w", blockNumber, blockHash, err)
 	}
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
@@ -720,7 +721,7 @@ func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1Inte
 		if trace.TransactionHash == "" {
 			continue
 		}
-		if trace.TransactionPosition >= len(block.Transactions()) {
+		if trace.TransactionPosition >= txsLen {
 			return nil, fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 		}
 
@@ -740,29 +741,38 @@ func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1Inte
 	return indexedTraces, nil
 }
 
-func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1InternalTransactionWithPosition, error) {
-	traces, err := client.TraceGeth(block.Hash())
+func (client *ErigonClient) getTraceGeth(blockNumber *big.Int, blockHash common.Hash) ([]*Eth1InternalTransactionWithPosition, error) {
+	traces, err := client.TraceGeth(blockHash)
 	if err != nil {
-		return nil, fmt.Errorf("error tracing block via geth style traces (%v), %v: %w", block.Number(), block.Hash(), err)
+		return nil, fmt.Errorf("error tracing block via geth style traces (%v), %v: %w", blockNumber, blockHash, err)
 	}
+	fmt.Println("getTraceGeth", len(traces))
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
+	var txPosition int //, tracePath int
+	paths := make(map[*GethTraceCallResult]string)
 	for i, trace := range traces {
 		switch trace.Type {
 		case "CREATE2":
 			trace.Type = "CREATE"
 		case "CREATE", "SELFDESTRUCT", "SUICIDE", "CALL", "DELEGATECALL", "STATICCALL":
 		case "":
-			logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": block.Number(), "block.Hash": block.Hash()}).Errorf("geth style trace without type")
+			logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": blockNumber, "block.Hash": blockHash}).Errorf("geth style trace without type")
 			spew.Dump(trace)
 			continue
 		default:
 			spew.Dump(trace)
 			logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
 		}
+		if txPosition != trace.TransactionPosition {
+			txPosition = trace.TransactionPosition
+			paths = make(map[*GethTraceCallResult]string)
+		}
+		for index, call := range trace.Calls {
+			paths[call] = fmt.Sprintf("%s %d", paths[trace], index)
+		}
 
-		logger.Tracef("appending trace %v to tx %d:%x from %v to %v value %v", i, block.Number(), trace.TransactionPosition, trace.From, trace.To, trace.Value)
-
+		logger.Tracef("appending trace %v to tx %d:%x from %v to %v value %v", i, blockNumber, trace.TransactionPosition, trace.From, trace.To, trace.Value)
 		indexedTraces = append(indexedTraces, &Eth1InternalTransactionWithPosition{
 			Eth1InternalTransaction: types.Eth1InternalTransaction{
 				Type:     strings.ToLower(trace.Type),
@@ -770,7 +780,7 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 				To:       trace.To.Bytes(),
 				Value:    common.FromHex(trace.Value),
 				ErrorMsg: trace.Error,
-				Path:     "0",
+				Path:     fmt.Sprintf("[%s]", strings.TrimPrefix(paths[trace], " ")),
 			},
 			txPosition: trace.TransactionPosition,
 		})
