@@ -101,9 +101,8 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 
 func (r *BigTableEthRaw) handle(ctx context.Context, message *jsonrpcMessage) (*jsonrpcMessage, error) {
 	var args []interface{}
-	if err := json.Unmarshal(message.Params, &args); err != nil {
-		return nil, err
-	}
+	// ignore error
+	_ = json.Unmarshal(message.Params, &args)
 
 	var respBody []byte
 	switch message.Method {
@@ -216,9 +215,16 @@ func (r *BigTableEthRaw) UncleByBlockHashAndIndex(ctx context.Context, hash stri
 	if err != nil {
 		return nil, err
 	}
-	var uncles []*jsonrpcMessage
-	_ = json.Unmarshal(block.Uncles, &uncles)
-	return json.Marshal(uncles[index])
+
+	if len(block.Uncles) > 2000 {
+		var uncles []*jsonrpcMessage
+		_ = json.Unmarshal(block.Uncles, &uncles)
+		return json.Marshal(uncles[index])
+	}
+
+	var uncle *jsonrpcMessage
+	_ = json.Unmarshal(block.Uncles, &uncle)
+	return json.Marshal(uncle)
 }
 
 // A value of this type can a JSON-RPC request, notification, successful response or

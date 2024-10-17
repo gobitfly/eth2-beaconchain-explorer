@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,6 +54,10 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 	var opts []geth_rpc.ClientOption
 	if utils.Config != nil {
 		if utils.Config.RawBigtable.Project != "" && utils.Config.RawBigtable.Instance != "" {
+			if utils.Config.RawBigtable.Emulator {
+				_ = os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("%s:%d", utils.Config.RawBigtable.EmulatorHost, utils.Config.RawBigtable.EmulatorPort))
+			}
+
 			project, instance := utils.Config.RawBigtable.Project, utils.Config.RawBigtable.Instance
 			bg, err := store.NewBigTable(project, instance, nil)
 			if err != nil {
@@ -372,10 +377,10 @@ func extractCalls(r *GethTraceCallResult, d *[]*GethTraceCallResult) {
 	}
 }
 
-func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallResult, error) {
+func (client *ErigonClient) TraceGeth(blockNumber *big.Int) ([]*GethTraceCallResult, error) {
 	var res []*GethTraceCallResultWrapper
 
-	err := client.rpcClient.Call(&res, "debug_traceBlockByHash", blockHash, gethTracerArg)
+	err := client.rpcClient.Call(&res, "debug_traceBlockByNumber", hexutil.EncodeBig(blockNumber), gethTracerArg)
 	if err != nil {
 		return nil, err
 	}
@@ -709,7 +714,6 @@ func (client *ErigonClient) getTrace(traceMode string, block *geth_types.Block) 
 
 func (client *ErigonClient) getTraceParity(blockNumber *big.Int, blockHash common.Hash, txsLen int) ([]*Eth1InternalTransactionWithPosition, error) {
 	traces, err := client.TraceParity(blockNumber.Uint64())
-	fmt.Println("getTraceParity", len(traces))
 
 	if err != nil {
 		return nil, fmt.Errorf("error tracing block via parity style traces (%v), %v: %w", blockNumber, blockHash, err)
@@ -744,11 +748,10 @@ func (client *ErigonClient) getTraceParity(blockNumber *big.Int, blockHash commo
 }
 
 func (client *ErigonClient) getTraceGeth(blockNumber *big.Int, blockHash common.Hash) ([]*Eth1InternalTransactionWithPosition, error) {
-	traces, err := client.TraceGeth(blockHash)
+	traces, err := client.TraceGeth(blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("error tracing block via geth style traces (%v), %v: %w", blockNumber, blockHash, err)
 	}
-	fmt.Println("getTraceGeth", len(traces))
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
 	var txPosition int //, tracePath int
