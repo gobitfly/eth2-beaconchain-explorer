@@ -37,7 +37,7 @@ func TestRaw(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := db.ReadBlock(block.ChainID, block.BlockNumber)
+	res, err := db.ReadBlockByNumber(block.ChainID, block.BlockNumber)
 	if err != nil {
 		t.Fatal(err)
 	}

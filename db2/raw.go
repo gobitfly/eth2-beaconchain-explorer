@@ -80,7 +80,16 @@ func (db RawStore) AddBlocks(blocks []FullBlockRawData) error {
 	return db.store.BulkAdd(itemsByKey)
 }
 
-func (db RawStore) ReadBlock(chainID uint64, number int64) (*FullBlockRawData, error) {
+func (db RawStore) ReadBlockByNumber(chainID uint64, number int64) (*FullBlockRawData, error) {
+	return db.readBlock(chainID, number)
+}
+
+func (db RawStore) ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawData, error) {
+	// todo use sql db to retrieve hash
+	return nil, fmt.Errorf("ReadBlockByHash not implemented")
+}
+
+func (db RawStore) readBlock(chainID uint64, number int64) (*FullBlockRawData, error) {
 	key := blockKey(chainID, number)
 	data, err := db.store.GetRow(key)
 	if err != nil {
@@ -103,12 +112,15 @@ func (db RawStore) ReadBlock(chainID uint64, number int64) (*FullBlockRawData, e
 		return nil, fmt.Errorf("cannot decompress block %d: %w", number, err)
 	}
 	return &FullBlockRawData{
-		ChainID:     chainID,
-		BlockNumber: number,
-		Block:       block,
-		Receipts:    receipts,
-		Traces:      traces,
-		Uncles:      uncles,
+		ChainID:          chainID,
+		BlockNumber:      number,
+		BlockHash:        nil,
+		BlockUnclesCount: 0,
+		BlockTxs:         nil,
+		Block:            block,
+		Receipts:         receipts,
+		Traces:           traces,
+		Uncles:           uncles,
 	}, nil
 }
 

@@ -56,7 +56,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 			if err != nil {
 				return nil, err
 			}
-			rawStore := db2.NewRawStore(store.Wrap(bg, db2.BlocRawTable, ""))
+			rawStore := db2.WithCache(db2.NewRawStore(store.Wrap(bg, db2.BlocRawTable, "")))
 			roundTripper := db2.NewBigTableEthRaw(rawStore, utils.Config.Chain.Id)
 			opts = append(opts, geth_rpc.WithHTTPClient(&http.Client{
 				Transport: db2.NewWithFallback(roundTripper, http.DefaultTransport),

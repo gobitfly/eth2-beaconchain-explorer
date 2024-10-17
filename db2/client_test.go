@@ -16,6 +16,10 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/db2/storetest"
 )
 
+const (
+	chainID uint64 = 1
+)
+
 func TestBigTableClientRealCondition(t *testing.T) {
 	project := os.Getenv("BIGTABLE_PROJECT")
 	instance := os.Getenv("BIGTABLE_INSTANCE")
@@ -24,19 +28,16 @@ func TestBigTableClientRealCondition(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		chainID uint64
-		block   int64
+		name  string
+		block int64
 	}{
 		{
-			name:    "test block",
-			chainID: 1,
-			block:   6008149,
+			name:  "test block",
+			block: 6008149,
 		},
 		{
-			name:    "test block 2",
-			chainID: 1,
-			block:   141,
+			name:  "test block 2",
+			block: 141,
 		},
 	}
 
@@ -49,7 +50,7 @@ func TestBigTableClientRealCondition(t *testing.T) {
 
 			rawStore := NewRawStore(store.Wrap(bg, BlocRawTable, ""))
 			rpcClient, err := rpc.DialOptions(context.Background(), "http://foo.bar", rpc.WithHTTPClient(&http.Client{
-				Transport: NewBigTableEthRaw(rawStore, tt.chainID),
+				Transport: NewBigTableEthRaw(rawStore, chainID),
 			}))
 			if err != nil {
 				t.Fatal(err)
@@ -81,6 +82,72 @@ func TestBigTableClientRealCondition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func benchmarkBlockRetrieval(b *testing.B, ethClient *ethclient.Client, rpcClient *rpc.Client) {
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		blockTestNumber := int64(20978000 + b.N)
+		_, err := ethClient.BlockByNumber(context.Background(), big.NewInt(blockTestNumber))
+		if err != nil {
+			b.Fatalf("BlockByNumber() error = %v", err)
+		}
+
+		if _, err := ethClient.BlockReceipts(context.Background(), rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(blockTestNumber))); err != nil {
+			b.Fatalf("BlockReceipts() error = %v", err)
+		}
+
+		var traces []GethTraceCallResultWrapper
+		if err := rpcClient.Call(&traces, "debug_traceBlockByNumber", hexutil.EncodeBig(big.NewInt(blockTestNumber)), gethTracerArg); err != nil {
+			b.Fatalf("debug_traceBlockByNumber() error = %v", err)
+		}
+	}
+}
+
+func BenchmarkErigonNode(b *testing.B) {
+	node := os.Getenv("ETH1_ERIGON_ENDPOINT")
+	if node == "" {
+		b.Skip("skipping test, please set ETH1_ERIGON_ENDPOINT")
+	}
+
+	rpcClient, err := rpc.DialOptions(context.Background(), node)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	benchmarkBlockRetrieval(b, ethclient.NewClient(rpcClient), rpcClient)
+}
+
+func BenchmarkRawBigTable(b *testing.B) {
+	project := os.Getenv("BIGTABLE_PROJECT")
+	instance := os.Getenv("BIGTABLE_INSTANCE")
+	if project == "" || instance == "" {
+		b.Skip("skipping test, set BIGTABLE_PROJECT and BIGTABLE_INSTANCE")
+	}
+
+	bt, err := store.NewBigTable(project, instance, nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	rawStore := WithCache(NewRawStore(store.Wrap(bt, BlocRawTable, "")))
+	rpcClient, err := rpc.DialOptions(context.Background(), "http://foo.bar", rpc.WithHTTPClient(&http.Client{
+		Transport: NewBigTableEthRaw(rawStore, chainID),
+	}))
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	benchmarkBlockRetrieval(b, ethclient.NewClient(rpcClient), rpcClient)
+}
+
+func BenchmarkAll(b *testing.B) {
+	b.Run("BenchmarkErigonNode", func(b *testing.B) {
+		BenchmarkErigonNode(b)
+	})
+	b.Run("BenchmarkRawBigTable", func(b *testing.B) {
+		BenchmarkRawBigTable(b)
+	})
 }
 
 func TestBigTableClient(t *testing.T) {
