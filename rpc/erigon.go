@@ -790,9 +790,58 @@ type BlockResponse struct {
 	Uncles        []*geth_types.Block       `json:"uncles"`
 	Transactions  []*geth_types.Transaction `json:"transactions"`
 	Withdrawals   []*geth_types.Withdrawal  `json:"withdrawals"`
-	BlobGasUsed   string                    `json:"blobGasUsed"`
-	ExcessBlobGas string                    `json:"excessBlobGas"`
+	BlobGasUsed   *string                   `json:"blobGasUsed"`
+	ExcessBlobGas *string                   `json:"excessBlobGas"`
 	BaseFee       string                    `json:"baseFee"`
+}
+
+func (b *BlockResponse) UnmarshalJSON(data []byte) error {
+	type Alias BlockResponse
+	tempData := &struct {
+		BlobGasUsed   json.RawMessage `json:"blobGasUsed"`
+		ExcessBlobGas json.RawMessage `json:"excessBlobGas"`
+		Uncles        json.RawMessage `json:"uncles"`
+		*Alias
+	}{
+		Alias: (*Alias)(b),
+	}
+
+	if err := json.Unmarshal(data, &tempData); err != nil {
+		return err
+	}
+
+	if string(tempData.BlobGasUsed) != "" && string(tempData.BlobGasUsed) != "null" {
+		*b.BlobGasUsed = string(tempData.BlobGasUsed)
+	} else {
+		b.BlobGasUsed = nil
+	}
+
+	if string(tempData.ExcessBlobGas) != "" && string(tempData.ExcessBlobGas) != "null" {
+		*b.ExcessBlobGas = string(tempData.ExcessBlobGas)
+	} else {
+		b.ExcessBlobGas = nil
+	}
+
+	if string(tempData.Uncles) == "null" || string(tempData.Uncles) == "" {
+		b.Uncles = []*geth_types.Block{}
+	} else if tempData.Uncles[0] == '[' {
+		// unmarshal as an array of type geth_types.Block
+		if err := json.Unmarshal(tempData.Uncles, &b.Uncles); err != nil {
+			// if it failed then unmarshal as an array of strings
+			var uncleHashes []string
+			if err := json.Unmarshal(tempData.Uncles, &uncleHashes); err != nil {
+				return fmt.Errorf("expected an array for uncles, but got: %s", tempData.Uncles)
+			}
+			// convert string hashes to empty Block refs
+			for i := range uncleHashes {
+				b.Uncles[i] = &geth_types.Block{}
+			}
+		}
+	} else {
+		return fmt.Errorf("expected an array for uncles, but got: %s", tempData.Uncles)
+	}
+
+	return nil
 }
 
 func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block, erigonClient *ErigonClient) ([]*types.Eth1Block, *types.GetBlockTimings, error) {
@@ -849,7 +898,7 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block, e
 		tracesResults := batchCall[i*batchCallNums+2].Result.(*[]ParityTraceResult)
 
 		var blockResponse BlockResponse
-		err := json.Unmarshal(*blockResult, &blockResponse)
+		err := json.Unmarshal([]byte(*blockResult), &blockResponse)
 		if err != nil {
 			fmt.Printf("\n errror while unmarshalling block results %s\n", err)
 		}
@@ -874,23 +923,28 @@ func (client *ErigonClient) processBlockResult(block BlockResponse, timings *typ
 	}
 	gasLimit, err := strconv.ParseUint(block.GasLimit, 0, 64)
 	if err != nil {
-		logger.Errorf("error while parsing gas limit to uint64, error: %s", err)
+		logger.Errorf("error while parsing gas limit, block: %d, error: %s", blockNumber, err)
 	}
 	gasUsed, err := strconv.ParseUint(block.GasUsed, 0, 64)
 	if err != nil {
-		logger.Errorf("error while parsing gas used to uint64, error: %s", err)
+		logger.Errorf("error while parsing gas used, block: %d, error: %s", blockNumber, err)
 	}
 	blockTime, err := strconv.ParseInt(block.Time, 0, 64)
 	if err != nil {
-		logger.Errorf("error while parsing block time to int64, error: %s", err)
+		logger.Errorf("error while parsing block time, block: %d, error: %s", blockNumber, err)
 	}
-	blobGasUsed, err := strconv.ParseUint(block.BlobGasUsed, 0, 64)
-	if err != nil {
-		logger.Errorf("error while parsing blob gas used to uint64, error: %s", err)
+	var blobGasUsed, excessBlobGas uint64
+	if block.BlobGasUsed != nil {
+		blobGasUsed, err = strconv.ParseUint(*block.BlobGasUsed, 10, 64)
+		if err != nil {
+			logger.Errorf("error while parsing blob gas used, block: %d, error: %s", blockNumber, err)
+		}
 	}
-	excessBlobGas, err := strconv.ParseUint(block.ExcessBlobGas, 0, 64)
-	if err != nil {
-		logger.Errorf("error while parsing excess blob gas to uint64, error: %s", err)
+	if block.ExcessBlobGas != nil {
+		excessBlobGas, err = strconv.ParseUint(*block.ExcessBlobGas, 10, 64)
+		if err != nil {
+			logger.Errorf("error while parsing excess blob gas, block: %d, error: %s", blockNumber, err)
+		}
 	}
 
 	ethBlock := &types.Eth1Block{
@@ -987,14 +1041,8 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 
 	traceIndex := 0
 	var indexedTraces []*Eth1InternalTransactionWithPosition
-	transactionPosition := 0
-	var revertSource []int64
 
 	for _, trace := range traces {
-		if trace.TransactionPosition != transactionPosition {
-			revertSource = []int64{}
-		}
-		transactionPosition = trace.TransactionPosition
 		if trace.Type == "reward" {
 			continue
 		}
@@ -1006,18 +1054,6 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 			return nil, timings
 		}
 
-		var reverted bool
-		if trace.Error != "" {
-			reverted = true
-			// only save the highest root revert
-			if !isSubset(trace.TraceAddress, revertSource) {
-				revertSource = trace.TraceAddress
-			}
-		}
-		if isSubset(trace.TraceAddress, revertSource) {
-			reverted = true
-		}
-
 		from, to, value, traceType := trace.ConvertFields()
 		indexedTraces = append(indexedTraces, &Eth1InternalTransactionWithPosition{
 			Eth1InternalTransaction: types.Eth1InternalTransaction{
@@ -1027,7 +1063,6 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 				Value:    value,
 				ErrorMsg: trace.Error,
 				Path:     fmt.Sprint(trace.TraceAddress),
-				Reverted: reverted,
 			},
 			txPosition: trace.TransactionPosition,
 		})
@@ -1041,7 +1076,7 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 		ethBlock.Transactions[txPosition].GasUsed = receipt.GasUsed
 		ethBlock.Transactions[txPosition].LogsBloom = receipt.Bloom[:]
 		ethBlock.Transactions[txPosition].Logs = make([]*types.Eth1Log, 0, len(receipt.Logs))
-		ethBlock.Transactions[txPosition].Status = types.StatusType(receipt.Status)
+		ethBlock.Transactions[txPosition].Status = receipt.Status
 
 		if receipt.BlobGasPrice != nil {
 			ethBlock.Transactions[txPosition].BlobGasPrice = receipt.BlobGasPrice.Bytes()
@@ -1065,9 +1100,6 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 		}
 		for ; traceIndex < len(indexedTraces) && indexedTraces[traceIndex].txPosition == txPosition; traceIndex++ {
 			ethBlock.Transactions[txPosition].Itx = append(ethBlock.Transactions[txPosition].Itx, &indexedTraces[traceIndex].Eth1InternalTransaction)
-			if indexedTraces[traceIndex].Reverted && ethBlock.Transactions[txPosition].Status == types.StatusType_SUCCESS {
-				ethBlock.Transactions[txPosition].Status = types.StatusType_PARTIAL
-			}
 		}
 	}
 	timings.Receipts = time.Since(start)
