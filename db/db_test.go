@@ -92,7 +92,7 @@ func TestTxRevertTransformer(t *testing.T) {
 			if err := bt.SaveBlock(block); err != nil {
 				t.Fatal(err)
 			}
-			transformers := []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error){
+			transformers := []TransformFunc{
 				bt.TransformItx,
 				bt.TransformTx,
 			}

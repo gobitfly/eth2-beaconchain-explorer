@@ -659,7 +659,7 @@ func TimestampToBigtableTimeDesc(ts time.Time) string {
 	return fmt.Sprintf("%04d%02d%02d%02d%02d%02d", 9999-ts.Year(), 12-ts.Month(), 31-ts.Day(), 23-ts.Hour(), 59-ts.Minute(), 59-ts.Second())
 }
 
-func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
+func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transforms []TransformFunc, concurrency int64, cache *freecache.Cache) error {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
@@ -763,6 +763,48 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 			return err
 		}
 	}
+	return nil
+}
+
+type TransformFunc func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)
+
+func (bigtable *Bigtable) IndexBlockWithTransformers(block *types.Eth1Block, transforms []TransformFunc, cache *freecache.Cache) error {
+	bulkMutsData := types.BulkMutations{}
+	bulkMutsMetadataUpdate := types.BulkMutations{}
+	for _, transform := range transforms {
+		mutsData, mutsMetadataUpdate, err := transform(block, cache)
+		if err != nil {
+			logrus.WithError(err).Errorf("error transforming block [%v]", block.Number)
+		}
+		bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+		bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+		if mutsMetadataUpdate != nil {
+			bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+			bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+		}
+	}
+
+	if len(bulkMutsData.Keys) > 0 {
+		metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+		err := bigtable.SaveBlockKeys(block.Number, block.Hash, metaKeys)
+		if err != nil {
+			return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", block.Number, err)
+		}
+
+		err = bigtable.WriteBulk(&bulkMutsData, bigtable.tableData, DEFAULT_BATCH_INSERTS)
+		if err != nil {
+			return fmt.Errorf("error writing block [%v] to bigtable data table: %w", block.Number, err)
+		}
+	}
+
+	if len(bulkMutsMetadataUpdate.Keys) > 0 {
+		err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.tableMetadataUpdates, DEFAULT_BATCH_INSERTS)
+		if err != nil {
+			return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", block.Number, err)
+		}
+	}
+
 	return nil
 }
 

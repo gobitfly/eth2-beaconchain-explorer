@@ -27,6 +27,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/gobitfly/eth2-beaconchain-explorer/version"
+	"github.com/gobitfly/eth2-beaconchain-explorer/workerpool"
 
 	"github.com/Gurpartap/storekit-go"
 	"github.com/coocood/freecache"
@@ -1629,53 +1630,53 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 		end = uint64(lastBlockFromBlocksTable)
 	}
 
-	errFields := map[string]interface{}{
-		"start": start,
-		"end":   end,
+	transformers, importENSChanges, err := getTransformers(transformerFlag, bt)
+	if err != nil {
+		utils.LogError(nil, err, 0)
+		return
+	}
+	if importENSChanges {
+		if err := bt.ImportEnsUpdates(client.GetNativeClient(), math.MaxInt64); err != nil {
+			utils.LogError(err, "error importing ens from events", 0)
+			return
+		}
 	}
 
-	batchSize := uint64(10000)
-	for from := start; from <= end; from += batchSize {
-		targetCount := batchSize
-		if from+targetCount >= end {
-			targetCount = end - from + 1
-		}
-		to := from + targetCount - 1
+	defaultPoolSize := 5
 
-		errFields["from"] = from
-		errFields["to"] = to
-		errFields["targetCount"] = targetCount
+	wp := workerpool.New(defaultPoolSize, int(end-start+1))
+	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
+	subTasks := errgroup.Group{}
 
-		for block := from; block <= to; block++ {
-			bc, _, err := client.GetBlock(int64(block), "geth")
+	for i := start; i <= end; i++ {
+		height := int64(i)
+		wp.AddTask(func() {
+			block, _, err := client.GetBlock(height, "geth")
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0, errFields)
+				utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0)
 				return
 			}
-			if err := bt.SaveBlock(bc); err != nil {
-				utils.LogError(err, fmt.Sprintf("error saving block: %v ", block), 0, errFields)
-				return
-			}
-		}
-		indexOldEth1Blocks(from, to, batchSize, 1, transformerFlag, bt, client)
+			subTasks.Go(func() error {
+				if err := bt.SaveBlock(block); err != nil {
+					return fmt.Errorf("error saving block %v: %w", block, err)
+				}
+				return nil
+			})
+			subTasks.Go(func() error {
+				indexOldEth1Block(block, transformers, bt, cache)
+				return nil
+			})
+		})
+	}
+	wp.Run()
+	wp.Wait()
+	if err := subTasks.Wait(); err != nil {
+		panic(err)
 	}
 }
 
-func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
-	if endBlock > 0 && endBlock < startBlock {
-		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
-		return
-	}
-	if concurrency == 0 {
-		utils.LogError(nil, "concurrency must be greater than 0", 0)
-		return
-	}
-	if bt == nil {
-		utils.LogError(nil, "no bigtable provided", 0)
-		return
-	}
-
-	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+func getTransformers(transformerFlag string, bt *db.Bigtable) ([]db.TransformFunc, bool, error) {
+	transforms := make([]db.TransformFunc, 0)
 
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
@@ -1683,13 +1684,11 @@ func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered", "TransformContract"}
 	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
-		return
+		return nil, false, fmt.Errorf("no transformer functions provided")
 	}
 	logrus.Infof("transformers: %v", transformerList)
+
 	importENSChanges := false
-	/**
-	* Add additional transformers you want to sync to this switch case
-	**/
 	for _, t := range transformerList {
 		switch t {
 		case "TransformBlock":
@@ -1716,9 +1715,39 @@ func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, co
 		case "TransformContract":
 			transforms = append(transforms, bt.TransformContract)
 		default:
-			utils.LogError(nil, "Invalid transformer flag %v", 0)
-			return
+			return nil, false, fmt.Errorf("invalid transformer flag %v", t)
 		}
+	}
+	return transforms, importENSChanges, nil
+}
+
+func indexOldEth1Block(block *types.Eth1Block, transformers []db.TransformFunc, bt *db.Bigtable, cache *freecache.Cache) {
+	err := bt.IndexBlockWithTransformers(block, transformers, cache)
+	if err != nil {
+		utils.LogError(err, "error indexing from bigtable", 0)
+		return
+	}
+	logrus.Infof("%d indexed", block.Number)
+}
+
+func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
+	if endBlock > 0 && endBlock < startBlock {
+		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
+		return
+	}
+	if concurrency == 0 {
+		utils.LogError(nil, "concurrency must be greater than 0", 0)
+		return
+	}
+	if bt == nil {
+		utils.LogError(nil, "no bigtable provided", 0)
+		return
+	}
+
+	transforms, importENSChanges, err := getTransformers(transformerFlag, bt)
+	if err != nil {
+		utils.LogError(nil, err, 0)
+		return
 	}
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
