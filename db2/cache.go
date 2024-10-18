@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var ttl = 200 * time.Millisecond
+var ttl = 1000 * time.Millisecond
 
 type MinimalBlock struct {
 	Result struct {
