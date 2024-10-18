@@ -28,14 +28,14 @@ type WithFallback struct {
 	fallback     http.RoundTripper
 }
 
-func NewWithFallback(roundTripper http.RoundTripper, fallback http.RoundTripper) *WithFallback {
+func NewWithFallback(roundTripper, fallback http.RoundTripper) *WithFallback {
 	return &WithFallback{
 		roundTripper: roundTripper,
 		fallback:     fallback,
 	}
 }
 
-func (r WithFallback) RoundTrip(request *http.Request) (*http.Response, error) {
+func (r *WithFallback) RoundTrip(request *http.Request) (*http.Response, error) {
 	resp, err := r.roundTripper.RoundTrip(request)
 	if err == nil {
 		// no fallback needed
@@ -43,9 +43,10 @@ func (r WithFallback) RoundTrip(request *http.Request) (*http.Response, error) {
 	}
 
 	var e1 *json.SyntaxError
-	if !errors.As(err, &e1) &&
-		!errors.Is(err, ErrNotFoundInCache) &&
-		!errors.Is(err, ErrMethodNotSupported) &&
+
+	if !errors.As(err, &e1) ||
+		!errors.Is(err, ErrNotFoundInCache) ||
+		!errors.Is(err, ErrMethodNotSupported) ||
 		!errors.Is(err, store.ErrNotFound) {
 		return nil, err
 	}
@@ -74,7 +75,8 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 		request.Body = io.NopCloser(bytes.NewBuffer(body))
 	}()
 	var messages []*jsonrpcMessage
-	var isSingle bool
+	isSingle := false
+
 	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&messages); err != nil {
 		isSingle = true
 		message := new(jsonrpcMessage)
@@ -92,7 +94,11 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 		resps = append(resps, resp)
 	}
 
-	respBody, _ := makeBody(isSingle, resps)
+	respBody, err := makeBody(isSingle, resps)
+	if err != nil {
+		return nil, err
+	}
+
 	return &http.Response{
 		Body:       respBody,
 		StatusCode: http.StatusOK,
@@ -101,40 +107,32 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 
 func (r *BigTableEthRaw) handle(ctx context.Context, message *jsonrpcMessage) (*jsonrpcMessage, error) {
 	var args []interface{}
-	// ignore error
-	_ = json.Unmarshal(message.Params, &args)
+	err := json.Unmarshal(message.Params, &args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := hexutil.DecodeBig(args[0].(string))
+	if err != nil {
+		return nil, err
+	}
 
 	var respBody []byte
 	switch message.Method {
 	case "eth_getBlockByNumber":
-		// we decode only big.Int maybe we should also handle "latest"
-		block, err := hexutil.DecodeBig(args[0].(string))
-		if err != nil {
-			return nil, err
-		}
-
 		respBody, err = r.BlockByNumber(ctx, block)
 		if err != nil {
 			return nil, err
 		}
 
 	case "debug_traceBlockByNumber":
-		block, err := hexutil.DecodeBig(args[0].(string))
-		if err != nil {
-			return nil, err
-		}
-
 		respBody, err = r.TraceBlockByNumber(ctx, block)
 		if err != nil {
 			return nil, err
 		}
 
 	case "eth_getBlockReceipts":
-		block, err := hexutil.DecodeBig(args[0].(string))
-		if err != nil {
-			return nil, err
-		}
-
 		respBody, err = r.BlockReceipts(ctx, block)
 		if err != nil {
 			return nil, err
@@ -153,7 +151,11 @@ func (r *BigTableEthRaw) handle(ctx context.Context, message *jsonrpcMessage) (*
 		return nil, ErrMethodNotSupported
 	}
 	var resp jsonrpcMessage
-	_ = json.Unmarshal(respBody, &resp)
+	err = json.Unmarshal(respBody, &resp)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(respBody) == 0 {
 		resp.Version = message.Version
 		resp.Result = []byte("[]")
@@ -206,7 +208,10 @@ func (r *BigTableEthRaw) UncleByBlockNumberAndIndex(ctx context.Context, number 
 		return nil, err
 	}
 	var uncles []*jsonrpcMessage
-	_ = json.Unmarshal(block.Uncles, &uncles)
+	err = json.Unmarshal(block.Uncles, &uncles)
+	if err != nil {
+		return nil, err
+	}
 	return json.Marshal(uncles[index])
 }
 
@@ -216,15 +221,18 @@ func (r *BigTableEthRaw) UncleByBlockHashAndIndex(ctx context.Context, hash stri
 		return nil, err
 	}
 
-	if len(block.Uncles) > 2000 {
-		var uncles []*jsonrpcMessage
-		_ = json.Unmarshal(block.Uncles, &uncles)
-		return json.Marshal(uncles[index])
+	var uncles []*jsonrpcMessage
+	err = json.Unmarshal(block.Uncles, &uncles)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal uncles: %v", err)
 	}
 
-	var uncle *jsonrpcMessage
-	_ = json.Unmarshal(block.Uncles, &uncle)
-	return json.Marshal(uncle)
+	if index < 0 || index >= int64(len(uncles)) {
+		return nil, fmt.Errorf("index %d out of bounds for uncles array of length %d", index, len(uncles))
+	}
+
+	return json.Marshal(uncles[index])
 }
 
 // A value of this type can a JSON-RPC request, notification, successful response or

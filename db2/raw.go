@@ -3,7 +3,9 @@ package db2
 import (
 	"fmt"
 	"log/slog"
+	"sync"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db2/store"
 )
 
@@ -25,63 +27,84 @@ func NewRawStore(store store.Store) RawStore {
 }
 
 func (db RawStore) AddBlocks(blocks []FullBlockRawData) error {
+	var wg sync.WaitGroup
+	errors := make(chan error, len(blocks))
 	itemsByKey := make(map[string][]store.Item)
+	mu := sync.Mutex{}
+
 	for _, fullBlock := range blocks {
-		if len(fullBlock.Block) == 0 || len(fullBlock.BlockTxs) != 0 && len(fullBlock.Traces) == 0 {
-			return fmt.Errorf("block %d: empty data", fullBlock.BlockNumber)
-		}
-		key := blockKey(fullBlock.ChainID, fullBlock.BlockNumber)
+		wg.Add(1)
+		go func(fullBlock FullBlockRawData) {
+			defer wg.Done()
 
-		block, err := db.compressor.compress(fullBlock.Block)
-		if err != nil {
-			return fmt.Errorf("cannot compress block %d: %w", fullBlock.BlockNumber, err)
-		}
-		receipts, err := db.compressor.compress(fullBlock.Receipts)
-		if err != nil {
-			return fmt.Errorf("cannot compress receipts %d: %w", fullBlock.BlockNumber, err)
-		}
-		traces, err := db.compressor.compress(fullBlock.Traces)
-		if err != nil {
-			return fmt.Errorf("cannot compress traces %d: %w", fullBlock.BlockNumber, err)
-		}
-		itemsByKey[key] = []store.Item{
-			{
-				Family: BT_COLUMNFAMILY_BLOCK,
-				Column: BT_COLUMN_BLOCK,
-				Data:   block,
-			},
-			{
-				Family: BT_COLUMNFAMILY_RECEIPTS,
-				Column: BT_COLUMN_RECEIPTS,
-				Data:   receipts,
-			},
-			{
-				Family: BT_COLUMNFAMILY_TRACES,
-				Column: BT_COLUMN_TRACES,
-				Data:   traces,
-			},
-		}
-		if len(fullBlock.Receipts) < 1 {
-			// todo move that log higher up
-			slog.Warn(fmt.Sprintf("empty receipts at block %d lRec %d lTxs %d", fullBlock.BlockNumber, len(fullBlock.Receipts), len(fullBlock.BlockTxs)))
-		}
-		if fullBlock.BlockUnclesCount > 0 {
-			uncles, err := db.compressor.compress(fullBlock.Uncles)
-			if err != nil {
-				return fmt.Errorf("cannot compress block %d: %w", fullBlock.BlockNumber, err)
+			if len(fullBlock.Block) == 0 || (len(fullBlock.BlockTxs) != 0 && len(fullBlock.Traces) == 0) {
+				errors <- fmt.Errorf("block %d: empty data", fullBlock.BlockNumber)
+				return
 			}
-			itemsByKey[key] = append(itemsByKey[key], store.Item{
-				Family: BT_COLUMNFAMILY_UNCLES,
-				Column: BT_COLUMN_UNCLES,
-				Data:   uncles,
-			})
-		}
-	}
-	return db.store.BulkAdd(itemsByKey)
-}
+			key := blockKey(fullBlock.ChainID, fullBlock.BlockNumber)
 
-func (db RawStore) ReadBlockByNumber(chainID uint64, number int64) (*FullBlockRawData, error) {
-	return db.readBlock(chainID, number)
+			block, err := db.compressor.compress(fullBlock.Block)
+			if err != nil {
+				errors <- fmt.Errorf("cannot compress block %d: %w", fullBlock.BlockNumber, err)
+				return
+			}
+			receipts, err := db.compressor.compress(fullBlock.Receipts)
+			if err != nil {
+				errors <- fmt.Errorf("cannot compress receipts %d: %w", fullBlock.BlockNumber, err)
+				return
+			}
+			traces, err := db.compressor.compress(fullBlock.Traces)
+			if err != nil {
+				errors <- fmt.Errorf("cannot compress traces %d: %w", fullBlock.BlockNumber, err)
+				return
+			}
+
+			mu.Lock()
+			itemsByKey[key] = []store.Item{
+				{
+					Family: BT_COLUMNFAMILY_BLOCK,
+					Column: BT_COLUMN_BLOCK,
+					Data:   block,
+				},
+				{
+					Family: BT_COLUMNFAMILY_RECEIPTS,
+					Column: BT_COLUMN_RECEIPTS,
+					Data:   receipts,
+				},
+				{
+					Family: BT_COLUMNFAMILY_TRACES,
+					Column: BT_COLUMN_TRACES,
+					Data:   traces,
+				},
+			}
+			if len(fullBlock.Receipts) < 1 {
+				// todo move that log higher up
+				slog.Warn(fmt.Sprintf("empty receipts at block %d lRec %d lTxs %d", fullBlock.BlockNumber, len(fullBlock.Receipts), len(fullBlock.BlockTxs)))
+			}
+			if fullBlock.BlockUnclesCount > 0 {
+				uncles, err := db.compressor.compress(fullBlock.Uncles)
+				if err != nil {
+					errors <- fmt.Errorf("cannot compress uncles %d: %w", fullBlock.BlockNumber, err)
+					return
+				}
+				itemsByKey[key] = append(itemsByKey[key], store.Item{
+					Family: BT_COLUMNFAMILY_UNCLES,
+					Column: BT_COLUMN_UNCLES,
+					Data:   uncles,
+				})
+			}
+			mu.Unlock()
+		}(fullBlock)
+	}
+
+	wg.Wait()
+	close(errors)
+
+	if len(errors) > 0 {
+		return <-errors
+	}
+
+	return db.store.BulkAdd(itemsByKey)
 }
 
 func (db RawStore) ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawData, error) {
@@ -89,28 +112,62 @@ func (db RawStore) ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawDa
 	return nil, fmt.Errorf("ReadBlockByHash not implemented")
 }
 
-func (db RawStore) readBlock(chainID uint64, number int64) (*FullBlockRawData, error) {
+func (db RawStore) ReadBlockByNumber(chainID uint64, number int64) (*FullBlockRawData, error) {
 	key := blockKey(chainID, number)
 	data, err := db.store.GetRow(key)
 	if err != nil {
 		return nil, err
 	}
-	block, err := db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK)])
-	if err != nil {
-		return nil, fmt.Errorf("cannot decompress block %d: %w", number, err)
+
+	var wg sync.WaitGroup
+	errors := make(chan error, 4)
+	var block, receipts, traces, uncles []byte
+
+	wg.Add(4)
+
+	go func() {
+		defer wg.Done()
+		var err error
+		block, err = db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_BLOCK, BT_COLUMN_BLOCK)])
+		if err != nil {
+			errors <- fmt.Errorf("cannot decompress block %d: %w", number, err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		receipts, err = db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS)])
+		if err != nil {
+			errors <- fmt.Errorf("cannot decompress receipts %d: %w", number, err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		traces, err = db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES)])
+		if err != nil {
+			errors <- fmt.Errorf("cannot decompress traces %d: %w", number, err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		uncles, err = db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES)])
+		if err != nil {
+			errors <- fmt.Errorf("cannot decompress uncles %d: %w", number, err)
+		}
+	}()
+
+	wg.Wait()
+	close(errors)
+
+	if len(errors) > 0 {
+		return nil, <-errors
 	}
-	receipts, err := db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_RECEIPTS, BT_COLUMN_RECEIPTS)])
-	if err != nil {
-		return nil, fmt.Errorf("cannot decompress block %d: %w", number, err)
-	}
-	traces, err := db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_TRACES, BT_COLUMN_TRACES)])
-	if err != nil {
-		return nil, fmt.Errorf("cannot decompress block %d: %w", number, err)
-	}
-	uncles, err := db.compressor.decompress(data[fmt.Sprintf("%s:%s", BT_COLUMNFAMILY_UNCLES, BT_COLUMN_UNCLES)])
-	if err != nil {
-		return nil, fmt.Errorf("cannot decompress block %d: %w", number, err)
-	}
+
 	return &FullBlockRawData{
 		ChainID:          chainID,
 		BlockNumber:      number,
@@ -132,12 +189,11 @@ type FullBlockRawData struct {
 	ChainID uint64
 
 	BlockNumber      int64
-	BlockHash        Bytes
+	BlockHash        hexutil.Bytes
 	BlockUnclesCount int
 	BlockTxs         []string
-
-	Block    Bytes
-	Receipts Bytes
-	Traces   Bytes
-	Uncles   Bytes
+	Block            hexutil.Bytes
+	Receipts         hexutil.Bytes
+	Traces           hexutil.Bytes
+	Uncles           hexutil.Bytes
 }
