@@ -187,7 +187,7 @@ func main() {
 		return
 	}
 
-	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+	transforms := make([]db.TransformFunc, 0)
 	transforms = append(transforms,
 		bt.TransformBlock,
 		bt.TransformTx,
