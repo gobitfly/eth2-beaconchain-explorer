@@ -40,12 +40,6 @@ message Eth1Withdrawal {
     bytes amount = 4;
 }
 
-enum StatusType {
-    FAILED = 0;
-    SUCCESS = 1;
-    PARTIAL = 2;
-}
-
 message Eth1Transaction {
     uint32 type = 1;
     uint64 nonce = 2;
@@ -69,8 +63,9 @@ message Eth1Transaction {
     uint64 commulative_gas_used = 18;
     uint64 gas_used = 19;
     bytes logs_bloom = 20;
-    StatusType status = 21;
-    string error_msg = 22;
+    uint64 status = 21;
+    reserved 22; // string error_msg = 22;
+
     repeated Eth1Log logs = 23;
 
     // Internal transactions
@@ -108,7 +103,6 @@ message Eth1InternalTransaction {
     bytes value = 4;
     string error_msg = 5;
     string path = 6;
-    bool reverted = 7;
 }
 
 // Indexed structs stored in the data table
@@ -162,6 +156,12 @@ message Eth1WithdrawalIndexed {
     google.protobuf.Timestamp time = 6;
 }
 
+enum StatusType {
+    FAILED = 0;
+    SUCCESS = 1;
+    PARTIAL = 2;
+}
+
 message Eth1TransactionIndexed {
     bytes hash = 1;
     uint64 block_number = 2;
@@ -173,8 +173,8 @@ message Eth1TransactionIndexed {
     bytes tx_fee = 8;
     bytes gas_price = 9;
     bool is_contract_creation = 10;
-    // invokes_contract is unused, should mark reserved!
-    bool invokes_contract = 11;
+    reserved 11; // bool invokes_contract = 11;
+
     string error_msg = 12;
 
     // EIP 4844

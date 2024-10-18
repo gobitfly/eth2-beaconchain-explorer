@@ -1009,11 +1009,20 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			Value:              tx.GetValue(),
 			TxFee:              fee,
 			GasPrice:           tx.GetGasPrice(),
+			IsContractCreation: isContract,
+			ErrorMsg:           "",
 			BlobTxFee:          blobFee,
 			BlobGasPrice:       tx.GetBlobGasPrice(),
-			IsContractCreation: isContract,
-			ErrorMsg:           tx.GetErrorMsg(),
-			Status:             tx.Status,
+			Status:             types.StatusType(tx.Status),
+		}
+		for _, itx := range tx.Itx {
+			if itx.ErrorMsg != "" {
+				indexedTx.ErrorMsg = itx.ErrorMsg
+				if indexedTx.Status == types.StatusType_SUCCESS {
+					indexedTx.Status = types.StatusType_PARTIAL
+				}
+				break
+			}
 		}
 
 		// Mark Sender and Recipient for balance update
@@ -1107,9 +1116,16 @@ func (bigtable *Bigtable) TransformBlobTx(blk *types.Eth1Block, cache *freecache
 			GasPrice:            tx.GetGasPrice(),
 			BlobTxFee:           blobFee,
 			BlobGasPrice:        tx.GetBlobGasPrice(),
-			ErrorMsg:            tx.GetErrorMsg(),
+			ErrorMsg:            "",
 			BlobVersionedHashes: tx.GetBlobVersionedHashes(),
 		}
+		for _, itx := range tx.Itx {
+			if itx.ErrorMsg != "" {
+				indexedTx.ErrorMsg = itx.ErrorMsg
+				break
+			}
+		}
+
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -1218,7 +1234,7 @@ func (bigtable *Bigtable) TransformContract(blk *types.Eth1Block, cache *freecac
 				contractUpdate := &types.IsContractUpdate{
 					IsContract: itx.GetType() == "create",
 					// also use success status of enclosing transaction, as even successful sub-calls can still be reverted later in the tx
-					Success: itx.GetErrorMsg() == "" && tx.GetErrorMsg() == "",
+					Success: itx.GetErrorMsg() == "" && tx.GetStatus() == 1,
 				}
 				b, err := proto.Marshal(contractUpdate)
 				if err != nil {
@@ -1286,11 +1302,25 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 		}
 		iReversed := reversePaddedIndex(i, TX_PER_BLOCK_LIMIT)
 
+		var revertSource string
 		for j, itx := range tx.GetItx() {
 			if j >= ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
 			}
 			jReversed := reversePaddedIndex(j, ITX_PER_TX_LIMIT)
+
+			// check for error before skipping, otherwise we loose track of cascading reverts
+			var reverted bool
+			if itx.ErrorMsg != "" {
+				reverted = true
+				// only save the highest root revert
+				if revertSource == "" || !strings.HasPrefix(itx.Path, revertSource) {
+					revertSource = strings.TrimSuffix(itx.Path, "]")
+				}
+			}
+			if revertSource != "" && strings.HasPrefix(itx.Path, revertSource) {
+				reverted = true
+			}
 
 			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level and empty calls
 				continue
@@ -1305,7 +1335,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				From:        itx.GetFrom(),
 				To:          itx.GetTo(),
 				Value:       itx.GetValue(),
-				Reverted:    itx.GetReverted(),
+				Reverted:    reverted,
 			}
 
 			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
