@@ -205,8 +205,15 @@ func (r *BigTableEthRaw) UncleByBlockNumberAndIndex(ctx context.Context, number 
 	if err != nil {
 		return nil, err
 	}
+
 	var uncles []*jsonrpcMessage
-	_ = json.Unmarshal(block.Uncles, &uncles)
+	if err := json.Unmarshal(block.Uncles, &uncles); err != nil {
+		var uncle *jsonrpcMessage
+		if err := json.Unmarshal(block.Uncles, &uncle); err != nil {
+			panic(err)
+		}
+		return json.Marshal(uncle)
+	}
 	return json.Marshal(uncles[index])
 }
 
@@ -216,15 +223,15 @@ func (r *BigTableEthRaw) UncleByBlockHashAndIndex(ctx context.Context, hash stri
 		return nil, err
 	}
 
-	if len(block.Uncles) > 2000 {
-		var uncles []*jsonrpcMessage
-		_ = json.Unmarshal(block.Uncles, &uncles)
-		return json.Marshal(uncles[index])
+	var uncles []*jsonrpcMessage
+	if err := json.Unmarshal(block.Uncles, &uncles); err != nil {
+		var uncle *jsonrpcMessage
+		if err := json.Unmarshal(block.Uncles, &uncle); err != nil {
+			panic(err)
+		}
+		return json.Marshal(uncle)
 	}
-
-	var uncle *jsonrpcMessage
-	_ = json.Unmarshal(block.Uncles, &uncle)
-	return json.Marshal(uncle)
+	return json.Marshal(uncles[index])
 }
 
 // A value of this type can a JSON-RPC request, notification, successful response or
