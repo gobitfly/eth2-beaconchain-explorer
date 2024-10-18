@@ -1599,7 +1599,7 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 		errFields["targetCount"] = targetCount
 
 		for block := from; block <= to; block++ {
-			bc, _, err := client.GetBlock(int64(block), "parity/geth")
+			bc, _, err := client.GetBlock(int64(block), "geth")
 			if err != nil {
 				utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0, errFields)
 				return
