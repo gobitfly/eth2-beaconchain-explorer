@@ -204,7 +204,12 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			Gas:                  tx.Gas(),
 			Value:                tx.Value().Bytes(),
 			Data:                 tx.Data(),
-			To:                   bytesOrNil(tx.To()),
+			To: func() []byte {
+				if tx.To() != nil {
+					return tx.To().Bytes()
+				}
+				return nil
+			}(),
 			From: func() []byte {
 				sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
 				if err != nil {
@@ -224,15 +229,25 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			Status:             receipt.Status,
 			Logs:               logs,
 			Itx:                internals,
-			MaxFeePerBlobGas:   bytesOrNil(tx.BlobGasFeeCap()),
+			MaxFeePerBlobGas: func() []byte {
+				if tx.BlobGasFeeCap() != nil {
+					return tx.BlobGasFeeCap().Bytes()
+				}
+				return nil
+			}(),
 			BlobVersionedHashes: func() (b [][]byte) {
 				for _, h := range tx.BlobHashes() {
 					b = append(b, h.Bytes())
 				}
 				return b
 			}(),
-			BlobGasPrice: bytesOrNil(receipt.BlobGasPrice),
-			BlobGasUsed:  receipt.BlobGasUsed,
+			BlobGasPrice: func() []byte {
+				if receipt.BlobGasPrice != nil {
+					return receipt.BlobGasPrice.Bytes()
+				}
+				return nil
+			}(),
+			BlobGasUsed: receipt.BlobGasUsed,
 		})
 	}
 
@@ -258,22 +273,27 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	}
 
 	return &types.Eth1Block{
-		Hash:         block.Hash().Bytes(),
-		ParentHash:   block.ParentHash().Bytes(),
-		UncleHash:    block.UncleHash().Bytes(),
-		Coinbase:     block.Coinbase().Bytes(),
-		Root:         block.Root().Bytes(),
-		TxHash:       block.TxHash().Bytes(),
-		ReceiptHash:  block.ReceiptHash().Bytes(),
-		Difficulty:   block.Difficulty().Bytes(),
-		Number:       block.NumberU64(),
-		GasLimit:     block.GasLimit(),
-		GasUsed:      block.GasUsed(),
-		Time:         timestamppb.New(time.Unix(int64(block.Time()), 0)),
-		Extra:        block.Extra(),
-		MixDigest:    block.MixDigest().Bytes(),
-		Bloom:        block.Bloom().Bytes(),
-		BaseFee:      bytesOrNil(block.BaseFee()),
+		Hash:        block.Hash().Bytes(),
+		ParentHash:  block.ParentHash().Bytes(),
+		UncleHash:   block.UncleHash().Bytes(),
+		Coinbase:    block.Coinbase().Bytes(),
+		Root:        block.Root().Bytes(),
+		TxHash:      block.TxHash().Bytes(),
+		ReceiptHash: block.ReceiptHash().Bytes(),
+		Difficulty:  block.Difficulty().Bytes(),
+		Number:      block.NumberU64(),
+		GasLimit:    block.GasLimit(),
+		GasUsed:     block.GasUsed(),
+		Time:        timestamppb.New(time.Unix(int64(block.Time()), 0)),
+		Extra:       block.Extra(),
+		MixDigest:   block.MixDigest().Bytes(),
+		Bloom:       block.Bloom().Bytes(),
+		BaseFee: func() []byte {
+			if block.BaseFee() != nil {
+				return block.BaseFee().Bytes()
+			}
+			return nil
+		}(),
 		Uncles:       uncles,
 		Transactions: transactions,
 		Withdrawals:  withdrawals,
@@ -1108,15 +1128,4 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 		}
 	}
 
-}
-
-type byter interface {
-	Bytes() []byte
-}
-
-func bytesOrNil(val byter) []byte {
-	if val != nil {
-		return val.Bytes()
-	}
-	return nil
 }
