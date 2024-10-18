@@ -4910,7 +4910,7 @@ func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNow
 	return history, nil
 }
 
-func (bigtable *Bigtable) ReindexITxs(start, end, batchSize int64, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), erigonClient *rpc.ErigonClient, cache *freecache.Cache) error {
+func (bigtable *Bigtable) ReindexITxsFromNode(start, end, batchSize int64, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), erigonClient *rpc.ErigonClient, cache *freecache.Cache) error {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
