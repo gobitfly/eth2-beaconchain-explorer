@@ -112,6 +112,45 @@ func (db RawStore) ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawDa
 	return nil, fmt.Errorf("ReadBlockByHash not implemented")
 }
 
+func (db RawStore) ReadBlocksByNumbers(chainID uint64, blockNumbers []int64) (map[int64]*FullBlockRawData, error) {
+	results := make(map[int64]*FullBlockRawData)
+	errorChan := make(chan error, len(blockNumbers))
+	workers := make(chan struct{}, 10)
+
+	if len(blockNumbers) == 0 {
+		return results, nil
+	}
+
+	var wg sync.WaitGroup
+	for _, blockNumber := range blockNumbers {
+		wg.Add(1)
+
+		go func(number int64) {
+			defer wg.Done()
+			workers <- struct{}{}
+
+			defer func() { <-workers }()
+
+			block, err := db.ReadBlockByNumber(chainID, number) //@TODO implement batch read from db
+
+			if err != nil {
+				errorChan <- fmt.Errorf("error while reading the block %d, error: %v", number, err)
+				return
+			}
+
+			results[number] = block
+		}(blockNumber)
+	}
+	wg.Wait()
+	close(errorChan)
+
+	if len(errorChan) > 0 {
+		return nil, <-errorChan
+	}
+
+	return results, nil
+}
+
 func (db RawStore) ReadBlockByNumber(chainID uint64, number int64) (*FullBlockRawData, error) {
 	key := blockKey(chainID, number)
 	data, err := db.store.GetRow(key)
