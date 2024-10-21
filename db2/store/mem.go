@@ -67,6 +67,11 @@ func (m *Mem) GetRow(key string) (map[string][]byte, error) {
 	panic("implement me")
 }
 
+func (m *Mem) GetRows(table string, keys []string) (map[string]map[string][]byte, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *Mem) GetLatestValue(key string) ([]byte, error) {
 	for _, v := range m.data[key] {
 		return v, nil

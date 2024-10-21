@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/bigtable"
@@ -253,6 +254,54 @@ func (b BigTableStore) GetRow(table, key string) (map[string][]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (b BigTableStore) GetRows(table string, keys []string) (map[string]map[string][]byte, error) {
+	tbl := b.client.Open(table)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	results := make(map[string]map[string][]byte)
+	errorsChan := make(chan error, len(keys))
+	var wg sync.WaitGroup
+
+	for _, key := range keys {
+		wg.Add(1)
+		go func(k string) {
+			defer wg.Done()
+
+			data := make(map[string][]byte)
+			err := tbl.ReadRows(ctx, bigtable.PrefixRange(k), func(row bigtable.Row) bool {
+				for _, family := range row {
+					for _, item := range family {
+						data[item.Column] = item.Value
+					}
+				}
+				return true
+			})
+
+			if err != nil {
+				errorsChan <- fmt.Errorf("could not read rows for key %s: %v", k, err)
+				return
+			}
+
+			if len(data) == 0 {
+				errorsChan <- fmt.Errorf("row not found in db for key %s", k)
+				return
+			}
+
+			results[k] = data
+		}(key)
+	}
+
+	wg.Wait()
+	close(errorsChan)
+
+	if len(errorsChan) > 0 {
+		return nil, <-errorsChan
+	}
+
+	return results, nil
 }
 
 func (b BigTableStore) GetRowKeys(table, prefix string) ([]string, error) {
