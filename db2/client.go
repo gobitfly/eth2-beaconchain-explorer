@@ -9,9 +9,10 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	"github.com/gobitfly/eth2-beaconchain-explorer/db2/store"
 )
 
@@ -21,6 +22,7 @@ var ErrMethodNotSupported = fmt.Errorf("methode not supported")
 type RawStoreReader interface {
 	ReadBlockByNumber(chainID uint64, number int64) (*FullBlockRawData, error)
 	ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawData, error)
+	ReadBlocksByNumbers(chainID uint64, numbers []int64) (map[int64]*FullBlockRawData, error)
 }
 
 type WithFallback struct {
@@ -74,17 +76,16 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 	defer func() {
 		request.Body = io.NopCloser(bytes.NewBuffer(body))
 	}()
-	var messages []*jsonrpcMessage
-	isSingle := false
 
+	var messages []*jsonrpcMessage
 	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&messages); err != nil {
-		isSingle = true
 		message := new(jsonrpcMessage)
 		if err := json.NewDecoder(bytes.NewReader(body)).Decode(message); err != nil {
 			return nil, err
 		}
 		messages = append(messages, message)
 	}
+
 	var resps []*jsonrpcMessage
 	for _, message := range messages {
 		resp, err := r.handle(request.Context(), message)
@@ -94,7 +95,7 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 		resps = append(resps, resp)
 	}
 
-	respBody, err := makeBody(isSingle, resps)
+	respBody, err := makeBody(len(resps) == 1, resps)
 	if err != nil {
 		return nil, err
 	}
@@ -106,61 +107,79 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 }
 
 func (r *BigTableEthRaw) handle(ctx context.Context, message *jsonrpcMessage) (*jsonrpcMessage, error) {
-	var args []interface{}
-	err := json.Unmarshal(message.Params, &args)
-
+	var params []interface{}
+	err := json.Unmarshal(message.Params, &params)
 	if err != nil {
 		return nil, err
 	}
 
-	block, err := hexutil.DecodeBig(args[0].(string))
-	if err != nil {
-		return nil, err
+	var blockNums []string
+	if len(params) > 0 {
+		if n, ok := params[0].(string); ok {
+			blockNums = append(blockNums, n)
+		} else {
+			return nil, fmt.Errorf("expected string for a block number, got: %v", params[0])
+		}
+	}
+
+	var numbers []int64
+	for _, num := range blockNums {
+		if strings.HasPrefix(num, "0x") {
+			if n, err := strconv.ParseInt(num[2:], 16, 64); err == nil {
+				numbers = append(numbers, n)
+			} else {
+				return nil, fmt.Errorf("invalid block number: %s", num)
+			}
+		} else {
+			if n, err := strconv.ParseInt(num, 10, 64); err == nil {
+				numbers = append(numbers, n)
+			} else {
+				return nil, fmt.Errorf("invalid block number: %s", num)
+			}
+		}
 	}
 
 	var respBody []byte
 	switch message.Method {
 	case "eth_getBlockByNumber":
-		respBody, err = r.BlockByNumber(ctx, block)
+		respBody, err = r.BlocksByNumbers(ctx, numbers)
 		if err != nil {
 			return nil, err
 		}
-
 	case "debug_traceBlockByNumber":
-		respBody, err = r.TraceBlockByNumber(ctx, block)
+		respBody, err = r.TraceBlocksByNumbers(ctx, numbers)
 		if err != nil {
 			return nil, err
 		}
-
 	case "eth_getBlockReceipts":
-		respBody, err = r.BlockReceipts(ctx, block)
+		respBody, err = r.BlocksByReceipts(ctx, numbers)
 		if err != nil {
 			return nil, err
 		}
-
-	case "eth_getUncleByBlockHashAndIndex":
-		index, err := hexutil.DecodeBig(args[1].(string))
-		if err != nil {
-			return nil, err
-		}
-		respBody, err = r.UncleByBlockHashAndIndex(ctx, args[0].(string), index.Int64())
-		if err != nil {
-			return nil, err
-		}
+	// case "eth_getUncleByBlockHashAndIndex":
+	// 	index, err := hexutil.DecodeBig(args[1].(string))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	respBody, err = r.UncleByBlockHashAndIndex(ctx, args[0].(string), index.Int64())
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 	default:
 		return nil, ErrMethodNotSupported
 	}
-	var resp jsonrpcMessage
-	err = json.Unmarshal(respBody, &resp)
-	if err != nil {
-		return nil, err
+
+	resp := jsonrpcMessage{
+		Version: message.Version,
+		ID:      message.ID,
 	}
 
 	if len(respBody) == 0 {
-		resp.Version = message.Version
 		resp.Result = []byte("[]")
+	} else {
+		resp.Result = json.RawMessage(respBody)
 	}
-	resp.ID = message.ID
+
 	return &resp, nil
 }
 
@@ -178,28 +197,50 @@ func makeBody(isSingle bool, messages []*jsonrpcMessage) (io.ReadCloser, error) 
 	return io.NopCloser(bytes.NewReader(b)), nil
 }
 
-func (r *BigTableEthRaw) BlockByNumber(ctx context.Context, number *big.Int) ([]byte, error) {
-	block, err := r.db.ReadBlockByNumber(r.chainID, number.Int64())
+func (r *BigTableEthRaw) BlocksByNumbers(ctx context.Context, numbers []int64) ([]byte, error) {
+	blocks, err := r.db.ReadBlocksByNumbers(r.chainID, numbers)
 	if err != nil {
 		return nil, err
 	}
-	return block.Block, nil
+
+	if len(blocks) == 0 {
+		return json.Marshal([]interface{}{})
+	}
+
+	var results []hexutil.Bytes
+	for _, block := range blocks {
+		results = append(results, block.Block)
+	}
+
+	return json.Marshal(results)
 }
 
-func (r *BigTableEthRaw) BlockReceipts(ctx context.Context, number *big.Int) ([]byte, error) {
-	block, err := r.db.ReadBlockByNumber(r.chainID, number.Int64())
+func (r *BigTableEthRaw) TraceBlocksByNumbers(ctx context.Context, numbers []int64) ([]byte, error) {
+	blocks, err := r.db.ReadBlocksByNumbers(r.chainID, numbers)
 	if err != nil {
 		return nil, err
 	}
-	return block.Receipts, nil
+
+	var results []hexutil.Bytes
+	for _, block := range blocks {
+		results = append(results, block.Traces)
+	}
+
+	return json.Marshal(results)
 }
 
-func (r *BigTableEthRaw) TraceBlockByNumber(ctx context.Context, number *big.Int) ([]byte, error) {
-	block, err := r.db.ReadBlockByNumber(r.chainID, number.Int64())
+func (r *BigTableEthRaw) BlocksByReceipts(ctx context.Context, numbers []int64) ([]byte, error) {
+	blocks, err := r.db.ReadBlocksByNumbers(r.chainID, numbers)
 	if err != nil {
 		return nil, err
 	}
-	return block.Traces, nil
+
+	var results []hexutil.Bytes
+	for _, block := range blocks {
+		results = append(results, block.Receipts)
+	}
+
+	return json.Marshal(results)
 }
 
 func (r *BigTableEthRaw) UncleByBlockNumberAndIndex(ctx context.Context, number *big.Int, index int64) ([]byte, error) {
