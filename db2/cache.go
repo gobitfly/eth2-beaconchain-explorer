@@ -61,16 +61,20 @@ func (c *CachedRawStore) ReadBlockByNumber(chainID uint64, number int64) (*FullB
 	if block != nil {
 		c.cache.Store(key, block)
 
-		// retrieve the block hash for caching purpose
-		var mini MinimalBlock
-		if err := json.Unmarshal(block.Block, &mini); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal block: %w", err)
+		var mini *MinimalBlock
+		// retrieve the block hash for caching but only if the block has uncle(s)
+		if len(block.Uncles) != 0 {
+			if err := json.Unmarshal(block.Block, mini); err != nil {
+				return nil, fmt.Errorf("cannot unmarshal block: %w", err)
+			}
 		}
-		c.cache.Store(mini.Result.Hash, number)
+
 		go func() {
 			time.Sleep(ttl)
 			c.cache.Delete(key)
-			c.cache.Delete(mini.Result.Hash)
+			if mini != nil {
+				c.cache.Delete(mini.Result.Hash)
+			}
 			c.mapLock.Lock()
 			defer c.mapLock.Unlock()
 			delete(c.locks, key)
