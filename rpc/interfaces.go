@@ -25,7 +25,6 @@ type Client interface {
 
 type Eth1Client interface {
 	GetBlock(number uint64) (*types.Eth1Block, *types.GetBlockTimings, error)
-	GetBlocksByBatch(blocksChan chan *types.Eth1Block) error
 	GetLatestEth1BlockNumber() (uint64, error)
 	GetChainID() *big.Int
 	Close()

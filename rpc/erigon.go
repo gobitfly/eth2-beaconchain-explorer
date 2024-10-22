@@ -844,16 +844,9 @@ func (b *BlockResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block, erigonClient *ErigonClient) ([]*types.Eth1Block, *types.GetBlockTimings, error) {
-	startTime := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("rpc_el_get_blocks_by_batch").Observe(time.Since(startTime).Seconds())
-	}()
-
+func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) ([]*types.Eth1Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
-
-	timings := &types.GetBlockTimings{}
 
 	var blockDetails []*types.Eth1Block
 	var batchCall []geth_rpc.BatchElem
@@ -884,10 +877,10 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block, e
 	}
 
 	if len(batchCall) == 0 {
-		return blockDetails, timings, nil
+		return blockDetails, nil
 	}
 
-	err := erigonClient.rpcClient.BatchCallContext(ctx, batchCall)
+	err := client.rpcClient.BatchCallContext(ctx, batchCall)
 	if err != nil {
 		logger.Errorf("error while batch calling rpc, error: %s", err)
 	}
@@ -903,20 +896,15 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block, e
 			fmt.Printf("\n errror while unmarshalling block results %s\n", err)
 		}
 
-		blockDetail, timings := client.processBlockResult(blockResponse, timings)
-		blockDetail, timings = client.processReceiptsAndTraces(blockDetail, *receiptsResult, *tracesResults, timings)
+		blockDetail := client.processBlockResult(blockResponse)
+		client.processReceiptsAndTraces(blockDetail, *receiptsResult, *tracesResults)
 		blockDetails = append(blockDetails, blockDetail)
 	}
 
-	return blockDetails, timings, nil
+	return blockDetails, nil
 }
 
-func (client *ErigonClient) processBlockResult(block BlockResponse, timings *types.GetBlockTimings) (*types.Eth1Block, *types.GetBlockTimings) {
-	startTime := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("rpc_el_process_block_results").Observe(time.Since(startTime).Seconds())
-	}()
-
+func (client *ErigonClient) processBlockResult(block BlockResponse) *types.Eth1Block {
 	blockNumber, err := strconv.ParseUint(block.Number, 0, 64)
 	if err != nil {
 		logger.Errorf("error while parsing block number to uint64, error: %s", err)
@@ -1028,17 +1016,11 @@ func (client *ErigonClient) processBlockResult(block BlockResponse, timings *typ
 		ethBlock.Transactions = append(ethBlock.Transactions, pbTx)
 
 	}
-	timings.Headers = time.Since(startTime)
 
-	return ethBlock, timings
+	return ethBlock
 }
 
-func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, receipts []geth_types.Receipt, traces []ParityTraceResult, timings *types.GetBlockTimings) (*types.Eth1Block, *types.GetBlockTimings) {
-	startTime := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("rpc_el_process_receipts_and_traces").Observe(time.Since(startTime).Seconds())
-	}()
-
+func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, receipts []geth_types.Receipt, traces []ParityTraceResult) {
 	traceIndex := 0
 	var indexedTraces []*Eth1InternalTransactionWithPosition
 
@@ -1051,7 +1033,7 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 		}
 		if trace.TransactionPosition >= len(ethBlock.Transactions) {
 			logrus.Errorf("error transaction position %v out of range", trace.TransactionPosition)
-			return nil, timings
+			return
 		}
 
 		from, to, value, traceType := trace.ConvertFields()
@@ -1067,9 +1049,7 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 			txPosition: trace.TransactionPosition,
 		})
 	}
-	timings.Traces = time.Since(startTime)
 
-	start := time.Now()
 	for txPosition, receipt := range receipts {
 		ethBlock.Transactions[txPosition].ContractAddress = receipt.ContractAddress[:]
 		ethBlock.Transactions[txPosition].CommulativeGasUsed = receipt.CumulativeGasUsed
@@ -1102,7 +1082,5 @@ func (client *ErigonClient) processReceiptsAndTraces(ethBlock *types.Eth1Block, 
 			ethBlock.Transactions[txPosition].Itx = append(ethBlock.Transactions[txPosition].Itx, &indexedTraces[traceIndex].Eth1InternalTransaction)
 		}
 	}
-	timings.Receipts = time.Since(start)
 
-	return ethBlock, timings
 }
