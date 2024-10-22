@@ -27,7 +27,6 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/gobitfly/eth2-beaconchain-explorer/version"
-	"github.com/gobitfly/eth2-beaconchain-explorer/workerpool"
 
 	"github.com/Gurpartap/storekit-go"
 	"github.com/coocood/freecache"
@@ -318,8 +317,11 @@ func main() {
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
+		//TODO choose one between the two
 	case "re-index-blocks":
-		reIndexBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers)
+		reIndexBlockByBlock(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers)
+	case "re-index-blocks-range":
+		reIndexBlocksByRange(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
 	case "migrate-app-purchases":
@@ -1620,7 +1622,7 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 //
 //	Both [start] and [end] are inclusive
 //	Pass math.MaxInt64 as [end] to export from [start] to the last block in the blocks table
-func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string) {
+func reIndexBlockByBlock(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string) {
 	if end == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
@@ -1629,7 +1631,6 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 		}
 		end = uint64(lastBlockFromBlocksTable)
 	}
-
 	transformers, importENSChanges, err := getTransformers(transformerFlag, bt)
 	if err != nil {
 		utils.LogError(nil, err, 0)
@@ -1644,33 +1645,75 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 
 	defaultPoolSize := 5
 
-	wp := workerpool.New(defaultPoolSize, int(end-start+1))
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
-	subTasks := errgroup.Group{}
+	g := errgroup.Group{}
+	g.SetLimit(defaultPoolSize)
 
 	for i := start; i <= end; i++ {
 		height := int64(i)
-		wp.AddTask(func() {
+		g.Go(func() error {
 			block, _, err := client.GetBlock(height, "geth")
 			if err != nil {
-				utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0)
-				return
+				return fmt.Errorf("error getting block %v from the node: %w", height, err)
 			}
-			subTasks.Go(func() error {
-				if err := bt.SaveBlock(block); err != nil {
-					return fmt.Errorf("error saving block %v: %w", block, err)
-				}
-				return nil
-			})
-			subTasks.Go(func() error {
-				indexOldEth1Block(block, transformers, bt, cache)
-				return nil
-			})
+			if err := bt.SaveBlock(block); err != nil {
+				return fmt.Errorf("error saving block %v: %w", height, err)
+			}
+			indexOldEth1Block(block, transformers, bt, cache)
+			return nil
 		})
 	}
-	wp.Run()
-	wp.Wait()
-	if err := subTasks.Wait(); err != nil {
+	if err := g.Wait(); err != nil {
+		panic(err)
+	}
+}
+
+func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string) {
+	if end == math.MaxInt64 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
+			return
+		}
+		end = uint64(lastBlockFromBlocksTable)
+	}
+	transformers, importENSChanges, err := getTransformers(transformerFlag, bt)
+	if err != nil {
+		utils.LogError(nil, err, 0)
+		return
+	}
+	if importENSChanges {
+		if err := bt.ImportEnsUpdates(client.GetNativeClient(), math.MaxInt64); err != nil {
+			utils.LogError(err, "error importing ens from events", 0)
+			return
+		}
+	}
+
+	defaultPoolSize := 2
+	batchSize := uint64(25)
+
+	g := errgroup.Group{}
+	g.SetLimit(defaultPoolSize)
+
+	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
+
+	for i := start; i <= end; i = i + batchSize {
+		height := int64(i)
+		g.Go(func() error {
+			blocks, err := client.GetBlocks(height, height+int64(batchSize), "geth")
+			if err != nil {
+				return fmt.Errorf("error getting block %v from the node: %w", height, err)
+			}
+			for _, block := range blocks {
+				if err := bt.SaveBlock(block); err != nil {
+					return fmt.Errorf("error saving block %v: %w", block.Number, err)
+				}
+				indexOldEth1Block(block, transformers, bt, cache)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
 		panic(err)
 	}
 }

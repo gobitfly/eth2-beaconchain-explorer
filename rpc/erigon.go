@@ -41,6 +41,8 @@ type ErigonClient struct {
 	ethClient    *ethclient.Client
 	chainID      *big.Int
 	multiChecker *Balance
+
+	rawStore *db2.CachedRawStore
 }
 
 var CurrentErigonClient *ErigonClient
@@ -68,6 +70,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 			opts = append(opts, geth_rpc.WithHTTPClient(&http.Client{
 				Transport: db2.NewWithFallback(roundTripper, http.DefaultTransport),
 			}))
+			client.rawStore = rawStore
 		}
 	}
 
@@ -312,6 +315,22 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			return 0
 		}(),
 	}, timings, nil
+}
+
+func (client *ErigonClient) GetBlocks(start, end int64, traceMode string) ([]*types.Eth1Block, error) {
+	_, err := client.rawStore.ReadBlocksByNumber(client.chainID.Uint64(), start, end)
+	if err != nil {
+		return nil, err
+	}
+	var blocks []*types.Eth1Block
+	for i := start; i <= end; i++ {
+		block, _, err := client.GetBlock(i, traceMode)
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, block)
+	}
+	return blocks, nil
 }
 
 func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {

@@ -21,6 +21,7 @@ var ErrMethodNotSupported = fmt.Errorf("methode not supported")
 type RawStoreReader interface {
 	ReadBlockByNumber(chainID uint64, number int64) (*FullBlockRawData, error)
 	ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawData, error)
+	ReadBlocksByNumber(chainID uint64, start, end int64) ([]*FullBlockRawData, error)
 }
 
 type WithFallback struct {

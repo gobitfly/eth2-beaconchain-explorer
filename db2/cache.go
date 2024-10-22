@@ -2,12 +2,13 @@ package db2
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 )
 
-var ttl = 1000 * time.Millisecond
+// var ttl = 20_000 * time.Millisecond
+var oneBlockTTL = 1 * time.Second
+var blocksTTL = 12 * time.Second
 
 type MinimalBlock struct {
 	Result struct {
@@ -56,32 +57,35 @@ func (c *CachedRawStore) ReadBlockByNumber(chainID uint64, number int64) (*FullB
 	if ok {
 		return v.(*FullBlockRawData), nil
 	}
-
+	// TODO make warning not found in cache
 	block, err := c.db.ReadBlockByNumber(chainID, number)
 	if block != nil {
-		c.cache.Store(key, block)
-
-		var mini MinimalBlock
-		if len(block.Uncles) != 0 {
-			// retrieve the block hash for caching but only if the block has uncle(s)
-			if err := json.Unmarshal(block.Block, &mini); err != nil {
-				return nil, fmt.Errorf("cannot unmarshal block: %w", err)
-			}
-			c.cache.Store(mini.Result.Hash, number)
-		}
-
-		go func() {
-			time.Sleep(ttl)
-			c.cache.Delete(key)
-			if mini.Result.Hash != "" {
-				c.cache.Delete(mini.Result.Hash)
-			}
-			c.mapLock.Lock()
-			defer c.mapLock.Unlock()
-			delete(c.locks, key)
-		}()
+		c.cacheBlock(block, oneBlockTTL)
 	}
 	return block, err
+}
+
+func (c *CachedRawStore) cacheBlock(block *FullBlockRawData, ttl time.Duration) {
+	key := blockKey(block.ChainID, block.BlockNumber)
+	c.cache.Store(key, block)
+
+	var mini MinimalBlock
+	if len(block.Uncles) != 0 {
+		// retrieve the block hash for caching but only if the block has uncle(s)
+		_ = json.Unmarshal(block.Block, &mini)
+		c.cache.Store(mini.Result.Hash, block.BlockNumber)
+	}
+
+	go func() {
+		time.Sleep(ttl)
+		c.cache.Delete(key)
+		if mini.Result.Hash != "" {
+			c.cache.Delete(mini.Result.Hash)
+		}
+		c.mapLock.Lock()
+		defer c.mapLock.Unlock()
+		delete(c.locks, key)
+	}()
 }
 
 func (c *CachedRawStore) ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawData, error) {
@@ -96,4 +100,15 @@ func (c *CachedRawStore) ReadBlockByHash(chainID uint64, hash string) (*FullBloc
 	}
 
 	return v.(*FullBlockRawData), nil
+}
+
+func (c *CachedRawStore) ReadBlocksByNumber(chainID uint64, start, end int64) ([]*FullBlockRawData, error) {
+	blocks, err := c.db.ReadBlocksByNumber(chainID, start, end)
+	if err != nil {
+		return nil, err
+	}
+	for _, block := range blocks {
+		c.cacheBlock(block, blocksTTL)
+	}
+	return blocks, nil
 }
