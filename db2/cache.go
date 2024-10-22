@@ -8,7 +8,7 @@ import (
 
 // var ttl = 20_000 * time.Millisecond
 var oneBlockTTL = 1 * time.Second
-var blocksTTL = 12 * time.Second
+var blocksTTL = 30 * time.Second // default ttl, if read it will be deleted sooner
 
 type MinimalBlock struct {
 	Result struct {
@@ -55,6 +55,8 @@ func (c *CachedRawStore) ReadBlockByNumber(chainID uint64, number int64) (*FullB
 
 	v, ok := c.cache.Load(key)
 	if ok {
+		// once read ensure to delete it from the cache
+		go c.unCacheBlockAfter(key, "", oneBlockTTL)
 		return v.(*FullBlockRawData), nil
 	}
 	// TODO make warning not found in cache
@@ -76,16 +78,18 @@ func (c *CachedRawStore) cacheBlock(block *FullBlockRawData, ttl time.Duration) 
 		c.cache.Store(mini.Result.Hash, block.BlockNumber)
 	}
 
-	go func() {
-		time.Sleep(ttl)
-		c.cache.Delete(key)
-		if mini.Result.Hash != "" {
-			c.cache.Delete(mini.Result.Hash)
-		}
-		c.mapLock.Lock()
-		defer c.mapLock.Unlock()
-		delete(c.locks, key)
-	}()
+	go c.unCacheBlockAfter(key, mini.Result.Hash, ttl)
+}
+
+func (c *CachedRawStore) unCacheBlockAfter(key, hash string, ttl time.Duration) {
+	time.Sleep(ttl)
+	c.cache.Delete(key)
+	c.mapLock.Lock()
+	if hash != "" {
+		c.cache.Delete(hash)
+	}
+	defer c.mapLock.Unlock()
+	delete(c.locks, key)
 }
 
 func (c *CachedRawStore) ReadBlockByHash(chainID uint64, hash string) (*FullBlockRawData, error) {
