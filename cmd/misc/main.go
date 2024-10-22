@@ -319,9 +319,9 @@ func main() {
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
 		//TODO choose one between the two
 	case "re-index-blocks":
-		reIndexBlockByBlock(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers)
+		reIndexBlockByBlock(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers, opts.BatchSize, opts.DataConcurrency)
 	case "re-index-blocks-range":
-		reIndexBlocksByRange(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers)
+		reIndexBlocksByRange(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers, opts.BatchSize, opts.DataConcurrency)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
 	case "migrate-app-purchases":
@@ -1622,7 +1622,7 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 //
 //	Both [start] and [end] are inclusive
 //	Pass math.MaxInt64 as [end] to export from [start] to the last block in the blocks table
-func reIndexBlockByBlock(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string) {
+func reIndexBlockByBlock(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string, batchSize uint64, concurrency uint64) {
 	if end == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
@@ -1643,11 +1643,9 @@ func reIndexBlockByBlock(start uint64, end uint64, bt *db.Bigtable, client *rpc.
 		}
 	}
 
-	defaultPoolSize := 5
-
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 	g := errgroup.Group{}
-	g.SetLimit(defaultPoolSize)
+	g.SetLimit(int(concurrency))
 
 	for i := start; i <= end; i++ {
 		height := int64(i)
@@ -1668,7 +1666,7 @@ func reIndexBlockByBlock(start uint64, end uint64, bt *db.Bigtable, client *rpc.
 	}
 }
 
-func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string) {
+func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string, batchSize uint64, concurrency uint64) {
 	if end == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
@@ -1689,11 +1687,8 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 		}
 	}
 
-	defaultPoolSize := 2
-	batchSize := uint64(25)
-
 	g := errgroup.Group{}
-	g.SetLimit(defaultPoolSize)
+	g.SetLimit(int(concurrency))
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
