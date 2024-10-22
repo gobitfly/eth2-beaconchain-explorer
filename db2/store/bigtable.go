@@ -55,6 +55,10 @@ func (w TableWrapper) BulkAdd(itemsByKey map[string][]Item) error {
 	return w.BigTableStore.BulkAdd(w.table, itemsByKey)
 }
 
+func (w TableWrapper) GetRowsRange(high, low string) (map[string]map[string][]byte, error) {
+	return w.BigTableStore.GetRowsRange(w.table, high, low)
+}
+
 // BigTableStore is a wrapper around Google Cloud Bigtable for storing and retrieving data
 type BigTableStore struct {
 	client *bigtable.Client
@@ -240,6 +244,33 @@ func (b BigTableStore) GetRow(table, key string) (map[string][]byte, error) {
 		for _, family := range row {
 			for _, item := range family {
 				data[item.Column] = item.Value
+			}
+		}
+		return true
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not read rows: %v", err)
+	}
+	if len(data) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return data, nil
+}
+
+func (b BigTableStore) GetRowsRange(table, high, low string) (map[string]map[string][]byte, error) {
+	tbl := b.client.Open(table)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	rowRange := bigtable.NewRange(low, high)
+	data := make(map[string]map[string][]byte)
+	err := tbl.ReadRows(ctx, rowRange, func(row bigtable.Row) bool {
+		data[row.Key()] = make(map[string][]byte)
+		for _, family := range row {
+			for _, item := range family {
+				data[row.Key()][item.Column] = item.Value
 			}
 		}
 		return true

@@ -7,11 +7,12 @@ type Store interface {
 	GetRow(key string) (map[string][]byte, error)
 	GetRowKeys(prefix string) ([]string, error)
 	GetLatestValue(key string) ([]byte, error)
+	GetRowsRange(high, low string) (map[string]map[string][]byte, error)
 	Close() error
 	Clear() error
 }
 
 var (
-	_ Store = (*Mem)(nil)
+	// _ Store = (*Mem)(nil)
 	_ Store = (*TableWrapper)(nil)
 )
