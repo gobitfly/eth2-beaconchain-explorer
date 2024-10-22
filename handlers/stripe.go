@@ -468,23 +468,12 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			appSubID, err := db.GetUserSubscriptionIDByStripe(subscription.ID)
+			// make sure to delete all mobile subscriptions with the same subID
+			err = db.DeleteMobileSubscriptionBySubscriptionID(tx, subscription.ID)
 			if err != nil {
-				if err == sql.ErrNoRows {
-					// no mobile-subscription found for this stripe-subscription, nothing to do
-				} else {
-					logger.WithError(err).WithField("subscription.ID", subscription.ID).Error("error updating user subscription, calling db.GetUserSubscriptionIDByStripe")
-					http.Error(w, "error updating subscription", http.StatusInternalServerError)
-					return
-				}
-			} else {
-				// subscription changed from mobile to nonmobile, deactivate mobile subscription
-				err = db.UpdateUserSubscription(tx, appSubID, false, time.Now().Unix(), "user_canceled")
-				if err != nil {
-					logger.WithError(err).Error("error updating stripe mobile subscription (sub updated)", subscription.ID)
-					http.Error(w, "error updating subscription", http.StatusInternalServerError)
-					return
-				}
+				logger.WithError(err).Error("error updating stripe mobile subscription (sub updated)", subscription.ID)
+				http.Error(w, "error updating subscription", http.StatusInternalServerError)
+				return
 			}
 		}
 
