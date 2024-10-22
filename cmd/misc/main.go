@@ -1700,7 +1700,11 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 	for i := start; i <= end; i = i + batchSize {
 		height := int64(i)
 		g.Go(func() error {
-			blocks, err := client.GetBlocks(height, height+int64(batchSize), "geth")
+			heightEnd := height + int64(batchSize)
+			if heightEnd > int64(end) {
+				heightEnd = int64(end)
+			}
+			blocks, err := client.GetBlocks(height, heightEnd, "geth")
 			if err != nil {
 				return fmt.Errorf("error getting block %v from the node: %w", height, err)
 			}
