@@ -844,7 +844,7 @@ func (b *BlockResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) ([]*types.Eth1Block, error) {
+func (client *ErigonClient) GetBlocksByBatch(blockNumbers []int64) ([]*types.Eth1Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -852,26 +852,26 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) (
 	var batchCall []geth_rpc.BatchElem
 	batchCallNums := 3
 
-	if blocksChan == nil {
-		fmt.Printf("block channel is empty")
+	if len(blockNumbers) == 0 {
+		return nil, fmt.Errorf("block numbers slice is empty")
 	}
 
-	for block := range blocksChan {
+	for _, blockNumber := range blockNumbers {
 		batchCall = append(batchCall, geth_rpc.BatchElem{
 			Method: "eth_getBlockByNumber",
-			Args:   []interface{}{block.Number, true},
+			Args:   []interface{}{blockNumber, true},
 			Result: new(json.RawMessage),
 		})
 
 		batchCall = append(batchCall, geth_rpc.BatchElem{
 			Method: "eth_getBlockReceipts",
-			Args:   []interface{}{block.Number},
+			Args:   []interface{}{blockNumber},
 			Result: new([]geth_types.Receipt),
 		})
 
 		batchCall = append(batchCall, geth_rpc.BatchElem{
 			Method: "trace_block",
-			Args:   []interface{}{block.Number},
+			Args:   []interface{}{blockNumber},
 			Result: new([]ParityTraceResult),
 		})
 	}
@@ -883,6 +883,7 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) (
 	err := client.rpcClient.BatchCallContext(ctx, batchCall)
 	if err != nil {
 		logger.Errorf("error while batch calling rpc, error: %s", err)
+		return nil, err
 	}
 
 	for i := 0; i < len(batchCall)/batchCallNums; i++ {
@@ -893,7 +894,8 @@ func (client *ErigonClient) GetBlocksByBatch(blocksChan chan *types.Eth1Block) (
 		var blockResponse BlockResponse
 		err := json.Unmarshal([]byte(*blockResult), &blockResponse)
 		if err != nil {
-			fmt.Printf("\n errror while unmarshalling block results %s\n", err)
+			logger.Errorf("error while unmarshalling block results: %s", err)
+			continue
 		}
 
 		blockDetail := client.processBlockResult(blockResponse)

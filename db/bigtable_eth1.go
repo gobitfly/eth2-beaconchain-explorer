@@ -4910,37 +4910,12 @@ func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNow
 	return history, nil
 }
 
-func (bigtable *Bigtable) ReindexITxsFromNode(start, end, batchSize int64, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), cache *freecache.Cache) error {
+func (bigtable *Bigtable) ReindexITxsFromNode(start, end, batchSize, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), cache *freecache.Cache) error {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
 	if start == 0 && end == 0 {
-		lastBlockInCache, err := bigtable.GetLastBlockInDataTable()
-		if err != nil {
-			return fmt.Errorf("error getting last block in database, err: %v", err)
-		}
-
-		firstBlockInCacheChan := make(chan *types.Eth1Block)
-
-		go func() {
-			defer close(firstBlockInCacheChan)
-			err := bigtable.GetFullBlocksDescending(firstBlockInCacheChan, uint64(lastBlockInCache), 1)
-			if err != nil {
-				logrus.Infof("error while retrieving lowest block in db %d", err)
-				return
-			}
-		}()
-
-		var firstBlockInCache *types.Eth1Block
-		for block := range firstBlockInCacheChan {
-			firstBlockInCache = block
-		}
-
-		if firstBlockInCache != nil {
-			start = int64(firstBlockInCache.Number)
-		}
-
-		end = int64(lastBlockInCache)
+		return fmt.Errorf("start or end block height can't be 0")
 	}
 
 	if end < start {
@@ -4956,32 +4931,19 @@ func (bigtable *Bigtable) ReindexITxsFromNode(start, end, batchSize int64, concu
 			lastBlock = end
 		}
 
-		// create batch request for each block height
+		blockNumbers := make([]int64, 0, lastBlock-firstBlock+1)
+		for b := firstBlock; b <= lastBlock; b++ {
+			blockNumbers = append(blockNumbers, b)
+		}
+
 		g.Go(func() error {
-			blocksChan := make(chan *types.Eth1Block, batchSize)
+			blocks, err := rpc.CurrentErigonClient.GetBlocksByBatch(blockNumbers)
+			if err != nil {
+				return fmt.Errorf("error getting blocks by batch from %v to %v: %v", firstBlock, lastBlock, err)
+			}
 
-			go func(stream chan *types.Eth1Block) {
-				logger.Infof("querying blocks from %v to %v", firstBlock, lastBlock)
-				high := lastBlock
-				low := lastBlock - batchSize + 1
-				if int64(firstBlock) > low {
-					low = firstBlock
-				}
-
-				err := BigtableClient.GetFullBlocksDescending(stream, uint64(high), uint64(low))
-				if err != nil {
-					logger.Errorf("error getting blocks descending high: %v low: %v err: %v", high, low, err)
-				}
-				close(stream)
-			}(blocksChan)
 			subG := new(errgroup.Group)
 			subG.SetLimit(int(concurrency))
-
-			blocks, err := rpc.CurrentErigonClient.GetBlocksByBatch(blocksChan)
-			if err != nil {
-				logger.Errorf("error while querying blocks by batch, error: %v", err)
-
-			}
 
 			for _, block := range blocks {
 				currentBlock := block
@@ -5035,25 +4997,6 @@ func (bigtable *Bigtable) ReindexITxsFromNode(start, end, batchSize int64, concu
 	} else {
 		utils.LogError(err, "wait group error", 0)
 		return err
-	}
-
-	err := g.Wait()
-
-	if err != nil {
-		return err
-	}
-
-	lastBlockInCache, err := bigtable.GetLastBlockInDataTable()
-	if err != nil {
-		return err
-	}
-
-	if end > int64(lastBlockInCache) {
-		err := bigtable.SetLastBlockInDataTable(end)
-
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
