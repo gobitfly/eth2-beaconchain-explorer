@@ -165,31 +165,31 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		return nil, nil, err
 	}
 
-	var withdrawals []*types.Eth1Withdrawal
-	for _, withdrawal := range block.Withdrawals() {
-		withdrawals = append(withdrawals, &types.Eth1Withdrawal{
+	withdrawals := make([]*types.Eth1Withdrawal, len(block.Withdrawals()))
+	for i, withdrawal := range block.Withdrawals() {
+		withdrawals[i] = &types.Eth1Withdrawal{
 			Index:          withdrawal.Index,
 			ValidatorIndex: withdrawal.Validator,
 			Address:        withdrawal.Address.Bytes(),
 			Amount:         new(big.Int).SetUint64(withdrawal.Amount).Bytes(),
-		})
+		}
 	}
 
-	var transactions []*types.Eth1Transaction
+	transactions := make([]*types.Eth1Transaction, len(block.Transactions()))
 	traceIndex := 0
 	for txPosition, receipt := range receipts {
-		logs := make([]*types.Eth1Log, 0, len(receipt.Logs))
-		for _, log := range receipt.Logs {
-			topics := make([][]byte, 0, len(log.Topics))
-			for _, topic := range log.Topics {
-				topics = append(topics, topic.Bytes())
+		logs := make([]*types.Eth1Log, len(receipt.Logs))
+		for i, log := range receipt.Logs {
+			topics := make([][]byte, len(log.Topics))
+			for j, topic := range log.Topics {
+				topics[j] = topic.Bytes()
 			}
-			logs = append(logs, &types.Eth1Log{
+			logs[i] = &types.Eth1Log{
 				Address: log.Address.Bytes(),
 				Data:    log.Data,
 				Removed: log.Removed,
 				Topics:  topics,
-			})
+			}
 		}
 
 		var internals []*types.Eth1InternalTransaction
@@ -198,7 +198,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		}
 
 		tx := block.Transactions()[txPosition]
-		transactions = append(transactions, &types.Eth1Transaction{
+		transactions[txPosition] = &types.Eth1Transaction{
 			Type:                 uint32(tx.Type()),
 			Nonce:                tx.Nonce(),
 			GasPrice:             tx.GasPrice().Bytes(),
@@ -256,12 +256,12 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				return nil
 			}(),
 			BlobGasUsed: receipt.BlobGasUsed,
-		})
+		}
 	}
 
-	var uncles []*types.Eth1Block
-	for _, uncle := range block.Uncles() {
-		uncles = append(uncles, &types.Eth1Block{
+	uncles := make([]*types.Eth1Block, len(block.Uncles()))
+	for i, uncle := range block.Uncles() {
+		uncles[i] = &types.Eth1Block{
 			Hash:        uncle.Hash().Bytes(),
 			ParentHash:  uncle.ParentHash.Bytes(),
 			UncleHash:   uncle.UncleHash.Bytes(),
@@ -277,7 +277,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			Extra:       uncle.Extra,
 			MixDigest:   uncle.MixDigest.Bytes(),
 			Bloom:       uncle.Bloom.Bytes(),
-		})
+		}
 	}
 
 	return &types.Eth1Block{
@@ -327,13 +327,13 @@ func (client *ErigonClient) GetBlocks(start, end int64, traceMode string) ([]*ty
 	if err != nil {
 		return nil, err
 	}
-	var blocks []*types.Eth1Block
+	blocks := make([]*types.Eth1Block, end-start+1)
 	for i := start; i <= end; i++ {
 		block, _, err := client.GetBlock(i, traceMode)
 		if err != nil {
 			return nil, err
 		}
-		blocks = append(blocks, block)
+		blocks[i-start] = block
 	}
 	return blocks, nil
 }

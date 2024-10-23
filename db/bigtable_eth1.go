@@ -768,40 +768,51 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 
 type TransformFunc func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)
 
-func (bigtable *Bigtable) IndexBlockWithTransformers(block *types.Eth1Block, transforms []TransformFunc, cache *freecache.Cache) error {
+func (bigtable *Bigtable) blockKeysMutation(blockNumber uint64, blockHash []byte, keys string) (string, *gcp_bigtable.Mutation) {
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(METADATA_UPDATES_FAMILY_BLOCKS, "keys", gcp_bigtable.Now(), []byte(keys))
+
+	key := fmt.Sprintf("%s:BLOCK:%s:%x", bigtable.chainId, reversedPaddedBlockNumber(blockNumber), blockHash)
+	return key, mut
+}
+
+func (bigtable *Bigtable) IndexBlocksWithTransformers(blocks []*types.Eth1Block, transforms []TransformFunc, cache *freecache.Cache) error {
 	bulkMutsData := types.BulkMutations{}
 	bulkMutsMetadataUpdate := types.BulkMutations{}
-	for _, transform := range transforms {
-		mutsData, mutsMetadataUpdate, err := transform(block, cache)
-		if err != nil {
-			logrus.WithError(err).Errorf("error transforming block [%v]", block.Number)
-		}
-		bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
-		bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+	for _, block := range blocks {
+		for _, transform := range transforms {
+			mutsData, mutsMetadataUpdate, err := transform(block, cache)
+			if err != nil {
+				logrus.WithError(err).Errorf("error transforming block [%v]", block.Number)
+			}
+			bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+			bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
 
-		if mutsMetadataUpdate != nil {
-			bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
-			bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+			if mutsMetadataUpdate != nil {
+				bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+				bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+			}
+
+			if len(mutsData.Keys) > 0 {
+				metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+				key, mut := bigtable.blockKeysMutation(block.Number, block.Hash, metaKeys)
+				bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, key)
+				bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mut)
+			}
 		}
 	}
 
 	if len(bulkMutsData.Keys) > 0 {
-		metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
-		err := bigtable.SaveBlockKeys(block.Number, block.Hash, metaKeys)
+		err := bigtable.WriteBulk(&bulkMutsData, bigtable.tableData, DEFAULT_BATCH_INSERTS)
 		if err != nil {
-			return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", block.Number, err)
-		}
-
-		err = bigtable.WriteBulk(&bulkMutsData, bigtable.tableData, DEFAULT_BATCH_INSERTS)
-		if err != nil {
-			return fmt.Errorf("error writing block [%v] to bigtable data table: %w", block.Number, err)
+			return fmt.Errorf("error writing blocks [%v-%v] to bigtable data table: %w", blocks[0].Number, blocks[len(blocks)-1].Number, err)
 		}
 	}
 
 	if len(bulkMutsMetadataUpdate.Keys) > 0 {
 		err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.tableMetadataUpdates, DEFAULT_BATCH_INSERTS)
 		if err != nil {
-			return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", block.Number, err)
+			return fmt.Errorf("error writing blocks [%v-%v] to bigtable metadata updates table: %w", blocks[0].Number, blocks[len(blocks)-1].Number, err)
 		}
 	}
 

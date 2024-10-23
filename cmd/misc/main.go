@@ -1687,15 +1687,18 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 		}
 	}
 
-	g := errgroup.Group{}
-	g.SetLimit(int(concurrency))
+	readGroup := errgroup.Group{}
+	readGroup.SetLimit(int(concurrency))
+
+	writeGroup := errgroup.Group{}
+	writeGroup.SetLimit(int(concurrency))
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 
 	for i := start; i <= end; i = i + batchSize {
 		height := int64(i)
-		g.Go(func() error {
-			heightEnd := height + int64(batchSize)
+		readGroup.Go(func() error {
+			heightEnd := height + int64(batchSize) - 1
 			if heightEnd > int64(end) {
 				heightEnd = int64(end)
 			}
@@ -1703,16 +1706,26 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 			if err != nil {
 				return fmt.Errorf("error getting block %v from the node: %w", height, err)
 			}
-			for _, block := range blocks {
-				if err := bt.SaveBlock(block); err != nil {
-					return fmt.Errorf("error saving block %v: %w", block.Number, err)
+			writeGroup.Go(func() error {
+				for _, block := range blocks {
+					if err := bt.SaveBlock(block); err != nil {
+						return fmt.Errorf("error saving block %v: %w", block.Number, err)
+					}
 				}
-				indexOldEth1Block(block, transformers, bt, cache)
-			}
+				err := bt.IndexBlocksWithTransformers(blocks, transformers, cache)
+				if err != nil {
+					return fmt.Errorf("error indexing from bigtable: %w", err)
+				}
+				logrus.Infof("%d-%d indexed", blocks[0].Number, blocks[len(blocks)-1].Number)
+				return nil
+			})
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
+	if err := readGroup.Wait(); err != nil {
+		panic(err)
+	}
+	if err := writeGroup.Wait(); err != nil {
 		panic(err)
 	}
 }
@@ -1764,7 +1777,7 @@ func getTransformers(transformerFlag string, bt *db.Bigtable) ([]db.TransformFun
 }
 
 func indexOldEth1Block(block *types.Eth1Block, transformers []db.TransformFunc, bt *db.Bigtable, cache *freecache.Cache) {
-	err := bt.IndexBlockWithTransformers(block, transformers, cache)
+	err := bt.IndexBlocksWithTransformers([]*types.Eth1Block{block}, transformers, cache)
 	if err != nil {
 		utils.LogError(err, "error indexing from bigtable", 0)
 		return
