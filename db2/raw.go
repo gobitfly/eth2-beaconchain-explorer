@@ -135,7 +135,7 @@ func (db RawStore) ReadBlocksByNumber(chainID uint64, start, end int64) ([]*Full
 	if err != nil {
 		return nil, err
 	}
-	var blocks []*FullBlockRawData
+	blocks := make([]*FullBlockRawData, 0, end-start+1)
 	for key, data := range rows {
 		number := blockKeyToNumber(chainID, key)
 		block, err := db.parseRow(chainID, number, data)
