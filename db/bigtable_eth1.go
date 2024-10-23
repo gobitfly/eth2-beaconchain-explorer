@@ -35,7 +35,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-redis/redis/v8"
-
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -4909,4 +4908,96 @@ func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNow
 		return nil, fmt.Errorf("error getting gas now history to bigtable, err: %w", err)
 	}
 	return history, nil
+}
+
+func (bigtable *Bigtable) ReindexITxsFromNode(start, end, batchSize, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), cache *freecache.Cache) error {
+	g := new(errgroup.Group)
+	g.SetLimit(int(concurrency))
+
+	if start == 0 && end == 0 {
+		return fmt.Errorf("start or end block height can't be 0")
+	}
+
+	if end < start {
+		return fmt.Errorf("end block must be grater or equal to start block")
+	}
+
+	logrus.Infof("reindexing txs for blocks from %d to %d", start, end)
+
+	for i := start; i <= end; i += batchSize {
+		firstBlock := i
+		lastBlock := firstBlock + batchSize - 1
+		if lastBlock > end {
+			lastBlock = end
+		}
+
+		blockNumbers := make([]int64, 0, lastBlock-firstBlock+1)
+		for b := firstBlock; b <= lastBlock; b++ {
+			blockNumbers = append(blockNumbers, b)
+		}
+
+		g.Go(func() error {
+			blocks, err := rpc.CurrentErigonClient.GetBlocksByBatch(blockNumbers)
+			if err != nil {
+				return fmt.Errorf("error getting blocks by batch from %v to %v: %v", firstBlock, lastBlock, err)
+			}
+
+			subG := new(errgroup.Group)
+			subG.SetLimit(int(concurrency))
+
+			for _, block := range blocks {
+				currentBlock := block
+				subG.Go(func() error {
+					bulkMutsData := types.BulkMutations{}
+					bulkMutsMetadataUpdate := types.BulkMutations{}
+					for _, transform := range transforms {
+						mutsData, mutsMetadataUpdate, err := transform(currentBlock, cache)
+						if err != nil {
+							logrus.WithError(err).Errorf("error transforming block [%v]", currentBlock.Number)
+						}
+						bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+						bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+						if mutsMetadataUpdate != nil {
+							bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+							bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+						}
+					}
+
+					if len(bulkMutsData.Keys) > 0 {
+						metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+						err := bigtable.SaveBlockKeys(currentBlock.Number, currentBlock.Hash, metaKeys)
+						if err != nil {
+							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", currentBlock.Number, err)
+						}
+
+						err = bigtable.WriteBulk(&bulkMutsData, bigtable.tableData, DEFAULT_BATCH_INSERTS)
+						if err != nil {
+							return fmt.Errorf("error writing block [%v] to bigtable data table: %w", currentBlock.Number, err)
+						}
+					}
+
+					if len(bulkMutsMetadataUpdate.Keys) > 0 {
+						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.tableMetadataUpdates, DEFAULT_BATCH_INSERTS)
+						if err != nil {
+							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", currentBlock.Number, err)
+						}
+					}
+
+					return nil
+				})
+			}
+			return subG.Wait()
+		})
+
+	}
+
+	if err := g.Wait(); err == nil {
+		logrus.Info("data table indexing completed")
+	} else {
+		utils.LogError(err, "wait group error", 0)
+		return err
+	}
+
+	return nil
 }

@@ -439,6 +439,8 @@ func main() {
 		err = disableUserPerEmail()
 	case "fix-epochs":
 		err = fixEpochs()
+	case "fix-internal-txs-from-node":
+		fixInternalTxsFromNode(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, bt)
 	case "validate-firebase-tokens":
 		err = validateFirebaseTokens()
 	default:
@@ -541,6 +543,52 @@ func disableUserPerEmail() error {
 	}
 
 	return nil
+}
+
+func fixInternalTxsFromNode(startBlock, endBlock, batchSize, concurrency uint64, bt *db.Bigtable) {
+	if endBlock > 0 && endBlock < startBlock {
+		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
+		return
+	}
+
+	if concurrency == 0 {
+		utils.LogError(nil, "concurrency must be greater than 0", 0)
+		return
+	}
+	if bt == nil {
+		utils.LogError(nil, "no bigtable provided", 0)
+		return
+	}
+
+	transformers := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+	transformers = append(transformers, bt.TransformBlock, bt.TransformTx, bt.TransformItx)
+
+	to := endBlock
+	if endBlock == math.MaxInt64 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			utils.LogError(err, "error retrieving last blocks from blocks table", 0)
+			return
+		}
+
+		to = uint64(lastBlockFromBlocksTable)
+	}
+
+	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
+	blockCount := utilMath.MaxU64(1, batchSize)
+
+	logrus.Infof("Starting to reindex all txs for blocks ranging from %d to %d", startBlock, to)
+	for from := startBlock; from <= to; from = from + blockCount {
+		toBlock := utilMath.MinU64(to, from+blockCount-1)
+
+		logrus.Infof("reindexing txs for blocks from height %v to %v in data table ...", from, toBlock)
+		err := bt.ReindexITxsFromNode(int64(from), int64(toBlock), int64(batchSize), int64(concurrency), transformers, cache)
+		if err != nil {
+			utils.LogError(err, "error indexing from bigtable", 0)
+		}
+		cache.Clear()
+
+	}
 }
 
 func fixEns(erigonClient *rpc.ErigonClient) error {
