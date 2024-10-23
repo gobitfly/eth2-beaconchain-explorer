@@ -3,10 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
-
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"math"
 	"math/big"
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"firebase.google.com/go/v4/messaging"
+
 	"github.com/gobitfly/eth2-beaconchain-explorer/cmd/misc/commands"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/exporter"
@@ -27,19 +28,15 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/gobitfly/eth2-beaconchain-explorer/version"
 
+	"github.com/Gurpartap/storekit-go"
 	"github.com/coocood/freecache"
 	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pkg/errors"
 	utilMath "github.com/protolambda/zrnt/eth2/util/math"
+	"github.com/sirupsen/logrus"
 	go_ens "github.com/wealdtech/go-ens/v3"
 	"golang.org/x/sync/errgroup"
-
-	"flag"
-
-	"github.com/Gurpartap/storekit-go"
-
-	"github.com/sirupsen/logrus"
 )
 
 var opts = struct {
@@ -77,7 +74,7 @@ func main() {
 	statsPartitionCommand := commands.StatsMigratorCommand{}
 
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
-	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases, disable-user-per-email, validate-firebase-tokens")
+	flag.StringVar(&opts.Command, "command", "", "command to run, available: updateAPIKey, applyDbSchema, initBigtableSchema, epoch-export, debug-rewards, debug-blocks, clear-bigtable, index-old-eth1-blocks, update-aggregation-bits, historic-prices-export, index-missing-blocks, re-index-blocks, export-epoch-missed-slots, migrate-last-attestation-slot-bigtable, export-genesis-validators, update-block-finalization-sequentially, nameValidatorsByRanges, export-stats-totals, export-sync-committee-periods, export-sync-committee-validator-stats, partition-validator-stats, migrate-app-purchases, disable-user-per-email, validate-firebase-tokens")
 	flag.Uint64Var(&opts.StartEpoch, "start-epoch", 0, "start epoch")
 	flag.Uint64Var(&opts.EndEpoch, "end-epoch", 0, "end epoch")
 	flag.Uint64Var(&opts.User, "user", 0, "user id")
@@ -320,6 +317,8 @@ func main() {
 		exportHistoricPrices(opts.StartDay, opts.EndDay)
 	case "index-missing-blocks":
 		indexMissingBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient)
+	case "re-index-blocks":
+		reIndexBlocks(opts.StartBlock, opts.EndBlock, bt, erigonClient, opts.Transformers)
 	case "migrate-last-attestation-slot-bigtable":
 		migrateLastAttestationSlotToBigtable()
 	case "migrate-app-purchases":
@@ -440,6 +439,8 @@ func main() {
 		err = disableUserPerEmail()
 	case "fix-epochs":
 		err = fixEpochs()
+	case "fix-internal-txs-from-node":
+		fixInternalTxsFromNode(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, bt)
 	case "validate-firebase-tokens":
 		err = validateFirebaseTokens()
 	default:
@@ -542,6 +543,52 @@ func disableUserPerEmail() error {
 	}
 
 	return nil
+}
+
+func fixInternalTxsFromNode(startBlock, endBlock, batchSize, concurrency uint64, bt *db.Bigtable) {
+	if endBlock > 0 && endBlock < startBlock {
+		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", endBlock, startBlock), 0)
+		return
+	}
+
+	if concurrency == 0 {
+		utils.LogError(nil, "concurrency must be greater than 0", 0)
+		return
+	}
+	if bt == nil {
+		utils.LogError(nil, "no bigtable provided", 0)
+		return
+	}
+
+	transformers := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+	transformers = append(transformers, bt.TransformBlock, bt.TransformTx, bt.TransformItx)
+
+	to := endBlock
+	if endBlock == math.MaxInt64 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			utils.LogError(err, "error retrieving last blocks from blocks table", 0)
+			return
+		}
+
+		to = uint64(lastBlockFromBlocksTable)
+	}
+
+	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
+	blockCount := utilMath.MaxU64(1, batchSize)
+
+	logrus.Infof("Starting to reindex all txs for blocks ranging from %d to %d", startBlock, to)
+	for from := startBlock; from <= to; from = from + blockCount {
+		toBlock := utilMath.MinU64(to, from+blockCount-1)
+
+		logrus.Infof("reindexing txs for blocks from height %v to %v in data table ...", from, toBlock)
+		err := bt.ReindexITxsFromNode(int64(from), int64(toBlock), int64(batchSize), int64(concurrency), transformers, cache)
+		if err != nil {
+			utils.LogError(err, "error indexing from bigtable", 0)
+		}
+		cache.Clear()
+
+	}
 }
 
 func fixEns(erigonClient *rpc.ErigonClient) error {
@@ -1565,6 +1612,52 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 
 			indexOldEth1Blocks(block, block, 1, 1, "all", bt, client)
 		}
+	}
+}
+
+// Goes through the blocks in the given range from [start] to [end] and re indexes them with the provided transformers
+//
+//	Both [start] and [end] are inclusive
+//	Pass math.MaxInt64 as [end] to export from [start] to the last block in the blocks table
+func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string) {
+	if end == math.MaxInt64 {
+		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
+		if err != nil {
+			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
+			return
+		}
+		end = uint64(lastBlockFromBlocksTable)
+	}
+
+	errFields := map[string]interface{}{
+		"start": start,
+		"end":   end,
+	}
+
+	batchSize := uint64(10000)
+	for from := start; from <= end; from += batchSize {
+		targetCount := batchSize
+		if from+targetCount >= end {
+			targetCount = end - from + 1
+		}
+		to := from + targetCount - 1
+
+		errFields["from"] = from
+		errFields["to"] = to
+		errFields["targetCount"] = targetCount
+
+		for block := from; block <= to; block++ {
+			bc, _, err := client.GetBlock(int64(block), "parity/geth")
+			if err != nil {
+				utils.LogError(err, fmt.Sprintf("error getting block %v from the node", block), 0, errFields)
+				return
+			}
+			if err := bt.SaveBlock(bc); err != nil {
+				utils.LogError(err, fmt.Sprintf("error saving block: %v ", block), 0, errFields)
+				return
+			}
+		}
+		indexOldEth1Blocks(from, to, batchSize, 1, transformerFlag, bt, client)
 	}
 }
 
