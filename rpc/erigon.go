@@ -787,7 +787,6 @@ type BlockResponse struct {
 	Extra         string                    `json:"extraData"`
 	MixDigest     string                    `json:"mixHash"`
 	Bloom         string                    `json:"logsBloom"`
-	Uncles        []*geth_types.Block       `json:"uncles"`
 	Transactions  []*geth_types.Transaction `json:"transactions"`
 	Withdrawals   []*geth_types.Withdrawal  `json:"withdrawals"`
 	BlobGasUsed   *string                   `json:"blobGasUsed"`
@@ -795,60 +794,21 @@ type BlockResponse struct {
 	BaseFee       string                    `json:"baseFee"`
 }
 
-func (b *BlockResponse) UnmarshalJSON(data []byte) error {
-	type Alias BlockResponse
-	tempData := &struct {
-		BlobGasUsed   json.RawMessage `json:"blobGasUsed"`
-		ExcessBlobGas json.RawMessage `json:"excessBlobGas"`
-		Uncles        json.RawMessage `json:"uncles"`
-		*Alias
-	}{
-		Alias: (*Alias)(b),
-	}
+type BlockResponseWithUncles struct {
+	BlockResponse
+	Uncles []*geth_types.Block
+}
 
-	if err := json.Unmarshal(data, &tempData); err != nil {
-		return err
-	}
-
-	if string(tempData.BlobGasUsed) != "" && string(tempData.BlobGasUsed) != "null" {
-		*b.BlobGasUsed = string(tempData.BlobGasUsed)
-	} else {
-		b.BlobGasUsed = nil
-	}
-
-	if string(tempData.ExcessBlobGas) != "" && string(tempData.ExcessBlobGas) != "null" {
-		*b.ExcessBlobGas = string(tempData.ExcessBlobGas)
-	} else {
-		b.ExcessBlobGas = nil
-	}
-
-	if string(tempData.Uncles) == "null" || string(tempData.Uncles) == "" {
-		b.Uncles = []*geth_types.Block{}
-	} else if tempData.Uncles[0] == '[' {
-		// unmarshal as an array of type geth_types.Block
-		if err := json.Unmarshal(tempData.Uncles, &b.Uncles); err != nil {
-			// if it failed then unmarshal as an array of strings
-			var uncleHashes []string
-			if err := json.Unmarshal(tempData.Uncles, &uncleHashes); err != nil {
-				return fmt.Errorf("expected an array for uncles, but got: %s", tempData.Uncles)
-			}
-			// convert string hashes to empty Block refs
-			for i := range uncleHashes {
-				b.Uncles[i] = &geth_types.Block{}
-			}
-		}
-	} else {
-		return fmt.Errorf("expected an array for uncles, but got: %s", tempData.Uncles)
-	}
-
-	return nil
+type RPCBlock struct {
+	Hash        common.Hash   `json:"hash"`
+	UncleHashes []common.Hash `json:"uncles"`
 }
 
 func (client *ErigonClient) GetBlocksByBatch(blockNumbers []int64) ([]*types.Eth1Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	var blockDetails []*types.Eth1Block
+	var ethBlock []*types.Eth1Block
 	var batchCall []geth_rpc.BatchElem
 	batchCallNums := 3
 
@@ -877,12 +837,12 @@ func (client *ErigonClient) GetBlocksByBatch(blockNumbers []int64) ([]*types.Eth
 	}
 
 	if len(batchCall) == 0 {
-		return blockDetails, nil
+		return ethBlock, nil
 	}
 
 	err := client.rpcClient.BatchCallContext(ctx, batchCall)
 	if err != nil {
-		logger.Errorf("error while batch calling rpc, error: %s", err)
+		logger.Errorf("error while batch calling rpc for block details, error: %s", err)
 		return nil, err
 	}
 
@@ -891,22 +851,68 @@ func (client *ErigonClient) GetBlocksByBatch(blockNumbers []int64) ([]*types.Eth
 		receiptsResult := batchCall[i*batchCallNums+1].Result.(*[]geth_types.Receipt)
 		tracesResults := batchCall[i*batchCallNums+2].Result.(*[]ParityTraceResult)
 
+		var head *geth_types.Header
+		if err := json.Unmarshal(*blockResult, &head); err != nil {
+			return nil, fmt.Errorf("error while unmarshaling block results to Header type, error: %v", err)
+		}
+		var body RPCBlock
+		if err := json.Unmarshal(*blockResult, &body); err != nil {
+			return nil, fmt.Errorf("error while unmarshaling block results to RPCBlock type, error: %v", err)
+		}
+
+		if head.UncleHash == geth_types.EmptyUncleHash && len(body.UncleHashes) > 0 {
+			return nil, fmt.Errorf("server returned non-empty uncle list but block header indicates no uncles")
+		}
+		if head.UncleHash != geth_types.EmptyUncleHash && len(body.UncleHashes) == 0 {
+			return nil, fmt.Errorf("server returned empty uncle list but block header indicates uncles")
+		}
+
+		var uncles []*geth_types.Block
+		if len(body.UncleHashes) > 0 {
+			uncles = make([]*geth_types.Block, len(body.UncleHashes))
+			uncleHashes := make([]geth_rpc.BatchElem, len(body.UncleHashes))
+			for i := range uncleHashes {
+				uncleHashes[i] = geth_rpc.BatchElem{
+					Method: "eth_getUncleByBlockHashAndIndex",
+					Args:   []interface{}{body.Hash, hexutil.EncodeUint64(uint64(i))},
+					Result: &uncles[i],
+				}
+			}
+			if err := client.rpcClient.BatchCallContext(ctx, uncleHashes); err != nil {
+				return nil, fmt.Errorf("error while batch calling uncle hashes, error: %v", err)
+			}
+
+			for i := range uncleHashes {
+				if uncleHashes[i].Error != nil {
+					return nil, fmt.Errorf("error in uncle hash, error: %v", uncleHashes[i].Error)
+				}
+				if uncles[i] == nil {
+					return nil, fmt.Errorf("got null header for uncle %d of block %x", i, body.Hash[:])
+				}
+			}
+		}
+
 		var blockResponse BlockResponse
-		err := json.Unmarshal([]byte(*blockResult), &blockResponse)
+		err := json.Unmarshal(*blockResult, &blockResponse)
 		if err != nil {
-			logger.Errorf("error while unmarshalling block results: %s", err)
+			logger.Errorf("error while unmarshalling block results to BlockResponse type: %s", err)
 			continue
 		}
 
-		blockDetail := client.processBlockResult(blockResponse)
-		client.processReceiptsAndTraces(blockDetail, *receiptsResult, *tracesResults)
-		blockDetails = append(blockDetails, blockDetail)
+		blockResp := BlockResponseWithUncles{
+			BlockResponse: blockResponse,
+			Uncles:        uncles,
+		}
+
+		blockDetails := client.processBlockResult(blockResp)
+		client.processReceiptsAndTraces(blockDetails, *receiptsResult, *tracesResults)
+		ethBlock = append(ethBlock, blockDetails)
 	}
 
-	return blockDetails, nil
+	return ethBlock, nil
 }
 
-func (client *ErigonClient) processBlockResult(block BlockResponse) *types.Eth1Block {
+func (client *ErigonClient) processBlockResult(block BlockResponseWithUncles) *types.Eth1Block {
 	blockNumber, err := strconv.ParseUint(block.Number, 0, 64)
 	if err != nil {
 		logger.Errorf("error while parsing block number to uint64, error: %s", err)
@@ -923,15 +929,18 @@ func (client *ErigonClient) processBlockResult(block BlockResponse) *types.Eth1B
 	if err != nil {
 		logger.Errorf("error while parsing block time, block: %d, error: %s", blockNumber, err)
 	}
+
 	var blobGasUsed, excessBlobGas uint64
 	if block.BlobGasUsed != nil {
-		blobGasUsed, err = strconv.ParseUint(*block.BlobGasUsed, 10, 64)
+		blobGasUsedStr := *block.BlobGasUsed
+		blobGasUsed, err = strconv.ParseUint(blobGasUsedStr[2:], 16, 64) // remove "0x" and parse as hex
 		if err != nil {
 			logger.Errorf("error while parsing blob gas used, block: %d, error: %s", blockNumber, err)
 		}
 	}
 	if block.ExcessBlobGas != nil {
-		excessBlobGas, err = strconv.ParseUint(*block.ExcessBlobGas, 10, 64)
+		excessBlobGasStr := *block.ExcessBlobGas
+		excessBlobGas, err = strconv.ParseUint(excessBlobGasStr[2:], 16, 64)
 		if err != nil {
 			logger.Errorf("error while parsing excess blob gas, block: %d, error: %s", blockNumber, err)
 		}
