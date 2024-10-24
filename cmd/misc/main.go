@@ -1691,9 +1691,31 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 	readGroup.SetLimit(int(concurrency))
 
 	writeGroup := errgroup.Group{}
-	writeGroup.SetLimit(int(concurrency))
+	writeGroup.SetLimit(int(2*concurrency) + 1)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
+	quit := make(chan any)
+
+	sink := make(chan *types.Eth1Block)
+	writeGroup.Go(func() error {
+		for {
+			select {
+			case block := <-sink:
+				writeGroup.Go(func() error {
+					if err := bt.SaveBlock(block); err != nil {
+						return fmt.Errorf("error saving block %v: %w", block.Number, err)
+					}
+					err := bt.IndexBlocksWithTransformers([]*types.Eth1Block{block}, transformers, cache)
+					if err != nil {
+						return fmt.Errorf("error indexing from bigtable: %w", err)
+					}
+					return nil
+				})
+			case <-quit:
+				return nil
+			}
+		}
+	})
 
 	for i := start; i <= end; i = i + batchSize {
 		height := int64(i)
@@ -1706,25 +1728,17 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 			if err != nil {
 				return fmt.Errorf("error getting block %v from the node: %w", height, err)
 			}
-			writeGroup.Go(func() error {
-				for _, block := range blocks {
-					if err := bt.SaveBlock(block); err != nil {
-						return fmt.Errorf("error saving block %v: %w", block.Number, err)
-					}
-				}
-				err := bt.IndexBlocksWithTransformers(blocks, transformers, cache)
-				if err != nil {
-					return fmt.Errorf("error indexing from bigtable: %w", err)
-				}
-				logrus.Infof("%d-%d indexed", blocks[0].Number, blocks[len(blocks)-1].Number)
-				return nil
-			})
+			for _, block := range blocks {
+				sink <- block
+			}
 			return nil
 		})
 	}
 	if err := readGroup.Wait(); err != nil {
 		panic(err)
 	}
+	quit <- struct{}{}
+	close(sink)
 	if err := writeGroup.Wait(); err != nil {
 		panic(err)
 	}

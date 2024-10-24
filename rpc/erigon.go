@@ -214,16 +214,12 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 				return nil
 			}(),
 			From: func() []byte {
-				sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
+				// this won't make a request in most cases as the sender is already present in the cache
+				// context https://github.com/ethereum/go-ethereum/blob/v1.14.11/ethclient/ethclient.go#L268
+				sender, err := client.ethClient.TransactionSender(context.Background(), tx, block.Hash(), uint(txPosition))
 				if err != nil {
-					logrus.Warnf("error converting tx %v to msg: %v", tx.Hash(), err)
-					// this won't make a request in most cases as the sender is already present in the cache
-					// context https://github.com/ethereum/go-ethereum/blob/v1.14.11/ethclient/ethclient.go#L268
-					sender, err = client.ethClient.TransactionSender(context.Background(), tx, block.Hash(), uint(txPosition))
-					if err != nil {
-						sender = common.HexToAddress("abababababababababababababababababababab")
-						logrus.Errorf("could not retrieve tx sender %v: %v", tx.Hash(), err)
-					}
+					sender = common.HexToAddress("abababababababababababababababababababab")
+					logrus.Errorf("could not retrieve tx sender %v: %v", tx.Hash(), err)
 				}
 				return sender.Bytes()
 			}(),
