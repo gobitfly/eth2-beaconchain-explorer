@@ -30,7 +30,10 @@ type Config struct {
 		SSL          bool   `yaml:"ssl" envconfig:"WRITER_DB_SSL"`
 	} `yaml:"writerDatabase"`
 	Bigtable    Bigtable `yaml:"bigtable"`
-	RawBigtable Bigtable `yaml:"rawBigtable"`
+	RawBigtable struct {
+		Bigtable
+		Remote string `yaml:"remote"`
+	} `yaml:"rawBigtable"`
 	BlobIndexer struct {
 		S3 struct {
 			Endpoint        string `yaml:"endpoint" envconfig:"BLOB_INDEXER_S3_ENDPOINT"`

@@ -1709,6 +1709,7 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 					if err != nil {
 						return fmt.Errorf("error indexing from bigtable: %w", err)
 					}
+					logrus.Infof("%d indexed", block.Number)
 					return nil
 				})
 			case <-quit:

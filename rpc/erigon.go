@@ -59,13 +59,17 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 			if utils.Config.RawBigtable.Emulator {
 				_ = os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("%s:%d", utils.Config.RawBigtable.EmulatorHost, utils.Config.RawBigtable.EmulatorPort))
 			}
-
 			project, instance := utils.Config.RawBigtable.Project, utils.Config.RawBigtable.Instance
-			bg, err := store.NewBigTable(project, instance, nil)
+			var db store.Store
+			bt, err := store.NewBigTable(project, instance, nil)
 			if err != nil {
 				return nil, err
 			}
-			rawStore := db2.WithCache(db2.NewRawStore(store.Wrap(bg, db2.BlocRawTable, "")))
+			db = store.Wrap(bt, db2.BlocRawTable, "")
+			if utils.Config.RawBigtable.Remote != "" {
+				db = store.NewRemoteClient(utils.Config.RawBigtable.Remote)
+			}
+			rawStore := db2.WithCache(db2.NewRawStore(db))
 			roundTripper := db2.NewBigTableEthRaw(rawStore, utils.Config.Chain.Id)
 			opts = append(opts, geth_rpc.WithHTTPClient(&http.Client{
 				Transport: db2.NewWithFallback(roundTripper, http.DefaultTransport),
