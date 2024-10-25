@@ -20,7 +20,7 @@ func main() {
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 
-	bt, err := store.NewBigTable(cfg.RawBigtable.Project, cfg.RawBigtable.Instance, nil)
+	bt, err := store.NewBigTable(cfg.RawBigtable.Bigtable.Project, cfg.RawBigtable.Bigtable.Instance, nil)
 	if err != nil {
 		panic(err)
 	}
