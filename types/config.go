@@ -31,8 +31,8 @@ type Config struct {
 	} `yaml:"writerDatabase"`
 	Bigtable    Bigtable `yaml:"bigtable"`
 	RawBigtable struct {
-		Bigtable
-		Remote string `yaml:"remote"`
+		Bigtable Bigtable `yaml:"bigtable"`
+		Remote   string   `yaml:"remote"`
 	} `yaml:"rawBigtable"`
 	BlobIndexer struct {
 		S3 struct {

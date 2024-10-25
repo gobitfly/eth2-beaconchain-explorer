@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -109,6 +110,10 @@ func (r RemoteClient) GetRow(key string) (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, b)
+	}
 	var row map[string][]byte
 	if err := json.NewDecoder(resp.Body).Decode(&row); err != nil {
 		return nil, err
@@ -141,6 +146,10 @@ func (r RemoteClient) GetRowsRange(high, low string) (map[string]map[string][]by
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, b)
 	}
 	var rows map[string]map[string][]byte
 	if err := json.NewDecoder(resp.Body).Decode(&rows); err != nil {

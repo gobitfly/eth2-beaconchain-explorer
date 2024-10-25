@@ -42,7 +42,7 @@ type ErigonClient struct {
 	chainID      *big.Int
 	multiChecker *Balance
 
-	rawStore *db2.CachedRawStore
+	rawStore db2.RawStoreReader
 }
 
 var CurrentErigonClient *ErigonClient
@@ -55,11 +55,11 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 
 	var opts []geth_rpc.ClientOption
 	if utils.Config != nil {
-		if utils.Config.RawBigtable.Project != "" && utils.Config.RawBigtable.Instance != "" {
-			if utils.Config.RawBigtable.Emulator {
-				_ = os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("%s:%d", utils.Config.RawBigtable.EmulatorHost, utils.Config.RawBigtable.EmulatorPort))
+		if utils.Config.RawBigtable.Bigtable.Project != "" && utils.Config.RawBigtable.Bigtable.Instance != "" {
+			if utils.Config.RawBigtable.Bigtable.Emulator {
+				_ = os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("%s:%d", utils.Config.RawBigtable.Bigtable.EmulatorHost, utils.Config.RawBigtable.Bigtable.EmulatorPort))
 			}
-			project, instance := utils.Config.RawBigtable.Project, utils.Config.RawBigtable.Instance
+			project, instance := utils.Config.RawBigtable.Bigtable.Project, utils.Config.RawBigtable.Bigtable.Instance
 			var db store.Store
 			bt, err := store.NewBigTable(project, instance, nil)
 			if err != nil {
