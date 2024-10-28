@@ -13,6 +13,6 @@ type Store interface {
 }
 
 var (
-	// _ Store = (*Mem)(nil)
 	_ Store = (*TableWrapper)(nil)
+	_ Store = (*RemoteClient)(nil)
 )

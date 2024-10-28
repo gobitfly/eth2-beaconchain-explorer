@@ -211,7 +211,7 @@ func (r *BigTableEthRaw) UncleByBlockNumberAndIndex(ctx context.Context, number 
 	if err := json.Unmarshal(block.Uncles, &uncles); err != nil {
 		var uncle *jsonrpcMessage
 		if err := json.Unmarshal(block.Uncles, &uncle); err != nil {
-			panic(err)
+			return nil, fmt.Errorf("cannot unmarshal uncle: %w", err)
 		}
 		return json.Marshal(uncle)
 	}
@@ -228,7 +228,7 @@ func (r *BigTableEthRaw) UncleByBlockHashAndIndex(ctx context.Context, hash stri
 	if err := json.Unmarshal(block.Uncles, &uncles); err != nil {
 		var uncle *jsonrpcMessage
 		if err := json.Unmarshal(block.Uncles, &uncle); err != nil {
-			panic(err)
+			return nil, fmt.Errorf("cannot unmarshal uncle: %w", err)
 		}
 		return json.Marshal(uncle)
 	}
