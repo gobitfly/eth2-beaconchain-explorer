@@ -1691,7 +1691,7 @@ func reIndexBlocksByRange(start uint64, end uint64, bt *db.Bigtable, client *rpc
 	readGroup.SetLimit(int(concurrency))
 
 	writeGroup := errgroup.Group{}
-	writeGroup.SetLimit(int(2*concurrency) + 1)
+	writeGroup.SetLimit(int(concurrency*concurrency) + 1)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 	quit := make(chan any)
