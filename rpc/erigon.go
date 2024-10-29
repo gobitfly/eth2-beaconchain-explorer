@@ -6,12 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/contracts/oneinchoracle"
+	"github.com/gobitfly/eth2-beaconchain-explorer/db2"
+	"github.com/gobitfly/eth2-beaconchain-explorer/db2/store"
 	"github.com/gobitfly/eth2-beaconchain-explorer/erc20"
 	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
@@ -37,6 +41,8 @@ type ErigonClient struct {
 	ethClient    *ethclient.Client
 	chainID      *big.Int
 	multiChecker *Balance
+
+	rawStore db2.RawStoreReader
 }
 
 var CurrentErigonClient *ErigonClient
@@ -47,17 +53,40 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 		endpoint: endpoint,
 	}
 
-	rpcClient, err := geth_rpc.Dial(client.endpoint)
+	var opts []geth_rpc.ClientOption
+	if utils.Config != nil {
+		if utils.Config.RawBigtable.Bigtable.Project != "" && utils.Config.RawBigtable.Bigtable.Instance != "" {
+			if utils.Config.RawBigtable.Bigtable.Emulator {
+				err := os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("%s:%d", utils.Config.RawBigtable.Bigtable.EmulatorHost, utils.Config.RawBigtable.Bigtable.EmulatorPort))
+				if err != nil {
+				   return nil, fmt.Errorf("error while setting BIGTABLE_EMULATOR_HOST env: %w", err)
+				}
+			}
+			project, instance := utils.Config.RawBigtable.Bigtable.Project, utils.Config.RawBigtable.Bigtable.Instance
+			var db store.Store
+			bt, err := store.NewBigTable(project, instance, nil)
+			if err != nil {
+				return nil, err
+			}
+			db = store.Wrap(bt, db2.BlocksRawTable, "")
+			if utils.Config.RawBigtable.Remote != "" {
+				db = store.NewRemoteClient(utils.Config.RawBigtable.Remote)
+			}
+			rawStore := db2.WithCache(db2.NewRawStore(db))
+			roundTripper := db2.NewBigTableEthRaw(rawStore, utils.Config.Chain.Id)
+			opts = append(opts, geth_rpc.WithHTTPClient(&http.Client{
+				Transport: db2.NewWithFallback(roundTripper, http.DefaultTransport),
+			}))
+			client.rawStore = rawStore
+		}
+	}
+
+	rpcClient, err := geth_rpc.DialOptions(context.Background(), client.endpoint, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error dialing rpc node: %w", err)
 	}
 	client.rpcClient = rpcClient
-
-	ethClient, err := ethclient.Dial(client.endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("error dialing rpc node: %w", err)
-	}
-	client.ethClient = ethClient
+	client.ethClient = ethclient.NewClient(rpcClient)
 
 	client.multiChecker, err = NewBalance(common.HexToAddress("0xb1F8e55c7f64D203C1400B9D8555d050F94aDF39"), client.ethClient)
 	if err != nil {
@@ -93,58 +122,149 @@ func (client *ErigonClient) GetRPCClient() *geth_rpc.Client {
 }
 
 func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth1Block, *types.GetBlockTimings, error) {
-	startTime := time.Now()
+	start := time.Now()
+	timings := &types.GetBlockTimings{}
+	mu := sync.Mutex{}
+
 	defer func() {
-		metrics.TaskDuration.WithLabelValues("rpc_el_get_block").Observe(time.Since(startTime).Seconds())
+		metrics.TaskDuration.WithLabelValues("rpc_el_get_block").Observe(time.Since(start).Seconds())
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	timings := &types.GetBlockTimings{}
-	mu := sync.Mutex{}
-
-	block, err := client.ethClient.BlockByNumber(ctx, big.NewInt(number))
-	if err != nil {
+	var traces []*Eth1InternalTransactionWithPosition
+	var block *geth_types.Block
+	var receipts []*geth_types.Receipt
+	g := new(errgroup.Group)
+	g.Go(func() error {
+		b, err := client.ethClient.BlockByNumber(ctx, big.NewInt(number))
+		if err != nil {
+			return err
+		}
+		mu.Lock()
+		timings.Headers = time.Since(start)
+		mu.Unlock()
+		block = b
+		return nil
+	})
+	g.Go(func() error {
+		if err := client.rpcClient.CallContext(ctx, &receipts, "eth_getBlockReceipts", fmt.Sprintf("0x%x", number)); err != nil {
+			return fmt.Errorf("error retrieving receipts for block %v: %w", number, err)
+		}
+		mu.Lock()
+		timings.Receipts = time.Since(start)
+		mu.Unlock()
+		return nil
+	})
+	g.Go(func() error {
+		t, err := client.getTrace(traceMode, big.NewInt(number))
+		if err != nil {
+			return fmt.Errorf("error retrieving traces for block %v: %w", number, err)
+		}
+		traces = t
+		mu.Lock()
+		timings.Traces = time.Since(start)
+		mu.Unlock()
+		return nil
+	})
+	if err := g.Wait(); err != nil {
 		return nil, nil, err
 	}
-	timings.Headers = time.Since(startTime)
 
-	c := &types.Eth1Block{
-		Hash:         block.Hash().Bytes(),
-		ParentHash:   block.ParentHash().Bytes(),
-		UncleHash:    block.UncleHash().Bytes(),
-		Coinbase:     block.Coinbase().Bytes(),
-		Root:         block.Root().Bytes(),
-		TxHash:       block.TxHash().Bytes(),
-		ReceiptHash:  block.ReceiptHash().Bytes(),
-		Difficulty:   block.Difficulty().Bytes(),
-		Number:       block.NumberU64(),
-		GasLimit:     block.GasLimit(),
-		GasUsed:      block.GasUsed(),
-		Time:         timestamppb.New(time.Unix(int64(block.Time()), 0)),
-		Extra:        block.Extra(),
-		MixDigest:    block.MixDigest().Bytes(),
-		Bloom:        block.Bloom().Bytes(),
-		Uncles:       []*types.Eth1Block{},
-		Transactions: []*types.Eth1Transaction{},
-		Withdrawals:  []*types.Eth1Withdrawal{},
-	}
-	blobGasUsed := block.BlobGasUsed()
-	if blobGasUsed != nil {
-		c.BlobGasUsed = *blobGasUsed
-	}
-	excessBlobGas := block.ExcessBlobGas()
-	if excessBlobGas != nil {
-		c.ExcessBlobGas = *excessBlobGas
+	withdrawals := make([]*types.Eth1Withdrawal, len(block.Withdrawals()))
+	for i, withdrawal := range block.Withdrawals() {
+		withdrawals[i] = &types.Eth1Withdrawal{
+			Index:          withdrawal.Index,
+			ValidatorIndex: withdrawal.Validator,
+			Address:        withdrawal.Address.Bytes(),
+			Amount:         new(big.Int).SetUint64(withdrawal.Amount).Bytes(),
+		}
 	}
 
-	if block.BaseFee() != nil {
-		c.BaseFee = block.BaseFee().Bytes()
+	transactions := make([]*types.Eth1Transaction, len(block.Transactions()))
+	traceIndex := 0
+	for txPosition, receipt := range receipts {
+		logs := make([]*types.Eth1Log, len(receipt.Logs))
+		for i, log := range receipt.Logs {
+			topics := make([][]byte, len(log.Topics))
+			for j, topic := range log.Topics {
+				topics[j] = topic.Bytes()
+			}
+			logs[i] = &types.Eth1Log{
+				Address: log.Address.Bytes(),
+				Data:    log.Data,
+				Removed: log.Removed,
+				Topics:  topics,
+			}
+		}
+
+		var internals []*types.Eth1InternalTransaction
+		for ; traceIndex < len(traces) && traces[traceIndex].txPosition == txPosition; traceIndex++ {
+			internals = append(internals, &traces[traceIndex].Eth1InternalTransaction)
+		}
+
+		tx := block.Transactions()[txPosition]
+		transactions[txPosition] = &types.Eth1Transaction{
+			Type:                 uint32(tx.Type()),
+			Nonce:                tx.Nonce(),
+			GasPrice:             tx.GasPrice().Bytes(),
+			MaxPriorityFeePerGas: tx.GasTipCap().Bytes(),
+			MaxFeePerGas:         tx.GasFeeCap().Bytes(),
+			Gas:                  tx.Gas(),
+			Value:                tx.Value().Bytes(),
+			Data:                 tx.Data(),
+			To: func() []byte {
+				if tx.To() != nil {
+					return tx.To().Bytes()
+				}
+				return nil
+			}(),
+			From: func() []byte {
+				// this won't make a request in most cases as the sender is already present in the cache
+				// context https://github.com/ethereum/go-ethereum/blob/v1.14.11/ethclient/ethclient.go#L268
+				sender, err := client.ethClient.TransactionSender(context.Background(), tx, block.Hash(), uint(txPosition))
+				if err != nil {
+					sender = common.HexToAddress("abababababababababababababababababababab")
+					logrus.Errorf("could not retrieve tx sender %v: %v", tx.Hash(), err)
+				}
+				return sender.Bytes()
+			}(),
+			ChainId:            tx.ChainId().Bytes(),
+			AccessList:         []*types.AccessList{},
+			Hash:               tx.Hash().Bytes(),
+			ContractAddress:    receipt.ContractAddress[:],
+			CommulativeGasUsed: receipt.CumulativeGasUsed,
+			GasUsed:            receipt.GasUsed,
+			LogsBloom:          receipt.Bloom[:],
+			Status:             receipt.Status,
+			Logs:               logs,
+			Itx:                internals,
+			MaxFeePerBlobGas: func() []byte {
+				if tx.BlobGasFeeCap() != nil {
+					return tx.BlobGasFeeCap().Bytes()
+				}
+				return nil
+			}(),
+			BlobVersionedHashes: func() (b [][]byte) {
+				for _, h := range tx.BlobHashes() {
+					b = append(b, h.Bytes())
+				}
+				return b
+			}(),
+			BlobGasPrice: func() []byte {
+				if receipt.BlobGasPrice != nil {
+					return receipt.BlobGasPrice.Bytes()
+				}
+				return nil
+			}(),
+			BlobGasUsed: receipt.BlobGasUsed,
+		}
 	}
 
-	for _, uncle := range block.Uncles() {
-		pbUncle := &types.Eth1Block{
+	uncles := make([]*types.Eth1Block, len(block.Uncles()))
+	for i, uncle := range block.Uncles() {
+		uncles[i] = &types.Eth1Block{
 			Hash:        uncle.Hash().Bytes(),
 			ParentHash:  uncle.ParentHash.Bytes(),
 			UncleHash:   uncle.UncleHash.Bytes(),
@@ -161,130 +281,64 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			MixDigest:   uncle.MixDigest.Bytes(),
 			Bloom:       uncle.Bloom.Bytes(),
 		}
-
-		c.Uncles = append(c.Uncles, pbUncle)
 	}
 
-	receipts := make([]*geth_types.Receipt, len(block.Transactions()))
-
-	if len(block.Withdrawals()) > 0 {
-		withdrawalsIndexed := make([]*types.Eth1Withdrawal, 0, len(block.Withdrawals()))
-		for _, w := range block.Withdrawals() {
-			withdrawalsIndexed = append(withdrawalsIndexed, &types.Eth1Withdrawal{
-				Index:          w.Index,
-				ValidatorIndex: w.Validator,
-				Address:        w.Address.Bytes(),
-				Amount:         new(big.Int).SetUint64(w.Amount).Bytes(),
-			})
-		}
-		c.Withdrawals = withdrawalsIndexed
-	}
-
-	txs := block.Transactions()
-
-	for _, tx := range txs {
-
-		var from []byte
-		sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
-		if err != nil {
-			from, _ = hex.DecodeString("abababababababababababababababababababab")
-			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)
-		} else {
-			from = sender.Bytes()
-		}
-
-		pbTx := &types.Eth1Transaction{
-			Type:                 uint32(tx.Type()),
-			Nonce:                tx.Nonce(),
-			GasPrice:             tx.GasPrice().Bytes(),
-			MaxPriorityFeePerGas: tx.GasTipCap().Bytes(),
-			MaxFeePerGas:         tx.GasFeeCap().Bytes(),
-			Gas:                  tx.Gas(),
-			Value:                tx.Value().Bytes(),
-			Data:                 tx.Data(),
-			From:                 from,
-			ChainId:              tx.ChainId().Bytes(),
-			AccessList:           []*types.AccessList{},
-			Hash:                 tx.Hash().Bytes(),
-			Itx:                  []*types.Eth1InternalTransaction{},
-			BlobVersionedHashes:  [][]byte{},
-		}
-
-		if tx.BlobGasFeeCap() != nil {
-			pbTx.MaxFeePerBlobGas = tx.BlobGasFeeCap().Bytes()
-		}
-		for _, h := range tx.BlobHashes() {
-			pbTx.BlobVersionedHashes = append(pbTx.BlobVersionedHashes, h.Bytes())
-		}
-
-		if tx.To() != nil {
-			pbTx.To = tx.To().Bytes()
-		}
-
-		c.Transactions = append(c.Transactions, pbTx)
-
-	}
-
-	var traces []*Eth1InternalTransactionWithPosition
-	g := new(errgroup.Group)
-	g.Go(func() error {
-		start := time.Now()
-		if err = client.rpcClient.CallContext(ctx, &receipts, "eth_getBlockReceipts", fmt.Sprintf("0x%x", block.NumberU64())); err != nil {
-			return fmt.Errorf("error retrieving receipts for block %v: %w", block.Number(), err)
-		}
-		mu.Lock()
-		timings.Receipts = time.Since(start)
-		mu.Unlock()
-		return nil
-	})
-	g.Go(func() error {
-		start := time.Now()
-		traces, err = client.getTrace(traceMode, block)
-		if err != nil {
-			return fmt.Errorf("error retrieving traces for block %v: %w", block.Number(), err)
-		}
-		mu.Lock()
-		timings.Traces = time.Since(start)
-		mu.Unlock()
-		return nil
-	})
-	if err := g.Wait(); err != nil {
-		return nil, nil, err
-	}
-	traceIndex := 0
-	for txPosition, receipt := range receipts {
-		c.Transactions[txPosition].ContractAddress = receipt.ContractAddress[:]
-		c.Transactions[txPosition].CommulativeGasUsed = receipt.CumulativeGasUsed
-		c.Transactions[txPosition].GasUsed = receipt.GasUsed
-		c.Transactions[txPosition].LogsBloom = receipt.Bloom[:]
-		c.Transactions[txPosition].Logs = make([]*types.Eth1Log, 0, len(receipt.Logs))
-		c.Transactions[txPosition].Status = receipt.Status
-
-		if receipt.BlobGasPrice != nil {
-			c.Transactions[txPosition].BlobGasPrice = receipt.BlobGasPrice.Bytes()
-		}
-		c.Transactions[txPosition].BlobGasUsed = receipt.BlobGasUsed
-
-		for _, l := range receipt.Logs {
-			topics := make([][]byte, 0, len(l.Topics))
-			for _, t := range l.Topics {
-				topics = append(topics, t.Bytes())
+	return &types.Eth1Block{
+		Hash:        block.Hash().Bytes(),
+		ParentHash:  block.ParentHash().Bytes(),
+		UncleHash:   block.UncleHash().Bytes(),
+		Coinbase:    block.Coinbase().Bytes(),
+		Root:        block.Root().Bytes(),
+		TxHash:      block.TxHash().Bytes(),
+		ReceiptHash: block.ReceiptHash().Bytes(),
+		Difficulty:  block.Difficulty().Bytes(),
+		Number:      block.NumberU64(),
+		GasLimit:    block.GasLimit(),
+		GasUsed:     block.GasUsed(),
+		Time:        timestamppb.New(time.Unix(int64(block.Time()), 0)),
+		Extra:       block.Extra(),
+		MixDigest:   block.MixDigest().Bytes(),
+		Bloom:       block.Bloom().Bytes(),
+		BaseFee: func() []byte {
+			if block.BaseFee() != nil {
+				return block.BaseFee().Bytes()
 			}
-			c.Transactions[txPosition].Logs = append(c.Transactions[txPosition].Logs, &types.Eth1Log{
-				Address: l.Address.Bytes(),
-				Data:    l.Data,
-				Removed: l.Removed,
-				Topics:  topics,
-			})
-		}
-		if len(traces) == 0 {
-			continue
-		}
-		for ; traceIndex < len(traces) && traces[traceIndex].txPosition == txPosition; traceIndex++ {
-			c.Transactions[txPosition].Itx = append(c.Transactions[txPosition].Itx, &traces[traceIndex].Eth1InternalTransaction)
-		}
+			return nil
+		}(),
+		Uncles:       uncles,
+		Transactions: transactions,
+		Withdrawals:  withdrawals,
+		BlobGasUsed: func() uint64 {
+			blobGasUsed := block.BlobGasUsed()
+			if blobGasUsed != nil {
+				return *blobGasUsed
+			}
+			return 0
+		}(),
+		ExcessBlobGas: func() uint64 {
+			excessBlobGas := block.ExcessBlobGas()
+			if excessBlobGas != nil {
+				return *excessBlobGas
+			}
+			return 0
+		}(),
+	}, timings, nil
+}
+
+func (client *ErigonClient) GetBlocks(start, end int64, traceMode string) ([]*types.Eth1Block, error) {
+	_, err := client.rawStore.ReadBlocksByNumber(client.chainID.Uint64(), start, end)
+	if err != nil {
+		return nil, err
 	}
-	return c, timings, nil
+	blocks := make([]*types.Eth1Block, end-start+1)
+	for i := start; i <= end; i++ {
+		block, _, err := client.GetBlock(i, traceMode)
+		if err != nil {
+			return nil, err
+		}
+		blocks[i-start] = block
+	}
+	return blocks, nil
 }
 
 func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
@@ -358,10 +412,10 @@ func extractCalls(r *GethTraceCallResult, d *[]*GethTraceCallResult) {
 	}
 }
 
-func (client *ErigonClient) TraceGeth(blockHash common.Hash) ([]*GethTraceCallResult, error) {
+func (client *ErigonClient) TraceGeth(blockNumber *big.Int) ([]*GethTraceCallResult, error) {
 	var res []*GethTraceCallResultWrapper
 
-	err := client.rpcClient.Call(&res, "debug_traceBlockByHash", blockHash, gethTracerArg)
+	err := client.rpcClient.Call(&res, "debug_traceBlockByNumber", hexutil.EncodeBig(blockNumber), gethTracerArg)
 	if err != nil {
 		return nil, err
 	}
@@ -672,32 +726,31 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 	return arg
 }
 
-func (client *ErigonClient) getTrace(traceMode string, block *geth_types.Block) ([]*Eth1InternalTransactionWithPosition, error) {
-	if block.NumberU64() == 0 { // genesis block is not traceable
+func (client *ErigonClient) getTrace(traceMode string, blockNumber *big.Int) ([]*Eth1InternalTransactionWithPosition, error) {
+	if blockNumber.Uint64() == 0 { // genesis block is not traceable
 		return nil, nil
 	}
 	switch traceMode {
 	case "parity":
-		return client.getTraceParity(block)
+		return client.getTraceParity(blockNumber)
 	case "parity/geth":
-		traces, err := client.getTraceParity(block)
+		traces, err := client.getTraceParity(blockNumber)
 		if err == nil {
 			return traces, nil
 		}
-		logger.Errorf("error tracing block via parity style traces (%v), %v: %v", block.Number(), block.Hash(), err)
+		logger.Errorf("error tracing block via parity style traces (%v): %v", blockNumber, err)
 		// fallback to geth traces
 		fallthrough
 	case "geth":
-		return client.getTraceGeth(block)
+		return client.getTraceGeth(blockNumber)
 	}
 	return nil, fmt.Errorf("unknown trace mode '%s'", traceMode)
 }
 
-func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1InternalTransactionWithPosition, error) {
-	traces, err := client.TraceParity(block.NumberU64())
-
+func (client *ErigonClient) getTraceParity(blockNumber *big.Int) ([]*Eth1InternalTransactionWithPosition, error) {
+	traces, err := client.TraceParity(blockNumber.Uint64())
 	if err != nil {
-		return nil, fmt.Errorf("error tracing block via parity style traces (%v), %v: %w", block.Number(), block.Hash(), err)
+		return nil, fmt.Errorf("error tracing block via parity style traces (%v): %w", blockNumber, err)
 	}
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
@@ -707,9 +760,6 @@ func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1Inte
 		}
 		if trace.TransactionHash == "" {
 			continue
-		}
-		if trace.TransactionPosition >= len(block.Transactions()) {
-			return nil, fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
 		}
 
 		from, to, value, traceType := trace.ConvertFields()
@@ -728,29 +778,37 @@ func (client *ErigonClient) getTraceParity(block *geth_types.Block) ([]*Eth1Inte
 	return indexedTraces, nil
 }
 
-func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1InternalTransactionWithPosition, error) {
-	traces, err := client.TraceGeth(block.Hash())
+func (client *ErigonClient) getTraceGeth(blockNumber *big.Int) ([]*Eth1InternalTransactionWithPosition, error) {
+	traces, err := client.TraceGeth(blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("error tracing block via geth style traces (%v), %v: %w", block.Number(), block.Hash(), err)
+		return nil, fmt.Errorf("error tracing block via geth style traces (%v): %w", blockNumber, err)
 	}
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
+	var txPosition int //, tracePath int
+	paths := make(map[*GethTraceCallResult]string)
 	for i, trace := range traces {
 		switch trace.Type {
 		case "CREATE2":
 			trace.Type = "CREATE"
 		case "CREATE", "SELFDESTRUCT", "SUICIDE", "CALL", "DELEGATECALL", "STATICCALL":
 		case "":
-			logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": block.Number(), "block.Hash": block.Hash()}).Errorf("geth style trace without type")
+			logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": blockNumber}).Errorf("geth style trace without type")
 			spew.Dump(trace)
 			continue
 		default:
 			spew.Dump(trace)
 			logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
 		}
+		if txPosition != trace.TransactionPosition {
+			txPosition = trace.TransactionPosition
+			paths = make(map[*GethTraceCallResult]string)
+		}
+		for index, call := range trace.Calls {
+			paths[call] = fmt.Sprintf("%s %d", paths[trace], index)
+		}
 
-		logger.Tracef("appending trace %v to tx %d:%x from %v to %v value %v", i, block.Number(), trace.TransactionPosition, trace.From, trace.To, trace.Value)
-
+		logger.Tracef("appending trace %v to tx %d:%x from %v to %v value %v", i, blockNumber, trace.TransactionPosition, trace.From, trace.To, trace.Value)
 		indexedTraces = append(indexedTraces, &Eth1InternalTransactionWithPosition{
 			Eth1InternalTransaction: types.Eth1InternalTransaction{
 				Type:     strings.ToLower(trace.Type),
@@ -758,7 +816,7 @@ func (client *ErigonClient) getTraceGeth(block *geth_types.Block) ([]*Eth1Intern
 				To:       trace.To.Bytes(),
 				Value:    common.FromHex(trace.Value),
 				ErrorMsg: trace.Error,
-				Path:     "0",
+				Path:     fmt.Sprintf("[%s]", strings.TrimPrefix(paths[trace], " ")),
 			},
 			txPosition: trace.TransactionPosition,
 		})
