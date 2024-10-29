@@ -1619,51 +1619,15 @@ func indexMissingBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.E
 //
 //	Both [start] and [end] are inclusive
 //	Pass math.MaxInt64 as [end] to export from [start] to the last block in the blocks table
-func reIndexBlockByBlock(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string, batchSize uint64, concurrency uint64) {
-	if end == math.MaxInt64 {
-		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
-		if err != nil {
-			logrus.Errorf("error retrieving last blocks from blocks table: %v", err)
-			return
-		}
-		end = uint64(lastBlockFromBlocksTable)
-	}
-	transformers, importENSChanges, err := getTransformers(transformerFlag, bt)
-	if err != nil {
-		utils.LogError(nil, err, 0)
+func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string, batchSize uint64, concurrency uint64) {
+	if start > 0 && end < start {
+		utils.LogError(nil, fmt.Sprintf("endBlock [%v] < startBlock [%v]", end, start), 0)
 		return
 	}
-	if importENSChanges {
-		if err := bt.ImportEnsUpdates(client.GetNativeClient(), math.MaxInt64); err != nil {
-			utils.LogError(err, "error importing ens from events", 0)
-			return
-		}
+	if concurrency == 0 {
+		utils.LogError(nil, "concurrency must be greater than 0", 0)
+		return
 	}
-
-	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
-	g := errgroup.Group{}
-	g.SetLimit(int(concurrency))
-
-	for i := start; i <= end; i++ {
-		height := int64(i)
-		g.Go(func() error {
-			block, _, err := client.GetBlock(height, "geth")
-			if err != nil {
-				return fmt.Errorf("error getting block %v from the node: %w", height, err)
-			}
-			if err := bt.SaveBlock(block); err != nil {
-				return fmt.Errorf("error saving block %v: %w", height, err)
-			}
-			indexOldEth1Block(block, transformers, bt, cache)
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
-		panic(err)
-	}
-}
-
-func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.ErigonClient, transformerFlag string, batchSize uint64, concurrency uint64) {
 	if end == math.MaxInt64 {
 		lastBlockFromBlocksTable, err := bt.GetLastBlockInBlocksTable()
 		if err != nil {
@@ -1698,9 +1662,9 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 		for {
 			select {
 			case block, ok := <-sink:
-			if !ok {
-				return nil 
-			}
+				if !ok {
+					return nil
+				}
 				writeGroup.Go(func() error {
 					if err := bt.SaveBlock(block); err != nil {
 						return fmt.Errorf("error saving block %v: %w", block.Number, err)
@@ -1789,15 +1753,6 @@ func getTransformers(transformerFlag string, bt *db.Bigtable) ([]db.TransformFun
 		}
 	}
 	return transforms, importENSChanges, nil
-}
-
-func indexOldEth1Block(block *types.Eth1Block, transformers []db.TransformFunc, bt *db.Bigtable, cache *freecache.Cache) {
-	err := bt.IndexBlocksWithTransformers([]*types.Eth1Block{block}, transformers, cache)
-	if err != nil {
-		utils.LogError(err, "error indexing from bigtable", 0)
-		return
-	}
-	logrus.Infof("%d indexed", block.Number)
 }
 
 func indexOldEth1Blocks(startBlock uint64, endBlock uint64, batchSize uint64, concurrency uint64, transformerFlag string, bt *db.Bigtable, client *rpc.ErigonClient) {
