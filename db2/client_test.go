@@ -179,7 +179,7 @@ func TestBigTableClient(t *testing.T) {
 			}
 
 			rpcClient, err := rpc.DialOptions(context.Background(), "http://foo.bar", rpc.WithHTTPClient(&http.Client{
-				Transport: NewBigTableEthRaw(rawStore, tt.block.ChainID),
+				Transport: NewBigTableEthRaw(WithCache(rawStore), tt.block.ChainID),
 			}))
 			if err != nil {
 				t.Fatal(err)

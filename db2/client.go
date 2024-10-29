@@ -104,7 +104,7 @@ func (r *BigTableEthRaw) handle(ctx context.Context, message *jsonrpcMessage) (*
 	var args []interface{}
 	err := json.Unmarshal(message.Params, &args)
 	if err != nil {
-	   return nil, err
+		return nil, err
 	}
 
 	var respBody []byte

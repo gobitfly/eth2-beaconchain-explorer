@@ -59,7 +59,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 			if utils.Config.RawBigtable.Bigtable.Emulator {
 				err := os.Setenv("BIGTABLE_EMULATOR_HOST", fmt.Sprintf("%s:%d", utils.Config.RawBigtable.Bigtable.EmulatorHost, utils.Config.RawBigtable.Bigtable.EmulatorPort))
 				if err != nil {
-				   return nil, fmt.Errorf("error while setting BIGTABLE_EMULATOR_HOST env: %w", err)
+					return nil, fmt.Errorf("error while setting BIGTABLE_EMULATOR_HOST env: %w", err)
 				}
 			}
 			project, instance := utils.Config.RawBigtable.Bigtable.Project, utils.Config.RawBigtable.Bigtable.Instance
