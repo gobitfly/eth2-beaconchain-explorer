@@ -85,7 +85,6 @@ func NewBigTable(project, instance string, tablesAndFamilies map[string][]string
 	if err != nil {
 		return nil, fmt.Errorf("could not create admin client: %v", err)
 	}
-	// Ensure the admin client is closed after the operations are done
 
 	// Create a Bigtable client for performing data operations
 	client, err := bigtable.NewClient(ctx, project, instance)

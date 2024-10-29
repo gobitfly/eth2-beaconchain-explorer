@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// var ttl = 20_000 * time.Millisecond
 const (
 	oneBlockTTL = 1 * time.Second
 	blocksTTL   = 30 * time.Second // default ttl, if read it will be deleted sooner

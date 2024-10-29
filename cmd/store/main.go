@@ -19,6 +19,9 @@ func main() {
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
+	if err != nil {
+		panic(err)
+	}
 
 	bt, err := store.NewBigTable(cfg.RawBigtable.Bigtable.Project, cfg.RawBigtable.Bigtable.Instance, nil)
 	if err != nil {

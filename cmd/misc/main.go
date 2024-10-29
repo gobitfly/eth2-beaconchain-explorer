@@ -1691,13 +1691,16 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 	writeGroup.SetLimit(int(concurrency*concurrency) + 1)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
-	quit := make(chan any)
+	quit := make(chan struct{})
 
 	sink := make(chan *types.Eth1Block)
 	writeGroup.Go(func() error {
 		for {
 			select {
-			case block := <-sink:
+			case block, ok := <-sink:
+			if !ok {
+				return nil 
+			}
 				writeGroup.Go(func() error {
 					if err := bt.SaveBlock(block); err != nil {
 						return fmt.Errorf("error saving block %v: %w", block.Number, err)

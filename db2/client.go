@@ -16,7 +16,7 @@ import (
 )
 
 var ErrNotFoundInCache = fmt.Errorf("cannot find hash in cache")
-var ErrMethodNotSupported = fmt.Errorf("methode not supported")
+var ErrMethodNotSupported = fmt.Errorf("method not supported")
 
 type RawStoreReader interface {
 	ReadBlockByNumber(chainID uint64, number int64) (*FullBlockRawData, error)
@@ -29,7 +29,7 @@ type WithFallback struct {
 	fallback     http.RoundTripper
 }
 
-func NewWithFallback(roundTripper http.RoundTripper, fallback http.RoundTripper) *WithFallback {
+func NewWithFallback(roundTripper, fallback http.RoundTripper) *WithFallback {
 	return &WithFallback{
 		roundTripper: roundTripper,
 		fallback:     fallback,
@@ -102,7 +102,10 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 
 func (r *BigTableEthRaw) handle(ctx context.Context, message *jsonrpcMessage) (*jsonrpcMessage, error) {
 	var args []interface{}
-	_ = json.Unmarshal(message.Params, &args)
+	err := json.Unmarshal(message.Params, &args)
+	if err != nil {
+	   return nil, err
+	}
 
 	var respBody []byte
 	switch message.Method {
