@@ -761,9 +761,6 @@ func (client *ErigonClient) getTraceParity(blockNumber *big.Int) ([]*Eth1Interna
 		if trace.TransactionHash == "" {
 			continue
 		}
-		// if trace.TransactionPosition >= txsLen {
-		// 	return nil, fmt.Errorf("error transaction position %v out of range", trace.TransactionPosition)
-		// }
 
 		from, to, value, traceType := trace.ConvertFields()
 		indexedTraces = append(indexedTraces, &Eth1InternalTransactionWithPosition{
