@@ -102,7 +102,6 @@ func (r *BigTableEthRaw) RoundTrip(request *http.Request) (*http.Response, error
 
 func (r *BigTableEthRaw) handle(ctx context.Context, message *jsonrpcMessage) (*jsonrpcMessage, error) {
 	var args []interface{}
-	// ignore error
 	_ = json.Unmarshal(message.Params, &args)
 
 	var respBody []byte

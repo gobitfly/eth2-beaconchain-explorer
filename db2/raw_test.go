@@ -17,7 +17,7 @@ func TestRaw(t *testing.T) {
 	}
 
 	db := RawStore{
-		store:      store.Wrap(s, BlocRawTable, ""),
+		store:      store.Wrap(s, BlocksRawTable, ""),
 		compressor: noOpCompressor{},
 	}
 

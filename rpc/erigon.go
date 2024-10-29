@@ -65,7 +65,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 			if err != nil {
 				return nil, err
 			}
-			db = store.Wrap(bt, db2.BlocRawTable, "")
+			db = store.Wrap(bt, db2.BlocksRawTable, "")
 			if utils.Config.RawBigtable.Remote != "" {
 				db = store.NewRemoteClient(utils.Config.RawBigtable.Remote)
 			}

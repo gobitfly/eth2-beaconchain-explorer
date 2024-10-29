@@ -48,7 +48,7 @@ func TestBigTableClientRealCondition(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			rawStore := NewRawStore(store.Wrap(bg, BlocRawTable, ""))
+			rawStore := NewRawStore(store.Wrap(bg, BlocksRawTable, ""))
 			rpcClient, err := rpc.DialOptions(context.Background(), "http://foo.bar", rpc.WithHTTPClient(&http.Client{
 				Transport: NewBigTableEthRaw(rawStore, chainID),
 			}))
@@ -130,7 +130,7 @@ func BenchmarkRawBigTable(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	rawStore := WithCache(NewRawStore(store.Wrap(bt, BlocRawTable, "")))
+	rawStore := WithCache(NewRawStore(store.Wrap(bt, BlocksRawTable, "")))
 	rpcClient, err := rpc.DialOptions(context.Background(), "http://foo.bar", rpc.WithHTTPClient(&http.Client{
 		Transport: NewBigTableEthRaw(rawStore, chainID),
 	}))
@@ -173,7 +173,7 @@ func TestBigTableClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rawStore := NewRawStore(store.Wrap(bg, BlocRawTable, ""))
+			rawStore := NewRawStore(store.Wrap(bg, BlocksRawTable, ""))
 			if err := rawStore.AddBlocks([]FullBlockRawData{tt.block}); err != nil {
 				t.Fatal(err)
 			}
@@ -237,7 +237,7 @@ func TestBigTableClientWithFallback(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rawStore := NewRawStore(store.Wrap(bg, BlocRawTable, ""))
+			rawStore := NewRawStore(store.Wrap(bg, BlocksRawTable, ""))
 
 			rpcClient, err := rpc.DialOptions(context.Background(), node, rpc.WithHTTPClient(&http.Client{
 				Transport: NewWithFallback(NewBigTableEthRaw(rawStore, tt.block.ChainID), http.DefaultTransport),

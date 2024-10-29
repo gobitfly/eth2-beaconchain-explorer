@@ -24,7 +24,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	remote := store.NewRemoteStore(store.Wrap(bt, db2.BlocRawTable, ""))
+	remote := store.NewRemoteStore(store.Wrap(bt, db2.BlocksRawTable, ""))
 	go func() {
 		logrus.Info("starting remote raw store on port 8087")
 		if err := http.ListenAndServe("0.0.0.0:8087", remote.Routes()); err != nil && !errors.Is(err, http.ErrServerClosed) {

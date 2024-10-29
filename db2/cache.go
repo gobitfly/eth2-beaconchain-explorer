@@ -7,8 +7,10 @@ import (
 )
 
 // var ttl = 20_000 * time.Millisecond
-var oneBlockTTL = 1 * time.Second
-var blocksTTL = 30 * time.Second // default ttl, if read it will be deleted sooner
+const (
+	oneBlockTTL = 1 * time.Second
+	blocksTTL   = 30 * time.Second // default ttl, if read it will be deleted sooner
+)
 
 type MinimalBlock struct {
 	Result struct {

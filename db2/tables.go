@@ -1,6 +1,6 @@
 package db2
 
-const BlocRawTable = "blocks-raw"
+const BlocksRawTable = "blocks-raw"
 
 const BT_COLUMNFAMILY_BLOCK = "b"
 const BT_COLUMN_BLOCK = "b"
@@ -14,7 +14,7 @@ const BT_COLUMN_UNCLES = "u"
 const MAX_EL_BLOCK_NUMBER = int64(1_000_000_000_000 - 1)
 
 var raw = map[string][]string{
-	BlocRawTable: {
+	BlocksRawTable: {
 		BT_COLUMNFAMILY_BLOCK,
 		BT_COLUMNFAMILY_RECEIPTS,
 		BT_COLUMNFAMILY_TRACES,
