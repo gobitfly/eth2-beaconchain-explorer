@@ -18,7 +18,7 @@ func NewBigTable(t testing.TB) (*bigtable.Client, *bigtable.AdminClient) {
 	}
 	ctx := context.Background()
 
-	conn, err := grpc.Dial(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(srv.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}
