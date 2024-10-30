@@ -263,7 +263,7 @@ func (b BigTableStore) GetRowsRange(table, high, low string) (map[string]map[str
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	rowRange := bigtable.NewRange(low, high)
+	rowRange := bigtable.NewClosedRange(low, high)
 	data := make(map[string]map[string][]byte)
 	err := tbl.ReadRows(ctx, rowRange, func(row bigtable.Row) bool {
 		data[row.Key()] = make(map[string][]byte)

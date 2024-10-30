@@ -169,3 +169,24 @@ func TestBigTableStore(t *testing.T) {
 		t.Errorf("cannot close db: %v", err)
 	}
 }
+
+func TestRangeIncludeLimits(t *testing.T) {
+	tables := map[string][]string{"testTable": {"testFamily"}}
+	client, admin := storetest.NewBigTable(t)
+	store, err := NewBigTableWithClient(context.Background(), client, admin, tables)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db := Wrap(store, "testTable", "testFamily")
+
+	db.Add("1:999999999999", "", []byte("0"), false)
+	db.Add("1:999999999998", "", []byte("1"), false)
+
+	rows, err := db.GetRowsRange("1:999999999999", "1:999999999998")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := len(rows), 2; got != want {
+		t.Errorf("got %v want %v", got, want)
+	}
+}

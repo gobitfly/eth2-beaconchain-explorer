@@ -131,7 +131,7 @@ func (db RawStore) parseRow(chainID uint64, number int64, data map[string][]byte
 }
 
 func (db RawStore) ReadBlocksByNumber(chainID uint64, start, end int64) ([]*FullBlockRawData, error) {
-	rows, err := db.store.GetRowsRange(blockKey(chainID, start-1), blockKey(chainID, end))
+	rows, err := db.store.GetRowsRange(blockKey(chainID, start), blockKey(chainID, end))
 	if err != nil {
 		return nil, err
 	}
