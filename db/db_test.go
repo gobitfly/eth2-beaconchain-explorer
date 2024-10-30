@@ -85,7 +85,7 @@ func TestTxRevertTransformer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			block, _, err := erigon.GetBlock(tt.block, "parity/geth")
+			block, _, err := erigon.GetBlock(tt.block, "geth")
 			if err != nil {
 				t.Fatal(err)
 			}
