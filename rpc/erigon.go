@@ -785,7 +785,7 @@ func (client *ErigonClient) getTraceGeth(blockNumber *big.Int) ([]*Eth1InternalT
 	}
 
 	var indexedTraces []*Eth1InternalTransactionWithPosition
-	var txPosition int //, tracePath int
+	var txPosition int
 	paths := make(map[*GethTraceCallResult]string)
 	for i, trace := range traces {
 		switch trace.Type {
