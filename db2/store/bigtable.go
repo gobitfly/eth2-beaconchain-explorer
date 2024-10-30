@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/bigtable"
 	"golang.org/x/exp/maps"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var ErrNotFound = fmt.Errorf("not found")
@@ -324,14 +325,13 @@ func (b BigTableStore) Clear() error {
 // Close shuts down the BigTableStore by closing the Bigtable client connection
 // It returns an error if the operation fails
 func (b BigTableStore) Close() error {
-	if err := b.client.Close(); err != nil {
+	if err := b.client.Close(); err != nil && status.Code(err) != codes.Canceled {
 		return fmt.Errorf("could not close client: %v", err)
 	}
-	if err := b.admin.Close(); err != nil {
-		if !strings.Contains(err.Error(), "the client connection is closing") {
+	if b.admin != nil {
+		if err := b.admin.Close(); err != nil && status.Code(err) != codes.Canceled {
 			return fmt.Errorf("could not close admin client: %v", err)
 		}
 	}
-
 	return nil
 }
