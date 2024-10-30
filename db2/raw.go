@@ -63,7 +63,7 @@ func (db RawStore) AddBlocks(blocks []FullBlockRawData) error {
 				Data:   traces,
 			},
 		}
-		if len(fullBlock.Receipts) < 1 {
+		if len(fullBlock.Receipts) == 0 {
 			// todo move that log higher up
 			slog.Warn(fmt.Sprintf("empty receipts at block %d lRec %d lTxs %d", fullBlock.BlockNumber, len(fullBlock.Receipts), len(fullBlock.BlockTxs)))
 		}
