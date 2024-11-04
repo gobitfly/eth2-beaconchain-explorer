@@ -791,14 +791,14 @@ func (client *ErigonClient) getTraceGeth(blockNumber *big.Int) ([]*Eth1InternalT
 		switch trace.Type {
 		case "CREATE2":
 			trace.Type = "CREATE"
-		case "CREATE", "SELFDESTRUCT", "SUICIDE", "CALL", "DELEGATECALL", "STATICCALL":
+		case "CREATE", "SELFDESTRUCT", "SUICIDE", "CALL", "DELEGATECALL", "STATICCALL", "CALLCODE":
 		case "":
 			logrus.WithFields(logrus.Fields{"type": trace.Type, "block.Number": blockNumber}).Errorf("geth style trace without type")
 			spew.Dump(trace)
 			continue
 		default:
 			spew.Dump(trace)
-			logrus.Fatalf("unknown trace type %v in tx %v", trace.Type, trace.TransactionPosition)
+			logrus.Fatalf("unknown trace type %v in tx %v:%v", trace.Type, blockNumber.String(), trace.TransactionPosition)
 		}
 		if txPosition != trace.TransactionPosition {
 			txPosition = trace.TransactionPosition
