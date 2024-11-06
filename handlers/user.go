@@ -39,7 +39,7 @@ func UserAuthMiddleware(next http.Handler) http.Handler {
 		user := getUser(r)
 		if !user.Authenticated {
 			utils.SetFlash(w, r, authSessionName, "Error: Please login first")
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, "/login?redirect="+r.URL.Path, http.StatusSeeOther)
 			return
 		}
 		next.ServeHTTP(w, r)
