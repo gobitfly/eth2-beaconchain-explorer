@@ -458,7 +458,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ClConfigPath)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("error calling yaml.Unmarshal of default cfg: %w", err)
 		}
 		// err = prysmParams.SetActive(prysmParamsConfig)
 		// if err != nil {
@@ -475,7 +475,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			Fetch(context.Background())
 
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting %v: %w", nodeEndpoint, err)
 		}
 
 		chainCfg := types.ClChainConfig{
@@ -593,7 +593,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			Fetch(context.Background())
 
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting %v: %w", nodeEndpoint+"/eth/v1/beacon/genesis", err)
 		}
 
 		cfg.Chain.GenesisTimestamp = mustParseUint(gtr.Data.GenesisTime)
@@ -640,7 +640,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ElConfigPath)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("error calling yaml.Unmarshal on minconfig: %w", err)
 		}
 		if minimalCfg.ByzantiumBlock == nil {
 			minimalCfg.ByzantiumBlock = big.NewInt(0)
@@ -766,6 +766,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.Id = 11155111
 		case "gnosis":
 			cfg.Chain.Id = 100
+		case "mekong":
+			cfg.Chain.Id = 7078815900
 		}
 	}
 
