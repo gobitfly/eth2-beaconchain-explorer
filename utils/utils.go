@@ -475,7 +475,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			Fetch(context.Background())
 
 		if err != nil {
-			return fmt.Errorf("error getting %v: %w", nodeEndpoint, err)
+			return fmt.Errorf("error getting %v: %w", nodeEndpoint+"/eth/v1/config/spec", err)
 		}
 
 		chainCfg := types.ClChainConfig{
