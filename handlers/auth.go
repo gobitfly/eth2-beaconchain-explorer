@@ -168,6 +168,20 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		RecaptchaKey: utils.Config.Frontend.RecaptchaSiteKey,
 	}
 
+	if redirect := q.Get("redirect"); redirect != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:   "redirect-after",
+			Value:  redirect,
+			MaxAge: 300,
+		})
+	} else if redirect := q.Get("redirect_uri"); redirect != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:   "redirect-after",
+			Value:  redirect + "&state=" + q.Get("state"),
+			MaxAge: 300,
+		})
+	}
+
 	redirectData := struct {
 		Redirect_uri string
 		State        string
@@ -336,6 +350,12 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	if redirectParam != "" {
 		http.Redirect(w, r, "/user/authorize"+redirectParam, http.StatusSeeOther)
+		return
+	}
+
+	cookie, err := r.Cookie("redirect-after")
+	if err == nil && cookie.Value != "" {
+		http.Redirect(w, r, cookie.Value, http.StatusSeeOther)
 		return
 	}
 

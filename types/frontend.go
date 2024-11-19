@@ -617,6 +617,6 @@ type SearchValidatorsByEth1Result []struct {
 }
 
 type ValidatorStateCountRow struct {
-	Name  string `db:"statename"`
-	Count uint64 `db:"statecount"`
+	Name  string `db:"status"`
+	Count uint64 `db:"validator_count"`
 }

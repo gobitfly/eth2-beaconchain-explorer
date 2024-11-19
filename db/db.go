@@ -1000,6 +1000,8 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 		return fmt.Errorf("error preparing insert validator statement: %w", err)
 	}
 
+	validatorStatusCounts := make(map[string]int)
+
 	updates := 0
 	for _, v := range validators {
 
@@ -1042,6 +1044,7 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 			if err != nil {
 				logger.Errorf("error saving new validator %v: %v", v.Index, err)
 			}
+			validatorStatusCounts[v.Status]++
 		} else {
 			// status                     =
 			// CASE
@@ -1082,6 +1085,7 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 				v.Status = "active_online"
 			}
 
+			validatorStatusCounts[v.Status]++
 			if c.Status != v.Status {
 				logger.Tracef("Status changed for validator %v from %v to %v", v.Index, c.Status, v.Status)
 				// logger.Tracef("v.ActivationEpoch %v, latestEpoch %v, lastAttestationSlots[v.Index] %v, thresholdSlot %v", v.ActivationEpoch, latestEpoch, lastAttestationSlots[v.Index], thresholdSlot)
@@ -1209,6 +1213,20 @@ func SaveValidators(epoch uint64, validators []*types.Validator, client rpc.Clie
 	}
 
 	logger.Infof("updating validator activation epoch balance completed, took %v", time.Since(s))
+
+	logger.Infof("updating validator status counts")
+	s = time.Now()
+	_, err = tx.Exec("TRUNCATE TABLE validators_status_counts;")
+	if err != nil {
+		return fmt.Errorf("error truncating validators_status_counts table: %w", err)
+	}
+	for status, count := range validatorStatusCounts {
+		_, err = tx.Exec("INSERT INTO validators_status_counts (status, validator_count) VALUES ($1, $2);", status, count)
+		if err != nil {
+			return fmt.Errorf("error updating validator status counts: %w", err)
+		}
+	}
+	logger.Infof("updating validator status counts completed, took %v", time.Since(s))
 
 	s = time.Now()
 	_, err = tx.Exec("ANALYZE (SKIP_LOCKED) validators;")
