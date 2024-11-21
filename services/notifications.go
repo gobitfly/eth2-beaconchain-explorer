@@ -998,7 +998,7 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 			}
 			resp, err := client.Post(n.Content.Webhook.Url, "application/json", reqBody)
 			if err != nil {
-				logger.WithError(err).Errorf("error sending request")
+				logger.WithError(err).Warnf("error sending request")
 			} else {
 				metrics.NotificationsSent.WithLabelValues("webhook", resp.Status).Inc()
 			}
@@ -1021,11 +1021,11 @@ func sendWebhookNotifications(useDB *sqlx.DB) error {
 				if resp != nil {
 					b, err := io.ReadAll(resp.Body)
 					if err != nil {
-						logger.WithError(err).Error("error reading body")
+						logger.WithError(err).Warn("error reading body")
+					} else {
+						errResp.Status = resp.Status
+						errResp.Body = string(b)
 					}
-
-					errResp.Status = resp.Status
-					errResp.Body = string(b)
 				}
 
 				_, err = useDB.Exec(`UPDATE users_webhooks SET retries = retries + 1, last_sent = now(), request = $2, response = $3 WHERE id = $1;`, n.Content.Webhook.ID, n.Content, errResp)
@@ -1140,7 +1140,7 @@ func sendDiscordNotifications(useDB *sqlx.DB) error {
 					if strings.Contains(errResp.Body, "You are being rate limited") {
 						logger.Warnf("could not push to discord webhook due to rate limit. %v url: %v", errResp.Body, webhook.Url)
 					} else {
-						utils.LogError(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
+						utils.LogWarn(nil, "error pushing discord webhook", 0, map[string]interface{}{"errResp.Body": errResp.Body, "webhook.Url": webhook.Url})
 					}
 					_, err = useDB.Exec(`UPDATE users_webhooks SET request = $2, response = $3 WHERE id = $1;`, webhook.ID, reqs[i].Content.DiscordRequest, errResp)
 					if err != nil {
