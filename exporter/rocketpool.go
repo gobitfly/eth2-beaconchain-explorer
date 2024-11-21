@@ -13,6 +13,7 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -1919,7 +1920,7 @@ func DownloadRewardsFile(fileName string, interval uint64, cid string, isDaemon 
 		}
 	}
 
-	return nil, fmt.Errorf(errBuilder.String())
+	return nil, errors.New(errBuilder.String())
 
 }
 
