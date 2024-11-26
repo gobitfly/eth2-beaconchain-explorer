@@ -65,7 +65,20 @@ type Config struct {
 	RedisSessionStoreEndpoint string `yaml:"redisSessionStoreEndpoint" envconfig:"REDIS_SESSION_STORE_ENDPOINT"`
 	TieredCacheProvider       string `yaml:"tieredCacheProvider" envconfig:"CACHE_PROVIDER"`
 	ReportServiceStatus       bool   `yaml:"reportServiceStatus" envconfig:"REPORT_SERVICE_STATUS"`
-	Indexer                   struct {
+	ClickHouse                struct {
+		ReaderDatabase struct {
+			Username     string `yaml:"user" envconfig:"CLICKHOUSE_READER_DB_USERNAME"`
+			Password     string `yaml:"password" envconfig:"CLICKHOUSE_READER_DB_PASSWORD"`
+			Name         string `yaml:"name" envconfig:"CLICKHOUSE_READER_DB_NAME"`
+			Host         string `yaml:"host" envconfig:"CLICKHOUSE_READER_DB_HOST"`
+			Port         string `yaml:"port" envconfig:"CLICKHOUSE_READER_DB_PORT"`
+			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"CLICKHOUSE_READER_DB_MAX_OPEN_CONNS"`
+			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"CLICKHOUSE_READER_DB_MAX_IDLE_CONNS"`
+		} `yaml:"readerDatabase"`
+	} `yaml:"clickhouse"`
+	ClickHouseEnabled bool          `yaml:"clickHouseEnabled" envconfig:"CLICKHOUSE_ENABLED"`
+	ClickhouseDelay   time.Duration `yaml:"clickhouseDelay" envconfig:"CLICKHOUSE_DELAY"`
+	Indexer           struct {
 		Enabled bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
 		Node    struct {
 			Port     string `yaml:"port" envconfig:"INDEXER_NODE_PORT"`

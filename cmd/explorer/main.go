@@ -144,6 +144,23 @@ func main() {
 		}, "pgx", "postgres")
 	}()
 
+	if utils.Config.ClickHouseEnabled {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			db.MustInitClickhouseDB(nil, &types.DatabaseConfig{
+				Username:     cfg.ClickHouse.ReaderDatabase.Username,
+				Password:     cfg.ClickHouse.ReaderDatabase.Password,
+				Name:         cfg.ClickHouse.ReaderDatabase.Name,
+				Host:         cfg.ClickHouse.ReaderDatabase.Host,
+				Port:         cfg.ClickHouse.ReaderDatabase.Port,
+				MaxOpenConns: cfg.ClickHouse.ReaderDatabase.MaxOpenConns,
+				MaxIdleConns: cfg.ClickHouse.ReaderDatabase.MaxIdleConns,
+				SSL:          true,
+			}, "clickhouse", "clickhouse")
+		}()
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
