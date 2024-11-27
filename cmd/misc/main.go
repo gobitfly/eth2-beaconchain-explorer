@@ -1691,7 +1691,12 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 			}
 			blocks, err := client.GetBlocks(height, heightEnd, "geth")
 			if err != nil {
-				return fmt.Errorf("error getting block %v from the node: %w", height, err)
+				logrus.WithFields(map[string]interface{}{
+					"message": err.Error(),
+					"start":   height,
+					"end":     heightEnd,
+				}).Error("cannot read block")
+				return nil
 			}
 			for _, block := range blocks {
 				sink <- block
