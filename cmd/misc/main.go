@@ -1682,6 +1682,8 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 		}
 	})
 
+	var errs []error
+	var mu sync.Mutex
 	for i := start; i <= end; i = i + batchSize {
 		height := int64(i)
 		readGroup.Go(func() error {
@@ -1691,11 +1693,14 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 			}
 			blocks, err := client.GetBlocks(height, heightEnd, "geth")
 			if err != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Errorf("cannot read block range %d-%d: %w", height, heightEnd, err))
+				mu.Unlock()
 				logrus.WithFields(map[string]interface{}{
 					"message": err.Error(),
 					"start":   height,
 					"end":     heightEnd,
-				}).Error("cannot read block")
+				}).Error("cannot read block range")
 				return nil
 			}
 			for _, block := range blocks {
@@ -1706,6 +1711,9 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 	}
 	if err := readGroup.Wait(); err != nil {
 		panic(err)
+	}
+	for _, err := range errs {
+		logrus.Error(err.Error())
 	}
 	quit <- struct{}{}
 	close(sink)
