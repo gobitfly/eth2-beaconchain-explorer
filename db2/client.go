@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"syscall"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -47,7 +48,8 @@ func (r WithFallback) RoundTrip(request *http.Request) (*http.Response, error) {
 	if !errors.As(err, &e1) &&
 		!errors.Is(err, ErrNotFoundInCache) &&
 		!errors.Is(err, ErrMethodNotSupported) &&
-		!errors.Is(err, store.ErrNotFound) {
+		!errors.Is(err, store.ErrNotFound) &&
+		!errors.Is(err, syscall.ECONNRESET) {
 		return nil, err
 	}
 
