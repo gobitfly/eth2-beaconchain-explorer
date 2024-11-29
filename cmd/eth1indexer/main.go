@@ -48,7 +48,7 @@ func main() {
 	offsetBlocks := flag.Int64("blocks.offset", 100, "Blocks offset")
 	checkBlocksGaps := flag.Bool("blocks.gaps", false, "Check for gaps in the blocks table")
 	checkBlocksGapsLookback := flag.Int("blocks.gaps.lookback", 1000000, "Lookback for gaps check of the blocks table")
-	traceMode := flag.String("blocks.tracemode", "parity/geth", "Trace mode to use, can bei either 'parity', 'geth' or 'parity/geth' for both")
+	traceMode := flag.String("blocks.tracemode", "geth", "Trace mode to use, can bei either 'parity', 'geth' or 'parity/geth' for both")
 
 	concurrencyData := flag.Int64("data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
 	startData := flag.Int64("data.start", 0, "Block to start indexing")
@@ -187,7 +187,7 @@ func main() {
 		return
 	}
 
-	transforms := make([]func(blk *types.Eth1Block, cache *freecache.Cache) (*types.BulkMutations, *types.BulkMutations, error), 0)
+	transforms := make([]db.TransformFunc, 0)
 	transforms = append(transforms,
 		bt.TransformBlock,
 		bt.TransformTx,
