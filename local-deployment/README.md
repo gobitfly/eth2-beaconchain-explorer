@@ -85,7 +85,7 @@ Above, we have started / stopped the local chain + the explorer manually. The `r
 # Exit validators
 Exiting individual validators can be done using the provided `exit_validator.sh` script. Requires [https://github.com/wealdtech/ethdo](ethdo) to be available on the path.
 ```
-bash exit_validators.sh -i validator_index -m "memonic" -b "http://bn_api_host:bn_api_port"
+bash exit_validators.sh -i validator_index -m "mnemonic" -b "http://bn_api_host:bn_api_port"
 ```
 
 # Enabling withdrawals
