@@ -388,9 +388,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 
 	// Define the base queries
 	deposistsCountQuery := `
-		SELECT COUNT(*)
-		FROM blocks_deposits
-		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
+		select sum(depositscount) from blocks where status = '1' and depositscount > 0
 		%s`
 
 	deposistsQuery := `
