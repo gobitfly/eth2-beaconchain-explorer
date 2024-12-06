@@ -2247,10 +2247,9 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 func GetTotalAmountDeposited() (uint64, error) {
 	var total uint64
 	err := ReaderDb.Get(&total, `
-	SELECT 
-		COALESCE(sum(d.amount), 0) as sum 
-	FROM blocks_deposits d
-	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'`)
+	SELECT COALESCE(sum(d.amount), 0) as sum 
+	FROM blocks_deposits d 
+	INNER JOIN blocks b ON b.slot = d.block_slot AND b.blockroot = d.block_root WHERE b.status = '1' AND b.depositscount > 0;`)
 	return total, err
 }
 
