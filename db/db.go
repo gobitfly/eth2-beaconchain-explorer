@@ -388,9 +388,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 
 	// Define the base queries
 	deposistsCountQuery := `
-		SELECT COUNT(*)
-		FROM blocks_deposits
-		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
+		select sum(depositscount) from blocks where status = '1' and depositscount > 0
 		%s`
 
 	deposistsQuery := `
@@ -2249,10 +2247,9 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 func GetTotalAmountDeposited() (uint64, error) {
 	var total uint64
 	err := ReaderDb.Get(&total, `
-	SELECT 
-		COALESCE(sum(d.amount), 0) as sum 
-	FROM blocks_deposits d
-	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'`)
+	SELECT COALESCE(sum(d.amount), 0) as sum 
+	FROM blocks_deposits d 
+	INNER JOIN blocks b ON b.slot = d.block_slot AND b.blockroot = d.block_root WHERE b.status = '1' AND b.depositscount > 0;`)
 	return total, err
 }
 
