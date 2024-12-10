@@ -849,6 +849,9 @@ Combined validator get, performance, attestation efficency, sync committee stati
 Not public documented
 */
 func ApiDashboard(w http.ResponseWriter, r *http.Request) {
+	obs := utils.NewTimingsObserver("ApiDashboard")
+	defer obs.End(time.Second * 10)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	j := json.NewEncoder(w)
@@ -895,128 +898,83 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 
 		if len(queryIndices) > 0 {
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getGeneralValidatorInfoForAppDashboard")()
 				var err error
 				validatorsData, err = getGeneralValidatorInfoForAppDashboard(queryIndices)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("getGeneralValidatorInfoForAppDashboard(%v) took longer than 10 sec", queryIndices)
-				}
 				return err
 			})
 
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getValidatorEffectiveness")()
 				var err error
 				validatorEffectivenessData, err = getValidatorEffectiveness(epoch-1, queryIndices)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("getValidatorEffectiveness(%v, %v) took longer than 10 sec", epoch-1, queryIndices)
-				}
 				return err
 			})
 
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getRocketpoolValidators")()
 				var err error
 				rocketpoolData, err = getRocketpoolValidators(queryIndices)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("getRocketpoolValidators(%v) took longer than 10 sec", queryIndices)
-				}
 				return err
 			})
 
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getValidatorExecutionPerformance")()
 				var err error
 				executionPerformance, err = getValidatorExecutionPerformance(queryIndices)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("getValidatorExecutionPerformance(%v) took longer than 10 sec", queryIndices)
-				}
 				return err
 			})
 
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getSyncCommitteeInfoForValidators")()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch)
 				currentSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
-				}
 				return err
 			})
 
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getSyncCommitteeInfoForValidators+1")()
 				var err error
 				period := utils.SyncPeriodOfEpoch(epoch) + 1
 				nextSyncCommittee, err = getSyncCommitteeInfoForValidators(queryIndices, period)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("SyncPeriodOfEpoch(%v) + 1 took longer than 10 sec", epoch)
-					logger.Warnf("getSyncCommitteeInfoForValidators(%v, %v) took longer than 10 sec", queryIndices, period)
-				}
 				return err
 			})
 
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getSyncCommitteeStatistics")()
 				var err error
 				syncCommitteeStats, err = getSyncCommitteeStatistics(queryIndices, epoch)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("getSyncCommitteeStatistics(%v, %v) took longer than 10 sec", queryIndices, epoch)
-				}
 				return err
 			})
 
 			g.Go(func() error {
-				start := time.Now()
+				defer obs.Timer("getProposalLuckStats+1")()
 				var err error
 				proposalLuckStats, err = getProposalLuckStats(queryIndices)
-				elapsed := time.Since(start)
-				if elapsed > 10*time.Second {
-					logger.Warnf("getProposalLuck(%v, %v) took longer than 10 sec", queryIndices, epoch)
-				}
 				return err
 			})
 		}
 	}
 
 	g.Go(func() error {
-		start := time.Now()
+		defer obs.Timer("getEpoch-1")()
 		var err error
 		currentEpochData, err = getEpoch(int64(epoch) - 1)
-		elapsed := time.Since(start)
-		if elapsed > 10*time.Second {
-			logger.Warnf("getEpoch(%v) took longer than 10 sec", int64(epoch)-1)
-		}
 		return err
 	})
 
 	g.Go(func() error {
-		start := time.Now()
+		defer obs.Timer("getEpoch-10")()
 		var err error
 		olderEpochData, err = getEpoch(int64(epoch) - 10)
-		elapsed := time.Since(start)
-		if elapsed > 10*time.Second {
-			logger.Warnf("getEpoch(%v) took longer than 10 sec", int64(epoch)-10)
-		}
 		return err
 	})
 
 	g.Go(func() error {
-		start := time.Now()
+		defer obs.Timer("getRocketpoolStats")()
 		var err error
 		rocketpoolStats, err = getRocketpoolStats()
-		elapsed := time.Since(start)
-		if elapsed > 10*time.Second {
-			logger.Warnf("getRocketpoolStats() took longer than 10 sec")
-		}
 		return err
 	})
 
@@ -1074,6 +1032,9 @@ func getSyncCommitteeInfoForValidators(validators []uint64, period uint64) ([]in
 }
 
 func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitteesInfo, error) {
+	obs := utils.NewTimingsObserver("getSyncCommitteeStatistics")
+	defer obs.End(time.Second * 10)
+
 	if epoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
 		// no sync committee duties before altair fork
 		return &SyncCommitteesInfo{}, nil
@@ -1084,12 +1045,31 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		return &SyncCommitteesInfo{}, nil
 	}
 
-	expectedSlots, err := getExpectedSyncCommitteeSlots(validators, epoch)
-	if err != nil {
-		return nil, err
-	}
+	g := errgroup.Group{}
 
-	stats, err := getSyncCommitteeSlotsStatistics(validators, epoch)
+	var expectedSlots uint64
+	g.Go(func() error {
+		defer obs.Timer("getExpectedSyncCommitteeSlots")()
+		var err error
+		expectedSlots, err = getExpectedSyncCommitteeSlots(validators, epoch)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	var stats types.SyncCommitteesStats
+	g.Go(func() error {
+		defer obs.Timer("getSyncCommitteeSlotsStatistics")()
+		var err error
+		stats, err = getSyncCommitteeSlotsStatistics(validators, epoch)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	err := g.Wait()
 	if err != nil {
 		return nil, err
 	}
@@ -1397,8 +1377,16 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 }
 
 func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{}, error) {
-	// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
-	rows, err := db.ReaderDb.Query(`
+	obs := utils.NewTimingsObserver("getGeneralValidatorInfoForAppDashboard")
+	defer obs.End(time.Second * 10)
+
+	g := new(errgroup.Group)
+
+	var data []interface{}
+	g.Go(func() error {
+		defer obs.Timer("getValidators")()
+		// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
+		rows, err := db.ReaderDb.Query(`
 	WITH maxValidatorIndex AS (
 		SELECT MAX(validatorindex)+1 as total_count
 		FROM validator_performance
@@ -1427,20 +1415,21 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
 	WHERE validators.validatorindex = ANY($1)
 	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
-	if err != nil {
-		return nil, fmt.Errorf("error querying validators: %w", err)
-	}
-	defer rows.Close()
+		if err != nil {
+			return fmt.Errorf("error querying validators: %w", err)
+		}
+		defer rows.Close()
 
-	data, err := utils.SqlRowsToJSON(rows)
-	if err != nil {
-		return nil, fmt.Errorf("error converting validators to json: %w", err)
-	}
-
-	g := new(errgroup.Group)
+		data, err = utils.SqlRowsToJSON(rows)
+		if err != nil {
+			return fmt.Errorf("error converting validators to json: %w", err)
+		}
+		return nil
+	})
 
 	var balances map[uint64][]*types.ValidatorBalance
 	g.Go(func() error {
+		defer obs.Timer("GetValidatorBalanceHistory")()
 		var err error
 		balances, err = db.BigtableClient.GetValidatorBalanceHistory(queryIndices, services.LatestEpoch(), services.LatestEpoch())
 		if err != nil {
@@ -1451,6 +1440,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var currentDayIncome map[uint64]int64
 	g.Go(func() error {
+		defer obs.Timer("GetCurrentDayClIncome")()
 		var err error
 		currentDayIncome, err = db.GetCurrentDayClIncome(queryIndices)
 		if err != nil {
@@ -1461,6 +1451,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 
 	var lastAttestationSlots map[uint64]uint64
 	g.Go(func() error {
+		defer obs.Timer("GetLastAttestationSlots")()
 		var err error
 		lastAttestationSlots, err = db.BigtableClient.GetLastAttestationSlots(queryIndices)
 		if err != nil {
@@ -1469,11 +1460,12 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 		return nil
 	})
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
 		return nil, fmt.Errorf("error in validator errgroup: %w", err)
 	}
 
+	obsAggreate := obs.Timer("aggregate")
 	for _, entry := range data {
 		eMap, ok := entry.(map[string]interface{})
 		if !ok {
@@ -1505,6 +1497,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 			}
 		}
 	}
+	obsAggreate()
 
 	return data, nil
 }
