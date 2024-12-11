@@ -571,7 +571,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 
 	for _, validator := range validators {
 
-		if validator.Balance > 0 && validator.Index > highestActiveIndex {
+		if validator.Index > highestActiveIndex {
 			highestActiveIndex = validator.Index
 		}
 

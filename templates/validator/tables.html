@@ -856,3 +856,67 @@
     </tbody>
   </table>
 {{ end }}
+
+{{ define "validatorRequestsTable" }}
+  {{ with .Data }}
+    <div>
+      <h4 class="my-3">Execution Layer Consolidation Requests</h4>
+      <div class="table-responsive card card-body p-0">
+        <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
+          <thead>
+            <tr></tr>
+              <th>Slot</th>
+              <th>Time</th>
+              <th>From Address</th>
+              <th>Source Index</th>
+              <th>Source Pubkey</th>
+              <th>Target Index</th>
+              <th>Target Pubkey</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range $i, $request := .ConsolidationRequests }}
+              <tr></tr>
+                <td>{{ formatBlockSlot $request.BlockSlot }}</td>
+                <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
+                <td>{{ formatEth1Address $request.SourceAddress }}</td>
+                <td>{{ formatValidator $request.SourceIndex }}</td>
+                <td>{{ formatPublicKey $request.SourcePubkey }}</td>
+                <td>{{ formatValidator $request.TargetIndex }}</td>
+                <td>{{ formatPublicKey $request.TargetPubkey }}</td>
+                <td>{{ $request.Type }}</td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+
+      <h4 class="my-3">Execution Layer Withdrawal Requests</h4>
+      <div class="table-responsive card card-body p-0">
+        <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
+          <thead>
+            <tr></tr>
+              <th>Slot</th>
+              <th>Time</th>
+              <th>From Address</th>
+              <th>Amount</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range $i, $request := .WithdrawalRequests }}
+              <tr></tr>
+                <td>{{ formatBlockSlot $request.BlockSlot }}</td>
+                <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
+                <td>{{ formatEth1Address $request.SourceAddress }}</td>
+                <td>{{ formatClCurrency $request.Amount config.Frontend.MainCurrency 5 true false false false }}</td>
+                <td>{{ $request.Type }}</td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>      
+    </div>
+  {{ end }}
+{{ end }}

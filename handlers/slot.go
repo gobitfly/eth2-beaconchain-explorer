@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -43,6 +44,8 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/proposerSlashing.html",
 		"slot/exits.html",
 		"slot/blobs.html",
+		"slot/consolidationRequests.html",
+		"slot/withdrawalRequests.html",
 		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html")
@@ -173,6 +176,7 @@ func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttesta
 			signature,
 			slot,
 			committeeindex,
+			committeebits,
 			beaconblockroot,
 			source_epoch,
 			source_root,
@@ -198,6 +202,7 @@ func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttesta
 			&attestation.Signature,
 			&attestation.Slot,
 			&attestation.CommitteeIndex,
+			&attestation.CommitteeBits,
 			&attestation.BeaconBlockRoot,
 			&attestation.SourceEpoch,
 			&attestation.SourceRoot,
@@ -370,6 +375,55 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	err = db.ReaderDb.Select(&slotPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(slotPageData.Epoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", slotPageData.Slot, err)
+	}
+
+	err = db.ReaderDb.Select(&slotPageData.ConsolidationRequests, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			source_address, 
+			source_pubkey, 
+			(SELECT validatorindex FROM validators WHERE pubkey = source_pubkey) as source_index,
+			target_pubkey,
+			(SELECT validatorindex FROM validators WHERE pubkey = target_pubkey) as target_index
+		FROM blocks_consolidation_requests 
+		WHERE block_slot = $1 AND block_root = $2 
+		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving blocks_consolidation_requests of block %v: %v", slotPageData.Slot, err)
+	}
+
+	for _, cr := range slotPageData.ConsolidationRequests {
+		if bytes.Equal(cr.SourcePubkey, cr.TargetPubkey) {
+			cr.Type = "Credentials Update"
+		} else {
+			cr.Type = "Consolidation"
+		}
+	}
+
+	err = db.ReaderDb.Select(&slotPageData.WithdrawalRequests, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			source_address, 
+			validator_pubkey, 
+			(SELECT validatorindex FROM validators WHERE pubkey = validator_pubkey) as validator_index,
+			amount 
+		FROM blocks_withdrawal_requests 
+		WHERE block_slot = $1 AND block_root = $2 
+		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving blocks_consolidation_requests of block %v: %v", slotPageData.Slot, err)
+	}
+
+	for _, wr := range slotPageData.WithdrawalRequests {
+		if wr.Amount == 0 {
+			wr.Type = "Exit"
+		} else {
+			wr.Type = "Withdrawal"
+		}
 	}
 
 	return &slotPageData, nil
@@ -707,6 +761,7 @@ type attestationsData struct {
 	BlockIndex      uint64        `json:"BlockIndex"`
 	Slot            uint64        `json:"Slot"`
 	CommitteeIndex  uint64        `json:"CommitteeIndex"`
+	CommitteeBits   template.HTML `json:"CommitteeBits"`
 	AggregationBits template.HTML `json:"AggregationBits"`
 	Validators      template.HTML `json:"Validators"`
 	BeaconBlockRoot string        `json:"BeaconBlockRoot"`
@@ -746,6 +801,7 @@ func SlotAttestationsData(w http.ResponseWriter, r *http.Request) {
 			BlockIndex:      v.BlockIndex,
 			Slot:            v.Slot,
 			CommitteeIndex:  v.CommitteeIndex,
+			CommitteeBits:   utils.FormatCommitteeBitList(v.CommitteeBits),
 			AggregationBits: utils.FormatBitlist(v.AggregationBits),
 			Validators:      validators,
 			BeaconBlockRoot: fmt.Sprintf("%x", v.BeaconBlockRoot),

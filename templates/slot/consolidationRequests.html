@@ -1,0 +1,36 @@
+{{ define "block_consolidation_requests" }}
+  <style>
+    #blobs_table td {
+      max-width: 200px;
+    }
+  </style>
+  <div class="row p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ len .ConsolidationRequests }} Consolidation Requests</b></div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm text-left">
+      <tbody id="blobs_table">
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Index</th>
+          <th class="border-0">Source Address</th>
+          <th class="border-0">Source Index</th>
+          <th class="border-0">Source Pubkey</th>
+          <th class="border-0">Target Index</th>
+          <th class="border-0">Target Pubkey</th>
+          <th class="border-0">Type</th>
+        </tr>
+        {{ range .ConsolidationRequests }}
+          <tr class="border-bottom">
+            <td class="border-0">{{ .Index }}</td>
+            <td class="border-0">{{ formatEth1Address .SourceAddress }}</td>
+            <td class="border-0">{{ formatValidator .SourceIndex }}</td>
+            <td class="border-0">{{ formatPublicKey .SourcePubkey }}</td>
+            <td class="border-0">{{ formatValidator .TargetIndex }}</td>
+            <td class="border-0">{{ formatPublicKey .TargetPubkey }}</td>
+            <td class="border-0">{{ .Type }}</td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+{{ end }}

@@ -719,7 +719,7 @@ func FormatHashWithCopy(hash []byte) template.HTML {
 
 func formatWithdrawalHash(hash []byte) template.HTML {
 	var colorClass string
-	if hash[0] == 0x01 {
+	if hash[0] == 0x01 || hash[0] == 0x02 {
 		colorClass = "text-success"
 	} else {
 		colorClass = "text-warning"
@@ -734,7 +734,7 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	}
 
 	var text template.HTML
-	if hash[0] == 0x01 {
+	if hash[0] == 0x01 || hash[0] == 0x02 {
 		text = template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\">%s</a>", hash[12:], formatWithdrawalHash(hash)))
 	} else {
 		text = formatWithdrawalHash(hash)
@@ -767,6 +767,22 @@ func CopyButton(clipboardText interface{}) string {
 
 func CopyButtonText(clipboardText interface{}) string {
 	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=%v></i>`, clipboardText)
+}
+
+func FormatCommitteeBitList(b []byte) template.HTML {
+	if len(b) == 0 {
+		return template.HTML("")
+	}
+
+	committeeBits := bitfield.Bitvector64(b)
+	h := template.HTML(fmt.Sprintf("<div class=\"text-bitfield text-monospace\">"))
+	for i := uint64(0); i < committeeBits.Len(); i++ {
+		if committeeBits.BitAt(i) {
+			h += template.HTML(fmt.Sprintf("%d ", i))
+		}
+	}
+	h += template.HTML("</div>")
+	return h
 }
 
 func FormatBitlist(b []byte) template.HTML {
