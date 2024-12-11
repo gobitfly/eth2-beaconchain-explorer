@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,8 +25,6 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
-	"strconv"
-
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -36,7 +35,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-redis/redis/v8"
-
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -661,7 +659,7 @@ func TimestampToBigtableTimeDesc(ts time.Time) string {
 	return fmt.Sprintf("%04d%02d%02d%02d%02d%02d", 9999-ts.Year(), 12-ts.Month(), 31-ts.Day(), 23-ts.Hour(), 59-ts.Minute(), 59-ts.Second())
 }
 
-func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), concurrency int64, cache *freecache.Cache) error {
+func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transforms []TransformFunc, concurrency int64, cache *freecache.Cache) error {
 	g := new(errgroup.Group)
 	g.SetLimit(int(concurrency))
 
@@ -765,6 +763,59 @@ func (bigtable *Bigtable) IndexEventsWithTransformers(start, end int64, transfor
 			return err
 		}
 	}
+	return nil
+}
+
+type TransformFunc func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error)
+
+func (bigtable *Bigtable) blockKeysMutation(blockNumber uint64, blockHash []byte, keys string) (string, *gcp_bigtable.Mutation) {
+	mut := gcp_bigtable.NewMutation()
+	mut.Set(METADATA_UPDATES_FAMILY_BLOCKS, "keys", gcp_bigtable.Now(), []byte(keys))
+
+	key := fmt.Sprintf("%s:BLOCK:%s:%x", bigtable.chainId, reversedPaddedBlockNumber(blockNumber), blockHash)
+	return key, mut
+}
+
+func (bigtable *Bigtable) IndexBlocksWithTransformers(blocks []*types.Eth1Block, transforms []TransformFunc, cache *freecache.Cache) error {
+	bulkMutsData := types.BulkMutations{}
+	bulkMutsMetadataUpdate := types.BulkMutations{}
+	for _, block := range blocks {
+		for _, transform := range transforms {
+			mutsData, mutsMetadataUpdate, err := transform(block, cache)
+			if err != nil {
+				logrus.WithError(err).Errorf("error transforming block [%v]", block.Number)
+			}
+			bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+			bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+			if mutsMetadataUpdate != nil {
+				bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+				bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+			}
+
+			if len(mutsData.Keys) > 0 {
+				metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+				key, mut := bigtable.blockKeysMutation(block.Number, block.Hash, metaKeys)
+				bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, key)
+				bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mut)
+			}
+		}
+	}
+
+	if len(bulkMutsData.Keys) > 0 {
+		err := bigtable.WriteBulk(&bulkMutsData, bigtable.tableData, DEFAULT_BATCH_INSERTS)
+		if err != nil {
+			return fmt.Errorf("error writing blocks [%v-%v] to bigtable data table: %w", blocks[0].Number, blocks[len(blocks)-1].Number, err)
+		}
+	}
+
+	if len(bulkMutsMetadataUpdate.Keys) > 0 {
+		err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.tableMetadataUpdates, DEFAULT_BATCH_INSERTS)
+		if err != nil {
+			return fmt.Errorf("error writing blocks [%v-%v] to bigtable metadata updates table: %w", blocks[0].Number, blocks[len(blocks)-1].Number, err)
+		}
+	}
+
 	return nil
 }
 
@@ -1011,11 +1062,22 @@ func (bigtable *Bigtable) TransformTx(blk *types.Eth1Block, cache *freecache.Cac
 			Value:              tx.GetValue(),
 			TxFee:              fee,
 			GasPrice:           tx.GetGasPrice(),
+			IsContractCreation: isContract,
+			ErrorMsg:           "",
 			BlobTxFee:          blobFee,
 			BlobGasPrice:       tx.GetBlobGasPrice(),
-			IsContractCreation: isContract,
-			ErrorMsg:           tx.GetErrorMsg(),
+			Status:             types.StatusType(tx.Status),
 		}
+		for _, itx := range tx.Itx {
+			if itx.ErrorMsg != "" {
+				indexedTx.ErrorMsg = itx.ErrorMsg
+				if indexedTx.Status == types.StatusType_SUCCESS {
+					indexedTx.Status = types.StatusType_PARTIAL
+				}
+				break
+			}
+		}
+
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -1107,9 +1169,16 @@ func (bigtable *Bigtable) TransformBlobTx(blk *types.Eth1Block, cache *freecache
 			GasPrice:            tx.GetGasPrice(),
 			BlobTxFee:           blobFee,
 			BlobGasPrice:        tx.GetBlobGasPrice(),
-			ErrorMsg:            tx.GetErrorMsg(),
+			ErrorMsg:            "",
 			BlobVersionedHashes: tx.GetBlobVersionedHashes(),
 		}
+		for _, itx := range tx.Itx {
+			if itx.ErrorMsg != "" {
+				indexedTx.ErrorMsg = itx.ErrorMsg
+				break
+			}
+		}
+
 		// Mark Sender and Recipient for balance update
 		bigtable.markBalanceUpdate(indexedTx.From, []byte{0x0}, bulkMetadataUpdates, cache)
 		bigtable.markBalanceUpdate(indexedTx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -1218,7 +1287,7 @@ func (bigtable *Bigtable) TransformContract(blk *types.Eth1Block, cache *freecac
 				contractUpdate := &types.IsContractUpdate{
 					IsContract: itx.GetType() == "create",
 					// also use success status of enclosing transaction, as even successful sub-calls can still be reverted later in the tx
-					Success: itx.GetErrorMsg() == "" && tx.GetErrorMsg() == "",
+					Success: itx.GetErrorMsg() == "" && tx.GetStatus() == 1,
 				}
 				b, err := proto.Marshal(contractUpdate)
 				if err != nil {
@@ -1286,11 +1355,25 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 		}
 		iReversed := reversePaddedIndex(i, TX_PER_BLOCK_LIMIT)
 
+		var revertSource string
 		for j, itx := range tx.GetItx() {
-			if j >= ITX_PER_TX_LIMIT {
+			if j > ITX_PER_TX_LIMIT {
 				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
 			}
 			jReversed := reversePaddedIndex(j, ITX_PER_TX_LIMIT)
+
+			// check for error before skipping, otherwise we loose track of cascading reverts
+			var reverted bool
+			if itx.ErrorMsg != "" {
+				reverted = true
+				// only save the highest root revert
+				if revertSource == "" || !strings.HasPrefix(itx.Path, revertSource) {
+					revertSource = strings.TrimSuffix(itx.Path, "]")
+				}
+			}
+			if revertSource != "" && strings.HasPrefix(itx.Path, revertSource) {
+				reverted = true
+			}
 
 			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) { // skip top level and empty calls
 				continue
@@ -1305,6 +1388,7 @@ func (bigtable *Bigtable) TransformItx(blk *types.Eth1Block, cache *freecache.Ca
 				From:        itx.GetFrom(),
 				To:          itx.GetTo(),
 				Value:       itx.GetValue(),
+				Reverted:    reverted,
 			}
 
 			bigtable.markBalanceUpdate(indexedItx.To, []byte{0x0}, bulkMetadataUpdates, cache)
@@ -2346,7 +2430,7 @@ func (bigtable *Bigtable) GetAddressTransactionsTableData(address []byte, pageTo
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.Hash, t.ErrorMsg == ""),
+			utils.FormatTransactionHashFromStatus(t.Hash, t.Status),
 			utils.FormatMethod(bigtable.GetMethodLabel(t.MethodId, contractInteraction)),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
@@ -2825,7 +2909,7 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatTransactionHash(t.ParentHash, true),
+			utils.FormatTransactionHash(t.ParentHash, !t.Reverted),
 			utils.FormatBlockNumber(t.BlockNumber),
 			utils.FormatTimestamp(t.Time.AsTime().Unix()),
 			utils.FormatAddressWithLimitsInAddressPageTable(address, t.From, BigtableClient.GetAddressLabel(fromName, from_contractInteraction), from_contractInteraction != types.CONTRACT_NONE, digitLimitInAddressPagesTable, nameLimitInAddressPagesTable, true),
@@ -2869,7 +2953,20 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 	}
 
 	data := make([]types.ITransaction, 0, len(parityTrace)-1)
+	var revertSource []int64
 	for i := 1; i < len(parityTrace); i++ {
+		var reverted bool
+		if parityTrace[i].Error != "" {
+			reverted = true
+			// only save the highest root revert
+			if !isSubset(parityTrace[i].TraceAddress, revertSource) {
+				revertSource = parityTrace[i].TraceAddress
+			}
+		}
+		if isSubset(parityTrace[i].TraceAddress, revertSource) {
+			reverted = true
+		}
+
 		from, to, value, tx_type := parityTrace[i].ConvertFields()
 		if tx_type == "suicide" {
 			// erigon's "suicide" might be misleading for users
@@ -2896,8 +2993,9 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
 			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
-			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, parityTrace[i].Error == "", bigtable.GetMethodLabel(input, from_contractInteraction)),
+			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, !reverted, bigtable.GetMethodLabel(input, from_contractInteraction)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
+			Reverted:  reverted,
 		}
 
 		gaslimit, err := strconv.ParseUint(parityTrace[i].Action.Gas, 0, 0)
@@ -4863,4 +4961,96 @@ func (bigtable *Bigtable) GetGasNowHistory(ts, pastTs time.Time) ([]types.GasNow
 		return nil, fmt.Errorf("error getting gas now history to bigtable, err: %w", err)
 	}
 	return history, nil
+}
+
+func (bigtable *Bigtable) ReindexITxsFromNode(start, end, batchSize, concurrency int64, transforms []func(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error), cache *freecache.Cache) error {
+	g := new(errgroup.Group)
+	g.SetLimit(int(concurrency))
+
+	if start == 0 && end == 0 {
+		return fmt.Errorf("start or end block height can't be 0")
+	}
+
+	if end < start {
+		return fmt.Errorf("end block must be grater or equal to start block")
+	}
+
+	logrus.Infof("reindexing txs for blocks from %d to %d", start, end)
+
+	for i := start; i <= end; i += batchSize {
+		firstBlock := i
+		lastBlock := firstBlock + batchSize - 1
+		if lastBlock > end {
+			lastBlock = end
+		}
+
+		blockNumbers := make([]int64, 0, lastBlock-firstBlock+1)
+		for b := firstBlock; b <= lastBlock; b++ {
+			blockNumbers = append(blockNumbers, b)
+		}
+
+		g.Go(func() error {
+			blocks, err := rpc.CurrentErigonClient.GetBlocksByBatch(blockNumbers)
+			if err != nil {
+				return fmt.Errorf("error getting blocks by batch from %v to %v: %v", firstBlock, lastBlock, err)
+			}
+
+			subG := new(errgroup.Group)
+			subG.SetLimit(int(concurrency))
+
+			for _, block := range blocks {
+				currentBlock := block
+				subG.Go(func() error {
+					bulkMutsData := types.BulkMutations{}
+					bulkMutsMetadataUpdate := types.BulkMutations{}
+					for _, transform := range transforms {
+						mutsData, mutsMetadataUpdate, err := transform(currentBlock, cache)
+						if err != nil {
+							logrus.WithError(err).Errorf("error transforming block [%v]", currentBlock.Number)
+						}
+						bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+						bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+
+						if mutsMetadataUpdate != nil {
+							bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
+							bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
+						}
+					}
+
+					if len(bulkMutsData.Keys) > 0 {
+						metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
+						err := bigtable.SaveBlockKeys(currentBlock.Number, currentBlock.Hash, metaKeys)
+						if err != nil {
+							return fmt.Errorf("error saving block [%v] keys to bigtable metadata updates table: %w", currentBlock.Number, err)
+						}
+
+						err = bigtable.WriteBulk(&bulkMutsData, bigtable.tableData, DEFAULT_BATCH_INSERTS)
+						if err != nil {
+							return fmt.Errorf("error writing block [%v] to bigtable data table: %w", currentBlock.Number, err)
+						}
+					}
+
+					if len(bulkMutsMetadataUpdate.Keys) > 0 {
+						err := bigtable.WriteBulk(&bulkMutsMetadataUpdate, bigtable.tableMetadataUpdates, DEFAULT_BATCH_INSERTS)
+						if err != nil {
+							return fmt.Errorf("error writing block [%v] to bigtable metadata updates table: %w", currentBlock.Number, err)
+						}
+					}
+
+					return nil
+				})
+			}
+			return subG.Wait()
+		})
+
+	}
+
+	if err := g.Wait(); err == nil {
+		logrus.Info("data table indexing completed")
+	} else {
+		utils.LogError(err, "wait group error", 0)
+		return err
+	}
+
+	return nil
 }

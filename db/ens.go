@@ -81,6 +81,8 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		metrics.TaskDuration.WithLabelValues("bt_transform_ens").Observe(time.Since(startTime).Seconds())
 	}()
 
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
 	var ensCrontractAddresses map[string]string
 	switch bigtable.chainId {
 	case "1":
@@ -90,11 +92,9 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	case "11155111":
 		ensCrontractAddresses = ensContracts.ENSCrontractAddressesSepolia
 	default:
-		return nil, nil, nil
+		return bulkData, bulkMetadataUpdates, nil
 	}
 
-	bulkData = &types.BulkMutations{}
-	bulkMetadataUpdates = &types.BulkMutations{}
 	keys := make(map[string]bool)
 	ethLog := eth_types.Log{}
 
