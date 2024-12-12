@@ -133,27 +133,9 @@ func main() {
 				return nil
 			})
 			g.Go(func() error {
-				err := db.BigtableClient.SaveProposalAssignments(epoch, data.ValidatorAssignmentes.ProposerAssignments)
-				if err != nil {
-					return fmt.Errorf("error exporting proposal assignments to bigtable for epoch %v: %w", epoch, err)
-				}
-				return nil
-			})
-			g.Go(func() error {
 				err := db.BigtableClient.SaveAttestationDuties(data.AttestationDuties)
 				if err != nil {
 					return fmt.Errorf("error exporting attestations to bigtable for epoch %v: %w", epoch, err)
-				}
-				return nil
-			})
-			g.Go(func() error {
-				for _, blocks := range data.Blocks {
-					for _, block := range blocks {
-						err := db.BigtableClient.SaveProposal(block)
-						if err != nil {
-							return fmt.Errorf("error exporting proposals to bigtable for slot %v: %w", block.Slot, err)
-						}
-					}
 				}
 				return nil
 			})

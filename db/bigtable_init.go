@@ -21,7 +21,6 @@ func InitBigtableSchema() error {
 		VALIDATOR_BALANCES_FAMILY:             nil,
 		VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY: nil,
 		ATTESTATIONS_FAMILY:                   nil,
-		PROPOSALS_FAMILY:                      nil,
 		SYNC_COMMITTEES_FAMILY:                nil,
 		INCOME_DETAILS_COLUMN_FAMILY:          nil,
 		STATS_COLUMN_FAMILY:                   nil,
