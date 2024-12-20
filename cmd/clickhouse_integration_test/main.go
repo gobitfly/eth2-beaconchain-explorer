@@ -79,17 +79,17 @@ func main() {
 
 	// income details for sync rewards (this currently fails !!!)
 	logrus.Infof("verifying history for sync rewards")
-	verifyHistory([]uint64{653162}, uint64(323260), uint64(323261), true, false)
+	verifyHistory([]uint64{653162}, uint64(323260), uint64(323261), true, true)
 
 	// block proposed
 	logrus.Infof("verifying history for proposer rewards at end of an epoch")
-	verifyHistory([]uint64{388033}, uint64(323268), uint64(323270), true, false)
+	verifyHistory([]uint64{388033}, uint64(323268), uint64(323270), true, true)
 
 	logrus.Infof("verifying history for proposer rewards at start of an epoch")
-	verifyHistory([]uint64{1284148}, uint64(323268), uint64(323270), true, false)
+	verifyHistory([]uint64{1284148}, uint64(323268), uint64(323270), true, true)
 
 	logrus.Infof("verifying history for proposer rewards at during an epoch")
-	verifyHistory([]uint64{1208852}, uint64(323268), uint64(323270), true, false)
+	verifyHistory([]uint64{1208852}, uint64(323268), uint64(323270), true, true)
 
 	// missed attestations
 	logrus.Infof("verifying history for missed attestations")
@@ -101,17 +101,17 @@ func main() {
 
 	// slashing (5902 was slashed by 792015)
 	logrus.Infof("verifying history for a slashed validator")
-	verifyHistory([]uint64{5902}, uint64(314635), uint64(314645), true, false)
+	verifyHistory([]uint64{5902}, uint64(314635), uint64(314645), true, true)
 	logrus.Infof("verifying history for a slashing validator")
-	verifyHistory([]uint64{792015}, uint64(314635), uint64(314645), true, false)
+	verifyHistory([]uint64{792015}, uint64(314635), uint64(314645), true, true)
 
 	// validator during activation
 	logrus.Infof("verifying history for a validator during activation")
-	verifyHistory([]uint64{894572}, uint64(266960), uint64(266970), true, false)
+	verifyHistory([]uint64{894572}, uint64(266960), uint64(266970), true, true)
 
 	// validator during exit
 	logrus.Infof("verifying history for a validator during exit")
-	verifyHistory([]uint64{1646687}, uint64(323090), uint64(323110), true, false)
+	verifyHistory([]uint64{1646687}, uint64(323090), uint64(323110), true, true)
 
 }
 
