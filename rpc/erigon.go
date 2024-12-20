@@ -121,6 +121,12 @@ func (client *ErigonClient) GetRPCClient() *geth_rpc.Client {
 	return client.rpcClient
 }
 
+type minimalBlock struct {
+	Result struct {
+		Hash string `json:"hash"`
+	} `json:"result"`
+}
+
 func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth1Block, *types.GetBlockTimings, error) {
 	start := time.Now()
 	timings := &types.GetBlockTimings{}
@@ -170,6 +176,18 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	})
 	if err := g.Wait(); err != nil {
 		return nil, nil, err
+	}
+	// we cannot trust block.Hash(), some chain (gnosis) have extra field that are included in the hash computation
+	// so extract it from the receipts or from the node again if no receipt (it should be very rare)
+	var blockHash common.Hash
+	if len(receipts) != 0 {
+		blockHash = receipts[0].BlockHash
+	} else {
+		var res minimalBlock
+		if err := client.rpcClient.CallContext(ctx, &res, "eth_getBlockByNumber", fmt.Sprintf("0x%x", number), false); err != nil {
+			return nil, nil, fmt.Errorf("error retrieving blockHash %v: %w", number, err)
+		}
+		blockHash = common.HexToHash(res.Result.Hash)
 	}
 
 	withdrawals := make([]*types.Eth1Withdrawal, len(block.Withdrawals()))
@@ -223,7 +241,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 			From: func() []byte {
 				// this won't make a request in most cases as the sender is already present in the cache
 				// context https://github.com/ethereum/go-ethereum/blob/v1.14.11/ethclient/ethclient.go#L268
-				sender, err := client.ethClient.TransactionSender(context.Background(), tx, block.Hash(), uint(txPosition))
+				sender, err := client.ethClient.TransactionSender(context.Background(), tx, blockHash, uint(txPosition))
 				if err != nil {
 					sender = common.HexToAddress("abababababababababababababababababababab")
 					logrus.Errorf("could not retrieve tx sender %v: %v", tx.Hash(), err)
@@ -284,7 +302,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	}
 
 	return &types.Eth1Block{
-		Hash:        block.Hash().Bytes(),
+		Hash:        blockHash.Bytes(),
 		ParentHash:  block.ParentHash().Bytes(),
 		UncleHash:   block.UncleHash().Bytes(),
 		Coinbase:    block.Coinbase().Bytes(),
