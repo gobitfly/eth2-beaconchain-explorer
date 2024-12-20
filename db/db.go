@@ -19,6 +19,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
+	_ "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -40,6 +41,8 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb *sqlx.DB
+
+var ClickhouseReaderDb *sqlx.DB
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
@@ -73,83 +76,96 @@ func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 }
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) (*sqlx.DB, *sqlx.DB) {
-	if writer.MaxOpenConns == 0 {
-		writer.MaxOpenConns = 50
-	}
-	if writer.MaxIdleConns == 0 {
-		writer.MaxIdleConns = 10
-	}
-	if writer.MaxOpenConns < writer.MaxIdleConns {
-		writer.MaxIdleConns = writer.MaxOpenConns
+	if writer == nil && reader == nil {
+		logger.Fatal("no database configuration provided", 0)
 	}
 
-	if reader.MaxOpenConns == 0 {
-		reader.MaxOpenConns = 50
-	}
-	if reader.MaxIdleConns == 0 {
-		reader.MaxIdleConns = 10
-	}
-	if reader.MaxOpenConns < reader.MaxIdleConns {
-		reader.MaxIdleConns = reader.MaxOpenConns
-	}
-
-	var sslParam string
-	if driverName == "clickhouse" {
-		sslParam = "secure=false"
-		if writer.SSL {
-			sslParam = "secure=true"
+	var dbConnWriter, dbConnReader *sqlx.DB
+	var err error
+	if writer != nil {
+		sslParam := ""
+		if driverName == "clickhouse" {
+			sslParam = "secure=false"
+			if writer.SSL {
+				sslParam = "secure=true"
+			}
+			// debug
+			// sslParam += "&debug=true"
+		} else {
+			sslParam = "sslmode=disable"
+			if writer.SSL {
+				sslParam = "sslmode=require"
+			}
 		}
-		// debug
-		// sslParam += "&debug=true"
-	} else {
-		sslParam = "sslmode=disable"
-		if writer.SSL {
-			sslParam = "sslmode=require"
+		if writer.MaxOpenConns == 0 {
+			writer.MaxOpenConns = 50
 		}
-	}
+		if writer.MaxIdleConns == 0 {
+			writer.MaxIdleConns = 10
+		}
+		if writer.MaxOpenConns < writer.MaxIdleConns {
+			writer.MaxIdleConns = writer.MaxOpenConns
+		}
 
-	logger.Infof("connecting to %s database %s:%s/%s as writer with %d/%d max open/idle connections", databaseBrand, writer.Host, writer.Port, writer.Name, writer.MaxOpenConns, writer.MaxIdleConns)
-	dbConnWriter, err := sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, writer.Username, writer.Password, net.JoinHostPort(writer.Host, writer.Port), writer.Name, sslParam))
-	if err != nil {
-		logger.Fatal(err, "error getting Connection Writer database", 0)
-	}
+		logger.Infof("connecting to %s database %s:%s/%s as writer with %d/%d max open/idle connections", databaseBrand, writer.Host, writer.Port, writer.Name, writer.MaxOpenConns, writer.MaxIdleConns)
+		dbConnWriter, err = sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, writer.Username, writer.Password, net.JoinHostPort(writer.Host, writer.Port), writer.Name, sslParam))
+		if err != nil {
+			logger.Fatal(err, "error getting Connection Writer database", 0)
+		}
 
-	dbTestConnection(dbConnWriter, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
-	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
-	dbConnWriter.SetConnMaxLifetime(time.Minute)
-	dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
-	dbConnWriter.SetMaxIdleConns(writer.MaxIdleConns)
+		dbTestConnection(dbConnWriter, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
+		dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
+		dbConnWriter.SetConnMaxLifetime(time.Minute)
+		dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
+		dbConnWriter.SetMaxIdleConns(writer.MaxIdleConns)
+	}
 
 	if reader == nil {
 		return dbConnWriter, dbConnWriter
 	}
 
-	if driverName == "clickhouse" {
-		sslParam = "secure=false"
-		if writer.SSL {
-			sslParam = "secure=true"
+	if reader != nil {
+		sslParam := ""
+		if driverName == "clickhouse" {
+			sslParam = "secure=false"
+			if reader.SSL {
+				sslParam = "secure=true"
+			}
+			// debug
+			// sslParam += "&debug=true"
+		} else {
+			sslParam = "sslmode=disable"
+			if reader.SSL {
+				sslParam = "sslmode=require"
+			}
 		}
-		// debug
-		// sslParam += "&debug=true"
-	} else {
-		sslParam = "sslmode=disable"
-		if writer.SSL {
-			sslParam = "sslmode=require"
+		if reader.MaxOpenConns == 0 {
+			reader.MaxOpenConns = 50
 		}
-	}
+		if reader.MaxIdleConns == 0 {
+			reader.MaxIdleConns = 10
+		}
+		if reader.MaxOpenConns < reader.MaxIdleConns {
+			reader.MaxIdleConns = reader.MaxOpenConns
+		}
 
-	logger.Infof("connecting to %s database %s:%s/%s as reader with %d/%d max open/idle connections", databaseBrand, reader.Host, reader.Port, reader.Name, reader.MaxOpenConns, reader.MaxIdleConns)
-	dbConnReader, err := sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, reader.Username, reader.Password, net.JoinHostPort(reader.Host, reader.Port), reader.Name, sslParam))
-	if err != nil {
-		logger.Fatal(err, "error getting Connection Reader database", 0)
-	}
+		logger.Infof("connecting to %s database %s:%s/%s as reader with %d/%d max open/idle connections", databaseBrand, reader.Host, reader.Port, reader.Name, reader.MaxOpenConns, reader.MaxIdleConns)
+		dbConnReader, err = sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, reader.Username, reader.Password, net.JoinHostPort(reader.Host, reader.Port), reader.Name, sslParam))
+		if err != nil {
+			logger.Fatal(err, "error getting Connection Reader database", 0)
+		}
 
-	dbTestConnection(dbConnReader, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
-	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
-	dbConnReader.SetConnMaxLifetime(time.Minute)
-	dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
-	dbConnReader.SetMaxIdleConns(reader.MaxIdleConns)
+		dbTestConnection(dbConnReader, fmt.Sprintf("database %v:%v/%v", reader.Host, reader.Port, reader.Name))
+		dbConnReader.SetConnMaxIdleTime(time.Second * 30)
+		dbConnReader.SetConnMaxLifetime(time.Minute)
+		dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
+		dbConnReader.SetMaxIdleConns(reader.MaxIdleConns)
+	}
 	return dbConnWriter, dbConnReader
+}
+
+func MustInitClickhouseDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) {
+	_, ClickhouseReaderDb = mustInitDB(writer, reader, driverName, databaseBrand)
 }
 
 func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) {

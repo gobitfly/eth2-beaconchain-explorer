@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"math/big"
 	"os"
 	"sort"
 	"strconv"
@@ -14,11 +15,13 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/lib/pq"
 
 	gcp_bigtable "cloud.google.com/go/bigtable"
 	"github.com/go-redis/redis/v8"
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/option"
 	"google.golang.org/protobuf/proto"
@@ -31,7 +34,6 @@ const (
 	VALIDATOR_BALANCES_FAMILY             = "vb"
 	VALIDATOR_HIGHEST_ACTIVE_INDEX_FAMILY = "ha"
 	ATTESTATIONS_FAMILY                   = "at"
-	PROPOSALS_FAMILY                      = "pr"
 	SYNC_COMMITTEES_FAMILY                = "sc"
 	INCOME_DETAILS_COLUMN_FAMILY          = "id"
 	STATS_COLUMN_FAMILY                   = "stats"
@@ -99,7 +101,6 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 	poolSize := 50
 	btClient, err := gcp_bigtable.NewClient(ctx, project, instance, option.WithGRPCConnectionPool(poolSize))
 	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
-
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +537,7 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	defer cancel()
 
 	// start := time.Now()
-	ts := gcp_bigtable.Timestamp(0)
+	ts := gcp_bigtable.Time(utils.EpochToTime(epoch))
 
 	muts := types.NewBulkMutations(len(validators))
 
@@ -577,32 +578,6 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (bigtable *Bigtable) SaveProposalAssignments(epoch uint64, assignments map[uint64]uint64) error {
-
-	start := time.Now()
-	ts := gcp_bigtable.Timestamp(0)
-
-	muts := types.NewBulkMutations(len(assignments))
-
-	for slot, validator := range assignments {
-		mut := gcp_bigtable.NewMutation()
-		mut.Set(PROPOSALS_FAMILY, "p", ts, []byte{})
-
-		key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator), PROPOSALS_FAMILY, bigtable.reversedPaddedEpoch(epoch), bigtable.reversedPaddedSlot(slot))
-
-		muts.Add(key, mut)
-	}
-
-	err := bigtable.WriteBulk(muts, bigtable.tableValidatorsHistory, MAX_BATCH_MUTATIONS)
-
-	if err != nil {
-		return err
-	}
-
-	logger.Infof("exported proposal assignments to bigtable in %v", time.Since(start))
 	return nil
 }
 
@@ -705,30 +680,6 @@ func (bigtable *Bigtable) SetLastAttestationSlot(validator uint64, lastAttestati
 	return nil
 }
 
-func (bigtable *Bigtable) SaveProposal(block *types.Block) error {
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	start := time.Now()
-
-	if len(block.BlockRoot) != 32 { // skip dummy blocks
-		return nil
-	}
-	mut := gcp_bigtable.NewMutation()
-	mut.Set(PROPOSALS_FAMILY, "b", gcp_bigtable.Timestamp((MAX_CL_BLOCK_NUMBER-block.Slot)*1000), []byte{})
-	key := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(block.Proposer), PROPOSALS_FAMILY, bigtable.reversedPaddedEpoch(utils.EpochOfSlot(block.Slot)), bigtable.reversedPaddedSlot(block.Slot))
-
-	err := bigtable.tableValidatorsHistory.Apply(ctx, key, mut)
-
-	if err != nil {
-		return err
-	}
-
-	logger.Infof("exported proposal to bigtable in %v", time.Since(start))
-	return nil
-}
-
 func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types.ValidatorIndex]bool) error {
 	start := time.Now()
 
@@ -763,6 +714,7 @@ func (bigtable *Bigtable) SaveSyncComitteeDuties(duties map[types.Slot]map[types
 }
 
 // GetMaxValidatorindexForEpoch returns the higest validatorindex with a balance at that epoch
+// Clickhouse Port: Not required
 func (bigtable *Bigtable) GetMaxValidatorindexForEpoch(epoch uint64) (uint64, error) {
 	return bigtable.getMaxValidatorindexForEpochV2(epoch)
 }
@@ -793,12 +745,73 @@ func (bigtable *Bigtable) getMaxValidatorindexForEpochV2(epoch uint64) (uint64, 
 	return 0, nil
 }
 
+// Clickhouse port: Done
 func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorBalance, error) {
-	if endEpoch < bigtable.v2SchemaCutOffEpoch {
+	endEpochTs := utils.EpochToTime(endEpoch)
+	if utils.Config.ClickHouseEnabled && time.Since(endEpochTs) > utils.Config.ClickhouseDelay { // fetch data from clickhouse instead
+		logger.Infof("fetching validator balance history from clickhouse for validators %v, epochs %v - %v", validators, startEpoch, endEpoch)
+		return bigtable.getValidatorBalanceHistoryClickhouse(validators, startEpoch, endEpoch)
+	} else if endEpoch < bigtable.v2SchemaCutOffEpoch {
 		return bigtable.getValidatorBalanceHistoryV1(validators, startEpoch, endEpoch)
 	} else {
 		return bigtable.getValidatorBalanceHistoryV2(validators, startEpoch, endEpoch)
 	}
+}
+
+func (bigtable *Bigtable) getValidatorBalanceHistoryClickhouse(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorBalance, error) {
+	startEpochTs := utils.EpochToTime(startEpoch)
+	endEpochTs := utils.EpochToTime(endEpoch)
+
+	type row struct {
+		ValidatorIndex        uint64 `db:"validator_index"`
+		Epoch                 uint64 `db:"epoch"`
+		BalanceStart          int64  `db:"balance_start"`
+		EffectiveBalanceStart int64  `db:"balance_effective_start"`
+		BalanceEnd            int64  `db:"balance_end"`
+		EffectiveBalanceEnd   int64  `db:"balance_effective_end"`
+	}
+	rows := []*row{}
+
+	query := `
+			SELECT 
+				validator_index, 
+				epoch AS epoch, 
+				balance_start, 
+				balance_effective_start,
+				balance_end, 
+				balance_effective_end
+			FROM validator_dashboard_data_epoch FINAL WHERE epoch_timestamp >= ? AND epoch_timestamp <= ? AND validator_index IN (?) ORDER BY epoch ASC`
+
+	err := ClickhouseReaderDb.Select(&rows, query, startEpochTs, endEpochTs, validators)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	res := make(map[uint64][]*types.ValidatorBalance, len(validators))
+	for _, r := range rows {
+		if res[r.ValidatorIndex] == nil {
+			res[r.ValidatorIndex] = make([]*types.ValidatorBalance, 0)
+		}
+		balance := &types.ValidatorBalance{
+			Epoch:            r.Epoch,
+			Balance:          uint64(r.BalanceEnd),
+			EffectiveBalance: uint64(r.EffectiveBalanceEnd),
+			Index:            r.ValidatorIndex,
+			PublicKey:        []byte{},
+		}
+
+		res[r.ValidatorIndex] = append(res[r.ValidatorIndex], balance)
+	}
+
+	for validator, att := range res {
+		sort.Slice(att, func(i, j int) bool {
+			return att[i].Epoch > att[j].Epoch
+		})
+		res[validator] = att
+	}
+
+	return res, nil
 }
 
 func (bigtable *Bigtable) getValidatorBalanceHistoryV2(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorBalance, error) {
@@ -1000,12 +1013,96 @@ func (bigtable *Bigtable) getValidatorBalanceHistoryV1(validators []uint64, star
 	return res, nil
 }
 
+// Clickhouse port: Done
 func (bigtable *Bigtable) GetValidatorAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorAttestation, error) {
-	if endEpoch < bigtable.v2SchemaCutOffEpoch {
+	endEpochTs := utils.EpochToTime(endEpoch)
+	if utils.Config.ClickHouseEnabled && time.Since(endEpochTs) > utils.Config.ClickhouseDelay { // fetch data from clickhouse instead
+		logger.Infof("fetching validator attestation history from clickhouse for validators %v, epochs %v - %v", validators, startEpoch, endEpoch)
+		return bigtable.getValidatorAttestationHistoryClickhouse(validators, startEpoch, endEpoch)
+	} else if endEpoch < bigtable.v2SchemaCutOffEpoch {
 		return bigtable.getValidatorAttestationHistoryV1(validators, startEpoch, endEpoch)
 	} else {
 		return bigtable.getValidatorAttestationHistoryV2(validators, startEpoch, endEpoch)
 	}
+}
+
+func (bigtable *Bigtable) getValidatorAttestationHistoryClickhouse(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorAttestation, error) {
+	startEpochTs := utils.EpochToTime(startEpoch)
+	endEpochTs := utils.EpochToTime(endEpoch)
+
+	type row struct {
+		ValidatorIndex        uint64 `db:"validator_index"`
+		Epoch                 uint64 `db:"epoch"`
+		Slot                  uint64 `db:"slot"`
+		InclusionDelay        uint64 `db:"inclusion_delay_sum"`
+		OptimalInclusionDelay uint64 `db:"optimal_inclusion_delay_sum"`
+		AttestationsScheduled uint64 `db:"attestations_scheduled"`
+		AttestationsObserved  uint64 `db:"attestations_observed"`
+	}
+
+	rows := []*row{}
+
+	query := `
+		SELECT
+			validator_dashboard_data_epoch.validator_index,
+			validator_dashboard_data_epoch.epoch,
+			validator_attestation_assignments_slot.slot,
+			validator_dashboard_data_epoch.inclusion_delay_sum,
+			validator_dashboard_data_epoch.optimal_inclusion_delay_sum,
+			validator_dashboard_data_epoch.attestations_scheduled,
+			validator_dashboard_data_epoch.attestations_observed
+		FROM validator_dashboard_data_epoch FINAL 
+		LEFT JOIN validator_attestation_assignments_slot FINAL ON 
+			validator_dashboard_data_epoch.validator_index = validator_attestation_assignments_slot.validator_index AND
+			validator_dashboard_data_epoch.epoch_timestamp = validator_attestation_assignments_slot.epoch_timestamp AND
+			validator_dashboard_data_epoch.epoch = validator_attestation_assignments_slot.epoch
+		WHERE 
+			validator_dashboard_data_epoch.epoch_timestamp >= ? AND 
+			validator_dashboard_data_epoch.epoch_timestamp <= ? AND 
+			validator_dashboard_data_epoch.validator_index IN (?) 
+		ORDER BY epoch ASC, slot ASC`
+	err := ClickhouseReaderDb.Select(&rows, query, startEpochTs, endEpochTs, validators)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	res := make(map[uint64][]*types.ValidatorAttestation, len(validators))
+
+	for _, r := range rows {
+		if r.AttestationsScheduled == 0 {
+			continue
+		}
+		if res[r.ValidatorIndex] == nil {
+			res[r.ValidatorIndex] = make([]*types.ValidatorAttestation, 0)
+		}
+
+		attestation := &types.ValidatorAttestation{
+			Index:        r.ValidatorIndex,
+			Epoch:        r.Epoch,
+			AttesterSlot: r.Slot,
+		}
+
+		if r.AttestationsScheduled == r.AttestationsObserved {
+			attestation.Status = 1
+			attestation.InclusionSlot = r.Slot + r.InclusionDelay + 1
+			attestation.Delay = int64(r.OptimalInclusionDelay)
+		} else {
+			attestation.Delay = 0 - int64(r.Slot) - 1 // bug for bug compatibility *sigh*
+		}
+
+		res[r.ValidatorIndex] = append(res[r.ValidatorIndex], attestation)
+	}
+
+	// Sort the result by attesterSlot desc
+	for validator, att := range res {
+		sort.Slice(att, func(i, j int) bool {
+			return att[i].AttesterSlot > att[j].AttesterSlot
+		})
+		res[validator] = att
+	}
+
+	return res, nil
 }
 
 func (bigtable *Bigtable) getValidatorAttestationHistoryV2(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorAttestation, error) {
@@ -1397,12 +1494,71 @@ func (bigtable *Bigtable) GetLastAttestationSlots(validators []uint64) (map[uint
 	return res, nil
 }
 
+// Clickhouse port: Done
 func (bigtable *Bigtable) GetValidatorMissedAttestationHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
-	if endEpoch < bigtable.v2SchemaCutOffEpoch {
+	if utils.Config.ClickHouseEnabled && time.Since(utils.EpochToTime(endEpoch)) > utils.Config.ClickhouseDelay { // fetch data from clickhouse instead
+		logger.Infof("fetching validator missed attestation history from clickhouse for validators %v, epochs %v - %v", validators, startEpoch, endEpoch)
+		return bigtable.getValidatorMissedAttestationHistoryClickhouse(validators, startEpoch, endEpoch)
+	} else if endEpoch < bigtable.v2SchemaCutOffEpoch {
 		return bigtable.getValidatorMissedAttestationHistoryV1(validators, startEpoch, endEpoch)
 	} else {
 		return bigtable.getValidatorMissedAttestationHistoryV2(validators, startEpoch, endEpoch)
 	}
+}
+
+func (bigtable *Bigtable) getValidatorMissedAttestationHistoryClickhouse(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
+	startEpochTs := utils.EpochToTime(startEpoch)
+	endEpochTs := utils.EpochToTime(endEpoch)
+
+	type row struct {
+		ValidatorIndex        uint64 `db:"validator_index"`
+		Epoch                 uint64 `db:"epoch"`
+		Slot                  uint64 `db:"slot"`
+		AttestationsScheduled uint64 `db:"attestations_scheduled"`
+		AttestationsObserved  uint64 `db:"attestations_observed"`
+	}
+
+	rows := []*row{}
+
+	query := `
+		SELECT
+			validator_dashboard_data_epoch.validator_index,
+			validator_dashboard_data_epoch.epoch,
+			validator_attestation_assignments_slot.slot,
+			validator_dashboard_data_epoch.attestations_scheduled,
+			validator_dashboard_data_epoch.attestations_observed
+		FROM validator_dashboard_data_epoch FINAL 
+		LEFT JOIN validator_attestation_assignments_slot FINAL ON 
+			validator_dashboard_data_epoch.validator_index = validator_attestation_assignments_slot.validator_index AND
+			validator_dashboard_data_epoch.epoch_timestamp = validator_attestation_assignments_slot.epoch_timestamp AND
+			validator_dashboard_data_epoch.epoch = validator_attestation_assignments_slot.epoch
+		WHERE 
+			validator_dashboard_data_epoch.epoch_timestamp >= ? AND 
+			validator_dashboard_data_epoch.epoch_timestamp <= ? AND 
+			validator_dashboard_data_epoch.validator_index IN (?) 
+		ORDER BY epoch ASC, slot ASC`
+	err := ClickhouseReaderDb.Select(&rows, query, startEpochTs, endEpochTs, validators)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	res := make(map[uint64]map[uint64]bool, len(validators))
+
+	for _, r := range rows {
+		if r.AttestationsScheduled == 0 {
+			continue
+		}
+
+		if r.AttestationsScheduled > 0 && r.AttestationsObserved == 0 {
+			if res[r.ValidatorIndex] == nil {
+				res[r.ValidatorIndex] = make(map[uint64]bool, 0)
+			}
+			res[r.ValidatorIndex][r.Slot] = true
+		}
+	}
+
+	return res, nil
 }
 
 func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV2(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]bool, error) {
@@ -1616,8 +1772,12 @@ func (bigtable *Bigtable) getValidatorMissedAttestationHistoryV1(validators []ui
 // The returned map uses the following keys: [validatorIndex][slot]
 //
 // The function is able to handle both V1 and V2 schema based on the configured v2SchemaCutOffEpoch
+// Clickhouse port: Done
 func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, startSlot uint64, endSlot uint64) (map[uint64]map[uint64]*types.ValidatorSyncParticipation, error) {
-	if endSlot/utils.Config.Chain.ClConfig.SlotsPerEpoch < bigtable.v2SchemaCutOffEpoch {
+	if utils.Config.ClickHouseEnabled && time.Since(utils.SlotToTime(endSlot)) > utils.Config.ClickhouseDelay { // fetch data from clickhouse instead
+		logger.Infof("fetching validator sync duties history from clickhouse for validators %v, slots %v - %v", validators, startSlot, endSlot)
+		return bigtable.getValidatorSyncDutiesHistoryClickhouse(validators, startSlot, endSlot)
+	} else if endSlot/utils.Config.Chain.ClConfig.SlotsPerEpoch < bigtable.v2SchemaCutOffEpoch {
 		if startSlot/utils.Config.Chain.ClConfig.SlotsPerEpoch == 0 {
 			return nil, fmt.Errorf("getValidatorSyncDutiesHistoryV1 is not supported for epoch 0")
 		}
@@ -1625,7 +1785,63 @@ func (bigtable *Bigtable) GetValidatorSyncDutiesHistory(validators []uint64, sta
 	} else {
 		return bigtable.getValidatorSyncDutiesHistoryV2(validators, startSlot, endSlot)
 	}
+}
 
+func (bigtable *Bigtable) getValidatorSyncDutiesHistoryClickhouse(validators []uint64, startSlot uint64, endSlot uint64) (map[uint64]map[uint64]*types.ValidatorSyncParticipation, error) {
+	startEpoch := utils.EpochOfSlot(startSlot)
+	endEpoch := utils.EpochOfSlot(endSlot)
+	startEpochTs := utils.EpochToTime(startEpoch)
+	endEpochTs := utils.EpochToTime(endEpoch)
+
+	type row struct {
+		ValidatorIndex uint64 `db:"validator_index"`
+		Epoch          uint64 `db:"epoch"`
+		Slot           uint64 `db:"slot"`
+		Executed       bool   `db:"executed"`
+	}
+
+	rows := []*row{}
+
+	query := `
+		SELECT
+			validator_sync_committee_votes_slot.validator_index,
+			validator_sync_committee_votes_slot.epoch,
+			validator_sync_committee_votes_slot.slot,
+			validator_sync_committee_votes_slot.executed
+		FROM validator_sync_committee_votes_slot FINAL
+		WHERE
+			validator_sync_committee_votes_slot.epoch_timestamp >= ? AND
+			validator_sync_committee_votes_slot.epoch_timestamp <= ? AND
+			validator_sync_committee_votes_slot.validator_index IN (?) AND
+			validator_sync_committee_votes_slot.slot >= ? AND
+			validator_sync_committee_votes_slot.slot <= ?
+		ORDER BY epoch ASC, slot ASC`
+
+	err := ClickhouseReaderDb.Select(&rows, query, startEpochTs, endEpochTs, validators, startSlot, endSlot)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	res := make(map[uint64]map[uint64]*types.ValidatorSyncParticipation, len(validators))
+
+	for _, r := range rows {
+		if res[r.ValidatorIndex] == nil {
+			res[r.ValidatorIndex] = make(map[uint64]*types.ValidatorSyncParticipation, 0)
+		}
+		sp := &types.ValidatorSyncParticipation{
+			Slot:   r.Slot,
+			Period: 0, //utils.SyncPeriodOfEpoch(utils.EpochOfSlot(r.Slot)), //*sigh*
+		}
+		if r.Executed {
+			sp.Status = 1
+		} else {
+			sp.Status = 0
+		}
+		res[r.ValidatorIndex][sp.Slot] = sp
+	}
+
+	return res, nil
 }
 
 func (bigtable *Bigtable) getValidatorSyncDutiesHistoryV2(validators []uint64, startSlot uint64, endSlot uint64) (map[uint64]map[uint64]*types.ValidatorSyncParticipation, error) {
@@ -2031,198 +2247,10 @@ func (bigtable *Bigtable) GetValidatorBalanceStatistics(validators []uint64, sta
 	return resultContainer.res, nil
 }
 
-func (bigtable *Bigtable) GetValidatorProposalHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorProposal, error) {
-	if endEpoch < bigtable.v2SchemaCutOffEpoch {
-		return bigtable.getValidatorProposalHistoryV1(validators, startEpoch, endEpoch)
-	} else {
-		return bigtable.getValidatorProposalHistoryV2(validators, startEpoch, endEpoch)
-	}
-}
-
-func (bigtable *Bigtable) getValidatorProposalHistoryV2(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorProposal, error) {
-	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
-		logger.WithFields(logrus.Fields{
-			"validatorsCount": len(validators),
-			"startEpoch":      startEpoch,
-			"endEpoch":        endEpoch,
-		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
-	})
-	defer tmr.Stop()
-
-	if len(validators) == 0 {
-		return nil, fmt.Errorf("passing empty validator array is unsupported")
-	}
-
-	batchSize := 1000
-	concurrency := 10
-
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
-
-	res := make(map[uint64][]*types.ValidatorProposal, len(validators))
-	resMux := &sync.Mutex{}
-
-	filter := gcp_bigtable.LatestNFilter(1)
-
-	g, gCtx := errgroup.WithContext(ctx)
-	g.SetLimit(concurrency)
-
-	for i := 0; i < len(validators); i += batchSize {
-
-		upperBound := i + batchSize
-		if len(validators) < upperBound {
-			upperBound = len(validators)
-		}
-		vals := validators[i:upperBound]
-
-		g.Go(func() error {
-			select {
-			case <-gCtx.Done():
-				return gCtx.Err()
-			default:
-			}
-			ranges := bigtable.getValidatorsEpochSlotRanges(vals, PROPOSALS_FAMILY, startEpoch, endEpoch)
-			err := bigtable.tableValidatorsHistory.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-				for _, ri := range r[PROPOSALS_FAMILY] {
-					keySplit := strings.Split(r.Key(), ":")
-
-					proposalSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
-					if err != nil {
-						logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
-						return false
-					}
-					proposalSlot = MAX_CL_BLOCK_NUMBER - proposalSlot
-					inclusionSlot := MAX_CL_BLOCK_NUMBER - uint64(r[PROPOSALS_FAMILY][0].Timestamp)/1000
-
-					status := uint64(1)
-					if inclusionSlot == MAX_CL_BLOCK_NUMBER {
-						inclusionSlot = 0
-						status = 2
-					}
-
-					validator, err := bigtable.validatorKeyToIndex(keySplit[1])
-					if err != nil {
-						logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
-						return false
-					}
-
-					resMux.Lock()
-					if res[validator] == nil {
-						res[validator] = make([]*types.ValidatorProposal, 0)
-					}
-
-					if len(res[validator]) > 0 && res[validator][len(res[validator])-1].Slot == proposalSlot {
-						res[validator][len(res[validator])-1].Slot = proposalSlot
-						res[validator][len(res[validator])-1].Status = status
-					} else {
-						res[validator] = append(res[validator], &types.ValidatorProposal{
-							Index:  validator,
-							Status: status,
-							Slot:   proposalSlot,
-						})
-					}
-					resMux.Unlock()
-
-				}
-				return true
-			}, gcp_bigtable.RowFilter(filter))
-
-			return err
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func (bigtable *Bigtable) getValidatorProposalHistoryV1(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorProposal, error) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*30))
-	defer cancel()
-
-	ranges := bigtable.getSlotRangesForEpochV1(startEpoch, endEpoch)
-	res := make(map[uint64][]*types.ValidatorProposal, len(validators))
-
-	columnFilters := make([]gcp_bigtable.Filter, 0, len(validators))
-	for _, validator := range validators {
-		columnFilters = append(columnFilters, gcp_bigtable.ColumnFilter(fmt.Sprintf("%d", validator)))
-	}
-
-	filter := gcp_bigtable.ChainFilters(
-		gcp_bigtable.FamilyFilter(PROPOSALS_FAMILY),
-		gcp_bigtable.InterleaveFilters(columnFilters...),
-		gcp_bigtable.LatestNFilter(1),
-	)
-
-	if len(columnFilters) == 1 { // special case to retrieve data for one validators
-		filter = gcp_bigtable.ChainFilters(
-			gcp_bigtable.FamilyFilter(PROPOSALS_FAMILY),
-			columnFilters[0],
-			gcp_bigtable.LatestNFilter(1),
-		)
-	}
-	if len(columnFilters) == 0 { // special case to retrieve data for all validators
-		filter = gcp_bigtable.ChainFilters(
-			gcp_bigtable.FamilyFilter(PROPOSALS_FAMILY),
-			gcp_bigtable.LatestNFilter(1),
-		)
-	}
-
-	err := bigtable.tableBeaconchain.ReadRows(ctx, ranges, func(r gcp_bigtable.Row) bool {
-		for _, ri := range r[PROPOSALS_FAMILY] {
-			keySplit := strings.Split(r.Key(), ":")
-
-			proposalSlot, err := strconv.ParseUint(keySplit[4], 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing slot from row key %v: %v", r.Key(), err)
-				return false
-			}
-			proposalSlot = max_block_number_v1 - proposalSlot
-			inclusionSlot := max_block_number_v1 - uint64(r[PROPOSALS_FAMILY][0].Timestamp)/1000
-
-			status := uint64(1)
-			if inclusionSlot == max_block_number_v1 {
-				inclusionSlot = 0
-				status = 2
-			}
-
-			validator, err := strconv.ParseUint(strings.TrimPrefix(ri.Column, PROPOSALS_FAMILY+":"), 10, 64)
-			if err != nil {
-				logger.Errorf("error parsing validator from column key %v: %v", ri.Column, err)
-				return false
-			}
-
-			if res[validator] == nil {
-				res[validator] = make([]*types.ValidatorProposal, 0)
-			}
-
-			if len(res[validator]) > 0 && res[validator][len(res[validator])-1].Slot == proposalSlot {
-				res[validator][len(res[validator])-1].Slot = proposalSlot
-				res[validator][len(res[validator])-1].Status = status
-			} else {
-				res[validator] = append(res[validator], &types.ValidatorProposal{
-					Index:  validator,
-					Status: status,
-					Slot:   proposalSlot,
-				})
-			}
-
-		}
-		return true
-	}, gcp_bigtable.RowFilter(filter))
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
 func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[uint64]*itypes.ValidatorEpochIncome) error {
 
 	start := time.Now()
-	ts := gcp_bigtable.Timestamp(utils.EpochToTime(epoch).UnixMicro())
+	ts := gcp_bigtable.Time(utils.EpochToTime(epoch))
 
 	total := &itypes.ValidatorEpochIncome{}
 
@@ -2280,12 +2308,145 @@ func (bigtable *Bigtable) SaveValidatorIncomeDetails(epoch uint64, rewards map[u
 
 // GetValidatorIncomeDetailsHistory returns the validator income details
 // startEpoch & endEpoch are inclusive
+// return object is a map of validator_index -> epoch -> incomeDetails
+// Clickhouse port: Done
 func (bigtable *Bigtable) GetValidatorIncomeDetailsHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
-	if endEpoch < bigtable.v2SchemaCutOffEpoch {
+	endEpochTs := utils.EpochToTime(endEpoch)
+	if utils.Config.ClickHouseEnabled && time.Since(endEpochTs) > utils.Config.ClickhouseDelay { // fetch data from clickhouse instead
+		logger.Infof("fetching validator income details from clickhouse for validators %v, epochs %v - %v", validators, startEpoch, endEpoch)
+		return bigtable.getValidatorIncomeDetailsHistoryClickhouse(validators, startEpoch, endEpoch)
+	} else if endEpoch < bigtable.v2SchemaCutOffEpoch {
 		return bigtable.getValidatorIncomeDetailsHistoryV1(validators, startEpoch, endEpoch)
 	} else {
 		return bigtable.getValidatorIncomeDetailsHistoryV2(validators, startEpoch, endEpoch)
 	}
+}
+
+func (bigtable *Bigtable) getValidatorIncomeDetailsHistoryClickhouse(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
+	startEpochTs := utils.EpochToTime(startEpoch)
+	endEpochTs := utils.EpochToTime(endEpoch)
+
+	type row struct {
+		ValidatorIndex               uint64 `db:"validator_index"`
+		Epoch                        uint64 `db:"epoch"`
+		AttestationsSourceReward     int64  `db:"attestations_source_reward"`
+		AttestationsTargetReward     int64  `db:"attestations_target_reward"`
+		AttestationsHeadReward       int64  `db:"attestations_head_reward"`
+		AttestationsInactivityReward int64  `db:"attestations_inactivity_reward"`
+		AttestationsInclusionReward  int64  `db:"attestations_inclusion_reward"`
+		SyncRewards                  int64  `db:"sync_reward_rewards_only"`
+		SyncPenalties                int64  `db:"sync_reward_penalties_only"`
+		SyncScheduled                int64  `db:"sync_scheduled"`
+		SyncExecuted                 int64  `db:"sync_executed"`
+		BlocksClAttestationsReward   int64  `db:"blocks_cl_attestations_reward"`
+		BlocksClSyncAggregateReward  int64  `db:"blocks_cl_sync_aggregate_reward"`
+		BlocksClSlasherReward        int64  `db:"blocks_cl_slasher_reward"`
+		BlocksScheduled              int64  `db:"blocks_scheduled"`
+		BlocksProposed               int64  `db:"blocks_proposed"`
+	}
+	rows := []*row{}
+
+	query := `
+			SELECT 
+				validator_index, 
+				epoch, 
+				attestations_source_reward, 
+				attestations_target_reward, 
+				attestations_head_reward, 
+				attestations_inactivity_reward, 
+				attestations_inclusion_reward, 
+				sync_reward_rewards_only, 
+				sync_reward_penalties_only,
+				sync_scheduled,
+				sync_executed,
+				blocks_cl_attestations_reward, 
+				blocks_cl_sync_aggregate_reward, 
+				blocks_cl_slasher_reward, 
+				blocks_scheduled, 
+				blocks_proposed 
+			FROM validator_dashboard_data_epoch FINAL WHERE epoch_timestamp >= ? AND epoch_timestamp <= ? AND validator_index IN (?) ORDER BY epoch ASC`
+
+	err := ClickhouseReaderDb.Select(&rows, query, startEpochTs, endEpochTs, validators)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make(map[uint64]map[uint64]*itypes.ValidatorEpochIncome, len(validators))
+	proposalEpochs := make(map[uint64]bool)
+	proposalValidators := make(map[uint64]bool)
+	for _, r := range rows {
+		if r.BlocksScheduled == 0 && r.SyncScheduled == 0 && r.AttestationsHeadReward == 0 && r.AttestationsSourceReward == 0 && r.AttestationsTargetReward == 0 && r.AttestationsInactivityReward == 0 && r.BlocksClAttestationsReward == 0 && r.BlocksClSlasherReward == 0 && r.BlocksClSyncAggregateReward == 0 && r.SyncRewards == 0 {
+			continue
+		}
+		if res[r.ValidatorIndex] == nil {
+			res[r.ValidatorIndex] = make(map[uint64]*itypes.ValidatorEpochIncome)
+		}
+		income := &itypes.ValidatorEpochIncome{}
+		income.AttestationHeadReward = uint64(r.AttestationsHeadReward)
+		if r.AttestationsSourceReward > 0 {
+			income.AttestationSourceReward = uint64(r.AttestationsSourceReward)
+		} else {
+			income.AttestationSourcePenalty = uint64(r.AttestationsSourceReward * -1)
+		}
+		if r.AttestationsTargetReward > 0 {
+			income.AttestationTargetReward = uint64(r.AttestationsTargetReward)
+		} else {
+			income.AttestationTargetPenalty = uint64(r.AttestationsTargetReward * -1)
+		}
+		income.FinalityDelayPenalty = uint64(r.AttestationsInactivityReward * -1)
+		income.ProposerAttestationInclusionReward = uint64(r.BlocksClAttestationsReward)
+		income.ProposerSlashingInclusionReward = uint64(r.BlocksClSlasherReward)
+		income.ProposerSyncInclusionReward = uint64(r.BlocksClSyncAggregateReward)
+		income.SyncCommitteeReward = uint64(r.SyncRewards)
+		income.SyncCommitteePenalty = uint64(r.SyncPenalties * -1)
+		income.ProposalsMissed = uint64(r.BlocksScheduled - r.BlocksProposed)
+
+		if r.BlocksProposed > 0 {
+			proposalEpochs[r.Epoch] = true
+			proposalValidators[r.ValidatorIndex] = true
+		}
+		res[r.ValidatorIndex][r.Epoch] = income
+	}
+
+	if len(proposalEpochs) > 0 {
+		// get proposal tx fee reward data
+		type row struct {
+			Proposer uint64 `db:"proposer"`
+			Epoch    uint64 `db:"epoch"`
+			TxFee    string `db:"tx_fee"`
+		}
+		rows := []*row{}
+		query := `
+			SELECT 
+				proposer, 
+				epoch, 
+				sum(fee_recipient_reward) * 1e18 as tx_fee 
+			FROM blocks 
+			LEFT JOIN execution_payloads ON blocks.exec_block_hash = execution_payloads.block_hash 
+			WHERE blocks.epoch = ANY($1) AND blocks.proposer = ANY($2) AND blocks.status = '1' AND fee_recipient_reward IS NOT NULL GROUP BY proposer, epoch`
+
+		err := ReaderDb.Select(&rows, query, pq.Array(maps.Keys(proposalEpochs)), pq.Array(maps.Keys(proposalValidators)))
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+		for _, r := range rows {
+			if res[r.Proposer] == nil {
+				res[r.Proposer] = make(map[uint64]*itypes.ValidatorEpochIncome)
+			}
+			if res[r.Proposer][r.Epoch] == nil {
+				res[r.Proposer][r.Epoch] = &itypes.ValidatorEpochIncome{}
+			}
+			reward, ok := new(big.Float).SetString(r.TxFee)
+			rewardInt, _ := reward.Int(nil)
+			if !ok {
+				logger.Errorf("error parsing tx fee reward for validator %v epoch %v: %v", r.Proposer, r.Epoch, r.TxFee)
+				return nil, fmt.Errorf("error parsing tx fee reward for validator %v epoch %v: %v", r.Proposer, r.Epoch, r.TxFee)
+			}
+			res[r.Proposer][r.Epoch].TxFeeRewardWei = rewardInt.Bytes()
+		}
+	}
+	return res, nil
 }
 
 func (bigtable *Bigtable) getValidatorIncomeDetailsHistoryV2(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64]map[uint64]*itypes.ValidatorEpochIncome, error) {
@@ -2525,6 +2686,7 @@ func (bigtable *Bigtable) GetAggregatedValidatorIncomeDetailsHistory(validators 
 // GetTotalValidatorIncomeDetailsHistory returns the total validator income for a given range of epochs
 // It is considerably faster than fetching the individual income for each validator and aggregating it
 // startEpoch & endEpoch are inclusive
+// Clickhouse port: Not required, uses only data for the last 10 epochs after head
 func (bigtable *Bigtable) GetTotalValidatorIncomeDetailsHistory(startEpoch uint64, endEpoch uint64) (map[uint64]*itypes.ValidatorEpochIncome, error) {
 	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
 		logger.WithFields(logrus.Fields{
@@ -2580,6 +2742,21 @@ func (bigtable *Bigtable) DeleteEpoch(epoch uint64) error {
 	return fmt.Errorf("NOT IMPLEMENTED")
 }
 
+func (bigtable *Bigtable) PurgeV2Data(validatorIndex, thresholdEpoch uint64) error {
+	// create the row ranges for each column family
+	vals := []uint64{validatorIndex}
+	balanceRange := bigtable.getValidatorsEpochRanges(vals, VALIDATOR_BALANCES_FAMILY, 0, thresholdEpoch)
+	err := bigtable.ClearByRowRange("beaconchain_validators", "*", "*", balanceRange, true)
+	if err != nil {
+		return err
+	}
+	// attestationHistoryRange := bigtable.getValidatorsEpochRanges(vals, ATTESTATIONS_FAMILY, 0, thresholdEpoch)
+	// syncDutiesHistoryRange := bigtable.getValidatorSlotRanges(vals, SYNC_COMMITTEES_FAMILY, 0, thresholdEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch)
+	// incomeRange := bigtable.getValidatorsEpochRanges(vals, INCOME_DETAILS_COLUMN_FAMILY, 0, thresholdEpoch)
+
+	return nil
+}
+
 func (bigtable *Bigtable) getValidatorsEpochRanges(validatorIndices []uint64, prefix string, startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
 	if endEpoch > math.MaxInt64 {
 		endEpoch = 0
@@ -2614,28 +2791,6 @@ func (bigtable *Bigtable) getTotalIncomeEpochRanges(startEpoch uint64, endEpoch 
 	rangeStart := fmt.Sprintf("%s:%s:%s", bigtable.chainId, SUM_COLUMN, bigtable.reversedPaddedEpoch(endEpoch))
 
 	return gcp_bigtable.NewRange(rangeStart, rangeEnd)
-}
-
-func (bigtable *Bigtable) getValidatorsEpochSlotRanges(validatorIndices []uint64, prefix string, startEpoch uint64, endEpoch uint64) gcp_bigtable.RowRangeList {
-
-	if endEpoch > math.MaxInt64 {
-		endEpoch = 0
-	}
-	if endEpoch < startEpoch { // handle overflows
-		startEpoch = 0
-	}
-
-	ranges := make(gcp_bigtable.RowRangeList, 0, int((endEpoch-startEpoch+1))*len(validatorIndices))
-
-	for _, validatorIndex := range validatorIndices {
-		validatorKey := bigtable.validatorIndexToKey(validatorIndex)
-
-		rangeEnd := fmt.Sprintf("%s:%s:%s:%s:%s%s", bigtable.chainId, validatorKey, prefix, bigtable.reversedPaddedEpoch(startEpoch), bigtable.reversedPaddedSlot(startEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch), "\x00")
-		rangeStart := fmt.Sprintf("%s:%s:%s:%s:%s", bigtable.chainId, validatorKey, prefix, bigtable.reversedPaddedEpoch(endEpoch), bigtable.reversedPaddedSlot(endEpoch*utils.Config.Chain.ClConfig.SlotsPerEpoch+utils.Config.Chain.ClConfig.SlotsPerEpoch-1))
-		ranges = append(ranges, gcp_bigtable.NewRange(rangeStart, rangeEnd))
-
-	}
-	return ranges
 }
 
 func (bigtable *Bigtable) getValidatorSlotRanges(validatorIndices []uint64, prefix string, startSlot uint64, endSlot uint64) gcp_bigtable.RowRangeList {
