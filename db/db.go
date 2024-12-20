@@ -403,13 +403,9 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	var err error
 
 	// Define the base queries
-	deposistsCountQuery := `
-		SELECT COUNT(*)
-		FROM blocks_deposits
-		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-		%s`
+	depositsCountQuery := `SELECT SUM(depositscount) FROM blocks WHERE status = '1' AND depositscount > 0`
 
-	deposistsQuery := `
+	depositsQuery := `
 			SELECT 
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
@@ -435,12 +431,12 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 		}
 	}
 	if trimmedQuery == "" {
-		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, ""))
+		err = ReaderDb.Get(&totalCount, depositsCountQuery)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, "", orderBy, orderDir), length, start)
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(depositsQuery, "", orderBy, orderDir), length, start)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, 0, err
 		}
@@ -451,31 +447,47 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if utils.IsHash(trimmedQuery) {
 		param = hash
 		searchQuery = `WHERE blocks_deposits.publickey = $3`
+		depositsCountQuery = `
+			SELECT SUM(depositscount)
+			FROM blocks
+			INNER JOIN blocks_deposits ON blocks.blockroot = blocks_deposits.block_root AND blocks_deposits.publickey = $1
+			WHERE status = '1' AND depositscount > 0`
 	} else if utils.IsValidWithdrawalCredentials(trimmedQuery) {
 		param = hash
 		searchQuery = `WHERE blocks_deposits.withdrawalcredentials = $3`
+		depositsCountQuery = `
+			SELECT SUM(depositscount)
+			FROM blocks
+			INNER JOIN blocks_deposits ON blocks.blockroot = blocks_deposits.block_root AND blocks_deposits.withdrawalcredentials = $1
+			WHERE status = '1' AND depositscount > 0`
 	} else if utils.IsEth1Address(trimmedQuery) {
 		param = hash
 		searchQuery = `
 				LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
 				WHERE eth1_deposits.from_address = $3`
+		depositsCountQuery = `
+			SELECT SUM(depositscount)
+			FROM blocks
+			INNER JOIN blocks_deposits ON blocks.blockroot = blocks_deposits.block_root AND blocks_deposits.from_address = $1
+			WHERE status = '1' AND depositscount > 0`
 	} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 31); parseErr == nil { // Limit to 31 bits to stay within math.MaxInt32
 		param = uiQuery
 		searchQuery = `WHERE blocks_deposits.block_slot = $3`
+		depositsCountQuery = `
+			SELECT SUM(depositscount)
+			FROM blocks
+			WHERE status = '1' AND depositscount > 0 AND slot = $1`
 	} else {
 		// The query does not fulfill any of the requirements for a search
 		return deposits, totalCount, nil
 	}
 
-	// The deposits count query only has one parameter for the search
-	countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
-
-	err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
+	err = ReaderDb.Get(&totalCount, depositsCountQuery, param)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
+	err = ReaderDb.Select(&deposits, fmt.Sprintf(depositsQuery, searchQuery, orderBy, orderDir), length, start, param)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
@@ -2265,10 +2277,9 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 func GetTotalAmountDeposited() (uint64, error) {
 	var total uint64
 	err := ReaderDb.Get(&total, `
-	SELECT 
-		COALESCE(sum(d.amount), 0) as sum 
-	FROM blocks_deposits d
-	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'`)
+	SELECT COALESCE(sum(d.amount), 0) as sum 
+	FROM blocks_deposits d 
+	INNER JOIN blocks b ON b.slot = d.block_slot AND b.blockroot = d.block_root WHERE b.status = '1' AND b.depositscount > 0;`)
 	return total, err
 }
 
