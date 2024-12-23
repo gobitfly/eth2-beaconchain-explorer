@@ -1680,6 +1680,7 @@ func (bigtable *Bigtable) getAttestationStatusAndInclusionSlot(ts gcp_bigtable.T
 		inclusionSlotTs := ts.Time().Unix()
 		inclusionSlot = utils.TimeToSlot(uint64(inclusionSlotTs))
 		if inclusionSlot == attesterSlot {
+			inclusionSlot = 0
 			status = 0
 		} else {
 			status = 1
