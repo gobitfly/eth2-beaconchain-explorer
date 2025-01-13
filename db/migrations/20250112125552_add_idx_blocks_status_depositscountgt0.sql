@@ -1,3 +1,5 @@
+-- +goose NO TRANSACTION
+
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'creating idx_blocks_status_depositscountgt0';
