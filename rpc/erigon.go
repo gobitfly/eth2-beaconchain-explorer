@@ -202,6 +202,9 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 
 	transactions := make([]*types.Eth1Transaction, len(block.Transactions()))
 	traceIndex := 0
+	if len(receipts) != len(block.Transactions()) {
+		return nil, nil, fmt.Errorf("block %s receipts length [%d] mismatch with transactions length [%d]", block.Number(), len(receipts), len(block.Transactions()))
+	}
 	for txPosition, receipt := range receipts {
 		logs := make([]*types.Eth1Log, len(receipt.Logs))
 		for i, log := range receipt.Logs {

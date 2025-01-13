@@ -28,16 +28,24 @@ func TestBigTableClientRealCondition(t *testing.T) {
 	}
 
 	tests := []struct {
-		name  string
-		block int64
+		name    string
+		block   int64
+		chainID uint64
 	}{
 		{
-			name:  "test block",
-			block: 6008149,
+			name:    "test block",
+			block:   6008149,
+			chainID: 1,
 		},
 		{
-			name:  "test block 2",
-			block: 141,
+			name:    "test block 2",
+			block:   141,
+			chainID: 1,
+		},
+		{
+			name:    "test missmatch tx and receipts",
+			block:   37938291,
+			chainID: 100,
 		},
 	}
 
@@ -50,7 +58,7 @@ func TestBigTableClientRealCondition(t *testing.T) {
 
 			rawStore := NewRawStore(store.Wrap(bg, BlocksRawTable, ""))
 			rpcClient, err := rpc.DialOptions(context.Background(), "http://foo.bar", rpc.WithHTTPClient(&http.Client{
-				Transport: NewBigTableEthRaw(rawStore, chainID),
+				Transport: NewBigTableEthRaw(rawStore, tt.chainID),
 			}))
 			if err != nil {
 				t.Fatal(err)
@@ -71,6 +79,9 @@ func TestBigTableClientRealCondition(t *testing.T) {
 			}
 			if len(block.Transactions()) != 0 && len(receipts) == 0 {
 				t.Errorf("receipts should not be empty")
+			}
+			if len(block.Transactions()) != len(receipts) {
+				t.Errorf("missmatch between receipt and block length")
 			}
 
 			var traces []GethTraceCallResultWrapper
