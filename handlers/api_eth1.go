@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -693,7 +695,9 @@ func findExecBlockNumbersByFeeRecipient(addresses [][]byte, offset, limit uint64
 
 func findExecBlockNumbersByExecBlockNumber(execBlocks []uint64, offset, limit uint64) ([]uint64, map[uint64]types.ExecBlockProposer, error) {
 	var blockListSub []types.ExecBlockProposer
-	err := db.ReaderDb.Select(&blockListSub,
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err := db.ReaderDb.SelectContext(ctx, &blockListSub,
 		`SELECT 
 			exec_block_number,
 			proposer,
@@ -709,6 +713,9 @@ func findExecBlockNumbersByExecBlockNumber(execBlocks []uint64, offset, limit ui
 		offset,
 		limit,
 	)
+	if errors.Is(err, context.DeadlineExceeded) {
+		logger.Errorf("LONG_RUNNING_POSTGRES_READ: db.findExecBlockNumbersByExecBlockNumber: retrieving data took longer than 10s with params: execBlocks: %v, offset: %v, limit: %v: %v", execBlocks, offset, limit, err)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
