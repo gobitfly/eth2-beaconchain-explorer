@@ -70,19 +70,27 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	var blockList []uint64
+	blockListMap := make(map[uint64]struct{}, 100)
+
 	splits := strings.Split(vars["blockNumber"], ",")
+
+	if len(splits) > int(limit) {
+		SendBadRequestResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
+		return
+	}
+
 	for _, split := range splits {
 		temp, err := strconv.ParseUint(split, 10, 64)
 		if err != nil {
 			SendBadRequestResponse(w, r.URL.String(), "invalid block number")
 			return
 		}
+		_, seen := blockListMap[temp]
+		if seen {
+			continue
+		}
 		blockList = append(blockList, temp)
-	}
-
-	if len(blockList) > int(limit) {
-		SendBadRequestResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
-		return
+		blockListMap[temp] = struct{}{}
 	}
 
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)
