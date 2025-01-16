@@ -122,9 +122,7 @@ func (client *ErigonClient) GetRPCClient() *geth_rpc.Client {
 }
 
 type minimalBlock struct {
-	Result struct {
-		Hash string `json:"hash"`
-	} `json:"result"`
+	Hash string `json:"hash"`
 }
 
 func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth1Block, *types.GetBlockTimings, error) {
@@ -187,7 +185,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 		if err := client.rpcClient.CallContext(ctx, &res, "eth_getBlockByNumber", fmt.Sprintf("0x%x", number), false); err != nil {
 			return nil, nil, fmt.Errorf("error retrieving blockHash %v: %w", number, err)
 		}
-		blockHash = common.HexToHash(res.Result.Hash)
+		blockHash = common.HexToHash(res.Hash)
 	}
 
 	withdrawals := make([]*types.Eth1Withdrawal, len(block.Withdrawals()))
