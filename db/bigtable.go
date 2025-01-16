@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/lib/pq"
@@ -201,6 +202,16 @@ func (bigtable *Bigtable) GetClient() *gcp_bigtable.Client {
 }
 
 func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machine string, data []byte) error {
+	tmr := time.AfterFunc(REPORT_TIMEOUT, func() {
+		logger.WithFields(logrus.Fields{
+			"userId":    userID,
+			"process":   process,
+			"machine":   machine,
+			"len(data)": len(data),
+		}).Warnf("%s call took longer than %v", utils.GetCurrentFuncName(), REPORT_TIMEOUT)
+	})
+	defer tmr.Stop()
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
@@ -208,16 +219,19 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 
 	ts := gcp_bigtable.Now()
 	rateLimitKey := fmt.Sprintf("%s:%d", rowKeyData, ts.Time().Minute())
+	rateLimitKeySetStartTs := time.Now()
 	keySet, err := bigtable.redisCache.SetNX(ctx, rateLimitKey, "1", time.Minute).Result()
 	if err != nil {
 		return err
 	}
+	metrics.TaskDuration.WithLabelValues("client_stats_post_save_data_rate_limit_set").Observe(time.Since(rateLimitKeySetStartTs).Seconds())
 	if !keySet {
 		return fmt.Errorf("rate limit, last metric insert was less than 1 min ago")
 	}
 
 	// for limiting machines per user, add the machine field to a redis set
 	// bucket period is 15mins
+	rateLimitMachineSetStartTs := time.Now()
 	machineLimitKey := fmt.Sprintf("%s:%d", bigtable.reversePaddedUserID(userID), ts.Time().Minute()%15)
 	pipe := bigtable.redisCache.Pipeline()
 	pipe.SAdd(ctx, machineLimitKey, machine)
@@ -226,7 +240,9 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	if err != nil {
 		return err
 	}
+	metrics.TaskDuration.WithLabelValues("client_stats_post_save_data_rate_limit_machine_set").Observe(time.Since(rateLimitMachineSetStartTs).Seconds())
 
+	queueMutationsStartTs := time.Now()
 	dataMut := gcp_bigtable.NewMutation()
 	dataMut.Set(MACHINE_METRICS_COLUMN_FAMILY, "v1", ts, data)
 
@@ -236,6 +252,7 @@ func (bigtable *Bigtable) SaveMachineMetric(process string, userID uint64, machi
 	}
 
 	bigtable.machineMetricsQueuedWritesChan <- bulkMut
+	metrics.TaskDuration.WithLabelValues("client_stats_post_save_data_queue_mutation").Observe(time.Since(queueMutationsStartTs).Seconds())
 
 	return nil
 }
