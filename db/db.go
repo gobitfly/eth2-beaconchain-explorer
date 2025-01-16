@@ -196,7 +196,7 @@ func ApplyEmbeddedDbSchema(version int64) error {
 	return nil
 }
 
-func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
 	// Initialize the return values
 	deposits := []*types.EthOneDepositsData{}
 	totalCount := uint64(0)
@@ -204,17 +204,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"tx_hash", "tx_input", "tx_index", "block_number", "block_ts", "from_address", "publickey", "withdrawal_credentials", "amount", "signature", "merkletree_index", "state", "valid_signature"}
-	hasColumn := false
-	for _, column := range columns {
-		if orderBy == column {
-			hasColumn = true
-			break
-		}
-	}
-	if !hasColumn {
-		orderBy = "block_ts"
-	}
+	orderBy := "block_ts"
 
 	var param interface{}
 	var searchQuery string
@@ -378,7 +368,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	return deposits, totalCount, nil
 }
 
-func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, uint64, error) {
+func GetEth2Deposits(query string, length, start uint64, orderDir string) ([]*types.EthTwoDepositData, uint64, error) {
 	// Initialize the return values
 	deposits := []*types.EthTwoDepositData{}
 	totalCount := uint64(0)
@@ -386,17 +376,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"block_slot", "publickey", "amount", "withdrawalcredentials", "signature"}
-	hasColumn := false
-	for _, column := range columns {
-		if orderBy == column {
-			hasColumn = true
-			break
-		}
-	}
-	if !hasColumn {
-		orderBy = "block_slot"
-	}
+	orderBy := "block_slot"
 
 	var param interface{}
 	var searchQuery string
