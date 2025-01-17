@@ -443,13 +443,13 @@ func GetEth2Deposits(query string, length, start uint64, orderDir string) ([]*ty
 	} else if utils.IsEth1Address(trimmedQuery) {
 		param = hash
 		searchQuery = `
-				LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
-				WHERE eth1_deposits.from_address = $3`
+			LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+			WHERE eth1_deposits.from_address = $3`
 		depositsCountQuery = `
-			SELECT COALESCE(SUM(depositscount),0)
-			FROM blocks
-			INNER JOIN blocks_deposits ON blocks.blockroot = blocks_deposits.block_root AND blocks_deposits.from_address = $1
-			WHERE status = '1' AND depositscount > 0`
+			SELECT COUNT(*) FROM blocks_deposits 
+			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
+			LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+			WHERE eth1_deposits.from_address = $1`
 	} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 31); parseErr == nil { // Limit to 31 bits to stay within math.MaxInt32
 		param = uiQuery
 		searchQuery = `WHERE blocks_deposits.block_slot = $3`
