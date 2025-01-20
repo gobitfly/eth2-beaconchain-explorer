@@ -90,7 +90,9 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 	case "11155111":
 		ensCrontractAddresses = ensContracts.ENSCrontractAddressesSepolia
 	default:
-		return nil, nil, nil
+		return &types.BulkMutations{[]string{}, []*gcp_bigtable.Mutation{}},
+			&types.BulkMutations{[]string{}, []*gcp_bigtable.Mutation{}},
+			nil
 	}
 
 	bulkData = &types.BulkMutations{}
