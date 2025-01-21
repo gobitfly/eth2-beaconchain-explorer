@@ -975,36 +975,68 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getHasUserActiveSubscription(userId uint64) (bool, error) {
+	var hasUserActiveSubscription bool
+	err := db.FrontendReaderDB.Get(&hasUserActiveSubscription, `
+	SELECT EXISTS (
+		SELECT uss.price_id
+		FROM users_stripe_subscriptions uss
+		LEFT JOIN users u ON u.stripe_customer_id = uss.customer_id
+		WHERE uss.active = true AND u.id = $1
+
+		UNION
+
+		SELECT product_id
+		FROM users_app_subscriptions uas
+		LEFT JOIN users u ON u.id = uas.user_id
+		WHERE uas.active = true AND u.id = $1
+	)`, userId)
+	if err != nil {
+		return false, err
+	}
+	return hasUserActiveSubscription, nil
+}
+
 func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 	logger := logger.WithField("route", r.URL.String())
-	user, session, err := getUserSession(r)
+	user, _, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	if user.Authenticated {
-		err := db.DeleteUserById(user.UserID)
-		if err != nil {
-			logger.Errorf("error deleting user by email for user: %v %v", user.UserID, err)
-			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-			utils.SetFlash(w, r, "", "Error: Could not delete user.")
-			session.Save(r, w)
-			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
-			return
-		}
-
-		Logout(w, r)
-		err = purgeAllSessionsForUser(r.Context(), user.UserID)
-		if err != nil {
-			utils.LogError(err, "error purging sessions for user", 0, map[string]interface{}{"userID": user.UserID})
-			utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-	} else {
+	if !user.Authenticated {
 		utils.LogError(nil, "Trying to delete an unauthenticated user", 0)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+	// don't allow user to delete account if they have an active subscription
+	hasUserActiveSubscription, err := getHasUserActiveSubscription(user.UserID)
+	if err != nil {
+		logger.Errorf("error checking if user has active subscription: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if hasUserActiveSubscription {
+		utils.SetFlash(w, r, authSessionName, "Error: You cannot delete your account while you have an active subscription.")
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	err = db.DeleteUserById(user.UserID)
+	if err != nil {
+		logger.Errorf("error deleting user by email for user: %v %v", user.UserID, err)
+		utils.SetFlash(w, r, authSessionName, "Error: Could not delete user.")
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	Logout(w, r)
+	err = purgeAllSessionsForUser(r.Context(), user.UserID)
+	if err != nil {
+		utils.LogError(err, "error purging sessions for user", 0, map[string]interface{}{"userID": user.UserID})
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 }
