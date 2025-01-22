@@ -29,14 +29,11 @@ type Config struct {
 		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"WRITER_DB_MAX_IDLE_CONNS"`
 		SSL          bool   `yaml:"ssl" envconfig:"WRITER_DB_SSL"`
 	} `yaml:"writerDatabase"`
-	Bigtable struct {
-		Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
-		Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
-		Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
-		EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
-		EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
-		V2SchemaCutOffEpoch uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
-	} `yaml:"bigtable"`
+	Bigtable    Bigtable `yaml:"bigtable"`
+	RawBigtable struct {
+		Bigtable Bigtable `yaml:"bigtable"`
+		Remote   string   `yaml:"remote"`
+	} `yaml:"rawBigtable"`
 	BlobIndexer struct {
 		S3 struct {
 			Endpoint        string `yaml:"endpoint" envconfig:"BLOB_INDEXER_S3_ENDPOINT"`
@@ -45,18 +42,7 @@ type Config struct {
 			AccessKeySecret string `yaml:"accessKeySecret" envconfig:"BLOB_INDEXER_S3_ACCESS_KEY_SECRET"`
 		} `yaml:"s3"`
 	} `yaml:"blobIndexer"`
-	Chain struct {
-		Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
-		Id                         uint64 `yaml:"id" envconfig:"CHAIN_ID"`
-		GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
-		GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
-		DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
-		DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
-		ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
-		ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
-		ClConfig                   ClChainConfig
-		ElConfig                   *params.ChainConfig
-	} `yaml:"chain"`
+	Chain                     `yaml:"chain"`
 	Eth1ErigonEndpoint        string `yaml:"eth1ErigonEndpoint" envconfig:"ETH1_ERIGON_ENDPOINT"`
 	Eth1GethEndpoint          string `yaml:"eth1GethEndpoint" envconfig:"ETH1_GETH_ENDPOINT"`
 	EtherscanAPIKey           string `yaml:"etherscanApiKey" envconfig:"ETHERSCAN_API_KEY"`
@@ -94,145 +80,8 @@ type Config struct {
 			ValidRegistrarContracts []string `yaml:"validRegistrarContracts" envconfig:"ENS_VALID_REGISTRAR_CONTRACTS"`
 		} `yaml:"ensTransformer"`
 	} `yaml:"indexer"`
-	Frontend struct {
-		Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
-		BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"`
-		Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`
-		OnlyAPI                        bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
-		CsrfAuthKey                    string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY"`
-		CsrfInsecure                   bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
-		DisableCharts                  bool   `yaml:"disableCharts" envconfig:"disableCharts"`
-		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
-		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
-		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
-		BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`
-		SiteBrand                      string `yaml:"siteBrand" envconfig:"FRONTEND_SITE_BRAND"`
-		Keywords                       string `yaml:"keywords" envconfig:"FRONTEND_KEYWORDS"`
-		// Imprint is deprdecated place imprint file into the legal directory
-		Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
-		Legal   struct {
-			TermsOfServiceUrl string `yaml:"termsOfServiceUrl" envconfig:"FRONTEND_LEGAL_TERMS_OF_SERVICE_URL"`
-			PrivacyPolicyUrl  string `yaml:"privacyPolicyUrl" envconfig:"FRONTEND_LEGAL_PRIVACY_POLICY_URL"`
-			ImprintTemplate   string `yaml:"imprintTemplate" envconfig:"FRONTEND_LEGAL_IMPRINT_TEMPLATE"`
-		} `yaml:"legal"`
-		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
-		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
-		SiteTitle    string `yaml:"siteTitle" envconfig:"FRONTEND_SITE_TITLE"`
-		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
-		Server       struct {
-			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
-			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
-		} `yaml:"server"`
-		ReaderDatabase struct {
-			Username     string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
-			Password     string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
-			Name         string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
-			Host         string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
-			Port         string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
-			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_READER_DB_MAX_OPEN_CONNS"`
-			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_READER_DB_MAX_IDLE_CONNS"`
-			SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_READER_DB_SSL"`
-		} `yaml:"readerDatabase"`
-		WriterDatabase struct {
-			Username     string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
-			Password     string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
-			Name         string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
-			Host         string `yaml:"host" envconfig:"FRONTEND_WRITER_DB_HOST"`
-			Port         string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
-			MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_WRITER_DB_MAX_OPEN_CONNS"`
-			MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
-			SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_WRITER_DB_SSL"`
-		} `yaml:"writerDatabase"`
-		OldProductsDeadlineUnix int64 `yaml:"oldProductsDeadline" envconfig:"FRONTEND_OLD_PRODUCTS_DEADLINE_UNIX"`
-		Stripe                  struct {
-			Webhook   string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
-			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
-			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
-
-			Sapphire string `yaml:"sapphire" envconfig:"FRONTEND_STRIPE_SAPPHIRE"`
-			Emerald  string `yaml:"emerald" envconfig:"FRONTEND_STRIPE_EMERALD"`
-			Diamond  string `yaml:"diamond" envconfig:"FRONTEND_STRIPE_DIAMOND"`
-			Whale    string `yaml:"whale" envconfig:"FRONTEND_STRIPE_WHALE"`
-			Goldfish string `yaml:"goldfish" envconfig:"FRONTEND_STRIPE_GOLDFISH"`
-			Plankton string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
-
-			Iron         string `yaml:"iron" envconfig:"FRONTEND_STRIPE_IRON"`
-			IronYearly   string `yaml:"ironYearly" envconfig:"FRONTEND_STRIPE_IRON_YEARLY"`
-			Silver       string `yaml:"silver" envconfig:"FRONTEND_STRIPE_SILVER"`
-			SilverYearly string `yaml:"silverYearly" envconfig:"FRONTEND_STRIPE_SILVER_YEARLY"`
-			Gold         string `yaml:"gold" envconfig:"FRONTEND_STRIPE_GOLD"`
-			GoldYearly   string `yaml:"goldYearly" envconfig:"FRONTEND_STRIPE_GOLD_YEARLY"`
-
-			Guppy         string `yaml:"guppy" envconfig:"FRONTEND_STRIPE_GUPPY"`
-			GuppyYearly   string `yaml:"guppyYearly" envconfig:"FRONTEND_STRIPE_GUPPY_YEARLY"`
-			Dolphin       string `yaml:"dolphin" envconfig:"FRONTEND_STRIPE_DOLPHIN"`
-			DolphinYearly string `yaml:"dolphinYearly" envconfig:"FRONTEND_STRIPE_DOLPHIN_YEARLY"`
-			Orca          string `yaml:"orca" envconfig:"FRONTEND_STRIPE_ORCA"`
-			OrcaYearly    string `yaml:"orcaYearly" envconfig:"FRONTEND_STRIPE_ORCA_YEARLY"`
-
-			VdbAddon1k        string `yaml:"vdbAddon1k" envconfig:"FRONTEND_STRIPE_VDB_ADDON_1K"`
-			VdbAddon1kYearly  string `yaml:"vdbAddon1kYearly" envconfig:"FRONTEND_STRIPE_VDB_ADDON_1K_YEARLY"`
-			VdbAddon10k       string `yaml:"vdbAddon10k" envconfig:"FRONTEND_STRIPE_VDB_ADDON_10K"`
-			VdbAddon10kYearly string `yaml:"vdbAddon10kYearly" envconfig:"FRONTEND_STRIPE_VDB_ADDON_10K_YEARLY"`
-		}
-		RatelimitUpdateInterval              time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
-		SessionSameSiteNone                  bool          `yaml:"sessionSameSiteNone" envconfig:"FRONTEND_SESSION_SAMESITE_NONE"`
-		SessionSecret                        string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
-		SessionCookieDomain                  string        `yaml:"sessionCookieDomain" envconfig:"FRONTEND_SESSION_COOKIE_DOMAIN"`
-		SessionCookieDeriveDomainFromRequest bool          `yaml:"sessionCookieDeriveDomainFromRequest" envconfig:"FRONTEND_SESSION_COOKIE_DERIVE_DOMAIN_FROM_REQUEST"`
-		JwtSigningSecret                     string        `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
-		JwtIssuer                            string        `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
-		JwtValidityInMinutes                 int           `yaml:"jwtValidityInMinutes" envconfig:"FRONTEND_JWT_VALIDITY_INMINUTES"`
-		MaxMailsPerEmailPerDay               int           `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
-		Mail                                 struct {
-			SMTP struct {
-				Server   string `yaml:"server" envconfig:"FRONTEND_MAIL_SMTP_SERVER"`
-				Host     string `yaml:"host" envconfig:"FRONTEND_MAIL_SMTP_HOST"`
-				User     string `yaml:"user" envconfig:"FRONTEND_MAIL_SMTP_USER"`
-				Password string `yaml:"password" envconfig:"FRONTEND_MAIL_SMTP_PASSWORD"`
-			} `yaml:"smtp"`
-			Mailgun struct {
-				Domain     string `yaml:"domain" envconfig:"FRONTEND_MAIL_MAILGUN_DOMAIN"`
-				PrivateKey string `yaml:"privateKey" envconfig:"FRONTEND_MAIL_MAILGUN_PRIVATE_KEY"`
-				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
-			} `yaml:"mailgun"`
-			Contact struct {
-				SupportEmail string `yaml:"supportEmail" envconfig:"FRONTEND_MAIL_CONTACT_SUPPORT_EMAIL"`
-				InquiryEmail string `yaml:"inquiryEmail" envconfig:"FRONTEND_MAIL_CONTACT_INQUIRY_EMAIL"`
-			} `yaml:"contact"`
-		} `yaml:"mail"`
-		GATag         string `yaml:"gatag" envconfig:"GATAG"`
-		VerifyAppSubs bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
-		Apple         struct {
-			LegacyAppSubsAppleSecret string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
-			KeyID                    string `yaml:"keyID" envconfig:"FRONTEND_APPLE_APP_KEY_ID"`
-			IssueID                  string `yaml:"issueID" envconfig:"FRONTEND_APPLE_ISSUE_ID"`
-			Certificate              string `yaml:"certificate" envconfig:"FRONTEND_APPLE_CERTIFICATE"`
-		} `yaml:"apple"`
-		AppSubsGoogleJSONPath string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
-		DisableStatsInserts   bool   `yaml:"disableStatsInserts" envconfig:"FRONTEND_DISABLE_STATS_INSERTS"`
-		ShowDonors            struct {
-			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
-			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
-		} `yaml:"showDonors"`
-		Countdown struct {
-			Enabled   bool          `yaml:"enabled" envconfig:"FRONTEND_COUNTDOWN_ENABLED"`
-			Title     template.HTML `yaml:"title" envconfig:"FRONTEND_COUNTDOWN_TITLE"`
-			Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
-			Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
-		} `yaml:"countdown"`
-		HttpReadTimeout    time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
-		HttpWriteTimeout   time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
-		HttpIdleTimeout    time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
-		ClCurrency         string        `yaml:"clCurrency" envconfig:"FRONTEND_CL_CURRENCY"`
-		ClCurrencyDivisor  int64         `yaml:"clCurrencyDivisor" envconfig:"FRONTEND_CL_CURRENCY_DIVISOR"`
-		ClCurrencyDecimals int64         `yaml:"clCurrencyDecimals" envconfig:"FRONTEND_CL_CURRENCY_DECIMALS"`
-		ElCurrency         string        `yaml:"elCurrency" envconfig:"FRONTEND_EL_CURRENCY"`
-		ElCurrencyDivisor  int64         `yaml:"elCurrencyDivisor" envconfig:"FRONTEND_EL_CURRENCY_DIVISOR"`
-		ElCurrencyDecimals int64         `yaml:"elCurrencyDecimals" envconfig:"FRONTEND_EL_CURRENCY_DECIMALS"`
-		MainCurrency       string        `yaml:"mainCurrency" envconfig:"FRONTEND_MAIN_CURRENCY"`
-	} `yaml:"frontend"`
-	Metrics struct {
+	Frontend `yaml:"frontend"`
+	Metrics  struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
 		Pprof   bool   `yaml:"pprof" envconfig:"METRICS_PPROF"`
@@ -275,6 +124,167 @@ type Config struct {
 		ServiceMonitoringConfigurations []ServiceMonitoringConfiguration `yaml:"serviceMonitoringConfigurations" envconfig:"SERVICE_MONITORING_CONFIGURATIONS"`
 	} `yaml:"monitoring"`
 	GithubApiHost string `yaml:"githubApiHost" envconfig:"GITHUB_API_HOST"`
+}
+
+type Chain struct {
+	Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
+	Id                         uint64 `yaml:"id" envconfig:"CHAIN_ID"`
+	GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
+	GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
+	DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
+	DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
+	ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
+	ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
+	ClConfig                   ClChainConfig
+	ElConfig                   *params.ChainConfig
+}
+
+type Bigtable struct {
+	Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+	Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+	Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
+	EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
+	EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
+	V2SchemaCutOffEpoch uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
+}
+
+type Frontend struct {
+	Debug                          bool   `yaml:"debug" envconfig:"FRONTEND_DEBUG"`
+	BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"`
+	Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`
+	OnlyAPI                        bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
+	CsrfAuthKey                    string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY"`
+	CsrfInsecure                   bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
+	DisableCharts                  bool   `yaml:"disableCharts" envconfig:"disableCharts"`
+	RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
+	RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
+	Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+	BlobProviderUrl                string `yaml:"blobProviderUrl" envconfig:"FRONTEND_BLOB_PROVIDER_URL"`
+	SiteBrand                      string `yaml:"siteBrand" envconfig:"FRONTEND_SITE_BRAND"`
+	Keywords                       string `yaml:"keywords" envconfig:"FRONTEND_KEYWORDS"`
+	// Imprint is deprdecated place imprint file into the legal directory
+	Imprint string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
+	Legal   struct {
+		TermsOfServiceUrl string `yaml:"termsOfServiceUrl" envconfig:"FRONTEND_LEGAL_TERMS_OF_SERVICE_URL"`
+		PrivacyPolicyUrl  string `yaml:"privacyPolicyUrl" envconfig:"FRONTEND_LEGAL_PRIVACY_POLICY_URL"`
+		ImprintTemplate   string `yaml:"imprintTemplate" envconfig:"FRONTEND_LEGAL_IMPRINT_TEMPLATE"`
+	} `yaml:"legal"`
+	SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
+	SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
+	SiteTitle    string `yaml:"siteTitle" envconfig:"FRONTEND_SITE_TITLE"`
+	SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
+	Server       struct {
+		Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
+		Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
+	} `yaml:"server"`
+	ReaderDatabase struct {
+		Username     string `yaml:"user" envconfig:"FRONTEND_READER_DB_USERNAME"`
+		Password     string `yaml:"password" envconfig:"FRONTEND_READER_DB_PASSWORD"`
+		Name         string `yaml:"name" envconfig:"FRONTEND_READER_DB_NAME"`
+		Host         string `yaml:"host" envconfig:"FRONTEND_READER_DB_HOST"`
+		Port         string `yaml:"port" envconfig:"FRONTEND_READER_DB_PORT"`
+		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_READER_DB_MAX_OPEN_CONNS"`
+		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_READER_DB_MAX_IDLE_CONNS"`
+		SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_READER_DB_SSL"`
+	} `yaml:"readerDatabase"`
+	WriterDatabase struct {
+		Username     string `yaml:"user" envconfig:"FRONTEND_WRITER_DB_USERNAME"`
+		Password     string `yaml:"password" envconfig:"FRONTEND_WRITER_DB_PASSWORD"`
+		Name         string `yaml:"name" envconfig:"FRONTEND_WRITER_DB_NAME"`
+		Host         string `yaml:"host" envconfig:"FRONTEND_WRITER_DB_HOST"`
+		Port         string `yaml:"port" envconfig:"FRONTEND_WRITER_DB_PORT"`
+		MaxOpenConns int    `yaml:"maxOpenConns" envconfig:"FRONTEND_WRITER_DB_MAX_OPEN_CONNS"`
+		MaxIdleConns int    `yaml:"maxIdleConns" envconfig:"FRONTEND_WRITER_DB_MAX_IDLE_CONNS"`
+		SSL          bool   `yaml:"ssl" envconfig:"FRONTEND_WRITER_DB_SSL"`
+	} `yaml:"writerDatabase"`
+	OldProductsDeadlineUnix int64 `yaml:"oldProductsDeadline" envconfig:"FRONTEND_OLD_PRODUCTS_DEADLINE_UNIX"`
+	Stripe                  struct {
+		Webhook   string `yaml:"webhook" envconfig:"FRONTEND_STRIPE_WEBHOOK"`
+		SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
+		PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
+
+		Sapphire string `yaml:"sapphire" envconfig:"FRONTEND_STRIPE_SAPPHIRE"`
+		Emerald  string `yaml:"emerald" envconfig:"FRONTEND_STRIPE_EMERALD"`
+		Diamond  string `yaml:"diamond" envconfig:"FRONTEND_STRIPE_DIAMOND"`
+		Whale    string `yaml:"whale" envconfig:"FRONTEND_STRIPE_WHALE"`
+		Goldfish string `yaml:"goldfish" envconfig:"FRONTEND_STRIPE_GOLDFISH"`
+		Plankton string `yaml:"plankton" envconfig:"FRONTEND_STRIPE_PLANKTON"`
+
+		Iron         string `yaml:"iron" envconfig:"FRONTEND_STRIPE_IRON"`
+		IronYearly   string `yaml:"ironYearly" envconfig:"FRONTEND_STRIPE_IRON_YEARLY"`
+		Silver       string `yaml:"silver" envconfig:"FRONTEND_STRIPE_SILVER"`
+		SilverYearly string `yaml:"silverYearly" envconfig:"FRONTEND_STRIPE_SILVER_YEARLY"`
+		Gold         string `yaml:"gold" envconfig:"FRONTEND_STRIPE_GOLD"`
+		GoldYearly   string `yaml:"goldYearly" envconfig:"FRONTEND_STRIPE_GOLD_YEARLY"`
+
+		Guppy         string `yaml:"guppy" envconfig:"FRONTEND_STRIPE_GUPPY"`
+		GuppyYearly   string `yaml:"guppyYearly" envconfig:"FRONTEND_STRIPE_GUPPY_YEARLY"`
+		Dolphin       string `yaml:"dolphin" envconfig:"FRONTEND_STRIPE_DOLPHIN"`
+		DolphinYearly string `yaml:"dolphinYearly" envconfig:"FRONTEND_STRIPE_DOLPHIN_YEARLY"`
+		Orca          string `yaml:"orca" envconfig:"FRONTEND_STRIPE_ORCA"`
+		OrcaYearly    string `yaml:"orcaYearly" envconfig:"FRONTEND_STRIPE_ORCA_YEARLY"`
+
+		VdbAddon1k        string `yaml:"vdbAddon1k" envconfig:"FRONTEND_STRIPE_VDB_ADDON_1K"`
+		VdbAddon1kYearly  string `yaml:"vdbAddon1kYearly" envconfig:"FRONTEND_STRIPE_VDB_ADDON_1K_YEARLY"`
+		VdbAddon10k       string `yaml:"vdbAddon10k" envconfig:"FRONTEND_STRIPE_VDB_ADDON_10K"`
+		VdbAddon10kYearly string `yaml:"vdbAddon10kYearly" envconfig:"FRONTEND_STRIPE_VDB_ADDON_10K_YEARLY"`
+	}
+	RatelimitUpdateInterval              time.Duration `yaml:"ratelimitUpdateInterval" envconfig:"FRONTEND_RATELIMIT_UPDATE_INTERVAL"`
+	SessionSameSiteNone                  bool          `yaml:"sessionSameSiteNone" envconfig:"FRONTEND_SESSION_SAMESITE_NONE"`
+	SessionSecret                        string        `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
+	SessionCookieDomain                  string        `yaml:"sessionCookieDomain" envconfig:"FRONTEND_SESSION_COOKIE_DOMAIN"`
+	SessionCookieDeriveDomainFromRequest bool          `yaml:"sessionCookieDeriveDomainFromRequest" envconfig:"FRONTEND_SESSION_COOKIE_DERIVE_DOMAIN_FROM_REQUEST"`
+	JwtSigningSecret                     string        `yaml:"jwtSigningSecret" envconfig:"FRONTEND_JWT_SECRET"`
+	JwtIssuer                            string        `yaml:"jwtIssuer" envconfig:"FRONTEND_JWT_ISSUER"`
+	JwtValidityInMinutes                 int           `yaml:"jwtValidityInMinutes" envconfig:"FRONTEND_JWT_VALIDITY_INMINUTES"`
+	MaxMailsPerEmailPerDay               int           `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
+	Mail                                 struct {
+		SMTP struct {
+			Server   string `yaml:"server" envconfig:"FRONTEND_MAIL_SMTP_SERVER"`
+			Host     string `yaml:"host" envconfig:"FRONTEND_MAIL_SMTP_HOST"`
+			User     string `yaml:"user" envconfig:"FRONTEND_MAIL_SMTP_USER"`
+			Password string `yaml:"password" envconfig:"FRONTEND_MAIL_SMTP_PASSWORD"`
+		} `yaml:"smtp"`
+		Mailgun struct {
+			Domain     string `yaml:"domain" envconfig:"FRONTEND_MAIL_MAILGUN_DOMAIN"`
+			PrivateKey string `yaml:"privateKey" envconfig:"FRONTEND_MAIL_MAILGUN_PRIVATE_KEY"`
+			Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
+		} `yaml:"mailgun"`
+		Contact struct {
+			SupportEmail string `yaml:"supportEmail" envconfig:"FRONTEND_MAIL_CONTACT_SUPPORT_EMAIL"`
+			InquiryEmail string `yaml:"inquiryEmail" envconfig:"FRONTEND_MAIL_CONTACT_INQUIRY_EMAIL"`
+		} `yaml:"contact"`
+	} `yaml:"mail"`
+	GATag         string `yaml:"gatag" envconfig:"GATAG"`
+	VerifyAppSubs bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
+	Apple         struct {
+		LegacyAppSubsAppleSecret string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
+		KeyID                    string `yaml:"keyID" envconfig:"FRONTEND_APPLE_APP_KEY_ID"`
+		IssueID                  string `yaml:"issueID" envconfig:"FRONTEND_APPLE_ISSUE_ID"`
+		Certificate              string `yaml:"certificate" envconfig:"FRONTEND_APPLE_CERTIFICATE"`
+	} `yaml:"apple"`
+	AppSubsGoogleJSONPath string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
+	DisableStatsInserts   bool   `yaml:"disableStatsInserts" envconfig:"FRONTEND_DISABLE_STATS_INSERTS"`
+	ShowDonors            struct {
+		Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
+		URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
+	} `yaml:"showDonors"`
+	Countdown struct {
+		Enabled   bool          `yaml:"enabled" envconfig:"FRONTEND_COUNTDOWN_ENABLED"`
+		Title     template.HTML `yaml:"title" envconfig:"FRONTEND_COUNTDOWN_TITLE"`
+		Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
+		Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
+	} `yaml:"countdown"`
+	HttpReadTimeout    time.Duration `yaml:"httpReadTimeout" envconfig:"FRONTEND_HTTP_READ_TIMEOUT"`
+	HttpWriteTimeout   time.Duration `yaml:"httpWriteTimeout" envconfig:"FRONTEND_HTTP_WRITE_TIMEOUT"`
+	HttpIdleTimeout    time.Duration `yaml:"httpIdleTimeout" envconfig:"FRONTEND_HTTP_IDLE_TIMEOUT"`
+	ClCurrency         string        `yaml:"clCurrency" envconfig:"FRONTEND_CL_CURRENCY"`
+	ClCurrencyDivisor  int64         `yaml:"clCurrencyDivisor" envconfig:"FRONTEND_CL_CURRENCY_DIVISOR"`
+	ClCurrencyDecimals int64         `yaml:"clCurrencyDecimals" envconfig:"FRONTEND_CL_CURRENCY_DECIMALS"`
+	ElCurrency         string        `yaml:"elCurrency" envconfig:"FRONTEND_EL_CURRENCY"`
+	ElCurrencyDivisor  int64         `yaml:"elCurrencyDivisor" envconfig:"FRONTEND_EL_CURRENCY_DIVISOR"`
+	ElCurrencyDecimals int64         `yaml:"elCurrencyDecimals" envconfig:"FRONTEND_EL_CURRENCY_DECIMALS"`
+	MainCurrency       string        `yaml:"mainCurrency" envconfig:"FRONTEND_MAIN_CURRENCY"`
 }
 
 type DatabaseConfig struct {

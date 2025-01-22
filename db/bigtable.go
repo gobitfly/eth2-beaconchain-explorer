@@ -70,7 +70,7 @@ type Bigtable struct {
 
 	tableMachineMetrics *gcp_bigtable.Table
 
-	redisCache *redis.Client
+	redisCache RedisClient
 
 	LastAttestationCache    map[uint64]uint64
 	LastAttestationCacheMux *sync.Mutex
@@ -82,10 +82,30 @@ type Bigtable struct {
 	machineMetricsQueuedWritesChan chan (types.BulkMutation)
 }
 
+type RedisClient interface {
+	SCard(ctx context.Context, key string) *redis.IntCmd
+	SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd
+	Pipeline() redis.Pipeliner
+	Get(ctx context.Context, key string) *redis.StringCmd
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
+}
+
 func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, error) {
+	rdc := redis.NewClient(&redis.Options{
+		Addr:        redisAddress,
+		ReadTimeout: time.Second * 20,
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	if err := rdc.Ping(ctx).Err(); err != nil {
+		return nil, err
+	}
 
+	return InitBigtableWithCache(ctx, project, instance, chainId, rdc)
+}
+
+func InitBigtableWithCache(ctx context.Context, project, instance, chainId string, rdc RedisClient) (*Bigtable, error) {
 	if utils.Config.Bigtable.Emulator {
-
 		if utils.Config.Bigtable.EmulatorHost == "" {
 			utils.Config.Bigtable.EmulatorHost = "127.0.0.1"
 		}
@@ -96,22 +116,10 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 			logger.Fatalf("unable to set bigtable emulator environment variable: %v", err)
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
 
 	poolSize := 50
 	btClient, err := gcp_bigtable.NewClient(ctx, project, instance, option.WithGRPCConnectionPool(poolSize))
-	// btClient, err := gcp_bigtable.NewClient(context.Background(), project, instance)
 	if err != nil {
-		return nil, err
-	}
-
-	rdc := redis.NewClient(&redis.Options{
-		Addr:        redisAddress,
-		ReadTimeout: time.Second * 20,
-	})
-
-	if err := rdc.Ping(ctx).Err(); err != nil {
 		return nil, err
 	}
 

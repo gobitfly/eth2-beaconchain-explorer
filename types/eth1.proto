@@ -64,7 +64,8 @@ message Eth1Transaction {
     uint64 gas_used = 19;
     bytes logs_bloom = 20;
     uint64 status = 21;
-    string error_msg = 22;
+    reserved 22; // string error_msg = 22;
+
     repeated Eth1Log logs = 23;
 
     // Internal transactions
@@ -155,6 +156,12 @@ message Eth1WithdrawalIndexed {
     google.protobuf.Timestamp time = 6;
 }
 
+enum StatusType {
+    FAILED = 0;
+    SUCCESS = 1;
+    PARTIAL = 2;
+}
+
 message Eth1TransactionIndexed {
     bytes hash = 1;
     uint64 block_number = 2;
@@ -166,13 +173,15 @@ message Eth1TransactionIndexed {
     bytes tx_fee = 8;
     bytes gas_price = 9;
     bool is_contract_creation = 10;
-    // invokes_contract is unused, should mark reserved!
-    bool invokes_contract = 11;
+    reserved 11; // bool invokes_contract = 11;
+
     string error_msg = 12;
 
     // EIP 4844
     bytes blob_tx_fee = 13;
     bytes blob_gas_price = 14;
+
+    StatusType status = 15;
 }
 
 message Eth1InternalTransactionIndexed {
@@ -183,6 +192,7 @@ message Eth1InternalTransactionIndexed {
     bytes from = 5;
     bytes to = 6;
     bytes value = 7;
+    bool reverted = 8;
 }
 
 // https://eips.ethereum.org/EIPS/eip-4844

@@ -12,6 +12,8 @@ import (
 	gcp_bigtable "cloud.google.com/go/bigtable"
 )
 
+var ErrTableAlreadyExist = fmt.Errorf("aborting bigtable schema init as tables are already present")
+
 func InitBigtableSchema() error {
 
 	tables := make(map[string]map[string]gcp_bigtable.GCPolicy)
@@ -75,7 +77,7 @@ func InitBigtableSchema() error {
 	}
 
 	if len(existingTables) > 0 {
-		return fmt.Errorf("aborting bigtable schema init as tables are already present")
+		return ErrTableAlreadyExist
 	}
 
 	for name, definition := range tables {
