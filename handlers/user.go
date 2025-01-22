@@ -1035,7 +1035,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DeleteUserById(user.UserID)
 	if err != nil {
-		logger.Errorf("error deleting user by email for user: %v %v", user.UserID, err)
+		logger.Errorf("error deleting user by id for user: %v %v", user.UserID, err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not delete user.")
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
