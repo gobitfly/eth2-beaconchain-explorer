@@ -1220,14 +1220,15 @@ type CsrfData struct {
 type UserSettingsPageData struct {
 	CsrfField template.HTML
 	AuthData
-	Subscription        UserSubscription
-	Premium             UserPremiumSubscription
-	PairedDevices       []PairedDevice
-	Sapphire            *string
-	Emerald             *string
-	Diamond             *string
-	ShareMonitoringData bool
-	ApiStatistics       *ApiStatistics
+	Subscription         UserSubscription
+	Premium              UserPremiumSubscription
+	PairedDevices        []PairedDevice
+	Sapphire             *string
+	Emerald              *string
+	Diamond              *string
+	ShareMonitoringData  bool
+	ApiStatistics        *ApiStatistics
+	IsUserDeleteDisabled bool
 }
 
 type PairedDevice struct {

@@ -115,6 +115,16 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// disable delete button if user has active subscription
+	hasUserActiveSubscription, err := getHasUserActiveSubscription(user.UserID)
+	if err != nil {
+		logger.Errorf("Error retrieving the active subscription for user: %v %v", user.UserID, err)
+		utils.SetFlash(w, r, "", "Error: Something went wrong.")
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+	userSettingsData.IsUserDeleteDisabled = hasUserActiveSubscription
+
 	userSettingsData.ApiStatistics.MaxDaily = &maxDaily
 	userSettingsData.ApiStatistics.MaxMonthly = &maxMonthly
 

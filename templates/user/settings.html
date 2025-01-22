@@ -460,9 +460,13 @@
                   </div>
                   <div class="card-body">
                     <div class="d-flex justify-content-between">
-                      <span> Warning, you will not be able to recover your account! </span>
-                      <!-- Button trigger modal -->
-                      <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteAccountModal">Delete</button>
+                      {{ if .IsUserDeleteDisabled }}
+                        <span> Warning, you will not be able to recover your account! </span>
+                        <!-- Button trigger modal -->
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteAccountModal">Delete</button>
+                      {{ else }}
+                        <span> You currently have an active premium subscription or premium API plan. To delete your account please cancel your subscription or contact our <a href="https://dsc.gg/beaconchain">support</a> </span>
+                      {{ end }}
                     </div>
                   </div>
                 </div>
