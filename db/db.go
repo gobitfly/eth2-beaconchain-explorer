@@ -20,6 +20,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
+	_ "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -51,6 +52,8 @@ type SQLReaderDb interface {
 // DB is a pointer to the explorer-database
 var WriterDb *sqlx.DB
 var ReaderDb SQLReaderDb
+
+var ClickhouseReaderDb *sqlx.DB
 
 var logger = logrus.StandardLogger().WithField("module", "db")
 
@@ -84,83 +87,96 @@ func dbTestConnection(dbConn *sqlx.DB, dataBaseName string) {
 }
 
 func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) (*sqlx.DB, *sqlx.DB) {
-	if writer.MaxOpenConns == 0 {
-		writer.MaxOpenConns = 50
-	}
-	if writer.MaxIdleConns == 0 {
-		writer.MaxIdleConns = 10
-	}
-	if writer.MaxOpenConns < writer.MaxIdleConns {
-		writer.MaxIdleConns = writer.MaxOpenConns
+	if writer == nil && reader == nil {
+		logger.Fatal("no database configuration provided", 0)
 	}
 
-	if reader.MaxOpenConns == 0 {
-		reader.MaxOpenConns = 50
-	}
-	if reader.MaxIdleConns == 0 {
-		reader.MaxIdleConns = 10
-	}
-	if reader.MaxOpenConns < reader.MaxIdleConns {
-		reader.MaxIdleConns = reader.MaxOpenConns
-	}
-
-	var sslParam string
-	if driverName == "clickhouse" {
-		sslParam = "secure=false"
-		if writer.SSL {
-			sslParam = "secure=true"
+	var dbConnWriter, dbConnReader *sqlx.DB
+	var err error
+	if writer != nil {
+		sslParam := ""
+		if driverName == "clickhouse" {
+			sslParam = "secure=false"
+			if writer.SSL {
+				sslParam = "secure=true"
+			}
+			// debug
+			// sslParam += "&debug=true"
+		} else {
+			sslParam = "sslmode=disable"
+			if writer.SSL {
+				sslParam = "sslmode=require"
+			}
 		}
-		// debug
-		// sslParam += "&debug=true"
-	} else {
-		sslParam = "sslmode=disable"
-		if writer.SSL {
-			sslParam = "sslmode=require"
+		if writer.MaxOpenConns == 0 {
+			writer.MaxOpenConns = 50
 		}
-	}
+		if writer.MaxIdleConns == 0 {
+			writer.MaxIdleConns = 10
+		}
+		if writer.MaxOpenConns < writer.MaxIdleConns {
+			writer.MaxIdleConns = writer.MaxOpenConns
+		}
 
-	logger.Infof("connecting to %s database %s:%s/%s as writer with %d/%d max open/idle connections", databaseBrand, writer.Host, writer.Port, writer.Name, writer.MaxOpenConns, writer.MaxIdleConns)
-	dbConnWriter, err := sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, writer.Username, writer.Password, net.JoinHostPort(writer.Host, writer.Port), writer.Name, sslParam))
-	if err != nil {
-		logger.Fatal(err, "error getting Connection Writer database", 0)
-	}
+		logger.Infof("connecting to %s database %s:%s/%s as writer with %d/%d max open/idle connections", databaseBrand, writer.Host, writer.Port, writer.Name, writer.MaxOpenConns, writer.MaxIdleConns)
+		dbConnWriter, err = sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, writer.Username, writer.Password, net.JoinHostPort(writer.Host, writer.Port), writer.Name, sslParam))
+		if err != nil {
+			logger.Fatal(err, "error getting Connection Writer database", 0)
+		}
 
-	dbTestConnection(dbConnWriter, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
-	dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
-	dbConnWriter.SetConnMaxLifetime(time.Minute)
-	dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
-	dbConnWriter.SetMaxIdleConns(writer.MaxIdleConns)
+		dbTestConnection(dbConnWriter, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
+		dbConnWriter.SetConnMaxIdleTime(time.Second * 30)
+		dbConnWriter.SetConnMaxLifetime(time.Minute)
+		dbConnWriter.SetMaxOpenConns(writer.MaxOpenConns)
+		dbConnWriter.SetMaxIdleConns(writer.MaxIdleConns)
+	}
 
 	if reader == nil {
 		return dbConnWriter, dbConnWriter
 	}
 
-	if driverName == "clickhouse" {
-		sslParam = "secure=false"
-		if writer.SSL {
-			sslParam = "secure=true"
+	if reader != nil {
+		sslParam := ""
+		if driverName == "clickhouse" {
+			sslParam = "secure=false"
+			if reader.SSL {
+				sslParam = "secure=true"
+			}
+			// debug
+			// sslParam += "&debug=true"
+		} else {
+			sslParam = "sslmode=disable"
+			if reader.SSL {
+				sslParam = "sslmode=require"
+			}
 		}
-		// debug
-		// sslParam += "&debug=true"
-	} else {
-		sslParam = "sslmode=disable"
-		if writer.SSL {
-			sslParam = "sslmode=require"
+		if reader.MaxOpenConns == 0 {
+			reader.MaxOpenConns = 50
 		}
-	}
+		if reader.MaxIdleConns == 0 {
+			reader.MaxIdleConns = 10
+		}
+		if reader.MaxOpenConns < reader.MaxIdleConns {
+			reader.MaxIdleConns = reader.MaxOpenConns
+		}
 
-	logger.Infof("connecting to %s database %s:%s/%s as reader with %d/%d max open/idle connections", databaseBrand, reader.Host, reader.Port, reader.Name, reader.MaxOpenConns, reader.MaxIdleConns)
-	dbConnReader, err := sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, reader.Username, reader.Password, net.JoinHostPort(reader.Host, reader.Port), reader.Name, sslParam))
-	if err != nil {
-		logger.Fatal(err, "error getting Connection Reader database", 0)
-	}
+		logger.Infof("connecting to %s database %s:%s/%s as reader with %d/%d max open/idle connections", databaseBrand, reader.Host, reader.Port, reader.Name, reader.MaxOpenConns, reader.MaxIdleConns)
+		dbConnReader, err = sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, reader.Username, reader.Password, net.JoinHostPort(reader.Host, reader.Port), reader.Name, sslParam))
+		if err != nil {
+			logger.Fatal(err, "error getting Connection Reader database", 0)
+		}
 
-	dbTestConnection(dbConnReader, fmt.Sprintf("database %v:%v/%v", writer.Host, writer.Port, writer.Name))
-	dbConnReader.SetConnMaxIdleTime(time.Second * 30)
-	dbConnReader.SetConnMaxLifetime(time.Minute)
-	dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
-	dbConnReader.SetMaxIdleConns(reader.MaxIdleConns)
+		dbTestConnection(dbConnReader, fmt.Sprintf("database %v:%v/%v", reader.Host, reader.Port, reader.Name))
+		dbConnReader.SetConnMaxIdleTime(time.Second * 30)
+		dbConnReader.SetConnMaxLifetime(time.Minute)
+		dbConnReader.SetMaxOpenConns(reader.MaxOpenConns)
+		dbConnReader.SetMaxIdleConns(reader.MaxIdleConns)
+	}
 	return dbConnWriter, dbConnReader
+}
+
+func MustInitClickhouseDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) {
+	_, ClickhouseReaderDb = mustInitDB(writer, reader, driverName, databaseBrand)
 }
 
 func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) {
@@ -191,7 +207,7 @@ func ApplyEmbeddedDbSchema(version int64) error {
 	return nil
 }
 
-func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
 	// Initialize the return values
 	deposits := []*types.EthOneDepositsData{}
 	totalCount := uint64(0)
@@ -199,17 +215,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"tx_hash", "tx_input", "tx_index", "block_number", "block_ts", "from_address", "publickey", "withdrawal_credentials", "amount", "signature", "merkletree_index", "state", "valid_signature"}
-	hasColumn := false
-	for _, column := range columns {
-		if orderBy == column {
-			hasColumn = true
-			break
-		}
-	}
-	if !hasColumn {
-		orderBy = "block_ts"
-	}
+	orderBy := "block_ts"
 
 	var param interface{}
 	var searchQuery string
@@ -373,7 +379,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	return deposits, totalCount, nil
 }
 
-func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, uint64, error) {
+func GetEth2Deposits(query string, length, start uint64, orderDir string) ([]*types.EthTwoDepositData, uint64, error) {
 	// Initialize the return values
 	deposits := []*types.EthTwoDepositData{}
 	totalCount := uint64(0)
@@ -381,30 +387,16 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"block_slot", "publickey", "amount", "withdrawalcredentials", "signature"}
-	hasColumn := false
-	for _, column := range columns {
-		if orderBy == column {
-			hasColumn = true
-			break
-		}
-	}
-	if !hasColumn {
-		orderBy = "block_slot"
-	}
+	orderBy := "block_slot"
 
 	var param interface{}
 	var searchQuery string
 	var err error
 
 	// Define the base queries
-	deposistsCountQuery := `
-		SELECT COUNT(*)
-		FROM blocks_deposits
-		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-		%s`
+	depositsCountQuery := `SELECT COALESCE(SUM(depositscount),0) FROM blocks WHERE status = '1' AND depositscount > 0`
 
-	deposistsQuery := `
+	depositsQuery := `
 			SELECT 
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
@@ -430,14 +422,14 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 		}
 	}
 	if trimmedQuery == "" {
-		err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, ""))
+		err = ReaderDb.Get(&totalCount, depositsCountQuery)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("error getting totalCount without search: %w", err)
 		}
 
-		err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, "", orderBy, orderDir), length, start)
+		err = ReaderDb.Select(&deposits, fmt.Sprintf(depositsQuery, "", orderBy, orderDir), length, start)
 		if err != nil && err != sql.ErrNoRows {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("error selecting deposits without search: %w", err)
 		}
 
 		return deposits, totalCount, nil
@@ -446,33 +438,49 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if utils.IsHash(trimmedQuery) {
 		param = hash
 		searchQuery = `WHERE blocks_deposits.publickey = $3`
+		depositsCountQuery = `
+			SELECT COALESCE(SUM(depositscount),0)
+			FROM blocks
+			INNER JOIN blocks_deposits ON blocks.blockroot = blocks_deposits.block_root AND blocks_deposits.publickey = $1
+			WHERE status = '1' AND depositscount > 0`
 	} else if utils.IsValidWithdrawalCredentials(trimmedQuery) {
 		param = hash
 		searchQuery = `WHERE blocks_deposits.withdrawalcredentials = $3`
+		depositsCountQuery = `
+			SELECT COALESCE(SUM(depositscount),0)
+			FROM blocks
+			INNER JOIN blocks_deposits ON blocks.blockroot = blocks_deposits.block_root AND blocks_deposits.withdrawalcredentials = $1
+			WHERE status = '1' AND depositscount > 0`
 	} else if utils.IsEth1Address(trimmedQuery) {
 		param = hash
 		searchQuery = `
-				LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
-				WHERE eth1_deposits.from_address = $3`
+			LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+			WHERE eth1_deposits.from_address = $3`
+		depositsCountQuery = `
+			SELECT COUNT(*) FROM blocks_deposits 
+			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
+			LEFT JOIN eth1_deposits ON blocks_deposits.publickey = eth1_deposits.publickey
+			WHERE eth1_deposits.from_address = $1`
 	} else if uiQuery, parseErr := strconv.ParseUint(query, 10, 31); parseErr == nil { // Limit to 31 bits to stay within math.MaxInt32
 		param = uiQuery
 		searchQuery = `WHERE blocks_deposits.block_slot = $3`
+		depositsCountQuery = `
+			SELECT COALESCE(SUM(depositscount),0)
+			FROM blocks
+			WHERE status = '1' AND depositscount > 0 AND slot = $1`
 	} else {
 		// The query does not fulfill any of the requirements for a search
 		return deposits, totalCount, nil
 	}
 
-	// The deposits count query only has one parameter for the search
-	countSearchQuery := strings.ReplaceAll(searchQuery, "$3", "$1")
-
-	err = ReaderDb.Get(&totalCount, fmt.Sprintf(deposistsCountQuery, countSearchQuery), param)
-	if err != nil {
-		return nil, 0, err
+	err = ReaderDb.Get(&totalCount, depositsCountQuery, param)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, 0, fmt.Errorf("error getting totalCount: %w", err)
 	}
 
-	err = ReaderDb.Select(&deposits, fmt.Sprintf(deposistsQuery, searchQuery, orderBy, orderDir), length, start, param)
+	err = ReaderDb.Select(&deposits, fmt.Sprintf(depositsQuery, searchQuery, orderBy, orderDir), length, start, param)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("error selecting deposits: %w", err)
 	}
 
 	return deposits, totalCount, nil
@@ -2260,10 +2268,9 @@ func GetTotalAmountWithdrawn() (sum uint64, count uint64, err error) {
 func GetTotalAmountDeposited() (uint64, error) {
 	var total uint64
 	err := ReaderDb.Get(&total, `
-	SELECT 
-		COALESCE(sum(d.amount), 0) as sum 
-	FROM blocks_deposits d
-	INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'`)
+	SELECT COALESCE(sum(d.amount), 0) as sum 
+	FROM blocks_deposits d 
+	INNER JOIN blocks b ON b.slot = d.block_slot AND b.blockroot = d.block_root WHERE b.status = '1' AND b.depositscount > 0;`)
 	return total, err
 }
 

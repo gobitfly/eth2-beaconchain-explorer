@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -69,8 +70,17 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 	limit := uint64(100)
 	vars := mux.Vars(r)
 
-	var blockList []uint64
 	splits := strings.Split(vars["blockNumber"], ",")
+
+	if len(splits) > int(limit) {
+		SendBadRequestResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
+		return
+	}
+
+	slices.Sort(splits)
+	splits = slices.Compact(splits)
+
+	var blockList []uint64
 	for _, split := range splits {
 		temp, err := strconv.ParseUint(split, 10, 64)
 		if err != nil {
@@ -78,11 +88,6 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		blockList = append(blockList, temp)
-	}
-
-	if len(blockList) > int(limit) {
-		SendBadRequestResponse(w, r.URL.String(), fmt.Sprintf("only a maximum of %d query parameters are allowed", limit))
-		return
 	}
 
 	blocks, err := db.BigtableClient.GetBlocksIndexedMultiple(blockList, limit)

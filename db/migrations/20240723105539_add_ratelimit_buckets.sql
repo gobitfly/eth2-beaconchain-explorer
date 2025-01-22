@@ -14,12 +14,12 @@ ALTER TABLE api_statistics DROP CONSTRAINT api_statistics_pkey, ADD PRIMARY KEY 
 -- +goose Down
 -- +goose StatementBegin
 SELECT('down SQL query - update api_products');
-ALTER TABLE api_products DROP COLUMN IF EXISTS bucket;
 ALTER TABLE api_products DROP CONSTRAINT api_products_pkey, ADD PRIMARY KEY (name, valid_from);
+ALTER TABLE api_products DROP COLUMN IF EXISTS bucket;
 SELECT('down SQL query - update api_ratelimits');
-ALTER TABLE api_ratelimits DROP COLUMN IF EXISTS bucket;
 ALTER TABLE api_ratelimits DROP CONSTRAINT api_ratelimits_pkey, ADD PRIMARY KEY (user_id);
+ALTER TABLE api_ratelimits DROP COLUMN IF EXISTS bucket;
 SELECT('down SQL query - update api_statistics');
-ALTER TABLE api_statistics DROP COLUMN IF EXISTS bucket;
 ALTER TABLE api_statistics DROP CONSTRAINT api_statistics_pkey, ADD PRIMARY KEY (ts, apikey, endpoint);
+ALTER TABLE api_statistics DROP COLUMN IF EXISTS bucket;
 -- +goose StatementEnd

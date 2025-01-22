@@ -47,24 +47,9 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
-
-	orderColumn := q.Get("order[0][column]")
-	orderByMap := map[string]string{
-		"0": "block_slot",
-		// "1": "validatorindex",
-		"1": "publickey",
-		"2": "amount",
-		"3": "withdrawalcredentials",
-		"4": "signature",
-	}
-	orderBy, exists := orderByMap[orderColumn]
-	if !exists {
-		orderBy = "block_ts"
-	}
-
 	orderDir := q.Get("order[0][dir]")
 
-	deposits, depositCount, err := db.GetEth2Deposits(search, length, start, orderBy, orderDir)
+	deposits, depositCount, err := db.GetEth2Deposits(search, length, start, orderDir)
 	if err != nil {
 		logger.Errorf("error retrieving eth2_deposit data or count: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

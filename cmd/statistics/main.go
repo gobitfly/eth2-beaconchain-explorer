@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/big"
 	"strconv"
 	"strings"
@@ -23,13 +24,15 @@ import (
 )
 
 type options struct {
-	configPath                string
-	statisticsDayToExport     int64
-	statisticsDaysToExport    string
-	statisticsValidatorToggle bool
-	statisticsChartToggle     bool
-	statisticsGraffitiToggle  bool
-	resetStatus               bool
+	configPath                 string
+	statisticsDayToExport      int64
+	statisticsDaysToExport     string
+	statisticsValidatorToggle  bool
+	statisticsChartToggle      bool
+	statisticsGraffitiToggle   bool
+	statisticsDepositsToggle   bool
+	statisticsDepositsInterval time.Duration
+	resetStatus                bool
 }
 
 var opt = &options{}
@@ -41,6 +44,8 @@ func main() {
 	flag.BoolVar(&opt.statisticsValidatorToggle, "validators.enabled", false, "Toggle exporting validator statistics")
 	flag.BoolVar(&opt.statisticsChartToggle, "charts.enabled", false, "Toggle exporting chart series")
 	flag.BoolVar(&opt.statisticsGraffitiToggle, "graffiti.enabled", false, "Toggle exporting graffiti statistics")
+	flag.BoolVar(&opt.statisticsDepositsToggle, "deposits.enabled", false, "Toggle aggregating deposits")
+	flag.DurationVar(&opt.statisticsDepositsInterval, "deposits.interval", time.Hour*24, "Duration to wait between deposit aggregation")
 	flag.BoolVar(&opt.resetStatus, "validators.reset", false, "Export stats independet if they have already been exported previously")
 
 	versionFlag := flag.Bool("version", false, "Show version and exit")
@@ -241,6 +246,10 @@ func main() {
 
 	go statisticsLoop(rpcClient)
 
+	if opt.statisticsDepositsToggle {
+		go depositsLoop()
+	}
+
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
@@ -281,6 +290,7 @@ func statisticsLoop(client rpc.Client) {
 			if lastExportedDayValidator != 0 {
 				lastExportedDayValidator++
 			}
+
 			if lastExportedDayValidator <= previousDay || lastExportedDayValidator == 0 {
 				for day := lastExportedDayValidator; day <= previousDay; day++ {
 					err := db.WriteValidatorStatisticsForDay(day, client)
@@ -350,6 +360,25 @@ func statisticsLoop(client rpc.Client) {
 			services.ReportStatus("statistics", loopError.Error(), nil)
 		}
 		time.Sleep(time.Minute)
+	}
+}
+
+func depositsLoop() {
+	if opt.statisticsDepositsInterval < time.Minute {
+		log.Fatal(nil, "deposits.interval must be at least 1 minute", 0)
+	}
+	time.Sleep(time.Minute) // wait in case the process is in crashloop
+	for {
+		start := time.Now()
+		err := db.AggregateDeposits()
+		if err != nil {
+			logrus.Errorf("error aggregating deposits: %v", err)
+			services.ReportStatus("deposits_aggregator", err.Error(), nil)
+		} else {
+			logrus.WithFields(logrus.Fields{"duration": time.Since(start)}).Infof("aggregated deposits")
+			services.ReportStatus("deposits_aggregator", "Running", nil)
+		}
+		time.Sleep(opt.statisticsDepositsInterval)
 	}
 }
 

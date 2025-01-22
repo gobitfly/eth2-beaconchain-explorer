@@ -2,14 +2,12 @@ package exporter
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"math/big"
 	"regexp"
 	"time"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
-	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
@@ -126,15 +124,6 @@ func eth1DepositsExporter() {
 			logger.WithError(err).Errorf("error saving eth1-deposits")
 			time.Sleep(time.Second * 5)
 			continue
-		}
-
-		if len(depositsToSave) > 0 {
-			err = aggregateDeposits()
-			if err != nil {
-				logger.WithError(err).Errorf("error saving eth1-deposits-leaderboard")
-				time.Sleep(time.Second * 5)
-				continue
-			}
 		}
 
 		// make sure we are progressing even if there are no deposits in the last batch
@@ -372,48 +361,4 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 	}
 
 	return headers, txs, nil
-}
-
-func aggregateDeposits() error {
-	start := time.Now()
-	defer func() {
-		metrics.TaskDuration.WithLabelValues("exporter_aggregate_eth1_deposits").Observe(time.Since(start).Seconds())
-	}()
-	_, err := db.WriterDb.Exec(`
-		INSERT INTO eth1_deposits_aggregated (from_address, amount, validcount, invalidcount, slashedcount, totalcount, activecount, pendingcount, voluntary_exit_count)
-		SELECT
-			eth1.from_address,
-			SUM(eth1.amount) as amount,
-			SUM(eth1.validcount) AS validcount,
-			SUM(eth1.invalidcount) AS invalidcount,
-			COUNT(CASE WHEN v.status = 'slashed' THEN 1 END) AS slashedcount,
-			COUNT(v.pubkey) AS totalcount,
-			COUNT(CASE WHEN v.status = 'active_online' OR v.status = 'active_offline' THEN 1 END) as activecount,
-			COUNT(CASE WHEN v.status = 'deposited' THEN 1 END) AS pendingcount,
-			COUNT(CASE WHEN v.status = 'exited' THEN 1 END) AS voluntary_exit_count
-		FROM (
-			SELECT 
-				from_address,
-				publickey,
-				SUM(amount) AS amount,
-				COUNT(CASE WHEN valid_signature = 't' THEN 1 END) AS validcount,
-				COUNT(CASE WHEN valid_signature = 'f' THEN 1 END) AS invalidcount
-			FROM eth1_deposits
-			GROUP BY from_address, publickey
-		) eth1
-		LEFT JOIN (SELECT pubkey, status FROM validators) v ON v.pubkey = eth1.publickey
-		GROUP BY eth1.from_address
-		ON CONFLICT (from_address) DO UPDATE SET
-			amount               = excluded.amount,
-			validcount           = excluded.validcount,
-			invalidcount         = excluded.invalidcount,
-			slashedcount         = excluded.slashedcount,
-			totalcount           = excluded.totalcount,
-			activecount          = excluded.activecount,
-			pendingcount         = excluded.pendingcount,
-			voluntary_exit_count = excluded.voluntary_exit_count`)
-	if err != nil && err != sql.ErrNoRows {
-		return nil
-	}
-	return err
 }
