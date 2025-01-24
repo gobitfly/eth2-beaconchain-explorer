@@ -804,15 +804,18 @@ type BlockPageProposerSlashing struct {
 }
 
 type FrontendConsolidationRequest struct {
-	BlockSlot     uint64 `db:"block_slot"`
-	BlockRoot     []byte `db:"block_root"`
-	Index         uint64 `db:"request_index"`
-	SourceAddress []byte `db:"source_address"`
-	SourcePubkey  []byte `db:"source_pubkey"`
-	SourceIndex   uint64 `db:"source_index"`
-	TargetPubkey  []byte `db:"target_pubkey"`
-	TargetIndex   uint64 `db:"target_index"`
-	Type          string
+	BlockSlot          uint64 `db:"block_slot"`
+	BlockRoot          []byte `db:"block_root"`
+	Index              uint64 `db:"request_index"`
+	SourceAddress      []byte `db:"source_address"`
+	SourcePubkey       []byte `db:"source_pubkey"`
+	SourceIndex        uint64 `db:"source_index"`
+	TargetPubkey       []byte `db:"target_pubkey"`
+	TargetIndex        uint64 `db:"target_index"`
+	QueuedAtEpoch      int64  `db:"queued_at_epoch"`
+	ProcessedAtEpoch   int64  `db:"processed_at_epoch"`
+	AmountConsolidated uint64 `db:"amount_consolidated"`
+	Type               string
 }
 
 type FrontendWithdrawalRequest struct {

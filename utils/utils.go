@@ -107,6 +107,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEth1TxHash":                        FormatEth1TxHash,
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
+		"formatDepositStatus":                     FormatDepositStatus,
+		"formatConsolidationStatus":               FormatConsolidationStatus,
 		"formatWithdawalCredentials":              FormatWithdawalCredentials,
 		"formatAddressToWithdrawalCredentials":    FormatAddressToWithdrawalCredentials,
 		"formatBitlist":                           FormatBitlist,
@@ -1831,4 +1833,39 @@ func GetMaxAllowedDayRangeValidatorStats(validatorAmount int) int {
 	} else {
 		return math.MaxInt
 	}
+}
+
+func FormatDepositStatus(queuedAtEpoch, processedAtEpoch int64) template.HTML {
+	if queuedAtEpoch == -2 && processedAtEpoch == -2 {
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit was processed by the beaconchain">Processed</span>`
+	}
+	if queuedAtEpoch == -1 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit was included by the beaconchain but has not yet been queued for processing">Pending</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill text-dark" style="background: rgba(179, 159, 70, 0.8); font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit is queued and will be processed soon">Queued</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch >= 0 {
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit was processed by the beaconchain">Processed</span>`
+	}
+
+	return ""
+}
+
+func FormatConsolidationStatus(queuedAtEpoch, processedAtEpoch int64) template.HTML {
+	if queuedAtEpoch == -1 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The consolidation was included by the beaconchain but has not yet been queued for processing">Pending</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill text-dark" style="background: rgba(179, 159, 70, 0.8); font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The consolidation is queued and will be processed soon">Queued</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch >= 0 {
+		return template.HTML(fmt.Sprintf(`<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The consolidation was processed in epoch %d by the beaconchain">Processed</span>`, processedAtEpoch))
+	}
+
+	return ""
 }

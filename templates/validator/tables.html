@@ -572,8 +572,8 @@
                 <th>Time</th>
                 <th>Withdrawal Credential</th>
                 <th>Amount</th>
-                <!-- <th>Proof</th> -->
                 <th>Signature</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -594,6 +594,7 @@
                     {{ formatHash $deposit.Signature }}
                     <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash $deposit.Signature false }}"></i>
                   </td>
+                  <td>{{ formatDepositStatus $deposit.QueuedAtEpoch $deposit.ProcessedAtEpoch }}</td>
                 </tr>
               {{ end }}
             </tbody>
@@ -873,6 +874,8 @@
               <th>Target Index</th>
               <th>Target Pubkey</th>
               <th>Type</th>
+              <th>Status</th>
+              <th>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -886,6 +889,14 @@
                 <td>{{ formatValidator $request.TargetIndex }}</td>
                 <td>{{ formatPublicKey $request.TargetPubkey }}</td>
                 <td>{{ $request.Type }}</td>
+                <td>{{ formatConsolidationStatus $request.QueuedAtEpoch $request.ProcessedAtEpoch }}</td>
+                <td>
+                  {{ if gt $request.AmountConsolidated 0 }}
+                    {{ formatClCurrency $request.AmountConsolidated config.Frontend.MainCurrency 5 true false false false }}
+                  {{ else }}
+                    -
+                  {{ end }}
+                </td>
               </tr>
             {{ end }}
           </tbody>

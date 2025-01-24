@@ -850,7 +850,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			source_pubkey, 
 			(SELECT validatorindex FROM validators WHERE pubkey = source_pubkey) as source_index,
 			target_pubkey,
-			(SELECT validatorindex FROM validators WHERE pubkey = target_pubkey) as target_index
+			(SELECT validatorindex FROM validators WHERE pubkey = target_pubkey) as target_index,
+			COALESCE(queued_at_epoch, -1) AS queued_at_epoch,
+			COALESCE(processed_at_epoch, -1) AS processed_at_epoch,
+			COALESCE(amount_consolidated, 0) AS amount_consolidated
 		FROM blocks_consolidation_requests 
 		INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot AND blocks.status = '1'
 		WHERE blocks_consolidation_requests.source_pubkey = $1 OR blocks_consolidation_requests.target_pubkey = $1
@@ -882,7 +885,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE blocks_withdrawal_requests.validator_pubkey = $1 
 		ORDER BY block_slot DESC, request_index`, validatorPageData.PublicKey)
 		if err != nil {
-			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+			return fmt.Errorf("error retrieving blocks_withdrawal_requests of validator %v: %v", validatorPageData.Index, err)
 		}
 
 		for _, wr := range validatorPageData.WithdrawalRequests {

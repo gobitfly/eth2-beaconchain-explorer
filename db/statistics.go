@@ -79,19 +79,20 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		return fmt.Errorf("cannot export day %v as day %v has not yet been exported yet", day, int64(day)-1)
 	}
 
-	maxValidatorIndex, err := BigtableClient.GetMaxValidatorindexForEpoch(lastEpoch)
+	state, err := client.GetValidatorState(lastEpoch)
 	if err != nil {
-		return err
+		return fmt.Errorf("error retrieving validator state for epoch %v: %w", lastEpoch, err)
 	}
-	validators := make([]uint64, 0, maxValidatorIndex)
-	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, maxValidatorIndex)
+
+	validators := make([]uint64, 0, len(state.Data))
+	validatorData := make([]*types.ValidatorStatsTableDbRow, 0, len(state.Data))
 	validatorDataMux := &sync.Mutex{}
 
-	logger.Infof("processing statistics for validators 0-%d", maxValidatorIndex)
-	for i := uint64(0); i <= maxValidatorIndex; i++ {
-		validators = append(validators, i)
+	logger.Infof("processing statistics for validators 0-%d", len(state.Data))
+	for i := 0; i < len(state.Data); i++ {
+		validators = append(validators, uint64(state.Data[i].Index))
 		validatorData = append(validatorData, &types.ValidatorStatsTableDbRow{
-			ValidatorIndex: i,
+			ValidatorIndex: uint64(state.Data[i].Index),
 			Day:            int64(day),
 		})
 	}
@@ -831,6 +832,8 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 	}
 	lastSlot := utils.GetLastBalanceInfoSlotForDay(day)
 
+	firstEpoch, lastEpoch := utils.GetFirstAndLastEpochForDay(day)
+
 	logger := logger.WithFields(logrus.Fields{
 		"day":       day,
 		"firstSlot": firstSlot,
@@ -846,16 +849,63 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 	}
 	resDeposits := make([]*resRowDeposits, 0, 1024)
 	depositsQry := `
-			select validators.validatorindex, count(*) AS deposits, sum(amount) AS deposits_amount
-			from blocks_deposits
-			inner join validators on blocks_deposits.publickey = validators.pubkey
-			inner join blocks on blocks_deposits.block_root = blocks.blockroot
-			where blocks.slot >= $1 and blocks.slot <= $2 and (blocks.status = '1' OR blocks.slot = 0) and blocks_deposits.valid_signature
-			group by validators.validatorindex`
+			SELECT 
+				validatorindex, 
+				COUNT(*) AS deposits, 
+				SUM(amount) AS deposits_amount
+			FROM (
+				SELECT
+					validators.validatorindex,
+					amount
+				FROM
+					blocks_deposits
+					INNER JOIN validators ON blocks_deposits.publickey = validators.pubkey
+					INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot
+				where
+					blocks.slot >= $1
+					AND blocks.slot <= $2
+					AND (
+						blocks.status = '1'
+						OR blocks.slot = 0
+					)
+					AND blocks_deposits.valid_signature
+				UNION ALL
+				SELECT
+					validators.validatorindex,
+					amount
+				FROM
+					blocks_deposit_requests
+					INNER JOIN validators ON blocks_deposit_requests.pubkey = validators.pubkey
+					INNER JOIN blocks ON blocks_deposit_requests.block_root = blocks.blockroot
+				WHERE
+					blocks_deposit_requests.processed_at_epoch >= $3
+					AND blocks_deposit_requests.processed_at_epoch <= $4
+					AND (
+						blocks.status = '1'
+						OR blocks.slot = 0
+					)
+				UNION ALL
+				SELECT
+					validators.validatorindex,
+					amount_consolidated
+				FROM
+					blocks_consolidation_requests
+					INNER JOIN validators ON blocks_consolidation_requests.target_pubkey = validators.pubkey
+					INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot
+				WHERE
+					blocks_consolidation_requests.processed_at_epoch >= $3
+					AND blocks_consolidation_requests.processed_at_epoch <= $4
+					AND (
+						blocks.status = '1'
+						OR blocks.slot = 0
+					)
+			) AS a
+			GROUP BY validatorindex
+			ORDER BY 2 DESC;`
 
-	err := WriterDb.Select(&resDeposits, depositsQry, firstSlot, lastSlot)
+	err := WriterDb.Select(&resDeposits, depositsQry, firstSlot, lastSlot, firstEpoch, lastEpoch)
 	if err != nil {
-		return fmt.Errorf("error retrieving deposits for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
+		return fmt.Errorf("error retrieving deposits for day [%v], firstSlot [%v], lastSlot [%v], firstEpoch [%v], lastEpoch [%v]: %w", day, firstSlot, lastSlot, firstEpoch, lastEpoch, err)
 	}
 
 	mux.Lock()
@@ -872,14 +922,46 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 	}
 	resWithdrawals := make([]*resRowWithdrawals, 0, 1024)
 
-	withdrawalsQuery := `select validatorindex, count(*) AS withdrawals, sum(amount) AS withdrawals_amount
-			from blocks_withdrawals
-			inner join blocks on blocks_withdrawals.block_root = blocks.blockroot
-			where block_slot >= $1 and block_slot <= $2 and blocks.status = '1'
-			group by validatorindex;`
-	err = WriterDb.Select(&resWithdrawals, withdrawalsQuery, firstSlot, lastSlot)
+	withdrawalsQuery := `
+	SELECT
+		validatorindex,
+		COUNT(*) AS withdrawals,
+		SUM(amount) AS withdrawals_amount
+	FROM
+		(
+			SELECT
+				validatorindex,
+				amount
+			FROM
+				blocks_withdrawals
+				INNER JOIN blocks on blocks_withdrawals.block_root = blocks.blockroot
+			WHERE
+				block_slot >= $1
+				AND block_slot <= $2
+				AND blocks.status = '1'
+			UNION ALL
+			SELECT
+				validators.validatorindex,
+				amount_consolidated
+			FROM
+				blocks_consolidation_requests
+				INNER JOIN validators ON blocks_consolidation_requests.source_pubkey = validators.pubkey
+				INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot
+			WHERE
+				blocks_consolidation_requests.processed_at_epoch >= $3
+				AND blocks_consolidation_requests.processed_at_epoch <= $4
+				AND blocks_consolidation_requests.amount_consolidated > 0
+				AND (
+					blocks.status = '1'
+					OR blocks.slot = 0
+				)
+		) AS a
+	GROUP BY
+		validatorindex
+	`
+	err = WriterDb.Select(&resWithdrawals, withdrawalsQuery, firstSlot, lastSlot, firstEpoch, lastEpoch)
 	if err != nil {
-		return fmt.Errorf("error retrieving withdrawals for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
+		return fmt.Errorf("error retrieving withdrawals for day [%v], firstSlot [%v] and lastSlot [%v], firstEpoch [%v], lastEpoch [%v]: %w", day, firstSlot, lastSlot, firstEpoch, lastEpoch, err)
 	}
 
 	mux.Lock()

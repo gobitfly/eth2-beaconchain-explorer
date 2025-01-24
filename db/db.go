@@ -628,10 +628,29 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 			blocks_deposits.publickey,
 			blocks_deposits.withdrawalcredentials,
 			blocks_deposits.amount,
-			blocks_deposits.signature
+			blocks_deposits.signature,
+			-2 AS queued_at_epoch,
+			-2 AS processed_at_epoch
 		FROM blocks_deposits
 		INNER JOIN blocks ON (blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposits.block_slot = 0 AND blocks_deposits.block_slot = blocks.slot AND blocks_deposits.publickey = $1)
-		WHERE blocks_deposits.publickey = $1`, publicKey)
+		WHERE blocks_deposits.publickey = $1
+		UNION ALL
+		SELECT
+			blocks_deposit_requests.block_slot,
+			blocks_deposit_requests.request_index,
+			blocks_deposit_requests.block_root,
+			null,
+			blocks_deposit_requests.pubkey,
+			blocks_deposit_requests.withdrawal_credentials,
+			blocks_deposit_requests.amount,
+			blocks_deposit_requests.signature,
+			COALESCE(blocks_deposit_requests.queued_at_epoch, -1),
+			COALESCE(blocks_deposit_requests.processed_at_epoch, -1)
+		FROM blocks_deposit_requests
+		INNER JOIN blocks ON (blocks_deposit_requests.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposit_requests.block_slot = 0 AND blocks_deposit_requests.block_slot = blocks.slot AND blocks_deposit_requests.pubkey = $1)
+		WHERE blocks_deposit_requests.pubkey = $1
+		ORDER BY block_slot DESC, block_index DESC
+		`, publicKey)
 	if err != nil {
 		return nil, err
 	}
