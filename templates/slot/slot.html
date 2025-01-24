@@ -140,6 +140,7 @@
     }
 
     $(document).ready(function () {
+
       let slotNumber = {{ .Slot }} || 0
       var depositsTblOpts = {
         searchDelay: 0,
@@ -195,6 +196,7 @@
         ordering: false,
         stateSave: true,
         stateSaveCallback: function (settings, data) {
+          data.search.search = ""
           data.start = 0
           localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
         },
@@ -228,12 +230,21 @@
         },
       }
 
+      var t = $("#block_votes").DataTable(votesTblOpts)
+
       if (q) {
-        votesTblOpts.search = { search: q }
+        t.search(q)
+        t.draw()
       }
 
-      $("#block_votes").DataTable(votesTblOpts)
-
+      $(document).on("input", "#block_votes_filter > label > input", function (ev) {
+        if (ev && ev.target && ev.target.value) {
+          var newUrl = window.location.pathname  + "?q=" + encodeURIComponent(ev.target.value) + window.location.hash
+          window.history.replaceState(null, "", newUrl)
+        } else {
+          window.history.replaceState(null, "", window.location.pathname + window.location.hash)
+        }
+      })
 
       let withdrawalOpts = {
           searchDelay: 0,
