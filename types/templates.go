@@ -674,6 +674,7 @@ type BlockPageData struct {
 	BlobSidecars          []*BlockPageBlobSidecar
 	ConsolidationRequests []*FrontendConsolidationRequest
 	WithdrawalRequests    []*FrontendWithdrawalRequest
+	DepositRequests       []*FrontendDepositRequest
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
@@ -809,9 +810,9 @@ type FrontendConsolidationRequest struct {
 	Index              uint64 `db:"request_index"`
 	SourceAddress      []byte `db:"source_address"`
 	SourcePubkey       []byte `db:"source_pubkey"`
-	SourceIndex        uint64 `db:"source_index"`
+	SourceIndex        int64  `db:"source_index"`
 	TargetPubkey       []byte `db:"target_pubkey"`
-	TargetIndex        uint64 `db:"target_index"`
+	TargetIndex        int64  `db:"target_index"`
 	QueuedAtEpoch      int64  `db:"queued_at_epoch"`
 	ProcessedAtEpoch   int64  `db:"processed_at_epoch"`
 	AmountConsolidated uint64 `db:"amount_consolidated"`
@@ -824,9 +825,20 @@ type FrontendWithdrawalRequest struct {
 	Index           uint64 `db:"request_index"`
 	SourceAddress   []byte `db:"source_address"`
 	ValidatorPubkey []byte `db:"validator_pubkey"`
-	ValidatorIndex  uint64 `db:"validator_index"`
+	ValidatorIndex  int64  `db:"validator_index"`
 	Amount          uint64 `db:"amount"`
 	Type            string
+}
+
+type FrontendDepositRequest struct {
+	BlockSlot             uint64 `db:"block_slot"`
+	BlockRoot             []byte `db:"block_root"`
+	Index                 uint64 `db:"request_index"`
+	ValidatorPubkey       []byte `db:"pubkey"`
+	WithdrawalCredentials []byte `db:"withdrawal_credentials"`
+	ValidatorIndex        int64  `db:"validator_index"`
+	Amount                uint64 `db:"amount"`
+	Signature             []byte `db:"signature"`
 }
 
 // BlockPageBlobSidecar holds data of blob-sidecars of the corresponding block

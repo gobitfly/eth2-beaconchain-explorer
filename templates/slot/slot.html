@@ -446,6 +446,11 @@
             <a class="nav-link" id="withdrawal-requests-tab" data-toggle="tab" href="#withdrawal-requests" role="tab" aria-controls="withdrawal-requests" aria-selected="false">Withdrawal Requests <span class="badge bg-secondary text-white">{{ len .WithdrawalRequests }}</span></a>
           </li>
         {{ end }}
+        {{ if gt (len .DepositRequests) 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="deposit-requests-tab" data-toggle="tab" href="#deposit-requests" role="tab" aria-controls="deposit-requests" aria-selected="false">Deposit Requests <span class="badge bg-secondary text-white">{{ len .DepositRequests }}</span></a>
+          </li>
+        {{ end }}
       </ul>
       <style>
         .block-card {
@@ -557,6 +562,13 @@
             </div>
          </div>
         {{ end }}
+        {{ if gt (len .DepositRequests) 0 }}
+        <div class="tab-pane fade" id="deposit-requestsTabPanel" role="tabpanel" aria-labelledby="deposit-requests-tab">
+          <div class="card block-card py-1">
+            {{ template "block_deposit_requests" . }}
+          </div>
+       </div>
+      {{ end }}
       </div>
     </div>
   {{ end }}

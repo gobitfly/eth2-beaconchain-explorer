@@ -23,9 +23,9 @@
           <tr class="border-bottom">
             <td class="border-0">{{ .Index }}</td>
             <td class="border-0">{{ formatEth1Address .SourceAddress }}</td>
-            <td class="border-0">{{ formatValidator .SourceIndex }}</td>
+            <td class="border-0">{{ formatValidatorInt64 .SourceIndex }}</td>
             <td class="border-0">{{ formatPublicKey .SourcePubkey }}</td>
-            <td class="border-0">{{ formatValidator .TargetIndex }}</td>
+            <td class="border-0">{{ formatValidatorInt64 .TargetIndex }}</td>
             <td class="border-0">{{ formatPublicKey .TargetPubkey }}</td>
             <td class="border-0">{{ .Type }}</td>
           </tr>

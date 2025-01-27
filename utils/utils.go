@@ -50,8 +50,8 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
 	"github.com/mvdan/xurls"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	prysm_params "github.com/prysmaticlabs/prysm/v3/config/params"
+	"github.com/prysmaticlabs/prysm/v5/beacon-chain/core/signing"
+	prysm_params "github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
@@ -1854,7 +1854,11 @@ func FormatDepositStatus(queuedAtEpoch, processedAtEpoch int64) template.HTML {
 	return ""
 }
 
-func FormatConsolidationStatus(queuedAtEpoch, processedAtEpoch int64) template.HTML {
+func FormatConsolidationStatus(queuedAtEpoch, processedAtEpoch int64, consolidationType string) template.HTML {
+	if consolidationType == "Credentials Update" {
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Processed</span>`
+	}
+
 	if queuedAtEpoch == -1 && processedAtEpoch == -1 {
 		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The consolidation was included by the beaconchain but has not yet been queued for processing">Pending</span>`
 	}

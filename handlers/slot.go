@@ -46,6 +46,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/blobs.html",
 		"slot/consolidationRequests.html",
 		"slot/withdrawalRequests.html",
+		"slot/depositRequests.html",
 		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html")
@@ -384,9 +385,9 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			request_index, 
 			source_address, 
 			source_pubkey, 
-			(SELECT validatorindex FROM validators WHERE pubkey = source_pubkey) as source_index,
+			COALESCE((SELECT validatorindex FROM validators WHERE pubkey = source_pubkey), -1) as source_index,
 			target_pubkey,
-			(SELECT validatorindex FROM validators WHERE pubkey = target_pubkey) as target_index
+			COALESCE((SELECT validatorindex FROM validators WHERE pubkey = target_pubkey), -1) as target_index
 		FROM blocks_consolidation_requests 
 		WHERE block_slot = $1 AND block_root = $2 
 		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
@@ -409,13 +410,13 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			request_index, 
 			source_address, 
 			validator_pubkey, 
-			(SELECT validatorindex FROM validators WHERE pubkey = validator_pubkey) as validator_index,
+			COALESCE((SELECT validatorindex FROM validators WHERE pubkey = validator_pubkey), -1) as validator_index,
 			amount 
 		FROM blocks_withdrawal_requests 
 		WHERE block_slot = $1 AND block_root = $2 
 		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving blocks_consolidation_requests of block %v: %v", slotPageData.Slot, err)
+		return nil, fmt.Errorf("error retrieving blocks_withdrawal_requests of block %v: %v", slotPageData.Slot, err)
 	}
 
 	for _, wr := range slotPageData.WithdrawalRequests {
@@ -424,6 +425,23 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		} else {
 			wr.Type = "Withdrawal"
 		}
+	}
+
+	err = db.ReaderDb.Select(&slotPageData.DepositRequests, `
+	SELECT 
+		block_slot, 
+		block_root, 
+		request_index, 
+		pubkey, 
+		withdrawal_credentials, 
+		COALESCE((SELECT validatorindex FROM validators WHERE validators.pubkey = blocks_deposit_requests.pubkey), -1) as validator_index,
+		amount,
+		signature
+	FROM blocks_deposit_requests 
+	WHERE block_slot = $1 AND block_root = $2 
+	ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving blocks_deposit_requests of block %v: %v", slotPageData.Slot, err)
 	}
 
 	return &slotPageData, nil

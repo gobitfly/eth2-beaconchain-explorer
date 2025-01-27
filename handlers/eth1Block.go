@@ -31,6 +31,7 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		"slot/exits.html",
 		"slot/consolidationRequests.html",
 		"slot/withdrawalRequests.html",
+		"slot/depositRequests.html",
 		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html",

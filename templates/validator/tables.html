@@ -884,12 +884,12 @@
                 <td>{{ formatBlockSlot $request.BlockSlot }}</td>
                 <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
                 <td>{{ formatEth1Address $request.SourceAddress }}</td>
-                <td>{{ formatValidator $request.SourceIndex }}</td>
+                <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
                 <td>{{ formatPublicKey $request.SourcePubkey }}</td>
-                <td>{{ formatValidator $request.TargetIndex }}</td>
+                <td>{{ formatValidatorInt64 $request.TargetIndex }}</td>
                 <td>{{ formatPublicKey $request.TargetPubkey }}</td>
                 <td>{{ $request.Type }}</td>
-                <td>{{ formatConsolidationStatus $request.QueuedAtEpoch $request.ProcessedAtEpoch }}</td>
+                <td>{{ formatConsolidationStatus $request.QueuedAtEpoch $request.ProcessedAtEpoch $request.Type }}</td>
                 <td>
                   {{ if gt $request.AmountConsolidated 0 }}
                     {{ formatClCurrency $request.AmountConsolidated config.Frontend.MainCurrency 5 true false false false }}

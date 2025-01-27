@@ -59,6 +59,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
+	logger.Infof("firstSlot: %v, lastSlot: %v", firstSlot, lastSlot)
+
 	balancesMap := make(map[uint64]*types.Validator, 0)
 	totalBalance := uint64(0)
 
@@ -93,7 +95,14 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	var totalDeposits uint64
 	g.Go(func() error {
-		return db.GetTotalValidatorDeposits(validators, &totalDeposits)
+		deposits, err := db.GetValidatorDepositsAndIncomingConsolidations(nil, validators)
+		if err != nil {
+			return err
+		}
+		for _, deposit := range deposits {
+			totalDeposits += deposit.DepositsAmount
+		}
+		return nil
 	})
 
 	var firstActivationEpoch uint64
@@ -116,11 +125,22 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 				return err
 			}
 		}
-		err := db.GetValidatorDepositsForSlots(validators, firstSlot, lastSlot, &lastDeposits)
+		deposits, err := db.GetValidatorDepositsAndIncomingConsolidations(&db.SlotRange{StartSlot: firstSlot, EndSlot: lastSlot}, validators)
 		if err != nil {
 			return err
 		}
-		return db.GetValidatorWithdrawalsForSlots(validators, firstSlot, lastSlot, &lastWithdrawals)
+		for _, deposit := range deposits {
+			lastDeposits += deposit.DepositsAmount
+		}
+
+		withdrawals, err := db.GetValidatorWithdrawalsAndOutgoingConsolidations(&db.SlotRange{StartSlot: firstSlot, EndSlot: lastSlot}, validators)
+		if err != nil {
+			return err
+		}
+		for _, withdrawal := range withdrawals {
+			lastWithdrawals += withdrawal.WithdrawalsAmount
+		}
+		return nil
 	})
 
 	proposals := []types.ValidatorProposalInfo{}

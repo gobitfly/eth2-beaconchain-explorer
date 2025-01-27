@@ -1119,7 +1119,11 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 }
 
 // FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)
+// Returns "-" if the validator index is less than 0
 func FormatValidatorInt64(validator int64) template.HTML {
+	if validator < 0 {
+		return "-"
+	}
 	return FormatValidator(uint64(validator))
 }
 
