@@ -501,6 +501,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			CappellaForkEpoch:                       mustParseUint(jr.Data.CapellaForkEpoch),
 			DenebForkVersion:                        jr.Data.DenebForkVersion,
 			DenebForkEpoch:                          mustParseUint(jr.Data.DenebForkEpoch),
+			ElectraForkVersion:                      jr.Data.ElectraForkVersion,
+			ElectraForkEpoch:                        mustParseUint(jr.Data.ElectraForkEpoch),
 			SecondsPerSlot:                          mustParseUint(jr.Data.SecondsPerSlot),
 			SecondsPerEth1Block:                     mustParseUint(jr.Data.SecondsPerEth1Block),
 			MinValidatorWithdrawabilityDelay:        mustParseUint(jr.Data.MinValidatorWithdrawabilityDelay),

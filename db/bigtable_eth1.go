@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"sort"
 	"strconv"
@@ -32,6 +34,7 @@ import (
 	"github.com/coocood/freecache"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	eth_types "github.com/ethereum/go-ethereum/core/types"
 	"github.com/go-redis/redis/v8"
 	"github.com/sirupsen/logrus"
@@ -2097,6 +2100,92 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 
 			bulkData.Keys = append(bulkData.Keys, idx)
 			bulkData.Muts = append(bulkData.Muts, mut)
+		}
+	}
+
+	return bulkData, bulkMetadataUpdates, nil
+}
+
+func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("bt_transform_consolidation_requests").Observe(time.Since(startTime).Seconds())
+	}()
+
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
+
+	consolidationContractAddress := hexutil.MustDecode("0x00431F263cE400f4455c2dCf564e53007Ca4bbBb")
+	for i, tx := range blk.GetTransactions() {
+		for _, log := range tx.GetLogs() {
+			if bytes.Equal(log.Address, consolidationContractAddress) {
+				// we have found a consolidation event
+				// now slice out the data
+				// source_address: Bytes20
+				// source_pubkey: Bytes48
+				// target_pubkey: Bytes48
+				sourceAddress := log.Data[:20]
+				sourcePubkey := log.Data[20:68]
+				targetPubkey := log.Data[68:116]
+
+				logger.Infof("consolidation event: %x %x %x", sourceAddress, sourcePubkey, targetPubkey)
+
+				_, err := WriterDb.Exec(`
+				INSERT INTO eth1_consolidation_requests (tx_hash, tx_index, block_number, block_ts, source_address, source_pubkey, target_pubkey) VALUES ($1, $2, $3, $4, $5, $6, $7)
+				ON CONFLICT (tx_hash, tx_index) DO UPDATE
+				SET block_number = EXCLUDED.block_number, block_ts = EXCLUDED.block_ts, source_address = EXCLUDED.source_address, source_pubkey = EXCLUDED.source_pubkey, target_pubkey = EXCLUDED.target_pubkey
+				`,
+					tx.GetHash(), i, blk.GetNumber(), blk.GetTime().AsTime(), sourceAddress, sourcePubkey, targetPubkey)
+
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+		}
+	}
+
+	return bulkData, bulkMetadataUpdates, nil
+}
+
+func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	startTime := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("bt_transform_withdrawal_requests").Observe(time.Since(startTime).Seconds())
+	}()
+
+	bulkData = &types.BulkMutations{}
+	bulkMetadataUpdates = &types.BulkMutations{}
+
+	withdrawalContractAddress := hexutil.MustDecode("0x0c15F14308530b7CDB8460094BbB9cC28b9AaaAA")
+	for i, tx := range blk.GetTransactions() {
+		for _, log := range tx.GetLogs() {
+			if bytes.Equal(log.Address, withdrawalContractAddress) {
+				// we have found a consolidation event
+				// now slice out the data
+				// source_address: Bytes20
+				// validator_pubkey: Bytes48
+				// amount: uint64
+				sourceAddress := log.Data[:20]
+				validatorPubkey := log.Data[20:68]
+				amount := binary.BigEndian.Uint64(log.Data[68:76])
+
+				if amount > math.MaxInt64 {
+					amount = math.MaxInt64
+				}
+
+				logger.Infof("withdrawal event: %x %x %d", sourceAddress, validatorPubkey, amount)
+
+				_, err := WriterDb.Exec(`
+				INSERT INTO eth1_withdrawal_requests (tx_hash, tx_index, block_number, block_ts, source_address, validator_pubkey, amount) VALUES ($1, $2, $3, $4, $5, $6, $7)
+				ON CONFLICT (tx_hash, tx_index) DO UPDATE
+				SET block_number = EXCLUDED.block_number, block_ts = EXCLUDED.block_ts, source_address = EXCLUDED.source_address, validator_pubkey = EXCLUDED.validator_pubkey, amount = EXCLUDED.amount
+				`,
+					tx.GetHash(), i, blk.GetNumber(), blk.GetTime().AsTime(), sourceAddress, validatorPubkey, amount)
+
+				if err != nil {
+					return nil, nil, err
+				}
+			}
 		}
 	}
 
