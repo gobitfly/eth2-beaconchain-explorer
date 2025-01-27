@@ -150,20 +150,42 @@
 {{ end }}
 
 {{ define "validatorWithdrawalTable" }}
-  <div class="table-responsive">
-    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
-      <thead>
-        <tr>
-          <th>Epoch</th>
-          <th>Slot</th>
-          <th>Time</th>
-          <th>Recipient Address</th>
-          <th>Amount</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+    <h4 class="my-3">Execution Layer</h4>
+    <h6 class="">This table displays the withdrawal requests made to the Ethereum withdrawal request contract.</h6>
+    <div class="table-responsive card card-body p-0">
+      <table class="table" style="margin-top: 0 !important;" id="withdrawal-eth1-table" width="100%">
+        <thead>
+          <tr>
+            <th>From Address</th>
+            <th>Tx Hash</th>
+            <th>Block</th>
+            <th>Time</th>
+            <th>Validator</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+    <div class="text-center my-3">
+      <i class="fas fa-arrow-down"></i>
+    </div>
+    <h6 class="">This table displays the withdrawal requests received and processed by the beacon chain.</h6>
+    <div class="table-responsive card card-body p-0">
+      <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+        <thead>
+          <tr>
+            <th>Epoch</th>
+            <th>Slot</th>
+            <th>Time</th>
+            <th>Recipient Address</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
     <script>
         var index = {{.Index}}
         window.addEventListener('load', function() {

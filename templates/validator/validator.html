@@ -204,7 +204,7 @@
               </div>
               {{ if and (.CappellaHasHappened) (.IsWithdrawableAddress) }}
                 <div class="tab-pane fade h-100" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
-                  {{ template "validatorWithdrawalTable" . }}
+                  <div class="px-3">{{ template "validatorWithdrawalTable" . }}</div>
                 </div>
               {{ end }}
               <div class="tab-pane fade h-100" id="requestsTabPanel" role="tabpanel" aria-labelledby="requests-tab" aria-controls="requests">
