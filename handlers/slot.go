@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -383,24 +382,13 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			block_slot, 
 			block_root, 
 			request_index, 
-			source_address, 
-			source_pubkey, 
-			COALESCE((SELECT validatorindex FROM validators WHERE pubkey = source_pubkey), -1) as source_index,
-			target_pubkey,
-			COALESCE((SELECT validatorindex FROM validators WHERE pubkey = target_pubkey), -1) as target_index
+			source_index, 
+			target_index, 
 		FROM blocks_consolidation_requests 
 		WHERE block_slot = $1 AND block_root = $2 
 		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving blocks_consolidation_requests of block %v: %v", slotPageData.Slot, err)
-	}
-
-	for _, cr := range slotPageData.ConsolidationRequests {
-		if bytes.Equal(cr.SourcePubkey, cr.TargetPubkey) {
-			cr.Type = "Credentials Update"
-		} else {
-			cr.Type = "Consolidation"
-		}
 	}
 
 	err = db.ReaderDb.Select(&slotPageData.WithdrawalRequests, `

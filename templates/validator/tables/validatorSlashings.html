@@ -1,0 +1,51 @@
+{{ define "validatorSlashingsTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="slashings-table" width="100%">
+      <thead>
+        <tr>
+          <th>Slashed Validators</th>
+          <th>Time</th>
+          <th>Reason</th>
+          <th>Slot</th>
+          <th>Epoch</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            $('#slashings-table').DataTable({
+                searchDelay: 0,
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                lengthChange: false,
+                stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
+                searching: false,
+                ajax: dataTableLoader('/validator/' + index + '/slashings'),
+                pagingType: 'input',
+                pageLength: 10,
+                language: {
+                    searchPlaceholder: 'Search by Epoch Number',
+                    search: '',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                },
+                drawCallback: function(settings) {
+                    formatTimestamps()
+                },
+            })
+        })
+    </script>
+{{ end }}

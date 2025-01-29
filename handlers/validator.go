@@ -40,7 +40,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorTemplateFiles := append(layoutTemplateFiles,
 		"validator/validator.html",
 		"validator/heading.html",
-		"validator/tables.html",
+		"validator/tables/*.html",
 		"validator/modals.html",
 		"modals.html",
 		"validator/overview.html",
@@ -846,28 +846,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			block_slot, 
 			block_root, 
 			request_index, 
-			source_address, 
-			source_pubkey, 
-			(SELECT validatorindex FROM validators WHERE pubkey = source_pubkey) as source_index,
-			target_pubkey,
-			(SELECT validatorindex FROM validators WHERE pubkey = target_pubkey) as target_index,
-			COALESCE(queued_at_epoch, -1) AS queued_at_epoch,
-			COALESCE(processed_at_epoch, -1) AS processed_at_epoch,
+			source_index,
+			target_index,
 			COALESCE(amount_consolidated, 0) AS amount_consolidated
 		FROM blocks_consolidation_requests 
 		INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot AND blocks.status = '1'
-		WHERE blocks_consolidation_requests.source_pubkey = $1 OR blocks_consolidation_requests.target_pubkey = $1
-		ORDER BY block_slot DESC, request_index`, validatorPageData.PublicKey)
+		WHERE blocks_consolidation_requests.source_index = $1 OR blocks_consolidation_requests.target_index = $1
+		ORDER BY block_slot DESC, request_index`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
-		}
-
-		for _, cr := range validatorPageData.ConsolidationRequests {
-			if bytes.Equal(cr.SourcePubkey, cr.TargetPubkey) {
-				cr.Type = "Credentials Update"
-			} else {
-				cr.Type = "Consolidation"
-			}
 		}
 		return nil
 	})

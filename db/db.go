@@ -3146,9 +3146,6 @@ func GetValidatorDepositsAndIncomingConsolidations(slotRange *SlotRange, validat
 		}
 	}
 
-	startEpoch := utils.EpochOfSlot(slotRange.StartSlot)
-	endEpoch := utils.EpochOfSlot(slotRange.EndSlot)
-
 	ret := []*GetValidatorDepositsAndIncomingConsolidationsResult{}
 
 	depositsQry := `
@@ -3172,7 +3169,7 @@ func GetValidatorDepositsAndIncomingConsolidations(slotRange *SlotRange, validat
 						OR blocks.slot = 0
 					)
 					AND blocks_deposits.valid_signature
-					AND (cardinality($5::int[]) = 0 OR validators.validatorindex = ANY($5))
+					AND (cardinality($3::int[]) = 0 OR validators.validatorindex = ANY($3))
 				UNION ALL
 				SELECT
 					validators.validatorindex,
@@ -3182,34 +3179,33 @@ func GetValidatorDepositsAndIncomingConsolidations(slotRange *SlotRange, validat
 					INNER JOIN validators ON blocks_deposit_requests.pubkey = validators.pubkey
 					INNER JOIN blocks ON blocks_deposit_requests.block_root = blocks.blockroot
 				WHERE
-					blocks_deposit_requests.processed_at_epoch >= $3
-					AND blocks_deposit_requests.processed_at_epoch <= $4
+					blocks.slot >= $1
+					AND blocks.slot <= $2
 					AND (
 						blocks.status = '1'
 						OR blocks.slot = 0
 					)
-					AND (cardinality($5::int[]) = 0 OR validators.validatorindex = ANY($5))
+					AND (cardinality($3::int[]) = 0 OR validators.validatorindex = ANY($3))
 				UNION ALL
 				SELECT
-					validators.validatorindex,
+					blocks_consolidation_requests.target_index,
 					amount_consolidated
 				FROM
 					blocks_consolidation_requests
-					INNER JOIN validators ON blocks_consolidation_requests.target_pubkey = validators.pubkey
 					INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot
 				WHERE
-					blocks_consolidation_requests.processed_at_epoch >= $3
-					AND blocks_consolidation_requests.processed_at_epoch <= $4
+					blocks.slot >= $1
+					AND blocks.slot <= $2
 					AND (
 						blocks.status = '1'
 						OR blocks.slot = 0
 					)
-					AND (cardinality($5::int[]) = 0 OR validators.validatorindex = ANY($5))
+					AND (cardinality($3::int[]) = 0 OR blocks_consolidation_requests.target_index = ANY($3))
 			) AS a
 			GROUP BY validatorindex
 			ORDER BY 2 DESC;`
 
-	err := WriterDb.Select(&ret, depositsQry, slotRange.StartSlot, slotRange.EndSlot, startEpoch, endEpoch, validatorsPQArray)
+	err := WriterDb.Select(&ret, depositsQry, slotRange.StartSlot, slotRange.EndSlot, validatorsPQArray)
 
 	if err != nil {
 		return nil, fmt.Errorf("error getting validator deposits and incoming consolidations: %w", err)
@@ -3236,9 +3232,6 @@ func GetValidatorWithdrawalsAndOutgoingConsolidations(slotRange *SlotRange, vali
 		}
 	}
 
-	startEpoch := utils.EpochOfSlot(slotRange.StartSlot)
-	endEpoch := utils.EpochOfSlot(slotRange.EndSlot)
-
 	ret := []*GetValidatorWithdrawalsAndOutgoingConsolidationsResult{}
 
 	query := `
@@ -3258,30 +3251,29 @@ func GetValidatorWithdrawalsAndOutgoingConsolidations(slotRange *SlotRange, vali
 					block_slot >= $1
 					AND block_slot <= $2
 					AND blocks.status = '1'
-					AND (cardinality($5::int[]) = 0 OR blocks_withdrawals.validatorindex = ANY($5))
+					AND (cardinality($3::int[]) = 0 OR blocks_withdrawals.validatorindex = ANY($3))
 				UNION ALL
 				SELECT
-					validators.validatorindex,
+					blocks_consolidation_requests.source_index,
 					amount_consolidated
 				FROM
 					blocks_consolidation_requests
-					INNER JOIN validators ON blocks_consolidation_requests.source_pubkey = validators.pubkey
 					INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot
 				WHERE
-					blocks_consolidation_requests.processed_at_epoch >= $3
-					AND blocks_consolidation_requests.processed_at_epoch <= $4
+					block_slot >= $1
+					AND block_slot <= $2
 					AND blocks_consolidation_requests.amount_consolidated > 0
 					AND (
 						blocks.status = '1'
 						OR blocks.slot = 0
 					)
-					AND (cardinality($5::int[]) = 0 OR validators.validatorindex = ANY($5))
+					AND (cardinality($3::int[]) = 0 OR blocks_consolidation_requests.source_index = ANY($3))
 			) AS a
 		GROUP BY
 			validatorindex;
 	`
 
-	err := WriterDb.Select(&ret, query, slotRange.StartSlot, slotRange.EndSlot, startEpoch, endEpoch, validatorsPQArray)
+	err := WriterDb.Select(&ret, query, slotRange.StartSlot, slotRange.EndSlot, validatorsPQArray)
 
 	if err != nil {
 		return nil, fmt.Errorf("error getting validator withdrawals and outgoing consolidations: %w", err)

@@ -139,7 +139,7 @@
                 <a class="nav-link {{ if eq .BlocksCount 0 }}disabled{{ end }}" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab" aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Blocks</span></a>
               </li>
               <li class="nav-item">
-                <a class="nav-link {{ if eq .AttestationsCount 0 }}disabled{{ end }}" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Attestations</span></a>
+                <a class="nav-link {{ if eq .AttestationsCount 0 }}disabled{{ end }}" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Atts.</span></a>
               </li>
               <li class="nav-item">
                 <a class="nav-link {{ if eq .SyncCount 0 }}disabled{{ end }}" id="sync-tab" data-toggle="tab" href="#sync" role="tab" aria-controls="sync" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-sync"></i><span class="tab-text">Sync</span></a>
@@ -154,7 +154,7 @@
                 <a class="nav-link {{ if or (not .IsWithdrawableAddress) (not .CappellaHasHappened) }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" id="requests-tab" data-toggle="tab" href="#requests" role="tab" aria-controls="requests" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-envelope"></i><span class="tab-text"></span></a>
+                <a class="nav-link" id="consolidations-tab" data-toggle="tab" href="#consolidations" role="tab" aria-controls="consolidations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chevron-up"></i> <span class="tab-text">Consol.</span></a>
               </li>
               {{ if .IsRocketpool }}
                 <li class="nav-item">
@@ -204,11 +204,11 @@
               </div>
               {{ if and (.CappellaHasHappened) (.IsWithdrawableAddress) }}
                 <div class="tab-pane fade h-100" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
-                  <div class="px-3">{{ template "validatorWithdrawalTable" . }}</div>
+                  <div class="px-3">{{ template "validatorWithdrawalsTable" . }}</div>
                 </div>
               {{ end }}
-              <div class="tab-pane fade h-100" id="requestsTabPanel" role="tabpanel" aria-labelledby="requests-tab" aria-controls="requests">
-                <div class="px-3">{{ template "validatorRequestsTable" $ }}</div>
+              <div class="tab-pane fade h-100" id="consolidationsTabPanel" role="tabpanel" aria-labelledby="consolidations-tab" aria-controls="consolidations">
+                <div class="px-3">{{ template "validatorConsolidationsTable" $ }}</div>
               </div>
               {{ if .IsRocketpool }}
                 <div class="tab-pane fade w-100" id="rocketpoolTabPanel" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">

@@ -1,0 +1,103 @@
+{{ define "validatorWithdrawalsTable" }}
+    <h4 class="my-3">Execution Layer</h4>
+    <h6 class="">This table displays the withdrawal requests made to the Ethereum withdrawal request contract.</h6>
+    <div class="table-responsive card card-body p-0">
+      <table class="table" style="margin-top: 0 !important;" id="withdrawal-eth1-table" width="100%">
+        <thead>
+          <tr>
+            <th>From Address</th>
+            <th>Tx Hash</th>
+            <th>Block</th>
+            <th>Time</th>
+            <th>Validator</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+    <div class="text-center my-3">
+      <i class="fas fa-arrow-down"></i>
+    </div>
+    <h4 class="my-3">Consensus Layer</h4>
+    <h6 class="">This table displays the withdrawal requests received and processed by the beacon chain.</h6>
+    <div class="table-responsive card card-body p-0">
+      <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+        <thead>
+          <tr>
+            <th>Epoch</th>
+            <th>Slot</th>
+            <th>Time</th>
+            <th>Recipient Address</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            var activeTab = $('#chartTabs .active')
+            var initializedWithdrawalTable = false
+
+            if (activeTab.attr('id') === 'withdrawal-tab') {
+                initializedWithdrawalTable = true
+                createWithdrawalTable()
+            }
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'withdrawal-tab' && !initializedWithdrawalTable) {
+                    initializedWithdrawalTable = true
+                    createWithdrawalTable()
+                }
+            });
+
+            function createWithdrawalTable() {
+                $('#withdrawal-table').DataTable({
+                    searchDelay: 0,
+                    processing: true,
+                    serverSide: true,
+                    stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
+                    ordering: true,
+                    order: [[0, 'desc']],
+                    lengthChange: false,
+                    searching: false,
+                    ajax: dataTableLoader(`/validator/${index}/withdrawals`, "", function ( {data} ) {
+                        // add the estimate row if it exists
+                        {{ if .NextWithdrawalRow }}
+                          let row = {{.NextWithdrawalRow}}
+                          if (row && row.length) {
+                            data.data = row.concat(data.data)
+                          }
+                        {{ end }}
+                        return data
+                      }),
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        // searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                    },
+                    columnDefs: [
+                    ],
+                    drawCallback: function(settings) {
+                         formatTimestamps()
+                    },
+                })
+            }
+        })
+    </script>
+{{ end }}

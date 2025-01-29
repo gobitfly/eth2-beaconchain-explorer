@@ -1,0 +1,151 @@
+{{ define "validatorIncomeTable" }}
+  {{ with .Data }}
+    <span class="h4"> General </span>
+    <table class="table" style="margin-top: 0 !important" width="100%">
+      <tbody style="font-size: 0.875rem;">
+        <tr>
+          <th scope="row">Total Rewards</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatElCurrency .Income.IncomeTotal.Cl $.Rates.SelectedCurrency 5 true true true false }} <br /> 
+                EL: {{ formatElCurrency .Income.IncomeTotal.El $.Rates.SelectedCurrency 5 true true true false }}">
+              <b>{{ formatElCurrency .Income.IncomeTotal.Total $.Rates.SelectedCurrency 5 true true true false }}</b>
+            </span>
+          </td>
+        </tr>
+        <tr class="">
+          <th scope="row">Income Today</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatElCurrency .Income.IncomeToday.Cl $.Rates.SelectedCurrency 5 true true true false }} <br /> 
+                EL: {{ formatElCurrency .Income.IncomeToday.El $.Rates.SelectedCurrency 5 true true true false }}">
+              <b>{{ formatElCurrency .Income.IncomeToday.Total $.Rates.SelectedCurrency 5 true true true false }}</b>
+            </span>
+          </td>
+        </tr>
+        <!-- shown in desktop -->
+        <tr class="d-none d-sm-table-row">
+          <th scope="row">Income 1d | 7d | 31d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatElCurrency .Income.Income1d.Cl $.Rates.SelectedCurrency 5 true true true false }} | {{ formatElCurrency .Income.Income7d.Cl $.Rates.SelectedCurrency 5 true true true false }} | {{ formatElCurrency .Income.Income31d.Cl $.Rates.SelectedCurrency 5 true true true false }} <br> 
+                EL: {{ formatElCurrency .Income.Income1d.El $.Rates.SelectedCurrency 5 true true true false }} | {{ formatElCurrency .Income.Income7d.El $.Rates.SelectedCurrency 5 true true true false }} | {{ formatElCurrency .Income.Income31d.El $.Rates.SelectedCurrency 5 true true true false }}">
+              <b>{{ formatElCurrency .Income.Income1d.Total $.Rates.SelectedCurrency 5 false true true false }}</b>
+              |
+              <b>{{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 false true true false }}</b>
+              |
+              <b>{{ formatElCurrency .Income.Income31d.Total $.Rates.SelectedCurrency 5 false true true false }}</b>
+            </span>
+          </td>
+        </tr>
+        <tr class="d-none d-sm-table-row">
+          <th scope="row">APR 7d | 31d | 365d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: {{ formatPercentageWithPrecision .Income.Apr7d.Cl 2 }}% | {{ formatPercentageWithPrecision .Income.Apr31d.Cl 2 }}% | {{ formatPercentageWithPrecision .Income.Apr365d.Cl 2 }}% <br> 
+                EL: {{ formatPercentageWithPrecision .Income.Apr7d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr31d.El 2 }}% | {{ formatPercentageWithPrecision .Income.Apr365d.El 2 }}%">
+              <span class="{{ if gtf .Income.Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr7d.Total 2 }}%</b></span>
+              |
+              <span class="{{ if gtf .Income.Apr31d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr31d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr31d.Total 2 }}%</b></span>
+              |
+              <span class="{{ if gtf .Income.Apr365d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr365d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr365d.Total 2 }}%</b></span>
+            </span>
+          </td>
+        </tr>
+        <!-- shown in mobile -->
+        <tr class="d-sm-none">
+          <th scope="row">Income 7d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                  CL: 1d: {{ formatElCurrency .Income1d.Cl $.Rates.SelectedCurrency 5 false true true false }} | 7d: {{ formatElCurrency .Income.Income7d.Cl $.Rates.SelectedCurrency 5 false true true false }} | 31d: {{ formatElCurrency .Income.Income31d.Cl $.Rates.SelectedCurrency 5 true true true false }} <br /> 
+                  EL: 1d: {{ formatElCurrency .Income1d.El $.Rates.SelectedCurrency 5 false true true false }} | 7d: {{ formatElCurrency .Income.Income7d.El $.Rates.SelectedCurrency 5 false true true false }} | 31d: {{ formatElCurrency .Income.Income31d.El $.Rates.SelectedCurrency 5 true true true false }} <br /> 
+                  All: 1d: {{ formatElCurrency .Income1d.Total $.Rates.SelectedCurrency 5 false true true false }} | 7d: {{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 false true true false }} | 31d: {{ formatElCurrency .Income.Income31d.Total $.Rates.SelectedCurrency 5 true true true false }}">
+              <b>{{ formatElCurrency .Income.Income7d.Total $.Rates.SelectedCurrency 5 true true true false }}</b>
+              <i class="far fa-question-circle"></i>
+            </span>
+          </td>
+        </tr>
+        <tr class="d-sm-none">
+          <th scope="row">APR 7d</th>
+          <td class="pl-0">
+            <span
+              data-toggle="tooltip"
+              data-html="true"
+              title="
+                CL: 7d: {{ formatPercentageWithPrecision .Income.Apr7d.Cl 2 }}% | 31d: {{ formatPercentageWithPrecision .Income.Apr31d.Cl 2 }}% | 365d: {{ formatPercentageWithPrecision .Income.Apr365d.Cl 2 }}% <br> 
+                El: 7d: {{ formatPercentageWithPrecision .Income.Apr7d.El 2 }}% | 31d: {{ formatPercentageWithPrecision .Income.Apr31d.El 2 }}% | 365d: {{ formatPercentageWithPrecision .Income.Apr365d.El 2 }}% <br>
+                All: 7d: {{ formatPercentageWithPrecision .Income.Apr7d.Total 2 }}% | 31d: {{ formatPercentageWithPrecision .Income.Apr31d.Total 2 }}% | 365d: {{ formatPercentageWithPrecision .Income.Apr365d.Total 2 }}%">
+              <span class="{{ if gtf .Income.Apr7d.Total 0 }}text-success{{ end }}{{ if gtf  0 .Income.Apr7d.Total }}text-danger{{ end }}"><b>{{ formatPercentageWithPrecision .Income.Apr7d.Total 2 }}%</b></span>
+              <i class="far fa-question-circle"></i>
+            </span>
+          </td>
+        </tr>
+        <!-- end -->
+        <tr>
+          <th scope="row">Luck</th>
+          <td class="pl-0">
+            {{ $hasProposalLuck := nef .ProposalLuck 0 }}
+            {{ $hasSyncLuck := nef .SyncLuck 0 }}
+            <!-- prettier-ignore-attribute -->
+            <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if $hasProposalLuck }}(exp. <span aria-ethereum-date='{{ .ProposalEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ end }} (on avg. every <span aria-ethereum-duration='{{ .AvgSlotInterval.Milliseconds }}'></span>)<br>Sync Com. {{ if $hasSyncLuck }}(exp. <span aria-ethereum-date='{{ .SyncEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .SyncLuck 2 }}%{{ end }} (on avg. every <span aria-ethereum-duration='{{ .AvgSyncInterval.Milliseconds }}'></span>)</span>">
+              {{ if $hasProposalLuck }}
+                {{ formatPercentageWithPrecision .ProposalLuck 1 }}% <i class="tab-icon mr-md-1 fas fa-cubes d-none d-sm-inline-block"></i>
+              {{ else }}
+                -
+              {{ end }}
+              |
+              {{ if $hasSyncLuck }}
+                {{ formatPercentageWithPrecision .SyncLuck 1 }}% <i class="tab-icon mr-md-1 fas fa-sync d-none d-sm-inline-block"></i>
+              {{ else }}
+                -
+              {{ end }}
+            </span>
+          </td>
+        </tr>
+        {{ if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0)) }}
+          <tr>
+            {{ if ge .Epoch .ExitEpoch }}
+              <th scope="row">Exited since</th>
+            {{ else }}
+              <th scope="row">Exiting on</th>
+            {{ end }}
+            <td class="pl-0">
+              <a href="/epoch/{{ .ExitEpoch }}">
+                <span title="Epoch: {{ .ExitEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .ExitTs.Unix }}"></span>
+              </a>
+            </td>
+          </tr>
+        {{ end }}
+        {{ if not (eq .WithdrawableEpoch 9223372036854775807) }}
+          <tr>
+            <th scope="row">Withdrawable</th>
+            <td class="pl-0">
+              {{ if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch }}
+                <a href="/epoch/{{ .WithdrawableEpoch }}">
+                  <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
+                </a>
+              {{ else }}
+                <span title="Epoch: {{ .WithdrawableEpoch }}" data-toggle="tooltip" aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>
+              {{ end }}
+            </td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  {{ end }}
+{{ end }}
