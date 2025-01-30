@@ -23,7 +23,7 @@
             <td class="border-0">{{ .Index }}</td>
             <td class="border-0">{{ formatValidatorInt64 .ValidatorIndex }}</td>
             <td class="border-0">{{ formatPublicKey .ValidatorPubkey }}</td>
-            <td class="border-0">{{ formatClCurrency .Amount config.Frontend.MainCurrency 5 true false false false }}</td>Fv
+            <td class="border-0">{{ formatClCurrency .Amount config.Frontend.MainCurrency 5 true false false false }}</td>
             <td class="border-0">{{ formatWithdawalCredentials .WithdrawalCredentials true }}</td>
             <td class="border-0">{{ formatHash .Signature }}</td>
           </tr>

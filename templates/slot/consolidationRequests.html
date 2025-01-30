@@ -5,7 +5,7 @@
     }
   </style>
   <div class="row p-1 mx-0">
-    <div class="col-md-12 text-center"><b>Showing {{ len .ConsolidationRequests }} Consolidation Requests</b></div>
+    <div class="col-md-12 text-center"><b>Showing {{ len .ConsolidationRequests }} Processed Consolidation Requests</b></div>
   </div>
   <div class="table-responsive">
     <table class="table table-sm text-left">
@@ -14,12 +14,14 @@
           <th class="border-0">Index</th>
           <th class="border-0">Source Index</th>
           <th class="border-0">Target Index</th>
+          <th class="border-0">Amount</th>
         </tr>
         {{ range .ConsolidationRequests }}
           <tr class="border-bottom">
             <td class="border-0">{{ .Index }}</td>
             <td class="border-0">{{ formatValidatorInt64 .SourceIndex }}</td>
             <td class="border-0">{{ formatValidatorInt64 .TargetIndex }}</td>
+            <td class="border-0">{{ .AmountConsolidated config.Frontend.MainCurrency 5 true false false false }}</td>
           </tr>
         {{ end }}
       </tbody>

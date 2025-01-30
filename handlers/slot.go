@@ -383,7 +383,8 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			block_root, 
 			request_index, 
 			source_index, 
-			target_index, 
+			target_index,
+			amount_consolidated
 		FROM blocks_consolidation_requests 
 		WHERE block_slot = $1 AND block_root = $2 
 		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)

@@ -3840,7 +3840,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	credentials, err := utils.AddressToWithdrawalCredentials(credentialsOrAddress)
 	if err != nil {
 		// Input is not an address so it must already be withdrawal credentials
-		credentials = credentialsOrAddress
+		credentials = [][]byte{credentialsOrAddress}
 	}
 
 	limitQuery := q.Get("limit")
@@ -3864,7 +3864,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 		validatorindex,
 		pubkey
 	FROM validators
-	WHERE withdrawalcredentials = $1
+	WHERE withdrawalcredentials = ANY($1)
 	ORDER BY validatorindex ASC
 	LIMIT $2
 	OFFSET $3

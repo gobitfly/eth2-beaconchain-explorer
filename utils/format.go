@@ -698,11 +698,20 @@ func WithdrawalCredentialsToAddress(credentials []byte) ([]byte, error) {
 }
 
 // AddressToWithdrawalCredentials converts a valid address to withdrawalCredentials
-func AddressToWithdrawalCredentials(address []byte) ([]byte, error) {
+func AddressToWithdrawalCredentials(address []byte) ([][]byte, error) {
 	if IsValidEth1Address(fmt.Sprintf("%#x", address)) {
-		credentials := make([]byte, 12, 32)
-		credentials[0] = 0x01
-		credentials = append(credentials, address...)
+		credentials := make([][]byte, 2)
+
+		zeroOneCredentials := make([]byte, 12, 32)
+		zeroOneCredentials[0] = 0x01
+		zeroOneCredentials = append(zeroOneCredentials, address...)
+		credentials[0] = zeroOneCredentials
+
+		zeroTwoCredentials := make([]byte, 12, 32)
+		zeroTwoCredentials[0] = 0x02
+		zeroTwoCredentials = append(zeroTwoCredentials, address...)
+		credentials[1] = zeroTwoCredentials
+
 		return credentials, nil
 	}
 	return nil, fmt.Errorf("invalid eth1 address")

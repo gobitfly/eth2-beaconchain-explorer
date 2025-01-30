@@ -629,9 +629,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 			blocks_deposits.publickey,
 			blocks_deposits.withdrawalcredentials,
 			blocks_deposits.amount,
-			blocks_deposits.signature,
-			-2 AS queued_at_epoch,
-			-2 AS processed_at_epoch
+			blocks_deposits.signature
 		FROM blocks_deposits
 		INNER JOIN blocks ON (blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposits.block_slot = 0 AND blocks_deposits.block_slot = blocks.slot AND blocks_deposits.publickey = $1)
 		WHERE blocks_deposits.publickey = $1
@@ -644,9 +642,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 			blocks_deposit_requests.pubkey,
 			blocks_deposit_requests.withdrawal_credentials,
 			blocks_deposit_requests.amount,
-			blocks_deposit_requests.signature,
-			COALESCE(blocks_deposit_requests.queued_at_epoch, -1),
-			COALESCE(blocks_deposit_requests.processed_at_epoch, -1)
+			blocks_deposit_requests.signature
 		FROM blocks_deposit_requests
 		INNER JOIN blocks ON (blocks_deposit_requests.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposit_requests.block_slot = 0 AND blocks_deposit_requests.block_slot = blocks.slot AND blocks_deposit_requests.pubkey = $1)
 		WHERE blocks_deposit_requests.pubkey = $1

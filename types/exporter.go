@@ -330,8 +330,7 @@ type Eth2Deposit struct {
 	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
 	Amount                uint64 `db:"amount"`
 	Signature             []byte `db:"signature"`
-	QueuedAtEpoch         int64  `db:"queued_at_epoch"`
-	ProcessedAtEpoch      int64  `db:"processed_at_epoch"`
+	Valid                 bool   `db:"valid"`
 }
 
 // EthStoreDay is a struct to hold performance data for a specific beaconchain-day.
