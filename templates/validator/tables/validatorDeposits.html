@@ -192,7 +192,6 @@
                 <th>Withdrawal Credential</th>
                 <th>Amount</th>
                 <th>Signature</th>
-                <th>Valid</th>
               </tr>
             </thead>
             <tbody>
@@ -212,13 +211,6 @@
                   <td>
                     {{ formatHash $deposit.Signature }}
                     <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash $deposit.Signature false }}"></i>
-                  </td>
-                  <td>
-                    {{ if $deposit.ValidSignature }}
-                      <span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span>
-                    {{ else }}
-                      <span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.ValidSignature }}</span>
-                    {{ end }}
                   </td>
                 </tr>
               {{ end }}

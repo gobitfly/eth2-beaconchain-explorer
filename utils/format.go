@@ -691,7 +691,7 @@ func FormatHashRaw(hash []byte, trunc_opt ...bool) string {
 
 // WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible
 func WithdrawalCredentialsToAddress(credentials []byte) ([]byte, error) {
-	if IsValidWithdrawalCredentials(fmt.Sprintf("%#x", credentials)) && bytes.Equal(credentials[:1], []byte{0x01}) {
+	if IsValidWithdrawalCredentials(fmt.Sprintf("%#x", credentials)) && (bytes.Equal(credentials[:1], []byte{0x01}) || bytes.Equal(credentials[:1], []byte{0x02})) {
 		return credentials[12:], nil
 	}
 	return nil, fmt.Errorf("invalid withdrawal credentials")
