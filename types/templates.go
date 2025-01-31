@@ -810,8 +810,6 @@ type FrontendConsolidationRequest struct {
 	Index              uint64 `db:"request_index"`
 	SourceIndex        int64  `db:"source_index"`
 	TargetIndex        int64  `db:"target_index"`
-	QueuedAtEpoch      int64  `db:"queued_at_epoch"`
-	ProcessedAtEpoch   int64  `db:"processed_at_epoch"`
 	AmountConsolidated uint64 `db:"amount_consolidated"`
 }
 

@@ -21,7 +21,7 @@
             <td class="border-0">{{ .Index }}</td>
             <td class="border-0">{{ formatValidatorInt64 .SourceIndex }}</td>
             <td class="border-0">{{ formatValidatorInt64 .TargetIndex }}</td>
-            <td class="border-0">{{ .AmountConsolidated config.Frontend.MainCurrency 5 true false false false }}</td>
+            <td class="border-0">{{ formatClCurrency .AmountConsolidated config.Frontend.MainCurrency 5 true false false false }}</td>
           </tr>
         {{ end }}
       </tbody>
