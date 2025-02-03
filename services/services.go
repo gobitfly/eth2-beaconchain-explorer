@@ -1606,7 +1606,7 @@ func getBurnPageData() (*types.BurnPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving additional burned eth from blocks table: %v", err)
 	}
-	// logger.Infof("additonal burn: %v", additionalBurned)
+	// logger.Infof("additional burn: %v", additionalBurned)
 	data.TotalBurned += additionalBurned
 
 	// logger.Infof("using epoch limit %d", lookbackEpoch)
