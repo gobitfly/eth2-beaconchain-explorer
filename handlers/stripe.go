@@ -107,7 +107,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, struct {
 				ErrorData string `json:"error"`
 			}{
-				ErrorData: "could not create a new stripe session since dasboard-validators-limit has been reached",
+				ErrorData: "could not create a new stripe session since dashboard-validators-limit has been reached",
 			})
 		}
 	}
