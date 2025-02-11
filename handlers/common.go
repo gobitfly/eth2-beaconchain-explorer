@@ -59,8 +59,6 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	lastSlot := latestFinalizedEpoch * utils.Config.Chain.ClConfig.SlotsPerEpoch
 
-	logger.Infof("firstSlot: %v, lastSlot: %v", firstSlot, lastSlot)
-
 	balancesMap := make(map[uint64]*types.Validator, 0)
 	totalBalance := uint64(0)
 
