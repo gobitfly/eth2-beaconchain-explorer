@@ -1292,10 +1292,6 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 }
 
 func getGasNowData() (*types.GasNowPageData, error) {
-	gpoData := &types.GasNowPageData{}
-	gpoData.Code = 200
-	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
-
 	// Connect to the ETH node.
 	client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
 	if err != nil {
@@ -1343,9 +1339,6 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		txs = body.Transactions
 	}
 
-	// How full a block is [0, 1], protocol targets 50% usage
-	gasUsage := float64(header.GasUsed) / float64(header.GasLimit)
-
 	// -------------------------
 	// (1) Build our “tip” samples.
 	// -------------------------
@@ -1357,6 +1350,34 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		}
 		pendingTips = append(pendingTips, tip)
 	}
+
+	gpoData := suggestGasPrices(header.GasUsed, header.GasLimit, baseFee, pendingTips)
+
+	// not available in unit test mode
+	if db.BigtableClient != nil {
+		// Log or store historical data.
+		if err = db.BigtableClient.SaveGasNowHistory(gpoData.Data.Slow, gpoData.Data.Standard, gpoData.Data.Fast, gpoData.Data.Rapid); err != nil {
+			logrus.WithError(err).Error("error updating gas now history")
+		}
+
+		// Get fiat conversion data.
+		gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, "USD")
+		gpoData.Data.Currency = "USD"
+	} else {
+		logrus.Error("error saving gas now history: bigtable client not initialized")
+	}
+
+	return gpoData, nil
+}
+
+func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pendingTips []*big.Int) *types.GasNowPageData {
+	gpoData := &types.GasNowPageData{}
+	gpoData.Code = 200
+	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
+
+	// How full a block is [0, 1], protocol targets 50% usage
+	gasUsage := float64(gasUsed) / float64(gasLimit)
+
 	// Sort in ascending order (so that e.g. the 90th percentile is near the high end).
 	sort.Slice(pendingTips, func(i, j int) bool {
 		return pendingTips[i].Cmp(pendingTips[j]) < 0
@@ -1416,6 +1437,11 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		slowSuggestion = new(big.Int).Set(normalSuggestion)
 	}
 
+	gpoData.Data.Rapid = rapidSuggestion
+	gpoData.Data.Fast = fastSuggestion
+	gpoData.Data.Standard = normalSuggestion
+	gpoData.Data.Slow = slowSuggestion
+
 	// -------------------------
 	// Improvement Idea for a v2 endpoint
 	// (3) Account for the base fee.
@@ -1460,21 +1486,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	// 	BaseFee: predictedSlowBaseFee,
 	// }
 
-	gpoData.Data.Rapid = rapidSuggestion
-	gpoData.Data.Fast = fastSuggestion
-	gpoData.Data.Standard = normalSuggestion
-	gpoData.Data.Slow = slowSuggestion
-
-	// Log or store historical data.
-	if err = db.BigtableClient.SaveGasNowHistory(slowSuggestion, normalSuggestion, fastSuggestion, rapidSuggestion); err != nil {
-		logrus.WithError(err).Error("error updating gas now history")
-	}
-
-	// Get fiat conversion data.
-	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, "USD")
-	gpoData.Data.Currency = "USD"
-
-	return gpoData, nil
+	return gpoData
 }
 
 type TxPoolContent struct {
