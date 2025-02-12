@@ -204,6 +204,7 @@ func TestViaFakeRPC(t *testing.T) {
 	}
 	if result == nil {
 		t.Errorf("Error: data is nil")
+		return
 	}
 
 	checkSuggestion(t, "Rapid", result.Data.Rapid.Int64(), 3939435494)
