@@ -1349,7 +1349,6 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	// -------------------------
 	// (1) Build our “tip” samples.
 	// -------------------------
-	// For transactions in the pending block, compute effective tip = GasPrice - baseFee.
 	pendingTips := make([]*big.Int, 0, len(txs))
 	for _, tx := range txs {
 		tip := tx.tx.GasTipCap()
@@ -1397,7 +1396,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	slowTip := getPercentile(pendingTips, 10*cappedGasUsage)   // target 5th percentile
 
 	// Now compute the final suggestion as:
-	//    suggested gas price = predictedBaseFee + effective tip
+	//    suggested gas price = baseFee + effective tip
 	rapidSuggestion := new(big.Int).Add(baseFee, rapidTip)
 	fastSuggestion := new(big.Int).Add(baseFee, fastTip)
 	normalSuggestion := new(big.Int).Add(baseFee, normalTip)
@@ -1463,10 +1462,10 @@ func getGasNowData() (*types.GasNowPageData, error) {
 
 	gpoData.Data.Rapid = rapidSuggestion
 	gpoData.Data.Fast = fastSuggestion
-	gpoData.Data.Standard = normalSuggestion // “Standard” is what you called “Normal”
+	gpoData.Data.Standard = normalSuggestion
 	gpoData.Data.Slow = slowSuggestion
 
-	// (Optional) Log or store historical data.
+	// Log or store historical data.
 	if err = db.BigtableClient.SaveGasNowHistory(slowSuggestion, normalSuggestion, fastSuggestion, rapidSuggestion); err != nil {
 		logrus.WithError(err).Error("error updating gas now history")
 	}
