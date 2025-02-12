@@ -1,11 +1,22 @@
 package services
 
 import (
+	_ "embed"
+	"encoding/json"
 	"math"
 	"math/big"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 )
+
+//go:embed services_test_block.json
+var pendingBlock string
 
 // --- Dummy types for testing suggestGasPrices --- //
 
@@ -14,6 +25,41 @@ func checkSuggestion(t *testing.T, name string, got, expected int64) {
 	if got != expected {
 		t.Errorf("expected %s suggestion %d, got %d", name, expected, got)
 	}
+}
+
+func newFakeRPCServer(pendingBlock, latestBlock string) *httptest.Server {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID     interface{}   `json:"id"`
+			Method string        `json:"method"`
+			Params []interface{} `json:"params"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		var block json.RawMessage // Use RawMessage to handle JSON correctly
+		// Choose the block based on the first parameter.
+		if req.Method == "eth_getBlockByNumber" && len(req.Params) > 0 {
+			if param, ok := req.Params[0].(string); ok {
+				if param == "pending" {
+					block = json.RawMessage(pendingBlock)
+				} else if param == "latest" {
+					block = json.RawMessage(latestBlock)
+				}
+			}
+		}
+
+		resp := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      req.ID,
+			"result":  block,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	})
+	return httptest.NewServer(handler)
 }
 
 // --- Test Cases --- //
@@ -144,11 +190,32 @@ func TestSuggestGasPrices_Timestamp(t *testing.T) {
 	}
 }
 
+func TestViaFakeRPC(t *testing.T) {
+	cfg := &types.Config{}
+	utils.Config = cfg
+
+	server := newFakeRPCServer(pendingBlock, "")
+	defer server.Close()
+	utils.Config.Eth1GethEndpoint = server.URL
+
+	result, err := getGasNowData()
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
+	if result == nil {
+		t.Errorf("Error: data is nil")
+	}
+
+	checkSuggestion(t, "Rapid", result.Data.Rapid.Int64(), 3939435494)
+	checkSuggestion(t, "Fast", result.Data.Fast.Int64(), 3511919489)
+	checkSuggestion(t, "Standard", result.Data.Standard.Int64(), 3123069597)
+	checkSuggestion(t, "Slow", result.Data.Slow.Int64(), 3073069597)
+}
+
 // func TestGasNow2(t *testing.T) {
 // 	cfg := &types.Config{}
 // 	utils.Config = cfg
-// 	utils.Config.Eth1GethEndpoint = "http://localhost:18545"
-
+// 	// utils.Config.Eth1GethEndpoint = "http://localhost:18545"
 // 	data, err := getGasNowData()
 // 	if err != nil {
 // 		t.Errorf("Error: %v", err)
