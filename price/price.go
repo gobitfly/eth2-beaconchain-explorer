@@ -3,6 +3,7 @@ package price
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -255,12 +256,7 @@ func GetAvailableCurrencies() []string {
 }
 
 func IsAvailableCurrency(currency string) bool {
-	for _, c := range availableCurrencies {
-		if c == currency {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(availableCurrencies, currency)
 }
 
 func GetCurrencyLabel(currency string) string {
