@@ -28,6 +28,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 	"unicode/utf8"
@@ -1822,4 +1824,67 @@ func GetMaxAllowedDayRangeValidatorStats(validatorAmount int) int {
 	} else {
 		return math.MaxInt
 	}
+}
+
+type TimingsObserverTiming struct {
+	Name     string
+	Duration time.Duration
+}
+type TimingsObserver struct {
+	Name       string
+	startTime  time.Time
+	timings    []TimingsObserverTiming
+	timingsMu  sync.Mutex
+	maxNameLen uint64
+}
+
+func NewTimingsObserver(name string) *TimingsObserver {
+	if name == "" {
+		name = "unnamed"
+	}
+	return &TimingsObserver{
+		Name:      name,
+		startTime: time.Now(),
+		timings:   []TimingsObserverTiming{},
+	}
+}
+
+func (t *TimingsObserver) Timer(name string) func() {
+	start := time.Now()
+	return func() {
+		t.Observe(name, time.Since(start))
+	}
+}
+
+func (t *TimingsObserver) Observe(name string, dur time.Duration) {
+	if name == "" {
+		name = "unnamed"
+	}
+	if uint64(len(name)) > atomic.LoadUint64(&t.maxNameLen) {
+		atomic.StoreUint64(&t.maxNameLen, uint64(len(name)))
+	}
+	t.timingsMu.Lock()
+	defer t.timingsMu.Unlock()
+	t.timings = append(t.timings, TimingsObserverTiming{
+		Name:     name,
+		Duration: dur,
+	})
+}
+
+func (t *TimingsObserver) End(warnThreshold time.Duration) {
+	dur := time.Since(t.startTime)
+	if dur < warnThreshold {
+		return
+	}
+	t.timingsMu.Lock()
+	defer t.timingsMu.Unlock()
+	sort.Slice(t.timings, func(i, j int) bool {
+		return t.timings[i].Duration > t.timings[j].Duration
+	})
+	str := ""
+	tpl := fmt.Sprintf("%%%ds: %%v\n", atomic.LoadUint64(&t.maxNameLen))
+	for _, tt := range t.timings {
+		str += fmt.Sprintf(tpl, tt.Name, tt.Duration)
+	}
+	logrus.Warnf("timingsObserver: %s: total duration %s\n%s", t.Name, dur, str)
 }
