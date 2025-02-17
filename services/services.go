@@ -1291,22 +1291,18 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 	}
 }
 
-func getGasNowData() (*types.GasNowPageData, error) {
-	// Connect to the ETH node.
-	client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	defer client.Close()
+// BlockWrapper is a simple wrapper for Ethereum block data.
+type BlockWrapper struct {
+	Header       *geth_types.Header
+	Transactions []rpcTransaction
+}
 
-	// Get the pending block (which will soon be proposed).
+func GetBlock(client *geth_rpc.Client, blockType string) (*BlockWrapper, error) {
 	var raw json.RawMessage
-	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
+	err := client.Call(&raw, "eth_getBlockByNumber", blockType, true)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving pending block data: %w", err)
+		return nil, fmt.Errorf("error retrieving block data for %s: %w", blockType, err)
 	}
-
-	// Unmarshal into both a header (for base fee) and a block body (for tx list).
 	var header *geth_types.Header
 	var body rpcBlock
 	if err = json.Unmarshal(raw, &header); err != nil {
@@ -1315,35 +1311,45 @@ func getGasNowData() (*types.GasNowPageData, error) {
 	if err = json.Unmarshal(raw, &body); err != nil {
 		return nil, err
 	}
-	txs := body.Transactions
-	// Make sure the header contains a base fee.
 	if header.BaseFee == nil {
-		return nil, fmt.Errorf("pending block header has nil BaseFee")
+		return nil, fmt.Errorf("block header for %s has nil BaseFee", blockType)
 	}
-	baseFee := header.BaseFee
+	return &BlockWrapper{
+		Header:       header,
+		Transactions: body.Transactions,
+	}, nil
+}
+
+func getGasNowData() (*types.GasNowPageData, error) {
+	// Connect to the ETH node.
+	client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	block, err := GetBlock(client, "pending")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving pending block: %w", err)
+	}
+
+	baseFee := block.Header.BaseFee
 
 	// Handle edgecase when there's too few txs in the pending block
 	// Use latest instead
-	if len(txs) < 40 { // 40 chosen as roughly 1/5 of current average tx in a block
-		var rawLatest json.RawMessage
-		err = client.Call(&rawLatest, "eth_getBlockByNumber", "latest", true)
+	if len(block.Transactions) < 40 { // 40 chosen as roughly 1/5 of current average tx in a block
+		// Do not update baseFee as this is still the target block we suggest gas prices for
+		block, err = GetBlock(client, "latest")
 		if err != nil {
-			return nil, fmt.Errorf("error retrieving latest block data: %w", err)
+			return nil, fmt.Errorf("error retrieving latest block: %w", err)
 		}
-		if err = json.Unmarshal(rawLatest, &body); err != nil {
-			return nil, err
-		}
-
-		// update tx to latest but keep basefee of pending block
-		// as this is still the target block we suggest gas prices for
-		txs = body.Transactions
 	}
 
 	// -------------------------
 	// (1) Build our “tip” samples.
 	// -------------------------
-	pendingTips := make([]*big.Int, 0, len(txs))
-	for _, tx := range txs {
+	pendingTips := make([]*big.Int, 0, len(block.Transactions))
+	for _, tx := range block.Transactions {
 		tip := tx.tx.GasTipCap()
 		if tip.Sign() < 0 {
 			tip = big.NewInt(0)
@@ -1351,7 +1357,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 		pendingTips = append(pendingTips, tip)
 	}
 
-	gpoData := suggestGasPrices(header.GasUsed, header.GasLimit, baseFee, pendingTips)
+	gpoData := suggestGasPrices(block.Header.GasUsed, block.Header.GasLimit, baseFee, pendingTips)
 
 	// not available in unit test mode
 	if db.BigtableClient != nil {
@@ -1375,10 +1381,7 @@ func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pending
 	gpoData.Code = 200
 	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
 
-	// How full a block is [0, 1], protocol targets 50% usage
-	gasUsage := float64(gasUsed) / float64(gasLimit)
-
-	// Sort in ascending order (so that e.g. the 90th percentile is near the high end).
+	// Sort tips in ascending order to be used for percentiles.
 	sort.Slice(pendingTips, func(i, j int) bool {
 		return pendingTips[i].Cmp(pendingTips[j]) < 0
 	})
@@ -1386,6 +1389,7 @@ func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pending
 	// -------------------------
 	// (2) Compute tip percentiles.
 	// Define a helper to get a percentile from a sorted slice.
+	// Can be replaced in v2 with https://pkg.go.dev/github.com/montanaflynn/stats#Percentile
 	getPercentile := func(tips []*big.Int, pct float64) *big.Int {
 		if len(tips) == 0 {
 			return big.NewInt(0)
@@ -1400,7 +1404,14 @@ func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pending
 		return tips[index]
 	}
 
+	// How full a block is [0, 1], protocol targets 50% usage
+	gasUsage := float64(gasUsed) / float64(gasLimit)
+
 	// Dictates the aggressiveness to scale the percentiles for depending on the block usage
+	// This shift of percentiles is to better consider the usage of the current block.
+	// Imagine a 30% used block, there's still plenty of room to be filled with even a slow tip.
+	// So we should scale the percentiles down to suggest better value tips of the user.
+	// And vice versa where we want the users tx to stay competitive when the usage is high.
 	cappedGasUsage := gasUsage
 	if cappedGasUsage > 0.80 {
 		cappedGasUsage = 0.80
@@ -1423,68 +1434,10 @@ func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pending
 	normalSuggestion := new(big.Int).Add(baseFee, normalTip)
 	slowSuggestion := new(big.Int).Add(baseFee, slowTip)
 
-	// -------------------------
-	// (4) Enforce monotonicity:
-	// If for any reason the suggestions “cross” (e.g. fast < rapid) then adjust so that
-	// rapid ≥ fast ≥ standard ≥ slow.
-	if rapidSuggestion.Cmp(fastSuggestion) < 0 {
-		fastSuggestion = new(big.Int).Set(rapidSuggestion)
-	}
-	if fastSuggestion.Cmp(normalSuggestion) < 0 {
-		normalSuggestion = new(big.Int).Set(fastSuggestion)
-	}
-	if normalSuggestion.Cmp(slowSuggestion) < 0 {
-		slowSuggestion = new(big.Int).Set(normalSuggestion)
-	}
-
 	gpoData.Data.Rapid = rapidSuggestion
 	gpoData.Data.Fast = fastSuggestion
 	gpoData.Data.Standard = normalSuggestion
 	gpoData.Data.Slow = slowSuggestion
-
-	// -------------------------
-	// Improvement Idea for a v2 endpoint
-	// (3) Account for the base fee.
-	// To be “safe” for an urgent transaction you want to cover the worst-case base fee jump.
-	// For less urgent transactions you might assume that at some point the block isn’t full,
-	// so the base fee will remain near the current value (or drop below).
-	// applyFactor := func(x *big.Int, num, den int64) *big.Int {
-	// 	result := new(big.Int).Mul(x, big.NewInt(num))
-	// 	result.Div(result, big.NewInt(den))
-	// 	return result
-	// }
-	// // For a transaction that wants to be included in the next 3 blocks, assume highest possible jump
-	// predictedRapidBaseFee := applyFactor(baseFee, 1250, 1000)
-	// // For a “fast” inclusion in the next 2 blocks, assume highest possible jump
-	// predictedFastBaseFee := applyFactor(baseFee, 1150, 1000)
-	// // For normal keep current "pending" blocks base fee (next block inclusion)
-	// predictedNormalBaseFee := new(big.Int).Set(baseFee)
-	// // For “slow” inclusion you might even see a slight drop if congestion eases.
-	// predictedSlowBaseFee := applyFactor(baseFee, 950, 1000)
-
-	// Save our values in the response structure.
-	// gpoData.Data.CurrentBaseFee = baseFee
-
-	// gpoData.Data.V2.Rapid = types.GasNowV2Pair{
-	// 	Gas:     new(big.Int).Add(predictedRapidBaseFee, rapidTip),
-	// 	Tip:     rapidTip,
-	// 	BaseFee: predictedRapidBaseFee,
-	// }
-	// gpoData.Data.V2.Fast = types.GasNowV2Pair{
-	// 	Gas:     new(big.Int).Add(predictedFastBaseFee, fastTip),
-	// 	Tip:     fastTip,
-	// 	BaseFee: predictedFastBaseFee,
-	// }
-	// gpoData.Data.V2.Standard = types.GasNowV2Pair{
-	// 	Gas:     new(big.Int).Add(predictedNormalBaseFee, normalTip),
-	// 	Tip:     normalTip,
-	// 	BaseFee: predictedNormalBaseFee,
-	// }
-	// gpoData.Data.V2.Slow = types.GasNowV2Pair{
-	// 	Gas:     new(big.Int).Add(predictedSlowBaseFee, slowTip),
-	// 	Tip:     slowTip,
-	// 	BaseFee: predictedSlowBaseFee,
-	// }
 
 	return gpoData
 }
