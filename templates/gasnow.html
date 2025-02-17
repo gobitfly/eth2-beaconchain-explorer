@@ -599,28 +599,28 @@
         <div data-toggle="tooltip" data-placement="top" title="The median gas price of the current mining block" class="card text-center card-outline-info m-2">
           <div class="card-header card-outline-info"><i class="fas fa-rocket mr-1"></i>Rapid</div>
           <div class="card-body card-block">
-            <h4 class="card-title">${ page.data.rapid | formatGWei(0) } GWei</h4>
+            <h4 class="card-title">${ page.data.rapid | formatGWei(1) } GWei</h4>
             <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.rapid | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} 15 Seconds</p>
           </div>
         </div>
         <div data-toggle="tooltip" data-placement="top" title="The tail gas price of the current mining block" class="card text-center card-outline-info m-2">
           <div class="card-header card-outline-info"><i class="fas fa-plane mr-1"></i>Fast</div>
           <div class="card-body card-block">
-            <h4 class="card-title">${ page.data.fast | formatGWei(0) } GWei</h4>
+            <h4 class="card-title">${ page.data.fast | formatGWei(1) } GWei</h4>
             <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.fast | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} 1 Minute</p>
           </div>
         </div>
         <div data-toggle="tooltip" data-placement="top" title="The gas price of the 500th transaction in the pending queue" class="card text-center card-outline-info m-2">
           <div class="card-header card-outline-info"><i class="fas fa-car-side mr-1"></i>Standard</div>
           <div class="card-body card-block">
-            <h4 class="card-title">${ page.data.standard | formatGWei(0) } GWei</h4>
+            <h4 class="card-title">${ page.data.standard | formatGWei(1) } GWei</h4>
             <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.standard | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} 3 Minutes</p>
           </div>
         </div>
         <div data-toggle="tooltip" data-placement="top" title="The gas price of the 1000th transaction in the pending queue" class="card text-center card-outline-info m-2">
           <div class="card-header card-outline-info"><i class="fas fa-bicycle mr-1"></i>Slow</div>
           <div class="card-body card-block">
-            <h4 class="card-title">${ page.data.slow | formatGWei(0) } GWei</h4>
+            <h4 class="card-title">${ page.data.slow | formatGWei(1) } GWei</h4>
             <p class="card-text text-muted text-center">{{ if .Mainnet }}${ page.data.slow | toGasPrice(21000, page.data.price, page.data.currency)} |{{ end }} > 10 Minutes</p>
           </div>
         </div>
