@@ -20,6 +20,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/ratelimit"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/montanaflynn/stats"
 
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/shopspring/decimal"
@@ -1291,117 +1292,165 @@ func gasNowUpdater(wg *sync.WaitGroup) {
 	}
 }
 
-func getGasNowData() (*types.GasNowPageData, error) {
-	gpoData := &types.GasNowPageData{}
-	gpoData.Code = 200
-	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
+// BlockWrapper is a simple wrapper for Ethereum block data.
+type BlockWrapper struct {
+	Header       *geth_types.Header
+	Transactions []rpcTransaction
+}
 
+func GetBlock(client *geth_rpc.Client, blockType string) (*BlockWrapper, error) {
+	var raw json.RawMessage
+	err := client.Call(&raw, "eth_getBlockByNumber", blockType, true)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving block data for %s: %w", blockType, err)
+	}
+	var header *geth_types.Header
+	var body rpcBlock
+	if err = json.Unmarshal(raw, &header); err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(raw, &body); err != nil {
+		return nil, err
+	}
+	if header.BaseFee == nil {
+		return nil, fmt.Errorf("block header for %s has nil BaseFee", blockType)
+	}
+	return &BlockWrapper{
+		Header:       header,
+		Transactions: body.Transactions,
+	}, nil
+}
+
+func getGasNowData() (*types.GasNowPageData, error) {
+	// Connect to the ETH node.
 	client, err := geth_rpc.Dial(utils.Config.Eth1GethEndpoint)
 	if err != nil {
 		return nil, err
 	}
-	var raw json.RawMessage
-	err = client.Call(&raw, "eth_getBlockByNumber", "pending", true)
+	defer client.Close()
+
+	block, err := GetBlock(client, "pending")
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving pending block data: %.1000s", err) // limit error message to 1000 characters
+		return nil, fmt.Errorf("error retrieving pending block: %w", err)
 	}
 
-	// var res map[string]interface{}
-	// err = json.Unmarshal(raw, &res)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	baseFee := block.Header.BaseFee
 
-	var header *geth_types.Header
-	var body rpcBlock
-
-	err = json.Unmarshal(raw, &header)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(raw, &body)
-	if err != nil {
-		return nil, err
-	}
-	txs := body.Transactions
-
-	sort.Slice(txs, func(i, j int) bool {
-		return txs[i].tx.GasPrice().Cmp(txs[j].tx.GasPrice()) > 0
-	})
-	if len(txs) > 1 {
-		medianGasPrice := txs[len(txs)/2].tx.GasPrice()
-		tailGasPrice := txs[len(txs)-1].tx.GasPrice()
-
-		gpoData.Data.Rapid = medianGasPrice
-		gpoData.Data.Fast = tailGasPrice
-	} else {
-		gpoData.Data.Rapid = new(big.Int)
-		gpoData.Data.Fast = new(big.Int)
+	// Handle edgecase when there's too few txs in the pending block
+	// Use latest instead
+	if len(block.Transactions) < 10 { // 10 chosen to make percentiles estimates somewhat work with low data set
+		// Do not update baseFee as this is still the target block we suggest gas prices for
+		block, err = GetBlock(client, "latest")
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving latest block: %w", err)
+		}
 	}
 
-	err = client.Call(&raw, "txpool_content")
-	if err != nil {
-		return nil, fmt.Errorf("error getting raw json data from txpool_content: %w", err)
+	// -------------------------
+	// (1) Build our “tip” samples.
+	// -------------------------
+	pendingTips := make([]*big.Int, 0, len(block.Transactions))
+	for _, tx := range block.Transactions {
+		tip := tx.tx.GasTipCap()
+		if tip.Sign() < 0 {
+			tip = big.NewInt(0)
+		}
+		pendingTips = append(pendingTips, tip)
 	}
 
-	txPoolContent := &TxPoolContent{}
-	err = json.Unmarshal(raw, txPoolContent)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal txpoolcontent json error: %w", err)
-	}
+	gpoData := suggestGasPrices(block.Header.GasUsed, block.Header.GasLimit, baseFee, pendingTips)
 
-	pendingTxs := make([]*TxPoolContentTransaction, 0, len(txPoolContent.Pending))
-
-	for _, account := range txPoolContent.Pending {
-		lowestNonce := 9223372036854775807
-		for n := range account {
-			if n < int(lowestNonce) {
-				lowestNonce = n
-			}
+	// not available in unit test mode
+	if db.BigtableClient != nil {
+		// Log or store historical data.
+		if err = db.BigtableClient.SaveGasNowHistory(gpoData.Data.Slow, gpoData.Data.Standard, gpoData.Data.Fast, gpoData.Data.Rapid); err != nil {
+			logrus.WithError(err).Error("error updating gas now history")
 		}
 
-		pendingTxs = append(pendingTxs, account[lowestNonce])
-	}
-	sort.Slice(pendingTxs, func(i, j int) bool {
-		return pendingTxs[i].GetGasPrice().Cmp(pendingTxs[j].GetGasPrice()) > 0
-	})
-
-	standardIndex := int(math.Max(float64(2*len(txs)), 500))
-
-	slowIndex := int(math.Max(float64(5*len(txs)), 1000))
-	if standardIndex < len(pendingTxs) {
-		gpoData.Data.Standard = pendingTxs[standardIndex].GetGasPrice()
+		// Get fiat conversion data.
+		gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, "USD")
+		gpoData.Data.Currency = "USD"
 	} else {
-		gpoData.Data.Standard = header.BaseFee
+		logrus.Error("error saving gas now history: bigtable client not initialized")
 	}
 
-	if gpoData.Data.Standard.Cmp(header.BaseFee) < 0 {
-		gpoData.Data.Standard = header.BaseFee
-	}
-
-	if slowIndex < len(pendingTxs) {
-		gpoData.Data.Slow = pendingTxs[slowIndex].GetGasPrice()
-	} else {
-		gpoData.Data.Slow = header.BaseFee
-	}
-
-	if gpoData.Data.Slow.Cmp(header.BaseFee) < 0 {
-		gpoData.Data.Slow = header.BaseFee
-	}
-
-	err = db.BigtableClient.SaveGasNowHistory(gpoData.Data.Slow, gpoData.Data.Standard, gpoData.Data.Fast, gpoData.Data.Rapid)
-	if err != nil {
-		logrus.WithError(err).Error("error updating gas now history")
-	}
-
-	gpoData.Data.Price = price.GetPrice(utils.Config.Frontend.ElCurrency, "USD")
-	gpoData.Data.Currency = "USD"
-
-	// gpoData.RapidUSD = gpoData.Rapid * 21000 * params.GWei / params.Ether * usd
-	// gpoData.FastUSD = gpoData.Fast * 21000 * params.GWei / params.Ether * usd
-	// gpoData.StandardUSD = gpoData.Standard * 21000 * params.GWei / params.Ether * usd
-	// gpoData.SlowUSD = gpoData.Slow * 21000 * params.GWei / params.Ether * usd
 	return gpoData, nil
+}
+
+func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pendingTips []*big.Int) *types.GasNowPageData {
+	gpoData := &types.GasNowPageData{}
+	gpoData.Code = 200
+	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
+
+	// -------------------------
+	// (2) Compute tip percentiles.
+	// Replace custom percentile calculation with stats.Percentile from https://pkg.go.dev/github.com/montanaflynn/stats#Percentile
+	// Convert pendingTips to a slice of float64 as required by the library.
+	tipsFloats := make([]float64, len(pendingTips))
+	for i, tip := range pendingTips {
+		tipsFloats[i] = float64(tip.Int64())
+	}
+
+	// How full a block is [0, 1], protocol targets 50% usage
+	gasUsage := float64(gasUsed) / float64(gasLimit)
+
+	// Dictates the aggressiveness to scale the percentiles for depending on the block usage
+	// This shift of percentiles is to better consider the usage of the current block.
+	// Imagine a 30% used block, there's still plenty of room to be filled with even a slow tip.
+	// So we should scale the percentiles down to suggest better value tips of the user.
+	// And vice versa where we want the users tx to stay competitive when the usage is high.
+	cappedGasUsage := gasUsage
+	if cappedGasUsage > 0.80 {
+		cappedGasUsage = 0.80
+	} else if cappedGasUsage < 0.10 {
+		cappedGasUsage = 0.10
+	}
+
+	// The target percentiles assume a block usage of 50% as targeted by the protocol.
+	// So a percentile of 100 scaled with 50% cappedGasUsage usage will target the 50th percentile.
+	// While the cap prevents edgecases around 100% and 0% usage
+
+	// Use stats.Percentile to compute percentiles
+	rapidTipFloat, err := stats.Percentile(tipsFloats, 100*cappedGasUsage) // target 50th percentile
+	if err != nil {
+		logrus.Warnf("error computing rapid tip percentile: %v", err)
+		rapidTipFloat = 0
+	}
+	fastTipFloat, err := stats.Percentile(tipsFloats, 70*cappedGasUsage) // target 35th percentile
+	if err != nil {
+		logrus.Warnf("error computing fast tip percentile: %v", err)
+		fastTipFloat = 0
+	}
+	normalTipFloat, err := stats.Percentile(tipsFloats, 35*cappedGasUsage) // target 17.5th percentile
+	if err != nil {
+		logrus.Warnf("error computing normal tip percentile: %v", err)
+		normalTipFloat = 0
+	}
+	slowTipFloat, err := stats.Percentile(tipsFloats, 10*cappedGasUsage) // target 5th percentile
+	if err != nil {
+		logrus.Warnf("error computing slow tip percentile: %v", err)
+		slowTipFloat = 0
+	}
+
+	// Convert the float64 percentiles back to big.Int.
+	rapidTip := big.NewInt(int64(math.Round(rapidTipFloat)))
+	fastTip := big.NewInt(int64(math.Round(fastTipFloat)))
+	normalTip := big.NewInt(int64(math.Round(normalTipFloat)))
+	slowTip := big.NewInt(int64(math.Round(slowTipFloat)))
+
+	// Now compute the final suggestion as:
+	//    suggested gas price = baseFee + effective tip
+	rapidSuggestion := new(big.Int).Add(baseFee, rapidTip)
+	fastSuggestion := new(big.Int).Add(baseFee, fastTip)
+	normalSuggestion := new(big.Int).Add(baseFee, normalTip)
+	slowSuggestion := new(big.Int).Add(baseFee, slowTip)
+
+	gpoData.Data.Rapid = rapidSuggestion
+	gpoData.Data.Fast = fastSuggestion
+	gpoData.Data.Standard = normalSuggestion
+	gpoData.Data.Slow = slowSuggestion
+
+	return gpoData
 }
 
 type TxPoolContent struct {
