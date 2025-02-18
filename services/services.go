@@ -20,6 +20,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/ratelimit"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/montanaflynn/stats"
 
 	itypes "github.com/gobitfly/eth-rewards/types"
 	"github.com/shopspring/decimal"
@@ -1337,7 +1338,7 @@ func getGasNowData() (*types.GasNowPageData, error) {
 
 	// Handle edgecase when there's too few txs in the pending block
 	// Use latest instead
-	if len(block.Transactions) < 40 { // 40 chosen as roughly 1/5 of current average tx in a block
+	if len(block.Transactions) < 10 { // 10 chosen to make percentiles estimates somewhat work with low data set
 		// Do not update baseFee as this is still the target block we suggest gas prices for
 		block, err = GetBlock(client, "latest")
 		if err != nil {
@@ -1381,27 +1382,13 @@ func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pending
 	gpoData.Code = 200
 	gpoData.Data.Timestamp = time.Now().UnixNano() / 1e6
 
-	// Sort tips in ascending order to be used for percentiles.
-	sort.Slice(pendingTips, func(i, j int) bool {
-		return pendingTips[i].Cmp(pendingTips[j]) < 0
-	})
-
 	// -------------------------
 	// (2) Compute tip percentiles.
-	// Define a helper to get a percentile from a sorted slice.
-	// Can be replaced in v2 with https://pkg.go.dev/github.com/montanaflynn/stats#Percentile
-	getPercentile := func(tips []*big.Int, pct float64) *big.Int {
-		if len(tips) == 0 {
-			return big.NewInt(0)
-		}
-		// Calculate an index between 0 and len(tips)-1.
-		index := int(math.Ceil((pct/100.0)*float64(len(tips)))) - 1
-		if index < 0 {
-			index = 0
-		} else if index >= len(tips) {
-			index = len(tips) - 1
-		}
-		return tips[index]
+	// Replace custom percentile calculation with stats.Percentile from https://pkg.go.dev/github.com/montanaflynn/stats#Percentile
+	// Convert pendingTips to a slice of float64 as required by the library.
+	tipsFloats := make([]float64, len(pendingTips))
+	for i, tip := range pendingTips {
+		tipsFloats[i] = float64(tip.Int64())
 	}
 
 	// How full a block is [0, 1], protocol targets 50% usage
@@ -1422,10 +1409,34 @@ func suggestGasPrices(gasUsed uint64, gasLimit uint64, baseFee *big.Int, pending
 	// The target percentiles assume a block usage of 50% as targeted by the protocol.
 	// So a percentile of 100 scaled with 50% cappedGasUsage usage will target the 50th percentile.
 	// While the cap prevents edgecases around 100% and 0% usage
-	rapidTip := getPercentile(pendingTips, 100*cappedGasUsage) // target 50th percentile
-	fastTip := getPercentile(pendingTips, 70*cappedGasUsage)   // target 35th percentile
-	normalTip := getPercentile(pendingTips, 35*cappedGasUsage) // target 17.5h percentile
-	slowTip := getPercentile(pendingTips, 10*cappedGasUsage)   // target 5th percentile
+
+	// Use stats.Percentile to compute percentiles
+	rapidTipFloat, err := stats.Percentile(tipsFloats, 100*cappedGasUsage) // target 50th percentile
+	if err != nil {
+		logrus.Warnf("error computing rapid tip percentile: %v", err)
+		rapidTipFloat = 0
+	}
+	fastTipFloat, err := stats.Percentile(tipsFloats, 70*cappedGasUsage) // target 35th percentile
+	if err != nil {
+		logrus.Warnf("error computing fast tip percentile: %v", err)
+		fastTipFloat = 0
+	}
+	normalTipFloat, err := stats.Percentile(tipsFloats, 35*cappedGasUsage) // target 17.5th percentile
+	if err != nil {
+		logrus.Warnf("error computing normal tip percentile: %v", err)
+		normalTipFloat = 0
+	}
+	slowTipFloat, err := stats.Percentile(tipsFloats, 10*cappedGasUsage) // target 5th percentile
+	if err != nil {
+		logrus.Warnf("error computing slow tip percentile: %v", err)
+		slowTipFloat = 0
+	}
+
+	// Convert the float64 percentiles back to big.Int.
+	rapidTip := big.NewInt(int64(math.Round(rapidTipFloat)))
+	fastTip := big.NewInt(int64(math.Round(fastTipFloat)))
+	normalTip := big.NewInt(int64(math.Round(normalTipFloat)))
+	slowTip := big.NewInt(int64(math.Round(slowTipFloat)))
 
 	// Now compute the final suggestion as:
 	//    suggested gas price = baseFee + effective tip

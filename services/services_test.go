@@ -111,7 +111,7 @@ func TestSuggestGasPrices_TableDriven(t *testing.T) {
 			expectedRapid:    105,
 			expectedFast:     104,
 			expectedStandard: 102,
-			expectedSlow:     101,
+			expectedSlow:     100,
 		},
 		{
 			name:             "HighGasUsage",
@@ -178,26 +178,8 @@ func TestViaFakeRPC(t *testing.T) {
 		return
 	}
 
-	checkSuggestion(t, "Rapid", result.Data.Rapid.Int64(), 3939435494)
+	checkSuggestion(t, "Rapid", result.Data.Rapid.Int64(), 3935619558)
 	checkSuggestion(t, "Fast", result.Data.Fast.Int64(), 3511919489)
 	checkSuggestion(t, "Standard", result.Data.Standard.Int64(), 3123069597)
 	checkSuggestion(t, "Slow", result.Data.Slow.Int64(), 3073069597)
 }
-
-// func TestGasNow2(t *testing.T) {
-// 	cfg := &types.Config{}
-// 	utils.Config = cfg
-// 	utils.Config.Eth1GethEndpoint = "http://localhost:18545"
-// 	data, err := getGasNowData()
-// 	if err != nil {
-// 		t.Errorf("Error: %v", err)
-// 	}
-// 	if data == nil {
-// 		t.Errorf("Error: data is nil")
-// 	}
-
-// 	fmt.Printf("Rapid: %.1f gwei\n", new(big.Float).Quo(new(big.Float).SetInt(data.Data.Rapid), big.NewFloat(1e9)))
-// 	fmt.Printf("Fast: %.1f gwei\n", new(big.Float).Quo(new(big.Float).SetInt(data.Data.Fast), big.NewFloat(1e9)))
-// 	fmt.Printf("Standard: %.1f gwei\n", new(big.Float).Quo(new(big.Float).SetInt(data.Data.Standard), big.NewFloat(1e9)))
-// 	fmt.Printf("Slow: %.1f gwei\n", new(big.Float).Quo(new(big.Float).SetInt(data.Data.Slow), big.NewFloat(1e9)))
-// }
