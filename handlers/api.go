@@ -3580,7 +3580,7 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 
 	system, err := db.BigtableClient.GetMachineMetricsSystem(claims.UserID, int(limit), int(offset))
 	if err != nil {
-		logger.Errorf("sytem stat error : %v", err)
+		logger.Errorf("system stat error : %v", err)
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve system stats from db")
 		return
 	}
