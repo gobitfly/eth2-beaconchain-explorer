@@ -727,26 +727,8 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiSlotConsolidationRequests godoc
-// @Summary Get the consolidation requests processed in a specific block
-// @Tags Slot
-// @Description Returns the consolidation requests processed in a specific block. PRO Endpoint: This endpoint is only available for users on a paid API plan.
-// @Produce  json
-// @Param  slot path string true "Block slot"
-// @Param  limit query string false "Limit the number of results"
-// @Param offset query string false "Offset the number of results"
-// @Success 200 {object} types.ApiResponse{[]APIConsolidationRequestResponse}
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/slot/{slot}/consolidation_requests [get]
 func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	perks := getUserPremium(r)
-
-	if perks.Package == "standard" {
-		SendBadRequestResponse(w, r.URL.String(), "this endpoint requires a paid API subscription plan")
-		return
-	}
 
 	vars := mux.Vars(r)
 	q := r.URL.Query()
@@ -789,26 +771,8 @@ func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiSlotDepositRequests godoc
-// @Summary Get the deposit requests processed in a specific block
-// @Tags Slot
-// @Description Returns the deposit requests processed in a specific block. PRO Endpoint: This endpoint is only available for users on a paid API plan.
-// @Produce  json
-// @Param  slot path string true "Block slot"
-// @Param  limit query string false "Limit the number of results"
-// @Param offset query string false "Offset the number of results"
-// @Success 200 {object} types.ApiResponse{[]APIDepositRequestResponse}
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/slot/{slot}/deposit_requests [get]
 func ApiSlotDepositRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	perks := getUserPremium(r)
-
-	if perks.Package == "standard" {
-		SendBadRequestResponse(w, r.URL.String(), "this endpoint requires a paid API subscription plan")
-		return
-	}
 
 	vars := mux.Vars(r)
 	q := r.URL.Query()
