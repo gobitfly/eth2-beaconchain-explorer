@@ -727,6 +727,130 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
+// ApiSlotConsolidationRequests godoc
+// @Summary Get the consolidation requests processed in a specific block
+// @Tags Slot
+// @Description Returns the consolidation requests processed in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Param  limit query string false "Limit the number of results"
+// @Param offset query string false "Offset the number of results"
+// @Success 200 {object} types.ApiResponse{[]APIConsolidationRequestResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/slot/{slot}/consolidation_requests [get]
+func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	perks := getUserPremium(r)
+
+	if perks.Package == "standard" {
+		SendBadRequestResponse(w, r.URL.String(), "this endpoint requires a paid API subscription plan")
+		return
+	}
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		SendBadRequestResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, amount_consolidated, source_index, target_index FROM blocks_consolidation_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResultsAsArray(rows, w, r)
+}
+
+// ApiSlotDepositRequests godoc
+// @Summary Get the deposit requests processed in a specific block
+// @Tags Slot
+// @Description Returns the deposit requests processed in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Param  limit query string false "Limit the number of results"
+// @Param offset query string false "Offset the number of results"
+// @Success 200 {object} types.ApiResponse{[]APIDepositRequestResponse}
+// @Failure 400 {object} types.ApiResponse
+// @Router /api/v1/slot/{slot}/deposit_requests [get]
+func ApiSlotDepositRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	perks := getUserPremium(r)
+
+	if perks.Package == "standard" {
+		SendBadRequestResponse(w, r.URL.String(), "this endpoint requires a paid API subscription plan")
+		return
+	}
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		SendBadRequestResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, pubkey, withdrawal_credentials, amount, signature FROM blocks_deposit_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResultsAsArray(rows, w, r)
+}
+
 // ApiBlockVoluntaryExits godoc
 // ApiSyncCommittee godoc
 // @Summary Get the sync-committee for a sync-period
