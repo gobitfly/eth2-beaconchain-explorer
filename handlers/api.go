@@ -730,7 +730,7 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 // ApiSlotConsolidationRequests godoc
 // @Summary Get the consolidation requests processed in a specific block
 // @Tags Slot
-// @Description Returns the consolidation requests processed in a specific block
+// @Description Returns the consolidation requests processed in a specific block. PRO Endpoint: This endpoint is only available for users on a paid API plan.
 // @Produce  json
 // @Param  slot path string true "Block slot"
 // @Param  limit query string false "Limit the number of results"
@@ -792,7 +792,7 @@ func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 // ApiSlotDepositRequests godoc
 // @Summary Get the deposit requests processed in a specific block
 // @Tags Slot
-// @Description Returns the deposit requests processed in a specific block
+// @Description Returns the deposit requests processed in a specific block. PRO Endpoint: This endpoint is only available for users on a paid API plan.
 // @Produce  json
 // @Param  slot path string true "Block slot"
 // @Param  limit query string false "Limit the number of results"
