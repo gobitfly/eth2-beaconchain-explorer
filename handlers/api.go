@@ -1970,22 +1970,11 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 	limitQuery := q.Get("limit")
 	offsetQuery := q.Get("offset")
 
-	limit, err := strconv.ParseInt(limitQuery, 10, 64)
-	if err != nil {
+	limit := parseUintWithDefault(limitQuery, 2000)
+	offset := parseUintWithDefault(offsetQuery, 0)
+
+	if limit > 2000 {
 		limit = 2000
-	}
-
-	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
-	if err != nil {
-		offset = 0
-	}
-
-	if offset < 0 {
-		offset = 0
-	}
-
-	if limit > (2000+offset) || limit <= 0 || limit <= offset {
-		limit = 2000 + offset
 	}
 
 	vars := mux.Vars(r)
