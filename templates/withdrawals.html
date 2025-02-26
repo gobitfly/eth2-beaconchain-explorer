@@ -15,6 +15,7 @@
         ordering: false,
         stateSave: true,
         stateSaveCallback: function (settings, data) {
+          data.search.search = ""
           data.order = []
           fetch(`/tables/${settings.sTableId}/state`, {
             method: "PUT",
@@ -89,6 +90,7 @@
         ordering: false,
         stateSave: true,
         stateSaveCallback: function (settings, data) {
+          data.search.search = ""
           data.order = []
           fetch(`/tables/${settings.sTableId}/state`, {
             method: "PUT",
