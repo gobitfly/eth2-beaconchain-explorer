@@ -553,22 +553,22 @@
             <div class="card block-card py-1">
               {{ template "block_consolidation_requests" . }}
             </div>
-         </div>
+          </div>
         {{ end }}
         {{ if gt (len .WithdrawalRequests) 0 }}
           <div class="tab-pane fade" id="withdrawal-requestsTabPanel" role="tabpanel" aria-labelledby="withdrawal-requests-tab">
             <div class="card block-card py-1">
               {{ template "block_withdrawal_requests" . }}
             </div>
-         </div>
+          </div>
         {{ end }}
         {{ if gt (len .DepositRequests) 0 }}
-        <div class="tab-pane fade" id="deposit-requestsTabPanel" role="tabpanel" aria-labelledby="deposit-requests-tab">
-          <div class="card block-card py-1">
-            {{ template "block_deposit_requests" . }}
+          <div class="tab-pane fade" id="deposit-requestsTabPanel" role="tabpanel" aria-labelledby="deposit-requests-tab">
+            <div class="card block-card py-1">
+              {{ template "block_deposit_requests" . }}
+            </div>
           </div>
-       </div>
-      {{ end }}
+        {{ end }}
       </div>
     </div>
   {{ end }}
