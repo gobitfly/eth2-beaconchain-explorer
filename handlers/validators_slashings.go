@@ -105,7 +105,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 	for _, slashing := range slashings {
 		validatorsForNameSearch = append(validatorsForNameSearch, slashing.Proposer)
 		if slashing.Type == "Attestation Violation" {
-			inter := intersect.Simple(slashing.Attestestation1Indices, slashing.Attestestation2Indices)
+			inter := intersect.Hash(slashing.Attestestation1Indices, slashing.Attestestation2Indices)
 			if len(inter) == 0 {
 				logger.Warningf("No intersection found for attestation violation, proposer: %v, slot: %v", slashing.Proposer, slashing.Slot)
 			}
@@ -130,7 +130,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 		slashedValidators := []uint64{}
 
 		if row.Type == "Attestation Violation" {
-			inter := intersect.Simple(row.Attestestation1Indices, row.Attestestation2Indices)
+			inter := intersect.Hash(row.Attestestation1Indices, row.Attestestation2Indices)
 			if len(inter) == 0 {
 				logger.Warningf("No intersection found for attestation violation, proposer: %v, slot: %v", row.Proposer, row.Slot)
 			}

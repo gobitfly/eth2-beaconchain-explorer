@@ -1,0 +1,70 @@
+{{ define "validatorAttestationsTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="attestations-table" width="100%">
+      <thead>
+        <tr>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Status</th>
+          <th>Time</th>
+          <th><span data-toggle="tooltip" title="Inclusion Slot">Incl. Slot</span></th>
+          <th class="text-truncate" data-toggle="tooltip" title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">Opt.Incl.Dist.</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            var activeTab = $('#chartTabs .active')
+            var initializedAttestationTable = false
+
+            if (activeTab.attr('id') === 'attestations-tab') {
+                initializedAttestationTable = true
+                createAttestationTable()
+            }
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'attestations-tab' && !initializedAttestationTable) {
+                    initializedAttestationTable = true
+                    createAttestationTable()
+                }
+            });
+
+            function createAttestationTable() {
+                $('#attestations-table').DataTable({
+                    searchDelay: 0,
+                    processing: true,
+                    serverSide: true,
+                    stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
+                    ordering: false,
+                    order: [[0, 'desc']],
+                    lengthChange: false,
+                    searching: false,
+                    ajax: dataTableLoader('/validator/' + index + '/attestations'),
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                    },
+                    drawCallback: function(settings) {
+                        formatTimestamps()
+                    },
+                })
+            }
+        })
+    </script>
+{{ end }}

@@ -323,6 +323,8 @@ type ConfigJsonResponse struct {
 		CapellaForkEpoch                        string `json:"CAPELLA_FORK_EPOCH"`
 		DenebForkVersion                        string `json:"DENEB_FORK_VERSION"`
 		DenebForkEpoch                          string `json:"DENEB_FORK_EPOCH"`
+		ElectraForkVersion                      string `json:"ELECTRA_FORK_VERSION"`
+		ElectraForkEpoch                        string `json:"ELECTRA_FORK_EPOCH"`
 		SecondsPerSlot                          string `json:"SECONDS_PER_SLOT"`
 		SecondsPerEth1Block                     string `json:"SECONDS_PER_ETH1_BLOCK"`
 		MinValidatorWithdrawabilityDelay        string `json:"MIN_VALIDATOR_WITHDRAWABILITY_DELAY"`

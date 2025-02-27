@@ -40,7 +40,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorTemplateFiles := append(layoutTemplateFiles,
 		"validator/validator.html",
 		"validator/heading.html",
-		"validator/tables.html",
+		"validator/tables/*.html",
 		"validator/modals.html",
 		"modals.html",
 		"validator/overview.html",
@@ -435,14 +435,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
 		}
 
-		if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x01}) {
+		credentialsPrefixBytes := validatorPageData.WithdrawCredentials[:1]
+		if bytes.Equal(credentialsPrefixBytes, []byte{0x01}) || bytes.Equal(credentialsPrefixBytes, []byte{0x02}) {
 			// validators can have 0x01 credentials even before the cappella fork
 			validatorPageData.IsWithdrawableAddress = true
 		}
 
 		if validatorPageData.CappellaHasHappened {
 			// if we are currently past the cappella fork epoch, we can calculate the withdrawal information
-
 			validatorSlice := []uint64{index}
 			withdrawalsCount, err := db.GetTotalWithdrawalsCount(validatorSlice)
 			if err != nil {
@@ -461,7 +461,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.BLSChange = blsChange
 
-			if bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) && blsChange != nil {
+			if bytes.Equal(credentialsPrefixBytes, []byte{0x00}) && blsChange != nil {
 				// blsChanges are only possible afters cappeala
 				validatorPageData.IsWithdrawableAddress = true
 			}
@@ -836,6 +836,51 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if err != nil && err != sql.ErrNoRows {
 			return fmt.Errorf("error getting rocketpool-data for validator for %v route: %w", r.URL.String(), err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.ConsolidationRequests, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			source_index,
+			target_index,
+			COALESCE(amount_consolidated, 0) AS amount_consolidated
+		FROM blocks_consolidation_requests 
+		INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot AND blocks.status = '1'
+		WHERE blocks_consolidation_requests.source_index = $1 OR blocks_consolidation_requests.target_index = $1
+		ORDER BY block_slot DESC, request_index`, index)
+		if err != nil {
+			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.WithdrawalRequests, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			source_address,
+			amount 
+		FROM blocks_withdrawal_requests 
+		INNER JOIN blocks ON blocks_withdrawal_requests.block_root = blocks.blockroot AND blocks.status = '1'
+		WHERE blocks_withdrawal_requests.validator_pubkey = $1 
+		ORDER BY block_slot DESC, request_index`, validatorPageData.PublicKey)
+		if err != nil {
+			return fmt.Errorf("error retrieving blocks_withdrawal_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+
+		for _, wr := range validatorPageData.WithdrawalRequests {
+			if wr.Amount == 0 {
+				wr.Type = "Exit"
+			} else {
+				wr.Type = "Withdrawal"
+			}
 		}
 		return nil
 	})

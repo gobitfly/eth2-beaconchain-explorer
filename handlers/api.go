@@ -727,6 +727,94 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
+func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		SendBadRequestResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, amount_consolidated, source_index, target_index FROM blocks_consolidation_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResultsAsArray(rows, w, r)
+}
+
+func ApiSlotDepositRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		SendBadRequestResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, pubkey, withdrawal_credentials, amount, signature FROM blocks_deposit_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResultsAsArray(rows, w, r)
+}
+
 // ApiBlockVoluntaryExits godoc
 // ApiSyncCommittee godoc
 // @Summary Get the sync-committee for a sync-period
@@ -2594,7 +2682,10 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, services.LatestEpoch()-99, services.LatestEpoch())
+	startEpoch := max(services.LatestEpoch()-99, 0)
+	endEpoch := services.LatestEpoch()
+
+	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, startEpoch, endEpoch)
 	if err != nil {
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -3840,7 +3931,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 	credentials, err := utils.AddressToWithdrawalCredentials(credentialsOrAddress)
 	if err != nil {
 		// Input is not an address so it must already be withdrawal credentials
-		credentials = credentialsOrAddress
+		credentials = [][]byte{credentialsOrAddress}
 	}
 
 	limitQuery := q.Get("limit")
@@ -3864,7 +3955,7 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 		validatorindex,
 		pubkey
 	FROM validators
-	WHERE withdrawalcredentials = $1
+	WHERE withdrawalcredentials = ANY($1)
 	ORDER BY validatorindex ASC
 	LIMIT $2
 	OFFSET $3

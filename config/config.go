@@ -25,3 +25,9 @@ var GnosisChainYml string
 
 //go:embed holesky.chain.yml
 var HoleskyChainYml string
+
+//go:embed mekong.chain.yml
+var MekongChainYml string
+
+//go:embed pectra-devnet-5.chain.yml
+var PectraDevnet5ChainYml string

@@ -1,0 +1,96 @@
+{{ define "validatorSyncTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="sync-table" width="100%">
+      <thead>
+        <tr>
+          <th>Period</th>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Status</th>
+          <th>Participation</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            var activeTab = $('#chartTabs .active')
+            var initializedSyncTable = false
+
+            if (activeTab.attr('id') === 'sync-tab') {
+                initializedSyncTable = true
+                createSyncTable()
+            }
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'sync-tab' && !initializedSyncTable) {
+                    initializedSyncTable = true
+                    createSyncTable()
+                }
+            });
+
+            function createSyncTable() {
+                $('#sync-table').DataTable({
+                    searchDelay: 0,
+                    processing: true,
+                    serverSide: true,
+                    ordering: false,
+                    order: [[0, 'desc']],
+                    lengthChange: false,
+                    stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
+                    searching: false,
+                    ajax: dataTableLoader('/validator/' + index + '/sync'),
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                    },
+                    columnDefs: [
+                        {
+                            targets: 0,
+                            data: '0',
+                            "orderable": false
+                        },
+                        {
+                            targets: 1,
+                            data: '1',
+                            "orderable": false
+                        },
+                        {
+                            targets: 2,
+                            data: '2',
+                            "orderable": false
+                        },
+                        {
+                            targets: 3,
+                            data: '3',
+                            "orderable": false
+                        },
+                        {
+                            targets: 4,
+                            data: '4',
+                            "orderable": false
+                        },
+                    ],
+                    drawCallback: function(settings) {
+                        formatTimestamps()
+                    },
+                })
+            }
+        })
+    </script>
+{{ end }}

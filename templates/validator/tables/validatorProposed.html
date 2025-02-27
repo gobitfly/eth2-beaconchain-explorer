@@ -1,0 +1,79 @@
+{{ define "validatorProposedTable" }}
+  <div class="table-responsive">
+    <table class="table" style="margin-top: 0 !important;" id="blocks-table" width="100%">
+      <thead>
+        <tr>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Status</th>
+          <th>Time</th>
+          <th>Root Hash</th>
+          <th><span data-toggle="tooltip" data-placement="top" title="Attestations">Att.</span></th>
+          <th><span data-toggle="tooltip" title="Deposits">Dep.</span></th>
+          <th><span data-toggle="tooltip" title="Slashings">Sl.</span> <span data-toggle="tooltip" data-placement="top" title="Proposers">Pro</span>/<span data-toggle="tooltip" data-placement="top" title="Attesters">Att</span></th>
+          <th><span data-toggle="tooltip" title="Exits">Ex.</span></th>
+          <th>Graffiti</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            $('#blocks-table').DataTable({
+                searchDelay: 0,
+                processing: true,
+                serverSide: true,
+                stateSave: true,
+                stateSaveCallback: function (settings, data) {
+                  data.start = 0
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                },
+                stateLoadCallback: function (settings) {
+                  return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                },
+                ordering: true,
+                order: [[0, 'desc']],
+                lengthChange: false,
+                searching: false,
+                ajax: dataTableLoader('/validator/' + index + '/proposedblocks'),
+                pagingType: 'input',
+                pageLength: 10,
+                language: {
+                    searchPlaceholder: 'Search by Epoch Number',
+                    search: '',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                },
+                columnDefs: [
+                    {
+                        targets: 1,
+                        data: '1',
+                        "orderable": false
+                    },
+                    {
+                        targets: 3,
+                        data: '3',
+                        "orderable": false
+                    },
+                    {
+                        targets: 4,
+                        data: '4',
+                        "orderable": false
+                    },
+                    {
+                        targets: 7,
+                        data: '7',
+                        "orderable": false
+                    },
+                ],
+                drawCallback: function(settings) {
+                    formatTimestamps()
+                }
+            })
+        })
+    </script>
+{{ end }}

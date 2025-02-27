@@ -1,0 +1,23 @@
+{{ define "validatorNetworkStatsTable" }}
+  <span class="h4">{{ firstCharToUpper .NetworkStats.NetworkName }} Statistics</span>
+  <table class="table" style="margin-top: 0 !important;" width="100%">
+    <tbody>
+      <tr>
+        <th scope="row">Active Validators</th>
+        <td>{{ .NetworkStats.ActiveValidators }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Pending Validators</th>
+        <td><span data-toggle="tooltip" data-placement="top" title="Entering">{{ .NetworkStats.EnteringValidators }}</span>/<span data-toggle="tooltip" data-placement="top" title="Exiting">{{ .NetworkStats.ExitingValidators }}</span></td>
+      </tr>
+      <tr>
+        <th scope="row">Staked Ether</th>
+        <td>{{ .NetworkStats.StakedEther }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Average Balance</th>
+        <td>{{ .NetworkStats.AverageBalance }}</td>
+      </tr>
+    </tbody>
+  </table>
+{{ end }}
