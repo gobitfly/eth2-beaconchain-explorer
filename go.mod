@@ -45,6 +45,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/montanaflynn/stats v0.7.1
 	github.com/mssola/user_agent v0.5.2
 	github.com/mvdan/xurls v1.1.0
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
@@ -257,7 +258,7 @@ require (
 	github.com/r3labs/sse/v2 v2.10.0 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/supranational/blst v0.3.13 // indirect
+	github.com/supranational/blst v0.3.14 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/thomaso-mirodin/intmath v0.0.0-20160323211736-5dc6d854e46e // indirect
