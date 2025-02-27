@@ -39,7 +39,7 @@
           </thead>
           <tbody>
             {{ range $i, $request := .ConsolidationRequests }}
-              <tr></tr>
+              <tr>
                 <td>{{ formatBlockSlot $request.BlockSlot }}</td>
                 <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
                 <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
