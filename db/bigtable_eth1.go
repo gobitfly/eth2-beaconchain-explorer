@@ -3805,7 +3805,7 @@ func (bigtable *Bigtable) GetBalanceForAddress(address []byte, token []byte) (*t
 		return nil, nil
 	}
 	if val, ok := row[ACCOUNT_METADATA_FAMILY]; ok {
-		if val == nil || len(val) < 1 {
+		if len(val) < 1 {
 			return nil, fmt.Errorf("ReadItem is empty or nil")
 		}
 

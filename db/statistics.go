@@ -840,11 +840,6 @@ func gatherValidatorDepositWithdrawals(day uint64, data []*types.ValidatorStatsT
 
 	logger.Infof("gathering deposits + withdrawals")
 
-	type resRowDeposits struct {
-		ValidatorIndex uint64 `db:"validatorindex"`
-		Deposits       uint64 `db:"deposits"`
-		DepositsAmount uint64 `db:"deposits_amount"`
-	}
 	resDeposits, err := GetValidatorDepositsAndIncomingConsolidations(&SlotRange{StartSlot: firstSlot, EndSlot: lastSlot}, nil)
 	if err != nil {
 		return fmt.Errorf("error retrieving deposits for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)

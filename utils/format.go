@@ -784,7 +784,7 @@ func FormatCommitteeBitList(b []byte) template.HTML {
 	}
 
 	committeeBits := bitfield.Bitvector64(b)
-	h := template.HTML(fmt.Sprintf("<div class=\"text-bitfield text-monospace\">"))
+	h := template.HTML("<div class=\"text-bitfield text-monospace\">")
 	for i := uint64(0); i < committeeBits.Len(); i++ {
 		if committeeBits.BitAt(i) {
 			h += template.HTML(fmt.Sprintf("%d ", i))
