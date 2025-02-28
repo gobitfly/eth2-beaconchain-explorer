@@ -199,7 +199,9 @@ func main() {
 		bt.TransformUncle,
 		bt.TransformWithdrawals,
 		bt.TransformEnsNameRegistered,
-		bt.TransformContract)
+		bt.TransformContract,
+		bt.TransformConsolidationRequests,
+		bt.TransformWithdrawalRequests)
 
 	cache := freecache.NewCache(100 * 1024 * 1024) // 100 MB limit
 

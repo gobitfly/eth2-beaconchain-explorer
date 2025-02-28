@@ -28,6 +28,8 @@ type ClChainConfig struct {
 	CappellaForkEpoch    uint64 `yaml:"CAPELLA_FORK_EPOCH"`
 	DenebForkVersion     string `yaml:"DENEB_FORK_VERSION"`
 	DenebForkEpoch       uint64 `yaml:"DENEB_FORK_EPOCH"`
+	ElectraForkVersion   string `yaml:"ELECTRA_FORK_VERSION"`
+	ElectraForkEpoch     uint64 `yaml:"ELECTRA_FORK_EPOCH"`
 	Eip6110ForkVersion   string `yaml:"EIP6110_FORK_VERSION"`
 	Eip6110ForkEpoch     uint64 `yaml:"EIP6110_FORK_EPOCH"`
 	Eip7002ForkVersion   string `yaml:"EIP7002_FORK_VERSION"`

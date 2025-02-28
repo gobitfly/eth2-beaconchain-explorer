@@ -411,6 +411,8 @@ type ValidatorPageData struct {
 	EstimatedNextWithdrawal                  template.HTML
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
 	NextWithdrawalRow                        [][]interface{}
+	ConsolidationRequests                    []*FrontendConsolidationRequest
+	WithdrawalRequests                       []*FrontendWithdrawalRequest
 	ValidatorProposalData
 }
 
@@ -663,13 +665,16 @@ type BlockPageData struct {
 
 	ExecutionData *Eth1BlockPageData
 
-	Attestations      []*BlockPageAttestation // Attestations included in this block
-	VoluntaryExits    []*BlockPageVoluntaryExits
-	Votes             []*BlockVote // Attestations that voted for that block
-	AttesterSlashings []*BlockPageAttesterSlashing
-	ProposerSlashings []*BlockPageProposerSlashing
-	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
-	BlobSidecars      []*BlockPageBlobSidecar
+	Attestations          []*BlockPageAttestation // Attestations included in this block
+	VoluntaryExits        []*BlockPageVoluntaryExits
+	Votes                 []*BlockVote // Attestations that voted for that block
+	AttesterSlashings     []*BlockPageAttesterSlashing
+	ProposerSlashings     []*BlockPageProposerSlashing
+	SyncCommittee         []uint64 // TODO: Setting it to contain the validator index
+	BlobSidecars          []*BlockPageBlobSidecar
+	ConsolidationRequests []*FrontendConsolidationRequest
+	WithdrawalRequests    []*FrontendWithdrawalRequest
+	DepositRequests       []*FrontendDepositRequest
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
@@ -734,6 +739,7 @@ type BlockPageAttestation struct {
 	Signature       []byte        `db:"signature"`
 	Slot            uint64        `db:"slot"`
 	CommitteeIndex  uint64        `db:"committeeindex"`
+	CommitteeBits   []byte        `db:"committeebits"`
 	BeaconBlockRoot []byte        `db:"beaconblockroot"`
 	SourceEpoch     uint64        `db:"source_epoch"`
 	SourceRoot      []byte        `db:"source_root"`
@@ -796,6 +802,37 @@ type BlockPageProposerSlashing struct {
 	Header2StateRoot  []byte `db:"header2_stateroot"`
 	Header2BodyRoot   []byte `db:"header2_bodyroot"`
 	Header2Signature  []byte `db:"header2_signature"`
+}
+
+type FrontendConsolidationRequest struct {
+	BlockSlot          uint64 `db:"block_slot"`
+	BlockRoot          []byte `db:"block_root"`
+	Index              uint64 `db:"request_index"`
+	SourceIndex        int64  `db:"source_index"`
+	TargetIndex        int64  `db:"target_index"`
+	AmountConsolidated uint64 `db:"amount_consolidated"`
+}
+
+type FrontendWithdrawalRequest struct {
+	BlockSlot       uint64 `db:"block_slot"`
+	BlockRoot       []byte `db:"block_root"`
+	Index           uint64 `db:"request_index"`
+	SourceAddress   []byte `db:"source_address"`
+	ValidatorPubkey []byte `db:"validator_pubkey"`
+	ValidatorIndex  int64  `db:"validator_index"`
+	Amount          uint64 `db:"amount"`
+	Type            string
+}
+
+type FrontendDepositRequest struct {
+	BlockSlot             uint64 `db:"block_slot"`
+	BlockRoot             []byte `db:"block_root"`
+	Index                 uint64 `db:"request_index"`
+	ValidatorPubkey       []byte `db:"pubkey"`
+	WithdrawalCredentials []byte `db:"withdrawal_credentials"`
+	ValidatorIndex        int64  `db:"validator_index"`
+	Amount                uint64 `db:"amount"`
+	Signature             []byte `db:"signature"`
 }
 
 // BlockPageBlobSidecar holds data of blob-sidecars of the corresponding block

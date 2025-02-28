@@ -99,6 +99,9 @@
                   if (clipboardtext.startsWith("0x01")) {
                     data = `<a href="/address/${clipboardtext.replace("010000000000000000000000", "")}">${data}</a>`
                   }
+                  if (clipboardtext.startsWith("0x02")) {
+                    data = `<a href="/address/${clipboardtext.replace("020000000000000000000000", "")}">${data}</a>`
+                  }
                   return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
                 },
               },

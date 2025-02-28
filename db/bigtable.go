@@ -571,15 +571,18 @@ func (bigtable *Bigtable) SaveValidatorBalances(epoch uint64, validators []*type
 
 	for _, validator := range validators {
 
-		if validator.Balance > 0 && validator.Index > highestActiveIndex {
+		if validator.Index > highestActiveIndex {
 			highestActiveIndex = validator.Index
 		}
 
 		balanceEncoded := make([]byte, 8)
 		binary.LittleEndian.PutUint64(balanceEncoded, validator.Balance)
-		effectiveBalanceEncoded := uint8(validator.EffectiveBalance / 1e9) // we can encode the effective balance in 1 byte as it is capped at 32ETH and only decrements in 1 ETH steps
 
-		combined := append(balanceEncoded, effectiveBalanceEncoded)
+		effectiveBalanceEncoded := make([]byte, 8)
+		binary.LittleEndian.PutUint64(effectiveBalanceEncoded, validator.EffectiveBalance)
+
+		combined := append(balanceEncoded, effectiveBalanceEncoded...)
+
 		mut := &gcp_bigtable.Mutation{}
 		mut.Set(VALIDATOR_BALANCES_FAMILY, "b", ts, combined)
 		key := fmt.Sprintf("%s:%s:%s:%s", bigtable.chainId, bigtable.validatorIndexToKey(validator.Index), VALIDATOR_BALANCES_FAMILY, epochKey)

@@ -288,6 +288,8 @@ func main() {
 		apiV1Router.HandleFunc("/slot/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/withdrawals", handlers.ApiSlotWithdrawals).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/slot/{slot}/consolidation_requests", handlers.ApiSlotConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/slot/{slot}/deposit_requests", handlers.ApiSlotDepositRequests).Methods("GET", "OPTIONS")
 
 		// deprecated, use slot equivalents
 		apiV1Router.HandleFunc("/block/{slotOrHash}", handlers.ApiSlots).Methods("GET", "OPTIONS")
@@ -296,6 +298,8 @@ func main() {
 		apiV1Router.HandleFunc("/block/{slot}/attesterslashings", handlers.ApiSlotAttesterSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/consolidation_requests", handlers.ApiSlotConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/deposit_requests", handlers.ApiSlotDepositRequests).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/sync_committee/{period}", handlers.ApiSyncCommittee).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET", "OPTIONS")

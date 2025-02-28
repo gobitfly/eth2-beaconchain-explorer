@@ -1,0 +1,60 @@
+{{ define "validatorConsolidationsTable" }}
+  {{ with .Data }}
+    <div>
+      <h4 class="my-3">Execution Layer</h4>
+      <h6 class="">This table displays the consolidation requests made to the Ethereum consolidation request contract.</h6>
+      <div class="table-responsive card card-body p-0">
+        <table class="table" style="margin-top: 0 !important;" id="withdrawal-eth1-table" width="100%">
+          <thead>
+            <tr>
+              <th>From Address</th>
+              <th>Tx Hash</th>
+              <th>Block</th>
+              <th>Time</th>
+              <th>From Address</th>
+              <th>Source</th>
+              <th>Target</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="text-center my-3">
+        <i class="fas fa-arrow-down"></i>
+      </div>
+      <h4 class="my-3">Consensus Layer</h4>
+      <h6 class="">This table displays the consolidation requests received and processed by the beacon chain.</h6>
+      <div class="table-responsive card card-body p-0">
+        <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
+          <thead>
+            <tr>
+              <th>Slot</th>
+              <th>Time</th>
+              <th>Source</th>
+              <th>Target</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range $i, $request := .ConsolidationRequests }}
+              <tr>
+                <td>{{ formatBlockSlot $request.BlockSlot }}</td>
+                <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
+                <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
+                <td>{{ formatValidatorInt64 $request.TargetIndex }}</td>
+                <td>
+                  {{ if gt $request.AmountConsolidated 0 }}
+                    {{ formatClCurrency $request.AmountConsolidated config.Frontend.MainCurrency 5 true false false false }}
+                  {{ else }}
+                    -
+                  {{ end }}
+                </td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}
