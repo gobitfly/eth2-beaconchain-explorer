@@ -16,6 +16,7 @@
               ordering: true,
               stateSave: true,
               stateSaveCallback: function (settings, data) {
+                data.search.search = ""
                 data.start = 0
                 localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
               },
@@ -64,6 +65,7 @@
             ordering: true,
             stateSave: true,
             stateSaveCallback: function (settings, data) {
+              data.search.search = ""
               data.start = 0
               localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
             },
