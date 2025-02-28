@@ -31,6 +31,6 @@ jobs:
     - run: "go vet ./..."
     - uses: dominikh/staticcheck-action@v1.3.1
       with:
-        version: "2023.1.7"
+        version: "2025.1" # see https://github.com/dominikh/go-tools/releases
         install-go: false
         cache-key: ${{ matrix.go }}
