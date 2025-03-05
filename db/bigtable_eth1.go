@@ -3029,6 +3029,9 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 }
 
 func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult, currency string) ([]types.ITransaction, error) {
+	if len(parityTrace) == 0 {
+		return nil, nil
+	}
 
 	names := make(map[string]string)
 	for _, trace := range parityTrace {
