@@ -777,19 +777,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.SyncCount = uint64(len(actualSyncPeriods))
 			validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.ParticipatedSyncCountSlots) / float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots+validatorPageData.OrphanedSyncCountSlots)
 		}
-		// sync luck
-		if len(allSyncPeriods) > 0 {
-			maxPeriod := allSyncPeriods[0].Period
-			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, lastFinalizedEpoch)
-			if err != nil {
-				return fmt.Errorf("error getting expected sync committee slots: %w", err)
-			}
-			if expectedSyncCount != 0 {
-				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots) / float64(expectedSyncCount)
-			}
-			nextEstimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(maxPeriod + avgSyncInterval))
-			validatorPageData.SyncEstimate = &nextEstimate
-		}
+		// // sync luck
+		// if len(allSyncPeriods) > 0 {
+		// 	maxPeriod := allSyncPeriods[0].Period
+		// 	expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, lastFinalizedEpoch)
+		// 	if err != nil {
+		// 		return fmt.Errorf("error getting expected sync committee slots: %w", err)
+		// 	}
+		// 	if expectedSyncCount != 0 {
+		// 		validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots) / float64(expectedSyncCount)
+		// 	}
+		// 	nextEstimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(maxPeriod + avgSyncInterval))
+		// 	validatorPageData.SyncEstimate = &nextEstimate
+		// }
 		return nil
 	})
 
