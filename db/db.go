@@ -2597,16 +2597,24 @@ func GetTotalWithdrawalsCount(validators []uint64) (uint64, error) {
 func GetLastWithdrawalEpoch(validators []uint64) (map[uint64]uint64, error) {
 	var dbResponse []struct {
 		ValidatorIndex     uint64 `db:"validatorindex"`
-		LastWithdrawalSlot uint64 `db:"last_withdawal_slot"`
+		LastWithdrawalSlot uint64 `db:"last_withdrawal_slot"`
 	}
 
 	res := make(map[uint64]uint64)
 	err := ReaderDb.Select(&dbResponse, `
-		SELECT w.validatorindex as validatorindex, COALESCE(max(block_slot), 0) as last_withdawal_slot
-		FROM blocks_withdrawals w
-		INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-		WHERE w.validatorindex = ANY($1)
-		GROUP BY w.validatorindex`, validators)
+		select validatorindex, last_withdrawal_slot from (
+			select validatorindex,
+			(
+				select w.block_slot 
+				from blocks_withdrawals w 
+				inner join blocks b on b.blockroot = w.block_root and b.status = '1' 
+				where w.validatorindex = v.validatorindex 
+				order by w.block_slot desc 
+				limit 1
+			) last_withdrawal_slot
+			from validators v
+			where validatorindex = any($1)
+		) a where last_withdrawal_slot is not null`, validators)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return res, nil
