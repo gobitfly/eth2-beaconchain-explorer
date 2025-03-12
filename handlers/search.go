@@ -315,7 +315,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.ReaderDb.Select(&dbFinding, `
 				SELECT withdrawalcredentials, COUNT(*) 
 				FROM validators 
-				WHERE withdrawalcredentials ANY ($1) 
+				WHERE withdrawalcredentials = ANY($1) 
 				GROUP BY withdrawalcredentials`,
 			pq.ByteaArray(decodedCreds),
 		)
