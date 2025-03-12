@@ -32,7 +32,11 @@ import (
 )
 
 const CalculatingHint = `Calculating…`
-const BeginningOfSetWithdrawalCredentials = "010000000000000000000000"
+
+func BeginningOfSetWithdrawalCredentials(version int) string {
+	hexVersion := fmt.Sprintf("%02x", version)
+	return fmt.Sprintf("%s0000000000000000000000", hexVersion)
+}
 
 func FormatMessageToHtml(message string) template.HTML {
 	message = fmt.Sprint(strings.Replace(message, "Error: ", "", 1))
@@ -756,8 +760,8 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	return text
 }
 
-func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool) template.HTML {
-	credentials, err := hex.DecodeString(BeginningOfSetWithdrawalCredentials)
+func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool, version int) template.HTML {
+	credentials, err := hex.DecodeString(BeginningOfSetWithdrawalCredentials(version))
 	if err != nil {
 		return "INVALID CREDENTIALS"
 	}

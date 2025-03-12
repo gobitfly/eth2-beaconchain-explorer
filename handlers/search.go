@@ -271,15 +271,40 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				lowerStrippedSearch = strings.ToLower(strings.Replace(ensData.Address, "0x", "", -1))
 			}
 		}
+		var candidateCreds []string
 		if len(lowerStrippedSearch) == 40 {
 			// when the user gives an address (that validators might withdraw to) we transform the address into credentials
-			lowerStrippedSearch = utils.BeginningOfSetWithdrawalCredentials + lowerStrippedSearch
+			// We don't know if the address corresponds to a 0x01 or 0x02 withdrawal credentials, so we check both.
+			cred1 := utils.BeginningOfSetWithdrawalCredentials(1) + lowerStrippedSearch
+			cred2 := utils.BeginningOfSetWithdrawalCredentials(2) + lowerStrippedSearch
+
+			if utils.IsValidWithdrawalCredentials(cred1) {
+				candidateCreds = append(candidateCreds, cred1)
+			}
+			if utils.IsValidWithdrawalCredentials(cred2) {
+				candidateCreds = append(candidateCreds, cred2)
+			}
+		} else {
+			// Otherwise, assume the user supplied the full withdrawal credentials.
+			if utils.IsValidWithdrawalCredentials(lowerStrippedSearch) {
+				candidateCreds = append(candidateCreds, lowerStrippedSearch)
+			}
 		}
-		if !utils.IsValidWithdrawalCredentials(lowerStrippedSearch) {
+
+		if len(candidateCreds) == 0 {
 			break
 		}
-		decodedCredential, decodeErr := hex.DecodeString(lowerStrippedSearch)
-		if decodeErr != nil {
+
+		var decodedCreds [][]byte
+		for _, cred := range candidateCreds {
+			decoded, decodeErr := hex.DecodeString(cred)
+			if decodeErr != nil {
+				continue
+			}
+			decodedCreds = append(decodedCreds, decoded)
+		}
+
+		if len(decodedCreds) == 0 {
 			break
 		}
 		// find validators per withdrawal credential
@@ -288,9 +313,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			Count             uint64 `db:"count"`
 		}{}
 		err = db.ReaderDb.Select(&dbFinding, `
-			SELECT withdrawalcredentials, COUNT(*) FROM validators
-			WHERE withdrawalcredentials = $1
-			GROUP BY withdrawalcredentials`, decodedCredential)
+				SELECT withdrawalcredentials, COUNT(*) 
+				FROM validators 
+				WHERE withdrawalcredentials ANY ($1) 
+				GROUP BY withdrawalcredentials`,
+			pq.ByteaArray(decodedCreds),
+		)
 		if err == nil {
 			res := make([]struct {
 				EncodedCredential string `json:"withdrawalcredentials"`

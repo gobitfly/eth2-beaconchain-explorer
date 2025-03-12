@@ -871,7 +871,7 @@ func IsApiRequest(r *http.Request) bool {
 
 var eth1AddressRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{40}$")
 var withdrawalCredentialsRE = regexp.MustCompile("^(0x)?00[0-9a-fA-F]{62}$")
-var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?" + BeginningOfSetWithdrawalCredentials + "[0-9a-fA-F]{40}$")
+var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?(?:0[12]0{22})[0-9A-Fa-f]{40}$")
 var eth1TxRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{64}$")
 var zeroHashRE = regexp.MustCompile("^(0x)?0+$")
 var hashRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{96}$")
