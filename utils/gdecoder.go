@@ -170,7 +170,7 @@ func gatherInfo(prefix string, cfg interface{}) ([]varInfo, error) {
 	return infos, nil
 }
 
-// accessSecretVersion accesses the payload for the given secret version if one
+// AccessSecretVersion accesses the payload for the given secret version if one
 // exists. The version can be a version number as a string (e.g. "5") or an
 // alias (e.g. "latest").
 func AccessSecretVersion(name string) (*string, error) {

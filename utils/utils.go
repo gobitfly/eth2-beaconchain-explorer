@@ -1366,7 +1366,7 @@ func GenerateQRCodeForAddress(address []byte) (string, string, error) {
 	return base64.StdEncoding.EncodeToString(png), base64.StdEncoding.EncodeToString(pngInverse), nil
 }
 
-// sliceContains reports whether the provided string is present in the given slice of strings.
+// SliceContains reports whether the provided string is present in the given slice of strings.
 func SliceContains(list []string, target string) bool {
 	for _, s := range list {
 		if s == target {
@@ -1492,7 +1492,7 @@ func LogError(err error, errorMsg interface{}, callerSkip int, additionalInfos .
 	logErrorInfo(err, callerSkip, additionalInfos...).Error(errorMsg)
 }
 
-// LogError logs a warning with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
+// LogWarn logs a warning with callstack info that skips callerSkip many levels with arbitrarily many additional infos.
 // callerSkip equal to 0 gives you info directly where LogError is called.
 func LogWarn(err error, errorMsg interface{}, callerSkip int, additionalInfos ...map[string]interface{}) {
 	logErrorInfo(err, callerSkip, additionalInfos...).Warn(errorMsg)
