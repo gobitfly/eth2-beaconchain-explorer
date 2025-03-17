@@ -30,9 +30,11 @@ func TestBeginningOfSetWithdrawalCredentials(t *testing.T) {
 		{10, "0a0000000000000000000000"},
 	}
 	for _, tt := range tests {
-		v := BeginningOfSetWithdrawalCredentials(tt.version)
-		if v != tt.expected {
-			t.Errorf("wrong beginning of set withdrawal credentials for version %v: %v expected %v", tt.version, v, tt.expected)
-		}
+		t.Run(tt.expected, func(t *testing.T) {
+			v := BeginningOfSetWithdrawalCredentials(tt.version)
+			if v != tt.expected {
+				t.Errorf("wrong beginning of set withdrawal credentials for version %v: %v expected %v", tt.version, v, tt.expected)
+			}
+		})
 	}
 }

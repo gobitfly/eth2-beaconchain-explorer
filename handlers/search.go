@@ -284,11 +284,8 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			if utils.IsValidWithdrawalCredentials(cred2) {
 				candidateCreds = append(candidateCreds, cred2)
 			}
-		} else {
-			// Otherwise, assume the user supplied the full withdrawal credentials.
-			if utils.IsValidWithdrawalCredentials(lowerStrippedSearch) {
-				candidateCreds = append(candidateCreds, lowerStrippedSearch)
-			}
+		} else if utils.IsValidWithdrawalCredentials(lowerStrippedSearch) { // Otherwise, assume the user supplied the full withdrawal credentials.
+			candidateCreds = append(candidateCreds, lowerStrippedSearch)
 		}
 
 		if len(candidateCreds) == 0 {

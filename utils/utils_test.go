@@ -57,9 +57,11 @@ func TestIsValidWithdrawalCredentials(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		v := IsValidWithdrawalCredentials(tt.cred)
-		if v != tt.valid {
-			t.Errorf("wrong withdrawal credentials validation for %v", tt.cred)
-		}
+		t.Run(tt.cred, func(t *testing.T) {
+			v := IsValidWithdrawalCredentials(tt.cred)
+			if v != tt.valid {
+				t.Errorf("wrong withdrawal credentials validation for %v", tt.cred)
+			}
+		})
 	}
 }
