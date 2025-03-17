@@ -441,6 +441,9 @@ func (client *ErigonClient) TraceGeth(blockNumber *big.Int) ([]*GethTraceCallRes
 
 	data := make([]*GethTraceCallResult, 0, 20)
 	for i, r := range res {
+		if r.Result == nil {
+			continue
+		}
 		r.Result.TransactionPosition = i
 		extractCalls(r.Result, &data)
 	}
