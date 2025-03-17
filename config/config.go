@@ -34,3 +34,6 @@ var MekongChainYml string
 
 //go:embed pectra-devnet-5.chain.yml
 var PectraDevnet5ChainYml string
+
+//go:embed pectra-devnet-6.chain.yml
+var PectraDevnet6ChainYml string

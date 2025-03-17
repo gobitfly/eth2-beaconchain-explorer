@@ -44,6 +44,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/exits.html",
 		"slot/blobs.html",
 		"slot/consolidationRequests.html",
+		"slot/compoundingRequests.html",
 		"slot/withdrawalRequests.html",
 		"slot/depositRequests.html",
 		"components/timestamp.html",
@@ -375,6 +376,20 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	err = db.ReaderDb.Select(&slotPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(slotPageData.Epoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", slotPageData.Slot, err)
+	}
+
+	err = db.ReaderDb.Select(&slotPageData.MoveToCompoundingRequests, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			validator_index, 
+			address
+		FROM blocks_switch_to_compounding_requests 
+		WHERE block_slot = $1 AND block_root = $2 
+		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving blocks_switch_to_compounding_requests of slot %v: %v", slotPageData.Slot, err)
 	}
 
 	err = db.ReaderDb.Select(&slotPageData.ConsolidationRequests, `
