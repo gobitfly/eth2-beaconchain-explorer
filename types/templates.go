@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
@@ -412,6 +413,10 @@ type ValidatorPageData struct {
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
 	NextWithdrawalRow                        [][]interface{}
 	ConsolidationRequests                    []*FrontendConsolidationRequest
+	ExecutionConsolidations                  []*FrontendExecutionConsolidationRequest
+	MoveToCompoundingRequest                 *FrontendMoveToCompoundingRequest
+	ExecutionWithdrawals                     []*FrontendExecutionWithdrawalRequest
+	ConsolidationTargetIndex                 int64
 	WithdrawalRequests                       []*FrontendWithdrawalRequest
 	ValidatorProposalData
 }
@@ -665,16 +670,17 @@ type BlockPageData struct {
 
 	ExecutionData *Eth1BlockPageData
 
-	Attestations          []*BlockPageAttestation // Attestations included in this block
-	VoluntaryExits        []*BlockPageVoluntaryExits
-	Votes                 []*BlockVote // Attestations that voted for that block
-	AttesterSlashings     []*BlockPageAttesterSlashing
-	ProposerSlashings     []*BlockPageProposerSlashing
-	SyncCommittee         []uint64 // TODO: Setting it to contain the validator index
-	BlobSidecars          []*BlockPageBlobSidecar
-	ConsolidationRequests []*FrontendConsolidationRequest
-	WithdrawalRequests    []*FrontendWithdrawalRequest
-	DepositRequests       []*FrontendDepositRequest
+	Attestations              []*BlockPageAttestation // Attestations included in this block
+	VoluntaryExits            []*BlockPageVoluntaryExits
+	Votes                     []*BlockVote // Attestations that voted for that block
+	AttesterSlashings         []*BlockPageAttesterSlashing
+	ProposerSlashings         []*BlockPageProposerSlashing
+	SyncCommittee             []uint64 // TODO: Setting it to contain the validator index
+	BlobSidecars              []*BlockPageBlobSidecar
+	ConsolidationRequests     []*FrontendConsolidationRequest
+	MoveToCompoundingRequests []*FrontendMoveToCompoundingRequest
+	WithdrawalRequests        []*FrontendWithdrawalRequest
+	DepositRequests           []*FrontendDepositRequest
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
@@ -811,6 +817,42 @@ type FrontendConsolidationRequest struct {
 	SourceIndex        int64  `db:"source_index"`
 	TargetIndex        int64  `db:"target_index"`
 	AmountConsolidated uint64 `db:"amount_consolidated"`
+}
+
+type FrontendExecutionConsolidationRequest struct {
+	SourceAddress      common.Address `db:"source_address"`
+	TxHash             []byte         `db:"tx_hash"`
+	BlockNumber        uint64         `db:"block_number"`
+	Ts                 int64          `db:"block_ts"`
+	SourceIndex        int64          `db:"source_validator_index"`
+	TargetIndex        int64          `db:"target_validator_index"`
+	WrongSourceAddress bool
+}
+
+func (t *FrontendExecutionConsolidationRequest) IsMoveToCompounding() bool {
+	return t.SourceIndex == t.TargetIndex
+}
+
+type FrontendMoveToCompoundingRequest struct {
+	BlockSlot      uint64         `db:"block_slot"`
+	BlockRoot      []byte         `db:"block_root"`
+	Index          uint64         `db:"request_index"`
+	ValidatorIndex int64          `db:"validator_index"`
+	Address        common.Address `db:"address"`
+}
+
+type FrontendExecutionWithdrawalRequest struct {
+	SourceAddress      common.Address `db:"source_address"`
+	TxHash             []byte         `db:"tx_hash"`
+	BlockNumber        uint64         `db:"block_number"`
+	Ts                 int64          `db:"block_ts"`
+	ValidatorIndex     int64          `db:"validator_index"`
+	Amount             uint64         `db:"amount"`
+	WrongSourceAddress bool
+}
+
+func (t *FrontendExecutionWithdrawalRequest) IsExitRequest() bool {
+	return t.Amount == 0
 }
 
 type FrontendWithdrawalRequest struct {
@@ -1758,6 +1800,27 @@ type DepositContractInteraction struct {
 	Amount          []byte
 }
 
+type ConsolidationRequestInteraction struct {
+	SourceAddress         common.Address
+	SourceValidatorPubkey []byte
+	TargetValidatorPubkey []byte
+	Amount                *big.Int
+}
+
+func (c ConsolidationRequestInteraction) IsMoveToCompounding() bool {
+	return bytes.Equal(c.SourceValidatorPubkey, c.TargetValidatorPubkey)
+}
+
+type WithdrawalRequestInteraction struct {
+	SourceAddress   common.Address
+	ValidatorPubkey []byte
+	Amount          *big.Int
+}
+
+func (w WithdrawalRequestInteraction) IsExitRequest() bool {
+	return w.Amount.Cmp(big.NewInt(0)) == 0
+}
+
 type EpochInfo struct {
 	Finalized     bool    `db:"finalized"`
 	Participation float64 `db:"globalparticipationrate"`
@@ -1801,6 +1864,8 @@ type Eth1TxData struct {
 	Events                      []*Eth1EventData
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
+	Consolidations              []ConsolidationRequestInteraction
+	Withdrawals                 []WithdrawalRequestInteraction
 	CurrentEtherPrice           template.HTML
 	HistoricalEtherPrice        template.HTML
 	BlobHashes                  [][]byte

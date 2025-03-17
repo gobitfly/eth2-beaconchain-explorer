@@ -285,6 +285,7 @@ func main() {
 		apiV1Router.HandleFunc("/slot/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/withdrawals", handlers.ApiSlotWithdrawals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/consolidation_requests", handlers.ApiSlotConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/slot/{slot}/switch_to_compounding_requests", handlers.ApiSlotSwitchToCompoundingRequests).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/deposit_requests", handlers.ApiSlotDepositRequests).Methods("GET", "OPTIONS")
 
 		// deprecated, use slot equivalents
@@ -295,6 +296,7 @@ func main() {
 		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/block/{slot}/consolidation_requests", handlers.ApiSlotConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/switch_to_compounding_requests", handlers.ApiSlotSwitchToCompoundingRequests).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/block/{slot}/deposit_requests", handlers.ApiSlotDepositRequests).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/sync_committee/{period}", handlers.ApiSyncCommittee).Methods("GET", "OPTIONS")
@@ -310,6 +312,8 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/execution/performance", handlers.ApiValidatorExecutionPerformance).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestations", handlers.ApiValidatorAttestations).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/proposals", handlers.ApiValidatorProposals).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/consolidation_requests", handlers.ApiValidatorConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/switch_to_compounding_requests", handlers.ApiValidatorSwitchToCompoundingRequests).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationefficiency", handlers.ApiValidatorAttestationEfficiency).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationeffectiveness", handlers.ApiValidatorAttestationEffectiveness).Methods("GET", "OPTIONS")

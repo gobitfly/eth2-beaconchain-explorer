@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"math"
@@ -125,6 +126,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "validators", "/validators", "", validatorTemplateFiles)
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
+	validatorPageData.ConsolidationTargetIndex = -1
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {
@@ -371,6 +373,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			utils.SlotsPerSyncCommittee()*
 			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
+
+	validatorWithdrawalAddress, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
+	if err != nil {
+		if len(validatorPageData.WithdrawCredentials) <= 0 || !bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) {
+			utils.LogWarn(err, "error converting withdrawal credentials to address", 0, errFields)
+		}
+	}
 
 	var lowerBoundDay uint64
 	if lastStatsDay > 30 {
@@ -855,6 +864,90 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		ORDER BY block_slot DESC, request_index`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+
+		// find the consolidation target index
+		for _, cr := range validatorPageData.ConsolidationRequests {
+			if cr.SourceIndex == int64(validatorPageData.Index) {
+				validatorPageData.ConsolidationTargetIndex = cr.TargetIndex
+				break
+			}
+		}
+
+		return nil
+	})
+
+	g.Go(func() error {
+		validatorPageData.MoveToCompoundingRequest = &types.FrontendMoveToCompoundingRequest{}
+		err = db.ReaderDb.Get(validatorPageData.MoveToCompoundingRequest, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			validator_index,
+			address
+		FROM blocks_switch_to_compounding_requests 
+		LEFT JOIN blocks ON blocks_switch_to_compounding_requests.block_root = blocks.blockroot AND blocks.status = '1'
+		WHERE blocks_switch_to_compounding_requests.validator_index = $1
+		ORDER BY block_slot DESC, request_index LIMIT 1`, index)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				validatorPageData.MoveToCompoundingRequest = nil
+				return nil
+			}
+			return fmt.Errorf("error retrieving blocks_switch_to_compounding_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.ExecutionWithdrawals, `
+		SELECT 
+			source_address, 
+			tx_hash, 
+			block_number, 
+			extract(epoch from block_ts)::int as block_ts,
+			validatorindex as validator_index,
+			amount
+		FROM eth1_withdrawal_requests 
+		INNER JOIN validators ON eth1_withdrawal_requests.validator_pubkey = validators.pubkey 
+		WHERE validatorindex = $1
+		ORDER BY block_number DESC, tx_index desc`, index)
+		if err != nil {
+			return fmt.Errorf("error retrieving eth1_withdrawal_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+
+		for _, ew := range validatorPageData.ExecutionWithdrawals {
+			if !bytes.Equal(ew.SourceAddress.Bytes(), validatorWithdrawalAddress) {
+				ew.WrongSourceAddress = true
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.ExecutionConsolidations, `
+		SELECT 
+			ecr.source_address, 
+			ecr.tx_hash, 
+			ecr.block_number, 
+			extract(epoch from ecr.block_ts)::int as block_ts,
+			s.validatorindex AS source_validator_index,
+			t.validatorindex AS target_validator_index
+		FROM eth1_consolidation_requests ecr
+		INNER JOIN validators s ON ecr.source_pubkey = s.pubkey
+		INNER JOIN validators t ON ecr.target_pubkey = t.pubkey
+		WHERE t.validatorindex = $1 OR s.validatorindex = $1
+		ORDER BY ecr.block_number DESC, ecr.tx_index DESC
+		`, index)
+		if err != nil {
+			return fmt.Errorf("error retrieving eth1_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+
+		for _, ew := range validatorPageData.ExecutionConsolidations {
+			if !bytes.Equal(ew.SourceAddress.Bytes(), validatorWithdrawalAddress) {
+				ew.WrongSourceAddress = true
+			}
 		}
 		return nil
 	})
