@@ -412,6 +412,7 @@ type ValidatorPageData struct {
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
 	NextWithdrawalRow                        [][]interface{}
 	ConsolidationRequests                    []*FrontendConsolidationRequest
+	MoveToCompoundingRequests                []*FrontendMoveToCompoundingRequest
 	WithdrawalRequests                       []*FrontendWithdrawalRequest
 	ValidatorProposalData
 }
@@ -665,16 +666,17 @@ type BlockPageData struct {
 
 	ExecutionData *Eth1BlockPageData
 
-	Attestations          []*BlockPageAttestation // Attestations included in this block
-	VoluntaryExits        []*BlockPageVoluntaryExits
-	Votes                 []*BlockVote // Attestations that voted for that block
-	AttesterSlashings     []*BlockPageAttesterSlashing
-	ProposerSlashings     []*BlockPageProposerSlashing
-	SyncCommittee         []uint64 // TODO: Setting it to contain the validator index
-	BlobSidecars          []*BlockPageBlobSidecar
-	ConsolidationRequests []*FrontendConsolidationRequest
-	WithdrawalRequests    []*FrontendWithdrawalRequest
-	DepositRequests       []*FrontendDepositRequest
+	Attestations              []*BlockPageAttestation // Attestations included in this block
+	VoluntaryExits            []*BlockPageVoluntaryExits
+	Votes                     []*BlockVote // Attestations that voted for that block
+	AttesterSlashings         []*BlockPageAttesterSlashing
+	ProposerSlashings         []*BlockPageProposerSlashing
+	SyncCommittee             []uint64 // TODO: Setting it to contain the validator index
+	BlobSidecars              []*BlockPageBlobSidecar
+	ConsolidationRequests     []*FrontendConsolidationRequest
+	MoveToCompoundingRequests []*FrontendMoveToCompoundingRequest
+	WithdrawalRequests        []*FrontendWithdrawalRequest
+	DepositRequests           []*FrontendDepositRequest
 
 	Tags       TagMetadataSlice `db:"tags"`
 	IsValidMev bool             `db:"is_valid_mev"`
@@ -811,6 +813,14 @@ type FrontendConsolidationRequest struct {
 	SourceIndex        int64  `db:"source_index"`
 	TargetIndex        int64  `db:"target_index"`
 	AmountConsolidated uint64 `db:"amount_consolidated"`
+}
+
+type FrontendMoveToCompoundingRequest struct {
+	BlockSlot      uint64         `db:"block_slot"`
+	BlockRoot      []byte         `db:"block_root"`
+	Index          uint64         `db:"request_index"`
+	ValidatorIndex int64          `db:"validator_index"`
+	Address        common.Address `db:"address"`
 }
 
 type FrontendWithdrawalRequest struct {
