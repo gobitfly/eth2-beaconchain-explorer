@@ -459,6 +459,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			err = yaml.Unmarshal([]byte(config.MekongChainYml), &cfg.Chain.ClConfig)
 		case "pectra-devnet-5":
 			err = yaml.Unmarshal([]byte(config.PectraDevnet5ChainYml), &cfg.Chain.ClConfig)
+		case "pectra-devnet-6":
+			err = yaml.Unmarshal([]byte(config.PectraDevnet6ChainYml), &cfg.Chain.ClConfig)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ClConfigPath)
 		}
@@ -645,6 +647,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			err = yaml.Unmarshal([]byte(config.MekongChainYml), &minimalCfg)
 		case "pectra-devnet-5":
 			err = yaml.Unmarshal([]byte(config.PectraDevnet5ChainYml), &cfg.Chain.ClConfig)
+		case "pectra-devnet-6":
+			err = yaml.Unmarshal([]byte(config.PectraDevnet6ChainYml), &cfg.Chain.ClConfig)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ElConfigPath)
 		}
