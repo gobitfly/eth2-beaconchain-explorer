@@ -860,6 +860,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.MoveToCompoundingRequests, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			validator_index,
+			address
+		FROM blocks_switch_to_compounding_requests 
+		INNER JOIN blocks ON blocks_switch_to_compounding_requests.block_root = blocks.blockroot AND blocks.status = '1'
+		WHERE blocks_switch_to_compounding_requests.validator_index = $1
+		ORDER BY block_slot DESC, request_index`, index)
+		if err != nil {
+			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
 		err = db.ReaderDb.Select(&validatorPageData.WithdrawalRequests, `
 		SELECT 
 			block_slot, 
