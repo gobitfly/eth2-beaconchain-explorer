@@ -788,6 +788,50 @@ func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
+func ApiSlotMoveToCompoundingRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	slot, err := strconv.ParseInt(vars["slot"], 10, 64)
+	if err != nil {
+		SendBadRequestResponse(w, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, validator_index, address FROM blocks_switch_to_compounding_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResultsAsArray(rows, w, r)
+}
+
 func ApiSlotDepositRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -2822,6 +2866,96 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
 		return
 	}
+
+	returnQueryResultsAsArray(rows, w, r)
+}
+
+func ApiValidatorConsolidationRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	maxValidators := getUserPremium(r).MaxValidators
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		SendBadRequestResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, amount_consolidated, source_index, target_index FROM blocks_consolidation_requests WHERE source_index = ANY($1) OR target_index = ANY($1) ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", pq.Array(queryIndices), limit, offset)
+	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResultsAsArray(rows, w, r)
+}
+
+func ApiValidatorMoveToCompoundingRequests(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	q := r.URL.Query()
+
+	limitQuery := q.Get("limit")
+	offsetQuery := q.Get("offset")
+
+	offset, err := strconv.ParseInt(offsetQuery, 10, 64)
+	if err != nil {
+		offset = 0
+	}
+
+	limit, err := strconv.ParseInt(limitQuery, 10, 64)
+	if err != nil {
+		limit = 100 + offset
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if limit > (100+offset) || limit <= 0 || limit <= offset {
+		limit = 100 + offset
+	}
+
+	maxValidators := getUserPremium(r).MaxValidators
+	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		SendBadRequestResponse(w, r.URL.String(), err.Error())
+		return
+	}
+
+	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, validator_index, address FROM blocks_switch_to_compounding_requests WHERE validator_index = ANY($1) ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", pq.Array(queryIndices), limit, offset)
+	if err != nil {
+		logger.WithError(err).Error("could not retrieve db results")
+		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
 
 	returnQueryResultsAsArray(rows, w, r)
 }
