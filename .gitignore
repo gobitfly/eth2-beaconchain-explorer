@@ -20,6 +20,7 @@ docker-compose-private.yml
 static/bundle/css
 static/bundle/js
 docs
+static/swagger
 node_modules
 .vscode
 webassembly

@@ -1394,7 +1394,8 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 // UserValidatorWatchlistAdd godoc
-// @Summary  subscribes a user to get notifications from a specific validator
+// @Summary Add validator subscription
+// @Description Subscribes a user to get notifications from a specific validator
 // @Tags User
 // @Produce  json
 // @Param pubKey query string true "Public Key of validator you want to subscribe to"
@@ -1508,7 +1509,8 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 // UserDashboardWatchlistAdd godoc
-// @Summary  subscribes a user to get notifications from a specific validator via index
+// @Summary Save validator subscription
+// @Description Subscribes a user to get notifications from a specific validator via index
 // @Tags User
 // @Produce  json
 // @Param pubKey body []string true "Index of validator you want to subscribe to"
@@ -1572,7 +1574,8 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 // UserDashboardWatchlistRemove godoc
-// @Summary  unsubscribes a user from a specific validator via index from both watchlist and notification events
+// @Summary Remove validator subscription
+// @Description Unsubscribes a user from a specific validator via index from both watchlist and notification events
 // @Tags User
 // @Produce  json
 // @Param pubKey body []string true "Index of validator you want to unsubscribe from"
@@ -1628,7 +1631,8 @@ func UserDashboardWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 }
 
 // UserValidatorWatchlistRemove godoc
-// @Summary  unsubscribes a user from a specific validator
+// @Summary Remove validator subscription
+// @Description Unsubscribes a user from a specific validator
 // @Tags User
 // @Produce  json
 // @Param pubKey query string true "Public Key of validator you want to subscribe to"
@@ -2286,7 +2290,8 @@ type UsersNotificationsRequest struct {
 }
 
 // UserNotificationsSubscribed godoc
-// @Summary Get a set of events a user is subscribed to
+// @Summary Get user subscriptions
+// @Description Get a set of events a user is subscribed to
 // @Tags User
 // @Param requestFilter body types.UsersNotificationsRequest false "An object that filters through the active subscriptions"
 // @Produce json

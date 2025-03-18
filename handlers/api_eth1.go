@@ -26,8 +26,8 @@ import (
 )
 
 // ApiEth1Deposit godoc
-// @Summary Get an eth1 deposit by its eth1 transaction hash
-// @Tags Execution
+// @Description Get the deposit information for a given eth1 transaction hash.
+// @Tags Validator deposits
 // @Produce  json
 // @Param  txhash path string true "Eth1 transaction hash"
 // @Success 200 {object} types.ApiResponse
@@ -56,12 +56,12 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiETH1ExecBlocks godoc
-// @Summary Get execution blocks
-// @Tags Execution
+// @Tags Blocks
+// @Summary Get blocks by number
 // @Description Get execution blocks by execution block number
 // @Produce json
 // @Param blockNumber path string true "Provide one or more execution block numbers. Coma separated up to max 100. "
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} []types.ExecutionBlockApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/block/{blockNumber} [get]
 func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
@@ -117,8 +117,8 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiETH1AccountProposedBlocks godoc
-// @Summary Get proposed or mined blocks
-// @Tags Execution
+// @Tags Blocks
+// @Summary Get proposed blocks by address, proposer index or proposer pubkey
 // @Description Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey.
 // @Description Mixed use of recipient addresses and proposer indexes or proposer pubkeys with an offset is discouraged as it can lead to skipped entries.
 // @Produce json
@@ -126,7 +126,7 @@ func ApiETH1ExecBlocks(w http.ResponseWriter, r *http.Request) {
 // @Param offset query int false "Offset" default(0)
 // @Param limit query int false "Limit the amount of entries you wish to receive (Maximum: 100)" default(10) maximum(100)
 // @Param sort query string false "Sort via the block number either by 'asc' or 'desc'" default(desc)
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} []types.ExecutionBlockApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/{addressIndexOrPubkey}/produced [get]
 func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
@@ -154,8 +154,8 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var offset uint64 = 0
-	var limit uint64 = 10
+	var offset uint64
+	var limit uint64
 	var isSortAsc bool = false
 
 	offsetString := r.URL.Query().Get("offset")
@@ -251,11 +251,11 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiETH1GasNowData godoc
-// @Summary Gets the current estimation for gas prices in GWei.
-// @Tags Execution
-// @Description The response is split into four estimated inclusion speeds rapid (15 seconds), fast (1 minute), standard (3 minutes) and slow (> 10 minutes).
+// @Tags Gas
+// @Summary Get current gas prices
+// @Description Gets the current estimation for gas prices in GWei.. The response is split into four estimated inclusion speeds rapid (15 seconds), fast (1 minute), standard (3 minutes) and slow (> 10 minutes).
 // @Produce json
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.GasNowPageData
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/gasnow [get]
 func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
@@ -283,13 +283,13 @@ func ApiEth1GasNowData(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEth1Address godoc
-// @Summary Gets information about an Ethereum address.
-// @Tags Execution
+// @Tags Addresses
+// @Summary Get address balances
 // @Description Returns the ether balance and any token balances for a given Ethereum address. Amount of different ECR20 tokens is limited to 200. If you need more, use the /execution/address/{address}/erc20tokens endpoint.
 // @Produce json
 // @Param address path string true "provide an Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
 // @Param token query string false "filter for a specific token by providing a ethereum token contract address"
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} types.ApiEth1AddressResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/address/{address} [get]
 func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
@@ -346,14 +346,14 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEth1AddressERC20Tokens godoc
-// @Summary Returns the ERC20 token balances for a given Ethereum address.
-// @Tags Execution
+// @Tags Addresses
+// @Summary Get ERC20 token balances for address
 // @Description Returns the ERC20 token balances for a given Ethereum address. Supports pagination.
 // @Produce json
 // @Param address path string true "provide an Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters". It can also be a valid ENS name.
 // @Param offset query int false "data offset" default(0)
 // @Param limit query int false "data limit (ranging from 1 to 200)" default(200)
-// @Success 200 {object} types.ApiResponse
+// @Success 200 {object} []types.ApiEth1AddressERC20TokenResponse
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/execution/address/{address}/erc20tokens [get]
 func ApiEth1AddressERC20Tokens(w http.ResponseWriter, r *http.Request) {

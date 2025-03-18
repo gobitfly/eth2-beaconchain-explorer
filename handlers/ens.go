@@ -19,9 +19,9 @@ import (
 )
 
 // ApiEnsLookup godoc
-// @Summary Get the address for an ens name and vice versa
-// @Tags Ens
-// @Description Returns and object with the ens name and address - if found.
+// @Tags ENS
+// @Summary Resolve an ens name or address
+// @Description Get the address for an ens name and vice versa. Returns and object with the ens name and address - if found.
 // @Produce  json
 // @Param domain path string true "domain can either be an ens name or an etherum address"
 // @Success 200 {object} types.ApiResponse

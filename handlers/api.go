@@ -39,50 +39,65 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// @title beaconcha.in Ethereum API Documentation
+// @title beaconcha.in API Documentation
 // @version 1.1
-// @description High performance API for querying information about Ethereum
-// @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
-// @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
-// @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
-// @description The API key can be provided in the Header or as a query string parameter.
+// @description ## Introduction
+// @description **Advanced and reliable API for accessing comprehensive Ethereum blockchain data.**
 // @description
-// @description Key as a query string parameter: `curl https://beaconcha.in/api/v1/slot/1?apikey=<your_key>`
+// @description - **Free Usage Policy:** The API is free to use under a fair use policy, with rate limits of 10 requests per minute per IP.
+// @description - **Caching:** All responses are cached for 1 minute.
+// @description - **Higher Usage Plans:** For higher usage plans, visit: [https://beaconcha.in/pricing](https://beaconcha.in/pricing). An API key is required to use these plans.
 // @description
-// @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/slot/1`
+// @description ### API Key Usage
+// @description API keys can be obtained at [/user/settings](https://beaconcha.in/user/settings) and must be included in requests either as a query string parameter or in the request header.
+// @description
+// @description #### Example: Query String Parameter
+// @description ```bash
+// @description curl https://beaconcha.in/api/v1/slot/1?apikey=<your_key>
+// @description ```
+// @description
+// @description #### Example: Request Header
+// @description ```bash
+// @description curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/slot/1
+// @description ```
+// @x-tagGroups [{"name":"Consensus Layer","tags":["Epochs", "Slots", "Validators", "Rewards", "Sync Committees", "Rocketpool", "ETH.Store®"]},{"name":"Execution Layer","tags":["Validator Deposits", "Blocks", "Addresses", "Gas"]},{"name":"Other","tags":["Network", "User", "Misc"]}]
+
 // @tag.name Epoch
-// @tag.description Consensus layer information about epochs
-// @tag.docs.url https://example.com
-// @tag.name Slot
-// @tag.description Consensus layer information about slots
-// @tag.name Validator
-// @tag.description Consensus layer information about validators
-// @tag.name SyncCommittee
-// @tag.name Execution
-// @tag.description layer information about addresses, blocks and transactions
-// @tag.name ETH.STORE®
-// @tag.description is the transparent Ethereum staking reward reference rate.
-// @tag.docs.url https://staking.ethermine.org/statistics
-// @tag.docs.description More info
+// @tag.description Data related to consensus layer epochs
+// @tag.name Slots
+// @tag.description Data related to consensus layer slots
+// @tag.name Validators
+// @tag.description Data related to consensus layer validators
+// @tag.name Rewards
+// @tag.description Data related to validator rewards
+// @tag.name Sync Committees
+// @tag.description Data related to sync committees
 // @tag.name Rocketpool
-// @tag.description validator statistics
-// @tag.docs.url https://rocketpool.net
-// @tag.docs.description More info
+// @tag.description Data related to the rocketpool protocol
+// @tag.name ETH.Store®
+// @tag.description Data related to the ETH.Store® metric
+
+// @tag.name Validator deposits
+// @tag.description Data related to execution layer validator deposits
+// @tag.name Blocks
+// @tag.description Data related to execution layer blocks
+// @tag.name Gas
+// @tag.description Data related to gas prices
+// @tag.name Address
+// @tag.description Data related to ethereum addresses
+
+// @tag.name Network
+// @tag.description Network data
 // @tag.name Misc
 // @tag.name User
-// @tag.description provided for Oauth applications (public OAuth support is a work in progress).
-// @securitydefinitions.oauth2.accessCode OAuthAccessCode
-// @tokenurl https://beaconcha.in/user/token
-// @authorizationurl https://beaconcha.in/user/authorize
-// @securitydefinitions.apikey ApiKeyAuth
-// @in header
-// @name Authorization
 
 // ApiHealthz godoc
-// @Summary Health of the explorer
 // @Tags Misc
-// @Description Health endpoint for monitoring if the explorer is in sync
-// @Produce  text/plain
+// @Summary Get explorer Health
+// @Description Provides the health status of all modules of the explorer. This endpoint is useful for monitoring the availability and functionality of the explorer's components.
+// @Description - **Modules Monitored:** Includes monitoring of services such as `monitoring_app`, `monitoring_el_data`, `monitoring_services`, `monitoring_cl_data`, `monitoring_api`, `monitoring_redis`.
+// @Description - **Response Details:** Returns the status of each module. If all modules are operational, the response will indicate success. Otherwise, it will return an error with details about the failing modules.
+// @Produce text/plain
 // @Success 200 {object} types.ApiResponse
 // @Router /api/healthz [get]
 func ApiHealthz(w http.ResponseWriter, r *http.Request) {
@@ -152,10 +167,10 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ApiHealthzLoadbalancer godoc
-// @Summary Health of the explorer-api regarding having a healthy connection to the database
+// healthz-loadbalancer godoc
 // @Tags Misc
-// @Description Health endpoint for montitoring if the explorer-api
+// @Summary Get explorer Availability
+// @Description Health endpoint to monitor the operational status of the explorer (used for load balancer health checks)
 // @Produce  text/plain
 // @Success 200 {object} types.ApiResponse
 // @Router /api/healthz-loadbalancer [get]
@@ -185,8 +200,8 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEthStoreDay godoc
-// @Summary Get ETH.STORE® reference rate for a specified beaconchain-day or the latest day
-// @Tags ETH.STORE®
+// @Tags ETH.Store®
+// @Summary Get ETH.Store® day
 // @Description ETH.STORE® represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
 // @Description For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
 // @Description See https://github.com/gobitfly/eth.store for further information.
@@ -194,6 +209,7 @@ func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
 // @Param day path string true "The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot> epochs) to get the the ETH.STORE® for. Must be a number or the string 'latest'."
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
 // @Router /api/v1/ethstore/{day} [get]
 func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -260,10 +276,11 @@ func ApiEthStoreDay(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiLatestState godoc
-// @Summary Get the latest state of the network
 // @Tags Network
+// @Summary Get network state
 // @Description Returns information on the current state of the network
 // @Produce  json
+// @Success 200 {object} types.LatestState
 // @Failure 400 {object} types.ApiResponse "Failure"
 // @Failure 500 {object} types.ApiResponse "Server Error"
 // @Router /api/v1/latestState [get]
@@ -288,8 +305,8 @@ func ApiLatestState(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEpoch godoc
-// @Summary Get epoch by number, latest, finalized
-// @Tags Epoch
+// @Tags Epochs
+// @Summary Get epoch
 // @Description Returns information for a specified epoch by the epoch number or an epoch tag (can be latest or finalized)
 // @Produce  json
 // @Param  epoch path string true "Epoch number, the string latest or the string finalized"
@@ -349,8 +366,8 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiEpochSlots godoc
-// @Summary Get epoch blocks by epoch number, latest or finalized
-// @Tags Epoch
+// @Tags Epochs
+// @Summary Get epoch slots
 // @Description Returns all slots for a specified epoch
 // @Produce  json
 // @Param  epoch path string true "Epoch number, the string latest or string finalized"
@@ -396,8 +413,8 @@ func ApiEpochSlots(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlots godoc
-// @Summary Get a slot by its slot number or root hash. Alternatively get the latest slot or the slot containing the head block.
-// @Tags Slot
+// @Tags Slots
+// @Summary Get slot
 // @Description Returns a slot by its slot number or root hash, the latest slot with string latest or the slot containing the head block with string head
 // @Produce  json
 // @Param  slotOrHash path string true "Slot or root hash or the string latest or head"
@@ -504,8 +521,8 @@ func ApiSlots(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotAttestations godoc
-// @Summary Get the attestations included in a specific slot
-// @Tags Slot
+// @Tags Slots
+// @Summary Get slot attestations
 // @Description Returns the attestations included in a specific slot
 // @Produce  json
 // @Param  slot path string true "Slot"
@@ -550,8 +567,8 @@ func ApiSlotAttestations(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotAttesterSlashings godoc
-// @Summary Get the attester slashings included in a specific slot
-// @Tags Slot
+// @Tags Slots
+// @Summary Get slot attestation slashings
 // @Description Returns the attester slashings included in a specific slot
 // @Produce  json
 // @Param  slot path string true "Slot"
@@ -580,8 +597,8 @@ func ApiSlotAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotDeposits godoc
-// @Summary Get the deposits included in a specific block
-// @Tags Slot
+// @Tags Slots
+// @Summary Get slot deposits
 // @Description Returns the deposits included in a specific block
 // @Produce  json
 // @Param  slot path string true "Block slot"
@@ -635,8 +652,8 @@ func ApiSlotDeposits(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotProposerSlashings godoc
-// @Summary Get the proposer slashings included in a specific slot
-// @Tags Slot
+// @Tags Slots
+// @Summary Get slot proposer slashings
 // @Description Returns the proposer slashings included in a specific slot
 // @Produce  json
 // @Param  slot path string true "Slot"
@@ -667,8 +684,8 @@ func ApiSlotProposerSlashings(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotVoluntaryExits godoc
-// @Summary Get the voluntary exits included in a specific slot
-// @Tags Slot
+// @Tags Slots
+// @Summary Get slot voluntary exits
 // @Description Returns the voluntary exits included in a specific slot
 // @Produce  json
 // @Param  slot path string true "Slot"
@@ -699,8 +716,8 @@ func ApiSlotVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiSlotWithdrawals godoc
-// @Summary Get the withdrawals included in a specific slot
-// @Tags Slot
+// @Tags Slots
+// @Summary Get slot withdrawals
 // @Description Returns the withdrawals included in a specific slot
 // @Produce json
 // @Param slot path string true "Block slot"
@@ -815,10 +832,9 @@ func ApiSlotDepositRequests(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiBlockVoluntaryExits godoc
 // ApiSyncCommittee godoc
-// @Summary Get the sync-committee for a sync-period
-// @Tags SyncCommittee
+// @Tags Sync Committees
+// @Summary Get sync committee
 // @Description Returns the sync-committee for a sync-period. Validators are sorted by sync-committee-index.
 // @Description Sync committees where introduced in the Altair hardfork. Peroids before the hardfork do not contain sync-committees.
 // @Description For mainnet sync-committes first started after epoch 74240 (period 290) and each sync-committee is active for 256 epochs.
@@ -858,8 +874,8 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorQueue godoc
-// @Summary Get the current validator queue
-// @Tags Validator
+// @Tags Validators
+// @Summary Get validator queue
 // @Description Returns the current number of validators entering and exiting the beacon chain
 // @Produce  json
 // @Success 200 {object} types.ApiResponse{data=types.ApiValidatorQueueResponse}
@@ -879,7 +895,8 @@ func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiRocketpoolStats godoc
-// @Summary Get global rocketpool network statistics
+// @Summary Get rocketpool statistics
+// @Description Returns statistics about the Rocketpool protocol
 // @Tags Rocketpool
 // @Produce  json
 // @Success 200 {object} types.ApiResponse{data=types.APIRocketpoolStatsResponse}
@@ -902,8 +919,9 @@ func ApiRocketpoolStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiRocketpoolValidators godoc
-// @Summary Get rocketpool specific data for given validators
-// @Tags Rocketpool
+// @Summary Get rocketpool validators
+// @Description Returns information about Rocketpool validators
+// @Tags Validators
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Produce  json
 // @Success 200 {object} types.ApiResponse{data=types.ApiRocketpoolValidatorResponse}
@@ -1643,9 +1661,9 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 }
 
 // ApiValidator godoc
-// @Summary Get up to 100 validators
-// @Tags Validator
-// @Description Searching for too many validators based on their pubkeys will lead to a "URI too long" error
+// @Tags Validators
+// @Summary Get validator
+// @Description Retrieve validator information by index or pubkey (up to 100). Use the POST endpoint if you get URL too long errors.
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
@@ -1656,9 +1674,9 @@ func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get up to 100 validators
-// @Tags Validator
-// @Description This POST endpoint exists because the GET endpoint can lead to a "URI too long" error when searching for too many validators based on their pubkeys.
+// @Tags Validators
+// @Summary Get validator
+// @Description Retrieve validator information by index or pubkey (up to 100).
 // @Produce  json
 // @Param  indexOrPubkey body types.DashboardRequest true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
@@ -1819,8 +1837,9 @@ type ApiValidatorResponse struct {
 }
 
 // ApiValidatorDailyStats godoc
-// @Summary Get the daily validator stats by the validator index
-// @Tags Validator
+// @Summary Get validator statistics
+// @Description: Retrieve daily stats for a validator by index
+// @Tags Validators
 // @Produce  json
 // @Param  index path string true "Validator index"
 // @Param  end_day query string false "End day (default: latest day)"
@@ -1921,8 +1940,9 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorByEth1Address godoc
-// @Summary Get all validators that belong to an eth1 address
-// @Tags Validator
+// @Summary Get validator information by eth1 address
+// @Description Retrieve validator information by eth1 address
+// @Tags Validators
 // @Produce  json
 // @Param  eth1address path string true "Eth1 address from which the validator deposits were sent". It can also be a valid ENS name.
 // @Param limit query string false "Limit the number of results (default: 2000)"
@@ -1974,8 +1994,9 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the income detail history of up to 100 validators
-// @Tags Validator
+// @Summary Get validator income detail history
+// @Description Retrieve validator income detail history by index or pubkey (up to 100).
+// @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Param  latest_epoch query int false "The latest epoch to consider in the query"
@@ -2109,8 +2130,9 @@ func getIncomeDetailsHistoryQueryParameters(q url.Values) (uint64, uint64, error
 }
 
 // ApiValidatorWithdrawals godoc
-// @Summary Get the withdrawal history of up to 100 validators for the last 100 epochs. To receive older withdrawals modify the epoch paraum
-// @Tags Validator
+// @Summary Get validator withdrawal history
+// @Description Retrieve validator withdrawal history by index or pubkey (up to 100).
+// @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Param  epoch query int false "the start epoch for the withdrawal history (default: latest epoch)"
@@ -2179,8 +2201,9 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorBlsChange godoc
-// @Summary Gets the BLS withdrawal address change for up to 100 validators
-// @Tags Validator
+// @Description Retrieve validator BLS change history by index or pubkey (up to 100).
+// @Tags Validators
+// @Summary Get validator bls change history
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorBlsChangeResponse}
@@ -2239,8 +2262,9 @@ func ApiValidatorBlsChange(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the balance history of up to 100 validators
-// @Tags Validator
+// @Summary Get validator balance history
+// @Description Retrieve the validator balance history by index or pubkey (up to 100).
+// @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Param  latest_epoch query int false "The latest epoch to consider in the query"
@@ -2351,8 +2375,9 @@ func getBalanceHistoryQueryParameters(q url.Values) (uint64, uint64, error) {
 }
 
 // ApiValidatorPerformance godoc
-// @Summary Get the current consensus reward performance of up to 100 validators
-// @Tags Validator
+// @Summary Get validator consensus layer rewards
+// @Description Retrieve validator consensus layer rewards by index or pubkey (up to 100).
+// @Tags Rewards
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorPerformanceResponse}
@@ -2463,8 +2488,9 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorExecutionPerformance godoc
-// @Summary Get the current execution reward performance of up to 100 validators. If block was produced via mev relayer, this endpoint will use the relayer data as block reward instead of the normal block reward.
-// @Tags Validator
+// @Summary Get validator execution layer rewards
+// @Description Retrieve validator execution rewards by index or pubkey (up to 100).
+// @Tags Rewards
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorExecutionPerformanceResponse}
@@ -2493,14 +2519,6 @@ func ApiValidatorExecutionPerformance(w http.ResponseWriter, r *http.Request) {
 	SendOKResponse(j, r.URL.String(), []any{result})
 }
 
-// ApiValidatorAttestationEffectiveness godoc
-// @Summary DEPRECIATED - USE /attestationefficiency (Get the current performance of up to 100 validators)
-// @Tags Validator
-// @Produce  json
-// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/{indexOrPubkey}/attestationeffectiveness [get]
 func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
@@ -2536,8 +2554,9 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 }
 
 // ApiValidatorAttestationEfficiency godoc
-// @Summary Get the current performance of up to 100 validators
-// @Tags Validator
+// @Summary Get validator attestation efficiency
+// @Description Retrieve validator attestation efficiency by index or pubkey (up to 100).
+// @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse
@@ -2577,27 +2596,10 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func getAttestationEfficiencyQuery(epoch int64, queryIndices []uint64) (*sql.Rows, error) {
-// 	return db.ReaderDb.Query(`
-// 	SELECT aa.validatorindex, validators.pubkey, COALESCE(
-// 		AVG(1 + inclusionslot - COALESCE((
-// 			SELECT MIN(slot)
-// 			FROM blocks
-// 			WHERE slot > aa.attesterslot AND blocks.status = '1'
-// 		), 0)
-// 	), 0)::float AS attestation_efficiency
-// 	FROM attestation_assignments_p aa
-// 	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-// 	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
-// 	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2)) AND aa.inclusionslot > 0
-// 	GROUP BY aa.validatorindex, validators.pubkey
-// 	ORDER BY aa.validatorindex
-// 	`, epoch, pq.Array(queryIndices))
-// }
-
 // ApiValidatorLeaderboard godoc
-// @Summary Get the current top 100 performing validators (using the income over the last 7 days)
-// @Tags Validator
+// @Summary Get validator leaderboard
+// @Description Get the current top 100 performing validators (using the income over the last 7 days)
+// @Tags Rewards
 // @Produce  json
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorPerformanceResponse}
 // @Failure 400 {object} types.ApiResponse
@@ -2628,8 +2630,9 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorDeposits godoc
-// @Summary Get all eth1 deposits for up to 100 validators
-// @Tags Validator
+// @Summary Get validator execution layer deposits
+// @Description Get all eth1 deposits for up to 100 validators
+// @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorDepositsResponse}
@@ -2662,8 +2665,9 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorAttestations godoc
-// @Summary Get all attestations during the last 100 epochs for up to 100 validators
-// @Tags Validator
+// @Summary Get validator attestations
+// @Description Get all attestations during the last 100 epochs for up to 100 validators
+// @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} types.ApiResponse{[]types.ApiValidatorAttestationsResponse}
@@ -2733,8 +2737,9 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorProposals godoc
-// @Summary Get all proposed blocks during the last 100 epochs for up to 100 validators. Optionally set the epoch query parameter to look back further.
-// @Tags Validator
+// @Summary Get validator proposals
+// @Description Get all proposed blocks during the last 100 epochs for up to 100 validators. Optionally set the epoch query parameter to look back further.
+// @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Param  epoch query string false "Page the result by epoch"
@@ -2822,8 +2827,8 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiGraffitiwall godoc
-// @Summary Get the most recent pixels that have been painted.
 // @Tags Misc
+// @Summary Get graffiti wall
 // @Description Returns the most recent pixels that have been painted during the last 10000 slots.
 // @Description Optionally set the slot query parameter to look back further.
 // @Description Boundary coordinates are included.
@@ -2931,7 +2936,8 @@ func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiChart godoc
-// @Summary Returns charts from the page https://beaconcha.in/charts as PNG
+// @Summary Get chart
+// @Description Returns charts from the page https://beaconcha.in/charts as PNG
 // @Tags Misc
 // @Produce  json
 // @Param  chart path string true "Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)"
@@ -2961,7 +2967,8 @@ func ApiChart(w http.ResponseWriter, r *http.Request) {
 }
 
 // APIGetToken godoc
-// @Summary Exchange your oauth code for an access token or refresh your access token
+// @Summary Get OAUTH API token
+// @Description Exchange your oauth code for an access token or refresh your access token
 // @Tags User
 // @Produce  json
 // @Param grant_type formData string true "grant_type use authorization_code for oauth code or refresh_token if you wish to refresh an token"
@@ -3142,7 +3149,8 @@ func getDeviceNameFromUA(userAgent string) string {
 }
 
 // MobileNotificationUpdatePOST godoc
-// @Summary Register or update your mobile notification token
+// @Summary Change mobile notification token
+// @Description Register or update your mobile notification token
 // @Tags User
 // @Produce  json
 // @Param token body string true "Your device`s firebase notification token"
@@ -3516,7 +3524,8 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request, indexOrPubkey 
 }
 
 // MobileDeviceSettings godoc
-// @Summary Get your device settings, currently only whether to enable mobile notifcations or not
+// @Summary Get device settings
+// @Description Get your device settings, currently only whether to enable mobile notifcations or not
 // @Tags User
 // @Produce json
 // @Success 200 {object} types.ApiResponse{data=types.MobileSettingsData}
@@ -3542,7 +3551,8 @@ func MobileDeviceSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 // MobileDeviceSettingsPOST godoc
-// @Summary Changing your devices mobile settings
+// @Summary Update device settings
+// @Description Update your device settings, currently only whether to enable mobile notifcations or not.
 // @Tags User
 // @Produce json
 // @Param notify_enabled body bool true "Whether to enable mobile notifications for this device or not"
@@ -3595,7 +3605,8 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 }
 
 // MobileTagedValidators godoc
-// @Summary Get all your tagged validators
+// @Summary Get tagged validators
+// @Description Get all your tagged validators
 // @Tags User
 // @Produce json
 // @Success 200 {object} types.ApiResponse{data=[]types.MinimalTaggedValidators}
@@ -3644,7 +3655,8 @@ func parseUintWithDefault(input string, defaultValue uint64) uint64 {
 }
 
 // ClientStats godoc
-// @Summary Get your client submitted stats
+// @Summary Get client stats
+// @Description Get your client submitted stats
 // @Tags User
 // @Produce json
 // @Param offset path int false "Data offset, default 0" default(0)
@@ -3701,7 +3713,8 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 }
 
 // ClientStatsPost godoc
-// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+// @Summary Submit client stats
+// @Description Used in consensus layer clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
 // @Tags User
 // @Produce json
 // @Param apikey query string true "User API key, can be found on https://beaconcha.in/user/settings"
@@ -3902,8 +3915,8 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 }
 
 // ApiWithdrawalCredentialsValidators godoc
-// @Summary Get validator indexes and pubkeys of a withdrawal credential or eth1 address
-// @Tags Validator
+// @Summary Get validators by credentials or address
+// @Tags Validators
 // @Description Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
 // @Produce json
 // @Param withdrawalCredentialsOrEth1address path string true "Provide a withdrawal credential or an eth1 address with an optional 0x prefix". It can also be a valid ENS name.
@@ -3980,8 +3993,8 @@ func ApiWithdrawalCredentialsValidators(w http.ResponseWriter, r *http.Request) 
 }
 
 // ApiProposalLuck godoc
-// @Summary Get the proposal luck of a validator or a list of validators
-// @Tags Validator
+// @Summary Get validator proposal luck
+// @Tags Validators
 // @Description Returns the proposal luck of a validator or a list of validators
 // @Produce json
 // @Param validators query string true "Provide a comma separated list of validator indices or pubkeys"

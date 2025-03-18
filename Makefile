@@ -19,8 +19,13 @@ test:
 explorer:
 	rm -rf bin/
 	mkdir -p bin/
+	echo "Creating frontend asset bundle..."
 	go run cmd/bundle/main.go
-	go install github.com/swaggo/swag/cmd/swag@v1.8.3 && swag init --exclude bin,_gitignore,.vscode,.idea --parseDepth 1 -g ./handlers/api.go
+	echo "Generating swagger docs..."
+	mkdir -p static/swagger/
+	go install github.com/swaggo/swag/cmd/swag@v1.8.3
+	swag init --exclude bin,_gitignore,.vscode,.idea --parseDepth 1 -g ./handlers/api.go --outputTypes json --output static/swagger/ --parseDependency --parseInternal
+	echo "Building explorer..."
 	CGO_CFLAGS=${CGO_CFLAGS} CGO_CFLAGS_ALLOW=${CGO_CFLAGS_ALLOW} go build --ldflags=${LDFLAGS} -o bin/explorer cmd/explorer/main.go
 
 stats:

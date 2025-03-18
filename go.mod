@@ -63,8 +63,6 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skygeario/go-confusable-homoglyphs v0.0.0-20191212061114-e2b2a60df110
 	github.com/stripe/stripe-go/v72 v72.50.0
-	github.com/swaggo/http-swagger v1.3.0
-	github.com/swaggo/swag v1.8.3
 	github.com/urfave/negroni v1.0.0
 	github.com/wealdtech/go-ens/v3 v3.6.0
 	github.com/wealdtech/go-eth2-types/v2 v2.8.1
@@ -216,7 +214,6 @@ require (
 	cloud.google.com/go/firestore v1.16.0 // indirect
 	cloud.google.com/go/storage v1.43.0 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
-	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/attestantio/go-eth2-client v0.19.9
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -226,10 +223,6 @@ require (
 	github.com/ferranbt/fastssz v0.1.3 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/jsonpointer v0.20.2 // indirect
-	github.com/go-openapi/jsonreference v0.20.4 // indirect
-	github.com/go-openapi/spec v0.20.14 // indirect
-	github.com/go-openapi/swag v0.22.9 // indirect
 	github.com/goccy/go-yaml v1.10.0 // indirect
 	github.com/golang/glog v1.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -259,7 +252,6 @@ require (
 	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/supranational/blst v0.3.14 // indirect
-	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	github.com/thomaso-mirodin/intmath v0.0.0-20160323211736-5dc6d854e46e // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
@@ -268,7 +260,6 @@ require (
 	golang.org/x/net v0.34.0
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
