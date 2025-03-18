@@ -125,6 +125,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "validators", "/validators", "", validatorTemplateFiles)
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
+	validatorPageData.ConsolidationTargetIndex = -1
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {
@@ -856,6 +857,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
 		}
+
+		// find the consolidation target index
+		for _, cr := range validatorPageData.ConsolidationRequests {
+			if cr.SourceIndex == int64(validatorPageData.Index) {
+				validatorPageData.ConsolidationTargetIndex = cr.TargetIndex
+				break
+			}
+		}
+
 		return nil
 	})
 

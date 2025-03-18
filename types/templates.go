@@ -413,6 +413,7 @@ type ValidatorPageData struct {
 	NextWithdrawalRow                        [][]interface{}
 	ConsolidationRequests                    []*FrontendConsolidationRequest
 	MoveToCompoundingRequests                []*FrontendMoveToCompoundingRequest
+	ConsolidationTargetIndex                 int64
 	WithdrawalRequests                       []*FrontendWithdrawalRequest
 	ValidatorProposalData
 }
