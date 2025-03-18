@@ -19,8 +19,6 @@ import (
 
 	_ "net/http/pprof"
 
-	_ "github.com/gobitfly/eth2-beaconchain-explorer/docs"
-
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 

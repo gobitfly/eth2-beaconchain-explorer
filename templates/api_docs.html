@@ -1,0 +1,97 @@
+{{ define "js" }}
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  <script id="api-reference" type="application/json" data-configuration="%s">
+    %s
+  </script>
+  <script>
+    console.log(localStorage.getItem("theme"))
+    Scalar.createApiReference("#app", {
+      // The URL of the OpenAPI/Swagger document
+      url: "/swagger/swagger.json",
+      forceDarkModeState: localStorage.getItem("theme"),
+      hideDarkModeToggle: true,
+      customCss: `
+      `,
+      withDefaultFonts: false,
+      hideClientButton: true,
+      operationsSorter: (a, b) => {
+        return a.path.localeCompare(b.path)
+      },
+      //layout: 'classic',
+    })
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <style>
+    :target {
+      outline: none !important; /* Removes the default focus outline */
+      border: none !important; /* Ensures no border is applied */
+      box-shadow: none !important; /* Removes any shadow effects */
+    }
+    .sidebar-heading-link {
+      text-decoration: none !important; /* Removes underline */
+      color: inherit !important; /* Keeps the text color consistent */
+      pointer-events: auto; /* Ensures the link remains clickable */
+      transition: none !important; /* Disables all transitions */
+    }
+
+    .sidebar-heading-link:hover,
+    .sidebar-heading-link:focus,
+    .sidebar-heading-link:active {
+      text-decoration: none !important; /* Prevents underline on hover */
+      color: inherit !important; /* Keeps the color unchanged */
+      background: none !important; /* Removes any background hover effects */
+      box-shadow: none !important; /* Removes any shadow effects */
+      transition: none !important; /* Ensures no hover-specific transitions */
+    }
+    .introduction-section {
+      padding-top: 0px !important;
+    }
+    code {
+      color: var(--scalar-color-orange);
+    }
+
+    span.schema-type {
+      font-size: 13px;
+      font-weight: 500;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    }
+
+    h2.text-c-1:nth-child(1) {
+      font-size: 13px;
+      font-weight: 500;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    }
+
+    .light-mode {
+      --scalar-link-color: #ff6600;
+      --scalar-color-1: #121212;
+      --scalar-color-2: rgba(0, 0, 0, 0.6);
+      --scalar-color-3: rgba(0, 0, 0, 0.4);
+      --scalar-color-accent: #0a85d1;
+      --scalar-background-1: #fefdfb;
+      --scalar-background-2: #f6f5f4;
+      --scalar-background-3: #f1ede9;
+      --scalar-background-accent: #5369d20f;
+      --scalar-border-color: rgba(0, 0, 0, 0.08);
+    }
+    .dark-mode {
+      --scalar-link-color: #ff6600;
+      --scalar-color-1: #e9e8e9;
+      --scalar-color-2: #e9e8e9;
+      --scalar-color-3: rgba(255, 255, 255, 0.282);
+      --scalar-color-accent: #8ab4f8;
+      --scalar-background-1: #1e1c1f;
+      --scalar-background-2: #272727;
+      --scalar-background-3: #333333;
+      --scalar-background-accent: #8ab4f81f;
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  <div class="container mt-4">
+    <div id="app"></div>
+  </div>
+{{ end }}
