@@ -18,18 +18,19 @@
           <tbody>
             {{ range $i, $request := .ExecutionConsolidations }}
               {{ if not $request.IsMoveToCompounding }}
-              <tr>
-                <td>
-                  {{ if $request.WrongSourceAddress }}
-                    <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid consolidation request, the address does not match the validators withdrawal address."></i></span>
-                  {{ end }}
-                  {{ formatEth1AddressFull $request.SourceAddress }}</td>
-                <td>{{ formatBlockNumber $request.BlockNumber }}</td>
-                <td>{{ formatTimestamp $request.Ts }}</td>
-                <td>{{ formatEth1TxHash $request.TxHash }}</td>
-                <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
-                <td>{{ formatValidatorInt64 $request.TargetIndex }}</td>
-              </tr>
+                <tr>
+                  <td>
+                    {{ if $request.WrongSourceAddress }}
+                      <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid consolidation request, the address does not match the validators withdrawal address."></i></span>
+                    {{ end }}
+                    {{ formatEth1AddressFull $request.SourceAddress }}
+                  </td>
+                  <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+                  <td>{{ formatTimestamp $request.Ts }}</td>
+                  <td>{{ formatEth1TxHash $request.TxHash }}</td>
+                  <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
+                  <td>{{ formatValidatorInt64 $request.TargetIndex }}</td>
+                </tr>
               {{ end }}
             {{ end }}
           </tbody>
@@ -90,17 +91,18 @@
             <tbody>
               {{ range $i, $request := .ExecutionConsolidations }}
                 {{ if $request.IsMoveToCompounding }}
-                <tr>
-                  <td>
-                    {{ if $request.WrongSourceAddress }}
-                      <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid consolidation request, the address does not match the validators withdrawal address."></i></span>
-                    {{ end }}
-                    {{ formatEth1AddressFull $request.SourceAddress }}</td>
-                  <td>{{ formatBlockNumber $request.BlockNumber }}</td>
-                  <td>{{ formatTimestamp $request.Ts }}</td>
-                  <td>{{ formatEth1TxHash $request.TxHash }}</td>
-                  <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
-                </tr>
+                  <tr>
+                    <td>
+                      {{ if $request.WrongSourceAddress }}
+                        <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid consolidation request, the address does not match the validators withdrawal address."></i></span>
+                      {{ end }}
+                      {{ formatEth1AddressFull $request.SourceAddress }}
+                    </td>
+                    <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+                    <td>{{ formatTimestamp $request.Ts }}</td>
+                    <td>{{ formatEth1TxHash $request.TxHash }}</td>
+                    <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
+                  </tr>
                 {{ end }}
               {{ end }}
             </tbody>
@@ -109,29 +111,30 @@
         <div class="text-center my-3">
           <i class="fas fa-arrow-down"></i>
         </div>
-      <h4 class="my-3">Move-to-Compounding Consensus Layer</h4>
-      <h6 class="">This table displays the move-to-compounding requests received and processed by the beacon chain.</h6>
-      <div class="table-responsive card card-body p-0">
-        <table class="table" style="margin-top: 0 !important;" id="compounding-table" width="100%">
-          <thead>
-            <tr>
-              <th>Slot</th>
-              <th>Time</th>
-              <th>Validator</th>
-              <th>Address</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{ range $i, $request := .MoveToCompoundingRequests }}
+        <h4 class="my-3">Move-to-Compounding Consensus Layer</h4>
+        <h6 class="">This table displays the move-to-compounding requests received and processed by the beacon chain.</h6>
+        <div class="table-responsive card card-body p-0">
+          <table class="table" style="margin-top: 0 !important;" id="compounding-table" width="100%">
+            <thead>
               <tr>
-                <td>{{ formatBlockSlot $request.BlockSlot }}</td>
-                <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
-                <td>{{ formatValidatorInt64 $request.ValidatorIndex }}</td>
-                <td>{{ formatEth1AddressFull $request.Address }}</td>
+                <th>Slot</th>
+                <th>Time</th>
+                <th>Validator</th>
+                <th>Address</th>
               </tr>
-            {{ end }}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {{ range $i, $request := .MoveToCompoundingRequests }}
+                <tr>
+                  <td>{{ formatBlockSlot $request.BlockSlot }}</td>
+                  <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
+                  <td>{{ formatValidatorInt64 $request.ValidatorIndex }}</td>
+                  <td>{{ formatEth1AddressFull $request.Address }}</td>
+                </tr>
+              {{ end }}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   {{ end }}

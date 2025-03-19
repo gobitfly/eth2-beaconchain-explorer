@@ -19,7 +19,8 @@
               {{ if $request.WrongSourceAddress }}
                 <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid withdrawal request, the address does not match the validators withdrawal address."></i></span>
               {{ end }}
-              {{ formatEth1AddressFull $request.SourceAddress }}</td>
+              {{ formatEth1AddressFull $request.SourceAddress }}
+            </td>
             <td>{{ formatBlockNumber $request.BlockNumber }}</td>
             <td>{{ formatTimestamp $request.Ts }}</td>
             <td>{{ formatEth1TxHash $request.TxHash }}</td>
