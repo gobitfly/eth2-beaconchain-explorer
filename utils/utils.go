@@ -92,6 +92,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatElCurrency":                        FormatElCurrency,
 		"formatClCurrency":                        FormatClCurrency,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
+		"formatBlockNumber":                       FormatBlockNumber,
 		"formatBlockStatus":                       FormatBlockStatus,
 		"formatBlockSlot":                         FormatBlockSlot,
 		"formatSlotToTimestamp":                   FormatSlotToTimestamp,

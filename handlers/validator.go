@@ -373,6 +373,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			avgSyncInterval) * time.Second
 	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 
+	validatorWithdrawalAddress, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
+	if err != nil {
+		utils.LogWarn(err, "error converting withdrawal credentials to address", 0, errFields)
+	}
+
 	var lowerBoundDay uint64
 	if lastStatsDay > 30 {
 		lowerBoundDay = lastStatsDay - 30
@@ -883,6 +888,58 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		ORDER BY block_slot DESC, request_index`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.ExecutionWithdrawals, `
+		SELECT 
+			source_address, 
+			tx_hash, 
+			block_number, 
+			extract(epoch from block_ts)::int as block_ts,
+			validatorindex as validator_index,
+			amount
+		FROM eth1_withdrawal_requests 
+		INNER JOIN validators ON eth1_withdrawal_requests.validator_pubkey = validators.pubkey 
+		WHERE validatorindex = $1
+		ORDER BY block_number DESC, tx_index desc`, index)
+		if err != nil {
+			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+
+		for _, ew := range validatorPageData.ExecutionWithdrawals {
+			if !bytes.Equal(ew.SourceAddress.Bytes(), validatorWithdrawalAddress) {
+				ew.WrongSourceAddress = true
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.ExecutionConsolidations, `
+		SELECT 
+			ecr.source_address, 
+			ecr.tx_hash, 
+			ecr.block_number, 
+			extract(epoch from ecr.block_ts)::int as block_ts,
+			s.validatorindex AS source_validator_index,
+			t.validatorindex AS target_validator_index
+		FROM eth1_consolidation_requests ecr
+		INNER JOIN validators s ON ecr.source_pubkey = s.pubkey
+		INNER JOIN validators t ON ecr.target_pubkey = t.pubkey
+		WHERE t.validatorindex = $1 OR s.validatorindex = $1
+		ORDER BY ecr.block_number DESC, ecr.tx_index DESC
+		`, index)
+		if err != nil {
+			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+
+		for _, ew := range validatorPageData.ExecutionConsolidations {
+			if !bytes.Equal(ew.SourceAddress.Bytes(), validatorWithdrawalAddress) {
+				ew.WrongSourceAddress = true
+			}
 		}
 		return nil
 	})

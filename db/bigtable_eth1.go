@@ -2115,7 +2115,8 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
-	consolidationContractAddress := hexutil.MustDecode("0x00431F263cE400f4455c2dCf564e53007Ca4bbBb")
+	consolidationContractAddress := hexutil.MustDecode(utils.Config.Chain.PectraConsolidationRequestContractAddress)
+
 	for i, tx := range blk.GetTransactions() {
 		for _, log := range tx.GetLogs() {
 			if bytes.Equal(log.Address, consolidationContractAddress) {
@@ -2156,7 +2157,7 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 	bulkData = &types.BulkMutations{}
 	bulkMetadataUpdates = &types.BulkMutations{}
 
-	withdrawalContractAddress := hexutil.MustDecode("0x0c15F14308530b7CDB8460094BbB9cC28b9AaaAA")
+	withdrawalContractAddress := hexutil.MustDecode(utils.Config.Chain.PectraWithdrawalRequestContractAddress)
 	for i, tx := range blk.GetTransactions() {
 		for _, log := range tx.GetLogs() {
 			if bytes.Equal(log.Address, withdrawalContractAddress) {

@@ -412,7 +412,9 @@ type ValidatorPageData struct {
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
 	NextWithdrawalRow                        [][]interface{}
 	ConsolidationRequests                    []*FrontendConsolidationRequest
+	ExecutionConsolidations                  []*FrontendExecutionConsolidationRequest
 	MoveToCompoundingRequests                []*FrontendMoveToCompoundingRequest
+	ExecutionWithdrawals                     []*FrontendExecutionWithdrawalRequest
 	ConsolidationTargetIndex                 int64
 	WithdrawalRequests                       []*FrontendWithdrawalRequest
 	ValidatorProposalData
@@ -816,12 +818,36 @@ type FrontendConsolidationRequest struct {
 	AmountConsolidated uint64 `db:"amount_consolidated"`
 }
 
+type FrontendExecutionConsolidationRequest struct {
+	SourceAddress      common.Address `db:"source_address"`
+	TxHash             []byte         `db:"tx_hash"`
+	BlockNumber        uint64         `db:"block_number"`
+	Ts                 int64          `db:"block_ts"`
+	SourceIndex        int64          `db:"source_validator_index"`
+	TargetIndex        int64          `db:"target_validator_index"`
+	WrongSourceAddress bool
+}
+
+func (t *FrontendExecutionConsolidationRequest) IsMoveToCompounding() bool {
+	return t.SourceIndex == t.TargetIndex
+}
+
 type FrontendMoveToCompoundingRequest struct {
 	BlockSlot      uint64         `db:"block_slot"`
 	BlockRoot      []byte         `db:"block_root"`
 	Index          uint64         `db:"request_index"`
 	ValidatorIndex int64          `db:"validator_index"`
 	Address        common.Address `db:"address"`
+}
+
+type FrontendExecutionWithdrawalRequest struct {
+	SourceAddress      common.Address `db:"source_address"`
+	TxHash             []byte         `db:"tx_hash"`
+	BlockNumber        uint64         `db:"block_number"`
+	Ts                 int64          `db:"block_ts"`
+	ValidatorIndex     int64          `db:"validator_index"`
+	Amount             uint64         `db:"amount"`
+	WrongSourceAddress bool
 }
 
 type FrontendWithdrawalRequest struct {

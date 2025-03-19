@@ -124,6 +124,14 @@ func main() {
 	wg := &sync.WaitGroup{}
 	wg.Add(5)
 
+	if utils.Config.Chain.PectraWithdrawalRequestContractAddress == "" {
+		utils.LogFatal(nil, "missing config pectraWithdrawalRequestContractAddress, please provide via explorer config", 0)
+	}
+
+	if utils.Config.Chain.PectraConsolidationRequestContractAddress == "" {
+		utils.LogFatal(nil, "missing config pectraConsolidationRequestContractAddress, please provide via explorer config", 0)
+	}
+
 	go func() {
 		defer wg.Done()
 		var err error
@@ -1761,6 +1769,10 @@ func getTransformers(transformerFlag string, bt *db.Bigtable) ([]db.TransformFun
 			importENSChanges = true
 		case "TransformContract":
 			transforms = append(transforms, bt.TransformContract)
+		case "TransformConsolidationRequests":
+			transforms = append(transforms, bt.TransformConsolidationRequests)
+		case "TransformWithdrawalRequests":
+			transforms = append(transforms, bt.TransformWithdrawalRequests)
 		default:
 			return nil, false, fmt.Errorf("invalid transformer flag %v", t)
 		}
