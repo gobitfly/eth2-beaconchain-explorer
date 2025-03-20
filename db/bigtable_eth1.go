@@ -2130,7 +2130,7 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 				targetPubkey, _ := elData.GetTargetValidatorPubkey()
 
 				if sourceAddress == nil || sourcePubkey == nil || targetPubkey == nil {
-					logger.Warnf("error parsing consolidation event: %x %x %d", sourceAddress, validatorPubkey, amount)
+					logger.Warnf("error parsing consolidation event: %x %x %d", sourceAddress, sourcePubkey, targetPubkey)
 					continue
 				}
 
