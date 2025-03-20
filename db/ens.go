@@ -91,6 +91,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		ensCrontractAddresses = ensContracts.ENSCrontractAddressesHolesky
 	case "11155111":
 		ensCrontractAddresses = ensContracts.ENSCrontractAddressesSepolia
+	// TODO hoodi
 	default:
 		return bulkData, bulkMetadataUpdates, nil
 	}
