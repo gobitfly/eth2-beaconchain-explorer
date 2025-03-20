@@ -52,6 +52,7 @@ var firstBlockOfRedstone = map[string]uint64{
 	"mainnet": 15451165,
 	"prater":  7287326,
 	"holesky": 0,
+	"hoodi":   0, // TODO: dont know
 }
 
 var leb16, _ = big.NewInt(0).SetString("16000000000000000000", 10)

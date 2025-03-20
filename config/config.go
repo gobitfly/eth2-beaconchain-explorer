@@ -26,6 +26,9 @@ var GnosisChainYml string
 //go:embed holesky.chain.yml
 var HoleskyChainYml string
 
+//go:embed hoodi.chain.yml
+var HoodiChainYml string
+
 //go:embed mekong.chain.yml
 var MekongChainYml string
 
