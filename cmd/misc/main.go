@@ -1736,7 +1736,7 @@ func getTransformers(transformerFlag string, bt *db.Bigtable) ([]db.TransformFun
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
 	if transformerFlag == "all" {
-		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered", "TransformContract"}
+		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered", "TransformContract", "TransformConsolidationRequests", "TransformWithdrawalRequests"}
 	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
 		return nil, false, fmt.Errorf("no transformer functions provided")

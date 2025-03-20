@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
@@ -848,6 +849,10 @@ type FrontendExecutionWithdrawalRequest struct {
 	ValidatorIndex     int64          `db:"validator_index"`
 	Amount             uint64         `db:"amount"`
 	WrongSourceAddress bool
+}
+
+func (t *FrontendExecutionWithdrawalRequest) IsExitRequest() bool {
+	return t.Amount == 0
 }
 
 type FrontendWithdrawalRequest struct {
@@ -1795,6 +1800,27 @@ type DepositContractInteraction struct {
 	Amount          []byte
 }
 
+type ConsolidationRequestInteraction struct {
+	SourceAddress         common.Address
+	SourceValidatorPubkey []byte
+	TargetValidatorPubkey []byte
+	Amount                *big.Int
+}
+
+func (c ConsolidationRequestInteraction) IsMoveToCompounding() bool {
+	return bytes.Equal(c.SourceValidatorPubkey, c.TargetValidatorPubkey)
+}
+
+type WithdrawalRequestInteraction struct {
+	SourceAddress   common.Address
+	ValidatorPubkey []byte
+	Amount          *big.Int
+}
+
+func (w WithdrawalRequestInteraction) IsExitRequest() bool {
+	return w.Amount.Cmp(big.NewInt(0)) == 0
+}
+
 type EpochInfo struct {
 	Finalized     bool    `db:"finalized"`
 	Participation float64 `db:"globalparticipationrate"`
@@ -1838,6 +1864,8 @@ type Eth1TxData struct {
 	Events                      []*Eth1EventData
 	Transfers                   []*Transfer
 	DepositContractInteractions []DepositContractInteraction
+	Consolidations              []ConsolidationRequestInteraction
+	Withdrawals                 []WithdrawalRequestInteraction
 	CurrentEtherPrice           template.HTML
 	HistoricalEtherPrice        template.HTML
 	BlobHashes                  [][]byte

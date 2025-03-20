@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"math/big"
 	"sort"
 	"strconv"
@@ -2125,9 +2123,16 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 				// source_address: Bytes20
 				// source_pubkey: Bytes48
 				// target_pubkey: Bytes48
-				sourceAddress := log.Data[:20]
-				sourcePubkey := log.Data[20:68]
-				targetPubkey := log.Data[68:116]
+
+				elData := types.ElConsolidationRequestData(log.Data)
+				sourceAddress, _ := elData.GetSourceAddressBytes()
+				sourcePubkey, _ := elData.GetSourceValidatorPubkey()
+				targetPubkey, _ := elData.GetTargetValidatorPubkey()
+
+				if sourceAddress == nil || sourcePubkey == nil || targetPubkey == nil {
+					logger.Warnf("error parsing consolidation event: %x %x %d", sourceAddress, validatorPubkey, amount)
+					continue
+				}
 
 				logger.Infof("consolidation event: %x %x %x", sourceAddress, sourcePubkey, targetPubkey)
 
@@ -2166,12 +2171,15 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 				// source_address: Bytes20
 				// validator_pubkey: Bytes48
 				// amount: uint64
-				sourceAddress := log.Data[:20]
-				validatorPubkey := log.Data[20:68]
-				amount := binary.BigEndian.Uint64(log.Data[68:76])
 
-				if amount > math.MaxInt64 {
-					amount = math.MaxInt64
+				elData := types.ElWithdrawalRequestData(log.Data)
+				sourceAddress, _ := elData.GetSourceAddressBytes()
+				validatorPubkey, _ := elData.GetValidatorPubkey()
+				amount, _ := elData.GetAmountUint64()
+
+				if sourceAddress == nil || validatorPubkey == nil {
+					logger.Warnf("error parsing withdrawal event: %x %x %d", sourceAddress, validatorPubkey, amount)
+					continue
 				}
 
 				logger.Infof("withdrawal event: %x %x %d", sourceAddress, validatorPubkey, amount)
