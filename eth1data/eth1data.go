@@ -317,7 +317,7 @@ func GetEth1Transaction(hash common.Hash, currency string) (*types.Eth1TxData, e
 			if d.IsMoveToCompounding() {
 				v.Name = "CompoundingRequest"
 			} else {
-				v.Name = "WithdrawalRequest"
+				v.Name = "ConsolidationRequest"
 			}
 
 			if d.SourceAddress.Bytes() == nil || d.TargetValidatorPubkey == nil || d.SourceValidatorPubkey == nil {
