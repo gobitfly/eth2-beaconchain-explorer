@@ -106,6 +106,14 @@ func main() {
 		}()
 	}
 
+	if utils.Config.Chain.PectraWithdrawalRequestContractAddress == "" {
+		utils.LogFatal(nil, "missing config pectraWithdrawalRequestContractAddress, please provide via explorer config", 0)
+	}
+
+	if utils.Config.Chain.PectraConsolidationRequestContractAddress == "" {
+		utils.LogFatal(nil, "missing config pectraConsolidationRequestContractAddress, please provide via explorer config", 0)
+	}
+
 	db.MustInitDB(&types.DatabaseConfig{
 		Username:     cfg.WriterDatabase.Username,
 		Password:     cfg.WriterDatabase.Password,

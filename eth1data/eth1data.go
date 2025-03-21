@@ -288,6 +288,47 @@ func GetEth1Transaction(hash common.Hash, currency string) (*types.Eth1TxData, e
 		}
 	}
 
+	// pectra
+	for _, v := range txPageData.Events {
+		if v.Address == common.HexToAddress(utils.Config.Chain.PectraWithdrawalRequestContractAddress) {
+			var d types.WithdrawalRequestInteraction
+			elData := types.ElWithdrawalRequestData(v.Data)
+			d.SourceAddress, _ = elData.GetSourceAddress()
+			d.ValidatorPubkey, _ = elData.GetValidatorPubkey()
+			d.Amount, _ = elData.GetAmount()
+			if d.IsExitRequest() {
+				v.Name = "ExitRequest"
+			} else {
+				v.Name = "WithdrawalRequest"
+			}
+
+			if d.SourceAddress.Bytes() == nil || d.ValidatorPubkey == nil || d.Amount == nil {
+				logger.Warnf("error decoding ElWithdrawalRequestData for event [%v]: %v", v.Name, err)
+				continue
+			}
+
+			txPageData.Withdrawals = append(txPageData.Withdrawals, d)
+		} else if v.Address == common.HexToAddress(utils.Config.Chain.PectraConsolidationRequestContractAddress) {
+			var d types.ConsolidationRequestInteraction
+			elData := types.ElConsolidationRequestData(v.Data)
+			d.SourceAddress, _ = elData.GetSourceAddress()
+			d.SourceValidatorPubkey, _ = elData.GetSourceValidatorPubkey()
+			d.TargetValidatorPubkey, _ = elData.GetTargetValidatorPubkey()
+			if d.IsMoveToCompounding() {
+				v.Name = "CompoundingRequest"
+			} else {
+				v.Name = "ConsolidationRequest"
+			}
+
+			if d.SourceAddress.Bytes() == nil || d.TargetValidatorPubkey == nil || d.SourceValidatorPubkey == nil {
+				logger.Warnf("error decoding ElConsolidationRequestData for event [%v]: %v", v.Name, err)
+				continue
+			}
+
+			txPageData.Consolidations = append(txPageData.Consolidations, d)
+		}
+	}
+
 	err = cache.TieredCache.Set(cacheKey, txPageData, utils.Day)
 	if err != nil {
 		return nil, fmt.Errorf("error writing data for tx to cache: %w", err)

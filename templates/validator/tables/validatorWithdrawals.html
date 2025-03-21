@@ -1,19 +1,41 @@
 {{ define "validatorWithdrawalsTable" }}
-  <h4 class="my-3">Execution Layer</h4>
-  <h6 class="">This table displays the withdrawal requests made to the Ethereum withdrawal request contract.</h6>
+  <h4 class="my-3">Withdrawals Execution Layer</h4>
+  <h6 class="">This table displays all manual withdrawal requests made to the Ethereum withdrawal request contract.</h6>
   <div class="table-responsive card card-body p-0">
     <table class="table" style="margin-top: 0 !important;" id="withdrawal-eth1-table" width="100%">
       <thead>
         <tr>
           <th>From Address</th>
-          <th>Tx Hash</th>
           <th>Block</th>
           <th>Time</th>
-          <th>Validator</th>
+          <th>Tx Hash</th>
           <th>Amount</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody>
+        {{ range $i, $request := .ExecutionWithdrawals }}
+          {{ if not $request.IsExitRequest }}
+            <tr>
+              <td>
+                {{ if $request.WrongSourceAddress }}
+                  <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid withdrawal request, the address does not match the validators withdrawal address."></i></span>
+                {{ end }}
+                {{ formatEth1AddressFull $request.SourceAddress }}
+              </td>
+              <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+              <td>{{ formatTimestamp $request.Ts }}</td>
+              <td>{{ formatEth1TxHash $request.TxHash }}</td>
+              <td>
+                {{ if gt $request.Amount 0 }}
+                  {{ formatClCurrency $request.Amount config.Frontend.MainCurrency 5 true false false false }}
+                {{ else }}
+                  -
+                {{ end }}
+              </td>
+            </tr>
+          {{ end }}
+        {{ end }}
+      </tbody>
     </table>
   </div>
   <div class="text-center my-3">
@@ -35,6 +57,59 @@
       <tbody></tbody>
     </table>
   </div>
+  <div class="text-center my-3" style="padding: 8px 0;">
+    <hr />
+  </div>
+  <h4 class="my-3">Exits Execution Layer</h4>
+  <h6 class="">This table displays all manual exit requests made to the Ethereum withdrawal request contract.</h6>
+  <div class="table-responsive card card-body p-0">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-eth1-table" width="100%">
+      <thead>
+        <tr>
+          <th>From Address</th>
+          <th>Block</th>
+          <th>Time</th>
+          <th>Tx Hash</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $i, $request := .ExecutionWithdrawals }}
+          {{ if $request.IsExitRequest }}
+            <tr>
+              <td>
+                {{ if $request.WrongSourceAddress }}
+                  <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid withdrawal request, the address does not match the validators withdrawal address."></i></span>
+                {{ end }}
+                {{ formatEth1AddressFull $request.SourceAddress }}
+              </td>
+              <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+              <td>{{ formatTimestamp $request.Ts }}</td>
+              <td>{{ formatEth1TxHash $request.TxHash }}</td>
+            </tr>
+          {{ end }}
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-center my-3">
+    <i class="fas fa-arrow-down"></i>
+  </div>
+  <h4 class="my-3">Exits Consensus Layer</h4>
+  <h6 class="">This table displays the exit requests received and processed by the beacon chain.</h6>
+  <div class="table-responsive card card-body p-0">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+      <thead>
+        <tr>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Time</th>
+          <th>Recipient Address</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
     <script>
         var index = {{.Index}}
         window.addEventListener('load', function() {

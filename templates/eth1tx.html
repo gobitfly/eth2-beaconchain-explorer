@@ -240,6 +240,10 @@
                           {{ if .TargetIsContract }}
                             {{ if .DepositContractInteractions }}
                               <div class="mr-2 flex-shrink-1"><span class="badge badge-primary align-middle text-white">Deposit Contract</span></div>
+                            {{ else if .Withdrawals }}
+                              <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Withdrawal Contract</span></div>
+                            {{ else  if .Consolidations }}
+                              <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Consolidations Contract</span></div>
                             {{ else }}
                               <div class="mr-2 flex-shrink-1"><span class="badge badge-secondary align-middle text-white">Contract</span></div>
                             {{ end }}
@@ -306,6 +310,53 @@
                           <span>{{ formatPublicKey $deposit.ValidatorPubkey }}</span>
                           <span>with withdrawal credentials</span>
                           <span>{{ formatWithdawalCredentials $deposit.WithdrawalCreds true }}</span>
+                        </li>
+                      {{ end }}
+                    </ul>
+                  </div>
+                </div>
+              {{ end }}
+              {{ if .Consolidations }}
+                <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                  <div class="col-md-3">Beaconchain Consolidations:</div>
+                  <div class="col-md-9">
+                    <ul class="fa-ul mb-0 mt-2">
+                      {{ range $i, $con := .Consolidations }}
+                        <li class="mb-1">
+                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                          {{ if $con.IsMoveToCompounding }}
+                            <span>Convert to compounding request from validator </span>
+                            <span>{{ formatPublicKey $con.SourceValidatorPubkey }}</span>
+                          {{ else }}
+                            <span>Consolidate request from validator </span>
+                            <span>{{ formatPublicKey $con.SourceValidatorPubkey }}</span>
+                            <span>to validator </span>
+                            <span>{{ formatPublicKey $con.TargetValidatorPubkey }}</span>
+                          {{ end }}
+
+                        </li>
+                      {{ end }}
+                    </ul>
+                  </div>
+                </div>
+              {{ end }}
+              {{ if .Withdrawals }}
+                <div class="row border-bottom p-3 mx-0" style="border-width:4px !important;">
+                  <div class="col-md-3">Beaconchain Withdrawals:</div>
+                  <div class="col-md-9">
+                    <ul class="fa-ul mb-0 mt-2">
+                      {{ range $i, $with := .Withdrawals }}
+                        <li class="mb-1">
+                          <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                          {{ if $with.IsExitRequest }}
+                            <span>Exit request from validator </span>
+                            <span>{{ formatPublicKey $with.ValidatorPubkey }}</span>
+                          {{ else }}
+                            <span>Withdrawal request of </span>
+                            {{ formatClCurrency $with.Amount config.Frontend.MainCurrency 8 true false false false }}
+                            <span>from validator </span>
+                            <span>{{ formatPublicKey $with.ValidatorPubkey }}</span>
+                          {{ end }}
                         </li>
                       {{ end }}
                     </ul>

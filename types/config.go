@@ -127,16 +127,18 @@ type Config struct {
 }
 
 type Chain struct {
-	Name                       string `yaml:"name" envconfig:"CHAIN_NAME"`
-	Id                         uint64 `yaml:"id" envconfig:"CHAIN_ID"`
-	GenesisTimestamp           uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
-	GenesisValidatorsRoot      string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
-	DomainBLSToExecutionChange string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
-	DomainVoluntaryExit        string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
-	ClConfigPath               string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
-	ElConfigPath               string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
-	ClConfig                   ClChainConfig
-	ElConfig                   *params.ChainConfig
+	Name                                      string `yaml:"name" envconfig:"CHAIN_NAME"`
+	Id                                        uint64 `yaml:"id" envconfig:"CHAIN_ID"`
+	GenesisTimestamp                          uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
+	GenesisValidatorsRoot                     string `yaml:"genesisValidatorsRoot" envconfig:"CHAIN_GENESIS_VALIDATORS_ROOT"`
+	DomainBLSToExecutionChange                string `yaml:"domainBLSToExecutionChange" envconfig:"CHAIN_DOMAIN_BLS_TO_EXECUTION_CHANGE"`
+	DomainVoluntaryExit                       string `yaml:"domainVoluntaryExit" envconfig:"CHAIN_DOMAIN_VOLUNTARY_EXIT"`
+	ClConfigPath                              string `yaml:"clConfigPath" envconfig:"CHAIN_CL_CONFIG_PATH"`
+	ElConfigPath                              string `yaml:"elConfigPath" envconfig:"CHAIN_EL_CONFIG_PATH"`
+	ClConfig                                  ClChainConfig
+	ElConfig                                  *params.ChainConfig
+	PectraWithdrawalRequestContractAddress    string `yaml:"pectraWithdrawalRequestContractAddress" envconfig:"CHAIN_PECTRA_WITHDRAWAL_REQUEST_CONTRACT_ADDRESS"`
+	PectraConsolidationRequestContractAddress string `yaml:"pectraConsolidationRequestContractAddress" envconfig:"CHAIN_PECTRA_CONSOLIDATION_REQUEST_CONTRACT_ADDRESS"`
 }
 
 type Bigtable struct {
