@@ -211,11 +211,11 @@
         <div class="px-2 mx-auto" style="max-width: 50rem;">
           <div class="p-2 text-justify">
             {{ if gt .ConsolidationTargetIndex -1 }}
-              {{ if and (not (eq .WithdrawableEpoch 9223372036854775807)) (lt .NetworkStats.CurrentEpoch .WithdrawableEpoch )}}
+              {{ if and (not (eq .WithdrawableEpoch 9223372036854775807)) (lt .NetworkStats.CurrentEpoch .WithdrawableEpoch ) }}
                 This validator will be consolidated into validator <a href="/validator/{{ .ConsolidationTargetIndex }}">{{ .ConsolidationTargetIndex }}</a> on <span aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>.
               {{ else }}
                 This validator has been consolidated, and its funds and duties have moved to validator <a href="/validator/{{ .ConsolidationTargetIndex }}">{{ .ConsolidationTargetIndex }}</a>.
-              {{end}}
+              {{ end }}
             {{ else }}
               {{ if .FutureDutiesEpoch }}
                 This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> but has still future duties. <i class="fas fa-exclamation-circle"></i> Please keep the validator running until epoch <a href="/epoch/{{ .FutureDutiesEpoch }}">{{ .FutureDutiesEpoch }}</a>!
