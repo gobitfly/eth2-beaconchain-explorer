@@ -63,6 +63,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	totalBalance := uint64(0)
 
 	g := errgroup.Group{}
+	incomeForApr := types.ValidatorIncomePerformance{}
 	g.Go(func() error {
 		latestBalances, err := db.BigtableClient.GetValidatorBalanceHistory(validators, latestFinalizedEpoch, latestFinalizedEpoch)
 		if err != nil {
@@ -83,7 +84,18 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 			totalBalance += balance[0].Balance
 		}
-		return nil
+
+		// get performance for all validators with an effective balance, used for apr
+		// If we would use ${income} for APR, validators that have exited would be included in the performance but
+		// not on the divisor side as the effective balance is now zero, which would result in a higher/wrong APR.
+		// Hence we ignore exited validators in the APR calculation
+		indicesWithBalances := make([]uint64, 0)
+		for index := range balancesMap {
+			if balancesMap[index].EffectiveBalance > 0 {
+				indicesWithBalances = append(indicesWithBalances, index)
+			}
+		}
+		return db.GetValidatorIncomePerformance(indicesWithBalances, &incomeForApr)
 	})
 
 	income := types.ValidatorIncomePerformance{}
@@ -153,11 +165,15 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 
 	clElPrice := price.GetPrice(utils.Config.Frontend.ClCurrency, utils.Config.Frontend.ElCurrency)
 
-	if totalDeposits == 0 {
-		totalDeposits = utils.Config.Chain.ClConfig.MaxEffectiveBalance * uint64(len(validators))
+	totalEB := decimal.NewFromInt(0)
+	for _, v := range balancesMap {
+		totalEB = totalEB.Add(decimal.NewFromInt(int64(v.EffectiveBalance)))
+	}
+	if totalEB.IsZero() {
+		totalEB = decimal.NewFromInt(math.MaxInt64) // if all validators have exited, make all aprs zero by dividing by max int
 	}
 
-	clApr7d := income.ClIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
+	clApr7d := incomeForApr.ClIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
 	if clApr7d < float64(-1) {
 		clApr7d = float64(-1)
 	}
@@ -165,7 +181,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr7d = float64(0)
 	}
 
-	elApr7d := income.ElIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
+	elApr7d := incomeForApr.ElIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
 	if elApr7d < float64(-1) {
 		elApr7d = float64(-1)
 	}
@@ -173,7 +189,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		elApr7d = float64(0)
 	}
 
-	clApr31d := income.ClIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
+	clApr31d := incomeForApr.ClIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
 	if clApr31d < float64(-1) {
 		clApr31d = float64(-1)
 	}
@@ -181,7 +197,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr31d = float64(0)
 	}
 
-	elApr31d := income.ElIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
+	elApr31d := incomeForApr.ElIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
 	if elApr31d < float64(-1) {
 		elApr31d = float64(-1)
 	}
@@ -189,7 +205,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		elApr31d = float64(0)
 	}
 
-	clApr365d := income.ClIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).InexactFloat64()
+	clApr365d := incomeForApr.ClIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).InexactFloat64()
 	if clApr365d < float64(-1) {
 		clApr365d = float64(-1)
 	}
@@ -197,7 +213,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr365d = float64(0)
 	}
 
-	elApr365d := income.ElIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(decimal.NewFromInt(int64(totalDeposits)), 18).InexactFloat64()
+	elApr365d := incomeForApr.ElIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).InexactFloat64()
 	if elApr365d < float64(-1) {
 		elApr365d = float64(-1)
 	}
