@@ -1,0 +1,57 @@
+<template>
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: 0.5rem 0">
+        <span> <i class="fas fa-history"></i> Most recent epochs </span>
+        <a class="btn btn-primary btn-sm float-right text-white" href="/epochs">View more</a>
+      </h3>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Epoch</th>
+              <th>Time</th>
+              <th>Final</th>
+              <!--<th>Eligible ({{ config.Frontend.ClCurrency }})</th>-->
+              <th>Eligible</th>
+              <th>Voted</th>
+            </tr>
+          </thead>
+          <tbody v-if="page && page.epochs && page.epochs.length">
+            <tr v-for="epoch in page.epochs">
+              <td><a v-bind:href="'/epoch/' + epoch.epoch" v-html="addCommas(epoch.epoch)"></a></td>
+              <td><span v-tooltip="{ text: timestampTooltip(epoch.ts) }" v-html="fromNow(epoch.ts)"></span></td>
+              <td v-html="epoch.finalized_formatted"></td>
+              <td v-html="epoch.eligibleether_formatted"></td>
+              <td v-html="epoch.globalparticipationrate_formatted"></td>
+            </tr>
+          </tbody>
+          <tbody v-else>
+            <tr style="height: 430px" class="justify-content-center">
+              <td></td>
+              <td style="vertical-align: middle" colspan="3">
+                <!--<div class="img-fluid p-3">
+                  {{ template "professor_svg" }}
+                </div>
+                -->
+              </td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onServerPrefetch, onMounted, computed } from "vue"
+import { useState } from "@/stores/state.js"
+import { addCommas, fromNow, timestampTooltip } from "@/utils.js"
+
+const state = useState()
+
+const page = computed(() => state.indexData)
+</script>
