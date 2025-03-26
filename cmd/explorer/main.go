@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"strings"
@@ -67,6 +68,7 @@ func main() {
 		fmt.Println(version.GoVersion)
 		return
 	}
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
