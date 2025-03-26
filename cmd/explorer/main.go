@@ -643,6 +643,7 @@ func main() {
 
 		n := negroni.New(negroni.NewRecovery())
 		n.Use(gzip.Gzip(gzip.DefaultCompression))
+		n.Use(negroni.NewLogger())
 
 		pa := &proxyaddr.ProxyAddr{}
 		pa.Init(proxyaddr.CIDRLoopback)
