@@ -438,7 +438,7 @@ func getNextWithdrawalRow(queryValidators []uint64, currency string) ([][]interf
 		utils.FormatValidator(nextValidator.Index),
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatEpoch(uint64(utils.TimeToEpoch(timeToWithdrawal))))),
 		template.HTML(fmt.Sprintf(`<span class="text-muted">~ %s</span>`, utils.FormatBlockSlot(utils.TimeToSlot(uint64(timeToWithdrawal.Unix()))))),
-		template.HTML(fmt.Sprintf(`<span class="">~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
+		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="Due to uncertainty in execution-triggered withdrawals, your withdrawal may take up to twice the estimated time to process."><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> ~ %s</span>`, utils.FormatTimestamp(timeToWithdrawal.Unix()))),
 		withdrawalCredentialsTemplate,
 		template.HTML(fmt.Sprintf(`<span class="text-muted"><span data-toggle="tooltip" title="If the withdrawal were to be processed at this very moment, this amount would be withdrawn"><i class="far ml-1 fa-question-circle" style="margin-left: 0px !important;"></i></span> %s</span>`, utils.FormatClCurrency(withdrawalAmount, currency, 6, true, false, false, true))),
 	})
