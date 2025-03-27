@@ -1676,20 +1676,6 @@ func RemoveRoundBracketsIncludingContent(input string) string {
 	return result
 }
 
-func Int64Min(x, y int64) int64 {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func Int64Max(x, y int64) int64 {
-	if x > y {
-		return x
-	}
-	return y
-}
-
 // Prompt asks for a string value using the label. For comand line interactions.
 func CmdPrompt(label string) string {
 	var s string
