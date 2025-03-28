@@ -57,7 +57,7 @@ func TestGetEth1Transaction(t *testing.T) {
 
 	price.Init(1, node, "ETH", "ETH")
 
-	bt, err := db.InitBigtableWithCache(context.Background(), "test", "instanceTest", "1", noRedis{})
+	bt, err := db.InitBigtableWithCache("test", "instanceTest", "1", noRedis{})
 	if err != nil {
 		t.Fatal(err)
 	}
