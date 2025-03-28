@@ -229,7 +229,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if chainID == nil {
 			return depositsToSave, fmt.Errorf("error getting tx-chainId for eth1-deposit")
 		}
-		signer := gethTypes.NewCancunSigner(chainID)
+		signer := gethTypes.NewPragueSigner(chainID)
 		sender, err := signer.Sender(tx)
 		if err != nil {
 			return depositsToSave, fmt.Errorf("error getting sender for eth1-deposit (txHash: %x, chainID: %v): %w", d.TxHash, chainID, err)
