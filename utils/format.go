@@ -543,7 +543,7 @@ func FormatTransactionType(txnType uint8) string {
 	case 3:
 		return "3 (Blob, EIP-4844)"
 	case 4:
-		return "3 (Set EOA, EIP-7702)"
+		return "4 (Set EOA, EIP-7702)"
 	default:
 		return fmt.Sprintf("%v (???)", txnType)
 	}
