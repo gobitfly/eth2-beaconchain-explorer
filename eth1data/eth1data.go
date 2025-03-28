@@ -91,7 +91,7 @@ func GetEth1Transaction(hash common.Hash, currency string) (*types.Eth1TxData, e
 	txPageData.BlockNumber = header.Number.Int64()
 	txPageData.Timestamp = time.Unix(int64(header.Time), 0)
 
-	msg, err := core.TransactionToMessage(tx, geth_types.NewCancunSigner(tx.ChainId()), header.BaseFee)
+	msg, err := core.TransactionToMessage(tx, geth_types.NewPragueSigner(tx.ChainId()), header.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("error getting sender of tx: %w", err)
 	}

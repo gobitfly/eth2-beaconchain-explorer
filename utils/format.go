@@ -542,6 +542,8 @@ func FormatTransactionType(txnType uint8) string {
 		return "2 (EIP-1559)"
 	case 3:
 		return "3 (Blob, EIP-4844)"
+	case 4:
+		return "4 (Set EOA, EIP-7702)"
 	default:
 		return fmt.Sprintf("%v (???)", txnType)
 	}
