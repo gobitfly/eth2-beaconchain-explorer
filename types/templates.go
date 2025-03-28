@@ -407,6 +407,7 @@ type ValidatorPageData struct {
 	ShowMultipleWithdrawalCredentialsWarning bool
 	CappellaHasHappened                      bool
 	BLSChange                                *BLSChange
+	CompoundingChange                        *CompoundingChange
 	IsWithdrawableAddress                    bool
 	EstimatedNextWithdrawal                  template.HTML
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
@@ -673,6 +674,7 @@ type BlockPageData struct {
 	SyncCommittee         []uint64 // TODO: Setting it to contain the validator index
 	BlobSidecars          []*BlockPageBlobSidecar
 	ConsolidationRequests []*FrontendConsolidationRequest
+	CompoundingRequests   []*FrontendCompoundingRequest
 	WithdrawalRequests    []*FrontendWithdrawalRequest
 	DepositRequests       []*FrontendDepositRequest
 
@@ -811,6 +813,14 @@ type FrontendConsolidationRequest struct {
 	SourceIndex        int64  `db:"source_index"`
 	TargetIndex        int64  `db:"target_index"`
 	AmountConsolidated uint64 `db:"amount_consolidated"`
+}
+
+type FrontendCompoundingRequest struct {
+	BlockSlot      uint64 `db:"block_slot"`
+	BlockRoot      []byte `db:"block_root"`
+	Index          uint64 `db:"request_index"`
+	ValidatorIndex int64  `db:"validator_index"`
+	Address        []byte `db:"address"`
 }
 
 type FrontendWithdrawalRequest struct {
@@ -2059,6 +2069,13 @@ type BLSChange struct {
 	BlsPubkey      []byte `db:"pubkey" json:"pubkey,omitempty"`
 	Address        []byte `db:"address" json:"address,omitempty"`
 	Signature      []byte `db:"signature" json:"signature,omitempty"`
+}
+
+type CompoundingChange struct {
+	Slot           uint64 `db:"slot" json:"slot,omitempty"`
+	BlockRoot      []byte `db:"block_root" json:"blockroot,omitempty"`
+	Validatorindex uint64 `db:"validator_index" json:"validatorindex,omitempty"`
+	Address        []byte `db:"address" json:"address,omitempty"`
 }
 
 type ValidatorsBLSChange struct {

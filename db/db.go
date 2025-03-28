@@ -3004,6 +3004,29 @@ func GetValidatorBLSChange(validatorindex uint64) (*types.BLSChange, error) {
 	return change, nil
 }
 
+func GetValidatorCompoundingChange(validatorindex uint64) (*types.CompoundingChange, error) {
+	change := &types.CompoundingChange{}
+
+	err := ReaderDb.Get(change, `
+	SELECT 
+		blocks_switch_to_compounding_requests.block_slot as slot, 
+		blocks_switch_to_compounding_requests.validator_index, 
+		blocks_switch_to_compounding_requests.block_root, 
+		blocks_switch_to_compounding_requests.address 
+	FROM blocks_switch_to_compounding_requests
+	INNER JOIN blocks b ON b.blockroot = blocks_switch_to_compounding_requests.block_root AND b.status = '1'
+	WHERE validator_index = $1 
+	ORDER BY blocks_switch_to_compounding_requests.block_slot`, validatorindex)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error getting validator blocks_switch_to_compounding_requests: %w", err)
+	}
+
+	return change, nil
+}
+
 // GetValidatorsBLSChange returns the BLS change for a list of validators
 func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, error) {
 	change := make([]*types.ValidatorsBLSChange, 0, len(validators))

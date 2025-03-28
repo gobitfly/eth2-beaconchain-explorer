@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"math"
@@ -44,6 +45,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 		"slot/exits.html",
 		"slot/blobs.html",
 		"slot/consolidationRequests.html",
+		"slot/compoundingRequests.html",
 		"slot/withdrawalRequests.html",
 		"slot/depositRequests.html",
 		"components/timestamp.html",
@@ -95,7 +97,7 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slotPageData, err := GetSlotPageData(uint64(blockSlot))
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		slot := uint64(blockSlot)
 		//Slot not in database -> Show future block
 
@@ -390,6 +392,20 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving blocks_consolidation_requests of block %v: %v", slotPageData.Slot, err)
+	}
+
+	err = db.ReaderDb.Select(&slotPageData.CompoundingRequests, `
+		SELECT 
+			block_slot, 
+			block_root, 
+			request_index, 
+			validator_index, 
+			address
+		FROM blocks_switch_to_compounding_requests 
+		WHERE block_slot = $1 AND block_root = $2 
+		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving blocks_switch_to_compounding_requests of block %v: %v", slotPageData.Slot, err)
 	}
 
 	err = db.ReaderDb.Select(&slotPageData.WithdrawalRequests, `

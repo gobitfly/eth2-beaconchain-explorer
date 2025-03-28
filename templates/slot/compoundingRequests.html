@@ -1,0 +1,28 @@
+{{ define "block_compounding_requests" }}
+<style>
+    #blobs_table td {
+        max-width: 200px;
+    }
+</style>
+<div class="row p-1 mx-0">
+  <div class="col-md-12 text-center"><b>Showing {{ len .CompoundingRequests }} Processed Compounding Requests</b></div>
+</div>
+<div class="table-responsive">
+  <table class="table table-sm text-left">
+    <tbody id="blobs_table">
+    <tr style="background-color: var(--bg-color-light);">
+      <th class="border-0">Index</th>
+      <th class="border-0">Validator Index</th>
+      <th class="border-0">Address</th>
+    </tr>
+    {{ range .CompoundingRequests }}
+    <tr class="border-bottom">
+      <td class="border-0">{{ .Index }}</td>
+      <td class="border-0">{{ formatValidatorInt64 .ValidatorIndex }}</td>
+      <td class="border-0">{{ formatEth1Address .Address }}</td>
+    </tr>
+    {{ end }}
+    </tbody>
+  </table>
+</div>
+{{ end }}

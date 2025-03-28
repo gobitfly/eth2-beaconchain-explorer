@@ -461,8 +461,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.BLSChange = blsChange
 
+			compoundingChange, err := db.GetValidatorCompoundingChange(validatorPageData.Index)
+			if err != nil {
+				return fmt.Errorf("error getting validator compound change from db: %w", err)
+			}
+			validatorPageData.CompoundingChange = compoundingChange
+
 			if bytes.Equal(credentialsPrefixBytes, []byte{0x00}) && blsChange != nil {
-				// blsChanges are only possible afters cappeala
+				// blsChanges are only possible afters cappella
 				validatorPageData.IsWithdrawableAddress = true
 			}
 

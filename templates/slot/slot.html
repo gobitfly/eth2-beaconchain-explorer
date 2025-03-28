@@ -441,6 +441,11 @@
             <a class="nav-link" id="consolidation-requests-tab" data-toggle="tab" href="#consolidation-requests" role="tab" aria-controls="consolidation-requests" aria-selected="false">Consolidation Requests <span class="badge bg-secondary text-white">{{ len .ConsolidationRequests }}</span></a>
           </li>
         {{ end }}
+        {{ if gt (len .CompoundingRequests) 0 }}
+        <li class="nav-item">
+          <a class="nav-link" id="compounding-requests-tab" data-toggle="tab" href="#compounding-requests" role="tab" aria-controls="compounding-requests" aria-selected="false">Compounding Requests <span class="badge bg-secondary text-white">{{ len .CompoundingRequests }}</span></a>
+        </li>
+        {{ end }}
         {{ if gt (len .WithdrawalRequests) 0 }}
           <li class="nav-item">
             <a class="nav-link" id="withdrawal-requests-tab" data-toggle="tab" href="#withdrawal-requests" role="tab" aria-controls="withdrawal-requests" aria-selected="false">Withdrawal Requests <span class="badge bg-secondary text-white">{{ len .WithdrawalRequests }}</span></a>
@@ -552,6 +557,13 @@
           <div class="tab-pane fade" id="consolidation-requestsTabPanel" role="tabpanel" aria-labelledby="consolidation-requests-tab">
             <div class="card block-card py-1">
               {{ template "block_consolidation_requests" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt (len .CompoundingRequests) 0 }}
+          <div class="tab-pane fade" id="compounding-requestsTabPanel" role="tabpanel" aria-labelledby="compounding-requests-tab">
+            <div class="card block-card py-1">
+              {{ template "block_compounding_requests" . }}
             </div>
           </div>
         {{ end }}
