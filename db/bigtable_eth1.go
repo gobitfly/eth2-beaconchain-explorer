@@ -3149,7 +3149,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 		return true
 	}, gcp_bigtable.LimitRows(256))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading rows: %w", err)
 	}
 
 	names := make(map[string]string)
@@ -3166,7 +3166,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	g.Go(func() error {
 		err := bigtable.GetAddressNames(names)
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting address names: %w", err)
 		}
 		return nil
 	})
@@ -3176,7 +3176,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 		g.Go(func() error {
 			metadata, err := bigtable.GetERC20MetadataForAddress([]byte(address))
 			if err != nil {
-				return err
+				return fmt.Errorf("error getting erc20 metadata for address %v: %w", address, err)
 			}
 			mux.Lock()
 			tokensToAdd[address] = metadata
@@ -3186,7 +3186,7 @@ func (bigtable *Bigtable) GetArbitraryTokenTransfersForTransaction(transaction [
 	}
 	err = g.Wait()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting token metadata: %w", err)
 	}
 
 	for k, v := range tokensToAdd {

@@ -101,10 +101,12 @@ func InitBigtable(project, instance, chainId, redisAddress string) (*Bigtable, e
 		return nil, err
 	}
 
-	return InitBigtableWithCache(ctx, project, instance, chainId, rdc)
+	return InitBigtableWithCache(project, instance, chainId, rdc)
 }
 
-func InitBigtableWithCache(ctx context.Context, project, instance, chainId string, rdc RedisClient) (*Bigtable, error) {
+func InitBigtableWithCache(project, instance, chainId string, rdc RedisClient) (*Bigtable, error) {
+	ctx := context.Background()
+
 	if utils.Config.Bigtable.Emulator {
 		if utils.Config.Bigtable.EmulatorHost == "" {
 			utils.Config.Bigtable.EmulatorHost = "127.0.0.1"
