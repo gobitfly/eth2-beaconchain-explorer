@@ -41,7 +41,7 @@ type LighthouseClient struct {
 
 // NewLighthouseClient is used to create a new Lighthouse client
 func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, error) {
-	signer := gtypes.NewCancunSigner(chainID)
+	signer := gtypes.NewPragueSigner(chainID)
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
