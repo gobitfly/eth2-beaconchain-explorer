@@ -169,8 +169,12 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	for _, v := range balancesMap {
 		totalEB = totalEB.Add(decimal.NewFromInt(int64(v.EffectiveBalance)))
 	}
+	// convert totalEB to el currency needed for el apr (fe gnosis)
+	totalEBInEl := totalEB.Mul(decimal.NewFromFloat(clElPrice))
+
 	if totalEB.IsZero() {
 		totalEB = decimal.NewFromInt(math.MaxInt64) // if all validators have exited, make all aprs zero by dividing by max int
+		totalEBInEl = decimal.NewFromInt(math.MaxInt64)
 	}
 
 	clApr7d := incomeForApr.ClIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
@@ -181,7 +185,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr7d = float64(0)
 	}
 
-	elApr7d := incomeForApr.ElIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
+	elApr7d := incomeForApr.ElIncomeWei7d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEBInEl, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(7)).InexactFloat64()
 	if elApr7d < float64(-1) {
 		elApr7d = float64(-1)
 	}
@@ -197,7 +201,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr31d = float64(0)
 	}
 
-	elApr31d := incomeForApr.ElIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
+	elApr31d := incomeForApr.ElIncomeWei31d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEBInEl, 18).Mul(decimal.NewFromInt(365)).Div(decimal.NewFromInt(31)).InexactFloat64()
 	if elApr31d < float64(-1) {
 		elApr31d = float64(-1)
 	}
@@ -213,7 +217,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		clApr365d = float64(0)
 	}
 
-	elApr365d := incomeForApr.ElIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEB, 18).InexactFloat64()
+	elApr365d := incomeForApr.ElIncomeWei365d.DivRound(decimal.NewFromInt(1e9), 18).DivRound(totalEBInEl, 18).InexactFloat64()
 	if elApr365d < float64(-1) {
 		elApr365d = float64(-1)
 	}
