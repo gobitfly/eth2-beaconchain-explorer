@@ -75,6 +75,13 @@ func calculateStats() (*types.Stats, error) {
 
 	stats.ActiveValidatorCount = &activeValidatorCount
 
+	activeValidatorEbEth, err := db.GetTotalEligibleEther()
+	if err != nil {
+		logger.WithError(err).Error("error getting active validator eligible eth")
+	}
+
+	stats.ActiveValidatorEbEth = &activeValidatorEbEth
+
 	pendingValidatorCount, err := db.GetPendingValidatorCount()
 	if err != nil {
 		logger.WithError(err).Error("error getting pending validator count")

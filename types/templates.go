@@ -142,6 +142,7 @@ type Stats struct {
 	UniqueValidatorCount           *uint64 `db:"count"`
 	TotalValidatorCount            *uint64 `db:"count"`
 	ActiveValidatorCount           *uint64 `db:"count"`
+	ActiveValidatorEbEth           *uint64 `db:"count"`
 	PendingValidatorCount          *uint64 `db:"count"`
 	ValidatorChurnLimit            *uint64
 	ValidatorActivationChurnLimit  *uint64
@@ -379,7 +380,6 @@ type ValidatorPageData struct {
 	Apr7d                                    ClElFloat64   `json:"apr7d"`
 	Apr31d                                   ClElFloat64   `json:"apr31d"`
 	Apr365d                                  ClElFloat64   `json:"apr365d"`
-	SyncLuck                                 float64
 	SyncEstimate                             *time.Time
 	AvgSyncInterval                          *time.Duration
 	Rank7d                                   int64 `db:"rank7d"`

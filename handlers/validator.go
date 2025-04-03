@@ -367,13 +367,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
 
-	avgSyncInterval := uint64(getAvgSyncCommitteeInterval(1))
-	avgSyncIntervalAsDuration := time.Duration(
-		utils.Config.Chain.ClConfig.SecondsPerSlot*
-			utils.SlotsPerSyncCommittee()*
-			avgSyncInterval) * time.Second
-	validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
-
 	validatorWithdrawalAddress, err := utils.WithdrawalCredentialsToAddress(validatorPageData.WithdrawCredentials)
 	if err != nil {
 		if len(validatorPageData.WithdrawCredentials) <= 0 || !bytes.Equal(validatorPageData.WithdrawCredentials[:1], []byte{0x00}) {
@@ -420,6 +413,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	var avgSyncInterval uint64
 	g.Go(func() error {
 		// those functions need to be executed sequentially as both require the CurrentBalance value
 		start := time.Now()
@@ -442,6 +436,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if ok {
 			validatorPageData.CurrentBalance = vbalance.Balance
 			validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
+
+			avgSyncInterval = uint64(getAvgSyncCommitteeInterval(validatorPageData.EffectiveBalance / 1e9))
+			avgSyncIntervalAsDuration := time.Duration(
+				utils.Config.Chain.ClConfig.SecondsPerSlot*
+					utils.SlotsPerSyncCommittee()*
+					avgSyncInterval) * time.Second
+			validatorPageData.AvgSyncInterval = &avgSyncIntervalAsDuration
 		}
 
 		credentialsPrefixBytes := validatorPageData.WithdrawCredentials[:1]
@@ -789,13 +790,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// sync luck
 		if len(allSyncPeriods) > 0 {
 			maxPeriod := allSyncPeriods[0].Period
-			expectedSyncCount, err := getExpectedSyncCommitteeSlots([]uint64{index}, lastFinalizedEpoch)
-			if err != nil {
-				return fmt.Errorf("error getting expected sync committee slots: %w", err)
-			}
-			if expectedSyncCount != 0 {
-				validatorPageData.SyncLuck = float64(validatorPageData.ParticipatedSyncCountSlots+validatorPageData.MissedSyncCountSlots) / float64(expectedSyncCount)
-			}
 			nextEstimate := utils.EpochToTime(utils.FirstEpochOfSyncPeriod(maxPeriod + avgSyncInterval))
 			validatorPageData.SyncEstimate = &nextEstimate
 		}
