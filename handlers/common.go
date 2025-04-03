@@ -267,8 +267,9 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		}
 	}
 
-	validatorProposalData.ProposalLuck, _ = getProposalLuck(slots, len(validators), firstActivationEpoch)
-	avgSlotInterval := uint64(getAvgSlotInterval(len(validators)))
+	ebEth := totalEB.DivRound(decimal.NewFromInt(1e9), 0).BigInt().Uint64()
+	validatorProposalData.ProposalLuck, _ = getProposalLuck(slots, ebEth, firstActivationEpoch)
+	avgSlotInterval := uint64(getAvgSlotInterval(ebEth))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 	if len(slots) > 0 {
@@ -377,15 +378,15 @@ const year = utils.Year
 // given the blocks proposed by the validators and the number of validators
 //
 // precondition: slots is sorted by ascending block number
-func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) (float64, time.Duration) {
+func getProposalLuck(slots []uint64, validatorEbEth uint64, fromEpoch uint64) (float64, time.Duration) {
 	// Return 0 if there are no proposed blocks or no validators
-	if len(slots) == 0 || validatorsCount == 0 {
+	if len(slots) == 0 || validatorEbEth == 0 {
 		return 0, 0
 	}
 
-	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
+	activeValidatorEbEth := *services.GetLatestStats().ActiveValidatorEbEth
 	// Calculate the expected number of slot proposals for 30 days
-	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorsCount, activeValidatorsCount)
+	expectedSlotProposals := calcExpectedSlotProposals(oneMonth, validatorEbEth, activeValidatorEbEth)
 
 	// Get the timeframe for which we should consider qualified proposals
 	var proposalTimeFrame time.Duration
@@ -421,7 +422,7 @@ func getProposalLuck(slots []uint64, validatorsCount int, fromEpoch uint64) (flo
 	}
 
 	// Recalculate expected slot proposals for the new timeframe
-	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeFrame, validatorsCount, activeValidatorsCount)
+	expectedSlotProposals = calcExpectedSlotProposals(proposalTimeFrame, validatorEbEth, activeValidatorEbEth)
 	if expectedSlotProposals == 0 {
 		return 0, 0
 	}
@@ -467,25 +468,25 @@ func getProposalTimeframeName(proposalTimeframe time.Duration) string {
 }
 
 // calcExpectedSlotProposals calculates the expected number of slot proposals for a certain time frame and validator count
-func calcExpectedSlotProposals(timeframe time.Duration, validatorCount int, activeValidatorsCount uint64) float64 {
-	if validatorCount == 0 || activeValidatorsCount == 0 {
+func calcExpectedSlotProposals(timeframe time.Duration, validatorsEbEth uint64, activeValidatorsEbEth uint64) float64 {
+	if validatorsEbEth == 0 || activeValidatorsEbEth == 0 {
 		return 0
 	}
 	slotsInTimeframe := timeframe.Seconds() / float64(utils.Config.Chain.ClConfig.SecondsPerSlot)
-	return (slotsInTimeframe / float64(activeValidatorsCount)) * float64(validatorCount)
+	return (slotsInTimeframe / float64(activeValidatorsEbEth)) * float64(validatorsEbEth)
 }
 
 // getAvgSlotInterval will return the average block interval for a certain number of validators
 //
 // result of the function should be interpreted as "1 in every X slots will be proposed by this amount of validators on avg."
-func getAvgSlotInterval(validatorsCount int) float64 {
+func getAvgSlotInterval(validatorsEbEth uint64) float64 {
 	// don't estimate if there are no proposed blocks or no validators
-	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
-	if activeValidatorsCount == 0 {
+	activeValidatorsEbEth := *services.GetLatestStats().ActiveValidatorEbEth
+	if activeValidatorsEbEth == 0 {
 		return 0
 	}
 
-	probability := float64(validatorsCount) / float64(activeValidatorsCount)
+	probability := float64(validatorsEbEth) / float64(activeValidatorsEbEth)
 	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
 	// you can think of this as the average interval of blocks until you get a proposal
 	return 1 / probability
@@ -494,13 +495,13 @@ func getAvgSlotInterval(validatorsCount int) float64 {
 // getAvgSyncCommitteeInterval will return the average sync committee interval for a certain number of validators
 //
 // result of the function should be interpreted as "there will be one validator included in every X committees, on average"
-func getAvgSyncCommitteeInterval(validatorsCount int) float64 {
-	activeValidatorsCount := *services.GetLatestStats().ActiveValidatorCount
-	if activeValidatorsCount == 0 {
+func getAvgSyncCommitteeInterval(validatorsEbEth uint64) float64 {
+	activeValidatorsEbEth := *services.GetLatestStats().ActiveValidatorEbEth
+	if activeValidatorsEbEth == 0 {
 		return 0
 	}
 
-	probability := (float64(utils.Config.Chain.ClConfig.SyncCommitteeSize) / float64(activeValidatorsCount)) * float64(validatorsCount)
+	probability := (float64(utils.Config.Chain.ClConfig.SyncCommitteeSize) / float64(activeValidatorsEbEth)) * float64(validatorsEbEth)
 	// in a geometric distribution, the expected value of the number of trials needed until first success is 1/p
 	// you can think of this as the average interval of sync committees until you expect to have been part of one
 	return 1 / probability

@@ -1864,7 +1864,7 @@ func GetTotalEligibleEther() (uint64, error) {
 	var total uint64
 
 	err := ReaderDb.Get(&total, `
-		SELECT eligibleether FROM epochs ORDER BY epoch DESC LIMIT 1
+		SELECT (eligibleether / 1e9)::int FROM epochs ORDER BY epoch DESC LIMIT 1
 	`)
 	if err == sql.ErrNoRows {
 		return 0, nil
@@ -1872,7 +1872,7 @@ func GetTotalEligibleEther() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return total / 1e9, nil
+	return total, nil
 }
 
 // GetValidatorsGotSlashed returns the validators that got slashed after `epoch` either by an attestation violation or a proposer violation

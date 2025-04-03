@@ -1253,124 +1253,12 @@ func getSyncCommitteeStatistics(validators []uint64, epoch uint64) (*SyncCommitt
 		return &SyncCommitteesInfo{}, nil
 	}
 
-	expectedSlots, err := getExpectedSyncCommitteeSlots(validators, epoch)
-	if err != nil {
-		return nil, err
-	}
-
 	stats, err := getSyncCommitteeSlotsStatistics(validators, epoch)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SyncCommitteesInfo{SyncCommitteesStats: stats, ExpectedSlots: expectedSlots}, nil
-}
-
-func getExpectedSyncCommitteeSlots(validators []uint64, epoch uint64) (expectedSlots uint64, err error) {
-	if epoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
-		// no sync committee duties before altair fork
-		return 0, nil
-	}
-
-	lastFinalizedEpoch := services.LatestFinalizedEpoch()
-	if epoch > lastFinalizedEpoch {
-		epoch = lastFinalizedEpoch
-	}
-
-	// retrieve activation and exit epochs from database per validator
-	type ValidatorInfo struct {
-		Id                         int64  `db:"validatorindex"`
-		ActivationEpoch            uint64 `db:"activationepoch"`
-		ExitEpoch                  uint64 `db:"exitepoch"`
-		FirstPossibleSyncCommittee uint64 // calculated
-		LastPossibleSyncCommittee  uint64 // calculated
-	}
-
-	var validatorsInfoFromDb = []ValidatorInfo{}
-	query, args, err := sqlx.In(`SELECT validatorindex, activationepoch, exitepoch FROM validators WHERE validatorindex IN (?) ORDER BY validatorindex ASC`, validators)
-	if err != nil {
-		return 0, err
-	}
-
-	err = db.ReaderDb.Select(&validatorsInfoFromDb, db.ReaderDb.Rebind(query), args...)
-	if err != nil {
-		return 0, err
-	}
-
-	// only check validators that are/have been active and that did not exit before altair
-	const noEpoch = uint64(9223372036854775807)
-	var validatorsInfo = make([]ValidatorInfo, 0, len(validatorsInfoFromDb))
-	for _, v := range validatorsInfoFromDb {
-		if v.ActivationEpoch != noEpoch && v.ActivationEpoch < epoch && (v.ExitEpoch == noEpoch || v.ExitEpoch >= utils.Config.Chain.ClConfig.AltairForkEpoch) {
-			validatorsInfo = append(validatorsInfo, v)
-		}
-	}
-
-	if len(validatorsInfo) == 0 {
-		// no validators relevant for sync duties
-		return 0, nil
-	}
-
-	// we need all related and unique timeframes (activation and exit sync period) for all validators
-	uniquePeriods := make(map[uint64]bool)
-	for i := range validatorsInfo {
-		// first epoch (activation epoch or Altair if Altair was later as there were no sync committees pre Altair)
-		firstSyncEpoch := validatorsInfo[i].ActivationEpoch
-		if validatorsInfo[i].ActivationEpoch < utils.Config.Chain.ClConfig.AltairForkEpoch {
-			firstSyncEpoch = utils.Config.Chain.ClConfig.AltairForkEpoch
-		}
-		validatorsInfo[i].FirstPossibleSyncCommittee = utils.SyncPeriodOfEpoch(firstSyncEpoch)
-		uniquePeriods[validatorsInfo[i].FirstPossibleSyncCommittee] = true
-
-		// last epoch (exit epoch or current epoch if not exited yet)
-		lastSyncEpoch := epoch
-		if validatorsInfo[i].ExitEpoch != noEpoch && validatorsInfo[i].ExitEpoch <= epoch {
-			lastSyncEpoch = validatorsInfo[i].ExitEpoch
-		}
-		validatorsInfo[i].LastPossibleSyncCommittee = utils.SyncPeriodOfEpoch(lastSyncEpoch)
-		uniquePeriods[validatorsInfo[i].LastPossibleSyncCommittee] = true
-	}
-
-	// transform map to slice; this will be used to query sync_committees_count_per_validator
-	periodSlice := make([]uint64, 0, len(uniquePeriods))
-	for period := range uniquePeriods {
-		periodSlice = append(periodSlice, period)
-	}
-
-	// get aggregated count for all relevant committees from sync_committees_count_per_validator
-	var countStatistics []struct {
-		Period     uint64  `db:"period"`
-		CountSoFar float64 `db:"count_so_far"`
-	}
-
-	query, args, errs := sqlx.In(`SELECT period, count_so_far FROM sync_committees_count_per_validator WHERE period IN (?) ORDER BY period ASC`, periodSlice)
-	if errs != nil {
-		return 0, errs
-	}
-	err = db.ReaderDb.Select(&countStatistics, db.ReaderDb.Rebind(query), args...)
-	if err != nil {
-		return 0, err
-	}
-	if len(countStatistics) != len(periodSlice) {
-		return 0, fmt.Errorf("unable to retrieve all sync committee count statistics, required %v entries but got %v entries (epoch: %v)", len(periodSlice), len(countStatistics), epoch)
-	}
-
-	// transform query result to map for easy access
-	periodInfoMap := make(map[uint64]float64)
-	for _, pl := range countStatistics {
-		periodInfoMap[pl.Period] = pl.CountSoFar
-	}
-
-	// calculate expected committies for every single validator and aggregate them
-	expectedCommitties := 0.0
-	for _, vi := range validatorsInfo {
-		expectedCommitties += periodInfoMap[vi.LastPossibleSyncCommittee] - periodInfoMap[vi.FirstPossibleSyncCommittee]
-	}
-
-	// transform committees to slots
-	expectedSlots = uint64(expectedCommitties * float64(utils.SlotsPerSyncCommittee()))
-
-	return expectedSlots, nil
+	return &SyncCommitteesInfo{SyncCommitteesStats: stats, ExpectedSlots: 0}, nil
 }
 
 func getSyncCommitteeSlotsStatistics(validators []uint64, epoch uint64) (types.SyncCommitteesStats, error) {
@@ -4245,19 +4133,33 @@ func getProposalLuckStats(indices []uint64) (*types.ApiProposalLuckResponse, err
 			ORDER BY slot ASC`, pq.Array(indices))
 	})
 
+	var effectiveBalanceSumEth uint64 = 0
+	g.Go(func() error {
+		var err error
+		balances, err := db.BigtableClient.GetValidatorBalanceHistory(indices, services.LatestEpoch(), services.LatestEpoch())
+		if err != nil {
+			return fmt.Errorf("error in GetValidatorBalanceHistory: %w", err)
+		}
+
+		for _, balance := range balances {
+			effectiveBalanceSumEth += balance[0].EffectiveBalance / 1e9
+		}
+		return nil
+	})
+
 	err := g.Wait()
 	if err != nil {
 		return nil, err
 	}
 
-	proposalLuck, proposalTimeFrame := getProposalLuck(slots, len(indices), firstActivationEpoch)
+	proposalLuck, proposalTimeFrame := getProposalLuck(slots, effectiveBalanceSumEth, firstActivationEpoch)
 	if proposalLuck > 0 {
 		data.ProposalLuck = &proposalLuck
 		timeframeName := getProposalTimeframeName(proposalTimeFrame)
 		data.TimeFrameName = &timeframeName
 	}
 
-	avgProposalInterval := getAvgSlotInterval(len(indices))
+	avgProposalInterval := getAvgSlotInterval(effectiveBalanceSumEth)
 	data.AverageProposalInterval = avgProposalInterval
 
 	var estimateLowerBoundSlot *uint64
