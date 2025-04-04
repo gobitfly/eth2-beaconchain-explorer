@@ -223,16 +223,12 @@ func getValidatorActivationChurnLimit(validatorCount, epoch uint64) (uint64, err
 
 // getValidatorChurnLimit returns the rate at which validators can leave the system
 func getValidatorChurnLimit(validatorCount uint64) (uint64, error) {
-	min := utils.Config.Chain.ClConfig.MinPerEpochChurnLimit
+	minVal := utils.Config.Chain.ClConfig.MinPerEpochChurnLimit
 
 	adaptable := uint64(0)
 	if validatorCount > 0 {
 		adaptable = validatorCount / utils.Config.Chain.ClConfig.ChurnLimitQuotient
 	}
 
-	if min > adaptable {
-		return min, nil
-	}
-
-	return adaptable, nil
+	return max(minVal, adaptable), nil
 }
