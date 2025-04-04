@@ -560,7 +560,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, http.StatusInternalServerError)
 				return
 			}
-			err = db.UpdateUserSubscription(tx, appSubID, true, 0, "")
+			err = db.UpdateUserSubscription(tx, appSubID, true, invoice.Lines.Data[0].Period.End, "")
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription (paid)", invoice.Lines.Data[0].Subscription)
 				http.Error(w, "error updating stripe mobile subscription customer: "+invoice.Customer.ID, http.StatusInternalServerError)
