@@ -114,7 +114,7 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 		logger.Errorf("error getting pending queue data: %v", err)
 	}
 
-	depositQueueTime := utils.EpochToTime(result.EstClearEpoch).Sub(time.Now())
+	depositQueueTime := time.Until(utils.EpochToTime(result.EstClearEpoch))
 	etherChurnByEpoch := utils.GetActivationExitChurnLimit(result.TotalEffectiveBalance)
 	if etherChurnByEpoch == 0 {
 		return nil, errors.New("etherChurnByEpoch is 0")

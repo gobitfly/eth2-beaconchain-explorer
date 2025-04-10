@@ -910,9 +910,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	if utils.ElectraHasHappened(epoch) {
 		queueData := LatestQueueData()
-		if data == nil {
-			logrus.Warnf("error retrieving queue data from cache")
-		}
 		data.EnteringValidatorsBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringDepositEthAmount)/1e9)
 		data.EnteringValidatorTopup = fmt.Sprintf("%.0f ETH", float64(queueData.EnteringTopUpEthAmount)/1e9)
 		data.ExitingValidatorsBalance = fmt.Sprintf("%.0f ETH", float64(queueData.LeavingEthAmount)/1e9)
