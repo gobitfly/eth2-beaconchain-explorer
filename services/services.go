@@ -88,6 +88,9 @@ func Init() {
 	ready.Add(1)
 	go latestExportedStatisticDayUpdater(ready)
 
+	ready.Add(1)
+	go queueEstimateUpdater(ready)
+
 	if utils.Config.RatelimitUpdater.Enabled {
 		go ratelimit.DBUpdater()
 	}
@@ -666,6 +669,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	data.CurrentEpoch = epoch
 
+	data.ElectraHasHappened = utils.ElectraHasHappened(epoch)
 	cutoffSlot := utils.TimeToSlot(uint64(time.Now().Add(time.Second * 10).Unix()))
 
 	// If we are before the genesis block show the first 20 slots by default
@@ -903,16 +907,26 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for _, block := range data.Blocks {
 		block.Ts = utils.SlotToTime(block.Slot)
 	}
-	queueCount := struct {
-		EnteringValidators uint64 `db:"entering_validators_count"`
-		ExitingValidators  uint64 `db:"exiting_validators_count"`
-	}{}
-	err = db.ReaderDb.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
+
+	if utils.ElectraHasHappened(epoch) {
+		queueData := LatestQueueData()
+		data.EnteringValidatorsBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringDepositEthAmount)/1e9)
+		data.EnteringValidatorTopup = fmt.Sprintf("%.0f %s", float64(queueData.EnteringTopUpEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
+		data.ExitingValidatorsBalance = fmt.Sprintf("%.0f %s", float64(queueData.LeavingEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
+		data.EnteringValidators = queueData.EnteringValidatorCount
+		data.ExitingValidators = queueData.LeavingValidatorCount
+	} else {
+		queueCount := struct {
+			EnteringValidators uint64 `db:"entering_validators_count"`
+			ExitingValidators  uint64 `db:"exiting_validators_count"`
+		}{}
+		err = db.ReaderDb.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
+		if err != nil && err != sql.ErrNoRows {
+			return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
+		}
+		data.EnteringValidators = queueCount.EnteringValidators
+		data.ExitingValidators = queueCount.ExitingValidators
 	}
-	data.EnteringValidators = queueCount.EnteringValidators
-	data.ExitingValidators = queueCount.ExitingValidators
 
 	var epochLowerBound uint64
 	if epochLowerBound = 0; epoch > 1600 {

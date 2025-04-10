@@ -94,8 +94,9 @@ type Validator struct {
 
 // ValidatorQueue is a struct to hold validator queue data
 type ValidatorQueue struct {
-	Activating uint64
-	Exiting    uint64
+	Activating     uint64
+	Exiting        uint64
+	ExitingBalance uint64
 }
 
 type SyncAggregate struct {
