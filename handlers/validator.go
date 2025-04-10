@@ -20,6 +20,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/sirupsen/logrus"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -94,39 +95,55 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	futureSyncDutyEpoch := uint64(0)
 
 	stats := services.GetLatestStats()
-	churnRate := stats.ValidatorChurnLimit
-	if churnRate == nil {
-		churnRate = new(uint64)
+	epoch := services.LatestEpoch()
+	latestState := services.LatestState()
+
+	var finalityDelay uint64 = 0
+	if latestState != nil {
+		finalityDelay = uint64(math.Max(1, float64(latestState.FinalityDelay)-2))
+	}
+	if finalityDelay < 1 {
+		finalityDelay = 1
 	}
 
-	if *churnRate == 0 {
-		*churnRate = 4
-		logger.Warning("Churn rate not set in config using 4 as default")
-	}
-	validatorPageData.ChurnRate = *churnRate
+	validatorPageData.ElectraHasHappened = utils.ElectraHasHappened(epoch)
 
-	activationChurnRate := stats.ValidatorActivationChurnLimit
-	if activationChurnRate == nil {
-		activationChurnRate = new(uint64)
+	var activationChurnRate *uint64
+	if utils.ElectraHasHappened(epoch) {
+		queueData := services.LatestQueueData()
+
+		validatorPageData.ChurnRate = queueData.EnteringBalancePerEpoch
+	} else {
+
+		churnRate := stats.ValidatorChurnLimit
+		if churnRate == nil {
+			churnRate = new(uint64)
+		}
+
+		if *churnRate == 0 {
+			*churnRate = 4
+			logger.Warning("Churn rate not set in config using 4 as default")
+		}
+		validatorPageData.ChurnRate = *churnRate
+
+		activationChurnRate = stats.ValidatorActivationChurnLimit
+		if activationChurnRate == nil {
+			activationChurnRate = new(uint64)
+		}
+
+		if *activationChurnRate == 0 {
+			*activationChurnRate = 4
+			logger.Warning("Activation Churn rate not set in config using 4 as default")
+		}
 	}
 
-	if *activationChurnRate == 0 {
-		*activationChurnRate = 4
-		logger.Warning("Activation Churn rate not set in config using 4 as default")
-	}
-
-	pendingCount := stats.PendingValidatorCount
-	if pendingCount == nil {
-		pendingCount = new(uint64)
-	}
-
-	validatorPageData.PendingCount = *pendingCount
 	validatorPageData.InclusionDelay = int64((utils.Config.Chain.ClConfig.Eth1FollowDistance*utils.Config.Chain.ClConfig.SecondsPerEth1Block+utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch*utils.Config.Chain.ClConfig.EpochsPerEth1VotingPeriod)/3600) + 1
 
 	data := InitPageData(w, r, "validators", "/validators", "", validatorTemplateFiles)
 	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
 	validatorPageData.ConsolidationTargetIndex = -1
+	validatorPageData.Epoch = latestEpoch
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {
@@ -254,6 +271,50 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			g := errgroup.Group{}
+			g.Go(func() error {
+				if utils.ElectraHasHappened(validatorPageData.Epoch) {
+					// deposit processing queue
+					pendingDeposit, err := getPendingDeposits(validatorPageData.PublicKey)
+					if err != nil {
+						if err == sql.ErrNoRows {
+							var lastPendingDeposit types.PendingDeposit
+							err := db.ReaderDb.Get(&lastPendingDeposit, `SELECT id, est_clear_epoch, amount FROM pending_deposits_queue WHERE id = (select max(id) from pending_deposits_queue)`)
+							if err != nil {
+								logrus.Warnf("error getting pending deposits for validator %v: %v", validatorPageData.PublicKey, err)
+								return nil
+							}
+							// no queue position as deposit is too fresh, show estimates of last entry in the queue as rough estimate
+							validatorPageData.EstimatedActivationEpoch = lastPendingDeposit.EstClearEpoch + 1 + finalityDelay + utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
+							estimatedDequeueTs := utils.EpochToTime(validatorPageData.EstimatedActivationEpoch)
+							validatorPageData.EstimatedActivationTs = estimatedDequeueTs
+							validatorPageData.PendingDepositAboveMinActivation = true // assume for now
+						} else {
+							logrus.Warnf("error getting pending deposits for validator %v: %v", validatorPageData.PublicKey, err)
+							return nil
+						}
+
+						return nil // can happen if the deposit is fresh and has not yet picked up by the beaconchain deposit queue
+					}
+
+					validatorPageData.QueuePosition = uint64(pendingDeposit.ID) + 1
+					validatorPageData.EstimatedActivationEpoch = pendingDeposit.EstClearEpoch + 1 + finalityDelay + utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
+					estimatedDequeueTs := utils.EpochToTime(validatorPageData.EstimatedActivationEpoch)
+					validatorPageData.EstimatedActivationTs = estimatedDequeueTs
+					validatorPageData.EstimatedIndexEpoch = pendingDeposit.EstClearEpoch
+					validatorPageData.EstimatedIndexTs = utils.EpochToTime(validatorPageData.EstimatedIndexEpoch)
+					validatorPageData.PendingDepositAboveMinActivation = pendingDeposit.Amount >= utils.Config.Chain.ClConfig.MinActivationBalance
+				}
+				return nil
+			})
+
+			err = g.Wait()
+			if err != nil {
+				utils.LogError(err, "error getting pending deposits for validator", 0, errFields)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -341,7 +402,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(validatorPageData.RankCount)
 	}
 
-	validatorPageData.Epoch = latestEpoch
 	validatorPageData.Index = index
 
 	if data.User.Authenticated {
@@ -572,21 +632,46 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
-		// we only need to get the queue information if we don't have an activation epoch but we have an eligibility epoch
-		if validatorPageData.ActivationEpoch > 100_000_000 && validatorPageData.ActivationEligibilityEpoch < 100_000_000 {
-			queueAhead, err := db.GetQueueAheadOfValidator(validatorPageData.Index)
-			if err != nil {
-				return fmt.Errorf("failed to retrieve queue ahead of validator %v: %w", validatorPageData.ValidatorIndex, err)
+		if utils.ElectraHasHappened(validatorPageData.Epoch) {
+			var isPendingActivation = false
+			if validatorPageData.ActivationEpoch > 100_000_000 && validatorPageData.ActivationEligibilityEpoch < 100_000_000 {
+				isPendingActivation = true
+			} else if validatorPageData.ActivationEpoch > 100_000_000 {
+				pendingDeposit, err := getPendingDeposits(validatorPageData.PublicKey)
+				if err != nil {
+					logrus.Warnf("error getting pending deposits for validator %v: %v", validatorPageData.PublicKey, err)
+					return nil
+				}
+				validatorPageData.ActivationEligibilityEpoch = pendingDeposit.EstClearEpoch + 1
+				isPendingActivation = true
 			}
-			validatorPageData.QueuePosition = queueAhead + 1
-			epochsToWait := queueAhead / *activationChurnRate
-			// calculate dequeue epoch
-			estimatedActivationEpoch := validatorPageData.Epoch + epochsToWait + 1
-			// add activation offset
-			estimatedActivationEpoch += utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
-			validatorPageData.EstimatedActivationEpoch = estimatedActivationEpoch
-			estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
-			validatorPageData.EstimatedActivationTs = estimatedDequeueTs
+
+			if isPendingActivation {
+				validatorPageData.QueuePosition = 0
+				validatorPageData.EstimatedActivationEpoch = validatorPageData.ActivationEligibilityEpoch + finalityDelay + utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
+				estimatedDequeueTs := utils.EpochToTime(validatorPageData.EstimatedActivationEpoch)
+				validatorPageData.EstimatedActivationTs = estimatedDequeueTs
+				validatorPageData.EstimatedIndexEpoch = validatorPageData.ActivationEligibilityEpoch - 1
+				validatorPageData.EstimatedIndexTs = utils.EpochToTime(validatorPageData.EstimatedIndexEpoch)
+			}
+		} else {
+
+			// we only need to get the queue information if we don't have an activation epoch but we have an eligibility epoch
+			if validatorPageData.ActivationEpoch > 100_000_000 && validatorPageData.ActivationEligibilityEpoch < 100_000_000 {
+				queueAhead, err := db.GetQueueAheadOfValidator(validatorPageData.Index)
+				if err != nil {
+					return fmt.Errorf("failed to retrieve queue ahead of validator %v: %w", validatorPageData.ValidatorIndex, err)
+				}
+				validatorPageData.QueuePosition = queueAhead + 1
+				epochsToWait := queueAhead / *activationChurnRate
+				// calculate dequeue epoch
+				estimatedActivationEpoch := validatorPageData.Epoch + epochsToWait + 1
+				// add activation offset
+				estimatedActivationEpoch += utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
+				validatorPageData.EstimatedActivationEpoch = estimatedActivationEpoch
+				estimatedDequeueTs := utils.EpochToTime(estimatedActivationEpoch)
+				validatorPageData.EstimatedActivationTs = estimatedDequeueTs
+			}
 		}
 		return nil
 	})
@@ -1968,6 +2053,12 @@ func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (m
 		}
 	}
 	return withdrawalMap, incomeDetails, err
+}
+
+func getPendingDeposits(pubkey []byte) (*types.PendingDeposit, error) {
+	var pendingDeposit types.PendingDeposit
+	err := db.ReaderDb.Get(&pendingDeposit, `SELECT id, est_clear_epoch, amount FROM pending_deposits_queue WHERE pubkey = $1 ORDER BY id asc LIMIT 1`, pubkey)
+	return &pendingDeposit, err
 }
 
 func incomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {

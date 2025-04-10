@@ -175,6 +175,9 @@ type IndexPageData struct {
 	ActiveValidators          uint64                 `json:"active_validators"`
 	EnteringValidators        uint64                 `json:"entering_validators"`
 	ExitingValidators         uint64                 `json:"exiting_validators"`
+	EnteringValidatorsBalance string                 `json:"entering_validators_balance"`
+	EnteringValidatorTopup    string                 `json:"entering_validator_topup_balance"`
+	ExitingValidatorsBalance  string                 `json:"exiting_validators_balance"`
 	StakedEther               string                 `json:"staked_ether"`
 	AverageBalance            string                 `json:"average_balance"`
 	DepositedTotal            float64                `json:"deposit_total"`
@@ -200,6 +203,7 @@ type IndexPageData struct {
 	ValidatorsPerEpoch        uint64
 	ValidatorsPerDay          uint64
 	NewDepositProcessAfter    string
+	ElectraHasHappened        bool
 }
 
 type SlotVizPageData struct {
@@ -340,6 +344,7 @@ type ValidatorPageData struct {
 	SlashedBy                                uint64
 	SlashedAt                                uint64
 	SlashedFor                               string
+	ApproxDepositProcessedEpoch              uint64
 	ActivationEligibilityEpoch               uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch                          uint64 `db:"activationepoch"`
 	ExitEpoch                                uint64 `db:"exitepoch"`
@@ -360,7 +365,6 @@ type ValidatorPageData struct {
 	DepositsCount                            uint64
 	WithdrawalCount                          uint64
 	SlashingsCount                           uint64
-	PendingCount                             uint64
 	SyncCount                                uint64 // amount of sync committees the validator was (and is) part of
 	SlotsPerSyncCommittee                    uint64
 	FutureDutiesEpoch                        uint64
@@ -419,6 +423,10 @@ type ValidatorPageData struct {
 	ConsolidationTargetIndex                 int64
 	WithdrawalRequests                       []*FrontendWithdrawalRequest
 	ValidatorProposalData
+	ElectraHasHappened               bool
+	PendingDepositAboveMinActivation bool
+	EstimatedIndexEpoch              uint64
+	EstimatedIndexTs                 time.Time
 }
 
 type RocketpoolValidatorPageData struct {
