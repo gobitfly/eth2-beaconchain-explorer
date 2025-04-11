@@ -84,6 +84,11 @@ func (qi *PendingQueueIndexer) Index() error {
 	}
 	epoch := head.HeadEpoch
 
+	deposits, err := qi.lc.GetPendingDeposits()
+	if err != nil {
+		return errors.Wrap(err, "failed to get pending deposits")
+	}
+
 	validators, err := qi.lc.GetValidatorState(epoch)
 	if err != nil {
 		return errors.Wrap(err, "failed to get validator state")
@@ -97,11 +102,6 @@ func (qi *PendingQueueIndexer) Index() error {
 		if epoch >= uint64(v.Validator.ActivationEpoch) && epoch < uint64(v.Validator.ExitEpoch) {
 			totalActiveEffectiveBalance += uint64(v.Validator.EffectiveBalance)
 		}
-	}
-
-	deposits, err := qi.lc.GetPendingDeposits()
-	if err != nil {
-		return errors.Wrap(err, "failed to get pending deposits")
 	}
 
 	etherChurnByEpoch := utils.GetActivationExitChurnLimit(totalActiveEffectiveBalance)
