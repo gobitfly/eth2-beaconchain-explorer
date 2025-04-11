@@ -108,6 +108,15 @@ func (qi *PendingQueueIndexer) Index() error {
 	count := 0
 	balanceAhead := uint64(0)
 	clearEpoch := head.HeadEpoch + 1
+
+	// transition period
+	// pre electra system will keep going for follow distance until every deposit of the last system is converted to the new system
+	// before the new system starts
+	electraQueueDelay := uint64(utils.Config.ClConfig.Eth1FollowDistance/utils.Config.ClConfig.SlotsPerEpoch + utils.Config.ClConfig.EpochsPerEth1VotingPeriod)
+	if clearEpoch < utils.Config.ClConfig.ElectraForkEpoch+electraQueueDelay {
+		clearEpoch = utils.Config.ClConfig.ElectraForkEpoch + electraQueueDelay
+	}
+
 	depositsList := make([]types.PendingDeposit, 0)
 
 	// spec vars (in snake_case)
@@ -125,6 +134,14 @@ func (qi *PendingQueueIndexer) Index() error {
 
 		// emulate spec based on current view in time (approx estimation)
 		// https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-process_pending_deposits
+		for {
+			if deposit.Slot > (clearEpoch+1)*utils.Config.ClConfig.SlotsPerEpoch { // first slot of next epoch is finalized
+				clearEpoch++
+			} else {
+				break
+			}
+		}
+
 		if next_deposit_index >= max_pending_deposits_per_epoch {
 			clearEpoch++
 			next_deposit_index = 0
