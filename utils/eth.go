@@ -141,3 +141,23 @@ func VersionedBlobHash(commitment []byte) common.Hash {
 	vhash[0] = 0x01
 	return vhash
 }
+
+func GetBalanceChurnLimit(totalActiveBalance uint64) uint64 {
+	balanceChurnLimit := totalActiveBalance / Config.ClConfig.ChurnLimitQuotient
+	if balanceChurnLimit < Config.ClConfig.MinPerEpochChurnLimitElectra {
+		balanceChurnLimit = Config.ClConfig.MinPerEpochChurnLimitElectra
+	}
+	return balanceChurnLimit - (balanceChurnLimit % Config.ClConfig.EffectiveBalanceIncrement)
+}
+
+func GetActivationExitChurnLimit(totalActiveBalance uint64) uint64 {
+	balanceChurnLimit := GetBalanceChurnLimit(totalActiveBalance)
+	if balanceChurnLimit > Config.ClConfig.MaxPerEpochActivationExitChurnLimit {
+		return Config.ClConfig.MaxPerEpochActivationExitChurnLimit
+	}
+	return balanceChurnLimit
+}
+
+func ElectraHasHappened(epoch uint64) bool {
+	return epoch >= Config.Chain.ClConfig.ElectraForkEpoch
+}

@@ -572,6 +572,14 @@ func ReadConfig(cfg *types.Config, path string) error {
 			MaxWithdrawalsPerPayload:                mustParseUint(jr.Data.MaxWithdrawalsPerPayload),
 			MaxValidatorsPerWithdrawalSweep:         mustParseUint(jr.Data.MaxValidatorsPerWithdrawalsSweep),
 			MaxBlsToExecutionChange:                 mustParseUint(jr.Data.MaxBlsToExecutionChanges),
+			// Electra
+			MinPerEpochChurnLimitElectra:        mustParseUint(jr.Data.MinPerEpochChurnLimitElectra),
+			MaxPerEpochActivationExitChurnLimit: mustParseUint(jr.Data.MaxPerEpochActivationExitChurnLimit),
+			BlobSidecarSubnetCountElectra:       mustParseUint(jr.Data.BlobSidecarSubnetCountElectra),
+			MaxBlobsPerBlockElectra:             mustParseUint(jr.Data.MaxBlobsPerBlockElectra),
+			MaxRequestBlobSidecarsElectra:       mustParseUint(jr.Data.MaxRequestBlobSidecarsElectra),
+			MinActivationBalance:                mustParseUint(jr.Data.MinActivationBalance),
+			MaxPendingDepositsPerEpoch:          mustParseUint(jr.Data.MaxPendingDepositsPerEpoch),
 		}
 
 		if jr.Data.AltairForkEpoch == "" {
@@ -584,6 +592,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 			chainCfg.CappellaForkEpoch = 18446744073709551615
 		}
 		if jr.Data.DenebForkEpoch == "" {
+			chainCfg.DenebForkEpoch = 18446744073709551615
+		}
+		if jr.Data.ElectraForkEpoch == "" {
 			chainCfg.DenebForkEpoch = 18446744073709551615
 		}
 
