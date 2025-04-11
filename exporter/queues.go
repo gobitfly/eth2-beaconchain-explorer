@@ -94,11 +94,21 @@ func (qi *PendingQueueIndexer) Index() error {
 		return errors.Wrap(err, "failed to get validator state")
 	}
 
+	type MiniState struct {
+		Index             uint64
+		ExitEpoch         uint64
+		WithdrawableEpoch uint64
+	}
+
 	totalActiveEffectiveBalance := uint64(0)
-	pubkeyToIndexMap := make(map[string]uint64)
+	pubkeyToIndexMap := make(map[string]*MiniState)
 
 	for _, v := range validators.Data {
-		pubkeyToIndexMap[v.Validator.Pubkey] = uint64(v.Index)
+		pubkeyToIndexMap[v.Validator.Pubkey] = &MiniState{
+			Index:             uint64(v.Index),
+			ExitEpoch:         uint64(v.Validator.ExitEpoch),
+			WithdrawableEpoch: uint64(v.Validator.WithdrawableEpoch),
+		}
 		if epoch >= uint64(v.Validator.ActivationEpoch) && epoch < uint64(v.Validator.ExitEpoch) {
 			totalActiveEffectiveBalance += uint64(v.Validator.EffectiveBalance)
 		}
@@ -129,7 +139,6 @@ func (qi *PendingQueueIndexer) Index() error {
 	state_deposit_balance_to_consume := uint64(0)
 
 	for _, deposit := range deposits.Data {
-		// potential improvement: todo ignore valis with exit epoch set or withdrawable_epoch set
 		// potential improvement: utils.GetActivationExitChurnLimit(totalActiveEffectiveBalance + balanceAhead - withdrawalsAhead)
 
 		// emulate spec based on current view in time (approx estimation)
@@ -160,7 +169,20 @@ func (qi *PendingQueueIndexer) Index() error {
 			}
 		}
 
-		processed_amount += deposit.Amount
+		miniState, found := pubkeyToIndexMap[deposit.Pubkey.String()]
+		var is_validator_exited bool
+		var is_validator_withdrawn bool
+
+		if found {
+			next_epoch := clearEpoch + 1
+			is_validator_exited = miniState.ExitEpoch < 100_000_000_000
+			is_validator_withdrawn = miniState.WithdrawableEpoch < next_epoch
+		}
+
+		// do not consume is_validator_withdrawn, assume withdrawn by then for is_validator_exited
+		if !is_validator_withdrawn && !is_validator_exited {
+			processed_amount += deposit.Amount
+		}
 
 		pendingDeposit := types.PendingDeposit{
 			ID:                    count,
@@ -174,9 +196,9 @@ func (qi *PendingQueueIndexer) Index() error {
 			EstClearEpoch:         clearEpoch,
 		}
 
-		if index, found := pubkeyToIndexMap[deposit.Pubkey.String()]; found {
+		if found {
 			pendingDeposit.ValidatorIndex = sql.NullInt64{
-				Int64: int64(index),
+				Int64: int64(miniState.Index),
 				Valid: true,
 			}
 		}
