@@ -79,12 +79,12 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 	}
 
 	type Result struct {
-		EstClearEpoch          uint64 `db:"est_clear_epoch"`
-		QueuedBalanceAhead     uint64 `db:"queued_balance_ahead"`
-		TopUpAmount            uint64 `db:"topup_amount"`
-		TopUpCount             uint64 `db:"topup_count"`
-		EnteringValidatorCount uint64 `db:"entering_validator_count"`
-		TotalEffectiveBalance  uint64 `db:"eligibleether"`
+		EstClearEpoch         uint64 `db:"est_clear_epoch"`
+		QueuedBalanceAhead    uint64 `db:"queued_balance_ahead"`
+		TopUpAmount           uint64 `db:"topup_amount"`
+		TopUpCount            uint64 `db:"topup_count"`
+		EnteringEthTotalCount uint64 `db:"entering_eth_total_count"`
+		TotalEffectiveBalance uint64 `db:"eligibleether"`
 	}
 	var result Result
 
@@ -104,7 +104,7 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 			SELECT 
 				COALESCE((SELECT est_clear_epoch FROM last_deposit),0) AS est_clear_epoch, 
 				COALESCE((SELECT queued_balance_ahead FROM last_deposit),0) AS queued_balance_ahead, 
-				COALESCE((SELECT id + 1 FROM last_deposit),0) AS entering_validator_count, 
+				COALESCE((SELECT id + 1 FROM last_deposit),0) AS entering_eth_total_count, 
 				(SELECT COALESCE(count(*),0) FROM topups) AS topup_count, 
 				(SELECT COALESCE(sum(amount),0) FROM topups) AS topup_amount,
 				(SELECT eligibleether FROM epochs WHERE epoch = (SELECT max(epoch) FROM epochs)) 
@@ -122,7 +122,7 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 
 	etherChurnByDay := etherChurnByEpoch * utils.EpochsPerDay()
 	re := &types.QueuesEstimate{
-		EnteringValidatorCount:      result.EnteringValidatorCount,
+		EnteringValidatorCount:      result.EnteringEthTotalCount - result.TopUpCount,
 		EnteringDepositEthAmount:    result.QueuedBalanceAhead - result.TopUpAmount,
 		EnteringTopUpEthAmount:      result.TopUpAmount,
 		EnteringTotalEthAmount:      result.QueuedBalanceAhead,

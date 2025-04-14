@@ -18,7 +18,6 @@
 package exporter
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"sync"
@@ -29,11 +28,8 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/gobitfly/eth2-beaconchain-explorer/version"
-
-	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
+
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -138,75 +134,105 @@ func (qi *PendingQueueIndexer) Index() error {
 	processed_amount := uint64(0)
 	state_deposit_balance_to_consume := uint64(0)
 
-	for _, deposit := range deposits.Data {
+	pending_deposits := deposits.Data
+	depositsToPostpone := []types.PendingDeposit{} // est differently than the spec as we just set these to the same clearEpoch as the "normal" last entry. Not snake case to highlight the different handling to spec
+
+	// emulate spec based on current view in time (approx estimation)
+	// https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-process_pending_deposits
+	for {
+		next_epoch := clearEpoch + 1
+		available_for_processing := state_deposit_balance_to_consume + etherChurnByEpoch
+		processed_amount = 0
+		next_deposit_index = 0
+
+		is_churn_limit_reached := false
+		finalized_slot := next_epoch * utils.Config.ClConfig.SlotsPerEpoch // first slot of next epoch is finalized
 		// potential improvement: utils.GetActivationExitChurnLimit(totalActiveEffectiveBalance + balanceAhead - withdrawalsAhead)
 
-		// emulate spec based on current view in time (approx estimation)
-		// https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-process_pending_deposits
-		for {
-			if deposit.Slot > (clearEpoch+1)*utils.Config.ClConfig.SlotsPerEpoch { // first slot of next epoch is finalized
-				clearEpoch++
-			} else {
+		for _, deposit := range pending_deposits {
+			if deposit.Slot > finalized_slot {
 				break
 			}
-		}
 
-		if next_deposit_index >= max_pending_deposits_per_epoch {
-			clearEpoch++
-			next_deposit_index = 0
-		}
-
-		for {
-			available_for_processing := state_deposit_balance_to_consume + etherChurnByEpoch
-			is_churn_limit_reached := processed_amount+deposit.Amount > available_for_processing
-			if is_churn_limit_reached {
-				state_deposit_balance_to_consume = available_for_processing - processed_amount
-				next_deposit_index = 0
-				processed_amount = 0
-				clearEpoch++
-			} else {
+			if next_deposit_index >= max_pending_deposits_per_epoch {
 				break
 			}
-		}
 
-		miniState, found := pubkeyToIndexMap[deposit.Pubkey.String()]
-		var is_validator_exited bool
-		var is_validator_withdrawn bool
+			miniState, found := pubkeyToIndexMap[deposit.Pubkey.String()]
+			var is_validator_exited bool
+			var is_validator_withdrawn bool
 
-		if found {
-			next_epoch := clearEpoch + 1
-			is_validator_exited = miniState.ExitEpoch < 100_000_000_000
-			is_validator_withdrawn = miniState.WithdrawableEpoch < next_epoch
-		}
-
-		// do not consume is_validator_withdrawn, assume withdrawn by then for is_validator_exited
-		if !is_validator_withdrawn && !is_validator_exited {
-			processed_amount += deposit.Amount
-		}
-
-		pendingDeposit := types.PendingDeposit{
-			ID:                    count,
-			Pubkey:                deposit.Pubkey,
-			WithdrawalCredentials: deposit.WithdrawalCredentials,
-			Amount:                deposit.Amount,
-			Signature:             deposit.Signature,
-			Slot:                  deposit.Slot,
-			ValidatorIndex:        sql.NullInt64{},
-			QueuedBalanceAhead:    balanceAhead,
-			EstClearEpoch:         clearEpoch,
-		}
-
-		if found {
-			pendingDeposit.ValidatorIndex = sql.NullInt64{
-				Int64: int64(miniState.Index),
-				Valid: true,
+			if found {
+				is_validator_exited = miniState.ExitEpoch < 100_000_000_000
+				is_validator_withdrawn = miniState.WithdrawableEpoch < next_epoch
 			}
-		}
-		depositsList = append(depositsList, pendingDeposit)
 
-		next_deposit_index++
-		balanceAhead += deposit.Amount
-		count++
+			getPendingDeposit := func() types.PendingDeposit {
+				pendingDeposit := types.PendingDeposit{
+					ID:                    count,
+					Pubkey:                deposit.Pubkey,
+					WithdrawalCredentials: deposit.WithdrawalCredentials,
+					Amount:                deposit.Amount,
+					Signature:             deposit.Signature,
+					Slot:                  deposit.Slot,
+					ValidatorIndex:        sql.NullInt64{},
+					QueuedBalanceAhead:    balanceAhead,
+					EstClearEpoch:         clearEpoch,
+				}
+
+				if found {
+					pendingDeposit.ValidatorIndex = sql.NullInt64{
+						Int64: int64(miniState.Index),
+						Valid: true,
+					}
+				}
+				return pendingDeposit
+			}
+
+			if is_validator_withdrawn { // do not consume churn
+				depositsList = append(depositsList, getPendingDeposit())
+			} else if is_validator_exited { // do not consume churn
+				depositsToPostpone = append(depositsToPostpone, getPendingDeposit())
+			} else {
+				is_churn_limit_reached = processed_amount+deposit.Amount > available_for_processing
+				if is_churn_limit_reached {
+					break
+				}
+				processed_amount += deposit.Amount
+				depositsList = append(depositsList, getPendingDeposit())
+			}
+
+			next_deposit_index++
+
+			// out of spec
+			balanceAhead += deposit.Amount
+			count++
+		}
+
+		pending_deposits = pending_deposits[next_deposit_index:]
+
+		if len(pending_deposits) == 0 {
+			break
+		}
+
+		if is_churn_limit_reached {
+			state_deposit_balance_to_consume = available_for_processing - processed_amount
+		} else {
+			state_deposit_balance_to_consume = 0
+		}
+
+		clearEpoch++
+	}
+
+	// treat postpones deposits differently, set to last epoch of "normal" deposits
+	// since we can't accurately predict them anyway if they are that far out where there are no "normal" deposits with current state
+	if len(depositsList) > 0 {
+		lastEntry := depositsList[len(depositsList)-1]
+		for i := range depositsToPostpone {
+			depositsToPostpone[i].EstClearEpoch = lastEntry.EstClearEpoch
+			depositsToPostpone[i].QueuedBalanceAhead = lastEntry.QueuedBalanceAhead
+		}
+		depositsList = append(depositsList, depositsToPostpone...)
 	}
 
 	return qi.save(depositsList)
@@ -226,7 +252,7 @@ func (qi *PendingQueueIndexer) save(pendingDeposits []types.PendingDeposit) erro
 		dat[i] = []interface{}{r.ID, r.ValidatorIndex, encodeToHex(r.Pubkey), encodeToHex(r.WithdrawalCredentials), r.Amount, encodeToHex(r.Signature), r.Slot, r.QueuedBalanceAhead, r.EstClearEpoch}
 	}
 
-	err = ClearAndCopyToTable(qi.db, "pending_deposits_queue", []string{"id", "validator_index", "pubkey", "withdrawal_credentials", "amount", "signature", "slot", "queued_balance_ahead", "est_clear_epoch"}, dat)
+	err = db.ClearAndCopyToTable(qi.db, "pending_deposits_queue", []string{"id", "validator_index", "pubkey", "withdrawal_credentials", "amount", "signature", "slot", "queued_balance_ahead", "est_clear_epoch"}, dat)
 	if err != nil {
 		return fmt.Errorf("error copying data to pending_deposits_queue table: %w", err)
 	}
@@ -240,54 +266,4 @@ func (qi *PendingQueueIndexer) save(pendingDeposits []types.PendingDeposit) erro
 
 func encodeToHex(data []byte) string {
 	return fmt.Sprintf("\\x%x", data)
-}
-
-func ClearAndCopyToTable[T []any](db *sqlx.DB, tableName string, columns []string, data []T) error {
-	conn, err := db.Conn(context.Background())
-	if err != nil {
-		return fmt.Errorf("error retrieving raw sql connection: %w", err)
-	}
-	defer conn.Close()
-	err = conn.Raw(func(driverConn interface{}) error {
-		conn := driverConn.(*stdlib.Conn).Conn()
-
-		pgxdecimal.Register(conn.TypeMap())
-		tx, err := conn.Begin(context.Background())
-
-		if err != nil {
-			return err
-		}
-		defer func() {
-			err := tx.Rollback(context.Background())
-			if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-				logrus.Error(err, "error rolling back transaction", 0)
-			}
-		}()
-
-		// clear
-		_, err = tx.Exec(context.Background(), fmt.Sprintf("TRUNCATE TABLE %s", tableName))
-		if err != nil {
-			return errors.Wrap(err, "failed to truncate table")
-		}
-
-		// copy
-		_, err = tx.CopyFrom(context.Background(), pgx.Identifier{tableName}, columns,
-			pgx.CopyFromSlice(len(data), func(i int) ([]interface{}, error) {
-				return data[i], nil
-			}))
-
-		if err != nil {
-			return err
-		}
-
-		err = tx.Commit(context.Background())
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("error copying data to %s: %w", tableName, err)
-	}
-	return nil
 }

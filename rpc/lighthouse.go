@@ -1397,15 +1397,17 @@ type StandardBeaconHeaderResponse struct {
 }
 
 type StandardBeaconPendingDepositsResponse struct {
-	ExecutionOptimistic bool `json:"execution_optimistic"`
-	Finalized           bool `json:"finalized"`
-	Data                []struct {
-		Pubkey                hexutil.Bytes `json:"pubkey"`
-		WithdrawalCredentials hexutil.Bytes `json:"withdrawal_credentials"`
-		Amount                uint64        `json:"amount,string"`
-		Signature             hexutil.Bytes `json:"signature"`
-		Slot                  uint64        `json:"slot,string"`
-	} `json:"data"`
+	ExecutionOptimistic bool                                `json:"execution_optimistic"`
+	Finalized           bool                                `json:"finalized"`
+	Data                []StandardBeaconPendingDepositsData `json:"data"`
+}
+
+type StandardBeaconPendingDepositsData struct {
+	Pubkey                hexutil.Bytes `json:"pubkey"`
+	WithdrawalCredentials hexutil.Bytes `json:"withdrawal_credentials"`
+	Amount                uint64        `json:"amount,string"`
+	Signature             hexutil.Bytes `json:"signature"`
+	Slot                  uint64        `json:"slot,string"`
 }
 
 type StandardBeaconHeadersResponse struct {
