@@ -744,15 +744,7 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiSlotConsolidationRequests godoc
-// @Tags Slots
-// @Summary Get slot consolidation requests
-// @Description Returns the consolidation requests processed in a specific slot
-// @Produce json
-// @Param slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/slot/{slot}/consolidation_requests [get]
+// DO NOT DOC FOR NOW SINCE API MAY CHANGE
 func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -797,15 +789,7 @@ func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiSlotSwitchToCompoundingRequests godoc
-// @Tags Slots
-// @Summary Get slot switch-to-compounding requests
-// @Description Returns the switch-to-compounding requests processed in a specific slot.
-// @Produce json
-// @Param slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/slot/{slot}/switch_to_compounding_requests [get]
+// DO NOT DOC FOR NOW SINCE API MAY CHANGE
 func ApiSlotSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -850,6 +834,7 @@ func ApiSlotSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Request) 
 	returnQueryResultsAsArray(rows, w, r)
 }
 
+// DO NOT DOC FOR NOW SINCE API MAY CHANGE
 func ApiSlotDepositRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
