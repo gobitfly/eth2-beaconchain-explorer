@@ -744,15 +744,6 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, w, r)
 }
 
-// ApiSlotConsolidationRequests godoc
-// @Tags Slots
-// @Summary Get slot consolidation requests
-// @Description Returns the consolidation requests processed in a specific slot
-// @Produce json
-// @Param slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/slot/{slot}/consolidation_requests [get]
 func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -797,15 +788,6 @@ func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiSlotSwitchToCompoundingRequests godoc
-// @Tags Slots
-// @Summary Get slot switch-to-compounding requests
-// @Description Returns the switch-to-compounding requests processed in a specific slot.
-// @Produce json
-// @Param slot path string true "Block slot"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/slot/{slot}/switch_to_compounding_requests [get]
 func ApiSlotSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -2776,17 +2758,6 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiValidatorConsolidationRequests godoc
-// @Summary Get validator consolidation requests
-// @Description Get all validator consolidation requests. Note that it returns matches for both source and target index.
-// @Tags Validators
-// @Produce  json
-// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Param limit query string false "Limit the number of results (default: 100)"
-// @Param offset query string false "Offset the results (default: 0)"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/{indexOrPubkey}/consolidation_requests [get]
 func ApiValidatorConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -2832,17 +2803,6 @@ func ApiValidatorConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 	returnQueryResultsAsArray(rows, w, r)
 }
 
-// ApiValidatorSwitchToCompoundingRequests godoc
-// @Summary Get validator switch-to-compounding requests
-// @Description Get all validator switch-to-compounding requests.
-// @Tags Validators
-// @Produce  json
-// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Param limit query string false "Limit the number of results (default: 100)"
-// @Param offset query string false "Offset the results (default: 0)"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/{indexOrPubkey}/switch_to_compounding_requests [get]
 func ApiValidatorSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
