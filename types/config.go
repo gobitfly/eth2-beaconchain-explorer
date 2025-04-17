@@ -407,5 +407,12 @@ type ConfigJsonResponse struct {
 		TargetAggregatorsPerCommittee           string `json:"TARGET_AGGREGATORS_PER_COMMITTEE"`
 		DomainContributionAndProof              string `json:"DOMAIN_CONTRIBUTION_AND_PROOF"`
 		DomainApplicationMask                   string `json:"DOMAIN_APPLICATION_MASK"`
+		MinPerEpochChurnLimitElectra            string `json:"MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA"`
+		MaxPerEpochActivationExitChurnLimit     string `json:"MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT"`
+		BlobSidecarSubnetCountElectra           string `json:"BLOB_SIDECAR_SUBNET_COUNT_ELECTRA"`
+		MaxBlobsPerBlockElectra                 string `json:"MAX_BLOBS_PER_BLOCK_ELECTRA"`
+		MaxRequestBlobSidecarsElectra           string `json:"MAX_REQUEST_BLOB_SIDECARS_ELECTRA"`
+		MinActivationBalance                    string `json:"MIN_ACTIVATION_BALANCE"`
+		MaxPendingDepositsPerEpoch              string `json:"MAX_PENDING_DEPOSITS_PER_EPOCH"`
 	} `json:"data"`
 }

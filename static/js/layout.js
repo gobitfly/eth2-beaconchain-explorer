@@ -831,6 +831,25 @@ function addCommas(number) {
     .replace(/\B(?=(\d{3})+(?!\d))/g, "<span class='thousands-separator'></span>")
 }
 
+function shortBalance(input) {
+  const [amountStr, unit] = input.split(" ")
+  const amount = parseFloat(amountStr)
+
+  let shortened
+
+  if (amount >= 1_000) {
+    shortened = Math.floor(amount / 1_000) + "K"
+  } else {
+    shortened = Math.floor(amount).toString()
+  }
+
+  if (unit) {
+    shortened += " " + unit
+  }
+
+  return addCommas(shortened)
+}
+
 function trimPrice(value, decimals = 5) {
   if (value === undefined || value === null) {
     return ""

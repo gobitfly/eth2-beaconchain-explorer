@@ -928,14 +928,53 @@ func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1")
-	if err != nil {
-		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
-		return
-	}
-	defer rows.Close()
+	epoch := services.LatestEpoch()
 
-	returnQueryResults(rows, w, r)
+	var queueData *types.QueuesEstimate
+	var indexData *types.IndexPageData
+
+	var respondWithElectra bool = false
+	if utils.ElectraHasHappened(epoch) {
+		queueData = services.LatestQueueData()
+		indexData = services.LatestIndexPageData()
+
+		respondWithElectra = queueData != nil || utils.ElectraHasHappened(epoch-2) // allow fall back to pre electra in the first 2 epochs after fork if queue data is not available
+	}
+
+	if respondWithElectra {
+		if queueData == nil {
+			SendBadRequestResponse(w, r.URL.String(), "queue data not available")
+			return
+		}
+		if indexData == nil {
+			SendBadRequestResponse(w, r.URL.String(), "index data not available")
+			return
+		}
+
+		j := json.NewEncoder(w)
+		SendOKResponse(j, r.URL.String(), []interface{}{struct {
+			Entering        uint64 `json:"beaconchain_entering"`
+			Exiting         uint64 `json:"beaconchain_exiting"`
+			ValidatorCount  uint64 `json:"validatorscount"`
+			EnteringBalance uint64 `json:"beaconchain_entering_balance"`
+			LeavingBalance  uint64 `json:"beaconchain_exiting_balance"`
+		}{
+			Entering:        queueData.EnteringValidatorCount,
+			Exiting:         queueData.LeavingValidatorCount,
+			ValidatorCount:  indexData.ActiveValidators,
+			EnteringBalance: queueData.EnteringTotalEthAmount,
+			LeavingBalance:  queueData.LeavingEthAmount,
+		}})
+	} else {
+		rows, err := db.ReaderDb.Query("SELECT e.validatorscount, q.entering_validators_count as beaconchain_entering, q.exiting_validators_count as beaconchain_exiting FROM epochs e, queue q ORDER BY e.epoch DESC, q.ts DESC LIMIT 1")
+		if err != nil {
+			SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
+			return
+		}
+		defer rows.Close()
+
+		returnQueryResults(rows, w, r)
+	}
 }
 
 // ApiRocketpoolStats godoc

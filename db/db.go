@@ -1851,6 +1851,7 @@ func GetValidatorNames(validators []uint64) (map[uint64]string, error) {
 }
 
 // GetPendingValidatorCount queries the pending validators currently in the queue
+// @deprecated after pectra, use services.LatestQueueData instead
 func GetPendingValidatorCount() (uint64, error) {
 	count := uint64(0)
 	err := ReaderDb.Get(&count, "SELECT entering_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
