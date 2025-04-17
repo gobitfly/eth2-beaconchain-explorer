@@ -345,9 +345,11 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 }
 
 func (client *ErigonClient) GetBlocks(start, end int64, traceMode string) ([]*types.Eth1Block, error) {
-	_, err := client.rawStore.ReadBlocksByNumber(client.chainID.Uint64(), start, end)
-	if err != nil {
-		return nil, err
+	if client.rawStore != nil {
+		_, err := client.rawStore.ReadBlocksByNumber(client.chainID.Uint64(), start, end)
+		if err != nil {
+			return nil, err
+		}
 	}
 	blocks := make([]*types.Eth1Block, end-start+1)
 	for i := start; i <= end; i++ {
