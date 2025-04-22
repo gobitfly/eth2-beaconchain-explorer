@@ -529,6 +529,20 @@ func (client *ErigonClient) TraceParityTx(txHash string) ([]*ParityTraceResult, 
 	return res, nil
 }
 
+func (client *ErigonClient) TraceGethTx(txHash string) ([]*GethTraceCallResult, error) {
+	var res *GethTraceCallResult
+
+	err := client.rpcClient.Call(&res, "debug_traceTransaction", txHash, gethTracerArg)
+	if err != nil {
+		return nil, err
+	}
+
+	data := make([]*GethTraceCallResult, 0, 20)
+	extractCalls(res, &data)
+
+	return data, nil
+}
+
 func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addressIndex, tokenIndex int) ([]*types.Eth1AddressBalance, error) {
 	startTime := time.Now()
 	defer func() {

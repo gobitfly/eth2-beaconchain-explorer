@@ -135,12 +135,12 @@ func GetEth1Transaction(hash common.Hash, currency string) (*types.Eth1TxData, e
 		}
 	}
 
-	data, err := rpc.CurrentErigonClient.TraceParityTx(tx.Hash().Hex())
+	data, err := rpc.CurrentErigonClient.TraceGethTx(tx.Hash().Hex())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get parity trace for revert reason: %w", err)
 	}
 	if receipt.Status != 1 {
-		errorMsg, err := abi.UnpackRevert(utils.MustParseHex(data[0].Result.Output))
+		errorMsg, err := abi.UnpackRevert(utils.MustParseHex(data[0].Output))
 		if err == nil {
 			txPageData.ErrorMsg = errorMsg
 		}
@@ -150,7 +150,7 @@ func GetEth1Transaction(hash common.Hash, currency string) (*types.Eth1TxData, e
 			return nil, fmt.Errorf("error loading token transfers from tx: %w", err)
 		}
 	}
-	txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes(), data, currency)
+	txPageData.InternalTxns, err = db.BigtableClient.GetInternalTransfersForTransaction(tx.Hash().Bytes(), msg.From.Bytes(), data, currency, receipt.BlockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("error loading internal transfers from tx: %w", err)
 	}
