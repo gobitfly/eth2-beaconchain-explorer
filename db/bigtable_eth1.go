@@ -3036,16 +3036,15 @@ func (bigtable *Bigtable) GetAddressInternalTableData(address []byte, pageToken 
 	return data, nil
 }
 
-func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, parityTrace []*rpc.ParityTraceResult, currency string) ([]types.ITransaction, error) {
-	if len(parityTrace) == 0 {
+func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte, from []byte, traces []*rpc.GethTraceCallResult, currency string, blockNumber *big.Int) ([]types.ITransaction, error) {
+	if len(traces) == 0 {
 		return nil, nil
 	}
 
 	names := make(map[string]string)
-	for _, trace := range parityTrace {
-		from, to, _, _ := trace.ConvertFields()
-		names[string(from)] = ""
-		names[string(to)] = ""
+	for _, trace := range traces {
+		names[trace.From.String()] = ""
+		names[trace.To.String()] = ""
 	}
 
 	err := bigtable.GetAddressNames(names)
@@ -3053,34 +3052,32 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		return nil, err
 	}
 
-	contractInteractionTypes, err := BigtableClient.GetAddressContractInteractionsAtParityTraces(parityTrace)
+	contractInteractionTypes, err := BigtableClient.GetAddressContractInteractionsAtTraces(traces, blockNumber)
 	if err != nil {
 		utils.LogError(err, "error getting contract states", 0)
 	}
 
-	data := make([]types.ITransaction, 0, len(parityTrace)-1)
-	var revertSource []int64
-	for i := 1; i < len(parityTrace); i++ {
-		var reverted bool
-		if parityTrace[i].Error != "" {
-			reverted = true
-			// only save the highest root revert
-			if !isSubset(parityTrace[i].TraceAddress, revertSource) {
-				revertSource = parityTrace[i].TraceAddress
-			}
-		}
-		if isSubset(parityTrace[i].TraceAddress, revertSource) {
-			reverted = true
+	paths := make(map[*rpc.GethTraceCallResult]string)
+	data := make([]types.ITransaction, 0, len(traces)-1)
+	revertedTraces := make(map[*rpc.GethTraceCallResult]struct{})
+	for i := 1; i < len(traces); i++ {
+		for index, call := range traces[i].Calls {
+			paths[call] = fmt.Sprintf("%s %d", paths[traces[i]], index)
 		}
 
-		from, to, value, tx_type := parityTrace[i].ConvertFields()
+		reverted := isReverted(traces[i], revertedTraces)
+
+		from := traces[i].From.Bytes()
+		to := traces[i].To.Bytes()
+		value := common.FromHex(traces[i].Value)
+		tx_type := traces[i].Type
 		if tx_type == "suicide" {
 			// erigon's "suicide" might be misleading for users
 			tx_type = "selfdestruct"
 		}
 		input := make([]byte, 0)
-		if len(parityTrace[i].Action.Input) > 2 {
-			input, err = hex.DecodeString(parityTrace[i].Action.Input[2:])
+		if len(traces[i].Input) > 2 {
+			input, err = hex.DecodeString(traces[i].Input[2:])
 			if err != nil {
 				utils.LogError(err, "can't convert hex string", 0)
 			}
@@ -3099,23 +3096,39 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
 			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
-			TracePath: utils.FormatTracePath(tx_type, parityTrace[i].TraceAddress, !reverted, bigtable.GetMethodLabel(input, from_contractInteraction)),
+			TracePath: utils.FormatGethTracePath(tx_type, paths[traces[i]], !reverted, bigtable.GetMethodLabel(input, from_contractInteraction)),
 			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
 			Reverted:  reverted,
 		}
 
-		gaslimit, err := strconv.ParseUint(parityTrace[i].Action.Gas, 0, 0)
+		gaslimit, err := strconv.ParseUint(traces[i].Gas, 0, 0)
 		if err == nil {
 			itx.Gas.Limit = gaslimit
 		}
 
 		data = append(data, itx)
-		// gasusage, err := strconv.ParseUint(parityTrace[i].Result.GasUsed, 0, 0)
+		// gasusage, err := strconv.ParseUint(traces[i].Result.GasUsed, 0, 0)
 		// if err == nil {
 		// 	itx.Gas.Usage = gasusage
 		// }
 	}
 	return data, nil
+}
+
+func isReverted(internal *rpc.GethTraceCallResult, revertedTraces map[*rpc.GethTraceCallResult]struct{}) bool {
+	if _, exist := revertedTraces[internal]; exist {
+		return true
+	}
+	var reverted bool
+	if internal.Error != "" {
+		reverted = true
+		calls := internal.Calls
+		for len(calls) != 0 {
+			revertedTraces[calls[0]] = struct{}{}
+			calls = append(calls[1:], calls[0].Calls...)
+		}
+	}
+	return reverted
 }
 
 // currently only erc20
@@ -4237,20 +4250,19 @@ func (bigtable *Bigtable) GetAddressContractInteractionsAtITransactions(itransac
 	return resultPairs, nil
 }
 
-// convenience function to get contract interaction status per parity trace
-func (bigtable *Bigtable) GetAddressContractInteractionsAtParityTraces(traces []*rpc.ParityTraceResult) ([][2]types.ContractInteractionType, error) {
+// convenience function to get contract interaction status per trace
+func (bigtable *Bigtable) GetAddressContractInteractionsAtTraces(traces []*rpc.GethTraceCallResult, blockNumber *big.Int) ([][2]types.ContractInteractionType, error) {
 	requests := make([]contractInteractionAtRequest, 0, len(traces)*2)
 	for i, itx := range traces {
-		from, to, _, _ := itx.ConvertFields()
 		requests = append(requests, contractInteractionAtRequest{
-			address:  fmt.Sprintf("%x", from),
-			block:    int64(itx.BlockNumber),
+			address:  itx.From.String(),
+			block:    blockNumber.Int64(),
 			txIdx:    int64(itx.TransactionPosition),
 			traceIdx: int64(i),
 		})
 		requests = append(requests, contractInteractionAtRequest{
-			address:  fmt.Sprintf("%x", to),
-			block:    int64(itx.BlockNumber),
+			address:  itx.To.String(),
+			block:    blockNumber.Int64(),
 			txIdx:    int64(itx.TransactionPosition),
 			traceIdx: int64(i),
 		})
