@@ -1082,35 +1082,41 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 // Returns true if there are more than one different withdrawal credentials within both Eth1Deposits and Eth2Deposits
 func hasMultipleWithdrawalCredentials(deposits *types.ValidatorDeposits) bool {
-	if deposits == nil {
-		return false
-	}
-
-	credential := make([]byte, 0)
-
-	if deposits == nil {
-		return false
-	}
-
-	// check Eth1Deposits
-	for _, deposit := range deposits.Eth1Deposits {
-		if len(credential) == 0 {
-			credential = deposit.WithdrawalCredentials
-		} else if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
-			return true
-		}
-	}
-
-	// check Eth2Deposits
-	for _, deposit := range deposits.Eth2Deposits {
-		if len(credential) == 0 {
-			credential = deposit.Withdrawalcredentials
-		} else if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
-			return true
-		}
-	}
-
+	// temporarily disable this check as defined in ticket BEDS-1252
 	return false
+	/*
+	   	if deposits == nil {
+	   		return false
+	   	}
+
+	   credential := make([]byte, 0)
+
+	   	if deposits == nil {
+	   		return false
+	   	}
+
+	   // check Eth1Deposits
+
+	   	for _, deposit := range deposits.Eth1Deposits {
+	   		if len(credential) == 0 {
+	   			credential = deposit.WithdrawalCredentials
+	   		} else if !bytes.Equal(credential, deposit.WithdrawalCredentials) {
+	   			return true
+	   		}
+	   	}
+
+	   // check Eth2Deposits
+
+	   	for _, deposit := range deposits.Eth2Deposits {
+	   		if len(credential) == 0 {
+	   			credential = deposit.Withdrawalcredentials
+	   		} else if !bytes.Equal(credential, deposit.Withdrawalcredentials) {
+	   			return true
+	   		}
+	   	}
+
+	   return false
+	*/
 }
 
 // ValidatorDeposits returns a validator's deposits in json

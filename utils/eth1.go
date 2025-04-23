@@ -519,3 +519,19 @@ func FormatTokenIcon(icon []byte, size int) template.HTML {
 	icon64 := base64.StdEncoding.EncodeToString(icon)
 	return template.HTML(fmt.Sprintf("<img class=\"mb-1 mr-1\" src=\"data:image/gif;base64,%v\" width=\"%v\" height=\"%v\">", icon64, size, size))
 }
+
+// Expects entire Eth1 deposit history in order
+func FixELDepositValidity(deposits *types.ValidatorDeposits) *types.ValidatorDeposits {
+	if deposits == nil {
+		return deposits
+	}
+	hasValidDeposit := false
+	for i, deposit := range deposits.Eth1Deposits {
+		if deposit.ValidSignature {
+			hasValidDeposit = true
+		}
+		deposits.Eth1Deposits[i].Valid = deposits.Eth1Deposits[i].ValidSignature || hasValidDeposit
+	}
+
+	return deposits
+}
