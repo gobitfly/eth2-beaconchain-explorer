@@ -651,7 +651,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	if err != nil {
 		return nil, err
 	}
-	return deposits, nil
+	return utils.FixELDepositValidity(deposits), nil
 }
 
 // UpdateCanonicalBlocks will update the blocks for an epoch range in the database
