@@ -678,4 +678,9 @@ type ValidatorStatsTableDbRow struct {
 	MEVPerformance7d   decimal.Decimal `db:"-"`
 	MEVPerformance31d  decimal.Decimal `db:"-"`
 	MEVPerformance365d decimal.Decimal `db:"-"`
+
+	IncomingConsolidationCount  int64
+	OutgoingConsolidationCount  int64
+	IncomingConsolidationAmount int64
+	OutgoingConsolidationAmount int64
 }

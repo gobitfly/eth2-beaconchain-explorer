@@ -136,6 +136,12 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		}
 		return nil
 	})
+	g.Go(func() error {
+		if err := gatherValidatorConsolidations(day, validatorData, validatorDataMux); err != nil {
+			return fmt.Errorf("error in gatherValidatorConsolidations: %w", err)
+		}
+		return nil
+	})
 
 	var statisticsData1d []*types.ValidatorStatsTableDbRow
 	g.Go(func() error {
@@ -205,7 +211,7 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		data.OrphanedSyncTotal = previousDayData.OrphanedSyncTotal + data.OrphanedSync
 
 		// calculate cl reward & update totals
-		data.ClRewardsGWei = data.EndBalance - previousDayData.EndBalance + data.WithdrawalsAmount - data.DepositsAmount
+		data.ClRewardsGWei = data.EndBalance - previousDayData.EndBalance + data.WithdrawalsAmount - data.DepositsAmount - data.IncomingConsolidationAmount + data.OutgoingConsolidationAmount
 		data.ClRewardsGWeiTotal = previousDayData.ClRewardsGWeiTotal + data.ClRewardsGWei
 
 		// update el reward total
@@ -215,12 +221,12 @@ func WriteValidatorStatisticsForDay(day uint64, client rpc.Client) error {
 		data.MEVRewardsWeiTotal = previousDayData.MEVRewardsWeiTotal.Add(data.MEVRewardsWei)
 
 		// update withdrawal total
-		data.WithdrawalsTotal = previousDayData.WithdrawalsTotal + data.Withdrawals
-		data.WithdrawalsAmountTotal = previousDayData.WithdrawalsAmountTotal + data.WithdrawalsAmount
+		data.WithdrawalsTotal = previousDayData.WithdrawalsTotal + data.Withdrawals + data.OutgoingConsolidationCount
+		data.WithdrawalsAmountTotal = previousDayData.WithdrawalsAmountTotal + data.WithdrawalsAmount + data.OutgoingConsolidationAmount
 
 		// update deposits total
-		data.DepositsTotal = previousDayData.DepositsTotal + data.Deposits
-		data.DepositsAmountTotal = previousDayData.DepositsAmountTotal + data.DepositsAmount
+		data.DepositsTotal = previousDayData.DepositsTotal + data.Deposits + data.IncomingConsolidationCount
+		data.DepositsAmountTotal = previousDayData.DepositsAmountTotal + data.DepositsAmount + data.IncomingConsolidationAmount
 
 		if statisticsData1d != nil && len(statisticsData1d) > index {
 			data.ClPerformance1d = data.ClRewardsGWeiTotal - statisticsData1d[index].ClRewardsGWeiTotal
@@ -774,6 +780,53 @@ func gatherValidatorElIcome(day uint64, data []*types.ValidatorStatsTableDbRow, 
 	mux.Unlock()
 
 	logger.Infof("gathering mev & el rewards statistics completed, took %v", time.Since(exportStart))
+	return nil
+}
+
+func gatherValidatorConsolidations(day uint64, data []*types.ValidatorStatsTableDbRow, mux *sync.Mutex) error {
+	exportStart := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_consolidations_stats").Observe(time.Since(exportStart).Seconds())
+	}()
+
+	firstSlot := day * utils.EpochsPerDay() * utils.Config.Chain.ClConfig.SlotsPerEpoch
+	lastSlot := utils.GetLastBalanceInfoSlotForDay(day)
+
+	logger := logger.WithFields(logrus.Fields{
+		"day":       day,
+		"firstSlot": firstSlot,
+		"lastSlot":  lastSlot,
+	})
+
+	logger.Infof("gathering consolidation statistics")
+	var consolidationData []struct {
+		SourceIndex        int   `db:"source_index"`
+		TargetIndex        int   `db:"target_index"`
+		AmountConsolidated int64 `db:"amount_consolidated"`
+	}
+	err := ReaderDb.Select(&consolidationData, `
+		SELECT
+			source_index,
+			target_index,
+			COALESCE(amount_consolidated, 0) AS amount_consolidated
+		FROM blocks_consolidation_requests
+		INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot AND blocks.status = '1'
+		WHERE block_slot >= $1 AND block_slot <= $2
+	`, firstSlot, lastSlot)
+	if err != nil {
+		return fmt.Errorf("error retrieving consolidation data for day [%v], firstSlot [%v] and lastSlot [%v]: %w", day, firstSlot, lastSlot, err)
+	}
+
+	mux.Lock()
+	for _, r := range consolidationData {
+		data[r.TargetIndex].IncomingConsolidationCount++
+		data[r.SourceIndex].OutgoingConsolidationCount++
+		data[r.TargetIndex].IncomingConsolidationAmount += r.AmountConsolidated
+		data[r.SourceIndex].OutgoingConsolidationAmount += r.AmountConsolidated
+	}
+	mux.Unlock()
+
+	logger.Infof("gathering consolidation statistics completed, took %v", time.Since(exportStart))
 	return nil
 }
 
