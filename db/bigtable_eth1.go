@@ -2104,17 +2104,65 @@ func (bigtable *Bigtable) TransformWithdrawals(block *types.Eth1Block, cache *fr
 	return bulkData, bulkMetadataUpdates, nil
 }
 
+type BridgeQueueRequest struct {
+	TxHash         []byte
+	TxIndex        int
+	ItxIndex       int
+	BlockNumber    uint64
+	BlockTimestamp time.Time
+	From           []byte
+	Fee            []byte
+}
+
 func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	consolidationContractAddress := hexutil.MustDecode(utils.Config.Chain.PectraConsolidationRequestContractAddress)
 	startTime := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("bt_transform_consolidation_requests").Observe(time.Since(startTime).Seconds())
 	}()
 
-	bulkData = &types.BulkMutations{}
-	bulkMetadataUpdates = &types.BulkMutations{}
-
-	consolidationContractAddress := hexutil.MustDecode(utils.Config.Chain.PectraConsolidationRequestContractAddress)
+	var queueRequests []BridgeQueueRequest
 	for i, tx := range blk.GetTransactions() {
+		if i >= TX_PER_BLOCK_LIMIT {
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most %d but got: %v, tx: %x", TX_PER_BLOCK_LIMIT-1, i, tx.GetHash())
+		}
+
+		var revertSource string
+		for j, itx := range tx.GetItx() {
+			if j > ITX_PER_TX_LIMIT {
+				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
+			}
+			// check for error before skipping, otherwise we loose track of cascading reverts
+			if itx.ErrorMsg != "" {
+				if revertSource == "" || !strings.HasPrefix(itx.Path, revertSource) {
+					revertSource = strings.TrimSuffix(itx.Path, "]")
+				}
+				continue
+			}
+			if revertSource != "" && strings.HasPrefix(itx.Path, revertSource) {
+				continue
+			}
+
+			// skip top level and empty calls
+			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) {
+				if !bytes.Equal(itx.To, consolidationContractAddress) {
+					continue
+				}
+			}
+			queueRequests = append(queueRequests, BridgeQueueRequest{
+				Fee:            itx.Value,
+				TxHash:         tx.Hash,
+				TxIndex:        i,
+				ItxIndex:       j,
+				BlockNumber:    blk.Number,
+				BlockTimestamp: blk.Time.AsTime(),
+				From:           tx.From,
+			})
+		}
+	}
+
+	var requestIndex int
+	for _, tx := range blk.GetTransactions() {
 		for _, log := range tx.GetLogs() {
 			if bytes.Equal(log.Address, consolidationContractAddress) {
 				// we have found a consolidation event
@@ -2135,16 +2183,17 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 
 				logger.Infof("consolidation event: %x %x %x", sourceAddress, sourcePubkey, targetPubkey)
 
+				request := queueRequests[requestIndex]
 				_, err := WriterDb.Exec(`
-				INSERT INTO eth1_consolidation_requests (tx_hash, tx_index, block_number, block_ts, source_address, source_pubkey, target_pubkey) VALUES ($1, $2, $3, $4, $5, $6, $7)
-				ON CONFLICT (tx_hash, tx_index) DO UPDATE
-				SET block_number = EXCLUDED.block_number, block_ts = EXCLUDED.block_ts, source_address = EXCLUDED.source_address, source_pubkey = EXCLUDED.source_pubkey, target_pubkey = EXCLUDED.target_pubkey
-				`,
-					tx.GetHash(), i, blk.GetNumber(), blk.GetTime().AsTime(), sourceAddress, sourcePubkey, targetPubkey)
+				INSERT INTO eth1_consolidation_requests (tx_hash, tx_index, itx_index, block_number, block_ts, from_address, fee, source_address, source_pubkey, target_pubkey) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				ON CONFLICT (tx_hash, tx_index, itx_index) DO UPDATE
+				SET block_number = EXCLUDED.block_number, block_ts = EXCLUDED.block_ts, from_address = EXCLUDED.from_address, fee = EXCLUDED.fee, source_address = EXCLUDED.source_address, source_pubkey = EXCLUDED.source_pubkey, target_pubkey = EXCLUDED.target_pubkey
+				`, request.TxHash, request.TxIndex, request.ItxIndex, request.BlockNumber, request.BlockTimestamp, request.From, request.Fee, sourceAddress, sourcePubkey, targetPubkey)
 
 				if err != nil {
 					return nil, nil, err
 				}
+				requestIndex++
 			}
 		}
 	}
@@ -2153,16 +2202,54 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 }
 
 func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
+	withdrawalContractAddress := hexutil.MustDecode(utils.Config.Chain.PectraWithdrawalRequestContractAddress)
 	startTime := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("bt_transform_withdrawal_requests").Observe(time.Since(startTime).Seconds())
 	}()
 
-	bulkData = &types.BulkMutations{}
-	bulkMetadataUpdates = &types.BulkMutations{}
-
-	withdrawalContractAddress := hexutil.MustDecode(utils.Config.Chain.PectraWithdrawalRequestContractAddress)
+	var queueRequests []BridgeQueueRequest
 	for i, tx := range blk.GetTransactions() {
+		if i >= TX_PER_BLOCK_LIMIT {
+			return nil, nil, fmt.Errorf("unexpected number of transactions in block expected at most %d but got: %v, tx: %x", TX_PER_BLOCK_LIMIT-1, i, tx.GetHash())
+		}
+
+		var revertSource string
+		for j, itx := range tx.GetItx() {
+			if j > ITX_PER_TX_LIMIT {
+				return nil, nil, fmt.Errorf("unexpected number of internal transactions in block expected at most %d but got: %v, tx: %x", ITX_PER_TX_LIMIT, j, tx.GetHash())
+			}
+			// check for error before skipping, otherwise we loose track of cascading reverts
+			if itx.ErrorMsg != "" {
+				if revertSource == "" || !strings.HasPrefix(itx.Path, revertSource) {
+					revertSource = strings.TrimSuffix(itx.Path, "]")
+				}
+				continue
+			}
+			if revertSource != "" && strings.HasPrefix(itx.Path, revertSource) {
+				continue
+			}
+
+			// skip top level and empty calls
+			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) {
+				if !bytes.Equal(itx.To, withdrawalContractAddress) {
+					continue
+				}
+			}
+			queueRequests = append(queueRequests, BridgeQueueRequest{
+				Fee:            itx.Value,
+				TxHash:         tx.Hash,
+				TxIndex:        i,
+				ItxIndex:       j,
+				BlockNumber:    blk.Number,
+				BlockTimestamp: blk.Time.AsTime(),
+				From:           tx.From,
+			})
+		}
+	}
+
+	var requestIndex int
+	for _, tx := range blk.GetTransactions() {
 		for _, log := range tx.GetLogs() {
 			if bytes.Equal(log.Address, withdrawalContractAddress) {
 				// we have found a withdrawal event
@@ -2183,16 +2270,17 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 
 				logger.Infof("withdrawal event: %x %x %d", sourceAddress, validatorPubkey, amount)
 
+				request := queueRequests[requestIndex]
 				_, err := WriterDb.Exec(`
-				INSERT INTO eth1_withdrawal_requests (tx_hash, tx_index, block_number, block_ts, source_address, validator_pubkey, amount) VALUES ($1, $2, $3, $4, $5, $6, $7)
-				ON CONFLICT (tx_hash, tx_index) DO UPDATE
-				SET block_number = EXCLUDED.block_number, block_ts = EXCLUDED.block_ts, source_address = EXCLUDED.source_address, validator_pubkey = EXCLUDED.validator_pubkey, amount = EXCLUDED.amount
-				`,
-					tx.GetHash(), i, blk.GetNumber(), blk.GetTime().AsTime(), sourceAddress, validatorPubkey, amount)
+				INSERT INTO eth1_withdrawal_requests (tx_hash, tx_index, itx_index, block_number, block_ts, from_address, fee, source_address, validator_pubkey, amount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				ON CONFLICT (tx_hash, tx_index, itx_index) DO UPDATE
+				SET block_number = EXCLUDED.block_number, block_ts = EXCLUDED.block_ts, from_address = EXCLUDED.from_address, fee = EXCLUDED.fee, source_address = EXCLUDED.source_address, validator_pubkey = EXCLUDED.validator_pubkey, amount = EXCLUDED.amount
+				`, request.TxHash, request.TxIndex, request.ItxIndex, request.BlockNumber, request.BlockTimestamp, request.From, request.Fee, sourceAddress, validatorPubkey, amount)
 
 				if err != nil {
 					return nil, nil, err
 				}
+				requestIndex++
 			}
 		}
 	}
