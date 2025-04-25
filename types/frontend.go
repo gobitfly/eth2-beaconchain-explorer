@@ -622,15 +622,15 @@ type ValidatorStateCountRow struct {
 }
 
 type QueuesEstimate struct {
-	EnteringValidatorCount      uint64 // new validators
-	EnteringDepositEthAmount    uint64 // new validators
-	EnteringTopUpEthAmount      uint64 // topups
-	EnteringTotalEthAmount      uint64 // all deposits, topups + new validators
-	EnteringQueueTime           time.Duration
-	EnteringTopUpCount          uint64 // topups
-	TotalActiveEffectiveBalance uint64 // active network effective balance
-	LeavingValidatorCount       uint64
-	LeavingEthAmount            uint64
-	EnteringBalancePerDay       uint64
-	EnteringBalancePerEpoch     uint64
+	EnteringFreshDepositsCount    uint64 // fresh deposits count. Note is not deduplicated
+	EnteringFreshDepositEthAmount uint64 // new validators
+	EnteringTopUpEthAmount        uint64 // topups
+	EnteringTotalEthAmount        uint64 // all deposits, topups + new validators
+	EnteringQueueTime             time.Duration
+	EnteringTopUpCount            uint64 // topups. Note is not deduplicated
+	TotalActiveEffectiveBalance   uint64 // active network effective balance
+	LeavingValidatorCount         uint64
+	LeavingEthAmount              uint64
+	EnteringBalancePerDay         uint64
+	EnteringBalancePerEpoch       uint64
 }

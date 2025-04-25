@@ -65,7 +65,7 @@ func LatestQueueData() *types.QueuesEstimate {
 	} else {
 		logger.Errorf("error retrieving mempool data from cache: %v", err)
 	}
-	return &types.QueuesEstimate{}
+	return wanted
 }
 
 func getQueueCacheKey() string {
@@ -122,17 +122,17 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 
 	etherChurnByDay := etherChurnByEpoch * utils.EpochsPerDay()
 	re := &types.QueuesEstimate{
-		EnteringValidatorCount:      result.EnteringEthTotalCount - result.TopUpCount,
-		EnteringDepositEthAmount:    result.QueuedBalanceAhead - result.TopUpAmount,
-		EnteringTopUpEthAmount:      result.TopUpAmount,
-		EnteringTotalEthAmount:      result.QueuedBalanceAhead,
-		EnteringQueueTime:           depositQueueTime,
-		EnteringTopUpCount:          result.TopUpCount,
-		TotalActiveEffectiveBalance: result.TotalEffectiveBalance,
-		LeavingValidatorCount:       queue.Exiting,
-		LeavingEthAmount:            queue.ExitingBalance,
-		EnteringBalancePerDay:       etherChurnByDay,
-		EnteringBalancePerEpoch:     etherChurnByEpoch,
+		EnteringFreshDepositsCount:    result.EnteringEthTotalCount - result.TopUpCount,
+		EnteringFreshDepositEthAmount: result.QueuedBalanceAhead - result.TopUpAmount,
+		EnteringTopUpEthAmount:        result.TopUpAmount,
+		EnteringTotalEthAmount:        result.QueuedBalanceAhead,
+		EnteringQueueTime:             depositQueueTime,
+		EnteringTopUpCount:            result.TopUpCount,
+		TotalActiveEffectiveBalance:   result.TotalEffectiveBalance,
+		LeavingValidatorCount:         queue.Exiting,
+		LeavingEthAmount:              queue.ExitingBalance,
+		EnteringBalancePerDay:         etherChurnByDay,
+		EnteringBalancePerEpoch:       etherChurnByEpoch,
 	}
 
 	return re, nil

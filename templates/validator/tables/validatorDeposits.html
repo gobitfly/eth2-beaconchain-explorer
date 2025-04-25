@@ -69,7 +69,7 @@
     </div>
     <div class="table-eth2">
       <h4 class="my-3">Consensus Layer</h4>
-      {{ if not .Deposits.Eth2Deposits }}
+      {{ if and (not .Deposits.Eth2Deposits) and (not .Deposits.PendingEth2Deposits) }}
         <h6 class="">No beacon chain deposits found for this validator. It will appear once your validator has left the pending deposit queue.</h6>
         <div class="wip d-flex justify-content-center p-3">
           <svg style="width: 100%; height: auto; max-height: 200px;" id="a1bb6ffe-8d83-4899-8fa0-fcb3165ea164" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 884.595 628.60077">
@@ -184,7 +184,7 @@
           </svg>
         </div>
       {{ else }}
-        <h6 class="">This table displays the deposits received and processed by the beacon chain.</h6>
+        <h6 class="">Execution Layer deposits must be recognized by the beacon chain before validator balances are updated. Both processed and scheduled deposits for the beacon chain will appear here.</h6>
         <div class="table-responsive p-0 card card-body my-3">
           <table class="table" style="margin-top: 0 !important" id="deposits-eth2-table" width="100%">
             <thead>
@@ -202,6 +202,26 @@
                 <tr>
                   <td>{{ epochOfSlot $deposit.BlockSlot | formatEpoch }}</td>
                   <td>{{ formatBlockSlot $deposit.BlockSlot }}</td>
+                  <td>{{ formatSlotToTimestamp $deposit.BlockSlot }}</td>
+                  <td>
+                    {{ if $.Data.ShowMultipleWithdrawalCredentialsWarning }}
+                      <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="At least one deposit to your validator has different withdrawal credentials!"></i></span>
+                    {{ end }}
+                    {{ formatWithdawalCredentials $deposit.Withdrawalcredentials true }}
+                  </td>
+                  <td>{{ formatDepositAmount $deposit.Amount $.Rates.SelectedCurrency }}</td>
+                  <!-- <td>{{ formatHash $deposit.Proof }}</td> -->
+                  <td>
+                    {{ formatHash $deposit.Signature }}
+                    <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="{{ formatHash $deposit.Signature false }}"></i>
+                  </td>
+                </tr>
+              {{ end }}
+
+              {{ range $i, $deposit := .Deposits.PendingEth2Deposits }}
+                <tr style="opacity: 0.6" data-toggle="tooltip" title="This deposit is currently in the queue, waiting to be processed by the beacon chain.">
+                  <td>~{{ epochOfSlot $deposit.BlockSlot | formatEpoch }}</td>
+                  <td>~{{ formatBlockSlot $deposit.BlockSlot }}</td>
                   <td>{{ formatSlotToTimestamp $deposit.BlockSlot }}</td>
                   <td>
                     {{ if $.Data.ShowMultipleWithdrawalCredentialsWarning }}

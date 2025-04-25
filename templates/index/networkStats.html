@@ -37,7 +37,7 @@
         {{ end }}
         <h5 class="font-weight-normal mb-0">
           {{ if .ElectraHasHappened }}
-            <span data-toggle="tooltip" data-placement="top" title="{{ .EnteringValidatorsBalance }} {{ config.Frontend.MainCurrency }} currently waiting to enter the active validator set and {{ .EnteringValidatorTopup }} waiting to be added to existing validators" v-html="shortBalance(page.entering_validators_balance)"></span>
+            <span data-toggle="tooltip" data-placement="top" title="{{ .EnteringValidatorsBalance }} {{ config.Frontend.MainCurrency }} currently waiting to enter the active validator set and {{ .EnteringValidatorTopup }} waiting to be added to existing validators" v-html="shortBalance(page.entering_balance)"></span>
             / <span data-toggle="tooltip" data-placement="top" title="{{ .ExitingValidatorsBalance }} currently waiting to exit the active validator set" v-html="shortBalance(page.exiting_validators_balance)"></span>
           {{ else }}
             <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set" v-html="addCommas(page.entering_validators)"></span>

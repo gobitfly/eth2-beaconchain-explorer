@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -275,7 +276,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			g.Go(func() error {
 				if utils.ElectraHasHappened(validatorPageData.Epoch) {
 					// deposit processing queue
-					pendingDeposit, err := getPendingDeposits(validatorPageData.PublicKey)
+					pendingDeposit, err := db.GetNextPendingDeposit(validatorPageData.PublicKey)
 					if err != nil {
 						if err == sql.ErrNoRows {
 							var lastPendingDeposit types.PendingDeposit
@@ -438,7 +439,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if lastStatsDay > 30 {
 		lowerBoundDay = lastStatsDay - 30
 	}
-	g := errgroup.Group{}
+	gCtx, cancel := context.WithCancel(context.Background())
+	defer cancel() // ensure resources cleaned up in case g.Wait is skipped
+	g, ctx := errgroup.WithContext(gCtx)
+
 	g.Go(func() error {
 		start := time.Now()
 		defer func() {
@@ -473,6 +477,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	currentBalanceCh := make(chan uint64, 1)
 	var avgSyncInterval uint64
 	g.Go(func() error {
 		// those functions need to be executed sequentially as both require the CurrentBalance value
@@ -496,6 +501,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if ok {
 			validatorPageData.CurrentBalance = vbalance.Balance
 			validatorPageData.EffectiveBalance = vbalance.EffectiveBalance
+			currentBalanceCh <- vbalance.Balance
 
 			avgSyncInterval = uint64(getAvgSyncCommitteeInterval(validatorPageData.EffectiveBalance / 1e9))
 			avgSyncIntervalAsDuration := time.Duration(
@@ -636,21 +642,39 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			var isPendingActivation = false
 			if validatorPageData.ActivationEpoch > 100_000_000 && validatorPageData.ActivationEligibilityEpoch < 100_000_000 {
 				isPendingActivation = true
+				validatorPageData.PendingDepositAboveMinActivation = true // already has eligibility
 			} else if validatorPageData.ActivationEpoch > 100_000_000 {
-				pendingDeposit, err := getPendingDeposits(validatorPageData.PublicKey)
+				// Validator either has just processed a deposit and gets their eligibility in the next epoch or
+				// validator is missing balance for activation
+				pendingDeposit, err := db.GetNextPendingDeposit(validatorPageData.PublicKey)
 				if err != nil {
 					logrus.Warnf("error getting pending deposits for validator %v: %v", validatorPageData.PublicKey, err)
 					return nil
 				}
+
+				select {
+				case currentBalance := <-currentBalanceCh:
+					validatorPageData.PendingDepositAboveMinActivation = currentBalance+pendingDeposit.Amount >= utils.Config.Chain.ClConfig.MinActivationBalance
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+
 				validatorPageData.ActivationEligibilityEpoch = pendingDeposit.EstClearEpoch + 1
+				if !validatorPageData.PendingDepositAboveMinActivation {
+					// countdown to when the deposit will be processed if it won't become eligible
+					validatorPageData.EstimatedActivationTs = utils.EpochToTime(pendingDeposit.EstClearEpoch)
+				}
+
 				isPendingActivation = true
 			}
 
 			if isPendingActivation {
 				validatorPageData.QueuePosition = 0
 				validatorPageData.EstimatedActivationEpoch = validatorPageData.ActivationEligibilityEpoch + finalityDelay + utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
-				estimatedDequeueTs := utils.EpochToTime(validatorPageData.EstimatedActivationEpoch)
-				validatorPageData.EstimatedActivationTs = estimatedDequeueTs
+				if validatorPageData.EstimatedActivationTs.IsZero() {
+					validatorPageData.EstimatedActivationTs = utils.EpochToTime(validatorPageData.EstimatedActivationEpoch)
+				}
+
 				validatorPageData.EstimatedIndexEpoch = validatorPageData.ActivationEligibilityEpoch - 1
 				validatorPageData.EstimatedIndexTs = utils.EpochToTime(validatorPageData.EstimatedIndexEpoch)
 			}
@@ -2097,12 +2121,6 @@ func getWithdrawalAndIncome(index uint64, startEpoch uint64, endEpoch uint64) (m
 		}
 	}
 	return withdrawalMap, incomeDetails, err
-}
-
-func getPendingDeposits(pubkey []byte) (*types.PendingDeposit, error) {
-	var pendingDeposit types.PendingDeposit
-	err := db.ReaderDb.Get(&pendingDeposit, `SELECT id, est_clear_epoch, amount FROM pending_deposits_queue WHERE pubkey = $1 ORDER BY id asc LIMIT 1`, pubkey)
-	return &pendingDeposit, err
 }
 
 func incomeToTableData(epoch uint64, income *itypes.ValidatorEpochIncome, withdrawal *types.ValidatorWithdrawal, currency string) []interface{} {

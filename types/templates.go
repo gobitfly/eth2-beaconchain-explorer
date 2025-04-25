@@ -176,6 +176,7 @@ type IndexPageData struct {
 	EnteringValidators        uint64                 `json:"entering_validators"`
 	ExitingValidators         uint64                 `json:"exiting_validators"`
 	EnteringValidatorsBalance string                 `json:"entering_validators_balance"`
+	EnteringBalance           string                 `json:"entering_balance"`
 	EnteringValidatorTopup    string                 `json:"entering_validator_topup_balance"`
 	ExitingValidatorsBalance  string                 `json:"exiting_validators_balance"`
 	StakedEther               string                 `json:"staked_ether"`
@@ -1255,9 +1256,10 @@ type EthTwoDepositData struct {
 }
 
 type ValidatorDeposits struct {
-	Eth1Deposits      []Eth1Deposit
-	LastEth1DepositTs int64
-	Eth2Deposits      []Eth2Deposit
+	Eth1Deposits        []Eth1Deposit
+	LastEth1DepositTs   int64
+	Eth2Deposits        []Eth2Deposit
+	PendingEth2Deposits []Eth2Deposit
 }
 
 type MyCryptoSignature struct {
