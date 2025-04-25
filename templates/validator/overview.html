@@ -94,7 +94,7 @@
             </div>
             {{ if gt .QueuePosition 0 }}
               <div class="d-flex justify-content-center">
-                <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ formatClCurrency .ChurnRate $.Rates.ClCurrency 0 true false false false }} get dequeued each Epoch.">#{{ .QueuePosition }}</span> in Queue.</p>
+                <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ formatClCurrency .ChurnRate $.Rates.ClCurrency 0 true false false false }} get dequeued each Epoch.">#{{ .QueuePosition }}</span> in the queue.</p>
               </div>
             {{ end }}
             <div class="my-4" style="min-width:300px;">
@@ -153,9 +153,9 @@
         {{ if gt .QueuePosition 0 }}
           <div class="d-flex justify-content-center">
             {{ if .ElectraHasHappened }}
-              <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ formatClCurrency .ChurnRate $.Rates.ClCurrency 0 true false false false }}  get dequeued each Epoch.">#{{ .QueuePosition }}</span> in Queue.</p>
+              <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ formatClCurrency .ChurnRate $.Rates.ClCurrency 0 true false false false }}  get dequeued each Epoch.">#{{ .QueuePosition }}</span> in the queue.</p>
             {{ else }}
-              <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">#{{ .QueuePosition }}</span> in Queue.</p>
+              <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">#{{ .QueuePosition }}</span> in the queue.</p>
             {{ end }}
           </div>
         {{ end }}

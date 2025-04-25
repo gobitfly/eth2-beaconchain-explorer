@@ -364,7 +364,7 @@ function setValidatorCountdown(validatorIndex, queueId, secondsLeft) {
   var $element = $("#queue-" + validatorIndex)
 
   var tooltip = `
-    <div>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined">#${queueId}</span> in Queue.</div>
+    <div>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined">#${queueId}</span> in the queue.</div>
     <strong>${days} days ${hours} hr ${minutes} min ${seconds} sec</strong>`
 
   $element.attr("data-original-title", tooltip)
