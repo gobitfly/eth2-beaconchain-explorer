@@ -2112,7 +2112,7 @@ type BridgeQueueRequest struct {
 	BlockNumber    uint64
 	BlockTimestamp time.Time
 	From           []byte
-	Fee            []byte
+	Fee            uint64
 }
 
 func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, cache *freecache.Cache) (bulkData *types.BulkMutations, bulkMetadataUpdates *types.BulkMutations, err error) {
@@ -2151,7 +2151,7 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 				}
 			}
 			queueRequests = append(queueRequests, BridgeQueueRequest{
-				Fee:            itx.Value,
+				Fee:            new(big.Int).SetBytes(itx.Value).Uint64(),
 				TxHash:         tx.Hash,
 				TxIndex:        i,
 				ItxIndex:       j,
@@ -2238,7 +2238,7 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 				}
 			}
 			queueRequests = append(queueRequests, BridgeQueueRequest{
-				Fee:            itx.Value,
+				Fee:            new(big.Int).SetBytes(itx.Value).Uint64(),
 				TxHash:         tx.Hash,
 				TxIndex:        i,
 				ItxIndex:       j,
