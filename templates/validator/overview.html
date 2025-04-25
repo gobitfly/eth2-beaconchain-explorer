@@ -103,11 +103,6 @@
           </div>
         </div>
       </div>
-      <script>
-        window.addEventListener("load", function () {
-          $("#deposits-tab").tab("show")
-        })
-      </script>
     {{ else }}
       <div class="text-justify row justify-content-center mb-2">
         <div class="col">
@@ -128,12 +123,12 @@
           </div>
         </div>
       </div>
-      <script>
-        window.addEventListener("load", function () {
-          $("#deposits-tab").tab("show")
-        })
-      </script>
     {{ end }}
+    <script>
+      window.addEventListener("load", function () {
+        $("#deposits-tab").click()
+      })
+    </script>
   {{ end }}
 {{ end }}
 
@@ -167,7 +162,7 @@
   </div>
   <script>
     window.addEventListener("load", function () {
-      $("#deposits-tab").tab("show")
+      $("#deposits-tab").click()
     })
   </script>
 {{ end }}
