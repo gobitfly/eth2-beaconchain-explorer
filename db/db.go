@@ -593,6 +593,23 @@ func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	return index, err
 }
 
+func GetNextPendingDeposit(pubkey []byte) (*types.PendingDeposit, error) {
+	entry, err := GetPendingDeposits(pubkey, 1)
+	if len(entry) == 0 {
+		return &types.PendingDeposit{}, nil
+	}
+	return &entry[0], err
+}
+
+func GetPendingDeposits(pubkey []byte, limit int) ([]types.PendingDeposit, error) {
+	var pendingDeposit []types.PendingDeposit
+	err := ReaderDb.Select(&pendingDeposit, `SELECT id, est_clear_epoch, amount, withdrawal_credentials, signature FROM pending_deposits_queue WHERE pubkey = $1 ORDER BY id asc LIMIT $2`, pubkey, limit)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+	return pendingDeposit, err
+}
+
 // GetValidatorDeposits will return eth1- and eth2-deposits for a public key from the database
 func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	deposits := &types.ValidatorDeposits{}
@@ -651,6 +668,24 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pendingDeposits, err := GetPendingDeposits(publicKey, 10)
+	if err == nil {
+		deposits.PendingEth2Deposits = make([]types.Eth2Deposit, 0)
+		for _, deposit := range pendingDeposits {
+			deposits.PendingEth2Deposits = append(deposits.PendingEth2Deposits, types.Eth2Deposit{
+				BlockSlot:             deposit.EstClearEpoch * utils.Config.ClConfig.SlotsPerEpoch,
+				BlockIndex:            0,
+				BlockRoot:             nil,
+				Proof:                 nil,
+				Publickey:             publicKey,
+				Withdrawalcredentials: deposit.WithdrawalCredentials,
+				Amount:                deposit.Amount,
+				Signature:             deposit.Signature,
+			})
+		}
+	}
+
 	return utils.FixELDepositValidity(deposits), nil
 }
 

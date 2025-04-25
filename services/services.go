@@ -910,11 +910,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	if utils.ElectraHasHappened(epoch) {
 		queueData := LatestQueueData()
-		data.EnteringValidatorsBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringDepositEthAmount)/1e9)
-		data.EnteringValidatorTopup = fmt.Sprintf("%.0f %s", float64(queueData.EnteringTopUpEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
-		data.ExitingValidatorsBalance = fmt.Sprintf("%.0f %s", float64(queueData.LeavingEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
-		data.EnteringValidators = queueData.EnteringValidatorCount
-		data.ExitingValidators = queueData.LeavingValidatorCount
+		if queueData != nil {
+			data.EnteringBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringFreshDepositEthAmount+queueData.EnteringTopUpEthAmount)/1e9)
+			data.EnteringValidatorsBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringFreshDepositEthAmount)/1e9)
+			data.EnteringValidatorTopup = fmt.Sprintf("%.0f %s", float64(queueData.EnteringTopUpEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
+			data.ExitingValidatorsBalance = fmt.Sprintf("%.0f %s", float64(queueData.LeavingEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
+			data.EnteringValidators = queueData.EnteringFreshDepositsCount
+			data.ExitingValidators = queueData.LeavingValidatorCount
+		}
 	} else {
 		queueCount := struct {
 			EnteringValidators uint64 `db:"entering_validators_count"`
