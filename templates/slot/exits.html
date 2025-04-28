@@ -10,7 +10,21 @@
       </div>
       <div class="row p-1 mx-0">
         <div class="col-md-2">Signature:</div>
-        <div class="col-md-10 text-monospace text-break">0x{{ printf "%x" $exit.Signature }}</div>
+        <div class="col-md-10 text-monospace text-break">
+          {{ if gt (len $exit.Signature) 0 }}
+            0x{{ printf "%x" $exit.Signature }}
+          {{ else }}
+            -
+          {{ end }}
+        </div>
+      </div>
+      <div class="row p-1 mx-0">
+        <div class="col-md-2">Via:</div>
+        <div class="col-md-10">{{ $exit.TriggeredVia }}</div>
+      </div>
+      <div class="row p-1 mx-0">
+        <div class="col-md-2">Status:</div>
+        <div class="col-md-10">{{ $exit.Status }}</div>
       </div>
     {{ end }}
   </div>

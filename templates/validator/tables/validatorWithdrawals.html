@@ -97,19 +97,34 @@
   <h4 class="my-3">Exits Consensus Layer</h4>
   <h6 class="">This table displays the exit requests received and processed by the beacon chain.</h6>
   <div class="table-responsive card card-body p-0">
-    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+    <table class="table" style="margin-top: 0 !important;" id="exits-table" width="100%">
       <thead>
         <tr>
-          <th>Epoch</th>
           <th>Slot</th>
           <th>Time</th>
-          <th>Recipient Address</th>
+          <th>Status</th>
+          <th>Via</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody>
+        {{ range $i, $request := .ConsensusElExits }}
+          <tr>
+            <td>{{ formatBlockSlot $request.BlockSlot }}</td>
+            <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
+            <td>
+              {{ if not (eq $request.RejectReason "") }}
+                <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="{{ $request.RejectReason }}"></i></span>
+              {{ end }}
+              {{ $request.Status }}
+            </td>
+            <td>{{ $request.TriggeredVia }}</td>
+          </tr>
+        {{ end }}
+
+      </tbody>
     </table>
   </div>
-
+  <div class="text-center my-3"></div>
     <script>
         var index = {{.Index}}
         window.addEventListener('load', function() {

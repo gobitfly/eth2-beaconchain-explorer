@@ -966,7 +966,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validator_index,
 			address
 		FROM blocks_switch_to_compounding_requests 
-		LEFT JOIN blocks ON blocks_switch_to_compounding_requests.block_root = blocks.blockroot AND blocks.status = '1'
+		INNER JOIN blocks ON blocks_switch_to_compounding_requests.block_root = blocks.blockroot AND blocks.status = '1'
 		WHERE blocks_switch_to_compounding_requests.validator_index = $1
 		ORDER BY block_slot DESC, request_index LIMIT 1`, index)
 		if err != nil {
@@ -975,6 +975,44 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				return nil
 			}
 			return fmt.Errorf("error retrieving blocks_switch_to_compounding_requests of validator %v: %v", validatorPageData.Index, err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		err = db.ReaderDb.Select(&validatorPageData.ConsensusElExits, `
+			SELECT 
+				slot_processed AS slot,
+				block_processed_root AS block_root,
+				blocks_exit_requests.status,
+				COALESCE(reject_reason, '') AS reject_reason,
+				validator_pubkey,
+				'Execution Layer' as triggered_via
+			FROM blocks_exit_requests 
+			INNER JOIN blocks ON blocks_exit_requests.block_processed_root = blocks.blockroot AND blocks.status = '1'
+			WHERE blocks_exit_requests.validator_pubkey = $1
+
+			UNION ALL
+
+			SELECT 
+				block_slot AS slot,
+				block_root,
+				'completed' AS status,
+				'' AS reject_reason,
+				validatorindex_pubkey.pubkey AS validator_pubkey,
+				'Consensus Layer' as triggered_via
+			FROM blocks_voluntaryexits
+			INNER JOIN validators AS validatorindex_pubkey ON blocks_voluntaryexits.validatorindex = validatorindex_pubkey.validatorindex
+			INNER JOIN blocks ON blocks_voluntaryexits.block_root = blocks.blockroot AND blocks.status = '1'
+			WHERE validatorindex_pubkey.pubkey = $1
+			ORDER BY slot DESC
+		`, validatorPageData.PublicKey)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				validatorPageData.ConsensusElExits = nil
+				return nil
+			}
+			return fmt.Errorf("error retrieving blocks_exit_requests/blocks_voluntaryexits of validator %v: %v", validatorPageData.Index, err)
 		}
 		return nil
 	})

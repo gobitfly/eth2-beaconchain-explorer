@@ -320,8 +320,28 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	}
 	slotPageData.VotingValidatorsCount = uint64(len(votesPerValidator))
 	slotPageData.VotesCount = uint64(votesCount)
+	err = db.ReaderDb.Select(&slotPageData.VoluntaryExits, `
+		SELECT 
+			validatorindex, 
+			signature,
+			'Consensus Layer' as triggered_via, 
+			'completed' as status
+		FROM blocks_voluntaryexits 
+		WHERE block_slot = $1
 
-	err = db.ReaderDb.Select(&slotPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", slotPageData.Slot)
+		UNION ALL
+
+		SELECT
+			validatorindex,
+			E'\\x'::bytea as signature,
+			'Execution Layer' as triggered_via,
+			blocks_exit_requests.status
+		FROM blocks_exit_requests
+		INNER JOIN validators AS validatorindex_pubkey ON blocks_exit_requests.validator_pubkey = validatorindex_pubkey.pubkey
+		WHERE blocks_exit_requests.slot_processed = $1
+
+		ORDER BY validatorindex
+	`, slotPageData.Slot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block deposit data: %v", err)
 	}
