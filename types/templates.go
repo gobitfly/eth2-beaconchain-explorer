@@ -427,6 +427,7 @@ type ValidatorPageData struct {
 	PendingDepositAboveMinActivation bool
 	EstimatedIndexEpoch              uint64
 	EstimatedIndexTs                 time.Time
+	ConsensusElExits                 []*FrontendConsensusELExitRequest
 }
 
 type RocketpoolValidatorPageData struct {
@@ -772,7 +773,9 @@ type BlockPageDeposit struct {
 // BlockPageVoluntaryExits is a struct to hold data for voluntary exits on the block page
 type BlockPageVoluntaryExits struct {
 	ValidatorIndex uint64 `db:"validatorindex"`
-	Signature      []byte `db:"signature"`
+	Signature      []byte `db:"signature"` // only cl
+	TriggeredVia   string `db:"triggered_via"`
+	Status         string `db:"status"`
 }
 
 // BlockPageAttesterSlashing is a struct to hold data for attester slashings on the block page
@@ -872,6 +875,15 @@ type FrontendWithdrawalRequest struct {
 	ValidatorIndex  int64  `db:"validator_index"`
 	Amount          uint64 `db:"amount"`
 	Type            string
+}
+
+type FrontendConsensusELExitRequest struct {
+	BlockSlot       uint64 `db:"slot"`
+	BlockRoot       []byte `db:"block_root"`
+	Status          string `db:"status"`
+	RejectReason    string `db:"reject_reason"`
+	ValidatorPubkey []byte `db:"validator_pubkey"`
+	TriggeredVia    string `db:"triggered_via"`
 }
 
 type FrontendDepositRequest struct {

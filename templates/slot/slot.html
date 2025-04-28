@@ -406,9 +406,9 @@
             <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{ .DepositsCount }}</span></a>
           </li>
         {{ end }}
-        {{ if gt .VoluntaryExitscount 0 }}
+        {{ if gt (len .VoluntaryExits) 0 }}
           <li class="nav-item">
-            <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{ .VoluntaryExitscount }}</span></a>
+            <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{ (len .VoluntaryExits) }}</span></a>
           </li>
         {{ end }}
         {{ if gt .AttesterSlashingsCount 0 }}
@@ -514,7 +514,7 @@
             </div>
           </div>
         {{ end }}
-        {{ if gt .VoluntaryExitscount 0 }}
+        {{ if gt (len .VoluntaryExits) 0 }}
           <div class="tab-pane fade" id="voluntary-exitsTabPanel" role="tabpanel" aria-labelledby="voluntary-exits-tab">
             <div class="card block-card">
               {{ template "block_exits" . }}
