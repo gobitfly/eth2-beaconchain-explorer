@@ -911,11 +911,12 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if utils.ElectraHasHappened(epoch) {
 		queueData := LatestQueueData()
 		if queueData != nil {
-			data.EnteringBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringFreshDepositEthAmount+queueData.EnteringTopUpEthAmount)/1e9)
-			data.EnteringValidatorsBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringFreshDepositEthAmount)/1e9)
+			total := queueData.EnteringNewValidatorsEthAmount + queueData.EnteringTopUpEthAmount
+			data.EnteringBalance = fmt.Sprintf("%.0f", float64(total)/1e9)
+			data.EnteringValidatorsBalance = fmt.Sprintf("%.0f", float64(queueData.EnteringNewValidatorsEthAmount)/1e9)
 			data.EnteringValidatorTopup = fmt.Sprintf("%.0f %s", float64(queueData.EnteringTopUpEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
 			data.ExitingValidatorsBalance = fmt.Sprintf("%.0f %s", float64(queueData.LeavingEthAmount)/1e9, utils.Config.Frontend.ClCurrency)
-			data.EnteringValidators = queueData.EnteringFreshDepositsCount
+			data.EnteringValidators = total
 			data.ExitingValidators = queueData.LeavingValidatorCount
 		}
 	} else {
