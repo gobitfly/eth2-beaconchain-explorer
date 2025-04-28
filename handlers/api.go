@@ -959,7 +959,7 @@ func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 			EnteringBalance uint64 `json:"beaconchain_entering_balance"`
 			LeavingBalance  uint64 `json:"beaconchain_exiting_balance"`
 		}{
-			Entering:        queueData.EnteringFreshDepositsCount + queueData.EnteringTopUpCount, // do not break compatibility with old API even though this might be a useless stat now
+			Entering:        queueData.EnteringNewValidatorsCount, // do not break compatibility with old API even though this might be a useless stat now
 			Exiting:         queueData.LeavingValidatorCount,
 			ValidatorCount:  indexData.ActiveValidators,
 			EnteringBalance: queueData.EnteringTotalEthAmount,

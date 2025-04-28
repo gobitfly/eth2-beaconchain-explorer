@@ -83,7 +83,7 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 		QueuedBalanceAhead    uint64 `db:"queued_balance_ahead"`
 		TopUpAmount           uint64 `db:"topup_amount"`
 		TopUpCount            uint64 `db:"topup_count"`
-		EnteringEthTotalCount uint64 `db:"entering_eth_total_count"`
+		EnteringNewValidators uint64 `db:"entering_new_validators"`
 		TotalEffectiveBalance uint64 `db:"eligibleether"`
 	}
 	var result Result
@@ -96,17 +96,16 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 					FROM pending_deposits_queue 
 					WHERE id = (SELECT max(id) FROM pending_deposits_queue)
 				),
-				topups AS (
-					SELECT * 
+				deduplicated AS (
+					SELECT DISTINCT pubkey, validator_index
 					FROM pending_deposits_queue 
-					WHERE validator_index IS NOT NULL
 				)
 			SELECT 
 				COALESCE((SELECT est_clear_epoch FROM last_deposit),0) AS est_clear_epoch, 
 				COALESCE((SELECT queued_balance_ahead FROM last_deposit),0) AS queued_balance_ahead, 
-				COALESCE((SELECT id + 1 FROM last_deposit),0) AS entering_eth_total_count, 
-				(SELECT COALESCE(count(*),0) FROM topups) AS topup_count, 
-				(SELECT COALESCE(sum(amount),0) FROM topups) AS topup_amount,
+				(SELECT COALESCE(count(*),0) FROM deduplicated WHERE validator_index IS NULL) AS entering_new_validators, 
+				(SELECT COALESCE(count(*),0) FROM deduplicated WHERE validator_index IS NOT NULL) AS topup_count, 
+				(SELECT COALESCE(sum(amount),0) FROM pending_deposits_queue WHERE validator_index IS NOT NULL) AS topup_amount,
 				(SELECT eligibleether FROM epochs WHERE epoch = (SELECT max(epoch) FROM epochs)) 
 			
 		`)
@@ -122,17 +121,17 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 
 	etherChurnByDay := etherChurnByEpoch * utils.EpochsPerDay()
 	re := &types.QueuesEstimate{
-		EnteringFreshDepositsCount:    result.EnteringEthTotalCount - result.TopUpCount,
-		EnteringFreshDepositEthAmount: result.QueuedBalanceAhead - result.TopUpAmount,
-		EnteringTopUpEthAmount:        result.TopUpAmount,
-		EnteringTotalEthAmount:        result.QueuedBalanceAhead,
-		EnteringQueueTime:             depositQueueTime,
-		EnteringTopUpCount:            result.TopUpCount,
-		TotalActiveEffectiveBalance:   result.TotalEffectiveBalance,
-		LeavingValidatorCount:         queue.Exiting,
-		LeavingEthAmount:              queue.ExitingBalance,
-		EnteringBalancePerDay:         etherChurnByDay,
-		EnteringBalancePerEpoch:       etherChurnByEpoch,
+		EnteringNewValidatorsCount:     result.EnteringNewValidators,
+		EnteringNewValidatorsEthAmount: result.QueuedBalanceAhead - result.TopUpAmount,
+		EnteringTopUpEthAmount:         result.TopUpAmount,
+		EnteringTotalEthAmount:         result.QueuedBalanceAhead,
+		EnteringQueueTime:              depositQueueTime,
+		EnteringTopUpCount:             result.TopUpCount,
+		TotalActiveEffectiveBalance:    result.TotalEffectiveBalance,
+		LeavingValidatorCount:          queue.Exiting,
+		LeavingEthAmount:               queue.ExitingBalance,
+		EnteringBalancePerDay:          etherChurnByDay,
+		EnteringBalancePerEpoch:        etherChurnByEpoch,
 	}
 
 	return re, nil
