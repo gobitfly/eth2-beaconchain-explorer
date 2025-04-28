@@ -991,7 +991,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FROM eth1_withdrawal_requests 
 		INNER JOIN validators ON eth1_withdrawal_requests.validator_pubkey = validators.pubkey 
 		WHERE validatorindex = $1
-		ORDER BY block_number DESC, tx_index desc`, index)
+		ORDER BY block_number DESC, tx_index desc, itx_index desc`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving eth1_withdrawal_requests of validator %v: %v", validatorPageData.Index, err)
 		}
@@ -1017,7 +1017,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		INNER JOIN validators s ON ecr.source_pubkey = s.pubkey
 		INNER JOIN validators t ON ecr.target_pubkey = t.pubkey
 		WHERE t.validatorindex = $1 OR s.validatorindex = $1
-		ORDER BY ecr.block_number DESC, ecr.tx_index DESC
+		ORDER BY ecr.block_number DESC, ecr.tx_index DESC, ecr.itx_index DESC
 		`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving eth1_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
