@@ -165,7 +165,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	g.Go(func() error {
 		t, err := client.getTrace(traceMode, big.NewInt(number))
 		if err != nil {
-			logger.Errorf("error retrieving traces for block %v: %w", number, err)
+			logger.Errorf("error retrieving traces for block %v: %s", number, err)
 			return fmt.Errorf("error retrieving traces for block %v: %w", number, err)
 		}
 		traces = t
@@ -375,7 +375,7 @@ func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
 
 	block, err := client.ethClient.BlockByHash(ctx, common.HexToHash(hash))
 	if err != nil {
-		logger.Error("error while getting block by hash %s, error: %s", hash, err)
+		logger.Errorf("error while getting block by hash %s, error: %s", hash, err)
 		return 0, err
 	}
 	return block.NumberU64(), nil
@@ -392,7 +392,7 @@ func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 
 	latestBlock, err := client.ethClient.BlockByNumber(ctx, nil)
 	if err != nil {
-		logger.Error("error while getting latest block, error: %s", err)
+		logger.Errorf("error while getting latest block, error: %s", err)
 		return 0, fmt.Errorf("error getting latest block: %w", err)
 	}
 
