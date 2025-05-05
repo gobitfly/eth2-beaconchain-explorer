@@ -144,8 +144,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	g.Go(func() error {
 		b, err := client.ethClient.BlockByNumber(ctx, big.NewInt(number))
 		if err != nil {
-			logger.Errorf("error while getting block %v details from client, error: %s", number, err)
-			return err
+			return fmt.Errorf("error getting block %v details from client, error: %s", number, err)
 		}
 		mu.Lock()
 		timings.Headers = time.Since(start)
@@ -165,7 +164,6 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	g.Go(func() error {
 		t, err := client.getTrace(traceMode, big.NewInt(number))
 		if err != nil {
-			logger.Errorf("error retrieving traces for block %v: %s", number, err)
 			return fmt.Errorf("error retrieving traces for block %v: %w", number, err)
 		}
 		traces = t
@@ -375,8 +373,7 @@ func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
 
 	block, err := client.ethClient.BlockByHash(ctx, common.HexToHash(hash))
 	if err != nil {
-		logger.Errorf("error while getting block by hash %s, error: %s", hash, err)
-		return 0, err
+		return 0, fmt.Errorf("error getting block by hash %s, error: %s", hash, err)
 	}
 	return block.NumberU64(), nil
 }
@@ -392,7 +389,6 @@ func (client *ErigonClient) GetLatestEth1BlockNumber() (uint64, error) {
 
 	latestBlock, err := client.ethClient.BlockByNumber(ctx, nil)
 	if err != nil {
-		logger.Errorf("error while getting latest block, error: %s", err)
 		return 0, fmt.Errorf("error getting latest block: %w", err)
 	}
 
@@ -442,14 +438,12 @@ func (client *ErigonClient) TraceGeth(blockNumber *big.Int) ([]*GethTraceCallRes
 
 	err := client.rpcClient.Call(&res, "debug_traceBlockByNumber", hexutil.EncodeBig(blockNumber), gethTracerArg)
 	if err != nil {
-		logger.Errorf("error while calling geth for block %v traces, error: %s", blockNumber.Uint64(), err)
-		return nil, err
+		return nil, fmt.Errorf("error while calling geth for block %v traces, error: %s", blockNumber.Uint64(), err)
 	}
 
 	data := make([]*GethTraceCallResult, 0, 20)
 	for i, r := range res {
 		if r.Result == nil {
-			logger.Infof("trace call %v result is nil for block %v", i, blockNumber.Uint64())
 			return nil, fmt.Errorf("trace call %v result is nil for block %v", i, blockNumber.Uint64())
 		}
 
@@ -522,8 +516,7 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 
 	err := client.rpcClient.Call(&res, "trace_block", blockNumber)
 	if err != nil {
-		logger.Errorf("error while calling parity for block %v traces, error: %s", blockNumber, err)
-		return nil, err
+		return nil, fmt.Errorf("error while calling parity for block %v traces, error: %s", blockNumber, err)
 	}
 
 	return res, nil
@@ -534,8 +527,7 @@ func (client *ErigonClient) TraceParityTx(txHash string) ([]*ParityTraceResult, 
 
 	err := client.rpcClient.Call(&res, "trace_transaction", txHash)
 	if err != nil {
-		logger.Errorf("error while calling parity for tx %s traces, error: %s", txHash, err)
-		return nil, err
+		return nil, fmt.Errorf("error while calling parity for tx %s traces, error: %s", txHash, err)
 	}
 
 	return res, nil
@@ -546,8 +538,7 @@ func (client *ErigonClient) TraceGethTx(txHash string) ([]*GethTraceCallResult, 
 
 	err := client.rpcClient.Call(&res, "debug_traceTransaction", txHash, gethTracerArg)
 	if err != nil {
-		logger.Errorf("error while calling geth for tx %s traces, error: %s", txHash, err)
-		return nil, err
+		return nil, fmt.Errorf("error while calling geth for tx %s traces, error: %s", txHash, err)
 	}
 
 	data := make([]*GethTraceCallResult, 0, 20)
@@ -798,7 +789,6 @@ func (client *ErigonClient) getTrace(traceMode string, blockNumber *big.Int) ([]
 func (client *ErigonClient) getTraceParity(blockNumber *big.Int) ([]*Eth1InternalTransactionWithPosition, error) {
 	traces, err := client.TraceParity(blockNumber.Uint64())
 	if err != nil {
-		logger.Errorf("error while getting parity traces for block %v, error: %s", blockNumber.Uint64(), err)
 		return nil, fmt.Errorf("error tracing block via parity style traces (%v): %w", blockNumber, err)
 	}
 
@@ -830,7 +820,6 @@ func (client *ErigonClient) getTraceParity(blockNumber *big.Int) ([]*Eth1Interna
 func (client *ErigonClient) getTraceGeth(blockNumber *big.Int) ([]*Eth1InternalTransactionWithPosition, error) {
 	traces, err := client.TraceGeth(blockNumber)
 	if err != nil {
-		logger.Errorf("error while getting geth traces for block %v, error: %s", blockNumber.Uint64(), err)
 		return nil, fmt.Errorf("error tracing block via geth style traces (%v): %w", blockNumber, err)
 	}
 
