@@ -2349,10 +2349,14 @@ func GetAddressWithdrawalTableData(address []byte, pageToken string, currency st
 		}
 	}
 
+	// Note that withdrawalindex can be negative in the table starting with pectra.
+	// To keep API compatability we use the GREATEST function.
+	// pagination should not be affected as there is only one withdrawal for a given address at a time.
+
 	err = ReaderDb.Select(&withdrawals, `
 	SELECT 
 		w.block_slot as slot, 
-		w.withdrawalindex as index, 
+		GREATEST(withdrawalindex, 0) as index, 
 		w.validatorindex, 
 		w.address, 
 		w.amount 
@@ -2458,7 +2462,7 @@ func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uin
 		w.amount 
 	FROM blocks_withdrawals w
 	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE validatorindex = ANY($1)
+	WHERE validatorindex = ANY($1) AND w.address <> ''::bytea
 	AND (w.block_slot / $4) >= $2 AND (w.block_slot / $4) <= $3 
 	ORDER BY w.withdrawalindex`, pq.Array(validators), fromEpoch, toEpoch, utils.Config.Chain.ClConfig.SlotsPerEpoch)
 	if err != nil {

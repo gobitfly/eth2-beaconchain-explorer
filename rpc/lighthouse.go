@@ -1029,7 +1029,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
 		for _, w := range payload.Withdrawals {
 			withdrawals = append(withdrawals, &types.Withdrawals{
-				Index:          uint64(w.Index),
+				Index:          int64(w.Index),
 				ValidatorIndex: uint64(w.ValidatorIndex),
 				Address:        w.Address,
 				Amount:         uint64(w.Amount),

@@ -1563,7 +1563,7 @@ func ValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 			utils.FormatEpoch(utils.EpochOfSlot(w.Slot)),
 			utils.FormatBlockSlot(w.Slot),
 			utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()),
-			utils.FormatAddress(w.Address, nil, "", false, false, true),
+			utils.FormatWithdrawalAddress(w.Address, nil, "", false, false, true),
 			utils.FormatClCurrency(w.Amount, reqCurrency, 6, true, false, false, true),
 		})
 	}
