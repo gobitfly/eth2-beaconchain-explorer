@@ -640,6 +640,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	g.Go(func() error {
 		if utils.ElectraHasHappened(validatorPageData.Epoch) {
 			var isPendingActivation = false
+
+			theoreticalActivationEligibilityEpoch := validatorPageData.ActivationEligibilityEpoch // does not consider if deposit actually is above min activation balance
 			if validatorPageData.ActivationEpoch > 100_000_000 && validatorPageData.ActivationEligibilityEpoch < 100_000_000 {
 				isPendingActivation = true
 				validatorPageData.PendingDepositAboveMinActivation = true // already has eligibility
@@ -659,10 +661,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					return ctx.Err()
 				}
 
-				validatorPageData.ActivationEligibilityEpoch = pendingDeposit.EstClearEpoch + 1
+				theoreticalActivationEligibilityEpoch = pendingDeposit.EstClearEpoch + 1
 				if !validatorPageData.PendingDepositAboveMinActivation {
 					// countdown to when the deposit will be processed if it won't become eligible
 					validatorPageData.EstimatedActivationTs = utils.EpochToTime(pendingDeposit.EstClearEpoch)
+				} else {
+					validatorPageData.ActivationEligibilityEpoch = theoreticalActivationEligibilityEpoch
 				}
 
 				isPendingActivation = true
@@ -670,12 +674,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			if isPendingActivation {
 				validatorPageData.QueuePosition = 0
-				validatorPageData.EstimatedActivationEpoch = validatorPageData.ActivationEligibilityEpoch + finalityDelay + utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
+				validatorPageData.EstimatedActivationEpoch = theoreticalActivationEligibilityEpoch + finalityDelay + utils.Config.Chain.ClConfig.MaxSeedLookahead + 1
 				if validatorPageData.EstimatedActivationTs.IsZero() {
 					validatorPageData.EstimatedActivationTs = utils.EpochToTime(validatorPageData.EstimatedActivationEpoch)
 				}
 
-				validatorPageData.EstimatedIndexEpoch = validatorPageData.ActivationEligibilityEpoch - 1
+				validatorPageData.EstimatedIndexEpoch = theoreticalActivationEligibilityEpoch - 1
 				validatorPageData.EstimatedIndexTs = utils.EpochToTime(validatorPageData.EstimatedIndexEpoch)
 			}
 		} else {
