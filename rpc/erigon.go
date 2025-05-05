@@ -450,7 +450,7 @@ func (client *ErigonClient) TraceGeth(blockNumber *big.Int) ([]*GethTraceCallRes
 	for i, r := range res {
 		if r.Result == nil {
 			logger.Infof("trace call %v result is nil for block %v", i, blockNumber.Uint64())
-			continue
+			return nil, fmt.Errorf("trace call %v result is nil for block %v", i, blockNumber.Uint64())
 		}
 
 		r.Result.TransactionPosition = i
