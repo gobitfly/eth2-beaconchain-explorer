@@ -622,8 +622,8 @@ type ValidatorStateCountRow struct {
 }
 
 type QueuesEstimate struct {
-	EnteringNewValidatorsCount     uint64 // fresh deposits count. Note is not deduplicated
-	EnteringNewValidatorsEthAmount uint64 // new validators
+	EnteringNewValidatorsCount     uint64 // Count of new validators joining the chain (deduplicated)
+	EnteringNewValidatorsEthAmount uint64 // Balances of new validators joining the chain (deduplicated)
 	EnteringTopUpEthAmount         uint64 // topups
 	EnteringTotalEthAmount         uint64 // all deposits, topups + new validators
 	EnteringQueueTime              time.Duration
