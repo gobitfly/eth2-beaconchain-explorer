@@ -734,7 +734,7 @@ func ApiSlotWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, withdrawalindex, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 ORDER BY withdrawalindex", slot)
+	rows, err := db.ReaderDb.Query("SELECT block_slot, GREATEST(withdrawalindex, 0) AS withdrawalindex, validatorindex, address, amount FROM blocks_withdrawals WHERE block_slot = $1 AND address <> ''::bytea ORDER BY withdrawalindex", slot)
 	if err != nil {
 		logger.WithError(err).Error("error getting blocks_withdrawals")
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2148,10 +2148,11 @@ func ApiValidatorWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	dataFormatted := make([]*types.ApiValidatorWithdrawalResponse, 0, len(data))
 	for _, w := range data {
+		index := uint64(max(w.Index, 0))
 		dataFormatted = append(dataFormatted, &types.ApiValidatorWithdrawalResponse{
 			Epoch:          w.Slot / utils.Config.Chain.ClConfig.SlotsPerEpoch,
 			Slot:           w.Slot,
-			Index:          w.Index,
+			Index:          index,
 			ValidatorIndex: w.ValidatorIndex,
 			Amount:         w.Amount,
 			BlockRoot:      fmt.Sprintf("0x%x", w.BlockRoot),

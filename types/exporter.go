@@ -193,7 +193,7 @@ type ExecutionPayload struct {
 type Withdrawals struct {
 	Slot           uint64 `json:"slot,omitempty"`
 	BlockRoot      []byte `json:"blockroot,omitempty"`
-	Index          uint64 `json:"index"`
+	Index          int64  `json:"index"`
 	ValidatorIndex uint64 `json:"validatorindex"`
 	Address        []byte `json:"address"`
 	Amount         uint64 `json:"amount"`
@@ -207,7 +207,7 @@ type WithdrawalsByEpoch struct {
 
 type WithdrawalsNotification struct {
 	Slot           uint64 `json:"slot,omitempty"`
-	Index          uint64 `json:"index"`
+	Index          int64  `json:"index"`
 	ValidatorIndex uint64 `json:"validatorindex"`
 	Address        []byte `json:"address"`
 	Amount         uint64 `json:"amount"`

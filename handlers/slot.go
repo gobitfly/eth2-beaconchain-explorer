@@ -883,7 +883,7 @@ func SlotWithdrawalData(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			template.HTML(fmt.Sprintf("%v", w.Index)),
 			utils.FormatValidator(w.ValidatorIndex),
-			utils.FormatAddress(w.Address, nil, "", false, false, true),
+			utils.FormatWithdrawalAddress(w.Address, nil, "", false, false, true),
 			utils.FormatClCurrency(w.Amount, currency, 6, true, false, false, true),
 		})
 	}

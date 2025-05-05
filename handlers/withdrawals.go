@@ -200,7 +200,7 @@ func WithdrawalsTableData(draw uint64, search string, length, start uint64, orde
 		tableData[i] = []interface{}{
 			utils.FormatEpoch(utils.EpochOfSlot(w.Slot)),
 			utils.FormatBlockSlot(w.Slot),
-			template.HTML(fmt.Sprintf("%v", w.Index)),
+			template.HTML(fmt.Sprintf("%v", w.Index)), // show negative index as is
 			utils.FormatValidator(w.ValidatorIndex),
 			utils.FormatTimestamp(utils.SlotToTime(w.Slot).Unix()),
 			utils.FormatAddressWithLimits(w.Address, names[string(w.Address)], false, "address", visibleDigitsForHash+5, 18, true),
