@@ -671,7 +671,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 
 	pendingDeposits, err := GetPendingDeposits(publicKey, 10)
 	if err == nil {
-		deposits.PendingEth2Deposits = make([]types.Eth2Deposit, 0)
+		deposits.PendingEth2Deposits = make([]types.Eth2Deposit, 0, len(pendingDeposits))
 		for _, deposit := range pendingDeposits {
 			deposits.PendingEth2Deposits = append(deposits.PendingEth2Deposits, types.Eth2Deposit{
 				BlockSlot:             deposit.EstClearEpoch * utils.Config.ClConfig.SlotsPerEpoch,
