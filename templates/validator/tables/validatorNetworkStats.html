@@ -7,8 +7,18 @@
         <td>{{ .NetworkStats.ActiveValidators }}</td>
       </tr>
       <tr>
-        <th scope="row">Pending Validators</th>
-        <td><span data-toggle="tooltip" data-placement="top" title="Entering">{{ .NetworkStats.EnteringValidators }}</span>/<span data-toggle="tooltip" data-placement="top" title="Exiting">{{ .NetworkStats.ExitingValidators }}</span></td>
+        {{ if .ElectraHasHappened }}
+          <th scope="row">Joining / Leaving</th>
+          <td><span data-toggle="tooltip" data-placement="top" title="Joining" id="joining-balance"></span> / <span data-toggle="tooltip" data-placement="top" title="Leaving">{{ .NetworkStats.ExitingValidatorsBalance }}</span></td>
+          <script>
+            document.addEventListener('DOMContentLoaded', function () {
+              document.getElementById('joining-balance').innerHTML = shortBalance('{{ .NetworkStats.EnteringBalance }}');
+            });
+          </script>
+        {{ else }}
+          <th scope="row">Pending Validators</th>
+          <td><span data-toggle="tooltip" data-placement="top" title="Entering">{{ .NetworkStats.EnteringValidators }}</span>/<span data-toggle="tooltip" data-placement="top" title="Exiting">{{ .NetworkStats.ExitingValidators }}</span></td>
+        {{ end }}
       </tr>
       <tr>
         <th scope="row">Staked Ether</th>
