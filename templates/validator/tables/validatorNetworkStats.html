@@ -9,10 +9,11 @@
       <tr>
         {{ if .ElectraHasHappened }}
           <th scope="row">Joining / Leaving</th>
-          <td><span data-toggle="tooltip" data-placement="top" title="Joining" id="joining-balance"></span> / <span data-toggle="tooltip" data-placement="top" title="Leaving">{{ .NetworkStats.ExitingValidatorsBalance }}</span></td>
+          <td><span data-toggle="tooltip" data-placement="top" title="Joining" id="joining-balance"></span> / <span data-toggle="tooltip" data-placement="top" title="Leaving" id="leaving-balance"></span></td>
           <script>
             document.addEventListener('DOMContentLoaded', function () {
               document.getElementById('joining-balance').innerHTML = shortBalance('{{ .NetworkStats.EnteringBalance }}');
+              document.getElementById('leaving-balance').innerHTML = shortBalance('{{ .NetworkStats.ExitingValidatorsBalance }}');
             });
           </script>
         {{ else }}
