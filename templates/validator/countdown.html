@@ -33,6 +33,10 @@
 		{{ else }}
 			var genesis = {{ .ActivationTs.Unix }}
 		{{ end }}
+		{{ if and (not .PendingDepositAboveMinActivation) (not .EstimatedIndexTs.IsZero) }}
+			genesis = {{ .EstimatedIndexTs.Unix }}
+		{{ end }}
+
 		var now = Math.round((new Date()).getTime() / 1000)
 		var secondsLeft = genesis - now
 		setTime(secondsLeft)

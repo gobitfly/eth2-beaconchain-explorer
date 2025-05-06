@@ -558,7 +558,22 @@ func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 func FormatDepositAmount(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := price.GetPrice(Config.Frontend.ClCurrency, currency)
 	balance := float64(balanceInt) / float64(Config.Frontend.ClCurrencyDivisor)
-	return template.HTML(fmt.Sprintf("%.0f %v", balance*exchangeRate, currency))
+	amount := balance * exchangeRate
+
+	// scale by 10^8 for precision
+	const scale = 1e8
+	scaled := big.NewInt(int64(amount * scale))
+
+	decimals := 6
+	if currency != Config.Frontend.ClCurrency {
+		decimals = 4
+	}
+	trimmed, full := trimAmount(scaled, 8, 0, decimals, false)
+
+	return template.HTML(fmt.Sprintf(
+		`<span data-toggle="tooltip" title="%v %s">%s %[2]s</span>`,
+		full, currency, trimmed,
+	))
 }
 
 // FormatEffectiveBalance will return the effective balance formated as string with 1 digit after the comma
