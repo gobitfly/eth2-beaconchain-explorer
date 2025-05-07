@@ -144,7 +144,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	g.Go(func() error {
 		b, err := client.ethClient.BlockByNumber(ctx, big.NewInt(number))
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting block %v details from client, error: %s", number, err)
 		}
 		mu.Lock()
 		timings.Headers = time.Since(start)
@@ -373,7 +373,7 @@ func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
 
 	block, err := client.ethClient.BlockByHash(ctx, common.HexToHash(hash))
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error getting block by hash %s, error: %s", hash, err)
 	}
 	return block.NumberU64(), nil
 }
@@ -438,11 +438,15 @@ func (client *ErigonClient) TraceGeth(blockNumber *big.Int) ([]*GethTraceCallRes
 
 	err := client.rpcClient.Call(&res, "debug_traceBlockByNumber", hexutil.EncodeBig(blockNumber), gethTracerArg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while calling geth for block %v traces, error: %s", blockNumber.Uint64(), err)
 	}
 
 	data := make([]*GethTraceCallResult, 0, 20)
 	for i, r := range res {
+		if r.Result == nil {
+			return nil, fmt.Errorf("trace call %v result is nil for block %v", i, blockNumber.Uint64())
+		}
+
 		r.Result.TransactionPosition = i
 		extractCalls(r.Result, &data)
 	}
@@ -512,7 +516,7 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 
 	err := client.rpcClient.Call(&res, "trace_block", blockNumber)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while calling parity for block %v traces, error: %s", blockNumber, err)
 	}
 
 	return res, nil
@@ -523,7 +527,7 @@ func (client *ErigonClient) TraceParityTx(txHash string) ([]*ParityTraceResult, 
 
 	err := client.rpcClient.Call(&res, "trace_transaction", txHash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while calling parity for tx %s traces, error: %s", txHash, err)
 	}
 
 	return res, nil
@@ -534,7 +538,7 @@ func (client *ErigonClient) TraceGethTx(txHash string) ([]*GethTraceCallResult, 
 
 	err := client.rpcClient.Call(&res, "debug_traceTransaction", txHash, gethTracerArg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while calling geth for tx %s traces, error: %s", txHash, err)
 	}
 
 	data := make([]*GethTraceCallResult, 0, 20)
