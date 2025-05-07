@@ -28,6 +28,7 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function() {
+		var rocket = true
 		{{ if not .EstimatedActivationTs.IsZero}}
 			var genesis = {{ .EstimatedActivationTs.Unix }}
 		{{ else }}
@@ -35,6 +36,7 @@
 		{{ end }}
 		{{ if and (not .PendingDepositAboveMinActivation) (not .EstimatedIndexTs.IsZero) }}
 			genesis = {{ .EstimatedIndexTs.Unix }}
+			rocket = false
 		{{ end }}
 
 		var now = Math.round((new Date()).getTime() / 1000)
@@ -42,7 +44,7 @@
 		setTime(secondsLeft)
 		// $('#estimated+span').removeClass('d-none')
 		var countdownInterval = setInterval(function () {
-			if (secondsLeft<= 0) {
+			if (secondsLeft<= 0 && rocket) {
 				clearInterval(countdownInterval)
 				$('#rocket').removeClass('d-none')
 				return

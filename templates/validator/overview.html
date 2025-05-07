@@ -84,13 +84,17 @@
         <div class="col">
           <div class="px-2">
             <div class="p-2 mx-auto" style="max-width: 50rem;">
-              A deposit for this validator has been found and is waiting in the queue to be processed.
-              {{ if and (lt .EstimatedActivationEpoch 100_000_000) (.PendingDepositAboveMinActivation) }}
-                It is estimated to be activated on <span class="font-weight-bolder" title="{{ .EstimatedActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
-              {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
-                The deposit will be credited on <span class="font-weight-bolder" title="{{ .EstimatedIndexTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedIndexTs.Unix }}">{{ .EstimatedIndexTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedIndexEpoch }}</span> but for the validator to get activated, it must have a balance of at least <b>{{ formatClCurrency config.Chain.ClConfig.MinActivationBalance $.Rates.ClCurrency 0 true false false false }}</b>.
+              {{ if and (and (lt .EstimatedActivationEpoch 100_000_000) (eq .EstimatedIndexEpoch 0)) (not .PendingDepositAboveMinActivation) }}
+                The validator has a deposit but has not yet reached the minimum balance of <b>{{ formatClCurrency config.Chain.ClConfig.MinActivationBalance $.Rates.ClCurrency 0 true false false false }}</b> required for activation. Another deposit may be necessary to reach this threshold, depending on recent activity.
+              {{ else }}
+                A deposit for this validator has been found and is waiting in the queue to be processed.
+                {{ if and (lt .EstimatedActivationEpoch 100_000_000) (.PendingDepositAboveMinActivation) }}
+                  It is estimated to be activated on <span class="font-weight-bolder" title="{{ .EstimatedActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
+                {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
+                  The deposit will be credited on <span class="font-weight-bolder" title="{{ .EstimatedIndexTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedIndexTs.Unix }}">{{ .EstimatedIndexTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedIndexEpoch }}</span> but for the validator to get activated, it must have a balance of at least <b>{{ formatClCurrency config.Chain.ClConfig.MinActivationBalance $.Rates.ClCurrency 0 true false false false }}</b>.
+                {{ end }}
+                Make sure your nodes and your client are up and running <em>before</em> the countdown reaches zero.
               {{ end }}
-              Make sure your nodes and your client are up and running <em>before</em> the countdown reaches zero.
             </div>
             {{ if gt .QueuePosition 0 }}
               <div class="d-flex justify-content-center">
