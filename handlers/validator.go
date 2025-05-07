@@ -633,7 +633,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validatorPageData.ShowMultipleWithdrawalCredentialsWarning = hasMultipleWithdrawalCredentials(validatorPageData.Deposits)
-
 		return nil
 	})
 
@@ -980,7 +979,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-
 		return nil
 	})
 
@@ -1078,7 +1076,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			ecr.block_number, 
 			extract(epoch from ecr.block_ts)::int as block_ts,
 			s.validatorindex AS source_validator_index,
-			t.validatorindex AS target_validator_index
+			t.validatorindex AS target_validator_index,
+			s.withdrawalcredentials AS source_withdrawalcredentials
 		FROM eth1_consolidation_requests ecr
 		INNER JOIN validators s ON ecr.source_pubkey = s.pubkey
 		INNER JOIN validators t ON ecr.target_pubkey = t.pubkey
@@ -1090,7 +1089,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, ew := range validatorPageData.ExecutionConsolidations {
-			if !bytes.Equal(ew.SourceAddress.Bytes(), validatorWithdrawalAddress) {
+			sourceWithdrawalAddress, err := utils.WithdrawalCredentialsToAddress(ew.SourceWithdrawalCredentials)
+			if err != nil {
+				logger.Warnf("error converting withdrawal credentials to address: %v", err)
+				continue
+			}
+			if !bytes.Equal(ew.SourceAddress.Bytes(), sourceWithdrawalAddress) {
 				ew.WrongSourceAddress = true
 			}
 		}
