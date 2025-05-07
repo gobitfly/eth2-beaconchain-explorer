@@ -832,13 +832,14 @@ type FrontendConsolidationRequest struct {
 }
 
 type FrontendExecutionConsolidationRequest struct {
-	SourceAddress      common.Address `db:"source_address"`
-	TxHash             []byte         `db:"tx_hash"`
-	BlockNumber        uint64         `db:"block_number"`
-	Ts                 int64          `db:"block_ts"`
-	SourceIndex        int64          `db:"source_validator_index"`
-	TargetIndex        int64          `db:"target_validator_index"`
-	WrongSourceAddress bool
+	SourceAddress               common.Address `db:"source_address"`
+	TxHash                      []byte         `db:"tx_hash"`
+	BlockNumber                 uint64         `db:"block_number"`
+	Ts                          int64          `db:"block_ts"`
+	SourceIndex                 int64          `db:"source_validator_index"`
+	TargetIndex                 int64          `db:"target_validator_index"`
+	SourceWithdrawalCredentials []byte         `db:"source_withdrawalcredentials"`
+	WrongSourceAddress          bool
 }
 
 func (t *FrontendExecutionConsolidationRequest) IsMoveToCompounding() bool {
