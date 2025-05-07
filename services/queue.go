@@ -122,7 +122,7 @@ func getQueuesEstimate() (*types.QueuesEstimate, error) {
 	etherChurnByDay := etherChurnByEpoch * utils.EpochsPerDay()
 	re := &types.QueuesEstimate{
 		EnteringNewValidatorsCount:     result.EnteringNewValidators,
-		EnteringNewValidatorsEthAmount: result.QueuedBalanceAhead - result.TopUpAmount,
+		EnteringNewValidatorsEthAmount: max(result.QueuedBalanceAhead-result.TopUpAmount, 0),
 		EnteringTopUpEthAmount:         result.TopUpAmount,
 		EnteringTotalEthAmount:         result.QueuedBalanceAhead,
 		EnteringQueueTime:              depositQueueTime,
