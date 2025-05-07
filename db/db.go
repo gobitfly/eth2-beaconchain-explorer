@@ -596,7 +596,7 @@ func GetValidatorIndex(publicKey []byte) (uint64, error) {
 func GetNextPendingDeposit(pubkey []byte) (*types.PendingDeposit, error) {
 	entry, err := GetPendingDeposits(pubkey, 1)
 	if len(entry) == 0 {
-		return &types.PendingDeposit{}, nil
+		return &types.PendingDeposit{}, sql.ErrNoRows
 	}
 	return &entry[0], err
 }
