@@ -1,0 +1,80 @@
+<template>
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: 0.5rem 0">
+        <span><i class="fa fa-cubes"></i> Most recent blocks</span>
+        <a class="btn btn-primary btn-sm float-right text-white" href="/blocks">View more</a>
+      </h3>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Epoch</th>
+              <th>Slot</th>
+              <th data-toggle="tooltip" title="Execution Layer Block Number">Block</th>
+              <th>Status</th>
+              <th>Time</th>
+              <th>Proposer</th>
+              <!-- <th>Root Hash</th> -->
+              <!-- <th data-toggle="tooltip" title="Attestations">Att</th> -->
+              <!-- <th>Deposits</th>
+          <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+          <th>Exits</th> -->
+            </tr>
+          </thead>
+          <tbody v-if="page && page.blocks && page.blocks.length">
+            <tr v-for="block in page.blocks">
+              <td>
+                <router-link to="/">{{ block.epoch }}</router-link>
+              </td>
+              <td>
+                <router-link to="/">{{ block.slot }}</router-link>
+              </td>
+              <td v-if="block.exec_block_number === 0">
+                <span style="background: #e7e1d7 font-size: 12px; font-weight: 500;" class="badge badge-pill bg-light text-dark">-</span>
+              </td>
+              <td v-else><a v-bind:href="'/block/' + block.exec_block_number" v-html="addCommas(block.exec_block_number)"></a></td>
+              <td v-if="block.slot === 0">
+                <span style="background: #e7e1d7" class="badge text-dark">Genesis</span>
+              </td>
+              <td v-else v-html="block.status_formatted"></td>
+              <td><span v-tooltip="{ text: timestampTooltip(block.ts) }" v-html="fromNow(block.ts)"></span></td>
+              <td v-if="block.slot !== 0" v-html="block.proposer_formatted"></td>
+              <td v-else>N/A</td>
+              <!-- <td class="text-monospace">
+            <a v-if="block.status === 1 || block.status === 3" v-bind:href="'/block/' + block.block_root_formatted">0x${ block.block_root_formatted.substr(0, 6) }...</a>
+            <a v-if="block.status === 0 || block.status === 2">N/A</a>
+          </td> -->
+              <!-- <td>${ block.attestations }</td> -->
+              <!-- <td>${ block.deposits }</td>
+          <td>${ block.proposerslashings } / ${ block.attesterslashings }</td>
+          <td>${ block.exits }</td> -->
+            </tr>
+          </tbody>
+          <tbody v-else>
+            <tr style="height: 430px">
+              <td></td>
+              <td style="vertical-align: middle" colspan="4">
+                <div class="img-fluid mx-auto p-3 d-flex align-items-center" style="max-height: 400px; width: auto; overflow: hidden">
+                  <!--  {{ template "timeline_svg" }} -->
+                </div>
+              </td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onServerPrefetch, onMounted, computed, toRef } from "vue"
+import { useState } from "@/stores/state.js"
+import { addCommas, fromNow, timestampTooltip } from "@/utils.js"
+
+const state = useState()
+const page = computed(() => state.indexData)
+</script>

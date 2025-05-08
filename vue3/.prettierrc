@@ -1,0 +1,7 @@
+{
+  "printWidth": 800,
+  "htmlWhitespaceSensitivity": "css",
+  "bracketSameLine": true,
+  "trailingComma": "es5",
+  "semi": false
+}
