@@ -389,7 +389,7 @@ func main() {
 		}
 
 		if *enableBalanceUpdater {
-			ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, 10)
+			ProcessMetadataUpdates(bt, client, balanceUpdaterPrefix, *balanceUpdaterBatchSize, 20)
 		}
 
 		logrus.Infof("index run completed")
@@ -578,7 +578,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 
 	its := 0
 	for {
-		start := time.Now()
+		start1 := time.Now()
 		keys, pairs, err := bt.GetMetadataUpdates(prefix, lastKey, batchSize)
 		if err != nil {
 			logrus.Errorf("error retrieving metadata updates from bigtable: %v", err)
@@ -586,9 +586,11 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		}
 
 		if len(keys) == 0 {
+			services.ReportStatus("eth1indexerBalanceUpdater", "Running", nil)
 			return
 		}
 
+		start2 := time.Now()
 		balances := make([]*types.Eth1AddressBalance, 0, len(pairs))
 		for b := 0; b < len(pairs); b += batchSize {
 			start := b
@@ -608,6 +610,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 			balances = append(balances, b...)
 		}
 
+		start3 := time.Now()
 		err = bt.SaveBalances(balances, keys)
 		if err != nil {
 			logrus.Errorf("error saving balances to bigtable: %v", err)
@@ -615,7 +618,7 @@ func ProcessMetadataUpdates(bt *db.Bigtable, client *rpc.ErigonClient, prefix st
 		}
 
 		lastKey = keys[len(keys)-1]
-		logrus.Infof("retrieved %v balances in %v, currently at %v", len(balances), time.Since(start), lastKey)
+		logrus.Infof("retrieved %v balances in %v (bt.read: %v, rpc.get: %v, bt.save: %v), currently at %v", len(balances), time.Since(start1), start2.Sub(start1), start3.Sub(start2), time.Since(start3), lastKey)
 
 		its++
 
