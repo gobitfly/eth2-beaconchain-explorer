@@ -88,10 +88,12 @@
                 The validator has a deposit but has not yet reached the minimum balance of <b>{{ formatClCurrency config.Chain.ClConfig.MinActivationBalance $.Rates.ClCurrency 0 true false false false }}</b> required for activation. Another deposit may be necessary to reach this threshold, depending on recent activity.
               {{ else }}
                 A deposit for this validator has been found and is waiting in the queue to be processed.
-                {{ if and (lt .EstimatedActivationEpoch 100_000_000) (.PendingDepositAboveMinActivation) }}
+                {{ if and (and (lt .EstimatedActivationEpoch 100_000_000) (.PendingDepositAboveMinActivation)) (gt .EstimatedActivationEpoch 0) }}
                   It is estimated to be activated on <span class="font-weight-bolder" title="{{ .EstimatedActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
-                {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
+                {{ else if and (lt .EstimatedActivationEpoch 100_000_000) (gt .EstimatedIndexEpoch 0) }}
                   The deposit will be credited on <span class="font-weight-bolder" title="{{ .EstimatedIndexTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedIndexTs.Unix }}">{{ .EstimatedIndexTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedIndexEpoch }}</span> but for the validator to get activated, it must have a balance of at least <b>{{ formatClCurrency config.Chain.ClConfig.MinActivationBalance $.Rates.ClCurrency 0 true false false false }}</b>.
+                {{ else }}
+                  We are calculating your position in the queue, please check back in a couple minutes.
                 {{ end }}
                 Make sure your nodes and your client are up and running <em>before</em> the countdown reaches zero.
               {{ end }}
@@ -144,8 +146,10 @@
           This validator has been processed by the beacon chain and is currently waiting to be activated.
           {{ if lt .ActivationEpoch 100_000_000 }}
             It will be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>.
-          {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
+          {{ else if and (lt .EstimatedActivationEpoch 100_000_000) (gt .EstimatedActivationEpoch 0) }}
             It is estimated to be activated on <span class="font-weight-bolder" title="{{ .EstimatedActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
+          {{ else }}
+            We are currently updating your estimate, expect an activation within the next couple epochs.
           {{ end }}
           Make sure your nodes and your client are up and running <em>before</em> the countdown reaches zero.
         </div>
