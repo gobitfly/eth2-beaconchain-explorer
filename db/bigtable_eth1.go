@@ -2153,6 +2153,11 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 			if itx.Type == "staticcall" {
 				continue
 			}
+
+			if bytes.Equal(itx.Value, []byte{0x0}) {
+				continue
+			}
+
 			queueRequests = append(queueRequests, BridgeQueueRequest{
 				Fee:            new(big.Int).SetBytes(itx.Value).Uint64(),
 				TxHash:         tx.Hash,
@@ -2245,6 +2250,11 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 			if itx.Type == "staticcall" {
 				continue
 			}
+
+			if bytes.Equal(itx.Value, []byte{0x0}) {
+				continue
+			}
+
 			queueRequests = append(queueRequests, BridgeQueueRequest{
 				Fee:            new(big.Int).SetBytes(itx.Value).Uint64(),
 				TxHash:         tx.Hash,
