@@ -1124,9 +1124,8 @@ func FormatValidatorTags(tags []string) template.HTML {
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<a class=\"val-link\" href=\"/validator/%v\">%v</a>", validator, validator))
 }
-
 func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 	var validatorRead string
 	var validatorLink string

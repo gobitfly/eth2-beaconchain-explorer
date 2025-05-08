@@ -645,3 +645,11 @@ label.btn.btn-light:hover {
   background: #3e4461;
   color: #ffffff;
 }
+
+.val-link::before {
+  content: "\f183"; 
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900; 
+  display: inline-block;
+  margin-right: 0.5rem; 
+}
