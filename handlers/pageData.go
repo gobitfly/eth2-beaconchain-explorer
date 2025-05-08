@@ -135,7 +135,7 @@ func getUserFromSessionStore(r *http.Request) *types.User {
 
 func getUserSession(r *http.Request) (*types.User, *utils.CustomSession, error) {
 	u := &types.User{}
-	if utils.SessionStore == nil { // sanity check for production deployment where api runs independ of frontend and has no initialized sessionstore
+	if utils.SessionStore == nil { // sanity check for production deployment where api runs independent of frontend and has no initialized sessionstore
 		return u, nil, errors.New("sessionstore not initialized")
 	}
 	session, err := utils.SessionStore.Get(r, authSessionName)
