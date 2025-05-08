@@ -2147,6 +2147,10 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 			if !bytes.Equal(itx.To, consolidationContractAddress) {
 				continue
 			}
+
+			if itx.Type == "staticcall" {
+				continue
+			}
 			queueRequests = append(queueRequests, BridgeQueueRequest{
 				Fee:            new(big.Int).SetBytes(itx.Value).Uint64(),
 				TxHash:         tx.Hash,
@@ -2196,6 +2200,10 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 		}
 	}
 
+	if requestIndex != len(queueRequests) {
+		logger.Errorf("unexpected number of consolidation requests for block %d", blk.Number)
+	}
+
 	return bulkData, bulkMetadataUpdates, nil
 }
 
@@ -2229,6 +2237,10 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 			}
 
 			if !bytes.Equal(itx.To, withdrawalContractAddress) {
+				continue
+			}
+
+			if itx.Type == "staticcall" {
 				continue
 			}
 			queueRequests = append(queueRequests, BridgeQueueRequest{
@@ -2278,6 +2290,10 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 				requestIndex++
 			}
 		}
+	}
+
+	if requestIndex != len(queueRequests) {
+		logger.Errorf("unexpected number of withdrawal requests for block %d", blk.Number)
 	}
 
 	return bulkData, bulkMetadataUpdates, nil
