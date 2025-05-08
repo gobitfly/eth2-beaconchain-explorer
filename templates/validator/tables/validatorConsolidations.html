@@ -7,11 +7,14 @@
           <h3>Consolidation in progress</h3>
           <h6>Your consolidation request is queued and will be completed on <span aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span></h6>
         </div>
-      {{ else if and (gt (len .ExecutionConsolidations) 0) (not (index .ExecutionConsolidations 0).WrongSourceAddress) }}
-        <div class="alert alert-info text-center my-3">
-          <h3>Consolidation in progress</h3>
-          <h6>A consolidation request was submitted but it has not been picked up by the consensus layer yet. This might take a couple of hours depending on the queue.</h6>
-        </div>
+      {{ else if gt (len .ExecutionConsolidations) 0 }}
+        {{ $first := index .ExecutionConsolidations 0 }}
+        {{ if and (not $first.WrongSourceAddress) (eq $first.SourceIndex .Index) }}
+          <div class="alert alert-info text-center my-3">
+            <h3>Consolidation in progress</h3>
+            <h6>A consolidation request was submitted but it has not been picked up by the consensus layer yet. This might take a couple of hours depending on the queue.</h6>
+          </div>
+        {{ end }}
       {{ end }}
     {{ end }}
 
