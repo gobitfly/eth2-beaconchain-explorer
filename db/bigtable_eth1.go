@@ -2144,11 +2144,12 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 				continue
 			}
 
-			// skip top level and empty calls
-			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) {
-				if !bytes.Equal(itx.To, consolidationContractAddress) {
-					continue
-				}
+			if !bytes.Equal(itx.To, consolidationContractAddress) {
+				continue
+			}
+
+			if itx.Type == "staticcall" {
+				continue
 			}
 			queueRequests = append(queueRequests, BridgeQueueRequest{
 				Fee:            new(big.Int).SetBytes(itx.Value).Uint64(),
@@ -2199,6 +2200,10 @@ func (bigtable *Bigtable) TransformConsolidationRequests(blk *types.Eth1Block, c
 		}
 	}
 
+	if requestIndex != len(queueRequests) {
+		logger.Errorf("unexpected number of consolidation requests for block %d", blk.Number)
+	}
+
 	return bulkData, bulkMetadataUpdates, nil
 }
 
@@ -2231,11 +2236,12 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 				continue
 			}
 
-			// skip top level and empty calls
-			if itx.Path == "[]" || bytes.Equal(itx.Value, []byte{0x0}) {
-				if !bytes.Equal(itx.To, withdrawalContractAddress) {
-					continue
-				}
+			if !bytes.Equal(itx.To, withdrawalContractAddress) {
+				continue
+			}
+
+			if itx.Type == "staticcall" {
+				continue
 			}
 			queueRequests = append(queueRequests, BridgeQueueRequest{
 				Fee:            new(big.Int).SetBytes(itx.Value).Uint64(),
@@ -2284,6 +2290,10 @@ func (bigtable *Bigtable) TransformWithdrawalRequests(blk *types.Eth1Block, cach
 				requestIndex++
 			}
 		}
+	}
+
+	if requestIndex != len(queueRequests) {
+		logger.Errorf("unexpected number of withdrawal requests for block %d", blk.Number)
 	}
 
 	return bulkData, bulkMetadataUpdates, nil
