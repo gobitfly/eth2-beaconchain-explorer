@@ -786,15 +786,17 @@ func (bigtable *Bigtable) IndexBlocksWithTransformers(blocks []*types.Eth1Block,
 			if err != nil {
 				logrus.WithError(err).Errorf("error transforming block [%v]", block.Number)
 			}
-			bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
-			bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+			if mutsData != nil {
+				bulkMutsData.Keys = append(bulkMutsData.Keys, mutsData.Keys...)
+				bulkMutsData.Muts = append(bulkMutsData.Muts, mutsData.Muts...)
+			}
 
 			if mutsMetadataUpdate != nil {
 				bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, mutsMetadataUpdate.Keys...)
 				bulkMutsMetadataUpdate.Muts = append(bulkMutsMetadataUpdate.Muts, mutsMetadataUpdate.Muts...)
 			}
 
-			if len(mutsData.Keys) > 0 {
+			if mutsData != nil && len(mutsData.Keys) > 0 {
 				metaKeys := strings.Join(bulkMutsData.Keys, ",") // save block keys in order to be able to handle chain reorgs
 				key, mut := bigtable.blockKeysMutation(block.Number, block.Hash, metaKeys)
 				bulkMutsMetadataUpdate.Keys = append(bulkMutsMetadataUpdate.Keys, key)
