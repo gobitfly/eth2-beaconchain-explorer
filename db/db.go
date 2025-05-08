@@ -588,7 +588,7 @@ func GetValidatorPublicKeys(indices []uint64, keys [][]byte) ([][]byte, error) {
 // GetValidatorIndex will return the validator-index for a public key from the database
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
-	err := ReaderDb.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1 AND status <> 'pending_initialized'", publicKey)
+	err := ReaderDb.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
 
 	return index, err
 }
