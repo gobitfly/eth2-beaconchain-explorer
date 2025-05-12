@@ -78,6 +78,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 				Transport: db2.NewWithFallback(roundTripper, http.DefaultTransport),
 			}))
 			client.rawStore = rawStore
+			logger.Infof("using bigtable %s/%s for erigon client", project, instance)
 		}
 	}
 
