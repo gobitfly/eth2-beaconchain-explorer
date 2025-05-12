@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"firebase.google.com/go/v4/messaging"
+	"go.uber.org/atomic"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/cmd/misc/commands"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
@@ -1690,11 +1691,34 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 		}
 	})
 
+	type Report struct {
+		Time time.Time
+		Slot int64
+	}
+	currSlot := atomic.NewInt64(int64(start))
+	lastReport := atomic.NewPointer(&Report{Time: time.Now(), Slot: currSlot.Load()})
+
+	go func() {
+		t := time.NewTicker(10 * time.Second)
+		for {
+			newReport := &Report{Time: time.Now(), Slot: currSlot.Load()}
+			oldReport := lastReport.Swap(newReport)
+			blocksPerSecond := float64(newReport.Slot-oldReport.Slot) / newReport.Time.Sub(oldReport.Time).Seconds()
+			logrus.Infof("indexed %d blocks in %.2fs (%.2f b/s, curr_block: %d, last_block: %d, blocks_left: %d, est_time_left: %s)", newReport.Slot-oldReport.Slot, newReport.Time.Sub(oldReport.Time).Seconds(), blocksPerSecond, newReport.Slot, end, int64(end)-newReport.Slot, time.Duration(float64(int64(end)-newReport.Slot)/blocksPerSecond)*time.Second)
+			select {
+			case <-t.C:
+			case <-quit:
+				return
+			}
+		}
+	}()
+
 	var errs []error
 	var mu sync.Mutex
 	for i := start; i <= end; i = i + batchSize {
 		height := int64(i)
 		readGroup.Go(func() error {
+			currSlot.Swap(height)
 			heightEnd := height + int64(batchSize) - 1
 			if heightEnd > int64(end) {
 				heightEnd = int64(end)
