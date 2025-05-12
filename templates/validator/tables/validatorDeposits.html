@@ -51,9 +51,6 @@
                 <td>
                   {{ if $deposit.Valid }}
                     <span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.Valid }}</span>
-                    {{ if (not $deposit.ValidSignature) }}
-                      &nbsp;<i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="Signature invalid, but will still be accepted due to a prior deposit with a valid signature."></i>
-                    {{ end }}
                   {{ else }}
                     <span class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">{{ $deposit.Valid }}</span>
                   {{ end }}
