@@ -9,7 +9,7 @@
         </div>
       {{ else if gt (len .ExecutionConsolidations) 0 }}
         {{ $first := index .ExecutionConsolidations 0 }}
-        {{ if and (not $first.WrongSourceAddress) (eq $first.SourceIndex .Index) }}
+        {{ if and (not $first.IsMoveToCompounding) (and (not $first.WrongSourceAddress) (eq $first.SourceIndex .Index)) }}
           <div class="alert alert-info text-center my-3">
             <h3>Consolidation in progress</h3>
             <h6>A consolidation request was submitted but it has not been picked up by the consensus layer yet. This might take a couple of hours depending on the queue.</h6>
