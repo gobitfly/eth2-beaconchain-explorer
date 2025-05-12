@@ -429,6 +429,7 @@ type ValidatorPageData struct {
 	EstimatedIndexEpoch              uint64
 	EstimatedIndexTs                 time.Time
 	ConsensusElExits                 []*FrontendConsensusELExitRequest
+	EnableWithdrawalsTab             bool
 }
 
 type RocketpoolValidatorPageData struct {
