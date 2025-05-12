@@ -128,6 +128,10 @@
     <script>
         var index = {{.Index}}
         window.addEventListener('load', function() {
+            if ({{ and (le .Index 0) (or (eq .Status "deposited") (eq .Status "deposited_invalid")) }}) {
+                return
+            }
+
             var activeTab = $('#chartTabs .active')
             var initializedWithdrawalTable = false
 
