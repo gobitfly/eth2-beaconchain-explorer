@@ -28,7 +28,7 @@
 	}
 
 	document.addEventListener('DOMContentLoaded', function() {
-		var rocket = true
+		var rocket = {{ ne .Status "deposited" }}
 		{{ if not .EstimatedActivationTs.IsZero}}
 			var genesis = {{ .EstimatedActivationTs.Unix }}
 		{{ else }}
