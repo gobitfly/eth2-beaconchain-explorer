@@ -544,8 +544,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// only calculate the expected next withdrawal if the validator is eligible
+			maxEB := utils.GetMaxEffectiveBalanceByWithdrawalCredentials(validatorPageData.WithdrawCredentials)
 			isFullWithdrawal := validatorPageData.CurrentBalance > 0 && validatorPageData.WithdrawableEpoch <= validatorPageData.Epoch
-			isPartialWithdrawal := validatorPageData.EffectiveBalance == utils.Config.Chain.ClConfig.MaxEffectiveBalance && validatorPageData.CurrentBalance > utils.Config.Chain.ClConfig.MaxEffectiveBalance
+			isPartialWithdrawal := validatorPageData.EffectiveBalance == maxEB && validatorPageData.CurrentBalance > maxEB
 			if stats != nil && stats.LatestValidatorWithdrawalIndex != nil && stats.TotalValidatorCount != nil && validatorPageData.IsWithdrawableAddress && (isFullWithdrawal || isPartialWithdrawal) {
 				distance, err := GetWithdrawableCountFromCursor(validatorPageData.Epoch, validatorPageData.Index, *stats.LatestValidatorWithdrawalIndex)
 				if err != nil {
@@ -575,7 +576,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					if isFullWithdrawal {
 						withdrawalAmount = validatorPageData.CurrentBalance
 					} else {
-						withdrawalAmount = validatorPageData.CurrentBalance - utils.Config.Chain.ClConfig.MaxEffectiveBalance
+						withdrawalAmount = validatorPageData.CurrentBalance - maxEB
 					}
 
 					if latestEpoch == lastWithdrawalsEpoch {

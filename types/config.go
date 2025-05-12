@@ -414,5 +414,6 @@ type ConfigJsonResponse struct {
 		MaxRequestBlobSidecarsElectra           string `json:"MAX_REQUEST_BLOB_SIDECARS_ELECTRA"`
 		MinActivationBalance                    string `json:"MIN_ACTIVATION_BALANCE"`
 		MaxPendingDepositsPerEpoch              string `json:"MAX_PENDING_DEPOSITS_PER_EPOCH"`
+		MaxEffectiveBalanceElectra              string `json:"MAX_EFFECTIVE_BALANCE_ELECTRA"`
 	} `json:"data"`
 }

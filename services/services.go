@@ -982,6 +982,10 @@ func LatestEpoch() uint64 {
 	return 0
 }
 
+func GetMaxEffectiveBalance() uint64 {
+	return utils.GetMaxEffectiveBalance(LatestEpoch())
+}
+
 func LatestNodeEpoch() uint64 {
 	cacheKey := fmt.Sprintf("%d:frontend:latestNodeEpoch", utils.Config.Chain.ClConfig.DepositChainID)
 
