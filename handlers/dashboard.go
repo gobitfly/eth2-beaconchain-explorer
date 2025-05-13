@@ -371,8 +371,9 @@ func getNextWithdrawalRow(queryValidators []uint64, currency string) ([][]interf
 			continue
 		}
 
+		maxEB := utils.GetMaxEffectiveBalanceByWithdrawalCredentials(v.WithdrawalCredentials)
 		if (balance[0].Balance > 0 && v.WithdrawableEpoch <= epoch) ||
-			(balance[0].EffectiveBalance == utils.Config.Chain.ClConfig.MaxEffectiveBalance && balance[0].Balance > utils.Config.Chain.ClConfig.MaxEffectiveBalance) {
+			(balance[0].EffectiveBalance == maxEB && balance[0].Balance > maxEB) {
 			// this validator is eligible for withdrawal, check if it is the next one
 			if nextValidator == nil || v.Index > *stats.LatestValidatorWithdrawalIndex {
 				nextValidator = v
@@ -420,16 +421,17 @@ func getNextWithdrawalRow(queryValidators []uint64, currency string) ([][]interf
 		withdrawalCredentialsTemplate = `<span class="text-muted">N/A</span>`
 	}
 
+	maxEB := utils.GetMaxEffectiveBalanceByWithdrawalCredentials(nextValidator.WithdrawalCredentials)
 	var withdrawalAmount uint64
 	if nextValidator.WithdrawableEpoch <= epoch {
 		// full withdrawal
 		withdrawalAmount = nextValidator.Balance
 	} else {
 		// partial withdrawal
-		withdrawalAmount = nextValidator.Balance - utils.Config.Chain.ClConfig.MaxEffectiveBalance
+		withdrawalAmount = nextValidator.Balance - maxEB
 	}
 
-	if lastWithdrawnEpoch == epoch || nextValidator.Balance < utils.Config.Chain.ClConfig.MaxEffectiveBalance {
+	if lastWithdrawnEpoch == epoch || nextValidator.Balance < maxEB {
 		withdrawalAmount = 0
 	}
 

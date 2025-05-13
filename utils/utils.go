@@ -580,6 +580,7 @@ func ReadConfig(cfg *types.Config, path string) error {
 			MaxRequestBlobSidecarsElectra:       mustParseUint(jr.Data.MaxRequestBlobSidecarsElectra),
 			MinActivationBalance:                mustParseUint(jr.Data.MinActivationBalance),
 			MaxPendingDepositsPerEpoch:          mustParseUint(jr.Data.MaxPendingDepositsPerEpoch),
+			MaxEffectiveBalanceElectra:          mustParseUint(jr.Data.MaxEffectiveBalanceElectra),
 		}
 
 		if jr.Data.AltairForkEpoch == "" {
@@ -839,6 +840,29 @@ func mustParseUint(str string) uint64 {
 	}
 
 	return nbr
+}
+
+func GetMaxEffectiveBalance(currentEpoch uint64) uint64 {
+	if Config.Chain.ClConfig.ElectraForkEpoch >= currentEpoch {
+		return Config.Chain.ClConfig.MaxEffectiveBalanceElectra
+	}
+	return Config.Chain.ClConfig.MaxEffectiveBalance
+}
+
+func GetMaxEffectiveBalanceByWithdrawalCredentials(withCred []byte) uint64 {
+	if len(withCred) == 0 {
+		return 0
+	}
+	switch withCred[0] {
+	case 0x00, 0x01:
+		// phase0, capella
+		return Config.Chain.ClConfig.MaxEffectiveBalance
+	case 0x02:
+		// electra
+		return Config.Chain.ClConfig.MaxEffectiveBalanceElectra
+	default:
+		return 0
+	}
 }
 
 func readConfigFile(cfg *types.Config, path string) error {

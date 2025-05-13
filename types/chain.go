@@ -151,4 +151,5 @@ type ClChainConfig struct {
 	MaxRequestBlobSidecarsElectra       uint64 `yaml:"MAX_REQUEST_BLOB_SIDECARS_ELECTRA"`
 	MinActivationBalance                uint64 `yaml:"MIN_ACTIVATION_BALANCE"`
 	MaxPendingDepositsPerEpoch          uint64 `yaml:"MAX_PENDING_DEPOSITS_PER_EPOCH"`
+	MaxEffectiveBalanceElectra          uint64 `yaml:"MAX_EFFECTIVE_BALANCE_ELECTRA"`
 }
