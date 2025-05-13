@@ -161,10 +161,10 @@ func Slot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getAttestationsData(slot uint64, onlyFirst bool) ([]*types.BlockPageAttestation, error) {
-	limit := ";"
-	if onlyFirst {
-		limit = " LIMIT 1;"
+func getAttestationsData(slot uint64, offset int64) ([]*types.BlockPageAttestation, error) {
+	limit := " LIMIT 1"
+	if offset > 0 {
+		limit += fmt.Sprintf(" OFFSET %d", offset)
 	}
 
 	var attestations []*types.BlockPageAttestation
@@ -285,7 +285,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	slotPageData.NextSlot = slotPageData.Slot + 1
 	slotPageData.PreviousSlot = slotPageData.Slot - 1
 
-	slotPageData.Attestations, err = getAttestationsData(slotPageData.Slot, true)
+	slotPageData.Attestations, err = getAttestationsData(slotPageData.Slot, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -826,7 +826,19 @@ func SlotAttestationsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attestations, err := getAttestationsData(slot, false)
+	offset := uint64(0)
+
+	offsetStr := r.URL.Query().Get("offset")
+	if offsetStr != "" {
+		offsetParsed, err := strconv.ParseUint(offsetStr, 10, 64)
+		if err != nil || offsetParsed > 30 {
+			http.Error(w, "Error: Invalid parameter offset.", http.StatusBadRequest)
+			return
+		}
+		offset = offsetParsed
+	}
+
+	attestations, err := getAttestationsData(slot, int64(offset))
 	if err != nil {
 		logger.Errorf("error retrieving attestations data for slot %v, err: %v", slot, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

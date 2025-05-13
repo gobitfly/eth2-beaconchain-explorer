@@ -131,21 +131,59 @@
       return att_card;
     }
 
-    async function setupInfiniteScrollAttestations() {
-      const infLoading = document.getElementById('attestationsTabPanel');
-      if(infLoading) {
-        try {
-          const slot = {{ .Slot }} || 0;
-          const res = await fetch(`/slot/${encodeURI(slot)}/attestations`);
-          const data = await res.json();
+    let attestationOffset = 1;
+    let attestationLoading = false;
+    let attestationLoadingEl = null;
 
-          for (let i = 1; i < data.length; ++i) {
-            infLoading.appendChild(getAttestationElement(data[i]));
-          }
-        } catch (err) {
-          console.error('error getting lazy attestations: ', err)
+    async function setupInfiniteScrollAttestations() {
+      if (attestationOffset === -1 || attestationLoading) return;
+
+      const infLoading = document.getElementById('attestationsTabPanel');
+      if (!infLoading) return;
+
+      try {
+        attestationLoading = true;
+
+        attestationLoadingEl = document.createElement('div');
+        attestationLoadingEl.className = 'attestation-loading';
+        attestationLoadingEl.innerText = 'Loading more...';
+        attestationLoadingEl.style.padding = '1rem';
+        attestationLoadingEl.style.textAlign = 'center';
+        infLoading.appendChild(attestationLoadingEl);
+
+        const slot = {{ .Slot }} || 0;
+        const res = await fetch(`/slot/${encodeURIComponent(slot)}/attestations?offset=${attestationOffset}`);
+        const data = await res.json();
+
+        if (attestationLoadingEl && attestationLoadingEl.parentNode) {
+          attestationLoadingEl.remove();
+          attestationLoadingEl = null;
+        }
+
+        if (data.length === 0) {
+          attestationOffset = -1; // no more data
+          return;
+        }
+
+        for (let i = 0; i < data.length; ++i) {
+          infLoading.appendChild(getAttestationElement(data[i]));
+        }
+
+        attestationOffset += data.length;
+      } catch (err) {
+        console.error('error getting lazy attestations: ', err);
+
+        if (attestationLoadingEl && attestationLoadingEl.parentNode) {
+          attestationLoadingEl.remove();
+          attestationLoadingEl = null;
+        }
+
+        const infLoading = document.getElementById('attestationsTabPanel');
+        if (infLoading) {
           infLoading.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
         }
+      } finally {
+        attestationLoading = false;
       }
     }
 
@@ -300,16 +338,32 @@
         $("#block_blsChange").DataTable(blsChangeOpts)
     })
 
+    function attestationScrollHandler() {
+      const infLoading = document.getElementById('attestationsTabPanel');
+      if (!infLoading) return;
+
+      const rect = infLoading.getBoundingClientRect();
+      if (rect.bottom < window.innerHeight + 100) {
+        setupInfiniteScrollAttestations();
+      }
+    }
+
     {
-      var attestations_tab_loaded = false
       let atab = $('#attestations-tab')
       if(atab.length > 0) {
+        var removeAttestations = ()=>{
+          document.removeEventListener('scroll', attestationScrollHandler);
+        }
         var activateAttestations = ()=>{
-          if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true;
+            removeAttestations()
+            document.addEventListener('scroll', attestationScrollHandler);
         }
         atab.on('shown.bs.tab', activateAttestations);
+        atab.on('hidden.bs.tab', removeAttestations);
         if (atab.hasClass("active")){
           activateAttestations()
+        } else {
+          removeAttestations()
         }
       } else {
         console.error('error getting #attestations-tab')
