@@ -1128,6 +1128,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 
+	var withdrawalCount uint64
+	g.Go(func() error {
+		withdrawalCount, err = db.GetTotalWithdrawalsCount([]uint64{validatorPageData.Index})
+		if err != nil {
+			return fmt.Errorf("error getting withdrawal count: %w", err)
+		}
+		return nil
+	})
+
 	err = g.Wait()
 	if err != nil {
 		utils.LogError(err, "error getting validator data", 0)
@@ -1135,6 +1144,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	validatorPageData.EnableWithdrawalsTab = validatorPageData.CappellaHasHappened && (withdrawalCount > 0 || len(validatorPageData.ExecutionWithdrawals) > 0 || len(validatorPageData.ConsensusElExits) > 0)
 	validatorPageData.FutureDutiesEpoch = protomath.MaxU64(futureProposalEpoch, futureSyncDutyEpoch)
 
 	data.Data = validatorPageData
