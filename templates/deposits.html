@@ -53,7 +53,6 @@
                 { orderable: true, targets: 5 },
                 { orderable: false, targets: 6 },
                 { orderable: false, targets: 7 },
-                { orderable: false, targets: 8 }
               ],
             })
           {{end}}
@@ -251,14 +250,13 @@
                   <th>Time</th>
                   <th>Block</th>
                   <th>Validator State</th>
-                  <th>Valid Signature</th>
                 </tr>
               </thead>
               <tbody>
                 {{ if len .DepositContract }}
                 {{ else }}
                   <tr>
-                    <td colspan="8">Waiting for Deposit Contract</td>
+                    <td colspan="7">Waiting for Deposit Contract</td>
                   </tr>
                 {{ end }}
               </tbody>
