@@ -93,10 +93,6 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {
-		valid := "❌"
-		if d.ValidSignature {
-			valid = "✅"
-		}
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
@@ -106,7 +102,6 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
 			utils.FormatValidatorStatus(d.State),
-			valid,
 		}
 	}
 
