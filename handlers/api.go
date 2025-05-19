@@ -865,7 +865,21 @@ func ApiSlotDepositRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, pubkey, withdrawal_credentials, amount, signature FROM blocks_deposit_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		slot_processed as block_slot, 
+		block_processed_root as block_root, 
+		index_processed as request_index, 
+		pubkey, 
+		withdrawal_credentials, 
+		amount, 
+		signature 
+	FROM blocks_deposit_requests_v2 
+	WHERE slot_processed = $1 
+	AND type = 'account' 
+	AND blocks_deposit_requests_v2.status = 'completed'
+	ORDER BY slot_processed DESC, index_processed DESC 
+	limit $2 offset $3`, slot, limit, offset)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
