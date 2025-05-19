@@ -453,19 +453,20 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 
 	err = db.ReaderDb.Select(&slotPageData.DepositRequests, `
 	SELECT 
-		block_slot, 
-		block_root, 
-		request_index, 
+		slot_processed as block_slot, 
+		block_processed_root as block_root, 
+		index_processed as request_index, 
 		pubkey, 
 		withdrawal_credentials, 
-		COALESCE((SELECT validatorindex FROM validators WHERE validators.pubkey = blocks_deposit_requests.pubkey), -1) as validator_index,
+		COALESCE((SELECT validatorindex FROM validators WHERE validators.pubkey = blocks_deposit_requests_v2.pubkey), -1) as validator_index,
 		amount,
 		signature
-	FROM blocks_deposit_requests 
-	WHERE block_slot = $1 AND block_root = $2 
-	ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+	FROM blocks_deposit_requests_v2 
+	WHERE slot_processed = $1 AND block_processed_root = $2 
+	AND blocks_deposit_requests_v2.status = 'completed'
+	ORDER BY index_processed`, slotPageData.Slot, slotPageData.BlockRoot)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving blocks_deposit_requests of block %v: %v", slotPageData.Slot, err)
+		return nil, fmt.Errorf("error retrieving blocks_deposit_requests_v2 of block %v: %v", slotPageData.Slot, err)
 	}
 
 	return &slotPageData, nil

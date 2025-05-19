@@ -652,17 +652,18 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 		WHERE blocks_deposits.publickey = $1
 		UNION ALL
 		SELECT
-			blocks_deposit_requests.block_slot,
-			blocks_deposit_requests.request_index,
-			blocks_deposit_requests.block_root,
+			blocks_deposit_requests_v2.slot_processed as block_slot,
+			blocks_deposit_requests_v2.index_processed as request_index,
+			blocks_deposit_requests_v2.block_processed_root as block_root,
 			null,
-			blocks_deposit_requests.pubkey,
-			blocks_deposit_requests.withdrawal_credentials,
-			blocks_deposit_requests.amount,
-			blocks_deposit_requests.signature
-		FROM blocks_deposit_requests
-		INNER JOIN blocks ON (blocks_deposit_requests.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposit_requests.block_slot = 0 AND blocks_deposit_requests.block_slot = blocks.slot AND blocks_deposit_requests.pubkey = $1)
-		WHERE blocks_deposit_requests.pubkey = $1
+			blocks_deposit_requests_v2.pubkey,
+			blocks_deposit_requests_v2.withdrawal_credentials,
+			blocks_deposit_requests_v2.amount,
+			blocks_deposit_requests_v2.signature
+		FROM blocks_deposit_requests_v2
+		INNER JOIN blocks ON (blocks_deposit_requests_v2.block_processed_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposit_requests_v2.slot_processed = 0 AND blocks_deposit_requests_v2.slot_processed = blocks.slot AND blocks_deposit_requests_v2.pubkey = $1)
+		WHERE blocks_deposit_requests_v2.pubkey = $1
+		AND blocks_deposit_requests_v2.status = 'completed'
 		ORDER BY block_slot DESC, block_index DESC
 		`, publicKey)
 	if err != nil {
@@ -3217,9 +3218,9 @@ func GetValidatorDepositsAndIncomingConsolidations(slotRange *SlotRange, validat
 					validators.validatorindex,
 					amount
 				FROM
-					blocks_deposit_requests
-					INNER JOIN validators ON blocks_deposit_requests.pubkey = validators.pubkey
-					INNER JOIN blocks ON blocks_deposit_requests.block_root = blocks.blockroot
+					blocks_deposit_requests_v2
+					INNER JOIN validators ON blocks_deposit_requests_v2.pubkey = validators.pubkey
+					INNER JOIN blocks ON blocks_deposit_requests_v2.block_processed_root = blocks.blockroot
 				WHERE
 					blocks.slot >= $1
 					AND blocks.slot <= $2
@@ -3227,6 +3228,7 @@ func GetValidatorDepositsAndIncomingConsolidations(slotRange *SlotRange, validat
 						blocks.status = '1'
 						OR blocks.slot = 0
 					)
+					AND blocks_deposit_requests_v2.status = 'completed'
 					AND (cardinality($3::int[]) = 0 OR validators.validatorindex = ANY($3))
 				UNION ALL
 				SELECT
