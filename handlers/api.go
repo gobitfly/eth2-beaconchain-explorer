@@ -843,7 +843,7 @@ func ApiSlotSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Request) 
 			block_processed_root as block_root, 
 			index_processed as request_index, 
 			v.validatorindex as validator_index, 
-			v1.address 
+			COALESCE(v1.address, decode('0000000000000000000000000000000000000000', 'hex')) as address 
 		FROM blocks_switch_to_compounding_requests_v2 
 		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
 		LEFT JOIN blocks_switch_to_compounding_requests v1 ON (blocks_switch_to_compounding_requests_v2.slot_processed = v1.block_slot AND blocks_switch_to_compounding_requests_v2.block_processed_root = v1.block_root AND blocks_switch_to_compounding_requests_v2.index_processed = v1.request_index)
@@ -2943,7 +2943,7 @@ func ApiValidatorSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Requ
 			block_processed_root as block_root, 
 			index_processed as request_index, 
 			v.validatorindex as validator_index, 
-			v1.address  
+			COALESCE(v1.address, decode('0000000000000000000000000000000000000000', 'hex')) as address 
 		FROM blocks_switch_to_compounding_requests_v2 
 		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
 		LEFT JOIN blocks_switch_to_compounding_requests v1 ON (blocks_switch_to_compounding_requests_v2.slot_processed = v1.block_slot AND blocks_switch_to_compounding_requests_v2.block_processed_root = v1.block_root AND blocks_switch_to_compounding_requests_v2.index_processed = v1.request_index)

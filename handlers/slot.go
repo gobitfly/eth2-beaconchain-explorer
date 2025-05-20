@@ -405,7 +405,7 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 			block_processed_root as block_root, 
 			index_processed as request_index, 
 			v.validatorindex as validator_index, 
-			v1.address  
+			COALESCE(v1.address, decode('0000000000000000000000000000000000000000', 'hex')) as address 
 		FROM blocks_switch_to_compounding_requests_v2 
 		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
 		LEFT JOIN blocks_switch_to_compounding_requests v1 ON (blocks_switch_to_compounding_requests_v2.slot_processed = v1.block_slot AND blocks_switch_to_compounding_requests_v2.block_processed_root = v1.block_root AND blocks_switch_to_compounding_requests_v2.index_processed = v1.request_index)
@@ -434,20 +434,24 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 		return nil, fmt.Errorf("error retrieving blocks_consolidation_requests of block %v: %v", slotPageData.Slot, err)
 	}
 
+	// TODO: remove v1 table dependency once eth1id resolving is available
+	// See https://bitfly1.atlassian.net/browse/BEDS-1522
 	err = db.ReaderDb.Select(&slotPageData.WithdrawalRequests, `
 		SELECT 
-			block_slot, 
-			block_root, 
-			request_index, 
-			source_address, 
-			validator_pubkey, 
-			COALESCE((SELECT validatorindex FROM validators WHERE pubkey = validator_pubkey), -1) as validator_index,
-			amount 
-		FROM blocks_withdrawal_requests 
-		WHERE block_slot = $1 AND block_root = $2 
-		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			COALESCE(v1.source_address, decode('0000000000000000000000000000000000000000', 'hex')) as source_address, 
+			blocks_withdrawal_requests_v2.validator_pubkey, 
+			COALESCE((SELECT validatorindex FROM validators WHERE pubkey = blocks_withdrawal_requests_v2.validator_pubkey), -1) as validator_index,
+			blocks_withdrawal_requests_v2.amount 
+		FROM blocks_withdrawal_requests_v2 
+		LEFT JOIN blocks_withdrawal_requests v1 ON (blocks_withdrawal_requests_v2.slot_processed = v1.block_slot AND blocks_withdrawal_requests_v2.block_processed_root = v1.block_root AND blocks_withdrawal_requests_v2.index_processed = v1.request_index)
+		WHERE slot_processed = $1 AND block_processed_root = $2 
+		AND blocks_withdrawal_requests_v2.status = 'completed'
+		ORDER BY index_processed`, slotPageData.Slot, slotPageData.BlockRoot)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving blocks_withdrawal_requests of block %v: %v", slotPageData.Slot, err)
+		return nil, fmt.Errorf("error retrieving blocks_withdrawal_requests_v2 of block %v: %v", slotPageData.Slot, err)
 	}
 
 	for _, wr := range slotPageData.WithdrawalRequests {
