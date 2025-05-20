@@ -960,18 +960,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	g.Go(func() error {
 		err = db.ReaderDb.Select(&validatorPageData.ConsolidationRequests, `
 		SELECT 
-			block_slot, 
-			block_root, 
-			request_index, 
-			source_index,
-			target_index,
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			sv.validatorindex as source_index, 
+			tv.validatorindex as target_index, 
 			COALESCE(amount_consolidated, 0) AS amount_consolidated
-		FROM blocks_consolidation_requests 
-		INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot AND blocks.status = '1'
-		WHERE blocks_consolidation_requests.source_index = $1 OR blocks_consolidation_requests.target_index = $1
-		ORDER BY block_slot DESC, request_index`, index)
+		FROM blocks_consolidation_requests_v2 
+		INNER JOIN blocks ON blocks_consolidation_requests_v2.block_processed_root = blocks.blockroot AND blocks.status = '1'
+		INNER JOIN validators sv ON (sv.pubkey = source_pubkey)
+		INNER JOIN validators tv ON (tv.pubkey = target_pubkey)
+		WHERE sv.validatorindex = $1 OR tv.validatorindex = $1
+		AND blocks_consolidation_requests_v2.status = 'completed'
+		ORDER BY slot_processed DESC, index_processed`, index)
 		if err != nil {
-			return fmt.Errorf("error retrieving blocks_consolidation_requests of validator %v: %v", validatorPageData.Index, err)
+			return fmt.Errorf("error retrieving blocks_consolidation_requests_v2 of validator %v: %v", validatorPageData.Index, err)
 		}
 
 		// find the consolidation target index

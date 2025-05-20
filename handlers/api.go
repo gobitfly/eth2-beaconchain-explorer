@@ -777,7 +777,21 @@ func ApiSlotConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, amount_consolidated, source_index, target_index FROM blocks_consolidation_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	rows, err := db.ReaderDb.Query(`
+		SELECT 
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			amount_consolidated, 
+			sv.validatorindex as source_index, 
+			tv.validatorindex as target_index 
+		FROM blocks_consolidation_requests_v2 
+		INNER JOIN validators sv ON (sv.pubkey = source_pubkey)
+		INNER JOIN validators tv ON (tv.pubkey = target_pubkey)
+		WHERE slot_processed = $1 
+		AND blocks_consolidation_requests_v2.status = 'completed'
+		ORDER BY slot_processed DESC, index_processed DESC 
+		limit $2 offset $3`, slot, limit, offset)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2846,7 +2860,22 @@ func ApiValidatorConsolidationRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, amount_consolidated, source_index, target_index FROM blocks_consolidation_requests WHERE source_index = ANY($1) OR target_index = ANY($1) ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", pq.Array(queryIndices), limit, offset)
+	rows, err := db.ReaderDb.Query(`
+	SELECT 
+		slot_processed as block_slot, 
+		block_processed_root as block_root, 
+		index_processed as request_index, 
+		amount_consolidated, 
+		sv.validatorindex as source_index, 
+		tv.validatorindex as target_index 
+	FROM blocks_consolidation_requests_v2 
+	INNER JOIN validators sv ON (sv.pubkey = source_pubkey)
+	INNER JOIN validators tv ON (tv.pubkey = target_pubkey)
+	WHERE sv.validatorindex = ANY($1) OR tv.validatorindex = ANY($1) 
+	AND blocks_consolidation_requests_v2.status = 'completed'
+	ORDER BY slot_processed DESC, index_processed DESC 
+	limit $2 offset $3
+	`, pq.Array(queryIndices), limit, offset)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
