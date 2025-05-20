@@ -997,7 +997,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			block_processed_root as block_root, 
 			index_processed as request_index, 
 			v.validatorindex as validator_index, 
-			v1.address  
+			COALESCE(v1.address, decode('0000000000000000000000000000000000000000', 'hex')) as address  
 		FROM blocks_switch_to_compounding_requests_v2 
 		INNER JOIN blocks ON blocks_switch_to_compounding_requests_v2.block_processed_root = blocks.blockroot AND blocks.status = '1'
 		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
@@ -1112,19 +1112,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
+		// TODO: remove v1 table dependency once eth1id resolving is available
+		// See https://bitfly1.atlassian.net/browse/BEDS-1522
 		err = db.ReaderDb.Select(&validatorPageData.WithdrawalRequests, `
 		SELECT 
-			block_slot, 
-			block_root, 
-			request_index, 
-			source_address,
-			amount 
-		FROM blocks_withdrawal_requests 
-		INNER JOIN blocks ON blocks_withdrawal_requests.block_root = blocks.blockroot AND blocks.status = '1'
-		WHERE blocks_withdrawal_requests.validator_pubkey = $1 
-		ORDER BY block_slot DESC, request_index`, validatorPageData.PublicKey)
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			COALESCE(v1.source_address, decode('0000000000000000000000000000000000000000', 'hex')) as source_address, 
+			blocks_withdrawal_requests_v2.amount 
+		FROM blocks_withdrawal_requests_v2 
+		INNER JOIN blocks ON blocks_withdrawal_requests_v2.block_processed_root = blocks.blockroot AND blocks.status = '1'
+		LEFT JOIN blocks_withdrawal_requests v1 ON (blocks_withdrawal_requests_v2.slot_processed = v1.block_slot AND blocks_withdrawal_requests_v2.block_processed_root = v1.block_root AND blocks_withdrawal_requests_v2.index_processed = v1.request_index)
+		WHERE blocks_withdrawal_requests_v2.validator_pubkey = $1 
+		AND blocks_withdrawal_requests_v2.status = 'completed'
+		ORDER BY slot_processed DESC, index_processed`, validatorPageData.PublicKey)
 		if err != nil {
-			return fmt.Errorf("error retrieving blocks_withdrawal_requests of validator %v: %v", validatorPageData.Index, err)
+			return fmt.Errorf("error retrieving blocks_withdrawal_requests_v2 of validator %v: %v", validatorPageData.Index, err)
 		}
 
 		for _, wr := range validatorPageData.WithdrawalRequests {
