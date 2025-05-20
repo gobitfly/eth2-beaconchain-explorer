@@ -3232,11 +3232,12 @@ func GetValidatorDepositsAndIncomingConsolidations(slotRange *SlotRange, validat
 					AND (cardinality($3::int[]) = 0 OR validators.validatorindex = ANY($3))
 				UNION ALL
 				SELECT
-					blocks_consolidation_requests.target_index,
+					validators.validatorindex as target_index,
 					amount_consolidated
 				FROM
-					blocks_consolidation_requests
-					INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot
+					blocks_consolidation_requests_v2
+					INNER JOIN validators ON blocks_consolidation_requests_v2.target_pubkey = validators.pubkey
+					INNER JOIN blocks ON blocks_consolidation_requests_v2.block_processed_root = blocks.blockroot
 				WHERE
 					blocks.slot >= $1
 					AND blocks.slot <= $2
@@ -3244,7 +3245,8 @@ func GetValidatorDepositsAndIncomingConsolidations(slotRange *SlotRange, validat
 						blocks.status = '1'
 						OR blocks.slot = 0
 					)
-					AND (cardinality($3::int[]) = 0 OR blocks_consolidation_requests.target_index = ANY($3))
+					AND blocks_consolidation_requests_v2.status = 'completed'
+					AND (cardinality($3::int[]) = 0 OR validators.validatorindex = ANY($3))
 			) AS a
 			GROUP BY validatorindex
 			ORDER BY 2 DESC;`
@@ -3298,20 +3300,22 @@ func GetValidatorWithdrawalsAndOutgoingConsolidations(slotRange *SlotRange, vali
 					AND (cardinality($3::int[]) = 0 OR blocks_withdrawals.validatorindex = ANY($3))
 				UNION ALL
 				SELECT
-					blocks_consolidation_requests.source_index,
+					validators.validatorindex as source_index,
 					amount_consolidated
 				FROM
-					blocks_consolidation_requests
-					INNER JOIN blocks ON blocks_consolidation_requests.block_root = blocks.blockroot
+					blocks_consolidation_requests_v2
+					INNER JOIN validators ON blocks_consolidation_requests_v2.source_pubkey = validators.pubkey
+					INNER JOIN blocks ON blocks_consolidation_requests_v2.block_processed_root = blocks.blockroot
 				WHERE
-					block_slot >= $1
-					AND block_slot <= $2
-					AND blocks_consolidation_requests.amount_consolidated > 0
+					slot_processed >= $1
+					AND slot_processed <= $2
+					AND blocks_consolidation_requests_v2.amount_consolidated > 0
 					AND (
 						blocks.status = '1'
 						OR blocks.slot = 0
 					)
-					AND (cardinality($3::int[]) = 0 OR blocks_consolidation_requests.source_index = ANY($3))
+					AND blocks_consolidation_requests_v2.status = 'completed'
+					AND (cardinality($3::int[]) = 0 OR validators.validatorindex = ANY($3))
 			) AS a
 		GROUP BY
 			validatorindex;

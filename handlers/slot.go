@@ -414,15 +414,18 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 
 	err = db.ReaderDb.Select(&slotPageData.ConsolidationRequests, `
 		SELECT 
-			block_slot, 
-			block_root, 
-			request_index, 
-			source_index, 
-			target_index,
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			sv.validatorindex as source_index, 
+			tv.validatorindex as target_index, 
 			amount_consolidated
-		FROM blocks_consolidation_requests 
-		WHERE block_slot = $1 AND block_root = $2 
-		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+		FROM blocks_consolidation_requests_v2 
+		INNER JOIN validators sv ON (sv.pubkey = source_pubkey)
+		INNER JOIN validators tv ON (tv.pubkey = target_pubkey)
+		WHERE slot_processed = $1 AND block_processed_root = $2 
+		AND blocks_consolidation_requests_v2.status = 'completed'
+		ORDER BY index_processed`, slotPageData.Slot, slotPageData.BlockRoot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving blocks_consolidation_requests of block %v: %v", slotPageData.Slot, err)
 	}
