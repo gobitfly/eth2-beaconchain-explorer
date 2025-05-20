@@ -235,17 +235,13 @@ func (qi *PendingQueueIndexer) Index() error {
 		depositsList = append(depositsList, depositsToPostpone...)
 	}
 
-	err = qi.save(depositsList)
-	if err != nil {
-		return errors.Wrap(err, "failed to save pending deposits")
-	}
-	return qi.matchDepositRequests()
+	return qi.save(depositsList)
 }
 
-func (qi *PendingQueueIndexer) matchDepositRequests() error {
+func (*PendingQueueIndexer) matchDepositRequests(tx *sql.Tx) error {
 	// matching will be wrong for postponed system-deposits
 	// but likelihood to ever occur for one pubkey, amount, slot combo is effectively 0
-	q := `
+	query := `
 	WITH pdq_ranked AS (
 		SELECT *, ROW_NUMBER() OVER (
 			PARTITION BY pubkey, amount, slot ORDER BY id
@@ -254,7 +250,7 @@ func (qi *PendingQueueIndexer) matchDepositRequests() error {
 	),
 	bdr_ranked AS (
 		SELECT *, ROW_NUMBER() OVER (
-			PARTITION BY pubkey, amount, slot_queued ORDER BY id
+			PARTITION BY pubkey, amount, slot_queued ORDER BY index_queued ASC
 		) AS rn
 		FROM blocks_deposit_requests_v2
 		WHERE status = 'queued' OR status = 'postponed'
@@ -275,7 +271,7 @@ func (qi *PendingQueueIndexer) matchDepositRequests() error {
 	FROM matches
 	WHERE pending_deposits_queue.id = matches.pdq_id;`
 
-	_, err := qi.db.Exec(q)
+	_, err := tx.Exec(query)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
@@ -299,6 +295,11 @@ func (qi *PendingQueueIndexer) save(pendingDeposits []types.PendingDeposit) erro
 	err = db.ClearAndCopyToTable(qi.db, "pending_deposits_queue", []string{"id", "validator_index", "pubkey", "withdrawal_credentials", "amount", "signature", "slot", "queued_balance_ahead", "est_clear_epoch"}, dat)
 	if err != nil {
 		return fmt.Errorf("error copying data to pending_deposits_queue table: %w", err)
+	}
+
+	err = qi.matchDepositRequests(tx)
+	if err != nil {
+		return fmt.Errorf("error matching data with blocks_deposit_requests_v2 table: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
