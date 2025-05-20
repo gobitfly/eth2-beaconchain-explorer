@@ -989,17 +989,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	g.Go(func() error {
 		validatorPageData.MoveToCompoundingRequest = &types.FrontendMoveToCompoundingRequest{}
+		// TODO: remove v1 table dependency once eth1id resolving is available
+		// See https://bitfly1.atlassian.net/browse/BEDS-1522
 		err = db.ReaderDb.Get(validatorPageData.MoveToCompoundingRequest, `
 		SELECT 
-			block_slot, 
-			block_root, 
-			request_index, 
-			validator_index,
-			address
-		FROM blocks_switch_to_compounding_requests 
-		INNER JOIN blocks ON blocks_switch_to_compounding_requests.block_root = blocks.blockroot AND blocks.status = '1'
-		WHERE blocks_switch_to_compounding_requests.validator_index = $1
-		ORDER BY block_slot DESC, request_index LIMIT 1`, index)
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			v.validatorindex as validator_index, 
+			v1.address  
+		FROM blocks_switch_to_compounding_requests_v2 
+		INNER JOIN blocks ON blocks_switch_to_compounding_requests_v2.block_processed_root = blocks.blockroot AND blocks.status = '1'
+		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
+		LEFT JOIN blocks_switch_to_compounding_requests v1 ON (blocks_switch_to_compounding_requests_v2.slot_processed = v1.block_slot AND blocks_switch_to_compounding_requests_v2.block_processed_root = v1.block_root AND blocks_switch_to_compounding_requests_v2.index_processed = v1.request_index)
+		WHERE v.validatorindex = $1
+		AND blocks_switch_to_compounding_requests_v2.status = 'completed'
+		ORDER BY slot_processed DESC, index_processed LIMIT 1`, index)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				validatorPageData.MoveToCompoundingRequest = nil

@@ -835,7 +835,22 @@ func ApiSlotSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, validator_index, address FROM blocks_switch_to_compounding_requests WHERE block_slot = $1 ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", slot, limit, offset)
+	// TODO: remove v1 table dependency once eth1id resolving is available
+	// See https://bitfly1.atlassian.net/browse/BEDS-1522
+	rows, err := db.ReaderDb.Query(`
+		SELECT 
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			v.validatorindex as validator_index, 
+			v1.address 
+		FROM blocks_switch_to_compounding_requests_v2 
+		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
+		LEFT JOIN blocks_switch_to_compounding_requests v1 ON (blocks_switch_to_compounding_requests_v2.slot_processed = v1.block_slot AND blocks_switch_to_compounding_requests_v2.block_processed_root = v1.block_root AND blocks_switch_to_compounding_requests_v2.index_processed = v1.request_index)
+		WHERE slot_processed = $1 
+		AND blocks_switch_to_compounding_requests_v2.status = 'completed'
+		ORDER BY slot_processed DESC, index_processed DESC 
+		limit $2 offset $3`, slot, limit, offset)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
@@ -2920,7 +2935,22 @@ func ApiValidatorSwitchToCompoundingRequests(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	rows, err := db.ReaderDb.Query("SELECT block_slot, block_root, request_index, validator_index, address FROM blocks_switch_to_compounding_requests WHERE validator_index = ANY($1) ORDER BY block_slot DESC, request_index DESC limit $2 offset $3", pq.Array(queryIndices), limit, offset)
+	// TODO: remove v1 table dependency once eth1id resolving is available
+	// See https://bitfly1.atlassian.net/browse/BEDS-1522
+	rows, err := db.ReaderDb.Query(`
+		SELECT 
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			v.validatorindex as validator_index, 
+			v1.address  
+		FROM blocks_switch_to_compounding_requests_v2 
+		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
+		LEFT JOIN blocks_switch_to_compounding_requests v1 ON (blocks_switch_to_compounding_requests_v2.slot_processed = v1.block_slot AND blocks_switch_to_compounding_requests_v2.block_processed_root = v1.block_root AND blocks_switch_to_compounding_requests_v2.index_processed = v1.request_index)
+		WHERE v.validatorindex = ANY($1) 
+		AND blocks_switch_to_compounding_requests_v2.status = 'completed'
+		ORDER BY slot_processed DESC, index_processed DESC 
+		limit $2 offset $3`, pq.Array(queryIndices), limit, offset)
 	if err != nil {
 		logger.WithError(err).Error("could not retrieve db results")
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
