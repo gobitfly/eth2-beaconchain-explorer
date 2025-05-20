@@ -397,19 +397,23 @@ func GetSlotPageData(blockSlot uint64) (*types.BlockPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving sync-committee of block %v: %v", slotPageData.Slot, err)
 	}
-
+	// TODO: remove v1 table dependency once eth1id resolving is available
+	// See https://bitfly1.atlassian.net/browse/BEDS-1522
 	err = db.ReaderDb.Select(&slotPageData.MoveToCompoundingRequests, `
 		SELECT 
-			block_slot, 
-			block_root, 
-			request_index, 
-			validator_index, 
-			address
-		FROM blocks_switch_to_compounding_requests 
-		WHERE block_slot = $1 AND block_root = $2 
-		ORDER BY request_index`, slotPageData.Slot, slotPageData.BlockRoot)
+			slot_processed as block_slot, 
+			block_processed_root as block_root, 
+			index_processed as request_index, 
+			v.validatorindex as validator_index, 
+			v1.address  
+		FROM blocks_switch_to_compounding_requests_v2 
+		INNER JOIN validators v ON (v.pubkey = validator_pubkey)
+		LEFT JOIN blocks_switch_to_compounding_requests v1 ON (blocks_switch_to_compounding_requests_v2.slot_processed = v1.block_slot AND blocks_switch_to_compounding_requests_v2.block_processed_root = v1.block_root AND blocks_switch_to_compounding_requests_v2.index_processed = v1.request_index)
+		WHERE slot_processed = $1 AND block_processed_root = $2 
+		AND blocks_switch_to_compounding_requests_v2.status = 'completed'
+		ORDER BY index_processed`, slotPageData.Slot, slotPageData.BlockRoot)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving blocks_switch_to_compounding_requests of slot %v: %v", slotPageData.Slot, err)
+		return nil, fmt.Errorf("error retrieving blocks_switch_to_compounding_requests_v2 of slot %v: %v", slotPageData.Slot, err)
 	}
 
 	err = db.ReaderDb.Select(&slotPageData.ConsolidationRequests, `
