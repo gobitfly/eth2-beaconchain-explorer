@@ -2173,7 +2173,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func isValidSubscriptionFilter(userID uint64, eventName types.EventName, filter string) (bool, error) {
-	ethClients := []string{"geth", "nethermind", "besu", "erigon", "teku", "prysm", "nimbus", "lighthouse", "lodestar", "rocketpool", "mev-boost"}
+	ethClients := []string{"geth", "nethermind", "besu", "erigon", "teku", "prysm", "nimbus", "lighthouse", "lodestar", "rocketpool", "mev-boost", "reth"}
 
 	isPkey := searchPubkeyExactRE.MatchString(filter)
 
