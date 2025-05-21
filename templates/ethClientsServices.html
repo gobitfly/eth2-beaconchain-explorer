@@ -137,7 +137,6 @@
                     <td data-column="Social media">
                       <a href="https://t.me/paradigm_reth" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="reth-checkbox" type="checkbox" data-toggle="toggle" {{ if .Reth.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('reth-checkbox', 'eth_client_update', 'reth')" /></td>
                     {{ end }}
