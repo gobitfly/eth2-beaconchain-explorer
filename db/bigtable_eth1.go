@@ -1018,7 +1018,7 @@ func CalculateTxFeeFromTransaction(tx *types.Eth1Transaction, blockBaseFee *big.
 	switch tx.Type {
 	case 0, 1:
 		txFee.Mul(txFee, new(big.Int).SetBytes(tx.GasPrice))
-	case 2, 3:
+	case 2, 3, 4:
 		// multiply gasused with min(baseFee + maxpriorityfee, maxfee)
 		if normalGasPrice, maxGasPrice := new(big.Int).Add(blockBaseFee, new(big.Int).SetBytes(tx.MaxPriorityFeePerGas)), new(big.Int).SetBytes(tx.MaxFeePerGas); normalGasPrice.Cmp(maxGasPrice) <= 0 {
 			txFee.Mul(txFee, normalGasPrice)
@@ -1026,7 +1026,7 @@ func CalculateTxFeeFromTransaction(tx *types.Eth1Transaction, blockBaseFee *big.
 			txFee.Mul(txFee, maxGasPrice)
 		}
 	default:
-		logger.Errorf("unknown tx type %v", tx.Type)
+		utils.LogError(fmt.Errorf("unknown tx type %v", tx.Type), "error calculating tx fee", 0)
 	}
 	return txFee
 }
