@@ -425,6 +425,16 @@ func InsertMobileSubscription(tx *sql.Tx, userID uint64, paymentDetails types.Mo
 	return err
 }
 
+func DeleteMobileSubscriptionBySubscriptionID(tx *sql.Tx, subID string) error {
+	var err error
+	if tx == nil {
+		_, err = FrontendWriterDB.Exec("DELETE FROM users_app_subscriptions WHERE subscription_id = $1", subID)
+	} else {
+		_, err = tx.Exec("DELETE FROM users_app_subscriptions WHERE subscription_id = $1", subID)
+	}
+	return err
+}
+
 func ChangeProductIDFromStripe(tx *sql.Tx, stripeSubscriptionID string, productID string) error {
 	now := time.Now()
 	nowTs := now.Unix()
