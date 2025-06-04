@@ -246,7 +246,7 @@ func updateEthClient() {
 	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
 	ethClients.Lodestar.ClientReleaseVersion, ethClients.Lodestar.ClientReleaseDate = prepareEthClientData("/chainsafe/lodestar", "Lodestar", curTime)
 
-	ethClients.RocketpoolSmartnode.ClientReleaseVersion, ethClients.RocketpoolSmartnode.ClientReleaseDate = prepareEthClientData("/rocket-pool/smartnode-install", "Rocketpool", curTime)
+	ethClients.RocketpoolSmartnode.ClientReleaseVersion, ethClients.RocketpoolSmartnode.ClientReleaseDate = prepareEthClientData("/rocket-pool/smartnode", "Rocketpool", curTime)
 	ethClients.MevBoost.ClientReleaseVersion, ethClients.MevBoost.ClientReleaseDate = prepareEthClientData("/flashbots/mev-boost", "MEV-Boost", curTime)
 
 	ethClients.LastUpdate = curTime
