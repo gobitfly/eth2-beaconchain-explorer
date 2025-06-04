@@ -2100,7 +2100,7 @@ func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 		case "Erigon":
 			url = "https://github.com/erigontech/erigon/releases"
 		case "Rocketpool":
-			url = "https://github.com/rocket-pool/smartnode-install/releases"
+			url = "https://github.com/rocket-pool/smartnode/releases"
 		case "MEV-Boost":
 			url = "https://github.com/flashbots/mev-boost/releases"
 		case "Lodestar":
@@ -2140,7 +2140,7 @@ func (n *ethClientNotification) GetInfoMarkdown() string {
 	case "Erigon":
 		url = "https://github.com/erigontech/erigon/releases"
 	case "Rocketpool":
-		url = "https://github.com/rocket-pool/smartnode-install/releases"
+		url = "https://github.com/rocket-pool/smartnode/releases"
 	case "MEV-Boost":
 		url = "https://github.com/flashbots/mev-boost/releases"
 	case "Lodestar":
