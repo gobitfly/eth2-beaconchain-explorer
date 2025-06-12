@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/price"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
@@ -294,10 +295,13 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	_, _, redirect, err := handleValidatorsQuery(w, r, false)
+	valiIndices, valiPubkeys, redirect, err := handleValidatorsQuery(w, r, false)
 	if err != nil || redirect {
 		return
 	}
+
+	// add a counter per 10 validators to the metrics to be able to track the number of dashboard requests per validator count in buckets of 10 validators
+	metrics.Counter.WithLabelValues(fmt.Sprintf("dashboard_requests_%d", int(math.Ceil(float64(len(valiIndices)+len(valiPubkeys))/10))*10)).Inc()
 
 	dashboardData := types.DashboardData{}
 	dashboardData.ValidatorLimit = getUserPremium(r).MaxValidators
