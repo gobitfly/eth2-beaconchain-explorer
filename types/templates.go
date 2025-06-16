@@ -1093,6 +1093,7 @@ type DashboardData struct {
 	Csrf                string `json:"csrf"`
 	ValidatorLimit      int    `json:"valLimit"`
 	CappellaHasHappened bool
+	ChainName           string `json:"chainName"`
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
