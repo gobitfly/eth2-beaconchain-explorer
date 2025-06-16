@@ -305,6 +305,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	dashboardData := types.DashboardData{}
 	dashboardData.ValidatorLimit = getUserPremium(r).MaxValidators
+	dashboardData.ChainName = utils.Config.Chain.Name
 
 	epoch := services.LatestEpoch()
 	dashboardData.CappellaHasHappened = epoch >= (utils.Config.Chain.ClConfig.CappellaForkEpoch)
