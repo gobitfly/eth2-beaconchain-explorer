@@ -893,8 +893,6 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 			} else {
 				pubkey = utils.FormatPublicKey(h)
 			}
-		} else if sub.EventName == string(types.TaxReportEventName) {
-			pubkey = template.HTML(`<a href="/rewards">report</a>`)
 		} else if strings.HasPrefix(string(sub.EventName), "monitoring_") {
 			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
