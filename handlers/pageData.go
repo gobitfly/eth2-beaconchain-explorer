@@ -336,11 +336,6 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 							Icon:  "fa-chart-bar",
 						},
 						{
-							Label: "Income History",
-							Path:  "/rewards",
-							Icon:  "fa-money-bill-alt",
-						},
-						{
 							Label: "Profit Calculator",
 							Path:  "/calculator",
 							Icon:  "fa-calculator",
@@ -564,11 +559,6 @@ func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
 							Label: "Charts",
 							Path:  "/charts",
 							Icon:  "fa-chart-bar",
-						},
-						{
-							Label: "Income History",
-							Path:  "/rewards",
-							Icon:  "fa-money-bill-alt",
 						},
 						{
 							Label: "Block Viz",
