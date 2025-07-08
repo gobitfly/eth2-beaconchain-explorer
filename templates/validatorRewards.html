@@ -30,6 +30,62 @@
 {{ define "content" }}
   <div class="container mt-2">
     <div class="mt-4 mb-3">
+      <div class="deprecation-banner-container" style="padding: 0 0.5rem;">
+        <div class="alert alert-info d-flex align-items-center justify-content-center flex-wrap flex-md-nowrap" role="alert" style="font-size:1.0rem; padding: 1.5rem 1rem;">
+          <div class="d-none d-md-flex flex-column align-items-center justify-content-center mr-0 mr-md-5 mb-3 mb-md-0" style="min-width:60px; margin-left: 2.5rem;">
+            <i class="fas fa-info-circle fa-3x" style="color: #31708f;"></i>
+          </div>
+          <div class="flex-grow-1" style="padding: 0 0.5rem;">
+            <div class="d-flex d-md-none justify-content-center mb-2" style="margin-bottom:1.5rem !important; margin-top:0.5rem; padding-left:0.5rem; padding-right:0.5rem;">
+              <i class="fas fa-info-circle fa-2x" style="color: #31708f;"></i>
+            </div>
+            <div class="mb-2 banner-text-mobile" style="font-size:1.0rem; padding-left:0.5rem; padding-right:0.5rem;">
+              This page will be discontinued on <strong>August 20th, 2025</strong>.<br />
+              Monthly income reports will no longer be sent after this date.<br />
+              We appreciate your understanding as we retire this lightly used service.
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>
+        @media (max-width: 576px) {
+          .alert.alert-info {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 1rem 0.5rem !important;
+            font-size: 0.98rem !important;
+          }
+          .alert.alert-info .mr-md-5 {
+            margin-right: 0 !important;
+          }
+          .alert.alert-info .mb-md-0 {
+            margin-bottom: 0 !important;
+          }
+          .alert.alert-info .mb-3 {
+            margin-bottom: 1rem !important;
+          }
+          .alert.alert-info .flex-grow-1 {
+            padding: 0 0.5rem !important;
+          }
+          .alert.alert-info .d-flex.flex-column.flex-sm-row {
+            flex-direction: column !important;
+            gap: 0.5rem !important;
+          }
+          .alert.alert-info a.btn {
+            width: 100%;
+            text-align: left;
+          }
+          .alert.alert-info .banner-text-mobile {
+            margin-left: 0.25rem;
+            margin-right: 0.25rem;
+          }
+          .alert.alert-info .d-flex.d-md-none {
+            margin-bottom: 1rem !important;
+            margin-left: 0.25rem;
+            margin-right: 0.25rem;
+          }
+        }
+      </style>
       <div class="d-md-flex py-2 justify-content-md-between">
         <h1 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt mr-2"></i>Validator Income History</h1>
 
