@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/doug-martin/goqu/v9"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/mail"
 	"github.com/gobitfly/eth2-beaconchain-explorer/ratelimit"
@@ -20,6 +21,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/jmoiron/sqlx"
 
 	ctxt "context"
 
@@ -380,18 +382,31 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 // UserNotificationsCenter renders the notificationsCenter template
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
-	var notificationsCenterTemplate = templates.GetTemplate(notificationCenterParts...)
-
 	w.Header().Set("Content-Type", "text/html")
-	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
-	data := InitPageData(w, r, "user", "/user", "", notificationCenterParts)
 
 	user := getUser(r)
+
+	// only allow accessing the v1 notification center if user has v1 notifications
+	hasV1Notifications, err := hasUserV1NotificationSubscriptions(r.Context(), user.UserID)
+	if err != nil {
+		logger.Errorf("error checking v1 notifications for user %v: %v", user.UserID, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if !hasV1Notifications {
+		// prohibited, forward to v2 notifications
+		http.Redirect(w, r, utils.Config.V2NotificationURL, http.StatusSeeOther)
+		return
+	}
+
+	var notificationsCenterTemplate = templates.GetTemplate(notificationCenterParts...)
+	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
+	data := InitPageData(w, r, "user", "/user", "", notificationCenterParts)
 
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
 	var watchlistPubkeys [][]byte
-	err := db.FrontendWriterDB.Select(&watchlistPubkeys, `
+	err = db.FrontendWriterDB.Select(&watchlistPubkeys, `
 	SELECT validator_publickey
 	FROM users_validators_tags
 	WHERE user_id = $1 and tag = $2
@@ -727,6 +742,50 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	if handleTemplateError(w, r, "user.go", "UserNotificationsCenter", "", notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)) != nil {
 		return // an error has occurred and was processed
 	}
+}
+
+// copied from v2 and adjusted event names for the v1 repo
+func hasUserV1NotificationSubscriptions(ctx ctxt.Context, userId uint64) (bool, error) {
+	events := []types.EventName{
+		types.ValidatorIsOfflineEventName,
+		types.ValidatorMissedProposalEventName,
+		types.ValidatorExecutedProposalEventName,
+		types.ValidatorMissedAttestationEventName,
+		types.ValidatorReceivedWithdrawalEventName,
+		types.ValidatorGotSlashedEventName,
+		types.ValidatorDidSlashEventName,
+		types.SyncCommitteeSoon,
+		types.ValidatorReceivedDepositEventName,
+	}
+	for i, event := range events {
+		events[i] = types.EventName(fmt.Sprintf("%s:%s", utils.GetNetwork(), event))
+	}
+	ds := goqu.Dialect("postgres").
+		Select(goqu.COUNT(goqu.I("id"))).
+		From(goqu.T("users_subscriptions")).
+		Where(
+			goqu.I("user_id").Eq(userId),
+			goqu.L("event_name IN ?", events),
+			goqu.I("event_filter").NotLike("vdb:%"),
+		)
+	count, err := runQuery[int](ctx, db.FrontendReaderDB, ds)
+	return count > 0, err
+}
+
+func runQuery[T any](ctx ctxt.Context, db *sqlx.DB, ds *goqu.SelectDataset) (T, error) {
+	query, _, err := ds.Prepared(false).ToSQL()
+	if err != nil {
+		var zero T
+		return zero, fmt.Errorf("error preparing query: %w", err)
+	}
+
+	var result T
+	err = db.GetContext(ctx, &result, query)
+	if err != nil {
+		return result, fmt.Errorf("error executing query: %w", err)
+	}
+
+	return result, nil
 }
 
 func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
