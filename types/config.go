@@ -287,6 +287,7 @@ type Frontend struct {
 	ElCurrencyDivisor  int64         `yaml:"elCurrencyDivisor" envconfig:"FRONTEND_EL_CURRENCY_DIVISOR"`
 	ElCurrencyDecimals int64         `yaml:"elCurrencyDecimals" envconfig:"FRONTEND_EL_CURRENCY_DECIMALS"`
 	MainCurrency       string        `yaml:"mainCurrency" envconfig:"FRONTEND_MAIN_CURRENCY"`
+	V2NotificationURL  string        `yaml:"v2NotificationUrl" envconfig:"FRONTEND_V2_NOTIFICATION_URL"`
 }
 
 type DatabaseConfig struct {
