@@ -125,6 +125,8 @@ require (
 	github.com/crate-crypto/go-kzg-4844 v1.1.0 // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
+	github.com/doug-martin/goqu v5.0.0+incompatible // indirect
+	github.com/doug-martin/goqu/v9 v9.19.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/envoyproxy/go-control-plane v0.13.1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
@@ -173,7 +175,7 @@ require (
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/mattn/go-sqlite3 v1.11.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
