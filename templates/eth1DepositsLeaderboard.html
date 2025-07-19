@@ -138,6 +138,7 @@
                   searchDelay: 0,
                   stateSave: true,
                   stateSaveCallback: function (settings, data) {
+                    data.search.search = ""
                     data.start = 0
                     localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
                   },
@@ -177,6 +178,14 @@
                 tbl.search(q);
                 tbl.draw();
             }
+          $(document).on("input", "#deposits_filter > label > input", function (ev) {
+            if (ev && ev.target && ev.target.value) {
+              var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+              window.history.replaceState(null, "", newUrl)
+            } else {
+              window.history.replaceState(null, "", window.location.pathname)
+            }
+          })
         })
     </script>
 {{ end }}
