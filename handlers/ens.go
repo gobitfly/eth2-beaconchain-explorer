@@ -60,6 +60,7 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 
 		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err == nil && len(address) > 0 {
 			data.Address = address
+			data.Domain = search
 			return data, nil
 		}
 
