@@ -16,6 +16,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	go_ens "github.com/wealdtech/go-ens/v3"
 )
 
 // ApiEnsLookup godoc
@@ -47,6 +48,12 @@ func ResolveEnsDomain(w http.ResponseWriter, r *http.Request) {
 func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 	data := &types.EnsDomainResponse{}
 	var returnError error
+
+	var err error
+	search, err = go_ens.Normalize(search)
+	if err != nil {
+		return nil, fmt.Errorf("error normalizing ENS name: %w", err)
+	}
 
 	if utils.IsValidEnsDomain(search) {
 		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.ClConfig.DepositChainID, search)
