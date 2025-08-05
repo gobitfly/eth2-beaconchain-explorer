@@ -115,7 +115,7 @@ func checkForV1Notifications(ctx context.Context, user *types.User, session *uti
 	if user.Authenticated && user.UserID > 0 && user.HasV1Notifications == types.UserV1Notification_Unknown {
 		hasV1Notifications, err := hasUserV1NotificationSubscriptions(ctx, user.UserID)
 		if err != nil {
-			logger.Errorf("error checking v1 notifications for user %v: %v", user.UserID, err)
+			logger.Warnf("error checking v1 notifications for user %v: %v", user.UserID, err)
 			return user
 		}
 
