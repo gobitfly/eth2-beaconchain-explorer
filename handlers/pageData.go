@@ -112,20 +112,22 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 }
 
 func checkForV1Notifications(ctx context.Context, user *types.User, session *utils.CustomSession) *types.User {
-	if user.Authenticated && user.UserID > 0 && user.HasV1Notifications == types.UserV1Notification_Unknown {
-		hasV1Notifications, err := hasUserV1NotificationSubscriptions(ctx, user.UserID)
-		if err != nil {
-			logger.Warnf("error checking v1 notifications for user %v: %v", user.UserID, err)
-			return user
-		}
-
-		if hasV1Notifications {
-			user.HasV1Notifications = types.UserV1Notification_True
-		} else {
-			user.HasV1Notifications = types.UserV1Notification_False
-		}
-		session.SetValue("has_v1_notifications", user.HasV1Notifications)
+	if !user.Authenticated || user.UserID <= 0 || user.HasV1Notifications != types.UserV1Notification_Unknown {
+		return user
 	}
+
+	hasV1Notifications, err := hasUserV1NotificationSubscriptions(ctx, user.UserID)
+	if err != nil {
+		logger.Warnf("error checking v1 notifications for user %v: %v", user.UserID, err)
+		return user
+	}
+
+	if hasV1Notifications {
+		user.HasV1Notifications = types.UserV1Notification_True
+	} else {
+		user.HasV1Notifications = types.UserV1Notification_False
+	}
+	session.SetValue("has_v1_notifications", user.HasV1Notifications)
 
 	return user
 }
