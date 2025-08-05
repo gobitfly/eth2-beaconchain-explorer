@@ -385,7 +385,8 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client, readBatchSi
 			g.Go(func() error {
 				normalizedName, err := go_ens.Normalize(name)
 				if err != nil {
-					return fmt.Errorf("error normalizing ENS name: %s: %w", name, err)
+					utils.LogWarn(err, fmt.Sprintf("error normalizing name [%v]", name), 0)
+					return nil
 				}
 				if normalizedName != "" {
 					err := validateEnsName(client, normalizedName, &alreadyChecked)
