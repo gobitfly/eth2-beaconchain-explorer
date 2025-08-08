@@ -54,6 +54,7 @@ func initStripe(http *mux.Router) error {
 
 func init() {
 	gob.Register(types.DataTableSaveState{})
+	gob.Register(types.UserV1Notification(0))
 }
 
 var frontendHttpServer *http.Server
