@@ -2687,6 +2687,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Param  startEpoch query int false "Start epoch for the query (default: latest epoch - 99)"
 // @Param  endEpoch query int false "End epoch for the query (default: latest epoch)"
+// @Param  slim query bool false "If true, drops rarely used week and committee index fields from the response"
 // @Success 200 {object} types.ApiResponse{[]types.ApiValidatorAttestationsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/attestations [get]
@@ -2736,6 +2737,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// following over-allocates if the user passes a custom startEpoch and endEpoch, but thats fine
 	responseData := make([]*types.ApiValidatorAttestationsResponse, 0, len(history)*100)
 
 	epochsPerWeek := utils.EpochsPerDay() * 7
@@ -2766,7 +2768,23 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	response := &types.ApiResponse{}
 	response.Status = "OK"
 
-	response.Data = responseData
+	if q.Has("slim") && q.Get("slim") == "true" {
+		// if slim is true, drop the week and committee index fields
+		slimmedResponseData := make([]*types.ApiValidatorAttestationsResponseSlim, 0, len(responseData))
+		for _, attestation := range responseData {
+			slimmedResponseData = append(slimmedResponseData, &types.ApiValidatorAttestationsResponseSlim{
+				AttesterSlot:   attestation.AttesterSlot,
+				Epoch:          attestation.Epoch,
+				InclusionSlot:  attestation.InclusionSlot,
+				Status:         attestation.Status,
+				ValidatorIndex: attestation.ValidatorIndex,
+			})
+		}
+		response.Data = slimmedResponseData
+	} else {
+		// otherwise, keep the full response data
+		response.Data = responseData
+	}
 
 	err = j.Encode(response)
 

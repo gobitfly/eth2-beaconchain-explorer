@@ -649,6 +649,14 @@ type ApiValidatorAttestationsResponse struct {
 	WeekEnd        time.Time `json:"week_end"`
 }
 
+type ApiValidatorAttestationsResponseSlim struct {
+	AttesterSlot   uint64 `json:"attesterslot"`
+	Epoch          uint64 `json:"epoch"`
+	InclusionSlot  uint64 `json:"inclusionslot"`
+	Status         uint64 `json:"status"`
+	ValidatorIndex uint64 `json:"validatorindex"`
+}
+
 // convert this json object to a golang struct called ApiValidatorProposalsResponse
 type ApiValidatorProposalsResponse struct {
 	Attestationscount          uint64  `db:"attestationscount" json:"attestationscount"`
