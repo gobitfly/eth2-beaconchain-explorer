@@ -2685,6 +2685,8 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 // @Tags Validators
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  startEpoch query int false "Start epoch for the query (default: latest epoch - 99)"
+// @Param  endEpoch query int false "End epoch for the query (default: latest epoch)"
 // @Success 200 {object} types.ApiResponse{[]types.ApiValidatorAttestationsResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey}/attestations [get]
@@ -2693,8 +2695,10 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	j := json.NewEncoder(w)
+	q := r.URL.Query()
 	vars := mux.Vars(r)
 	maxValidators := getUserPremium(r).MaxValidators
+	latestEpoch := services.LatestEpoch()
 
 	queryIndices, err := parseApiValidatorParamToIndices(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
@@ -2702,8 +2706,29 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startEpoch := max(services.LatestEpoch()-99, 0)
-	endEpoch := services.LatestEpoch()
+	startEpoch := max(latestEpoch-99, 0)
+	endEpoch := latestEpoch
+
+	if q.Has("startEpoch") {
+		userStartEpoch, err := strconv.ParseUint(q.Get("startEpoch"), 10, 64)
+		// must be within the pre-calculated range
+		if err != nil || userStartEpoch < startEpoch || userStartEpoch > endEpoch {
+			SendBadRequestResponse(w, r.URL.String(), "invalid start epoch parameter")
+			return
+		}
+		logger.Tracef("user start epoch: %d, default start epoch: %d", userStartEpoch, startEpoch)
+		startEpoch = max(startEpoch, userStartEpoch) // max not needed, but just to be sure
+	}
+
+	if q.Has("endEpoch") {
+		userEndEpoch, err := strconv.ParseUint(q.Get("endEpoch"), 10, 64)
+		if err != nil || userEndEpoch < startEpoch || userEndEpoch > endEpoch {
+			SendBadRequestResponse(w, r.URL.String(), "invalid end epoch parameter")
+			return
+		}
+		logger.Tracef("user end epoch: %d, default end epoch: %d", userEndEpoch, endEpoch)
+		endEpoch = min(endEpoch, userEndEpoch) // ditto
+	}
 
 	history, err := db.BigtableClient.GetValidatorAttestationHistory(queryIndices, startEpoch, endEpoch)
 	if err != nil {
