@@ -22,7 +22,6 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/exporter"
 	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
-	"github.com/gobitfly/eth2-beaconchain-explorer/price"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
@@ -4306,86 +4305,6 @@ func DecodeMapStructure(input interface{}, output interface{}) error {
 	}
 
 	return decoder.Decode(input)
-}
-
-// TODO Replace app code to work with new income balance dashboard
-// Meanwhile keep old code from Feb 2021 to be app compatible
-func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
-	currency := GetCurrency(r)
-
-	w.Header().Set("Content-Type", "application/json")
-
-	q := r.URL.Query()
-
-	queryValidatorIndices, queryValidatorPubkeys, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
-	if err != nil || len(queryValidatorPubkeys) > 0 {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
-		http.Error(w, "Invalid query", http.StatusBadRequest)
-		return
-	}
-	if len(queryValidatorIndices) < 1 {
-		http.Error(w, "Invalid query", http.StatusBadRequest)
-		return
-	}
-	// queryValidatorsArr := pq.Array(queryValidators)
-
-	// get data from one week before latest epoch
-	latestEpoch := services.LatestEpoch()
-	oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.ClConfig.SecondsPerSlot*utils.Config.Chain.ClConfig.SlotsPerEpoch))
-	queryOffsetEpoch := uint64(0)
-	if latestEpoch > oneWeekEpochs {
-		queryOffsetEpoch = latestEpoch - oneWeekEpochs
-	}
-
-	if len(queryValidatorIndices) == 0 {
-		SendBadRequestResponse(w, r.URL.String(), "no or invalid validator indicies provided")
-	}
-
-	balances, err := db.BigtableClient.GetValidatorBalanceHistory(queryValidatorIndices, latestEpoch-queryOffsetEpoch, latestEpoch)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	dataMap := make(map[uint64]*types.DashboardValidatorBalanceHistory)
-
-	for _, balanceHistory := range balances {
-		for _, history := range balanceHistory {
-			if dataMap[history.Epoch] == nil {
-				dataMap[history.Epoch] = &types.DashboardValidatorBalanceHistory{}
-			}
-			dataMap[history.Epoch].Balance += history.Balance
-			dataMap[history.Epoch].EffectiveBalance += history.EffectiveBalance
-			dataMap[history.Epoch].Epoch = history.Epoch
-			dataMap[history.Epoch].ValidatorCount++
-		}
-	}
-
-	data := make([]*types.DashboardValidatorBalanceHistory, 0, len(dataMap))
-
-	for _, e := range dataMap {
-		data = append(data, e)
-	}
-
-	sort.Slice(data, func(i, j int) bool {
-		return data[i].Epoch < data[j].Epoch
-	})
-
-	balanceHistoryChartData := make([][4]float64, len(data))
-	clPrice := price.GetPrice(utils.Config.Frontend.ClCurrency, currency)
-	for i, item := range data {
-		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
-		balanceHistoryChartData[i][1] = item.ValidatorCount
-		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * clPrice
-		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * clPrice
-	}
-
-	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
-	if err != nil {
-		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
-		sendServerErrorResponse(w, r.URL.String(), "could not serialize data results")
-		return
-	}
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
