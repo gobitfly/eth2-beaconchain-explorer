@@ -1273,11 +1273,20 @@ type MyCryptoSignature struct {
 }
 
 type User struct {
-	UserID        uint64 `json:"user_id"`
-	Authenticated bool   `json:"authenticated"`
-	Subscription  string `json:"subscription"`
-	UserGroup     string `json:"user_group"`
+	UserID             uint64             `json:"user_id"`
+	Authenticated      bool               `json:"authenticated"`
+	Subscription       string             `json:"subscription"`
+	UserGroup          string             `json:"user_group"`
+	HasV1Notifications UserV1Notification `json:"has_v1_notifications"`
 }
+
+type UserV1Notification int
+
+const (
+	UserV1Notification_Unknown UserV1Notification = 0
+	UserV1Notification_True    UserV1Notification = 1
+	UserV1Notification_False   UserV1Notification = 2
+)
 
 type UserSubscription struct {
 	UserID         uint64  `db:"id"`
