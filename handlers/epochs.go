@@ -36,6 +36,12 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
+	emptySearch := false
+
+	if len(q.Get("search[value]")) == 0 {
+		emptySearch = true
+	}
+
 	search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
 	if err != nil {
 		search = -1
@@ -78,7 +84,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	var epochs []*types.EpochsPageData
 
 	latestFinalizedEpoch := services.LatestFinalizedEpoch()
-	if search == -1 {
+	if emptySearch {
 		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
 				blockscount, 
@@ -97,7 +103,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			FROM epochs 
 			WHERE epoch >= $1 AND epoch <= $2
 			ORDER BY epoch DESC`, endEpoch, startEpoch, latestFinalizedEpoch)
-	} else {
+	} else if search != -1 {
 		err = db.ReaderDb.Select(&epochs, `
 			SELECT epoch, 
 				blockscount, 
