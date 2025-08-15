@@ -1279,6 +1279,8 @@ type User struct {
 	UserGroup     string `json:"user_group"`
 }
 
+type UserV1Notification int
+
 type UserSubscription struct {
 	UserID         uint64  `db:"id"`
 	Email          string  `db:"email"`
