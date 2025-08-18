@@ -3050,6 +3050,10 @@ func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, 
 	change := make([]*types.ValidatorsBLSChange, 0, len(validators))
 
 	err := ReaderDb.Select(&change, `	
+	WITH d AS (SELECT ROW_NUMBER() OVER (PARTITION BY publickey ORDER BY block_slot) AS rn, withdrawalcredentials, publickey FROM blocks_deposits d
+                   INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'
+           WHERE d.publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))
+	)
 	SELECT
 		bls.block_slot AS slot,
 		bls.block_root,
@@ -3061,15 +3065,12 @@ func GetValidatorsBLSChange(validators []uint64) ([]*types.ValidatorsBLSChange, 
 	FROM blocks_bls_change bls
 	INNER JOIN blocks b ON b.blockroot = bls.block_root AND b.status = '1'
 	LEFT JOIN validators v ON v.validatorindex = bls.validatorindex
-	LEFT JOIN (
-		SELECT ROW_NUMBER() OVER (PARTITION BY publickey ORDER BY block_slot) AS rn, withdrawalcredentials, publickey, block_root FROM blocks_deposits d
-		INNER JOIN blocks b ON b.blockroot = d.block_root AND b.status = '1'
-	) AS d ON d.publickey = v.pubkey AND rn = 1
+	LEFT JOIN d ON d.publickey = v.pubkey AND rn = 1
 	WHERE bls.validatorindex = ANY($1)
 	ORDER BY bls.block_slot DESC
 	`, pq.Array(validators))
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("error getting validators blocks_bls_change: %w", err)
