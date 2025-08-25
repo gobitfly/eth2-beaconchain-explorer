@@ -1091,7 +1091,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FROM eth1_consolidation_requests ecr
 		INNER JOIN validators s ON ecr.source_pubkey = s.pubkey
 		INNER JOIN validators t ON ecr.target_pubkey = t.pubkey
-		WHERE t.validatorindex = $1 OR s.validatorindex = $1
+		WHERE source_pubkey = (select pubkey from validators where validatorindex = $1) 
+			OR target_pubkey = (select pubkey from validators where validatorindex = $1)
 		ORDER BY ecr.block_number DESC, ecr.tx_index DESC, ecr.itx_index DESC
 		`, index)
 		if err != nil {
