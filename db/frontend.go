@@ -412,12 +412,12 @@ func InsertMobileSubscription(tx *sql.Tx, userID uint64, paymentDetails types.Mo
 	var err error
 	if tx == nil {
 		_, err = FrontendWriterDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
-			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14) ON CONFLICT(receipt_hash) DO UPDATE SET product_id = $2, active = $7, updated_at = TO_TIMESTAMP($5);",
+			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14) ON CONFLICT(receipt_hash) DO UPDATE SET product_id = $2, active = $7, validate_remotely = $7, updated_at = TO_TIMESTAMP($5);",
 			userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
 		)
 	} else {
 		_, err = tx.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
-			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14) ON CONFLICT(receipt_hash) DO UPDATE SET product_id = $2, active = $7, updated_at = TO_TIMESTAMP($5);",
+			"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14) ON CONFLICT(receipt_hash) DO UPDATE SET product_id = $2, active = $7, validate_remotely = $7, updated_at = TO_TIMESTAMP($5);",
 			userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
 		)
 	}
