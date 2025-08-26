@@ -1851,15 +1851,16 @@ type ApiValidatorResponse struct {
 
 // ApiValidatorDailyStats godoc
 // @Summary Get validator statistics
-// @Description: Retrieve daily stats for a validator by index
+// @Description: Retrieve daily stats for a validator by index or deposit address
 // @Tags Validators
 // @Produce  json
 // @Param  index path string true "Validator index"
+// @Param  address path string true "Validator deposit address"
 // @Param  end_day query string false "End day (default: latest day)"
 // @Param  start_day query string false "Start day (default: 0)"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorDailyStatsResponse}
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/stats/{index} [get]
+// @Router /api/v1/validator/stats/{index or deposit address} [get]
 func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -1899,39 +1900,60 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		SendBadRequestResponse(w, r.URL.String(), "invalid validator index")
+	var rows *sql.Rows
+	var err error
+	identifier := vars["index"]
+
+	query := `SELECT 
+				validatorindex,
+				day,
+				start_balance,
+				end_balance,
+				min_balance,
+				max_balance,
+				start_effective_balance,
+				end_effective_balance,
+				min_effective_balance,
+				max_effective_balance,
+				COALESCE(missed_attestations, 0) AS missed_attestations,
+				0 AS orphaned_attestations,
+				COALESCE(proposed_blocks, 0) AS proposed_blocks,
+				COALESCE(missed_blocks, 0) AS missed_blocks,
+				COALESCE(orphaned_blocks, 0) AS orphaned_blocks,
+				COALESCE(attester_slashings, 0) AS attester_slashings,
+				COALESCE(proposer_slashings, 0) AS proposer_slashings,
+				COALESCE(deposits, 0) AS deposits,
+				COALESCE(deposits_amount, 0) AS deposits_amount,
+				COALESCE(withdrawals, 0) AS withdrawals,
+				COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
+				COALESCE(participated_sync, 0) AS participated_sync,
+				COALESCE(missed_sync, 0) AS missed_sync,
+				COALESCE(orphaned_sync, 0) AS orphaned_sync
+			FROM validator_stats `
+
+	index, parseErr := strconv.ParseUint(identifier, 10, 64)
+	if parseErr == nil {
+		// validator index
+		rows, err = db.ReaderDb.Query(query+`WHERE validatorindex = $1 and day <= $2 and day >= $3 ORDER BY day DESC`, index, endDay, startDay)
+	} else if isValidEthAddress(identifier) {
+		// deposit address
+		rows, err = db.ReaderDb.Query(query+`
+			WHERE validatorindex = (
+				SELECT v.validatorindex
+				FROM eth1_deposits ed
+				JOIN validators v ON ed.pubkey = v.pubkey
+				WHERE ed.from_address = $1 OR ed.msg_sender = $1 OR ed.to_address = $1
+				ORDER BY ed.deposit_epoch ASC
+				LIMIT 1
+			)
+			AND day <= $2 AND day >= $3
+			ORDER BY day DESC
+		`, identifier, endDay, startDay)
+	} else {
+		SendBadRequestResponse(w, r.URL.String(), "invalid validator index or deposit address")
 		return
 	}
 
-	rows, err := db.ReaderDb.Query(`
-		SELECT 
-		validatorindex,
-		day,
-		start_balance,
-		end_balance,
-		min_balance,
-		max_balance,
-		start_effective_balance,
-		end_effective_balance,
-		min_effective_balance,
-		max_effective_balance,
-		COALESCE(missed_attestations, 0) AS missed_attestations,
-		0 AS orphaned_attestations,
-		COALESCE(proposed_blocks, 0) AS proposed_blocks,
-		COALESCE(missed_blocks, 0) AS missed_blocks,
-		COALESCE(orphaned_blocks, 0) AS orphaned_blocks,
-		COALESCE(attester_slashings, 0) AS attester_slashings,
-		COALESCE(proposer_slashings, 0) AS proposer_slashings,
-		COALESCE(deposits, 0) AS deposits,
-		COALESCE(deposits_amount, 0) AS deposits_amount,
-		COALESCE(withdrawals, 0) AS withdrawals,
-		COALESCE(withdrawals_amount, 0) AS withdrawals_amount,
-		COALESCE(participated_sync, 0) AS participated_sync,
-		COALESCE(missed_sync, 0) AS missed_sync,
-		COALESCE(orphaned_sync, 0) AS orphaned_sync
-	FROM validator_stats WHERE validatorindex = $1 and day <= $2 and day >= $3 ORDER BY day DESC`, index, endDay, startDay)
 	if err != nil {
 		SendBadRequestResponse(w, r.URL.String(), "could not retrieve db results")
 		return
@@ -4520,4 +4542,15 @@ func parseApiValidatorParamToPubkeys(origParam string, limit int) (pubkeys pq.By
 	}
 
 	return queryIndicesDeduped, nil
+}
+
+func isValidEthAddress(address string) bool {
+	if len(address) != 42 {
+		return false
+	}
+	if !strings.HasPrefix(address, "0x") && !strings.HasPrefix(address, "0X") {
+		return false
+	}
+
+	return true
 }
