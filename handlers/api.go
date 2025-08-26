@@ -1860,7 +1860,7 @@ type ApiValidatorResponse struct {
 // @Param  start_day query string false "Start day (default: 0)"
 // @Success 200 {object} types.ApiResponse{data=[]types.ApiValidatorDailyStatsResponse}
 // @Failure 400 {object} types.ApiResponse
-// @Router /api/v1/validator/stats/{index or deposit address} [get]
+// @Router /api/v1/validator/stats/{indexOrAddress} [get]
 func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -1902,7 +1902,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 
 	var rows *sql.Rows
 	var err error
-	identifier := vars["index"]
+	identifier := vars["indexOrAddress"]
 
 	query := `SELECT 
 				validatorindex,
