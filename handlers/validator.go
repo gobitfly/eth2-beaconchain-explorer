@@ -970,8 +970,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		INNER JOIN blocks ON blocks_consolidation_requests_v2.block_processed_root = blocks.blockroot AND blocks.status = '1'
 		INNER JOIN validators sv ON (sv.pubkey = source_pubkey)
 		INNER JOIN validators tv ON (tv.pubkey = target_pubkey)
-		WHERE sv.validatorindex = $1 OR tv.validatorindex = $1
-		AND blocks_consolidation_requests_v2.status = 'completed'
+		WHERE
+			( source_pubkey = (select pubkey from validators where validatorindex = $1) 
+				OR target_pubkey = (select pubkey from validators where validatorindex = $1) 
+			)
+			AND blocks_consolidation_requests_v2.status = 'completed'
 		ORDER BY slot_processed DESC, index_processed`, index)
 		if err != nil {
 			return fmt.Errorf("error retrieving blocks_consolidation_requests_v2 of validator %v: %v", validatorPageData.Index, err)
