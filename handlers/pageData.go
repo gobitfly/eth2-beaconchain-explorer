@@ -218,16 +218,6 @@ func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
 }
 
 func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1Notification) []types.MainMenuItem {
-	if utils.Config.Chain.Name == "gnosis" {
-		return createMenuItemsGnosis(active, isMain)
-	}
-
-	hiddenFor := []string{"confirmation", "login", "register"}
-
-	if utils.SliceContains(hiddenFor, active) {
-		return []types.MainMenuItem{}
-	}
-
 	notificationItems := []types.MainMenuItem{}
 
 	v2NotificationText := "Notifications"
@@ -244,6 +234,16 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 		IsActive: false,
 		Path:     utils.Config.V2NotificationURL,
 	})
+
+	if utils.Config.Chain.Name == "gnosis" {
+		return createMenuItemsGnosis(active, isMain, notificationItems)
+	}
+
+	hiddenFor := []string{"confirmation", "login", "register"}
+
+	if utils.SliceContains(hiddenFor, active) {
+		return []types.MainMenuItem{}
+	}
 
 	composed := []types.MainMenuItem{
 		{
@@ -499,13 +499,13 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 	return composed
 }
 
-func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
+func createMenuItemsGnosis(active string, isMain bool, notificationItems []types.MainMenuItem) []types.MainMenuItem {
 	hiddenFor := []string{"confirmation", "login", "register"}
 
 	if utils.SliceContains(hiddenFor, active) {
 		return []types.MainMenuItem{}
 	}
-	return []types.MainMenuItem{
+	composed := []types.MainMenuItem{
 		{
 			Label:    "Blockchain",
 			IsActive: active == "blockchain",
@@ -595,93 +595,90 @@ func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
 			IsActive: active == "dashboard",
 			Path:     "/dashboard",
 		},
-		{
-			Label:    "Notifications",
-			IsActive: false,
-			Path:     "/user/notifications",
-		},
-		{
-			Label:        "More",
-			IsActive:     active == "more",
-			HasBigGroups: true,
-			Groups: []types.NavigationGroup{
-				{
-					Label: "Stats",
-					Links: []types.NavigationLink{
-						{
-							Label: "Charts",
-							Path:  "/charts",
-							Icon:  "fa-chart-bar",
-						},
-						{
-							Label: "Block Viz",
-							Path:  "/vis",
-							Icon:  "fa-project-diagram",
-						},
-						{
-							Label:    "Correlations",
-							Path:     "/correlations",
-							Icon:     "fa-chart-line",
-							IsHidden: !isMain,
-						},
+	}
+	composed = append(composed, notificationItems...)
+	composed = append(composed, types.MainMenuItem{
+		Label:        "More",
+		IsActive:     active == "more",
+		HasBigGroups: true,
+		Groups: []types.NavigationGroup{
+			{
+				Label: "Stats",
+				Links: []types.NavigationLink{
+					{
+						Label: "Charts",
+						Path:  "/charts",
+						Icon:  "fa-chart-bar",
+					},
+					{
+						Label: "Block Viz",
+						Path:  "/vis",
+						Icon:  "fa-project-diagram",
+					},
+					{
+						Label:    "Correlations",
+						Path:     "/correlations",
+						Icon:     "fa-chart-line",
+						IsHidden: !isMain,
 					},
 				},
-				{
-					Label: "Tools",
-					Links: []types.NavigationLink{
-						{
-							Label: "beaconcha.in App",
-							Path:  "/mobile",
-							Icon:  "fa-mobile-alt",
-						},
-						{
-							Label: "beaconcha.in Premium",
-							Path:  "/premium",
-							Icon:  "fa-gem",
-						},
-						{
-							Label:      "Webhooks",
-							Path:       "/user/webhooks",
-							CustomIcon: "webhook_logo_svg",
-						},
-						{
-							Label: "API Docs",
-							Path:  "/api/v1/docs",
-							Icon:  "fa-book-reader",
-						},
-						{
-							Label: "API Pricing",
-							Path:  "/pricing",
-							Icon:  "fa-laptop-code",
-						},
-						{
-							Label: "Broadcast Signed Messages",
-							Path:  "/tools/broadcast",
-							Icon:  "fa-bullhorn",
-						},
+			},
+			{
+				Label: "Tools",
+				Links: []types.NavigationLink{
+					{
+						Label: "beaconcha.in App",
+						Path:  "/mobile",
+						Icon:  "fa-mobile-alt",
+					},
+					{
+						Label: "beaconcha.in Premium",
+						Path:  "/premium",
+						Icon:  "fa-gem",
+					},
+					{
+						Label:      "Webhooks",
+						Path:       "/user/webhooks",
+						CustomIcon: "webhook_logo_svg",
+					},
+					{
+						Label: "API Docs",
+						Path:  "/api/v1/docs",
+						Icon:  "fa-book-reader",
+					},
+					{
+						Label: "API Pricing",
+						Path:  "/pricing",
+						Icon:  "fa-laptop-code",
+					},
+					{
+						Label: "Broadcast Signed Messages",
+						Path:  "/tools/broadcast",
+						Icon:  "fa-bullhorn",
 					},
 				},
-				{
-					Label: "Services",
-					Links: []types.NavigationLink{
-						{
-							Label: "Knowledge Base",
-							Path:  "https://kb.beaconcha.in",
-							Icon:  "fa-external-link-alt",
-						},
-						{
-							Label: "Notifications",
-							Path:  "/user/notifications",
-							Icon:  "fa-bell",
-						},
-						{
-							Label: "Graffiti Wall",
-							Path:  "/graffitiwall",
-							Icon:  "fa-paint-brush",
-						},
+			},
+			{
+				Label: "Services",
+				Links: []types.NavigationLink{
+					{
+						Label: "Knowledge Base",
+						Path:  "https://kb.beaconcha.in",
+						Icon:  "fa-external-link-alt",
+					},
+					{
+						Label: "Notifications",
+						Path:  "/user/notifications",
+						Icon:  "fa-bell",
+					},
+					{
+						Label: "Graffiti Wall",
+						Path:  "/graffitiwall",
+						Icon:  "fa-paint-brush",
 					},
 				},
 			},
 		},
-	}
+	})
+	return composed
 }
