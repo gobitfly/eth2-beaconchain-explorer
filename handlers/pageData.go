@@ -122,8 +122,6 @@ func checkForV1Notifications(ctx context.Context, user *types.User, session *uti
 		return user
 	}
 
-	fmt.Printf("hasV1Notifications: %v\n", hasV1Notifications)
-
 	if hasV1Notifications {
 		user.HasV1Notifications = types.UserV1Notification_True
 	} else {
