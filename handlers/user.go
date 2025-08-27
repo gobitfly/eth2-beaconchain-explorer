@@ -768,6 +768,7 @@ func hasUserV1NotificationSubscriptions(ctx ctxt.Context, userId uint64) (bool, 
 			goqu.L("event_name IN ?", events),
 			goqu.I("event_filter").NotLike("vdb:%"),
 		)
+
 	count, err := runQuery[int](ctx, db.FrontendReaderDB, ds)
 	return count > 0, err
 }
