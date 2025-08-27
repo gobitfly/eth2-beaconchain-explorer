@@ -122,8 +122,6 @@ func checkForV1Notifications(ctx context.Context, user *types.User, session *uti
 		return user
 	}
 
-	fmt.Printf("hasV1Notifications: %v\n", hasV1Notifications)
-
 	if hasV1Notifications {
 		user.HasV1Notifications = types.UserV1Notification_True
 	} else {
@@ -382,11 +380,6 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 						Label: "Charts",
 						Path:  "/charts",
 						Icon:  "fa-chart-bar",
-					},
-					{
-						Label: "Income History",
-						Path:  "/rewards",
-						Icon:  "fa-money-bill-alt",
 					},
 					{
 						Label: "Profit Calculator",
