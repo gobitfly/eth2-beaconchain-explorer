@@ -12,6 +12,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/lib/pq"
 
 	"strconv"
 	"strings"
@@ -188,6 +189,50 @@ func checkValidatorsQuery(validatorIndices []uint64, validatorPubkeys [][]byte) 
 	}
 
 	return nil
+}
+
+func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	filterArr, _, redirect, err := handleValidatorsQuery(w, r, true)
+	if err != nil || redirect {
+		return
+	}
+
+	filter := pq.Array(filterArr)
+
+	proposals := []struct {
+		Slot   uint64
+		Status uint64
+	}{}
+
+	errFieldMap := map[string]interface{}{"route": r.URL.String()}
+
+	err = db.ReaderDb.Select(&proposals, `
+		SELECT slot, status
+		FROM blocks
+		WHERE proposer = ANY($1)
+		ORDER BY slot`, filter)
+	if err != nil {
+		utils.LogError(err, "error retrieving block-proposals", 0, errFieldMap)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	proposalsResult := make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		proposalsResult[i] = []uint64{
+			uint64(utils.SlotToTime(b.Slot).Unix()),
+			b.Status,
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(proposalsResult)
+	if err != nil {
+		utils.LogError(err, "error enconding json response", 0, errFieldMap)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
 
 // Dashboard Chart that combines balance data and
