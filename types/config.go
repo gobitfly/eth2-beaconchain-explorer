@@ -143,12 +143,21 @@ type Chain struct {
 }
 
 type Bigtable struct {
-	Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
-	Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
-	Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
-	EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
-	EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
-	V2SchemaCutOffEpoch uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
+	Project                    string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+	Instance                   string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+	Emulator                   bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
+	EmulatorPort               int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
+	EmulatorHost               string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
+	V2SchemaCutOffEpoch        uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
+	TableNameBeaconchain       string `yaml:"tableNameBeaconchain" env:"BIGTABLE_TABLE_NAME_BEACONCHAIN"`
+	TableNameValidators        string `yaml:"tableNameBeaconchainValidators" env:"BIGTABLE_TABLE_NAME_BEACONCHAIN_VALIDATORS"`
+	TableNameValidatorsHistory string `yaml:"tableNameBeaconchainValidatorsHistory" env:"BIGTABLE_TABLE_NAME_BEACONCHAIN_VALIDATORS_HISTORY"`
+	TableNameBlocks            string `yaml:"tableNameBlocks" env:"BIGTABLE_TABLE_NAME_BLOCKS"`
+	TableNameData              string `yaml:"tableNameData" env:"BIGTABLE_TABLE_NAME_DATA"`
+	TableNameMachineMetrics    string `yaml:"tableNameMachineMetrics" env:"BIGTABLE_TABLE_NAME_MACHINE_METRICS"`
+	TableNameMetadata          string `yaml:"tableNameMetadata" env:"BIGTABLE_TABLE_NAME_METADATA"`
+	TableNameMetadataUpdates   string `yaml:"tableNameMetadataUpdates" env:"BIGTABLE_TABLE_NAME_METADATA_UPDATES"`
+	TableNameBlocksRaw         string `yaml:"tableNameBlocksRaw" env:"BIGTABLE_TABLE_NAME_BLOCKS_RAW"`
 }
 
 type Frontend struct {
