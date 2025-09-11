@@ -134,6 +134,15 @@ func FormatAddress(address []byte, token []byte, name string, verified bool, isC
 	return formatAddress(address, token, name, isContract, "", 17, 0, false)
 }
 
+func FormatWithdrawalAddress(address []byte, token []byte, name string, verified bool, isContract bool, link bool) template.HTML {
+	if len(address) <= 0 {
+		return template.HTML(
+			`<span class="text-muted"><i class="fas fa-info-circle" data-html="true" data-placement="top" data-toggle="tooltip" title="This is a special withdrawal triggered by switching to a compounding validator.<br/> The amount will not actually be withdrawn; instead, it will be automatically re-deposited into your validator as a new deposit.<br/> You can view this in the Deposits tab."></i> SYSTEM</span>`,
+		)
+	}
+	return FormatAddress(address, token, name, verified, isContract, link)
+}
+
 func FormatBuilder(pubkey []byte) template.HTML {
 	name := ""
 	if bytes.Equal(pubkey, common.Hex2Bytes("aa1488eae4b06a1fff840a2b6db167afc520758dc2c8af0dfb57037954df3431b747e2f900fe8805f05d635e9a29717b")) {
@@ -395,6 +404,24 @@ func FormatTracePath(callType string, tracePath []int64, success bool, method st
 	return template.HTML(fmt.Sprintf(`<span%s class="text-monospace">%s</span>%s`, tooltip, callType, failedStr))
 }
 
+func FormatGethTracePath(callType string, tracePath string, success bool, method string) template.HTML {
+	path := strings.Split(strings.TrimSuffix(strings.TrimPrefix(tracePath, "["), "]"), " ")
+	for _, trace := range path {
+		callType = fmt.Sprintf("%s_%s", callType, trace)
+	}
+
+	tooltip := ""
+	if method != "" {
+		tooltip = fmt.Sprintf(` data-toggle="tooltip" data-placement="top" title="%s"`, method)
+	}
+
+	failedStr := ""
+	if !success {
+		failedStr = `<span data-toggle="tooltip" title="Transaction failed">❗</span>`
+	}
+	return template.HTML(fmt.Sprintf(`<span%s class="text-monospace">%s</span>%s`, tooltip, callType, failedStr))
+}
+
 func trimAmount(amount *big.Int, unitDigits int, maxPreCommaDigitsBeforeTrim int, digits int, addPositiveSign bool) (trimmedAmount, fullAmount string) {
 	// Initialize trimmedAmount and postComma variables to "0"
 	trimmedAmount = "0"
@@ -500,4 +527,20 @@ func FormatTokenIcon(icon []byte, size int) template.HTML {
 	}
 	icon64 := base64.StdEncoding.EncodeToString(icon)
 	return template.HTML(fmt.Sprintf("<img class=\"mb-1 mr-1\" src=\"data:image/gif;base64,%v\" width=\"%v\" height=\"%v\">", icon64, size, size))
+}
+
+// Expects entire Eth1 deposit history in order
+func FixELDepositValidity(deposits *types.ValidatorDeposits) *types.ValidatorDeposits {
+	if deposits == nil {
+		return deposits
+	}
+	hasValidDeposit := false
+	for i, deposit := range deposits.Eth1Deposits {
+		if deposit.ValidSignature {
+			hasValidDeposit = true
+		}
+		deposits.Eth1Deposits[i].Valid = deposits.Eth1Deposits[i].ValidSignature || hasValidDeposit
+	}
+
+	return deposits
 }

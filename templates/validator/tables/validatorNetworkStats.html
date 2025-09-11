@@ -1,0 +1,34 @@
+{{ define "validatorNetworkStatsTable" }}
+  <span class="h4">{{ firstCharToUpper .NetworkStats.NetworkName }} Statistics</span>
+  <table class="table" style="margin-top: 0 !important;" width="100%">
+    <tbody>
+      <tr>
+        <th scope="row">Active Validators</th>
+        <td>{{ .NetworkStats.ActiveValidators }}</td>
+      </tr>
+      <tr>
+        {{ if .ElectraHasHappened }}
+          <th scope="row">Joining / Leaving</th>
+          <td><span data-toggle="tooltip" data-placement="top" title="Joining" id="joining-balance"></span> / <span data-toggle="tooltip" data-placement="top" title="Leaving" id="leaving-balance"></span></td>
+          <script>
+            document.addEventListener('DOMContentLoaded', function () {
+              document.getElementById('joining-balance').innerHTML = shortBalance('{{ .NetworkStats.EnteringBalance }}');
+              document.getElementById('leaving-balance').innerHTML = shortBalance('{{ .NetworkStats.ExitingValidatorsBalance }}');
+            });
+          </script>
+        {{ else }}
+          <th scope="row">Pending Validators</th>
+          <td><span data-toggle="tooltip" data-placement="top" title="Entering">{{ .NetworkStats.EnteringValidators }}</span>/<span data-toggle="tooltip" data-placement="top" title="Exiting">{{ .NetworkStats.ExitingValidators }}</span></td>
+        {{ end }}
+      </tr>
+      <tr>
+        <th scope="row">Staked Ether</th>
+        <td>{{ .NetworkStats.StakedEther }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Average Balance</th>
+        <td>{{ .NetworkStats.AverageBalance }}</td>
+      </tr>
+    </tbody>
+  </table>
+{{ end }}

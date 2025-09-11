@@ -55,6 +55,16 @@
             </DIV>
             <DIV class='row border-bottom p-1 mx-0'>
               <DIV class='col-md-2'>
+                <SPAN data-toggle="tooltip" data-placement="top" title="An identifier for a specific committee during a slot">
+                  Committee Bits:
+                </SPAN>
+              </DIV>
+              <DIV class='col-md-10'>
+                ` + element.CommitteeBits + `
+              </DIV>
+            </DIV>
+            <DIV class='row border-bottom p-1 mx-0'>
+              <DIV class='col-md-2'>
                 <SPAN data-toggle="tooltip" data-placement="top" title="Represents the aggregated attestation of all participating validators in this attestation">
                   Aggregation Bits:
                 </SPAN>
@@ -121,21 +131,59 @@
       return att_card;
     }
 
-    async function setupInfiniteScrollAttestations() {
-      const infLoading = document.getElementById('attestationsTabPanel');
-      if(infLoading) {
-        try {
-          const slot = {{ .Slot }} || 0;
-          const res = await fetch(`/slot/${encodeURI(slot)}/attestations`);
-          const data = await res.json();
+    let attestationOffset = 1;
+    let attestationLoading = false;
+    let attestationLoadingEl = null;
 
-          for (let i = 1; i < data.length; ++i) {
-            infLoading.appendChild(getAttestationElement(data[i]));
-          }
-        } catch (err) {
-          console.error('error getting lazy attestations: ', err)
+    async function setupInfiniteScrollAttestations() {
+      if (attestationOffset === -1 || attestationLoading) return;
+
+      const infLoading = document.getElementById('attestationsTabPanel');
+      if (!infLoading) return;
+
+      try {
+        attestationLoading = true;
+
+        attestationLoadingEl = document.createElement('div');
+        attestationLoadingEl.className = 'attestation-loading';
+        attestationLoadingEl.innerText = 'Loading more...';
+        attestationLoadingEl.style.padding = '1rem';
+        attestationLoadingEl.style.textAlign = 'center';
+        infLoading.appendChild(attestationLoadingEl);
+
+        const slot = {{ .Slot }} || 0;
+        const res = await fetch(`/slot/${encodeURIComponent(slot)}/attestations?offset=${attestationOffset}`);
+        const data = await res.json();
+
+        if (attestationLoadingEl && attestationLoadingEl.parentNode) {
+          attestationLoadingEl.remove();
+          attestationLoadingEl = null;
+        }
+
+        if (data.length === 0) {
+          attestationOffset = -1; // no more data
+          return;
+        }
+
+        for (let i = 0; i < data.length; ++i) {
+          infLoading.appendChild(getAttestationElement(data[i]));
+        }
+
+        attestationOffset += data.length;
+      } catch (err) {
+        console.error('error getting lazy attestations: ', err);
+
+        if (attestationLoadingEl && attestationLoadingEl.parentNode) {
+          attestationLoadingEl.remove();
+          attestationLoadingEl = null;
+        }
+
+        const infLoading = document.getElementById('attestationsTabPanel');
+        if (infLoading) {
           infLoading.appendChild(getInfoElementAttestations('Error loading attestations...', 'red'));
         }
+      } finally {
+        attestationLoading = false;
       }
     }
 
@@ -290,16 +338,32 @@
         $("#block_blsChange").DataTable(blsChangeOpts)
     })
 
+    function attestationScrollHandler() {
+      const infLoading = document.getElementById('attestationsTabPanel');
+      if (!infLoading) return;
+
+      const rect = infLoading.getBoundingClientRect();
+      if (rect.bottom < window.innerHeight + 100) {
+        setupInfiniteScrollAttestations();
+      }
+    }
+
     {
-      var attestations_tab_loaded = false
       let atab = $('#attestations-tab')
       if(atab.length > 0) {
+        var removeAttestations = ()=>{
+          document.removeEventListener('scroll', attestationScrollHandler);
+        }
         var activateAttestations = ()=>{
-          if(!attestations_tab_loaded) { setupInfiniteScrollAttestations(); }; attestations_tab_loaded = true;
+            removeAttestations()
+            document.addEventListener('scroll', attestationScrollHandler);
         }
         atab.on('shown.bs.tab', activateAttestations);
+        atab.on('hidden.bs.tab', removeAttestations);
         if (atab.hasClass("active")){
           activateAttestations()
+        } else {
+          removeAttestations()
         }
       } else {
         console.error('error getting #attestations-tab')
@@ -396,9 +460,9 @@
             <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{ .DepositsCount }}</span></a>
           </li>
         {{ end }}
-        {{ if gt .VoluntaryExitscount 0 }}
+        {{ if gt (len .VoluntaryExits) 0 }}
           <li class="nav-item">
-            <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{ .VoluntaryExitscount }}</span></a>
+            <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{ (len .VoluntaryExits) }}</span></a>
           </li>
         {{ end }}
         {{ if gt .AttesterSlashingsCount 0 }}
@@ -424,6 +488,26 @@
         {{ if gt (len .BlobSidecars) 0 }}
           <li class="nav-item">
             <a class="nav-link" id="blobs-tab" data-toggle="tab" href="#blobs" role="tab" aria-controls="blobs" aria-selected="false">Blobs <span class="badge bg-secondary text-white">{{ len .BlobSidecars }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt (len .ConsolidationRequests) 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="consolidation-requests-tab" data-toggle="tab" href="#consolidation-requests" role="tab" aria-controls="consolidation-requests" aria-selected="false">Consolidation Requests <span class="badge bg-secondary text-white">{{ len .ConsolidationRequests }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt (len .MoveToCompoundingRequests) 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="compounding-requests-tab" data-toggle="tab" href="#compounding-requests" role="tab" aria-controls="compounding-requests" aria-selected="false">Compounding Requests <span class="badge bg-secondary text-white">{{ len .MoveToCompoundingRequests }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt (len .WithdrawalRequests) 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="withdrawal-requests-tab" data-toggle="tab" href="#withdrawal-requests" role="tab" aria-controls="withdrawal-requests" aria-selected="false">Withdrawal Requests <span class="badge bg-secondary text-white">{{ len .WithdrawalRequests }}</span></a>
+          </li>
+        {{ end }}
+        {{ if gt (len .DepositRequests) 0 }}
+          <li class="nav-item">
+            <a class="nav-link" id="deposit-requests-tab" data-toggle="tab" href="#deposit-requests" role="tab" aria-controls="deposit-requests" aria-selected="false">Deposit Requests <span class="badge bg-secondary text-white">{{ len .DepositRequests }}</span></a>
           </li>
         {{ end }}
       </ul>
@@ -484,7 +568,7 @@
             </div>
           </div>
         {{ end }}
-        {{ if gt .VoluntaryExitscount 0 }}
+        {{ if gt (len .VoluntaryExits) 0 }}
           <div class="tab-pane fade" id="voluntary-exitsTabPanel" role="tabpanel" aria-labelledby="voluntary-exits-tab">
             <div class="card block-card">
               {{ template "block_exits" . }}
@@ -520,6 +604,34 @@
           <div class="tab-pane fade" id="blobsTabPanel" role="tabpanel" aria-labelledby="blobs-tab">
             <div class="card block-card py-1">
               {{ template "block_blobs" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt (len .ConsolidationRequests) 0 }}
+          <div class="tab-pane fade" id="consolidation-requestsTabPanel" role="tabpanel" aria-labelledby="consolidation-requests-tab">
+            <div class="card block-card py-1">
+              {{ template "block_consolidation_requests" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt (len .MoveToCompoundingRequests) 0 }}
+          <div class="tab-pane fade" id="compounding-requestsTabPanel" role="tabpanel" aria-labelledby="compounding-requests-tab">
+            <div class="card block-card py-1">
+              {{ template "block_compounding_requests" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt (len .WithdrawalRequests) 0 }}
+          <div class="tab-pane fade" id="withdrawal-requestsTabPanel" role="tabpanel" aria-labelledby="withdrawal-requests-tab">
+            <div class="card block-card py-1">
+              {{ template "block_withdrawal_requests" . }}
+            </div>
+          </div>
+        {{ end }}
+        {{ if gt (len .DepositRequests) 0 }}
+          <div class="tab-pane fade" id="deposit-requestsTabPanel" role="tabpanel" aria-labelledby="deposit-requests-tab">
+            <div class="card block-card py-1">
+              {{ template "block_deposit_requests" . }}
             </div>
           </div>
         {{ end }}

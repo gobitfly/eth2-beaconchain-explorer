@@ -6,15 +6,21 @@ on:
   push:
     branches:
       - master
+      - staging
+      - publish-docker
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+      - id: pre-step
+        shell: bash
+        run: echo "release-version=$(TZ=UTC0 git show --quiet --date='format-local:%Y%m%d%H%M%S' --format="%cd" $GITHUB_SHA)-$(git describe $GITHUB_SHA --always --tags)" >> $GITHUB_OUTPUT; echo "release-branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
       - name: Publish to Dockerhub Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
           name: gobitfly/eth2-beaconchain-explorer
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+          tags: "${{ steps.pre-step.outputs.release-branch }},${{ steps.pre-step.outputs.release-version }}"

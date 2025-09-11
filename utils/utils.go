@@ -50,8 +50,8 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lib/pq"
 	"github.com/mvdan/xurls"
-	"github.com/prysmaticlabs/prysm/v3/beacon-chain/core/signing"
-	prysm_params "github.com/prysmaticlabs/prysm/v3/config/params"
+	"github.com/prysmaticlabs/prysm/v5/beacon-chain/core/signing"
+	prysm_params "github.com/prysmaticlabs/prysm/v5/config/params"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/skip2/go-qrcode"
@@ -92,6 +92,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatElCurrency":                        FormatElCurrency,
 		"formatClCurrency":                        FormatClCurrency,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
+		"formatBlockNumber":                       FormatBlockNumber,
 		"formatBlockStatus":                       FormatBlockStatus,
 		"formatBlockSlot":                         FormatBlockSlot,
 		"formatSlotToTimestamp":                   FormatSlotToTimestamp,
@@ -107,9 +108,12 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEth1TxHash":                        FormatEth1TxHash,
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
+		"formatDepositStatus":                     FormatDepositStatus,
+		"formatConsolidationStatus":               FormatConsolidationStatus,
 		"formatWithdawalCredentials":              FormatWithdawalCredentials,
 		"formatAddressToWithdrawalCredentials":    FormatAddressToWithdrawalCredentials,
 		"formatBitlist":                           FormatBitlist,
+		"formatCommitteeBitList":                  FormatCommitteeBitList,
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
@@ -452,6 +456,14 @@ func ReadConfig(cfg *types.Config, path string) error {
 			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &cfg.Chain.ClConfig)
 		case "holesky":
 			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &cfg.Chain.ClConfig)
+		case "hoodi":
+			err = yaml.Unmarshal([]byte(config.HoodiChainYml), &cfg.Chain.ClConfig)
+		case "mekong":
+			err = yaml.Unmarshal([]byte(config.MekongChainYml), &cfg.Chain.ClConfig)
+		case "pectra-devnet-5":
+			err = yaml.Unmarshal([]byte(config.PectraDevnet5ChainYml), &cfg.Chain.ClConfig)
+		case "pectra-devnet-6":
+			err = yaml.Unmarshal([]byte(config.PectraDevnet6ChainYml), &cfg.Chain.ClConfig)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ClConfigPath)
 		}
@@ -494,6 +506,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			CappellaForkEpoch:                       mustParseUint(jr.Data.CapellaForkEpoch),
 			DenebForkVersion:                        jr.Data.DenebForkVersion,
 			DenebForkEpoch:                          mustParseUint(jr.Data.DenebForkEpoch),
+			ElectraForkVersion:                      jr.Data.ElectraForkVersion,
+			ElectraForkEpoch:                        mustParseUint(jr.Data.ElectraForkEpoch),
 			SecondsPerSlot:                          mustParseUint(jr.Data.SecondsPerSlot),
 			SecondsPerEth1Block:                     mustParseUint(jr.Data.SecondsPerEth1Block),
 			MinValidatorWithdrawabilityDelay:        mustParseUint(jr.Data.MinValidatorWithdrawabilityDelay),
@@ -558,6 +572,15 @@ func ReadConfig(cfg *types.Config, path string) error {
 			MaxWithdrawalsPerPayload:                mustParseUint(jr.Data.MaxWithdrawalsPerPayload),
 			MaxValidatorsPerWithdrawalSweep:         mustParseUint(jr.Data.MaxValidatorsPerWithdrawalsSweep),
 			MaxBlsToExecutionChange:                 mustParseUint(jr.Data.MaxBlsToExecutionChanges),
+			// Electra
+			MinPerEpochChurnLimitElectra:        mustParseUint(jr.Data.MinPerEpochChurnLimitElectra),
+			MaxPerEpochActivationExitChurnLimit: mustParseUint(jr.Data.MaxPerEpochActivationExitChurnLimit),
+			BlobSidecarSubnetCountElectra:       mustParseUint(jr.Data.BlobSidecarSubnetCountElectra),
+			MaxBlobsPerBlockElectra:             mustParseUint(jr.Data.MaxBlobsPerBlockElectra),
+			MaxRequestBlobSidecarsElectra:       mustParseUint(jr.Data.MaxRequestBlobSidecarsElectra),
+			MinActivationBalance:                mustParseUint(jr.Data.MinActivationBalance),
+			MaxPendingDepositsPerEpoch:          mustParseUint(jr.Data.MaxPendingDepositsPerEpoch),
+			MaxEffectiveBalanceElectra:          mustParseUint(jr.Data.MaxEffectiveBalanceElectra),
 		}
 
 		if jr.Data.AltairForkEpoch == "" {
@@ -570,6 +593,9 @@ func ReadConfig(cfg *types.Config, path string) error {
 			chainCfg.CappellaForkEpoch = 18446744073709551615
 		}
 		if jr.Data.DenebForkEpoch == "" {
+			chainCfg.DenebForkEpoch = 18446744073709551615
+		}
+		if jr.Data.ElectraForkEpoch == "" {
 			chainCfg.DenebForkEpoch = 18446744073709551615
 		}
 
@@ -632,6 +658,14 @@ func ReadConfig(cfg *types.Config, path string) error {
 			err = yaml.Unmarshal([]byte(config.GnosisChainYml), &minimalCfg)
 		case "holesky":
 			err = yaml.Unmarshal([]byte(config.HoleskyChainYml), &minimalCfg)
+		case "hoodi":
+			err = yaml.Unmarshal([]byte(config.HoodiChainYml), &minimalCfg)
+		case "mekong":
+			err = yaml.Unmarshal([]byte(config.MekongChainYml), &minimalCfg)
+		case "pectra-devnet-5":
+			err = yaml.Unmarshal([]byte(config.PectraDevnet5ChainYml), &cfg.Chain.ClConfig)
+		case "pectra-devnet-6":
+			err = yaml.Unmarshal([]byte(config.PectraDevnet6ChainYml), &cfg.Chain.ClConfig)
 		default:
 			return fmt.Errorf("tried to set known chain-config, but unknown chain-name: %v (path: %v)", cfg.Chain.Name, cfg.Chain.ElConfigPath)
 		}
@@ -679,6 +713,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.GenesisTimestamp = 1638993340
 		case "holesky":
 			cfg.Chain.GenesisTimestamp = 1695902400
+		case "hoodi":
+			cfg.Chain.GenesisTimestamp = 1742213400
 		default:
 			return fmt.Errorf("tried to set known genesis-timestamp, but unknown chain-name")
 		}
@@ -698,6 +734,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.GenesisValidatorsRoot = "0xf5dcb5564e829aab27264b9becd5dfaa017085611224cb3036f573368dbb9d47"
 		case "holesky":
 			cfg.Chain.GenesisValidatorsRoot = "0x9143aa7c615a7f7115e2b6aac319c03529df8242ae705fba9df39b79c59fa8b1"
+		case "hoodi":
+			cfg.Chain.GenesisValidatorsRoot = "0x212f13fc4df078b6cb7db228f1c8307566dcecf900867401a92023d7ba99cb5f"
 		default:
 			return fmt.Errorf("tried to set known genesis-validators-root, but unknown chain-name")
 		}
@@ -754,6 +792,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 			cfg.Chain.Id = 5
 		case "holesky":
 			cfg.Chain.Id = 17000
+		case "hoodi":
+			cfg.Chain.Id = 560048
 		case "sepolia":
 			cfg.Chain.Id = 11155111
 		case "gnosis":
@@ -800,6 +840,29 @@ func mustParseUint(str string) uint64 {
 	}
 
 	return nbr
+}
+
+func GetMaxEffectiveBalance(currentEpoch uint64) uint64 {
+	if Config.Chain.ClConfig.ElectraForkEpoch >= currentEpoch {
+		return Config.Chain.ClConfig.MaxEffectiveBalanceElectra
+	}
+	return Config.Chain.ClConfig.MaxEffectiveBalance
+}
+
+func GetMaxEffectiveBalanceByWithdrawalCredentials(withCred []byte) uint64 {
+	if len(withCred) == 0 {
+		return 0
+	}
+	switch withCred[0] {
+	case 0x00, 0x01:
+		// phase0, capella
+		return Config.Chain.ClConfig.MaxEffectiveBalance
+	case 0x02:
+		// electra
+		return Config.Chain.ClConfig.MaxEffectiveBalanceElectra
+	default:
+		return 0
+	}
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
@@ -858,7 +921,7 @@ func IsApiRequest(r *http.Request) bool {
 
 var eth1AddressRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{40}$")
 var withdrawalCredentialsRE = regexp.MustCompile("^(0x)?00[0-9a-fA-F]{62}$")
-var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?" + BeginningOfSetWithdrawalCredentials + "[0-9a-fA-F]{40}$")
+var withdrawalCredentialsAddressRE = regexp.MustCompile("^(0x)?(?:0[12]0{22})[0-9A-Fa-f]{40}$")
 var eth1TxRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{64}$")
 var zeroHashRE = regexp.MustCompile("^(0x)?0+$")
 var hashRE = regexp.MustCompile("^(0x)?[0-9a-fA-F]{96}$")
@@ -1822,4 +1885,43 @@ func GetMaxAllowedDayRangeValidatorStats(validatorAmount int) int {
 	} else {
 		return math.MaxInt
 	}
+}
+
+func FormatDepositStatus(queuedAtEpoch, processedAtEpoch int64) template.HTML {
+	if queuedAtEpoch == -2 && processedAtEpoch == -2 {
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit was processed by the beaconchain">Processed</span>`
+	}
+	if queuedAtEpoch == -1 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit was included by the beaconchain but has not yet been queued for processing">Pending</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill text-dark" style="background: rgba(179, 159, 70, 0.8); font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit is queued and will be processed soon">Queued</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch >= 0 {
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The deposit was processed by the beaconchain">Processed</span>`
+	}
+
+	return ""
+}
+
+func FormatConsolidationStatus(queuedAtEpoch, processedAtEpoch int64, consolidationType string) template.HTML {
+	if consolidationType == "Credentials Update" {
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Processed</span>`
+	}
+
+	if queuedAtEpoch == -1 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The consolidation was included by the beaconchain but has not yet been queued for processing">Pending</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch == -1 {
+		return `<span class="badge badge-pill text-dark" style="background: rgba(179, 159, 70, 0.8); font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The consolidation is queued and will be processed soon">Queued</span>`
+	}
+
+	if queuedAtEpoch >= 0 && processedAtEpoch >= 0 {
+		return template.HTML(fmt.Sprintf(`<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;" data-toggle="tooltip" title="The consolidation was processed in epoch %d by the beaconchain">Processed</span>`, processedAtEpoch))
+	}
+
+	return ""
 }

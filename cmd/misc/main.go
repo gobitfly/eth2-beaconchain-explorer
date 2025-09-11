@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"firebase.google.com/go/v4/messaging"
+	"go.uber.org/atomic"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/cmd/misc/commands"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
@@ -123,6 +124,14 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(5)
+
+	if utils.Config.Chain.PectraWithdrawalRequestContractAddress == "" {
+		utils.LogFatal(nil, "missing config pectraWithdrawalRequestContractAddress, please provide via explorer config", 0)
+	}
+
+	if utils.Config.Chain.PectraConsolidationRequestContractAddress == "" {
+		utils.LogFatal(nil, "missing config pectraConsolidationRequestContractAddress, please provide via explorer config", 0)
+	}
 
 	go func() {
 		defer wg.Done()
@@ -594,10 +603,13 @@ func fixInternalTxsFromNode(startBlock, endBlock, batchSize, concurrency uint64,
 func fixEns(erigonClient *rpc.ErigonClient) error {
 	logrus.WithField("dry", opts.DryRun).Infof("command: fix-ens")
 	addrs := []struct {
-		Address []byte `db:"address"`
-		EnsName string `db:"ens_name"`
+		Address       []byte    `db:"address"`
+		EnsName       string    `db:"ens_name"`
+		NameHash      []byte    `db:"name_hash"`
+		IsPrimaryName bool      `db:"is_primary_name"`
+		ValidTo       time.Time `db:"valid_to"`
 	}{}
-	err := db.WriterDb.Select(&addrs, `select address, ens_name from ens where is_primary_name = true`)
+	err := db.WriterDb.Select(&addrs, `select ens_name, name_hash, address, is_primary_name, valid_to from ens`)
 	if err != nil {
 		return err
 	}
@@ -620,6 +632,22 @@ func fixEns(erigonClient *rpc.ErigonClient) error {
 		for _, addr := range batch {
 			addr := addr
 			g.Go(func() error {
+
+				logFields := logrus.Fields{
+					"db.addr":     fmt.Sprintf("%#x", addr.Address),
+					"db.name":     addr.EnsName,
+					"db.hash":     fmt.Sprintf("%#x", addr.NameHash),
+					"db.valid_to": addr.ValidTo,
+				}
+
+				deleteEntry := false
+				deleteEntryReasons := []string{}
+
+				normalizedName, err := go_ens.Normalize(addr.EnsName)
+				if err != nil {
+					deleteEntry = true
+					deleteEntryReasons = append(deleteEntryReasons, fmt.Sprintf("failed normalize: %v", err.Error()))
+				}
 				ensAddr, err := go_ens.Resolve(erigonClient.GetNativeClient(), addr.EnsName)
 				if err != nil {
 					if err.Error() == "unregistered name" ||
@@ -628,50 +656,62 @@ func fixEns(erigonClient *rpc.ErigonClient) error {
 						err.Error() == "abi: attempting to unmarshall an empty string while arguments are expected" ||
 						strings.Contains(err.Error(), "execution reverted") ||
 						err.Error() == "invalid jump destination" {
-						logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("failed resolve: %v", err.Error())}).Warnf("deleting ens entry")
-						if !opts.DryRun {
-							_, err = db.WriterDb.Exec(`delete from ens where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
-							if err != nil {
-								return err
-							}
-						}
-						return nil
+						deleteEntry = true
+						deleteEntryReasons = append(deleteEntryReasons, fmt.Sprintf("failed resolve: %v", err.Error()))
 					}
-					return err
 				}
 
 				dbAddr := common.BytesToAddress(addr.Address)
 				if dbAddr.Cmp(ensAddr) != 0 {
-					logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("dbAddr != resolved ensAddr: %#x != %#x", addr.Address, ensAddr.Bytes())}).Warnf("deleting ens entry")
-					if !opts.DryRun {
-						_, err = db.WriterDb.Exec(`delete from ens where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
-						if err != nil {
-							return err
-						}
-					}
+					deleteEntry = true
+					deleteEntryReasons = append(deleteEntryReasons, fmt.Sprintf("dbAddr != resolved ensAddr: %#x != %#x", addr.Address, ensAddr.Bytes()))
 				}
 
+				isPrimaryName := false
 				reverseName, err := go_ens.ReverseResolve(erigonClient.GetNativeClient(), dbAddr)
 				if err != nil {
 					if err.Error() == "not a resolver" || err.Error() == "no resolution" {
-						logrus.WithFields(logrus.Fields{"addr": dbAddr, "name": addr.EnsName, "reason": fmt.Sprintf("failed reverse-resolve: %v", err.Error())}).Warnf("updating ens entry: is_primary_name = false")
+						isPrimaryName = false
+					}
+				}
+				logFields["reverseName"] = reverseName
+
+				if reverseName == addr.EnsName {
+					isPrimaryName = true
+				}
+
+				if deleteEntry {
+					logFields["delReasons"] = strings.Join(deleteEntryReasons, ", ")
+					if !opts.DryRun {
+						logrus.WithFields(logFields).Warnf("deleting ens entry")
+						_, err = db.WriterDb.Exec(`delete from ens where name_hash = $1`, addr.NameHash)
+						if err != nil {
+							return err
+						}
+					} else {
+						logrus.WithFields(logFields).Warnf("WOULD deleting ens entry")
+					}
+				} else if normalizedName != addr.EnsName || isPrimaryName != addr.IsPrimaryName {
+					updateEntry := false
+					updateEntryReasons := []string{}
+					if normalizedName != addr.EnsName {
+						updateEntryReasons = append(updateEntryReasons, fmt.Sprintf("normalizedName != addr.EnsName: %v != %v", normalizedName, addr.EnsName))
+						updateEntry = true
+					}
+					if isPrimaryName != addr.IsPrimaryName {
+						updateEntryReasons = append(updateEntryReasons, fmt.Sprintf("isPrimaryName != addr.IsPrimaryName: %v != %v", isPrimaryName, addr.IsPrimaryName))
+						updateEntry = true
+					}
+					if updateEntry {
+						logFields["updateReasons"] = strings.Join(updateEntryReasons, ", ")
 						if !opts.DryRun {
-							_, err = db.WriterDb.Exec(`update ens set is_primary_name = false where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
+							logrus.WithFields(logFields).Infof("updating ens entry")
+							_, err = db.WriterDb.Exec(`update ens set ens_name = $1, is_primary_name = $2 where name_hash = $3`, normalizedName, isPrimaryName, addr.NameHash)
 							if err != nil {
 								return err
 							}
-						}
-						return nil
-					}
-					return err
-				}
-
-				if reverseName != addr.EnsName {
-					logrus.WithFields(logrus.Fields{"addr": fmt.Sprintf("%#x", addr.Address), "name": addr.EnsName, "reason": fmt.Sprintf("resolved != reverseResolved: %v != %v", addr.EnsName, reverseName)}).Warnf("updating ens entry: is_primary_name = false")
-					if !opts.DryRun {
-						_, err = db.WriterDb.Exec(`update ens set is_primary_name = false where address = $1 and ens_name = $2`, addr.Address, addr.EnsName)
-						if err != nil {
-							return err
+						} else {
+							logrus.WithFields(logFields).Infof("WOULD updating ens entry")
 						}
 					}
 				}
@@ -891,7 +931,7 @@ func migrateAppPurchases(appStoreSecret string) error {
 			return errors.Wrap(err, "error verifying receipt")
 		}
 
-		if resp.LatestReceiptInfo == nil || len(resp.LatestReceiptInfo) == 0 {
+		if len(resp.LatestReceiptInfo) == 0 {
 			logrus.Infof("no receipt info for purchase id %v", receipt.ID)
 			if receipt.Active && receipt.ValidateRemotely { // sanity, if there is an active subscription without receipt info we cam't delete it.
 				return fmt.Errorf("no receipt info for active purchase id %v", receipt.ID)
@@ -1682,11 +1722,34 @@ func reIndexBlocks(start uint64, end uint64, bt *db.Bigtable, client *rpc.Erigon
 		}
 	})
 
+	type Report struct {
+		Time time.Time
+		Slot int64
+	}
+	currSlot := atomic.NewInt64(int64(start))
+	lastReport := atomic.NewPointer(&Report{Time: time.Now(), Slot: currSlot.Load()})
+
+	go func() {
+		t := time.NewTicker(10 * time.Second)
+		for {
+			newReport := &Report{Time: time.Now(), Slot: currSlot.Load()}
+			oldReport := lastReport.Swap(newReport)
+			blocksPerSecond := float64(newReport.Slot-oldReport.Slot) / newReport.Time.Sub(oldReport.Time).Seconds()
+			logrus.Infof("indexed %d blocks in %.2fs (%.2f b/s, curr_block: %d, last_block: %d, blocks_left: %d, est_time_left: %s)", newReport.Slot-oldReport.Slot, newReport.Time.Sub(oldReport.Time).Seconds(), blocksPerSecond, newReport.Slot, end, int64(end)-newReport.Slot, time.Duration(float64(int64(end)-newReport.Slot)/blocksPerSecond)*time.Second)
+			select {
+			case <-t.C:
+			case <-quit:
+				return
+			}
+		}
+	}()
+
 	var errs []error
 	var mu sync.Mutex
 	for i := start; i <= end; i = i + batchSize {
 		height := int64(i)
 		readGroup.Go(func() error {
+			currSlot.Swap(height)
 			heightEnd := height + int64(batchSize) - 1
 			if heightEnd > int64(end) {
 				heightEnd = int64(end)
@@ -1728,7 +1791,7 @@ func getTransformers(transformerFlag string, bt *db.Bigtable) ([]db.TransformFun
 	logrus.Infof("transformerFlag: %v", transformerFlag)
 	transformerList := strings.Split(transformerFlag, ",")
 	if transformerFlag == "all" {
-		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered", "TransformContract"}
+		transformerList = []string{"TransformBlock", "TransformTx", "TransformBlobTx", "TransformItx", "TransformERC20", "TransformERC721", "TransformERC1155", "TransformWithdrawals", "TransformUncle", "TransformEnsNameRegistered", "TransformContract", "TransformConsolidationRequests", "TransformWithdrawalRequests"}
 	} else if len(transformerList) == 0 {
 		utils.LogError(nil, "no transformer functions provided", 0)
 		return nil, false, fmt.Errorf("no transformer functions provided")
@@ -1761,6 +1824,10 @@ func getTransformers(transformerFlag string, bt *db.Bigtable) ([]db.TransformFun
 			importENSChanges = true
 		case "TransformContract":
 			transforms = append(transforms, bt.TransformContract)
+		case "TransformConsolidationRequests":
+			transforms = append(transforms, bt.TransformConsolidationRequests)
+		case "TransformWithdrawalRequests":
+			transforms = append(transforms, bt.TransformWithdrawalRequests)
 		default:
 			return nil, false, fmt.Errorf("invalid transformer flag %v", t)
 		}

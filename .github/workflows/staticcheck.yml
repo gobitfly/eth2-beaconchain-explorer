@@ -13,24 +13,22 @@ on:
 jobs:
   ci:
     name: "Run CI"
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest"]
-        go: ["1.21.x"]
-    runs-on: ${{ matrix.os }}
+    runs-on: "ubuntu-latest"
     steps:
-    - uses: actions/checkout@v1
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+    - name: Set up Go 1.23
+      uses: actions/setup-go@v4
       with:
-        fetch-depth: 1
-    - uses: WillAbides/setup-go-faster@v1.14.0
-      with:
-        go-version: ${{ matrix.go }}
+        go-version-file: './go.mod'
+      id: go
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
     - run: make all				
     - run: "go test ./..."
     - run: "go vet ./..."
     - uses: dominikh/staticcheck-action@v1.3.1
       with:
-        version: "2023.1.7"
+        version: "2025.1" # see https://github.com/dominikh/go-tools/releases
         install-go: false
-        cache-key: ${{ matrix.go }}

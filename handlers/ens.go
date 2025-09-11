@@ -16,12 +16,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
+	go_ens "github.com/wealdtech/go-ens/v3"
 )
 
 // ApiEnsLookup godoc
-// @Summary Get the address for an ens name and vice versa
-// @Tags Ens
-// @Description Returns and object with the ens name and address - if found.
+// @Tags ENS
+// @Summary Resolve an ens name or address
+// @Description Get the address for an ens name and vice versa. Returns and object with the ens name and address - if found.
 // @Produce  json
 // @Param domain path string true "domain can either be an ens name or an etherum address"
 // @Success 200 {object} types.ApiResponse
@@ -48,11 +49,18 @@ func GetEnsDomain(search string) (*types.EnsDomainResponse, error) {
 	data := &types.EnsDomainResponse{}
 	var returnError error
 
+	var err error
+	search, err = go_ens.Normalize(search)
+	if err != nil {
+		return nil, fmt.Errorf("error normalizing ENS name: %w", err)
+	}
+
 	if utils.IsValidEnsDomain(search) {
 		cacheKey := fmt.Sprintf("%d:ens:address:%v", utils.Config.Chain.ClConfig.DepositChainID, search)
 
 		if address, err := cache.TieredCache.GetStringWithLocalTimeout(cacheKey, time.Minute); err == nil && len(address) > 0 {
 			data.Address = address
+			data.Domain = search
 			return data, nil
 		}
 

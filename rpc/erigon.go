@@ -78,6 +78,7 @@ func NewErigonClient(endpoint string) (*ErigonClient, error) {
 				Transport: db2.NewWithFallback(roundTripper, http.DefaultTransport),
 			}))
 			client.rawStore = rawStore
+			logger.Infof("using bigtable %s/%s for erigon client", project, instance)
 		}
 	}
 
@@ -144,7 +145,7 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 	g.Go(func() error {
 		b, err := client.ethClient.BlockByNumber(ctx, big.NewInt(number))
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting block %v details from client, error: %s", number, err)
 		}
 		mu.Lock()
 		timings.Headers = time.Since(start)
@@ -345,9 +346,11 @@ func (client *ErigonClient) GetBlock(number int64, traceMode string) (*types.Eth
 }
 
 func (client *ErigonClient) GetBlocks(start, end int64, traceMode string) ([]*types.Eth1Block, error) {
-	_, err := client.rawStore.ReadBlocksByNumber(client.chainID.Uint64(), start, end)
-	if err != nil {
-		return nil, err
+	if client.rawStore != nil {
+		_, err := client.rawStore.ReadBlocksByNumber(client.chainID.Uint64(), start, end)
+		if err != nil {
+			return nil, err
+		}
 	}
 	blocks := make([]*types.Eth1Block, end-start+1)
 	for i := start; i <= end; i++ {
@@ -371,7 +374,7 @@ func (client *ErigonClient) GetBlockNumberByHash(hash string) (uint64, error) {
 
 	block, err := client.ethClient.BlockByHash(ctx, common.HexToHash(hash))
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("error getting block by hash %s, error: %s", hash, err)
 	}
 	return block.NumberU64(), nil
 }
@@ -436,11 +439,15 @@ func (client *ErigonClient) TraceGeth(blockNumber *big.Int) ([]*GethTraceCallRes
 
 	err := client.rpcClient.Call(&res, "debug_traceBlockByNumber", hexutil.EncodeBig(blockNumber), gethTracerArg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while calling geth for block %v traces, error: %s", blockNumber.Uint64(), err)
 	}
 
 	data := make([]*GethTraceCallResult, 0, 20)
 	for i, r := range res {
+		if r.Result == nil {
+			return nil, fmt.Errorf("trace call %v result is nil for block %v", i, blockNumber.Uint64())
+		}
+
 		r.Result.TransactionPosition = i
 		extractCalls(r.Result, &data)
 	}
@@ -510,7 +517,7 @@ func (client *ErigonClient) TraceParity(blockNumber uint64) ([]*ParityTraceResul
 
 	err := client.rpcClient.Call(&res, "trace_block", blockNumber)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while calling parity for block %v traces, error: %s", blockNumber, err)
 	}
 
 	return res, nil
@@ -521,10 +528,24 @@ func (client *ErigonClient) TraceParityTx(txHash string) ([]*ParityTraceResult, 
 
 	err := client.rpcClient.Call(&res, "trace_transaction", txHash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while calling parity for tx %s traces, error: %s", txHash, err)
 	}
 
 	return res, nil
+}
+
+func (client *ErigonClient) TraceGethTx(txHash string) ([]*GethTraceCallResult, error) {
+	var res *GethTraceCallResult
+
+	err := client.rpcClient.Call(&res, "debug_traceTransaction", txHash, gethTracerArg)
+	if err != nil {
+		return nil, fmt.Errorf("error while calling geth for tx %s traces, error: %s", txHash, err)
+	}
+
+	data := make([]*GethTraceCallResult, 0, 20)
+	extractCalls(res, &data)
+
+	return data, nil
 }
 
 func (client *ErigonClient) GetBalances(pairs []*types.Eth1AddressBalance, addressIndex, tokenIndex int) ([]*types.Eth1AddressBalance, error) {
@@ -1065,7 +1086,7 @@ func (client *ErigonClient) processBlockResult(block BlockResponseWithUncles) *t
 	for _, tx := range txs {
 
 		var from []byte
-		sender, err := geth_types.Sender(geth_types.NewCancunSigner(tx.ChainId()), tx)
+		sender, err := geth_types.Sender(geth_types.NewPragueSigner(tx.ChainId()), tx)
 		if err != nil {
 			from, _ = hex.DecodeString("abababababababababababababababababababab")
 			logrus.Errorf("error converting tx %v to msg: %v", tx.Hash(), err)

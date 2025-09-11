@@ -30,7 +30,10 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	}
 
 	isMainnet := utils.Config.Chain.ClConfig.ConfigName == "mainnet"
-	user := getUser(r)
+
+	user, session, _ := getUserSession(r)
+	user = checkForV1Notifications(r.Context(), user, session)
+
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fullTitle,
@@ -64,7 +67,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		ShowSyncingMessage:    services.IsSyncing(),
 		GlobalNotification:    services.GlobalNotificationMessage(),
 		AvailableCurrencies:   price.GetAvailableCurrencies(),
-		MainMenuItems:         createMenuItems(active, isMainnet),
+		MainMenuItems:         createMenuItems(active, isMainnet, user.HasV1Notifications),
 		TermsOfServiceUrl:     utils.Config.Frontend.Legal.TermsOfServiceUrl,
 		PrivacyPolicyUrl:      utils.Config.Frontend.Legal.PrivacyPolicyUrl,
 	}
@@ -106,6 +109,27 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	}
 
 	return data
+}
+
+func checkForV1Notifications(ctx context.Context, user *types.User, session *utils.CustomSession) *types.User {
+	if !user.Authenticated || user.UserID <= 0 || user.HasV1Notifications != types.UserV1Notification_Unknown {
+		return user
+	}
+
+	hasV1Notifications, err := hasUserV1NotificationSubscriptions(ctx, user.UserID)
+	if err != nil {
+		logger.Warnf("error checking v1 notifications for user %v: %v", user.UserID, err)
+		return user
+	}
+
+	if hasV1Notifications {
+		user.HasV1Notifications = types.UserV1Notification_True
+	} else {
+		user.HasV1Notifications = types.UserV1Notification_False
+	}
+	session.SetValue("has_v1_notifications", user.HasV1Notifications)
+
+	return user
 }
 
 func SetPageDataTitle(pageData *types.PageData, title string) {
@@ -164,6 +188,11 @@ func getUserSession(r *http.Request) (*types.User, *utils.CustomSession, error) 
 		u.UserGroup = ""
 		return u, session, nil
 	}
+	u.HasV1Notifications, ok = session.GetValue("has_v1_notifications").(types.UserV1Notification)
+	if !ok {
+		u.HasV1Notifications = types.UserV1Notification_Unknown
+	}
+
 	return u, session, nil
 }
 
@@ -186,9 +215,26 @@ func purgeAllSessionsForUser(ctx context.Context, userId uint64) error {
 
 }
 
-func createMenuItems(active string, isMain bool) []types.MainMenuItem {
+func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1Notification) []types.MainMenuItem {
+	notificationItems := []types.MainMenuItem{}
+
+	v2NotificationText := "Notifications"
+	if hasV1Notifications == types.UserV1Notification_True {
+		notificationItems = append(notificationItems, types.MainMenuItem{
+			Label:    "v1 Notifications",
+			IsActive: false,
+			Path:     "/user/notifications",
+		})
+		v2NotificationText = "v2 Notifications"
+	}
+	notificationItems = append(notificationItems, types.MainMenuItem{
+		Label:    v2NotificationText,
+		IsActive: false,
+		Path:     utils.Config.V2NotificationURL,
+	})
+
 	if utils.Config.Chain.Name == "gnosis" {
-		return createMenuItemsGnosis(active, isMain)
+		return createMenuItemsGnosis(active, isMain, notificationItems)
 	}
 
 	hiddenFor := []string{"confirmation", "login", "register"}
@@ -196,7 +242,8 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 	if utils.SliceContains(hiddenFor, active) {
 		return []types.MainMenuItem{}
 	}
-	return []types.MainMenuItem{
+
+	composed := []types.MainMenuItem{
 		{
 			Label:    "Blockchain",
 			IsActive: active == "blockchain",
@@ -286,184 +333,172 @@ func createMenuItems(active string, isMain bool) []types.MainMenuItem {
 			IsActive: active == "dashboard",
 			Path:     "/dashboard",
 		},
-		{
-			Label:    "Notifications",
-			IsActive: false,
-			Path:     "/user/notifications",
-		},
-		{
-			Label:        "More",
-			IsActive:     active == "more",
-			HasBigGroups: true,
-			Groups: []types.NavigationGroup{
-				{
-					Label: "Staking Pools",
-					Links: []types.NavigationLink{
-						{
-							Label:         "Run a Validator!",
-							Path:          "https://ethpool.org/",
-							CustomIcon:    "ethermine_staking_logo_svg",
-							IsHighlighted: true,
-						},
-						{
-							Label:      "ETH.STORE®",
-							Path:       "/ethstore",
-							CustomIcon: "ethermine_stake_logo_svg",
-						},
-						{
-							Label: "Staking Services",
-							Path:  "/stakingServices",
-							Icon:  "fa-drumstick-bite",
-						},
-						{
-							Label: "Pool Benchmarks",
-							Path:  "/pools",
-							Icon:  "fa-chart-pie",
-						},
-						{
-							Label: "Rocket Pool Stats",
-							Path:  "/pools/rocketpool",
-							Icon:  "fa-rocket",
-						},
+	}
+
+	composed = append(composed, notificationItems...)
+
+	composed = append(composed, types.MainMenuItem{
+		Label:        "More",
+		IsActive:     active == "more",
+		HasBigGroups: true,
+		Groups: []types.NavigationGroup{
+			{
+				Label: "Staking Pools",
+				Links: []types.NavigationLink{
+					{
+						Label:         "Run a Validator!",
+						Path:          "https://ethpool.org/",
+						CustomIcon:    "ethermine_staking_logo_svg",
+						IsHighlighted: true,
+					},
+					{
+						Label:      "ETH.STORE®",
+						Path:       "/ethstore",
+						CustomIcon: "ethermine_stake_logo_svg",
+					},
+					{
+						Label: "Staking Services",
+						Path:  "/stakingServices",
+						Icon:  "fa-drumstick-bite",
+					},
+					{
+						Label: "Pool Benchmarks",
+						Path:  "/pools",
+						Icon:  "fa-chart-pie",
+					},
+					{
+						Label: "Rocket Pool Stats",
+						Path:  "/pools/rocketpool",
+						Icon:  "fa-rocket",
 					},
 				},
-				{
-					Label: "Stats",
-					Links: []types.NavigationLink{
-						{
-							Label: "Charts",
-							Path:  "/charts",
-							Icon:  "fa-chart-bar",
-						},
-						{
-							Label: "Income History",
-							Path:  "/rewards",
-							Icon:  "fa-money-bill-alt",
-						},
-						{
-							Label: "Profit Calculator",
-							Path:  "/calculator",
-							Icon:  "fa-calculator",
-						},
-						{
-							Label: "Block Viz",
-							Path:  "/vis",
-							Icon:  "fa-project-diagram",
-						},
-						{
-							Label: "Relays",
-							Path:  "/relays",
-							Icon:  "fa-robot",
-						},
-						{
-							Label: "EIP-1559 Burn",
-							Path:  "/burn",
-							Icon:  "fa-burn",
-						},
-						{
-							Label:    "Correlations",
-							Path:     "/correlations",
-							Icon:     "fa-chart-line",
-							IsHidden: !isMain,
-						},
+			},
+			{
+				Label: "Stats",
+				Links: []types.NavigationLink{
+					{
+						Label: "Charts",
+						Path:  "/charts",
+						Icon:  "fa-chart-bar",
 					},
-				}, {
-					Label: "Tools",
-					Links: []types.NavigationLink{
-						{
-							Label: "beaconcha.in App",
-							Path:  "/mobile",
-							Icon:  "fa-mobile-alt",
-						},
-						{
-							Label: "beaconcha.in Premium",
-							Path:  "/premium",
-							Icon:  "fa-gem",
-						},
-						{
-							Label:      "Webhooks",
-							Path:       "/user/webhooks",
-							CustomIcon: "webhook_logo_svg",
-						},
-						{
-							Label: "API Docs",
-							Path:  "/api/v1/docs/index.html",
-							Icon:  "fa-book-reader",
-						},
-						{
-							Label: "API Pricing",
-							Path:  "/pricing",
-							Icon:  "fa-laptop-code",
-						},
-						{
-							Label: "Unit Converter",
-							Path:  "/tools/unitConverter",
-							Icon:  "fa-sync",
-						},
-						{
-							Label: "GasNow",
-							Path:  "/gasnow",
-							Icon:  "fa-gas-pump",
-						},
-						{
-							Label: "Broadcast Signed Messages",
-							Path:  "/tools/broadcast",
-							Icon:  "fa-bullhorn",
-						},
+					{
+						Label: "Profit Calculator",
+						Path:  "/calculator",
+						Icon:  "fa-calculator",
 					},
-				}, {
-					Label: "Services",
-					Links: []types.NavigationLink{
-						{
-							Label:         "Eversteel",
-							Path:          "https://eversteel.io/",
-							CustomIcon:    "eversteel_logo_svg",
-							IsHighlighted: true,
-						},
-						{
-							Label: "Knowledge Base",
-							Path:  "https://kb.beaconcha.in",
-							Icon:  "fa-external-link-alt",
-						},
-						{
-							Label: "Notifications",
-							Path:  "/user/notifications",
-							Icon:  "fa-bell",
-						},
-						{
-							Label: "Graffiti Wall",
-							Path:  "/graffitiwall",
-							Icon:  "fa-paint-brush",
-						},
-						{
-							Label: "Ethereum Clients",
-							Path:  "/ethClients",
-							Icon:  "fa-desktop",
-						},
-						{
-							Label: "Slot Finder",
-							Path:  "/slots/finder",
-							Icon:  "fa-cube",
-						},
-						{
-							Label: "Report a scam",
-							Path:  "https://www.chainabuse.com/report?source=bitfly",
-							Icon:  "fa-flag",
-						},
+					{
+						Label: "Block Viz",
+						Path:  "/vis",
+						Icon:  "fa-project-diagram",
+					},
+					{
+						Label: "Relays",
+						Path:  "/relays",
+						Icon:  "fa-robot",
+					},
+					{
+						Label: "EIP-1559 Burn",
+						Path:  "/burn",
+						Icon:  "fa-burn",
+					},
+					{
+						Label:    "Correlations",
+						Path:     "/correlations",
+						Icon:     "fa-chart-line",
+						IsHidden: !isMain,
+					},
+				},
+			}, {
+				Label: "Tools",
+				Links: []types.NavigationLink{
+					{
+						Label: "beaconcha.in App",
+						Path:  "/mobile",
+						Icon:  "fa-mobile-alt",
+					},
+					{
+						Label: "beaconcha.in Premium",
+						Path:  "/premium",
+						Icon:  "fa-gem",
+					},
+					{
+						Label:      "Webhooks",
+						Path:       "/user/webhooks",
+						CustomIcon: "webhook_logo_svg",
+					},
+					{
+						Label: "API Docs",
+						Path:  "/api/v1/docs",
+						Icon:  "fa-book-reader",
+					},
+					{
+						Label: "API Pricing",
+						Path:  "/pricing",
+						Icon:  "fa-laptop-code",
+					},
+					{
+						Label: "Unit Converter",
+						Path:  "/tools/unitConverter",
+						Icon:  "fa-sync",
+					},
+					{
+						Label: "GasNow",
+						Path:  "/gasnow",
+						Icon:  "fa-gas-pump",
+					},
+					{
+						Label: "Broadcast Signed Messages",
+						Path:  "/tools/broadcast",
+						Icon:  "fa-bullhorn",
+					},
+				},
+			}, {
+				Label: "Services",
+				Links: []types.NavigationLink{
+					{
+						Label: "Knowledge Base",
+						Path:  "https://kb.beaconcha.in",
+						Icon:  "fa-external-link-alt",
+					},
+					{
+						Label: "Notifications",
+						Path:  "/user/notifications",
+						Icon:  "fa-bell",
+					},
+					{
+						Label: "Graffiti Wall",
+						Path:  "/graffitiwall",
+						Icon:  "fa-paint-brush",
+					},
+					{
+						Label: "Ethereum Clients",
+						Path:  "/ethClients",
+						Icon:  "fa-desktop",
+					},
+					{
+						Label: "Slot Finder",
+						Path:  "/slots/finder",
+						Icon:  "fa-cube",
+					},
+					{
+						Label: "Report a scam",
+						Path:  "https://www.chainabuse.com/report?source=bitfly",
+						Icon:  "fa-flag",
 					},
 				},
 			},
 		},
-	}
+	})
+	return composed
 }
 
-func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
+func createMenuItemsGnosis(active string, isMain bool, notificationItems []types.MainMenuItem) []types.MainMenuItem {
 	hiddenFor := []string{"confirmation", "login", "register"}
 
 	if utils.SliceContains(hiddenFor, active) {
 		return []types.MainMenuItem{}
 	}
-	return []types.MainMenuItem{
+	composed := []types.MainMenuItem{
 		{
 			Label:    "Blockchain",
 			IsActive: active == "blockchain",
@@ -553,104 +588,90 @@ func createMenuItemsGnosis(active string, isMain bool) []types.MainMenuItem {
 			IsActive: active == "dashboard",
 			Path:     "/dashboard",
 		},
-		{
-			Label:    "Notifications",
-			IsActive: false,
-			Path:     "/user/notifications",
-		},
-		{
-			Label:        "More",
-			IsActive:     active == "more",
-			HasBigGroups: true,
-			Groups: []types.NavigationGroup{
-				{
-					Label: "Stats",
-					Links: []types.NavigationLink{
-						{
-							Label: "Charts",
-							Path:  "/charts",
-							Icon:  "fa-chart-bar",
-						},
-						{
-							Label: "Income History",
-							Path:  "/rewards",
-							Icon:  "fa-money-bill-alt",
-						},
-						{
-							Label: "Block Viz",
-							Path:  "/vis",
-							Icon:  "fa-project-diagram",
-						},
-						{
-							Label:    "Correlations",
-							Path:     "/correlations",
-							Icon:     "fa-chart-line",
-							IsHidden: !isMain,
-						},
+	}
+	composed = append(composed, notificationItems...)
+	composed = append(composed, types.MainMenuItem{
+		Label:        "More",
+		IsActive:     active == "more",
+		HasBigGroups: true,
+		Groups: []types.NavigationGroup{
+			{
+				Label: "Stats",
+				Links: []types.NavigationLink{
+					{
+						Label: "Charts",
+						Path:  "/charts",
+						Icon:  "fa-chart-bar",
+					},
+					{
+						Label: "Block Viz",
+						Path:  "/vis",
+						Icon:  "fa-project-diagram",
+					},
+					{
+						Label:    "Correlations",
+						Path:     "/correlations",
+						Icon:     "fa-chart-line",
+						IsHidden: !isMain,
 					},
 				},
-				{
-					Label: "Tools",
-					Links: []types.NavigationLink{
-						{
-							Label: "beaconcha.in App",
-							Path:  "/mobile",
-							Icon:  "fa-mobile-alt",
-						},
-						{
-							Label: "beaconcha.in Premium",
-							Path:  "/premium",
-							Icon:  "fa-gem",
-						},
-						{
-							Label:      "Webhooks",
-							Path:       "/user/webhooks",
-							CustomIcon: "webhook_logo_svg",
-						},
-						{
-							Label: "API Docs",
-							Path:  "/api/v1/docs/index.html",
-							Icon:  "fa-book-reader",
-						},
-						{
-							Label: "API Pricing",
-							Path:  "/pricing",
-							Icon:  "fa-laptop-code",
-						},
-						{
-							Label: "Broadcast Signed Messages",
-							Path:  "/tools/broadcast",
-							Icon:  "fa-bullhorn",
-						},
+			},
+			{
+				Label: "Tools",
+				Links: []types.NavigationLink{
+					{
+						Label: "beaconcha.in App",
+						Path:  "/mobile",
+						Icon:  "fa-mobile-alt",
+					},
+					{
+						Label: "beaconcha.in Premium",
+						Path:  "/premium",
+						Icon:  "fa-gem",
+					},
+					{
+						Label:      "Webhooks",
+						Path:       "/user/webhooks",
+						CustomIcon: "webhook_logo_svg",
+					},
+					{
+						Label: "API Docs",
+						Path:  "/api/v1/docs",
+						Icon:  "fa-book-reader",
+					},
+					{
+						Label: "API Pricing",
+						Path:  "/pricing",
+						Icon:  "fa-laptop-code",
+					},
+					{
+						Label: "Broadcast Signed Messages",
+						Path:  "/tools/broadcast",
+						Icon:  "fa-bullhorn",
 					},
 				},
-				{
-					Label: "Services",
-					Links: []types.NavigationLink{
-						{
-							Label:         "Eversteel",
-							Path:          "https://eversteel.io/",
-							CustomIcon:    "eversteel_logo_svg",
-							IsHighlighted: true,
-						},
-						{
-							Label: "Knowledge Base",
-							Path:  "https://kb.beaconcha.in",
-							Icon:  "fa-external-link-alt",
-						},
-						{
-							Label: "Notifications",
-							Path:  "/user/notifications",
-							Icon:  "fa-bell",
-						},
-						{
-							Label: "Graffiti Wall",
-							Path:  "/graffitiwall",
-							Icon:  "fa-paint-brush",
-						},
+			},
+			{
+				Label: "Services",
+				Links: []types.NavigationLink{
+					{
+						Label: "Knowledge Base",
+						Path:  "https://kb.beaconcha.in",
+						Icon:  "fa-external-link-alt",
+					},
+					{
+						Label: "Notifications",
+						Path:  "/user/notifications",
+						Icon:  "fa-bell",
+					},
+					{
+						Label: "Graffiti Wall",
+						Path:  "/graffitiwall",
+						Icon:  "fa-paint-brush",
 					},
 				},
 			},
 		},
-	}
+	})
+	return composed
 }

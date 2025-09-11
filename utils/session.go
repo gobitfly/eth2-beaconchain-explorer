@@ -101,6 +101,10 @@ func InitSessionStore(secret string) {
 	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
 	sessionManager.Cookie.Secure = true
 	sessionManager.Cookie.Domain = Config.Frontend.SessionCookieDomain
+	sessionManager.ErrorFunc = func(writer http.ResponseWriter, request *http.Request, err error) {
+		logger.Errorf("error in session LoadAndSave middleware: %v ", err)
+		http.Error(writer, "Internal server error", http.StatusInternalServerError)
+	}
 
 	if Config.Frontend.SessionCookieDeriveDomainFromRequest {
 		logger.Infof("deriving cookie.domain from request")

@@ -51,7 +51,7 @@ func TestTxRevertTransformer(t *testing.T) {
 	}
 	ReaderDb = noSQLReaderDb{}
 
-	bt, err := InitBigtableWithCache(context.Background(), "test", "instanceTest", "1", noRedis{})
+	bt, err := InitBigtableWithCache("test", "instanceTest", "1", noRedis{})
 	if err != nil {
 		t.Fatal(err)
 	}

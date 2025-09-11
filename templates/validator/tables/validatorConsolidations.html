@@ -1,0 +1,165 @@
+{{ define "validatorConsolidationsTable" }}
+  {{ with .Data }}
+    {{ if lt .NetworkStats.CurrentEpoch .WithdrawableEpoch }}
+
+      {{ if and (not (eq .WithdrawableEpoch 9223372036854775807)) (gt .ConsolidationTargetIndex -1 ) }}
+        <div class="alert alert-info text-center my-3">
+          <h3>Consolidation in progress</h3>
+          <h6>Your consolidation request is queued and will be completed on <span aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span></h6>
+        </div>
+      {{ else if gt (len .ExecutionConsolidations) 0 }}
+        {{ $first := index .ExecutionConsolidations 0 }}
+        {{ if and (not $first.IsMoveToCompounding) (and (not $first.WrongSourceAddress) (eq $first.SourceIndex .Index)) }}
+          <div class="alert alert-info text-center my-3">
+            <h3>Consolidation in progress</h3>
+            <h6>A consolidation request was submitted but it has not been picked up by the consensus layer yet. This might take a couple of hours depending on the queue.</h6>
+          </div>
+        {{ end }}
+      {{ end }}
+    {{ end }}
+
+
+    <div>
+      <h4 class="my-3">Execution Layer</h4>
+      <h6 class="">This table displays the consolidation requests made to the Ethereum consolidation request contract.</h6>
+      <div class="table-responsive card card-body p-0">
+        <table class="table" style="margin-top: 0 !important;" id="consolidations-el-table" width="100%">
+          <thead>
+            <tr>
+              <th>From Address</th>
+              <th>Block</th>
+              <th>Time</th>
+              <th>Tx Hash</th>
+              <th>Source</th>
+              <th>Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range $i, $request := .ExecutionConsolidations }}
+              {{ if not $request.IsMoveToCompounding }}
+                <tr>
+                  <td>
+                    {{ if $request.WrongSourceAddress }}
+                      <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid consolidation request, the address does not match the validators withdrawal address."></i></span>
+                    {{ end }}
+                    {{ formatEth1AddressFull $request.SourceAddress }}
+                  </td>
+                  <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+                  <td>{{ formatTimestamp $request.Ts }}</td>
+                  <td>{{ formatEth1TxHash $request.TxHash }}</td>
+                  <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
+                  <td>{{ formatValidatorInt64 $request.TargetIndex }}</td>
+                </tr>
+              {{ end }}
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+      <div class="text-center my-3">
+        <i class="fas fa-arrow-down"></i>
+      </div>
+      <h4 class="my-3">Consensus Layer</h4>
+      <h6 class="">This table displays the consolidation requests received and processed by the beacon chain.</h6>
+      <div class="table-responsive card card-body p-0">
+        <table class="table" style="margin-top: 0 !important;" id="consolidations-cl-table" width="100%">
+          <thead>
+            <tr>
+              <th>Slot</th>
+              <th>Time</th>
+              <th>Source</th>
+              <th>Target</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range $i, $request := .ConsolidationRequests }}
+              <tr>
+                <td>{{ formatBlockSlot $request.BlockSlot }}</td>
+                <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
+                <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
+                <td>{{ formatValidatorInt64 $request.TargetIndex }}</td>
+                <td>
+                  {{ if gt $request.AmountConsolidated 0 }}
+                    {{ formatClCurrency $request.AmountConsolidated config.Frontend.MainCurrency 5 true false false false }}
+                  {{ else }}
+                    -
+                  {{ end }}
+                </td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+      <div class="text-center my-3" style="padding: 8px 0;">
+        <hr />
+      </div>
+      <div>
+        <h4 class="my-3">Convert-to-Compounding Execution Layer</h4>
+        <h6 class="">This table displays the move-to-compounding requests made to the Ethereum consolidation request contract.</h6>
+        <div class="table-responsive card card-body p-0">
+          <table class="table" style="margin-top: 0 !important;" id="compounding-el-table" width="100%">
+            <thead>
+              <tr>
+                <th>From Address</th>
+                <th>Block</th>
+                <th>Time</th>
+                <th>Tx Hash</th>
+                <th>Validator</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ range $i, $request := .ExecutionConsolidations }}
+                {{ if $request.IsMoveToCompounding }}
+                  <tr>
+                    <td>
+                      {{ if $request.WrongSourceAddress }}
+                        <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid consolidation request, the address does not match the validators withdrawal address."></i></span>
+                      {{ end }}
+                      {{ formatEth1AddressFull $request.SourceAddress }}
+                    </td>
+                    <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+                    <td>{{ formatTimestamp $request.Ts }}</td>
+                    <td>{{ formatEth1TxHash $request.TxHash }}</td>
+                    <td>{{ formatValidatorInt64 $request.SourceIndex }}</td>
+                  </tr>
+                {{ end }}
+              {{ end }}
+            </tbody>
+          </table>
+        </div>
+        <div class="text-center my-3">
+          <i class="fas fa-arrow-down"></i>
+        </div>
+        <h4 class="my-3">Convert-to-Compounding Consensus Layer</h4>
+        <h6 class="">This table displays the move-to-compounding requests received and processed by the beacon chain.</h6>
+        <div class="table-responsive card card-body p-0">
+          <table class="table" style="margin-top: 0 !important;" id="compounding-cl-table" width="100%">
+            <thead>
+              <tr>
+                <th>Slot</th>
+                <th>Time</th>
+                <th>Validator</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ if .MoveToCompoundingRequest }}
+                <tr>
+                  <td>{{ formatBlockSlot .MoveToCompoundingRequest.BlockSlot }}</td>
+                  <td>{{ formatSlotToTimestamp .MoveToCompoundingRequest.BlockSlot }}</td>
+                  <td>{{ formatValidatorInt64 .MoveToCompoundingRequest.ValidatorIndex }}</td>
+                  <td>{{ formatEth1AddressFull .MoveToCompoundingRequest.Address }}</td>
+                </tr>
+              {{ else }}
+                <tr>
+                  <td colspan="4" class="text-center">No convert-to-compounding event</td>
+                </tr>
+              {{ end }}
+            </tbody>
+          </table>
+          <br />
+        </div>
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

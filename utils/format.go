@@ -32,7 +32,11 @@ import (
 )
 
 const CalculatingHint = `Calculating…`
-const BeginningOfSetWithdrawalCredentials = "010000000000000000000000"
+
+func BeginningOfSetWithdrawalCredentials(version int) string {
+	hexVersion := fmt.Sprintf("%02x", version)
+	return fmt.Sprintf("%s0000000000000000000000", hexVersion)
+}
 
 func FormatMessageToHtml(message string) template.HTML {
 	message = fmt.Sprint(strings.Replace(message, "Error: ", "", 1))
@@ -538,6 +542,8 @@ func FormatTransactionType(txnType uint8) string {
 		return "2 (EIP-1559)"
 	case 3:
 		return "3 (Blob, EIP-4844)"
+	case 4:
+		return "4 (Set EOA, EIP-7702)"
 	default:
 		return fmt.Sprintf("%v (???)", txnType)
 	}
@@ -552,7 +558,22 @@ func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 func FormatDepositAmount(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := price.GetPrice(Config.Frontend.ClCurrency, currency)
 	balance := float64(balanceInt) / float64(Config.Frontend.ClCurrencyDivisor)
-	return template.HTML(fmt.Sprintf("%.0f %v", balance*exchangeRate, currency))
+	amount := balance * exchangeRate
+
+	// scale by 10^8 for precision
+	const scale = 1e8
+	scaled := big.NewInt(int64(amount * scale))
+
+	decimals := 6
+	if currency != Config.Frontend.ClCurrency {
+		decimals = 4
+	}
+	trimmed, full := trimAmount(scaled, 8, 0, decimals, false)
+
+	return template.HTML(fmt.Sprintf(
+		`<span data-toggle="tooltip" title="%v %s">%s %[2]s</span>`,
+		full, currency, trimmed,
+	))
 }
 
 // FormatEffectiveBalance will return the effective balance formated as string with 1 digit after the comma
@@ -691,18 +712,27 @@ func FormatHashRaw(hash []byte, trunc_opt ...bool) string {
 
 // WithdrawalCredentialsToAddress converts withdrawalCredentials to an address if possible
 func WithdrawalCredentialsToAddress(credentials []byte) ([]byte, error) {
-	if IsValidWithdrawalCredentials(fmt.Sprintf("%#x", credentials)) && bytes.Equal(credentials[:1], []byte{0x01}) {
+	if IsValidWithdrawalCredentials(fmt.Sprintf("%#x", credentials)) && (bytes.Equal(credentials[:1], []byte{0x01}) || bytes.Equal(credentials[:1], []byte{0x02})) {
 		return credentials[12:], nil
 	}
 	return nil, fmt.Errorf("invalid withdrawal credentials")
 }
 
 // AddressToWithdrawalCredentials converts a valid address to withdrawalCredentials
-func AddressToWithdrawalCredentials(address []byte) ([]byte, error) {
+func AddressToWithdrawalCredentials(address []byte) ([][]byte, error) {
 	if IsValidEth1Address(fmt.Sprintf("%#x", address)) {
-		credentials := make([]byte, 12, 32)
-		credentials[0] = 0x01
-		credentials = append(credentials, address...)
+		credentials := make([][]byte, 2)
+
+		zeroOneCredentials := make([]byte, 12, 32)
+		zeroOneCredentials[0] = 0x01
+		zeroOneCredentials = append(zeroOneCredentials, address...)
+		credentials[0] = zeroOneCredentials
+
+		zeroTwoCredentials := make([]byte, 12, 32)
+		zeroTwoCredentials[0] = 0x02
+		zeroTwoCredentials = append(zeroTwoCredentials, address...)
+		credentials[1] = zeroTwoCredentials
+
 		return credentials, nil
 	}
 	return nil, fmt.Errorf("invalid eth1 address")
@@ -719,7 +749,7 @@ func FormatHashWithCopy(hash []byte) template.HTML {
 
 func formatWithdrawalHash(hash []byte) template.HTML {
 	var colorClass string
-	if hash[0] == 0x01 {
+	if hash[0] == 0x01 || hash[0] == 0x02 {
 		colorClass = "text-success"
 	} else {
 		colorClass = "text-warning"
@@ -734,7 +764,7 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	}
 
 	var text template.HTML
-	if hash[0] == 0x01 {
+	if hash[0] == 0x01 || hash[0] == 0x02 {
 		text = template.HTML(fmt.Sprintf("<a href=\"/address/0x%x\">%s</a>", hash[12:], formatWithdrawalHash(hash)))
 	} else {
 		text = formatWithdrawalHash(hash)
@@ -747,8 +777,8 @@ func FormatWithdawalCredentials(hash []byte, addCopyButton bool) template.HTML {
 	return text
 }
 
-func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool) template.HTML {
-	credentials, err := hex.DecodeString(BeginningOfSetWithdrawalCredentials)
+func FormatAddressToWithdrawalCredentials(address []byte, addCopyButton bool, version int) template.HTML {
+	credentials, err := hex.DecodeString(BeginningOfSetWithdrawalCredentials(version))
 	if err != nil {
 		return "INVALID CREDENTIALS"
 	}
@@ -767,6 +797,22 @@ func CopyButton(clipboardText interface{}) string {
 
 func CopyButtonText(clipboardText interface{}) string {
 	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=%v></i>`, clipboardText)
+}
+
+func FormatCommitteeBitList(b []byte) template.HTML {
+	if len(b) == 0 {
+		return template.HTML("")
+	}
+
+	committeeBits := bitfield.Bitvector64(b)
+	h := template.HTML("<div class=\"text-bitfield text-monospace\">")
+	for i := uint64(0); i < committeeBits.Len(); i++ {
+		if committeeBits.BitAt(i) {
+			h += template.HTML(fmt.Sprintf("%d ", i))
+		}
+	}
+	h += template.HTML("</div>")
+	return h
 }
 
 func FormatBitlist(b []byte) template.HTML {
@@ -1078,9 +1124,8 @@ func FormatValidatorTags(tags []string) template.HTML {
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<a class=\"val-link\" href=\"/validator/%v\">%v</a>", validator, validator))
 }
-
 func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 	var validatorRead string
 	var validatorLink string
@@ -1103,7 +1148,11 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 }
 
 // FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)
+// Returns "-" if the validator index is less than 0
 func FormatValidatorInt64(validator int64) template.HTML {
+	if validator < 0 {
+		return "-"
+	}
 	return FormatValidator(uint64(validator))
 }
 

@@ -1,0 +1,196 @@
+{{ define "validatorWithdrawalsTable" }}
+  <h4 class="my-3">Withdrawals Execution Layer</h4>
+  <h6 class="">This table displays all manual withdrawal requests made to the Ethereum withdrawal request contract.</h6>
+  <div class="table-responsive card card-body p-0">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-eth1-table" width="100%">
+      <thead>
+        <tr>
+          <th>From Address</th>
+          <th>Block</th>
+          <th>Time</th>
+          <th>Tx Hash</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $i, $request := .ExecutionWithdrawals }}
+          {{ if not $request.IsExitRequest }}
+            <tr>
+              <td>
+                {{ if $request.WrongSourceAddress }}
+                  <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid withdrawal request, the address does not match the validators withdrawal address."></i></span>
+                {{ end }}
+                {{ formatEth1AddressFull $request.SourceAddress }}
+              </td>
+              <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+              <td>{{ formatTimestamp $request.Ts }}</td>
+              <td>{{ formatEth1TxHash $request.TxHash }}</td>
+              <td>
+                {{ if gt $request.Amount 0 }}
+                  {{ formatClCurrency $request.Amount config.Frontend.MainCurrency 5 true false false false }}
+                {{ else }}
+                  -
+                {{ end }}
+              </td>
+            </tr>
+          {{ end }}
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-center my-3">
+    <i class="fas fa-arrow-down"></i>
+  </div>
+  <h4 class="my-3">Consensus Layer</h4>
+  <h6 class="">This table displays the withdrawal requests received and processed by the beacon chain.</h6>
+  <div class="table-responsive card card-body p-0">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-table" width="100%">
+      <thead>
+        <tr>
+          <th>Epoch</th>
+          <th>Slot</th>
+          <th>Time</th>
+          <th>Recipient Address</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="text-center my-3" style="padding: 8px 0;">
+    <hr />
+  </div>
+  <h4 class="my-3">Exits Execution Layer</h4>
+  <h6 class="">This table displays all manual exit requests made to the Ethereum withdrawal request contract.</h6>
+  <div class="table-responsive card card-body p-0">
+    <table class="table" style="margin-top: 0 !important;" id="withdrawal-eth1-table" width="100%">
+      <thead>
+        <tr>
+          <th>From Address</th>
+          <th>Block</th>
+          <th>Time</th>
+          <th>Tx Hash</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $i, $request := .ExecutionWithdrawals }}
+          {{ if $request.IsExitRequest }}
+            <tr>
+              <td>
+                {{ if $request.WrongSourceAddress }}
+                  <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="Invalid withdrawal request, the address does not match the validators withdrawal address."></i></span>
+                {{ end }}
+                {{ formatEth1AddressFull $request.SourceAddress }}
+              </td>
+              <td>{{ formatBlockNumber $request.BlockNumber }}</td>
+              <td>{{ formatTimestamp $request.Ts }}</td>
+              <td>{{ formatEth1TxHash $request.TxHash }}</td>
+            </tr>
+          {{ end }}
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+  <div class="text-center my-3">
+    <i class="fas fa-arrow-down"></i>
+  </div>
+  <h4 class="my-3">Exits Consensus Layer</h4>
+  <h6 class="">This table displays the exit requests received and processed by the beacon chain.</h6>
+  <div class="table-responsive card card-body p-0">
+    <table class="table" style="margin-top: 0 !important;" id="exits-table" width="100%">
+      <thead>
+        <tr>
+          <th>Slot</th>
+          <th>Time</th>
+          <th>Status</th>
+          <th>Via</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $i, $request := .ConsensusElExits }}
+          <tr>
+            <td>{{ formatBlockSlot $request.BlockSlot }}</td>
+            <td>{{ formatSlotToTimestamp $request.BlockSlot }}</td>
+            <td>
+              {{ if not (eq $request.RejectReason "") }}
+                <span class="text-danger"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="{{ $request.RejectReason }}"></i></span>
+              {{ end }}
+              {{ $request.Status }}
+            </td>
+            <td>{{ $request.TriggeredVia }}</td>
+          </tr>
+        {{ end }}
+
+      </tbody>
+    </table>
+  </div>
+  <div class="text-center my-3"></div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            if ({{ and (le .Index 0) (or (eq .Status "deposited") (eq .Status "deposited_invalid")) }}) {
+                return
+            }
+
+            var activeTab = $('#chartTabs .active')
+            var initializedWithdrawalTable = false
+
+            if (activeTab.attr('id') === 'withdrawal-tab') {
+                initializedWithdrawalTable = true
+                createWithdrawalTable()
+            }
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'withdrawal-tab' && !initializedWithdrawalTable) {
+                    initializedWithdrawalTable = true
+                    createWithdrawalTable()
+                }
+            });
+
+            function createWithdrawalTable() {
+                $('#withdrawal-table').DataTable({
+                    searchDelay: 0,
+                    processing: true,
+                    serverSide: true,
+                    stateSave: true,
+                    stateSaveCallback: function (settings, data) {
+                      data.start = 0
+                      localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                    },
+                    stateLoadCallback: function (settings) {
+                      return JSON.parse(localStorage.getItem("DataTables_" + settings.sInstance))
+                    },
+                    ordering: true,
+                    order: [[0, 'desc']],
+                    lengthChange: false,
+                    searching: false,
+                    ajax: dataTableLoader(`/validator/${index}/withdrawals`, "", function ( {data} ) {
+                        // add the estimate row if it exists
+                        {{ if .NextWithdrawalRow }}
+                          let row = {{.NextWithdrawalRow}}
+                          if (row && row.length) {
+                            data.data = row.concat(data.data)
+                          }
+                        {{ end }}
+                        return data
+                      }),
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        // searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
+                        }
+                    },
+                    columnDefs: [
+                    ],
+                    drawCallback: function(settings) {
+                         formatTimestamps()
+                    },
+                })
+            }
+        })
+    </script>
+{{ end }}

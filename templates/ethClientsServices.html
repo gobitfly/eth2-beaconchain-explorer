@@ -137,7 +137,6 @@
                     <td data-column="Social media">
                       <a href="https://t.me/paradigm_reth" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a>
                     </td>
-                    <td data-column="Support">N/A</td>
                     {{ if $.User.Authenticated }}
                       <td><input id="reth-checkbox" type="checkbox" data-toggle="toggle" {{ if .Reth.IsUserSubscribed }}checked{{ end }} onchange="updateUserSubscription('reth-checkbox', 'eth_client_update', 'reth')" /></td>
                     {{ end }}
@@ -258,7 +257,7 @@
                   <tr>
                     <td data-column="Name"><a href="https://rocketpool.net">Rocketpool Smart Node</a></td>
                     <td data-column="Language">Go</td>
-                    <td data-column="Latest update"><a href="https://github.com/rocket-pool/smartnode-install/releases">{{ .RocketpoolSmartnode.ClientReleaseVersion }}</a> - {{ .RocketpoolSmartnode.ClientReleaseDate }}</td>
+                    <td data-column="Latest update"><a href="https://github.com/rocket-pool/smartnode/releases">{{ .RocketpoolSmartnode.ClientReleaseVersion }}</a> - {{ .RocketpoolSmartnode.ClientReleaseDate }}</td>
                     <td data-column="Social media">
                       <a href="https://discord.gg/rocketpool" target="_blank"> <i class="fab fa-discord ml-1 mr-1"></i></a>
                       <a href="https://twitter.com/Rocket_Pool" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a>

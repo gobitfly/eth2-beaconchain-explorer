@@ -91,6 +91,7 @@ func (bigtable *Bigtable) TransformEnsNameRegistered(blk *types.Eth1Block, cache
 		ensCrontractAddresses = ensContracts.ENSCrontractAddressesHolesky
 	case "11155111":
 		ensCrontractAddresses = ensContracts.ENSCrontractAddressesSepolia
+	// TODO hoodi
 	default:
 		return bulkData, bulkMetadataUpdates, nil
 	}
@@ -382,8 +383,13 @@ func (bigtable *Bigtable) ImportEnsUpdates(client *ethclient.Client, readBatchSi
 			}
 
 			g.Go(func() error {
-				if name != "" {
-					err := validateEnsName(client, name, &alreadyChecked)
+				normalizedName, err := go_ens.Normalize(name)
+				if err != nil {
+					utils.LogWarn(err, fmt.Sprintf("error normalizing name [%v]", name), 0)
+					return nil
+				}
+				if normalizedName != "" {
+					err := validateEnsName(client, normalizedName, &alreadyChecked)
 					if err != nil {
 						return fmt.Errorf("error validating new name [%v]: %w", name, err)
 					}

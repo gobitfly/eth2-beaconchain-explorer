@@ -29,6 +29,10 @@ func Eth1Block(w http.ResponseWriter, r *http.Request) {
 		"slot/attesterSlashing.html",
 		"slot/proposerSlashing.html",
 		"slot/exits.html",
+		"slot/consolidationRequests.html",
+		"slot/compoundingRequests.html",
+		"slot/withdrawalRequests.html",
+		"slot/depositRequests.html",
 		"components/timestamp.html",
 		"slot/overview.html",
 		"slot/execTransactions.html",
@@ -230,12 +234,8 @@ func GetExecutionBlockPageData(number uint64, limit int) (*types.Eth1BlockPageDa
 		})
 	}
 
-	if limit > 0 {
-		if len(txs) > limit {
-			txs = txs[:limit]
-		} else {
-			txs = txs[:0]
-		}
+	if limit > 0 && len(txs) > limit {
+		txs = txs[:limit]
 	}
 
 	blobGasPrice := eip4844.CalcBlobFee(block.ExcessBlobGas)

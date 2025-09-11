@@ -1,0 +1,34 @@
+{{ define "block_withdrawal_requests" }}
+  <style>
+    #blobs_table td {
+      max-width: 200px;
+    }
+  </style>
+  <div class="row p-1 mx-0">
+    <div class="col-md-12 text-center"><b>Showing {{ len .WithdrawalRequests }} Withdrawal Requests</b></div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm text-left">
+      <tbody id="blobs_table">
+        <tr style="background-color: var(--bg-color-light);">
+          <th class="border-0">Index</th>
+          <th class="border-0">Source Address</th>
+          <th class="border-0">Index</th>
+          <th class="border-0">Pubkey</th>
+          <th class="border-0">Amount</th>
+          <th class="border-0">Type</th>
+        </tr>
+        {{ range .WithdrawalRequests }}
+          <tr class="border-bottom">
+            <td class="border-0">{{ .Index }}</td>
+            <td class="border-0">{{ formatEth1Address .SourceAddress }}</td>
+            <td class="border-0">{{ formatValidatorInt64 .ValidatorIndex }}</td>
+            <td class="border-0">{{ formatPublicKey .ValidatorPubkey }}</td>
+            <td class="border-0">{{ formatClCurrency .Amount config.Frontend.MainCurrency 5 true false false false }}</td>
+            <td class="border-0">{{ .Type }}</td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </div>
+{{ end }}

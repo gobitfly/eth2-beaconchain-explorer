@@ -79,28 +79,60 @@
 
 {{ define "validatorOverviewDeposited" }}
   {{ with .Data }}
-    <div class="text-justify row justify-content-center mb-2">
-      <div class="col">
-        <div class="px-2">
-          <div class="px-2 mx-auto" style="max-width: 50rem;">
-            <span>
-              {{ if eq .InclusionDelay 0 }}
-                A deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to {{ formatClCurrency config.Chain.ClConfig.MaxEffectiveBalance $.Rates.ClCurrency 0 true false false false }}.
+    {{ if .ElectraHasHappened }}
+      <div class="text-justify row justify-content-center mb-2">
+        <div class="col">
+          <div class="px-2">
+            <div class="p-2 mx-auto" style="max-width: 50rem;">
+              {{ if and (and (lt .EstimatedActivationEpoch 100_000_000) (eq .EstimatedIndexEpoch 0)) (not .PendingDepositAboveMinActivation) }}
+                The validator has a deposit but has not yet reached the minimum balance of <b>{{ formatClCurrency config.Chain.ClConfig.MinActivationBalance $.Rates.ClCurrency 0 true false false false }}</b> required for activation. Another deposit may be necessary to reach this threshold, depending on recent activity.
               {{ else }}
-                The last deposit to the Deposit contract was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 16-24 hours</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to {{ formatClCurrency config.Chain.ClConfig.MaxEffectiveBalance $.Rates.ClCurrency 0 true false false false }}.
+                A deposit for this validator has been found and is waiting in the queue to be processed.
+                {{ if and (and (lt .EstimatedActivationEpoch 100_000_000) (.PendingDepositAboveMinActivation)) (gt .EstimatedActivationEpoch 0) }}
+                  It is estimated to be activated on <span class="font-weight-bolder" title="{{ .EstimatedActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
+                {{ else if and (lt .EstimatedActivationEpoch 100_000_000) (gt .EstimatedIndexEpoch 0) }}
+                  The deposit will be credited on <span class="font-weight-bolder" title="{{ .EstimatedIndexTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedIndexTs.Unix }}">{{ .EstimatedIndexTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedIndexEpoch }}</span> but for the validator to get activated, it must have a balance of at least <b>{{ formatClCurrency config.Chain.ClConfig.MinActivationBalance $.Rates.ClCurrency 0 true false false false }}</b>.
+                {{ else }}
+                  We are calculating your position in the queue, please check back in a couple minutes.
+                {{ end }}
+                Make sure your nodes and your client are up and running <em>before</em> the countdown reaches zero.
               {{ end }}
-              <br />
-              <br /><br />
-              Join our <a href="https://dsc.gg/beaconchain">Discord server</a> for support, questions and suggestions. <br /><br />
-              Download the <a href="https://beaconcha.in/mobile">mobile app</a> to monitor your validator.
-            </span>
+            </div>
+            {{ if gt .QueuePosition 0 }}
+              <div class="d-flex justify-content-center">
+                <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ formatClCurrency .ChurnRate $.Rates.ClCurrency 0 true false false false }} get dequeued each Epoch.">#{{ .QueuePosition }}</span> in the queue.</p>
+              </div>
+            {{ end }}
+            <div class="my-4" style="min-width:300px;">
+              {{ template "validatorCountdown" . }}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    {{ else }}
+      <div class="text-justify row justify-content-center mb-2">
+        <div class="col">
+          <div class="px-2">
+            <div class="px-2 mx-auto" style="max-width: 50rem;">
+              <span>
+                {{ if eq .InclusionDelay 0 }}
+                  A deposit has been made, and your validator will be voted into the activation queue once the deposited amount sums up to .
+                {{ else }}
+                  The last deposit to the Deposit contract was made {{ if gt .Deposits.LastEth1DepositTs 0 }}<span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{ .Deposits.LastEth1DepositTs }}"></span>{{ end }}, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 15 minutes</a> until your deposit is processed by the beacon chain. This validator will be eligible for activation once the deposited amount sums up to {{ formatClCurrency config.Chain.ClConfig.MaxEffectiveBalance $.Rates.ClCurrency 0 true false false false }}.
+                {{ end }}
+                <br />
+                <br /><br />
+                Join our <a href="https://dsc.gg/beaconchain">Discord server</a> for support, questions and suggestions. <br /><br />
+                Download the <a href="https://beaconcha.in/mobile">mobile app</a> to monitor your validator.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    {{ end }}
     <script>
       window.addEventListener("load", function () {
-        $("#deposits-tab").tab("show")
+        $("#deposits-tab").click()
       })
     </script>
   {{ end }}
@@ -114,14 +146,20 @@
           This validator has been processed by the beacon chain and is currently waiting to be activated.
           {{ if lt .ActivationEpoch 100_000_000 }}
             It will be activated on <span class="font-weight-bolder" title="{{ .ActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .ActivationTs.Unix }}">{{ .ActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .ActivationEpoch }}</span>.
-          {{ else if lt .EstimatedActivationEpoch 100_000_000 }}
+          {{ else if and (lt .EstimatedActivationEpoch 100_000_000) (gt .EstimatedActivationEpoch 0) }}
             It is estimated to be activated on <span class="font-weight-bolder" title="{{ .EstimatedActivationTs }}" data-toggle="tooltip" aria-ethereum-date="{{ .EstimatedActivationTs.Unix }}">{{ .EstimatedActivationTs }}</span> during epoch <span class="font-weight-bolder">{{ .EstimatedActivationEpoch }}</span>.
+          {{ else }}
+            We are currently updating your estimate, expect an activation within the next couple epochs.
           {{ end }}
-          Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
+          Make sure your nodes and your client are up and running <em>before</em> the countdown reaches zero.
         </div>
         {{ if gt .QueuePosition 0 }}
           <div class="d-flex justify-content-center">
-            <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">#{{ .QueuePosition }}</span> in Queue.</p>
+            {{ if .ElectraHasHappened }}
+              <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ formatClCurrency .ChurnRate $.Rates.ClCurrency 0 true false false false }}  get dequeued each Epoch.">#{{ .QueuePosition }}</span> in the queue.</p>
+            {{ else }}
+              <p>This validator is currently <span class="font-weight-bolder d-inline-block text-underlined" data-toggle="tooltip" title="{{ .ChurnRate }} Validators get dequeued each Epoch.">#{{ .QueuePosition }}</span> in the queue.</p>
+            {{ end }}
           </div>
         {{ end }}
         <div class="my-4" style="min-width:300px;">
@@ -132,7 +170,7 @@
   </div>
   <script>
     window.addEventListener("load", function () {
-      $("#deposits-tab").tab("show")
+      $("#deposits-tab").click()
     })
   </script>
 {{ end }}
@@ -210,19 +248,27 @@
       <div class="col">
         <div class="px-2 mx-auto" style="max-width: 50rem;">
           <div class="p-2 text-justify">
-            {{ if .FutureDutiesEpoch }}
-              This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> but has still future duties. <i class="fas fa-exclamation-circle"></i> Please keep the validator running until epoch <a href="/epoch/{{ .FutureDutiesEpoch }}">{{ .FutureDutiesEpoch }}</a>!
+            {{ if gt .ConsolidationTargetIndex -1 }}
+              {{ if and (not (eq .WithdrawableEpoch 9223372036854775807)) (lt .NetworkStats.CurrentEpoch .WithdrawableEpoch ) }}
+                This validator will be consolidated into validator <a href="/validator/{{ .ConsolidationTargetIndex }}">{{ .ConsolidationTargetIndex }}</a> on <span aria-ethereum-date="{{ .WithdrawableTs.Unix }}"></span>.
+              {{ else }}
+                This validator has been consolidated, and its funds and duties have moved to validator <a href="/validator/{{ .ConsolidationTargetIndex }}">{{ .ConsolidationTargetIndex }}</a>.
+              {{ end }}
             {{ else }}
-              This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> and is no longer validating. There is no need to keep the validator running anymore.
-            {{ end }}
+              {{ if .FutureDutiesEpoch }}
+                This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> but has still future duties. <i class="fas fa-exclamation-circle"></i> Please keep the validator running until epoch <a href="/epoch/{{ .FutureDutiesEpoch }}">{{ .FutureDutiesEpoch }}</a>!
+              {{ else }}
+                This validator has exited the system during epoch <a href="/epoch/{{ .ExitEpoch }}">{{ .ExitEpoch }}</a> and is no longer validating. There is no need to keep the validator running anymore.
+              {{ end }}
 
-            {{ if .CappellaHasHappened }}
-              Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
-              >.
-            {{ else }}
-              <span data-toggle="tooltip" title="Please note that the withdraw functionality has not been implemented by ACD yet.">
-                Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span></span
-              >.
+              {{ if .CappellaHasHappened }}
+                Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
+                >.
+              {{ else }}
+                <span data-toggle="tooltip" title="Please note that the withdraw functionality has not been implemented by ACD yet.">
+                  Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span></span
+                >.
+              {{ end }}
             {{ end }}
           </div>
           {{ if .Slashed }}<div class="p-2">Slashed by {{ .SlashedBy | formatValidator }} at Slot {{ .SlashedAt | formatBlockSlot }}, Reason: {{ .SlashedFor }}</div>{{ end }}
@@ -266,7 +312,7 @@
 
     {{ if .CappellaHasHappened }}
       <div class="mx-3">
-        <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive withdrawals, 0x01 withdrawal credentials are required. Click here for more information."{{ end }}>
+        <span id="withdrawalCount" style="cursor: pointer;" data-toggle="tooltip" {{ if .IsWithdrawableAddress }}title="Withdrawals processed for this validator"{{ else }}title="To receive withdrawals, 0x01 or 0x02 withdrawal credentials are required. Click here for more information."{{ end }}>
           {{ if .IsWithdrawableAddress }}
             <i class="fas fa-money-bill"></i>
             {{ .WithdrawalCount }}

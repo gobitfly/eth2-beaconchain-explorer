@@ -19,6 +19,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/donovanhide/eventsource"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"golang.org/x/sync/errgroup"
 
@@ -41,7 +42,7 @@ type LighthouseClient struct {
 
 // NewLighthouseClient is used to create a new Lighthouse client
 func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, error) {
-	signer := gtypes.NewCancunSigner(chainID)
+	signer := gtypes.NewPragueSigner(chainID)
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
@@ -98,6 +99,22 @@ func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
 		}
 	}()
 	return blkCh
+}
+
+// /eth/v1/beacon/states/%v/pending_deposits
+func (lc *LighthouseClient) GetPendingDeposits() (*StandardBeaconPendingDepositsResponse, error) {
+	headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/head/pending_deposits", lc.endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving pending deposits: %w", err)
+	}
+
+	var parsedHead StandardBeaconPendingDepositsResponse
+	err = json.Unmarshal(headResp, &parsedHead)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing pending deposits: %w", err)
+	}
+
+	return &parsedHead, nil
 }
 
 // GetChainHead gets the chain head from Lighthouse
@@ -169,12 +186,17 @@ func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	// TODO: maybe track more status counts in the future?
 	statusMap := make(map[string]uint64)
 
+	exitingBalance := uint64(0)
 	for _, validator := range parsedValidators.Data {
 		statusMap[validator.Status] += 1
+		if validator.Status == "active_exiting" || validator.Status == "active_slashed" {
+			exitingBalance += uint64(validator.Validator.EffectiveBalance)
+		}
 	}
 	return &types.ValidatorQueue{
-		Activating: statusMap["pending_queued"],
-		Exiting:    statusMap["active_exiting"] + statusMap["active_slashed"],
+		Activating:     statusMap["pending_queued"],
+		Exiting:        statusMap["active_exiting"] + statusMap["active_slashed"],
+		ExitingBalance: exitingBalance,
 	}, nil
 }
 
@@ -1007,7 +1029,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		withdrawals := make([]*types.Withdrawals, 0, len(payload.Withdrawals))
 		for _, w := range payload.Withdrawals {
 			withdrawals = append(withdrawals, &types.Withdrawals{
-				Index:          uint64(w.Index),
+				Index:          int64(w.Index),
 				ValidatorIndex: uint64(w.ValidatorIndex),
 				Address:        w.Address,
 				Amount:         uint64(w.Amount),
@@ -1372,6 +1394,20 @@ type StandardBeaconHeaderResponse struct {
 		} `json:"header"`
 	} `json:"data"`
 	Finalized bool `json:"finalized"`
+}
+
+type StandardBeaconPendingDepositsResponse struct {
+	ExecutionOptimistic bool                                `json:"execution_optimistic"`
+	Finalized           bool                                `json:"finalized"`
+	Data                []StandardBeaconPendingDepositsData `json:"data"`
+}
+
+type StandardBeaconPendingDepositsData struct {
+	Pubkey                hexutil.Bytes `json:"pubkey"`
+	WithdrawalCredentials hexutil.Bytes `json:"withdrawal_credentials"`
+	Amount                uint64        `json:"amount,string"`
+	Signature             hexutil.Bytes `json:"signature"`
+	Slot                  uint64        `json:"slot,string"`
 }
 
 type StandardBeaconHeadersResponse struct {

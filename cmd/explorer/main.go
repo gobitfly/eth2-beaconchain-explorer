@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"strings"
@@ -28,13 +29,9 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/gobitfly/eth2-beaconchain-explorer/version"
 
-	httpSwagger "github.com/swaggo/http-swagger"
-
 	"github.com/sirupsen/logrus"
 
 	_ "net/http/pprof"
-
-	_ "github.com/gobitfly/eth2-beaconchain-explorer/docs"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -57,6 +54,7 @@ func initStripe(http *mux.Router) error {
 
 func init() {
 	gob.Register(types.DataTableSaveState{})
+	gob.Register(types.UserV1Notification(0))
 }
 
 var frontendHttpServer *http.Server
@@ -71,6 +69,7 @@ func main() {
 		fmt.Println(version.GoVersion)
 		return
 	}
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
@@ -275,7 +274,7 @@ func main() {
 		router := mux.NewRouter()
 
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
-		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
+		apiV1Router.HandleFunc("/docs", handlers.ApiDocs).Methods("GET")
 		apiV1Router.HandleFunc("/latestState", handlers.ApiLatestState).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET", "OPTIONS")
 
@@ -288,6 +287,9 @@ func main() {
 		apiV1Router.HandleFunc("/slot/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/slot/{slot}/withdrawals", handlers.ApiSlotWithdrawals).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/slot/{slot}/consolidation_requests", handlers.ApiSlotConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/slot/{slot}/switch_to_compounding_requests", handlers.ApiSlotSwitchToCompoundingRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/slot/{slot}/deposit_requests", handlers.ApiSlotDepositRequests).Methods("GET", "OPTIONS")
 
 		// deprecated, use slot equivalents
 		apiV1Router.HandleFunc("/block/{slotOrHash}", handlers.ApiSlots).Methods("GET", "OPTIONS")
@@ -296,6 +298,9 @@ func main() {
 		apiV1Router.HandleFunc("/block/{slot}/attesterslashings", handlers.ApiSlotAttesterSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiSlotProposerSlashings).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiSlotVoluntaryExits).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/consolidation_requests", handlers.ApiSlotConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/switch_to_compounding_requests", handlers.ApiSlotSwitchToCompoundingRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/block/{slot}/deposit_requests", handlers.ApiSlotDepositRequests).Methods("GET", "OPTIONS")
 
 		apiV1Router.HandleFunc("/sync_committee/{period}", handlers.ApiSyncCommittee).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET", "OPTIONS")
@@ -310,6 +315,8 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/execution/performance", handlers.ApiValidatorExecutionPerformance).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestations", handlers.ApiValidatorAttestations).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/proposals", handlers.ApiValidatorProposals).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/consolidation_requests", handlers.ApiValidatorConsolidationRequests).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/switch_to_compounding_requests", handlers.ApiValidatorSwitchToCompoundingRequests).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationefficiency", handlers.ApiValidatorAttestationEfficiency).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationeffectiveness", handlers.ApiValidatorAttestationEffectiveness).Methods("GET", "OPTIONS")
@@ -322,8 +329,6 @@ func main() {
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/dashboard/data/allbalances", handlers.DashboardDataBalanceCombined).Methods("GET", "OPTIONS") // consensus & execution
-		apiV1Router.HandleFunc("/dashboard/data/balances", handlers.DashboardDataBalance).Methods("GET", "OPTIONS")            // new app versions
-		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.APIDashboardDataBalance).Methods("GET", "OPTIONS")          // old app versions
 		apiV1Router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
 		apiV1Router.HandleFunc("/stats/{apiKey}/{machine}", handlers.ClientStatsPostOld).Methods("POST", "OPTIONS")
@@ -472,7 +477,6 @@ func main() {
 			router.HandleFunc("/validator/{pubkey}/name", handlers.SaveValidatorName).Methods("POST")
 			router.HandleFunc("/watchlist/add", handlers.UsersModalAddValidator).Methods("POST")
 			router.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST")
-			router.HandleFunc("/validator/{index}/stats", handlers.ValidatorStatsTable).Methods("GET")
 			router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 			router.HandleFunc("/validators/data", handlers.ValidatorsData).Methods("GET")
 			router.HandleFunc("/validators/slashings", handlers.ValidatorsSlashings).Methods("GET")
@@ -490,18 +494,10 @@ func main() {
 			router.HandleFunc("/validators/included-deposits", handlers.Eth2Deposits).Methods("GET") // deprecated, will redirect to /validators/deposits
 			router.HandleFunc("/validators/included-deposits/data", handlers.Eth2DepositsData).Methods("GET")
 
-			router.HandleFunc("/heatmap", handlers.Heatmap).Methods("GET")
-
-			router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
 			router.HandleFunc("/dashboard/data/allbalances", handlers.DashboardDataBalanceCombined).Methods("GET")
-			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
-			router.HandleFunc("/dashboard/data/proposalshistory", handlers.DashboardDataProposalsHistory).Methods("GET")
-			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")
-			router.HandleFunc("/dashboard/data/withdrawal", handlers.DashboardDataWithdrawals).Methods("GET")
-			router.HandleFunc("/dashboard/data/effectiveness", handlers.DashboardDataEffectiveness).Methods("GET")
-			router.HandleFunc("/dashboard/data/earnings", handlers.DashboardDataEarnings).Methods("GET")
+
 			router.HandleFunc("/graffitiwall", handlers.Graffitiwall).Methods("GET")
 			router.HandleFunc("/calculator", handlers.StakingCalculator).Methods("GET")
 			router.HandleFunc("/search", handlers.Search).Methods("POST")
@@ -536,9 +532,6 @@ func main() {
 			// confirming the email update should not require auth
 			router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 			router.HandleFunc("/gitcoinfeed", handlers.GitcoinFeed).Methods("GET")
-			router.HandleFunc("/rewards", handlers.ValidatorRewards).Methods("GET")
-			router.HandleFunc("/rewards/hist", handlers.RewardsHistoricalData).Methods("GET")
-			router.HandleFunc("/rewards/hist/download", handlers.DownloadRewardsHistoricalData).Methods("GET")
 
 			router.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribeByHash).Methods("GET")
 
@@ -600,10 +593,6 @@ func main() {
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
-			authRouter.HandleFunc("/rewards", handlers.ValidatorRewards).Methods("GET")
-			authRouter.HandleFunc("/rewards/subscribe", handlers.RewardNotificationSubscribe).Methods("POST")
-			authRouter.HandleFunc("/rewards/unsubscribe", handlers.RewardNotificationUnsubscribe).Methods("POST")
-			authRouter.HandleFunc("/rewards/subscriptions/data", handlers.RewardGetUserSubscriptions).Methods("POST")
 			authRouter.HandleFunc("/webhooks", handlers.NotificationWebhookPage).Methods("GET")
 			authRouter.HandleFunc("/webhooks/add", handlers.UsersAddWebhook).Methods("POST")
 			authRouter.HandleFunc("/webhooks/{webhookID}/update", handlers.UsersEditWebhook).Methods("POST")

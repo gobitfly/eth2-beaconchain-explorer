@@ -9,10 +9,10 @@
   </script>
   <script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}}, {{.ActivationEpoch}})</script>
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   {{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") }}
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
-    <script type="text/javascript" src="/js/datatable_loader.js"></script>
     <script src="/js/highcharts/highstock.min.js"></script>
     <script src="/js/highcharts/exporting.min.js"></script>
     <script src="/js/highcharts/offline-exporting.min.js"></script>
@@ -78,7 +78,7 @@
   {{ with .Data }}
     <!-- possible states: deposited deposited_invalid pending slashing_offline slashing_online active_offline active_online slashed exited -->
     {{ $deposited := or (eq .Status "deposited") (eq .Status "deposited_invalid") }}
-    {{ $pending := eq .Status "pending" }}
+    {{ $pending := or (eq .Status "pending") (eq .Status "pending_initialized") }}
     {{ $validating := or (or (or (eq .Status "active_online") (eq .Status "active_offline")) (or (eq .Status "slashing_online") (eq .Status "slashing_offline"))) (or (eq .Status "exiting_online") (eq .Status "exiting_offline")) }}
     {{ $exited := or (eq .Status "exited") (eq .Status "slashed") }}
 
@@ -139,7 +139,7 @@
                 <a class="nav-link {{ if eq .BlocksCount 0 }}disabled{{ end }}" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab" aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Blocks</span></a>
               </li>
               <li class="nav-item">
-                <a class="nav-link {{ if eq .AttestationsCount 0 }}disabled{{ end }}" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Attestations</span></a>
+                <a class="nav-link {{ if eq .AttestationsCount 0 }}disabled{{ end }}" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Atts.</span></a>
               </li>
               <li class="nav-item">
                 <a class="nav-link {{ if eq .SyncCount 0 }}disabled{{ end }}" id="sync-tab" data-toggle="tab" href="#sync" role="tab" aria-controls="sync" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-sync"></i><span class="tab-text">Sync</span></a>
@@ -151,7 +151,10 @@
                 <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
               </li>
               <li class="nav-item">
-                <a class="nav-link {{ if or (not .IsWithdrawableAddress) (not .CappellaHasHappened) }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
+                <a class="nav-link {{ if not .EnableWithdrawalsTab }}disabled{{ end }}" id="withdrawal-tab" data-toggle="tab" href="#withdrawals" role="tab" aria-controls="withdrawals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-money-bill"></i> <span class="tab-text">Withdrawals</span></a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {{ if and (eq (add (len .ExecutionConsolidations) (len .ConsolidationRequests)) 0) (not .MoveToCompoundingRequest) }}disabled{{ end }}" id="consolidations-tab" data-toggle="tab" href="#consolidations" role="tab" aria-controls="consolidations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chevron-up"></i> <span class="tab-text">Consol.</span></a>
               </li>
               {{ if .IsRocketpool }}
                 <li class="nav-item">
@@ -199,11 +202,14 @@
               <div class="tab-pane fade h-100" id="depositsTabPanel" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
                 <div class="px-3">{{ template "validatorDepositsTable" $ }}</div>
               </div>
-              {{ if and (.CappellaHasHappened) (.IsWithdrawableAddress) }}
+              {{ if .EnableWithdrawalsTab }}
                 <div class="tab-pane fade h-100" id="withdrawalsTabPanel" role="tabpanel" aria-labelledby="withdrawal-tab" aria-controls="withdrawals">
-                  {{ template "validatorWithdrawalTable" . }}
+                  <div class="px-3">{{ template "validatorWithdrawalsTable" . }}</div>
                 </div>
               {{ end }}
+              <div class="tab-pane fade h-100" id="consolidationsTabPanel" role="tabpanel" aria-labelledby="consolidations-tab" aria-controls="consolidations">
+                <div class="px-3">{{ template "validatorConsolidationsTable" $ }}</div>
+              </div>
               {{ if .IsRocketpool }}
                 <div class="tab-pane fade w-100" id="rocketpoolTabPanel" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">

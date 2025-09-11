@@ -13,6 +13,7 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -51,6 +52,7 @@ var firstBlockOfRedstone = map[string]uint64{
 	"mainnet": 15451165,
 	"prater":  7287326,
 	"holesky": 0,
+	"hoodi":   0, // TODO: dont know
 }
 
 var leb16, _ = big.NewInt(0).SetString("16000000000000000000", 10)
@@ -1919,7 +1921,7 @@ func DownloadRewardsFile(fileName string, interval uint64, cid string, isDaemon 
 		}
 	}
 
-	return nil, fmt.Errorf(errBuilder.String())
+	return nil, errors.New(errBuilder.String())
 
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"time"
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
@@ -97,19 +98,49 @@ func getSlotVizData(currentEpoch uint64) *types.SlotVizPageData {
 }
 
 func calculateChurn(page *types.IndexPageData) {
-	limit := services.GetLatestStats().ValidatorActivationChurnLimit
-	pending_validators := services.GetLatestStats().PendingValidatorCount
-	// calculate daily new validators
-	limit_per_day := *limit * uint64(225)
-	// calculate how long it will take for a new deposit to be processed
-	time := float64(*pending_validators) / float64((limit_per_day))
-	const hoursPerDay = 24
-	wholeDays, fractionalDays := math.Modf(time)
+	if utils.ElectraHasHappened(page.CurrentEpoch) {
+		data := services.LatestQueueData()
+		if data == nil {
+			logger.Warn("error getting queue data")
+			return
+		}
+		duration := data.EnteringQueueTime
 
-	hours := int(fractionalDays * hoursPerDay)
+		if duration < 0 {
+			page.NewDepositProcessAfter = "a couple minutes"
+		} else {
+			days := duration / (24 * time.Hour)
+			hours := (duration % (24 * time.Hour)) / time.Hour
+			page.NewDepositProcessAfter = fmt.Sprintf("%d days and %d hours", days, hours)
+		}
+		page.ValidatorsPerEpoch = data.EnteringBalancePerEpoch
+		page.ValidatorsPerDay = data.EnteringBalancePerDay
+	} else {
+		stats := services.GetLatestStats()
+		if stats == nil ||
+			stats.ValidatorActivationChurnLimit == nil ||
+			stats.PendingValidatorCount == nil {
+			logger.Warn("calculateChurn: missing or invalid cached stats; skipping churn calculation")
+			return
+		}
+		limit := *stats.ValidatorActivationChurnLimit
+		if limit == 0 {
+			logger.Warn("calculateChurn: churn limit is zero; skipping churn calculation")
+			return
+		}
+		pending_validators := *stats.PendingValidatorCount
+		// calculate daily new validators
+		limit_per_day := limit * uint64(225)
+		// calculate how long it will take for a new deposit to be processed
+		daysFloat := float64(pending_validators) / float64((limit_per_day))
+		const hoursPerDay = 24
+		wholeDays, fractionalDays := math.Modf(daysFloat)
 
-	time_as_days := fmt.Sprintf("%d days and %d hours", int(wholeDays), hours)
-	page.NewDepositProcessAfter = time_as_days
-	page.ValidatorsPerEpoch = *limit
-	page.ValidatorsPerDay = limit_per_day
+		hours := int(fractionalDays * hoursPerDay)
+
+		time_as_days := fmt.Sprintf("%d days and %d hours", int(wholeDays), hours)
+		page.NewDepositProcessAfter = time_as_days
+		page.ValidatorsPerEpoch = limit
+		page.ValidatorsPerDay = limit_per_day
+	}
 }
