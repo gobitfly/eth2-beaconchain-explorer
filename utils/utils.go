@@ -813,6 +813,34 @@ func ReadConfig(cfg *types.Config, path string) error {
 		cfg.RedisSessionStoreEndpoint = cfg.RedisCacheEndpoint
 	}
 
+	if cfg.Bigtable.TableNameBeaconchain == "" {
+		cfg.Bigtable.TableNameBeaconchain = "beaconchain"
+	}
+	if cfg.Bigtable.TableNameValidators == "" {
+		cfg.Bigtable.TableNameValidators = "beaconchain_validators"
+	}
+	if cfg.Bigtable.TableNameValidatorsHistory == "" {
+		cfg.Bigtable.TableNameValidatorsHistory = "beaconchain_validators_history"
+	}
+	if cfg.Bigtable.TableNameBlocks == "" {
+		cfg.Bigtable.TableNameBlocks = "blocks"
+	}
+	if cfg.Bigtable.TableNameData == "" {
+		cfg.Bigtable.TableNameData = "data"
+	}
+	if cfg.Bigtable.TableNameMachineMetrics == "" {
+		cfg.Bigtable.TableNameMachineMetrics = "machine_metrics"
+	}
+	if cfg.Bigtable.TableNameMetadata == "" {
+		cfg.Bigtable.TableNameMetadata = "metadata"
+	}
+	if cfg.Bigtable.TableNameMetadataUpdates == "" {
+		cfg.Bigtable.TableNameMetadataUpdates = "metadata_updates"
+	}
+	if cfg.Bigtable.TableNameBlocksRaw == "" {
+		cfg.Bigtable.TableNameBlocksRaw = "blocks-raw"
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"genesisTimestamp":       cfg.Chain.GenesisTimestamp,
 		"genesisValidatorsRoot":  cfg.Chain.GenesisValidatorsRoot,
