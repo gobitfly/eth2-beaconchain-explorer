@@ -430,6 +430,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ", subscription.ID)
 			http.Error(w, "error creating transaction :"+err.Error(), http.StatusInternalServerError)
+			return
 		}
 		defer tx.Rollback()
 
@@ -478,6 +479,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.WithError(err).Error("error creating transaction ", subscription.ID)
 			http.Error(w, "error creating transaction :"+err.Error(), http.StatusInternalServerError)
+			return
 		}
 		defer tx.Rollback()
 
@@ -509,6 +511,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.WithError(err).Error("error committing transaction ", subscription.ID)
 			http.Error(w, "error committing transaction :"+err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 	// inform the user when the subscription will expire
@@ -539,14 +542,35 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		tx, err := db.FrontendWriterDB.Begin()
-		if err != nil {
-			logger.WithError(err).Error("error creating transaction ")
-			http.Error(w, "error creating transaction :"+err.Error(), http.StatusInternalServerError)
-		}
-		defer tx.Rollback()
+		var tx *sql.Tx
 
-		err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
+		// retry updating subs if webhooks come out of order (customer.subscription.created coming after invoice.paid)
+		retries := 0
+		for {
+			tx, err = db.FrontendWriterDB.Begin()
+			if err != nil {
+				logger.WithError(err).Error("error creating transaction ")
+				http.Error(w, "error creating transaction :"+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer tx.Rollback()
+			err = db.StripeUpdateSubscriptionStatus(tx, invoice.Lines.Data[0].Subscription, true, nil)
+			if err == nil {
+				break
+			}
+			if err == sql.ErrNoRows {
+				retries++
+				if retries > 5 {
+					break
+				}
+				tx.Rollback()
+				time.Sleep(1000 * time.Millisecond)
+				logger.Warnf("retrying processing of invoice.paid for sub %v", invoice.Lines.Data[0].Subscription)
+				continue
+			}
+			break
+		}
+
 		if err != nil {
 			logger.WithError(err).Error("error processing invoice failed to activate subscription for customer", invoice.Customer.ID)
 			http.Error(w, "error processing invoice failed to activate subscription for customer", http.StatusInternalServerError)
@@ -572,6 +596,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logger.WithError(err).Error("error committing transaction ")
 			http.Error(w, "error committing transaction :"+err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 	case "invoice.payment_failed":
