@@ -272,7 +272,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	avgSlotInterval := uint64(getAvgSlotInterval(ebEth))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*avgSlotInterval) * time.Second
 	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
-	if len(slots) > 0 {
+	if len(slots) > 0 && avgSlotInterval > 0 {
 		nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
 		validatorProposalData.ProposalEstimate = &nextSlotEstimate
 	}
@@ -482,7 +482,7 @@ func calcExpectedSlotProposals(timeframe time.Duration, validatorsEbEth uint64, 
 func getAvgSlotInterval(validatorsEbEth uint64) float64 {
 	// don't estimate if there are no proposed blocks or no validators
 	activeValidatorsEbEth := *services.GetLatestStats().ActiveValidatorEbEth
-	if activeValidatorsEbEth == 0 {
+	if activeValidatorsEbEth == 0 || validatorsEbEth == 0 {
 		return 0
 	}
 
@@ -497,7 +497,7 @@ func getAvgSlotInterval(validatorsEbEth uint64) float64 {
 // result of the function should be interpreted as "there will be one validator included in every X committees, on average"
 func getAvgSyncCommitteeInterval(validatorsEbEth uint64) float64 {
 	activeValidatorsEbEth := *services.GetLatestStats().ActiveValidatorEbEth
-	if activeValidatorsEbEth == 0 {
+	if activeValidatorsEbEth == 0 || validatorsEbEth == 0 {
 		return 0
 	}
 
