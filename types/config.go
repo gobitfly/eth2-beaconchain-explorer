@@ -251,6 +251,7 @@ type Frontend struct {
 			Domain     string `yaml:"domain" envconfig:"FRONTEND_MAIL_MAILGUN_DOMAIN"`
 			PrivateKey string `yaml:"privateKey" envconfig:"FRONTEND_MAIL_MAILGUN_PRIVATE_KEY"`
 			Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
+			UseEUAPI   bool   `yaml:"useEUApi" envconfig:"FRONTEND_MAIL_MAILGUN_USE_EU_API"`
 		} `yaml:"mailgun"`
 		Contact struct {
 			SupportEmail string `yaml:"supportEmail" envconfig:"FRONTEND_MAIL_CONTACT_SUPPORT_EMAIL"`
