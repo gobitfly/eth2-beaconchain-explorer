@@ -271,8 +271,8 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	validatorProposalData.ProposalLuck, _ = getProposalLuck(slots, ebEth, firstActivationEpoch)
 	avgSlotInterval := uint64(getAvgSlotInterval(ebEth))
 	avgSlotIntervalAsDuration := time.Duration(utils.Config.Chain.ClConfig.SecondsPerSlot*avgSlotInterval) * time.Second
-	validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 	if len(slots) > 0 && avgSlotInterval > 0 {
+		validatorProposalData.AvgSlotInterval = &avgSlotIntervalAsDuration
 		nextSlotEstimate := utils.SlotToTime(slots[len(slots)-1] + avgSlotInterval)
 		validatorProposalData.ProposalEstimate = &nextSlotEstimate
 	}
