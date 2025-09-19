@@ -101,7 +101,7 @@
           <td class="pl-0">
             {{ $hasProposalLuck := nef .ProposalLuck 0 }}
             <!-- prettier-ignore-attribute -->
-            <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if and $hasProposalLuck .ProposalEstimate}}(exp. <span aria-ethereum-date='{{ .ProposalEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ end }} (on avg. every <span aria-ethereum-duration='{{ .AvgSlotInterval.Milliseconds }}'></span>)<br></span>">
+            <span data-toggle="tooltip" data-html="true" data-tooltip-date="true" title="<span>Block Prop. {{ if and $hasProposalLuck .ProposalEstimate}}(exp. <span aria-ethereum-date='{{ .ProposalEstimate.Unix }}' aria-ethereum-date-format='FROMNOW'></span>) {{ formatPercentageWithPrecision .ProposalLuck 2 }}%{{ end }} {{ if .AvgSlotInterval }}(on avg. every <span aria-ethereum-duration='{{ .AvgSlotInterval.Milliseconds }}'></span>){{end}}<br></span>">
               {{ if $hasProposalLuck }}
                 {{ formatPercentageWithPrecision .ProposalLuck 1 }}% <i class="tab-icon mr-md-1 fas fa-cubes d-none d-sm-inline-block"></i>
               {{ else }}
