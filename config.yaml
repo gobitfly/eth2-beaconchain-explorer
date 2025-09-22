@@ -41,6 +41,7 @@ indexer:
     port: "4000" # GRPC port of the Prysm node
     type: "lighthouse" # can be either prysm or lighthouse
     pageSize: 100 # the amount of entries to fetch per paged rpc call, TODO set to 500
+  eth1ErigonEndpoint: 'http://localhost:8545'  # Added for Erigon RPC
   eth1Endpoint: 'http://localhost:8545'
   # Note: 0 is correct, but due to an underflow bug (being fixed), doesn't work.
   eth1DepositContractFirstBlock: 1
