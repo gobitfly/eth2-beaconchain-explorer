@@ -1,3 +1,33 @@
+import (
+	"encoding/json"
+	"net/http"
+	"os"
+)
+// GetEthBalance fetches the ETH balance for an address using Etherscan API (demo implementation)
+func GetEthBalance(address string) (string, error) {
+       apiKey := os.Getenv("ETHERSCAN_API_KEY")
+       if apiKey == "" {
+	       return "0", errors.New("ETHERSCAN_API_KEY not set")
+       }
+       url := "https://api.etherscan.io/api?module=account&action=balance&address=" + address + "&tag=latest&apikey=" + apiKey
+       resp, err := http.Get(url)
+       if err != nil {
+	       return "0", err
+       }
+       defer resp.Body.Close()
+       var result struct {
+	       Status  string `json:"status"`
+	       Message string `json:"message"`
+	       Result  string `json:"result"`
+       }
+       if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	       return "0", err
+       }
+       if result.Status != "1" {
+	       return "0", errors.New("Etherscan API error: " + result.Message)
+       }
+       return result.Result, nil
+}
 package utils
 
 import (

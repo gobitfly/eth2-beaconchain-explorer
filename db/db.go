@@ -1,3 +1,28 @@
+// GetTrackedAddresses returns all addresses from the tracked_addresses table
+func GetTrackedAddresses() []string {
+       rows, err := ReaderDb.Query("SELECT address FROM tracked_addresses")
+       if err != nil {
+	       logger.Errorf("error querying tracked_addresses: %v", err)
+	       return nil
+       }
+       defer rows.Close()
+       var addresses []string
+       for rows.Next() {
+	       var addr string
+	       if err := rows.Scan(&addr); err == nil {
+		       addresses = append(addresses, addr)
+	       }
+       }
+       return addresses
+}
+
+// UpdateAddressBalance updates the balance for an address in tracked_addresses
+func UpdateAddressBalance(address string, balance string) {
+       _, err := WriterDb.Exec("UPDATE tracked_addresses SET balance = $1 WHERE address = $2", balance, address)
+       if err != nil {
+	       logger.Errorf("error updating balance for %s: %v", address, err)
+       }
+}
 package db
 
 import (
