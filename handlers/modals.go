@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	// Import the static mapping
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
@@ -73,10 +76,15 @@ func UsersModalAddValidator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pubKeyStrings := []string{}
+	addressStrings := []string{}
 	entries := []db.WatchlistEntry{}
 	for _, key := range pubkeys {
 		keyString := hex.EncodeToString(key)
 		pubKeyStrings = append(pubKeyStrings, keyString)
+		// Check static mapping for address
+		if addr, ok := utils.HashPubkeyToAddress[keyString]; ok {
+			addressStrings = append(addressStrings, addr)
+		}
 		entries = append(entries, db.WatchlistEntry{UserId: user.UserID, Validator_publickey: keyString})
 	}
 	err = db.AddToWatchlist(entries, utils.GetNetwork())

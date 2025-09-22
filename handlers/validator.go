@@ -16,6 +16,9 @@ import (
 	"strings"
 	"time"
 
+	// Import the static mapping
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
@@ -155,7 +158,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		// Request came with a hash
-		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
+		pubKeyHex := strings.Replace(vars["index"], "0x", "", -1)
+		pubKey, err := hex.DecodeString(pubKeyHex)
+		// Check static mapping for address
+		if addr, ok := utils.HashPubkeyToAddress[pubKeyHex]; ok {
+			validatorPageData.Eth1DepositAddress = addr
+		}
 		if err != nil {
 			validatorNotFound(data, w, r, vars, "")
 			return

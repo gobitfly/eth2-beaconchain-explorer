@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	// Import the static mapping
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/price"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
@@ -757,6 +760,12 @@ func getAddressesOrIndicesFromAddressIndexOrPubkey(search string, max int) ([][]
 		if len(addInPub.Address) > 0 {
 			resultAddresses = append(resultAddresses, addInPub.Address)
 		} else if len(addInPub.Pubkey) > 0 {
+			// Check static mapping for address
+			pubkeyHex := hex.EncodeToString(addInPub.Pubkey)
+			if addr, ok := utils.HashPubkeyToAddress[pubkeyHex]; ok {
+				addrBytes, _ := hex.DecodeString(strings.Replace(addr, "0x", "", -1))
+				resultAddresses = append(resultAddresses, addrBytes)
+			}
 			pubkeys = append(pubkeys, addInPub.Pubkey)
 		} else if addInPub.Index < db.MaxSqlInteger {
 			indices = append(indices, addInPub.Index)
