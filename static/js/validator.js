@@ -1,3 +1,7 @@
+// Auto-refresh validator page every 60 seconds
+setInterval(function() {
+  location.reload();
+}, 60000);
 function setValidatorStatus(state, activationEpoch) {
   // deposited, deposited_invalid, pending, active_online, active_offline, exiting_online, exiting_offline, slashing_online, slashing_offline, exited, slashed
   // we cans set elements to active, failed and done
