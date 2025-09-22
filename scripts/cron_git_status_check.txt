@@ -1,0 +1,2 @@
+# Run this script every 10 minutes via cron to automate status checks and git commits
+*/10 * * * * cd /workspaces/eth2-beaconchain-explorer && ./scripts/check_and_commit_status.sh >> scripts/cron.log 2>&1
