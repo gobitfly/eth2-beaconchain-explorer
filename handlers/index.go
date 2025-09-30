@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/services"
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
@@ -47,6 +48,14 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	pageData.SlotVizData = getSlotVizData(data.CurrentEpoch)
 
 	calculateChurn(pageData)
+
+	// Populate treemap data for index page (entity rows only)
+	treemapRows, err := db.GetEntitiesTreemapData("1d")
+	if err != nil {
+		utils.LogError(err, "select index treemap data", 0)
+	} else {
+		pageData.EntitiesTreemap = treemapRows
+	}
 
 	data.Data = pageData
 

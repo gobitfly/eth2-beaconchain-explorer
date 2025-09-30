@@ -95,18 +95,19 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driv
 	var dbConnWriter, dbConnReader *sqlx.DB
 	var err error
 	if writer != nil {
-		sslParam := ""
+		extraParams := ""
 		if driverName == "clickhouse" {
-			sslParam = "secure=false"
+			extraParams = "secure=false"
 			if writer.SSL {
-				sslParam = "secure=true"
+				extraParams = "secure=true"
 			}
+			extraParams += "&compress=true"
 			// debug
-			// sslParam += "&debug=true"
+			// extraParams += "&debug=true"
 		} else {
-			sslParam = "sslmode=disable"
+			extraParams = "sslmode=disable"
 			if writer.SSL {
-				sslParam = "sslmode=require"
+				extraParams = "sslmode=require"
 			}
 		}
 		if writer.MaxOpenConns == 0 {
@@ -120,7 +121,7 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driv
 		}
 
 		logger.Infof("connecting to %s database %s:%s/%s as writer with %d/%d max open/idle connections", databaseBrand, writer.Host, writer.Port, writer.Name, writer.MaxOpenConns, writer.MaxIdleConns)
-		dbConnWriter, err = sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, writer.Username, writer.Password, net.JoinHostPort(writer.Host, writer.Port), writer.Name, sslParam))
+		dbConnWriter, err = sqlx.Open(driverName, fmt.Sprintf("%s://%s:%s@%s/%s?%s", databaseBrand, writer.Username, writer.Password, net.JoinHostPort(writer.Host, writer.Port), writer.Name, extraParams))
 		if err != nil {
 			logger.Fatal(err, "error getting Connection Writer database", 0)
 		}
@@ -177,7 +178,9 @@ func mustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driv
 }
 
 func MustInitClickhouseDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) {
+	logrus.Info("Connecting to Clickhouse")
 	_, ClickhouseReaderDb = mustInitDB(writer, reader, driverName, databaseBrand)
+	logrus.Info("Connected to Clickhouse")
 }
 
 func MustInitDB(writer *types.DatabaseConfig, reader *types.DatabaseConfig, driverName string, databaseBrand string) {

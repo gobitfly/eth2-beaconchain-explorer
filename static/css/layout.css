@@ -17,6 +17,8 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   background-image: linear-gradient(180deg, transparent 65%, var(--highlight) 0);
 }
 
+.tooltip-allow-interaction { pointer-events: auto; }
+
 table {
   table-layout: auto;
 }

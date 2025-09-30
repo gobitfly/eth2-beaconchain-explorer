@@ -289,6 +289,15 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 				{
 					Links: []types.NavigationLink{
 						{
+							Label: "Entities",
+							Path:  "/entities",
+							Icon:  "fa-building",
+						},
+					},
+				},
+				{
+					Links: []types.NavigationLink{
+						{
 							Label: "Overview",
 							Path:  "/validators",
 							Icon:  "fa-table",
@@ -360,11 +369,6 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 						Label: "Staking Services",
 						Path:  "/stakingServices",
 						Icon:  "fa-drumstick-bite",
-					},
-					{
-						Label: "Pool Benchmarks",
-						Path:  "/pools",
-						Icon:  "fa-chart-pie",
 					},
 					{
 						Label: "Rocket Pool Stats",

@@ -518,7 +518,8 @@ func main() {
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
-			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
+			router.HandleFunc("/entities", handlers.Entities).Methods("GET")
+			router.HandleFunc("/entity/{entity}/{subEntity}", handlers.EntityDetail).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")
 			router.HandleFunc("/pools/rocketpool", handlers.PoolsRocketpool).Methods("GET")
 			router.HandleFunc("/pools/rocketpool/data/minipools", handlers.PoolsRocketpoolDataMinipools).Methods("GET")
@@ -634,7 +635,7 @@ func main() {
 		n.Use(gzip.Gzip(gzip.DefaultCompression))
 
 		pa := &proxyaddr.ProxyAddr{}
-		pa.Init(proxyaddr.CIDRLoopback)
+		_ = pa.Init(proxyaddr.CIDRLoopback)
 		n.Use(pa)
 
 		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))

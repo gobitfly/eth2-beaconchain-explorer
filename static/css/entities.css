@@ -1,0 +1,57 @@
+/* Tree table styles */
+.tt-caret {
+  display: inline-block;
+  width: 0; height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 8px solid #6c757d;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out;
+}
+.tt-caret.expanded { transform: rotate(90deg); }
+.tt-label .tt-text { vertical-align: middle; }
+tr.has-children:hover { background-color: rgba(0,0,0,0.02); }
+
+/* Prevent layout shift on expand: fixed layout and ellipsis for name columns */
+#staking-pool-table { table-layout: fixed; }
+#staking-pool-table td:nth-child(1),
+#staking-pool-table td:nth-child(2) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Beaconscore badge styling */
+.beacon-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.beacon-badge--bad { background-color: rgba(220, 53, 69, 0.16); color: #dc3545; }
+.beacon-badge--moderate { background-color: rgba(255, 193, 7, 0.22); color: #d39e00; }
+.beacon-badge--good { background-color: rgba(40, 167, 69, 0.18); color: #28a745; }
+.beacon-badge--excellent { background-color: rgba(46, 204, 113, 0.22); color: #2ecc71; }
+
+/* Header help icon */
+.beaconscore-help {
+  margin-left: 6px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+  text-decoration: none;
+  background: rgba(108, 117, 125, 0.2);
+  color: var(--font-color);
+}
+.beaconscore-help:hover { text-decoration: none; background: rgba(108, 117, 125, 0.3); color: var(--font-color); }
+
+/* Pointer cursor for clickable treemap tiles (exclude 'Others' which lacks className) */
+.highcharts-point.clickable { cursor: pointer; }

@@ -7,7 +7,7 @@ LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDat
 CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 CGO_CFLAGS_ALLOW="-O -D__BLST_PORTABLE__"
 
-all: explorer stats frontend-data-updater eth1indexer blobindexer ethstore-exporter rewards-exporter node-jobs-processor signatures notification-sender notification-collector user-service misc
+all: explorer stats frontend-data-updater eth1indexer blobindexer ethstore-exporter rewards-exporter node-jobs-processor signatures notification-sender notification-collector user-service misc validator-tagger
 
 lint:
 	echo 
@@ -63,6 +63,9 @@ notification-collector:
 
 user-service:
 	CGO_CFLAGS=${CGO_CFLAGS} CGO_CFLAGS_ALLOW=${CGO_CFLAGS_ALLOW} go build --ldflags=${LDFLAGS} -o bin/user-service cmd/user-service/main.go
+
+validator-tagger:
+	CGO_CFLAGS=${CGO_CFLAGS} CGO_CFLAGS_ALLOW=${CGO_CFLAGS_ALLOW} go build --ldflags=${LDFLAGS} -o bin/validator-tagger cmd/validator-tagger/main.go
 
 playground:
 	go build --ldflags=${LDFLAGS} -o bin/add_income_stats cmd/playground/add_income_stats/main.go
