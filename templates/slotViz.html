@@ -19,8 +19,8 @@
       }
       const width = $(selector)?.width() || 0
       /// Chat Dimensions
-      const margin = { top: 20, right: 30, bottom: 0, left: 30 }
-      const height = 120 + margin.top + margin.bottom + (epochs?.length || 5) * 50
+      const margin = { top: 20, right: 0, bottom: 0, left: 30 }
+      let height = 120 + margin.top + margin.bottom + (epochs?.length || 5) * 50
 
       var roma = ["#343a4033", "#ff3333", "#cc3333", "#33cc33"]
 
@@ -30,6 +30,19 @@
       var colorProposed = d3.scaleSequential().domain([0, 12]).interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
       // Chart Svg
       var svg = d3.select(selector).append("svg").attr("viewBox", [0, 0, width, height]).attr("style", `max-width: ${width}px; font: 10px sans-serif;`)
+
+      // Slot rectangle size is relative to width so it scales on mobile
+      var rectSize = (width - margin.right - margin.left) / 42
+
+      // Mobile-only: tighten vertical spacing between each rectangles+bar combination to ~10px gap
+      if (width < 576) {
+        var desiredRowGap = 0
+        // rowStep approximates: slotRect + gap between rect and bar + bar height + desired gap between combos
+        var rowStep = Math.round(rectSize + 4 + 0 + desiredRowGap) // 4 = barGap, 11 = barHeight
+        height = 120 + margin.top + margin.bottom + (epochs?.length || 5) * rowStep
+        // Update the svg viewBox height so the chart compacts vertically on mobile
+        svg.attr("viewBox", [0, 0, width, height])
+      }
 
       // Define X axis
       var x = d3
@@ -80,6 +93,18 @@
       var bars = createBars(svg)
       var labels = createLabels(svg)
 
+      // Layout constants (responsive)
+      // Bar height stays constant for readability; spacing adapts with rect size
+      var barHeight = 15
+      // Gap between the bottom of the slot squares row and the top of the participation bar
+      var barGap = 4
+      // Distance from the vertical center of a band to the top of the participation bar
+      var barYOffset = rectSize / 2 + barGap
+      // Offset to reach the visual middle of the bar for text placement
+      var labelInsideBarOffset = barHeight / 2
+      // Global nudge to counter baseline differences across browsers (negative moves text up)
+      var labelNudge = -4
+
       vizChart = Object.assign(svg.node(), {
         update(newData) {
           $(function () {
@@ -104,20 +129,20 @@
               (enter) => {
                 return enter
                   .append("text")
-                  .attr("y", (d) => y(d.epoch) + y.bandwidth() + 3.5)
+                  .attr("y", (d) => y(d.epoch) + y.bandwidth() / 2 + barYOffset + labelInsideBarOffset + labelNudge)
                   .attr("x", (d) => {
                     if (d.participation === 0) {
                       return participationX(99) - participationX(0)
                     }
                     return participationX(d.participation) - x(0)
                   })
-                  .attr("style", "font-size: .7rem; z-index: 99;")
+                  .attr("style", "font-size: .7rem; z-index: 99; dominant-baseline: middle; alignment-baseline: middle;")
                   .text((d) => {
                     if (d.participation) {
-                      var txt = d.finalized ? "finalized" : d.justified ? "justified" :"justifying"
+                      var txt = d.finalized ? "Finalized" : d.justified ? "Justified" :"Justifying"
                       return txt + " " + d.participation + "%"
                     } else {
-                      return d.slots[0].Slot ? "processing..." : ""
+                      return d.slots[0].Slot ? "Processing..." : ""
                     }
                   })
               },
@@ -126,16 +151,16 @@
 
                   .text((d) => {
                     if (d.participation) {
-                      var txt = d.finalized ? "finalized" : d.justified ? "justified" : "justifying"
+                      var txt = d.finalized ? "Finalized" : d.justified ? "Justified" : "Justifying"
                       return txt + " " + d.participation + "%"
                     } else {
-                      return d.slots[0].Slot ? "processing..." : ""
+                      return d.slots[0].Slot ? "Processing..." : ""
                     }
                   })
                   .call((label) => {
                     return label
                       .transition(t)
-                      .attr("y", (d) => y(d.epoch) + y.bandwidth() + 3.5)
+                      .attr("y", (d) => y(d.epoch) + y.bandwidth() / 2 + barYOffset + labelInsideBarOffset + labelNudge)
                       .attr("fill", (d) => {
                         if (d.participation === 0) {
                           return "black"
@@ -180,7 +205,7 @@
                     .append("rect")
                     .attr("status", (d) => d.status)
                     .attr("x", (d, i) => x(i))
-                    .attr("y", (d, i) => y.bandwidth() / 2 - 7.5)
+                    .attr("y", (d, i) => y.bandwidth() / 2 - rectSize / 2)
                     .attr("slot", (d) => d.Slot)
                     .on("mouseup", (d) => {
                       var slot = d.target.getAttribute("slot")
@@ -195,28 +220,28 @@
                         return
                       }
                       if (s.active) {
-                        return `current slot ${s.Slot}`
+                        return `Current Slot ${s.Slot}`
                       }
                       if (s.status === "proposed" && s.delay) {
-                        return `slot: ${s.Slot} proposed in ${s.delay}s`
+                        return `Slot: ${s.Slot} Proposed in ${s.delay}s`
                       } else if (s.status === "proposed") {
-                        return `slot: ${s.Slot} status: ${s.status}`
+                        return `Slot: ${s.Slot} Status: ${s.status}`
                       }
                       if (s.status !== "scheduled") {
                         if (s.status === "scheduled-missed") {
-                          return `slot: ${s.Slot} status: scheduled`
+                          return `Slot: ${s.Slot} Status: Scheduled`
                         }
-                        return `slot: ${s.Slot} status: ${s.status}`
+                        return `Slot: ${s.Slot} Status: ${s.status}`
                       } else {
-                        return `slot: ${s.Slot}`
+                        return `Slot: ${s.Slot}`
                       }
                     })
                     // .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active ? "tooltip" : "")
                     .attr("data-toggle", (s, i) => "tooltip")
                     .attr("stroke-width", ".5")
                     .attr("stroke", (d) => (d.active ? "var(--body-color)" : "transparent"))
-                    .attr("width", (d) => (width - margin.right - margin.left) / 42)
-                    .attr("height", (d) => (width - margin.right - margin.left) / 42)
+                    .attr("width", (d) => rectSize)
+                    .attr("height", (d) => rectSize)
                     .attr("rx", "1")
                     .attr("ry", "1")
                     .attr("fill", (d) => {
@@ -275,20 +300,20 @@
                       return
                     }
                     if (s.active) {
-                      return `current slot ${s.Slot}`
+                      return `Current Slot ${s.Slot}`
                     }
                     if (s.status === "proposed" && s.delay) {
-                      return `slot: ${s.Slot} proposed in ${s.delay}s`
+                      return `Slot: ${s.Slot} Proposed in ${s.delay}s`
                     } else if (s.status === "proposed") {
-                      return `slot: ${s.Slot} status: ${s.status}`
+                      return `Slot: ${s.Slot} Status: ${s.status}`
                     }
                     if (s.status !== "scheduled") {
                       if (s.status === "scheduled-missed") {
-                        return `slot: ${s.Slot} status: scheduled`
+                        return `Slot: ${s.Slot} Status: scheduled`
                       }
-                      return `slot: ${s.Slot} status: ${s.status}`
+                      return `Slot: ${s.Slot} Status: ${s.status}`
                     } else {
-                      return `slot: ${s.Slot}`
+                      return `Slot: ${s.Slot}`
                     }
                   })
               },
@@ -311,7 +336,7 @@
                     }
                     return color(participation)
                   })
-                  .attr("y", ({ epoch }) => y(epoch) + y.bandwidth())
+                  .attr("y", ({ epoch }) => y(epoch) + y.bandwidth() / 2 + barYOffset)
                   .attr("x", x(0))
                   .attr("width", ({ participation }) => {
                     if (!participation) {
@@ -319,8 +344,8 @@
                     }
                     return participationX(participation) - participationX(0)
                   })
-                  .attr("height", "11")
-                  .attr("data-original-title", (d, i) => `epoch ${d.epoch} participation ${d.participation}%`)
+                  .attr("height", barHeight)
+                  .attr("data-original-title", (d, i) => `Epoch ${d.epoch} Participation ${d.participation}%`)
                   .attr("data-toggle", "tooltip")
                   .attr("epoch", (d) => d.epoch)
                   .on("mouseup", (d) => {
@@ -346,7 +371,7 @@
                     .call((bar) =>
                       bar
                         .transition(t)
-                        .attr("y", ({ epoch }) => y(epoch) + y.bandwidth())
+                        .attr("y", ({ epoch }) => y(epoch) + y.bandwidth() / 2 + barYOffset)
                         .attr("width", ({ participation }) => {
                           if (participation === 0) {
                             return participationX(99.4) - participationX(0)
@@ -448,6 +473,7 @@
     function addWaterMark() {
       const watermarkContainer = document.createElement("div")
       watermarkContainer.style.position = "relative"
+      watermarkContainer.classList.add("p-2")
 
       const watermarkContent = document.createElement("a")
       watermarkContent.href = "https://beaconcha.in"
@@ -456,7 +482,7 @@
       watermarkContent.style.right = 0
       watermarkContent.innerText = "beaconcha.in"
       watermarkContent.classList.add("text-muted")
-      watermarkContent.classList.add("font-weight-bold")
+      watermarkContent.classList.add("small")
 
       watermarkContainer.appendChild(watermarkContent)
 

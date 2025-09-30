@@ -162,6 +162,13 @@ type StatsTopDepositors struct {
 	DepositCount uint64 `db:"count"`
 }
 
+// EntityTreemapItem represents a single entity item for the reusable treemap component
+type EntityTreemapItem struct {
+	Entity     string  `db:"entity"`
+	Efficiency float64 `db:"efficiency"`
+	NetShare   float64 `db:"net_share"`
+}
+
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
 	NetworkName               string `json:"networkName"`
@@ -205,6 +212,8 @@ type IndexPageData struct {
 	ValidatorsPerDay          uint64
 	NewDepositProcessAfter    string
 	ElectraHasHappened        bool
+	// EntitiesTreemap holds data for the reusable treemap on the index page
+	EntitiesTreemap []EntityTreemapItem `json:"entities_treemap,omitempty"`
 }
 
 type SlotVizPageData struct {
