@@ -249,6 +249,13 @@ func formatCurrencyString(valIf interface{}, valueCurrency, targetCurrency strin
 		amountStr = valPriced.StringFixed(int32(digitsAfterComma))
 	}
 
+	// apply thousands separators (English) while preserving sign
+	if strings.HasPrefix(amountStr, "-") {
+		amountStr = "-" + FormatThousandsEnglish(amountStr[1:])
+	} else {
+		amountStr = FormatThousandsEnglish(amountStr)
+	}
+
 	plusSignStr := ""
 	if showPlusSign && valPriced.Cmp(decimal.NewFromInt(0)) >= 0 {
 		plusSignStr = "+"
@@ -1216,13 +1223,59 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	if eff == 0 {
 		return template.HTML(`<span class="text-danger" data-toggle="tooltip" title="Validator did not attest during the last 100 epochs"> N/A <i class="fas fa-frown"></i>`)
 	} else if eff >= 100 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.0f%% - Perfect <i class="fas fa-grin-stars"></i>`, tooltipText, eff))
+		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.0f%% - Perfect <i class="fas fa-grin-stars"></i></span>`, tooltipText, eff))
 	} else if eff > 80 {
 		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.0f%% - Good <i class="fas fa-smile"></i></span>`, tooltipText, eff))
 	} else if eff > 60 {
 		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-toggle="tooltip" title="%s"> %.0f%% - Fair <i class="fas fa-meh"></i></span>`, tooltipText, eff))
 	} else {
 		return template.HTML(fmt.Sprintf(`<span class="text-danger" data-toggle="tooltip" title="%s"> %.0f%% - Bad <i class="fas fa-frown"></i></span>`, tooltipText, eff))
+	}
+}
+
+func FormatBeaconscore(score float64, includeIcon bool) template.HTML {
+	score = score * 100
+	tooltipText := "The Beaconscore is good."
+	if score < 0 {
+		tooltipText = "No active validators found"
+		return `<span class="text-info" data-toggle="tooltip" title="No active validators found">N/A</span>`
+	} else if score >= 99.5 {
+		tooltipText = "A Beaconscore of 99.5% or higher is excellent."
+		iconHtml := ` - <i class="fas fa-grin-stars"></i>`
+		if !includeIcon {
+			iconHtml = ""
+		}
+		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
+	} else if score > 99.0 {
+		tooltipText = "A Beaconscore between 99.0% and 99.5%  is acceptable."
+		iconHtml := ` - <i class="fas fa-smile"></i>`
+		if !includeIcon {
+			iconHtml = ""
+		}
+		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
+	} else if score > 98.5 {
+		tooltipText = "A Beaconscore between 98.5% and 99.0% is fair."
+		iconHtml := ` - <i class="fas fa-meh"></i>`
+		if !includeIcon {
+			iconHtml = ""
+		}
+		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
+	} else {
+		tooltipText = "A Beaconscore below 98.5% is bad."
+		iconHtml := ` - <i class="fas fa-frown"></i>`
+		if !includeIcon {
+			iconHtml = ""
+		}
+		return template.HTML(fmt.Sprintf(`<span class="text-danger" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
+	}
+}
+
+func FormatEfficiency(score float64) template.HTML {
+	score = score * 100
+	if score < 0 {
+		return `<span>N/A</span>`
+	} else {
+		return template.HTML(fmt.Sprintf(`<span">%.2f%%</span>`, score))
 	}
 }
 
