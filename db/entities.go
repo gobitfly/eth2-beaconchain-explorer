@@ -1,11 +1,17 @@
 package db
 
 import (
+	"context"
+	"fmt"
+	"sync"
 	"time"
 
+	"github.com/gobitfly/eth2-beaconchain-explorer/cache"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
+	"golang.org/x/sync/singleflight"
 )
 
 // EntityDetailData represents the detailed data for a specific entity and sub-entity
@@ -59,21 +65,71 @@ type SubEntityData struct {
 	NetShare   float64 `db:"net_share"`
 }
 
+// internal lazy Redis init for treemap caching
+var treemapCacheOnce sync.Once
+var treemapCache *cache.RedisCache
+var treemapSF singleflight.Group
+
+func getTreemapCache() *cache.RedisCache {
+	treemapCacheOnce.Do(func() {
+		if utils.Config.RedisSessionStoreEndpoint == "" {
+			return
+		}
+		ctx := context.Background()
+		c, err := cache.InitRedisCache(ctx, utils.Config.RedisSessionStoreEndpoint)
+		if err != nil {
+			logger.WithError(err).Warn("treemap: failed to init redis cache; falling back to DB")
+			return
+		}
+		treemapCache = c
+		logger.WithField("redis", utils.Config.RedisSessionStoreEndpoint).Info("treemap: redis cache initialized")
+	})
+	return treemapCache
+}
+
 // GetEntitiesTreemapData returns the pre-aggregated entity-level rows used by the treemap
 // on Entities Overview and Index pages. It selects only entity rows (sub_entity is '-' or empty)
 // for the requested period.
-// Reader DB is used, as this is a pure SELECT.
+// It now reads from Redis first (key: <chainId>:entities:treemap:<period>) and falls back to DB on miss.
+// On miss, it warms the cache using singleflight to avoid load spikes.
 func GetEntitiesTreemapData(period string) ([]types.EntityTreemapItem, error) {
-	rows := make([]types.EntityTreemapItem, 0, 4096)
-	err := ReaderDb.Select(&rows, `
-		SELECT entity, efficiency, net_share
-		FROM validator_entities_data_periods
-		WHERE period = $1 AND sub_entity IN ('-','')
-	`, period)
+	cacheClient := getTreemapCache()
+	key := fmt.Sprintf("%d:entities:treemap:%s", utils.Config.Chain.Id, period)
+
+	// Try cache first if configured
+	if cacheClient != nil {
+		var cached []types.EntityTreemapItem
+		if _, err := cacheClient.Get(context.Background(), key, &cached); err == nil && len(cached) > 0 {
+			logger.WithFields(map[string]interface{}{"period": period, "rows": len(cached)}).Debug("treemap: cache hit")
+			return cached, nil
+		}
+		logger.WithField("period", period).Debug("treemap: cache miss")
+	}
+
+	// Fetch from DB (singleflight) and optionally warm cache
+	v, err, _ := treemapSF.Do(key, func() (interface{}, error) {
+		rows := make([]types.EntityTreemapItem, 0, 4096)
+		err := ReaderDb.Select(&rows, `
+			SELECT entity, efficiency, net_share
+			FROM validator_entities_data_periods
+			WHERE period = $1 AND sub_entity IN ('-','')
+		`, period)
+		if err != nil {
+			return nil, err
+		}
+		if cacheClient != nil {
+			if err := cacheClient.Set(context.Background(), key, rows, 0); err != nil {
+				logger.WithError(err).WithField("period", period).Warn("treemap: failed to set cache")
+			} else {
+				logger.WithFields(map[string]interface{}{"period": period, "rows": len(rows)}).Info("treemap: cache warmed from DB")
+			}
+		}
+		return rows, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	return rows, nil
+	return v.([]types.EntityTreemapItem), nil
 }
 
 // GetEntityDetailData retrieves detailed data for a specific entity, sub-entity, and period

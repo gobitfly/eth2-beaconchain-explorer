@@ -111,13 +111,13 @@ func Entities(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3) Fetch sub-entities for the paged entities; when searching, include only matching sub-entities
-	type subRow struct {
+	type row struct {
 		Entity     string  `db:"entity"`
 		SubEntity  string  `db:"sub_entity"`
 		Efficiency float64 `db:"efficiency"`
 		NetShare   float64 `db:"net_share"`
 	}
-	subs := make([]subRow, 0, 256)
+	subs := make([]row, 0, 256)
 	if len(entityNames) > 0 {
 		if isSearching {
 			// Only sub-entities with prefix match
@@ -128,7 +128,7 @@ func Entities(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _, s := range subDtos {
-				subs = append(subs, subRow{Entity: s.Entity, SubEntity: s.SubEntity, Efficiency: s.Efficiency, NetShare: s.NetShare})
+				subs = append(subs, row{Entity: s.Entity, SubEntity: s.SubEntity, Efficiency: s.Efficiency, NetShare: s.NetShare})
 			}
 		} else {
 			subDtos, err2 := db.GetSubEntitiesForEntities(entityNames, period)
@@ -138,24 +138,18 @@ func Entities(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			for _, s := range subDtos {
-				subs = append(subs, subRow{Entity: s.Entity, SubEntity: s.SubEntity, Efficiency: s.Efficiency, NetShare: s.NetShare})
+				subs = append(subs, row{Entity: s.Entity, SubEntity: s.SubEntity, Efficiency: s.Efficiency, NetShare: s.NetShare})
 			}
 		}
 	}
 
 	// 4) Build flattened view rows (entity row + its sub-entities already sorted)
-	type viewRow struct {
-		Entity     string
-		SubEntity  string
-		Efficiency float64
-		NetShare   float64
-	}
-	view := make([]viewRow, 0, len(pagedEntities)+len(subs))
+	view := make([]row, 0, len(pagedEntities)+len(subs))
 	for _, er := range pagedEntities {
-		view = append(view, viewRow{Entity: er.Entity, SubEntity: "", Efficiency: er.Efficiency, NetShare: er.NetShare})
+		view = append(view, row{Entity: er.Entity, SubEntity: "", Efficiency: er.Efficiency, NetShare: er.NetShare})
 		for _, s := range subs {
 			if s.Entity == er.Entity {
-				view = append(view, viewRow{Entity: s.Entity, SubEntity: s.SubEntity, Efficiency: s.Efficiency, NetShare: s.NetShare})
+				view = append(view, row{Entity: s.Entity, SubEntity: s.SubEntity, Efficiency: s.Efficiency, NetShare: s.NetShare})
 			}
 		}
 	}
@@ -174,7 +168,7 @@ func Entities(w http.ResponseWriter, r *http.Request) {
 
 	// 6) Attach to template data
 	type pagePayload struct {
-		Rows          []viewRow
+		Rows          []row
 		Page          int
 		TotalPages    int
 		TotalEntities int
