@@ -11,7 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gobitfly/eth2-beaconchain-explorer/cache"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 	"golang.org/x/sync/errgroup"
@@ -727,6 +730,31 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 		return fmt.Errorf("upsert validator_entities_data_periods: %w", err)
 	}
 	logger.WithField("rows", n).Info("persisted validator_entities_data_periods rows for period")
+
+	// After persisting DB, update Redis cache for index treemap for 1d period
+	if spec.Label == "1d" && utils.Config.RedisSessionStoreEndpoint != "" {
+		ctx := context.Background()
+		rdc, errInit := cache.InitRedisCache(ctx, utils.Config.RedisSessionStoreEndpoint)
+		if errInit != nil {
+			logger.WithError(errInit).Warn("treemap cache: failed to init redis; skipping cache write")
+		} else {
+			var treemapRows []types.EntityTreemapItem
+			if errSel := db.ReaderDb.Select(&treemapRows, `
+				SELECT entity, efficiency, net_share
+				FROM validator_entities_data_periods
+				WHERE period = $1 AND sub_entity IN ('-','')
+			`, spec.Label); errSel != nil {
+				logger.WithError(errSel).Warn("treemap cache: failed to select rows for cache")
+			} else {
+				key := fmt.Sprintf("%d:entities:treemap:%s", utils.Config.Chain.Id, spec.Label)
+				if errSet := rdc.Set(ctx, key, treemapRows, 0); errSet != nil {
+					logger.WithError(errSet).WithField("rows", len(treemapRows)).Warn("treemap cache: failed to set redis key")
+				} else {
+					logger.WithField("rows", len(treemapRows)).Info("treemap cache: updated redis key for 1d treemap")
+				}
+			}
+		}
+	}
 	return nil
 }
 
