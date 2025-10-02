@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/lido"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/rpc"
 	"github.com/lib/pq"
 )
@@ -192,7 +193,7 @@ func indexLidoValidators() error {
 				keyCounts = append(keyCounts, r.SigningKeyCount)
 			}
 
-			if _, err := tx.Exec(`
+			if res, err := tx.Exec(`
 				INSERT INTO lido_node_operators (
 					operator_id, active, name, reward_address, total_vetted_validators, total_exited_validators, total_added_validators, total_deposited_validators, signing_key_count
 				)
@@ -217,6 +218,10 @@ func indexLidoValidators() error {
 					signing_key_count = EXCLUDED.signing_key_count
 			`, pq.Array(ids), pq.Array(actives), pq.Array(names), pq.ByteaArray(rewards), pq.Array(vetted), pq.Array(exited), pq.Array(added), pq.Array(deposited), pq.Array(keyCounts)); err != nil {
 				return fmt.Errorf("upsert lido_node_operators: %w", err)
+			} else {
+				if n, err2 := res.RowsAffected(); err2 == nil {
+					metrics.Counter.WithLabelValues("validator_tagger_lido_operators_upserted").Add(float64(n))
+				}
 			}
 		}
 	} else {
@@ -263,12 +268,16 @@ func indexLidoValidators() error {
 				pubkeys = append(pubkeys, pubkey)
 			}
 
-			if _, err := tx.Exec(`
+			if res, err := tx.Exec(`
 				INSERT INTO lido_signing_keys (operator_id, pubkey)
 				SELECT UNNEST($1::bigint[]), UNNEST($2::bytea[])
 				ON CONFLICT (operator_id, pubkey) DO NOTHING
 			`, pq.Array(operatorIDs), pq.ByteaArray(pubkeys)); err != nil {
 				return fmt.Errorf("upsert lido_signing_keys (operator %d): %w", nodeOperatorIndex, err)
+			} else {
+				if n, err2 := res.RowsAffected(); err2 == nil {
+					metrics.Counter.WithLabelValues("validator_tagger_lido_signing_keys_inserted").Add(float64(n))
+				}
 			}
 		}
 	}
@@ -289,6 +298,7 @@ func indexLidoValidators() error {
 	} else {
 		if n, err2 := res.RowsAffected(); err2 == nil {
 			lidoLogger.WithField("affected", n).Info("upserted Lido validator_entities rows")
+			metrics.Counter.WithLabelValues("validator_tagger_lido_validator_entities_upserted").Add(float64(n))
 		}
 	}
 
@@ -413,7 +423,7 @@ func indexLidoCSMValidators() error {
 				keyCounts = append(keyCounts, r.SigningKeyCount)
 			}
 
-			if _, err := tx.Exec(`
+			if res, err := tx.Exec(`
 				INSERT INTO lido_csm_node_operators (
 					operator_id, signing_key_count
 				)
@@ -424,6 +434,10 @@ func indexLidoCSMValidators() error {
 					signing_key_count = EXCLUDED.signing_key_count
 			`, pq.Array(ids), pq.Array(keyCounts)); err != nil {
 				return fmt.Errorf("upsert lido_csm_node_operators: %w", err)
+			} else {
+				if n, err2 := res.RowsAffected(); err2 == nil {
+					metrics.Counter.WithLabelValues("validator_tagger_lido_csm_operators_upserted").Add(float64(n))
+				}
 			}
 		}
 	} else {
