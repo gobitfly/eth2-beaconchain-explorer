@@ -104,57 +104,57 @@
             <div class="d-flex justify-content-between align-items-center">
               <nav aria-label="Entities pagination">
                 <ul class="pagination pagination-sm mb-0">
-                {{ $q := .Data.Query }}
-                {{ $page := .Data.Page }}
-                {{ $total := .Data.TotalPages }}
-                {{ $period := .Data.Period }}
+                  {{ $q := .Data.Query }}
+                  {{ $page := .Data.Page }}
+                  {{ $total := .Data.TotalPages }}
+                  {{ $period := .Data.Period }}
 
 
-                <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
-                  <a class="page-link" href="/entities?page={{ sub $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}" aria-label="Previous">&laquo;</a>
-                </li>
+                  <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
+                    <a class="page-link" href="/entities?page={{ sub $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}" aria-label="Previous">&laquo;</a>
+                  </li>
 
-                <!-- First page -->
-                {{ if gt $page 3 }}
-                  <li class="page-item"><a class="page-link" href="/entities?page=1{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">1</a></li>
-                  <li class="page-item disabled"><span class="page-link">…</span></li>
-                {{ else if gt $total 1 }}
-                  <li class="page-item {{ if eq $page 1 }}active{{ end }}"><a class="page-link" href="/entities?page=1{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">1</a></li>
-                {{ end }}
-
-
-                <!-- Previous neighbor -->
-                {{ if and (gt $page 2) (le (sub $page 1) $total) }}
-                  <li class="page-item"><a class="page-link" href="/entities?page={{ sub $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ sub $page 1 }}</a></li>
-                {{ end }}
+                  <!-- First page -->
+                  {{ if gt $page 3 }}
+                    <li class="page-item"><a class="page-link" href="/entities?page=1{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">1</a></li>
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                  {{ else if gt $total 1 }}
+                    <li class="page-item {{ if eq $page 1 }}active{{ end }}"><a class="page-link" href="/entities?page=1{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">1</a></li>
+                  {{ end }}
 
 
-                <!-- Current page -->
-                {{ if and (gt $page 1) (lt $page $total) }}
-                  <li class="page-item active"><a class="page-link" href="#">{{ $page }}</a></li>
-                {{ end }}
+                  <!-- Previous neighbor -->
+                  {{ if and (gt $page 2) (le (sub $page 1) $total) }}
+                    <li class="page-item"><a class="page-link" href="/entities?page={{ sub $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ sub $page 1 }}</a></li>
+                  {{ end }}
 
 
-                <!-- Next neighbor -->
-                {{ if and (lt $page (sub $total 1)) (ge (add $page 1) 1) }}
-                  <li class="page-item"><a class="page-link" href="/entities?page={{ add $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ add $page 1 }}</a></li>
-                {{ end }}
+                  <!-- Current page -->
+                  {{ if and (gt $page 1) (lt $page $total) }}
+                    <li class="page-item active"><a class="page-link" href="#">{{ $page }}</a></li>
+                  {{ end }}
 
 
-                <!-- Last page -->
-                {{ if lt $page (sub $total 2) }}
-                  <li class="page-item disabled"><span class="page-link">…</span></li>
-                  <li class="page-item"><a class="page-link" href="/entities?page={{ $total }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ $total }}</a></li>
-                {{ else if and (gt $total 1) (ne $page $total) }}
-                  <li class="page-item {{ if eq $page $total }}active{{ end }}"><a class="page-link" href="/entities?page={{ $total }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ $total }}</a></li>
-                {{ end }}
+                  <!-- Next neighbor -->
+                  {{ if and (lt $page (sub $total 1)) (ge (add $page 1) 1) }}
+                    <li class="page-item"><a class="page-link" href="/entities?page={{ add $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ add $page 1 }}</a></li>
+                  {{ end }}
 
 
-                <li class="page-item {{ if eq $page $total }}disabled{{ end }}">
-                  <a class="page-link" href="/entities?page={{ add $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}" aria-label="Next">&raquo;</a>
-                </li>
-                <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
-              </ul>
+                  <!-- Last page -->
+                  {{ if lt $page (sub $total 2) }}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                    <li class="page-item"><a class="page-link" href="/entities?page={{ $total }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ $total }}</a></li>
+                  {{ else if and (gt $total 1) (ne $page $total) }}
+                    <li class="page-item {{ if eq $page $total }}active{{ end }}"><a class="page-link" href="/entities?page={{ $total }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ $total }}</a></li>
+                  {{ end }}
+
+
+                  <li class="page-item {{ if eq $page $total }}disabled{{ end }}">
+                    <a class="page-link" href="/entities?page={{ add $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}" aria-label="Next">&raquo;</a>
+                  </li>
+                  <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
+                </ul>
               </nav>
               <p class="small text-muted mb-0 ml-auto">Entity tagging data provided by <a href="https://x.com/hildobby" target="_blank" rel="noopener">@hildobby</a></p>
             </div>
