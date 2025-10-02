@@ -494,22 +494,6 @@ type ApiValidatorQueueResponse struct {
 	ValidatorsCount     uint64 `json:"validators_count"`
 }
 
-type APIValidatorResponse struct {
-	ActivationEligibilityEpoch uint64 `json:"activation_eligibility_epoch"`
-	ActivationEpoch            uint64 `json:"activation_epoch"`
-	Balance                    uint64 `json:"balance"`
-	EffectiveBalance           uint64 `json:"effective_balance"`
-	ExitEpoch                  uint64 `json:"exit_epoch"`
-	LastAttestationSlot        uint64 `json:"last_attestation_slot"`
-	Name                       string `json:"name"`
-	Pubkey                     string `json:"pubkey"`
-	Slashed                    bool   `json:"slashed"`
-	Status                     string `json:"status"`
-	ValidatorIndex             uint64 `json:"validator_index"`
-	WithdrawableEpoch          uint64 `json:"withdrawable_epoch"`
-	WithdrawalCredentials      string `json:"withdrawal_credentials"`
-}
-
 type ApiValidatorDailyStatsResponse struct {
 	ValidatorIndex        uint64    `json:"validatorindex"`
 	AttesterSlashings     uint64    `json:"attester_slashings"`

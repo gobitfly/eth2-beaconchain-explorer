@@ -1679,7 +1679,7 @@ func getEpoch(epoch int64) ([]interface{}, error) {
 // @Description Retrieve validator information by index or pubkey (up to 100). Use the POST endpoint if you get URL too long errors.
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
+// @Success 200 {object} types.ApiResponse{data=[]handlers.ApiValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator/{indexOrPubkey} [get]
 func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
@@ -1692,7 +1692,7 @@ func ApiValidatorGet(w http.ResponseWriter, r *http.Request) {
 // @Description Retrieve validator information by index or pubkey (up to 100).
 // @Produce  json
 // @Param  indexOrPubkey body types.DashboardRequest true "Up to 100 validator indicesOrPubkeys, comma separated"
-// @Success 200 {object} types.ApiResponse{data=[]types.APIValidatorResponse}
+// @Success 200 {object} types.ApiResponse{data=[]handlers.ApiValidatorResponse}
 // @Failure 400 {object} types.ApiResponse
 // @Router /api/v1/validator [post]
 func ApiValidatorPost(w http.ResponseWriter, r *http.Request) {
