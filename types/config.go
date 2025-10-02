@@ -425,10 +425,9 @@ type ConfigJsonResponse struct {
 // If LocalCSVPath is set, the service will import from that CSV instead of querying Dune.
 // The local CSV will never be deleted by the service.
 type ValidatorTaggerConfig struct {
-	Enabled          bool          `yaml:"enabled" envconfig:"VALIDATOR_TAGGER_ENABLED"`
-	Interval         time.Duration `yaml:"interval" envconfig:"VALIDATOR_TAGGER_INTERVAL"`
-	SchedulerEnabled bool          `yaml:"schedulerEnabled" envconfig:"VALIDATOR_TAGGER_SCHEDULER_ENABLED"`
-	LocalCSVPath     string        `yaml:"localCSVPath" envconfig:"VALIDATOR_TAGGER_LOCAL_CSV_PATH"`
+	Enabled          bool   `yaml:"enabled" envconfig:"VALIDATOR_TAGGER_ENABLED"`
+	SchedulerEnabled bool   `yaml:"schedulerEnabled" envconfig:"VALIDATOR_TAGGER_SCHEDULER_ENABLED"`
+	LocalCSVPath     string `yaml:"localCSVPath" envconfig:"VALIDATOR_TAGGER_LOCAL_CSV_PATH"`
 	Dune             struct {
 		ApiKey    string        `yaml:"apiKey" envconfig:"DUNE_API_KEY"`
 		QueryID   int           `yaml:"queryId" envconfig:"DUNE_QUERY_ID"`

@@ -16,7 +16,15 @@
               {"entity":"{{ $t.Entity | js }}","efficiency":{{ printf "%.6f" $t.Efficiency }},"netShare":{{ printf "%.8f" $t.NetShare }}}
             {{- end -}}
           ]</script>
-          <script>(function(){document.addEventListener('DOMContentLoaded',function(){if(window.BeaconTreemap){window.BeaconTreemap.renderFromScript('index-treemap','index-treemap-data');}});})();</script>
+          <script>
+            ;(function () {
+              document.addEventListener("DOMContentLoaded", function () {
+                if (window.BeaconTreemap) {
+                  window.BeaconTreemap.renderFromScript("index-treemap", "index-treemap-data")
+                }
+              })
+            })()
+          </script>
           {{ if .SlotVizData }}<div class="m-2" id="slotsViz"></div>{{ end }}
         </div>
       </div>
