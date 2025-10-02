@@ -20,8 +20,8 @@
   function buildPointsFromEntityRows(rows) {
     var OTHERS_THRESHOLD = 0.0025 // 0.01%
     var points = []
-    var othersShareSum = 0
-    var othersEffWeightedSum = 0
+    // var othersShareSum = 0
+    // var othersEffWeightedSum = 0
 
     if (!Array.isArray(rows)) return points
 
@@ -33,9 +33,9 @@
       if (!entity || !isFinite(eff) || !isFinite(share)) continue
 
       if (share < OTHERS_THRESHOLD) {
-        othersShareSum += share
-        othersEffWeightedSum += eff * share
-        continue
+      //   othersShareSum += share
+      //   othersEffWeightedSum += eff * share
+         continue
       }
 
       let path = "/entity/" + enc(entity) + "/-"
@@ -50,11 +50,11 @@
       })
     }
 
-    if (othersShareSum > 0) {
-      var othersEff = othersEffWeightedSum > 0 ? othersEffWeightedSum / othersShareSum : null
-      let path = "/entities"
-      //points.push({ name: 'Others', value: othersShareSum, colorValue: othersEff, path: path, className: 'clickable'});
-    }
+    // if (othersShareSum > 0) {
+    //   var othersEff = othersEffWeightedSum > 0 ? othersEffWeightedSum / othersShareSum : null
+    //   let path = "/entities"
+    //   //points.push({ name: 'Others', value: othersShareSum, colorValue: othersEff, path: path, className: 'clickable'});
+    // }
 
     return points
   }
