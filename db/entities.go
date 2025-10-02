@@ -260,12 +260,18 @@ func GetEntitiesPaged(period string, limit, offset int) ([]EntitySummaryData, er
 func GetSubEntitiesForEntitiesWithSearch(entityNames []string, searchTerm, period string) ([]SubEntityData, error) {
 	var subEntities []SubEntityData
 	err := ReaderDb.Select(&subEntities, `
+		WITH ranked AS (
+			SELECT entity, sub_entity, efficiency, net_share,
+			       ROW_NUMBER() OVER (PARTITION BY entity ORDER BY net_share DESC, sub_entity ASC) AS rn
+			FROM validator_entities_data_periods
+			WHERE period = $3
+			  AND entity = ANY($1)
+			  AND sub_entity NOT IN ('-','')
+			  AND sub_entity ILIKE ($2 || '%')
+		)
 		SELECT entity, sub_entity, efficiency, net_share
-		FROM validator_entities_data_periods
-		WHERE period = $3
-		  AND entity = ANY($1)
-		  AND sub_entity NOT IN ('-','')
-		  AND sub_entity ILIKE ($2 || '%')
+		FROM ranked
+		WHERE rn <= 101
 		ORDER BY entity ASC, net_share DESC, sub_entity ASC
 	`, pq.Array(entityNames), searchTerm, period)
 	return subEntities, err
@@ -275,11 +281,17 @@ func GetSubEntitiesForEntitiesWithSearch(entityNames []string, searchTerm, perio
 func GetSubEntitiesForEntities(entityNames []string, period string) ([]SubEntityData, error) {
 	var subEntities []SubEntityData
 	err := ReaderDb.Select(&subEntities, `
+		WITH ranked AS (
+			SELECT entity, sub_entity, efficiency, net_share,
+			       ROW_NUMBER() OVER (PARTITION BY entity ORDER BY net_share DESC, sub_entity ASC) AS rn
+			FROM validator_entities_data_periods
+			WHERE period = $2
+			  AND entity = ANY($1)
+			  AND sub_entity NOT IN ('-','')
+		)
 		SELECT entity, sub_entity, efficiency, net_share
-		FROM validator_entities_data_periods
-		WHERE period = $2
-		  AND entity = ANY($1)
-		  AND sub_entity NOT IN ('-','')
+		FROM ranked
+		WHERE rn <= 101
 		ORDER BY entity ASC, net_share DESC, sub_entity ASC
 	`, pq.Array(entityNames), period)
 	return subEntities, err
