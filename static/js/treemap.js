@@ -33,9 +33,9 @@
       if (!entity || !isFinite(eff) || !isFinite(share)) continue
 
       if (share < OTHERS_THRESHOLD) {
-      //   othersShareSum += share
-      //   othersEffWeightedSum += eff * share
-         continue
+        //   othersShareSum += share
+        //   othersEffWeightedSum += eff * share
+        continue
       }
 
       let path = "/entity/" + enc(entity) + "/-"
