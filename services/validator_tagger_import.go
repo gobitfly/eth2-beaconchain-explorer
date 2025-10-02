@@ -12,6 +12,7 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/dune"
+	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -92,6 +93,8 @@ func refreshAndLoadValidatorNames(ctx context.Context, cfg types.ValidatorTagger
 		if err != nil {
 			return fmt.Errorf("import local csv failed: %w", err)
 		}
+		metrics.Counter.WithLabelValues("validator_tagger_import_local").Inc()
+		metrics.Counter.WithLabelValues("validator_tagger_import_local_rows_inserted").Add(float64(inserted))
 		validatorTaggerLogger.WithFields(logrus.Fields{"rows": inserted, "table": "validator_entities", "source": "local"}).Info("loaded validator entities from local csv via COPY")
 		return nil
 	}
@@ -110,6 +113,8 @@ func refreshAndLoadValidatorNames(ctx context.Context, cfg types.ValidatorTagger
 		if err != nil {
 			return fmt.Errorf("import cached csv failed: %w", err)
 		}
+		metrics.Counter.WithLabelValues("validator_tagger_import_cache_hit").Inc()
+		metrics.Counter.WithLabelValues("validator_tagger_import_cache_rows_inserted").Add(float64(inserted))
 		_ = os.Remove(path)
 		validatorTaggerLogger.WithFields(logrus.Fields{"rows": inserted, "table": "validator_entities", "source": "cache"}).Info("loaded validator entities from cached csv via COPY")
 		return nil
@@ -157,6 +162,8 @@ func refreshAndLoadValidatorNames(ctx context.Context, cfg types.ValidatorTagger
 		// Keep the cached file for the next run
 		return fmt.Errorf("import fresh csv failed (cached for retry at %s): %w", path, err)
 	}
+	metrics.Counter.WithLabelValues("validator_tagger_import_cache_miss").Inc()
+	metrics.Counter.WithLabelValues("validator_tagger_import_dune_rows_inserted").Add(float64(inserted))
 	_ = os.Remove(path)
 	validatorTaggerLogger.WithFields(logrus.Fields{"rows": inserted, "table": "validator_entities", "source": "dune"}).Info("loaded validator entities from dune csv via COPY")
 	return nil
