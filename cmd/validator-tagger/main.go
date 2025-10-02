@@ -111,9 +111,4 @@ func main() {
 		services.RunValidatorTaggerScheduler()
 		return
 	}
-
-	// Legacy interval mode for backward compatibility
-	go services.RunValidatorTagger()
-	utils.WaitForCtrlC()
-	logrus.Println("exiting...")
 }

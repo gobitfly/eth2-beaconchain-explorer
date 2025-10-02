@@ -24,13 +24,17 @@
       <div class="text-right p-2">
         {{ if eq .EnteringValidators 0 }}
           {{ if .ElectraHasHappened }}
-            <div class="mb-0"><span data-toggle="tooltip" data-placement="top" title="Currently there are no pending Validators (churn limit is {{ formatClCurrency .ValidatorsPerEpoch config.Frontend.MainCurrency 0 true false false false }} per epoch or {{ formatClCurrency .ValidatorsPerDay config.Frontend.MainCurrency 0 true false false false }} per day with {{ .StakedEther }} total {{ config.Frontend.MainCurrency }} staked.)"><i class="fas fa-sign-in-alt mr-2"></i><span class="text-secondary">Joining</span> / <i class="fas fa-sign-out-alt mr-2"></i><span class="text-secondary">Leaving</span></span></div>
+            <div class="mb-0">
+              <span data-toggle="tooltip" data-placement="top" title="Currently there are no pending Validators (churn limit is {{ formatClCurrency .ValidatorsPerEpoch config.Frontend.MainCurrency 0 true false false false }} per epoch or {{ formatClCurrency .ValidatorsPerDay config.Frontend.MainCurrency 0 true false false false }} per day with {{ .StakedEther }} total {{ config.Frontend.MainCurrency }} staked.)"><i class="fas fa-sign-in-alt mr-2"></i><span class="text-secondary">Joining</span> / <i class="fas fa-sign-out-alt mr-2"></i><span class="text-secondary">Leaving</span></span>
+            </div>
           {{ else }}
             <div class="mb-0"><span data-toggle="tooltip" data-placement="top" title="Currently there are no pending Validators (churn limit is {{ .ValidatorsPerEpoch }} per epoch or {{ .ValidatorsPerDay }} per day with {{ .ActiveValidators }} validators)">Pending Validators</span></div>
           {{ end }}
         {{ else }}
           {{ if .ElectraHasHappened }}
-            <div class="mb-0"><span data-toggle="tooltip" data-placement="top" title="It should take at least {{ .NewDepositProcessAfter }} for a new deposit to be processed and an associated validator to be activated (churn limit is {{ formatClCurrency .ValidatorsPerEpoch config.Frontend.MainCurrency 0 true false false false }} per epoch or {{ formatClCurrency .ValidatorsPerDay config.Frontend.MainCurrency 0 true false false false }} per day with {{ .ActiveValidators }} total {{ config.Frontend.MainCurrency }} staked.)"><i class="fas fa-sign-in-alt mr-2"></i><span class="text-secondary">Joining</span> / <span class="text-secondary">Leaving</span><i class="fas fa-sign-out-alt ml-2"></i></span></div>
+            <div class="mb-0">
+              <span data-toggle="tooltip" data-placement="top" title="It should take at least {{ .NewDepositProcessAfter }} for a new deposit to be processed and an associated validator to be activated (churn limit is {{ formatClCurrency .ValidatorsPerEpoch config.Frontend.MainCurrency 0 true false false false }} per epoch or {{ formatClCurrency .ValidatorsPerDay config.Frontend.MainCurrency 0 true false false false }} per day with {{ .ActiveValidators }} total {{ config.Frontend.MainCurrency }} staked.)"><i class="fas fa-sign-in-alt mr-2"></i><span class="text-secondary">Joining</span> / <span class="text-secondary">Leaving</span><i class="fas fa-sign-out-alt ml-2"></i></span>
+            </div>
           {{ else }}
             <div class="mb-0"><span data-toggle="tooltip" data-placement="top" title="It should take at least {{ .NewDepositProcessAfter }} for a new deposit to be processed and an associated validator to be activated (churn limit is {{ .ValidatorsPerEpoch }} per epoch or {{ .ValidatorsPerDay }} per day with {{ .ActiveValidators }} validators)">Pending Validators</span></div>
           {{ end }}
