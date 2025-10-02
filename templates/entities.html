@@ -86,14 +86,14 @@
                 </thead>
                 <tbody>
                   {{ range .Data.Rows }}
-                    <tr data-entity="{{ .Entity }}" data-sub-entity="{{ .SubEntity }}" data-efficiency="{{ .Efficiency }}" data-net-share="{{ .NetShare }}">
-                      <td>{{ if not .SubEntity }}<a href="/entity/{{ .Entity }}/-">{{ .Entity }}</a>{{ end }}</td>
-                      <td>{{ if .SubEntity }}<a href="/entity/{{ .Entity }}/{{ .SubEntity }}">{{ .SubEntity }}</a>{{ end }}</td>
+                    <tr data-entity="{{ .Entity }}" data-sub-entity="{{ if .Remark }}__remark__{{ else }}{{ .SubEntity }}{{ end }}" data-efficiency="{{ .Efficiency }}" data-net-share="{{ .NetShare }}" {{ if .Remark }}data-remark="true"{{ end }}>
+                      <td>{{ if and (not .SubEntity) (not .Remark) }}<a href="/entity/{{ .Entity }}/-">{{ .Entity }}</a>{{ end }}</td>
+                      <td>{{ if .Remark }}{{ .Remark }}{{ else if .SubEntity }}<a href="/entity/{{ .Entity }}/{{ .SubEntity }}">{{ .SubEntity }}</a>{{ end }}</td>
                       {{ $eff := .Efficiency }}
                       <td>
-                        {{ formatBeaconscore .Efficiency false }}
+                        {{ if not .Remark }}{{ formatBeaconscore .Efficiency false }}{{ end }}
                       </td>
-                      <td>{{ formatPercentageWithPrecision .NetShare 2 }}%</td>
+                      <td>{{ if not .Remark }}{{ formatPercentageWithPrecision .NetShare 2 }}%{{ end }}</td>
                     </tr>
                   {{ end }}
                 </tbody>

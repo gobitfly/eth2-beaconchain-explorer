@@ -116,6 +116,7 @@ func Entities(w http.ResponseWriter, r *http.Request) {
 		SubEntity  string  `db:"sub_entity"`
 		Efficiency float64 `db:"efficiency"`
 		NetShare   float64 `db:"net_share"`
+		Remark     string  // optional: used to render a truncation note in the template
 	}
 	subs := make([]row, 0, 256)
 	if len(entityNames) > 0 {
@@ -144,13 +145,37 @@ func Entities(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4) Build flattened view rows (entity row + its sub-entities already sorted)
+	//    Cap sub-entities per entity at 100 and add a remark if truncated.
+	const maxSubEntities = 100
+	// Group sub-entities by entity to count and truncate efficiently
+	entitySubs := make(map[string][]row, len(entityNames))
+	for _, s := range subs {
+		entitySubs[s.Entity] = append(entitySubs[s.Entity], s)
+	}
+
 	view := make([]row, 0, len(pagedEntities)+len(subs))
 	for _, er := range pagedEntities {
+		// Append the entity header row (no SubEntity)
 		view = append(view, row{Entity: er.Entity, SubEntity: "", Efficiency: er.Efficiency, NetShare: er.NetShare})
-		for _, s := range subs {
-			if s.Entity == er.Entity {
-				view = append(view, row{Entity: s.Entity, SubEntity: s.SubEntity, Efficiency: s.Efficiency, NetShare: s.NetShare})
-			}
+
+		subList := entitySubs[er.Entity]
+		if len(subList) == 0 {
+			continue
+		}
+
+		// Append up to maxSubEntities
+		limit := len(subList)
+		if limit > maxSubEntities {
+			limit = maxSubEntities
+		}
+		for i := 0; i < limit; i++ {
+			view = append(view, subList[i])
+		}
+
+		// If truncated, append a remark row
+		if len(subList) > maxSubEntities {
+			logger.WithFields(logrus.Fields{"entity": er.Entity, "sub_entities_total": len(subList), "capped_at": maxSubEntities}).Info("entities: capped sub-entities")
+			view = append(view, row{Entity: er.Entity, Remark: "More than 100 sub entities. Use search to filter."})
 		}
 	}
 
