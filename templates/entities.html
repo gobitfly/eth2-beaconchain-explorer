@@ -100,9 +100,10 @@
               </table>
             </div>
 
-            <!-- Pagination controls -->
-            <nav aria-label="Entities pagination">
-              <ul class="pagination pagination-sm mb-0">
+            <!-- Pagination controls and attribution -->
+            <div class="d-flex justify-content-between align-items-center">
+              <nav aria-label="Entities pagination">
+                <ul class="pagination pagination-sm mb-0">
                 {{ $q := .Data.Query }}
                 {{ $page := .Data.Page }}
                 {{ $total := .Data.TotalPages }}
@@ -154,7 +155,9 @@
                 </li>
                 <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
               </ul>
-            </nav>
+              </nav>
+              <p class="small text-muted mb-0 ml-auto">Entity tagging data provided by <a href="https://x.com/hildobby" target="_blank" rel="noopener">@hildobby</a></p>
+            </div>
           </div>
         </div>
       </div>
