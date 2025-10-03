@@ -1534,7 +1534,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 		activationepoch,
 		exitepoch,
 		status,
-		COALESCE(validator_names.name, '') AS name,
+		CASE WHEN validator_names.name = ve.entity THEN '' ELSE COALESCE(validator_names.name, '') END AS name,
 		COALESCE(validator_performance.cl_performance_1d, 0) AS performance1d,
 		COALESCE(validator_performance.cl_performance_7d, 0) AS performance7d,
 		COALESCE(validator_performance.cl_performance_31d, 0) AS performance31d,
@@ -1545,6 +1545,7 @@ func getGeneralValidatorInfoForAppDashboard(queryIndices []uint64) ([]interface{
 	FROM validators
 	LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 	LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey
+	LEFT JOIN validator_entities ve ON ve.publickey = validators.pubkey
 	WHERE validators.validatorindex = ANY($1)
 	ORDER BY validators.validatorindex`, pq.Array(queryIndices))
 	if err != nil {
@@ -1773,10 +1774,11 @@ func getApiValidator(w http.ResponseWriter, r *http.Request) {
 			activationepoch,
 			exitepoch,
 			status,
-			COALESCE(n.name, '') AS name,
+			CASE WHEN n.name = ve.entity THEN '' ELSE COALESCE(n.name, '') END AS name,
 			COALESCE(ws.total, 0) as total_withdrawals
 		FROM validators v
 		LEFT JOIN validator_names n ON n.publickey = v.pubkey
+		LEFT JOIN validator_entities ve ON ve.publickey = v.pubkey
 		LEFT JOIN withdrawals_summary ws ON ws.validatorindex = v.validatorindex
 		WHERE v.validatorindex = ANY($1)
 		ORDER BY v.validatorindex

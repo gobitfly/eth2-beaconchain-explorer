@@ -15,15 +15,15 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
-	"golang.org/x/sync/errgroup"
 )
 
 // PeriodSpec defines ClickHouse sources and labels for a precomputation period.
 type PeriodSpec struct {
-	Label              string // one of: "1d", "7d", "30d", "all"
-	RollingTable       string // e.g., validator_dashboard_data_rolling_24h / _7d / _30d / _total
+	Label              string // one of: "1d", "7d", "30d", "90d"
+	RollingTable       string // e.g., validator_dashboard_data_rolling_24h / _7d / _30d / _90d
 	HistoryTable       string // e.g., validator_dashboard_data_hourly / _daily / _monthly
 	HistoryWhereClause string // optional WHERE clause for limiting the history time window (without the WHERE keyword)
 }
@@ -31,15 +31,30 @@ type PeriodSpec struct {
 // precomputeEntityData runs entity precomputation for all supported periods in sequence.
 func precomputeEntityData(ctx context.Context) error {
 	specs := []PeriodSpec{
-		{Label: "1d", RollingTable: "validator_dashboard_data_rolling_24h", HistoryTable: "validator_dashboard_data_hourly", HistoryWhereClause: "t >= now() - INTERVAL 24 HOUR"},
-		{Label: "7d", RollingTable: "validator_dashboard_data_rolling_7d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 7"},
-		{Label: "30d", RollingTable: "validator_dashboard_data_rolling_30d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 30"},
-		{Label: "all", RollingTable: "validator_dashboard_data_rolling_total", HistoryTable: "validator_dashboard_data_monthly", HistoryWhereClause: ""},
+		{Label: "1d", RollingTable: "_final_validator_dashboard_rolling_24h", HistoryTable: "validator_dashboard_data_hourly", HistoryWhereClause: "t >= now() - INTERVAL 24 HOUR"},
+		{Label: "7d", RollingTable: "_final_validator_dashboard_rolling_7d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 7"},
+		{Label: "30d", RollingTable: "_final_validator_dashboard_rolling_30d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 30"},
+		{Label: "90d", RollingTable: "_final_validator_dashboard_rolling_90d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 90"},
 	}
 
-	// 1) Fetch validator index, status, and entity data
+	// 1) retrieve the current balances for all validators
+	validatorTaggerLogger.Info("retrieving validator balance data")
+	validatorBalances, err := fetchValidatorBalancesFromMapping()
+	if err != nil {
+		return fmt.Errorf("failed to fetch validator balances from redis: %w", err)
+	}
+	validatorTaggerLogger.Infof("retrieved %d validator balances", len(validatorBalances))
+
+	// 2) Fetch validator index, status, and entity data
 	// we retrieve this only once and reuse it for all time periods
-	validatorTaggerLogger.Info("Retrieving validator entity and status data")
+	// first start a db transaction
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("begin db transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	validatorTaggerLogger.Info("retrieving validator entity and status data")
 	var validatorEntityRows []ValidatorEntityJoinRow
 	const joinSQL = `
         SELECT v.validatorindex,
@@ -49,7 +64,7 @@ func precomputeEntityData(ctx context.Context) error {
         FROM validators v
         LEFT JOIN validator_entities ve ON v.pubkey = ve.publickey
     `
-	if err := db.ReaderDb.Select(&validatorEntityRows, joinSQL); err != nil {
+	if err := tx.Select(&validatorEntityRows, joinSQL); err != nil {
 		return fmt.Errorf("join validators and validator_entities: %w", err)
 	}
 	if len(validatorEntityRows) == 0 {
@@ -57,18 +72,14 @@ func precomputeEntityData(ctx context.Context) error {
 		return nil
 	}
 
-	// all 4 periods can be computed in parallel
-	wg := errgroup.Group{}
-	wg.SetLimit(1)
 	for _, spec := range specs {
-		spec := spec
-		wg.Go(func() error {
-			return precomputeEntityDataForPeriod(ctx, spec, validatorEntityRows)
-		})
+		err = precomputeEntityDataForPeriod(ctx, tx, spec, validatorEntityRows, validatorBalances)
+		if err != nil {
+			return fmt.Errorf("error precomputing entity data for period %s: %w", spec.Label, err)
+		}
 	}
-	err := wg.Wait()
-	if err != nil {
-		return fmt.Errorf("error precomputing entity data: %w", err)
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit db transaction: %w", err)
 	}
 	return nil
 }
@@ -80,9 +91,18 @@ type ValidatorEntityJoinRow struct {
 	SubEntity      *string `db:"sub_entity"`
 }
 
-func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validatorEntityStatusMapping []ValidatorEntityJoinRow) error {
+func precomputeEntityDataForPeriod(ctx context.Context, tx *sqlx.Tx, spec PeriodSpec, validatorEntityStatusMapping []ValidatorEntityJoinRow, balanceMap map[int]uint64) error {
 	logger := validatorTaggerLogger.WithField("period", spec.Label)
 	logger.Info("precomputeEntityDataForPeriod: start")
+
+	// Clear old rows for this period within the transaction to avoid TRUNCATE locks
+	res, err := tx.Exec(`DELETE FROM validator_entities_data_periods WHERE period = $1`, spec.Label)
+	if err != nil {
+		return fmt.Errorf("delete old rows for period %s: %w", spec.Label, err)
+	}
+	if rows, errRA := res.RowsAffected(); errRA == nil {
+		logger.WithField("deleted_rows", rows).Info("cleared old rows for period")
+	}
 
 	// Aggregation scaffolding
 	type AggregationKey struct{ Entity, SubEntity string }
@@ -151,7 +171,6 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	// Parquet row from ClickHouse rolling table
 	type ClickHouseDataRow struct {
 		ValidatorIndex                 uint64 `parquet:"validator_index"`
-		BalanceEndGwei                 int64  `parquet:"balance_end"`
 		EpochStart                     int64  `parquet:"epoch_start"`
 		EpochEnd                       int64  `parquet:"epoch_end"`
 		EfficiencyDividend             int64  `parquet:"efficiency_dividend"`
@@ -169,17 +188,17 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 		AttestationsHeadExecutedSum    int64  `parquet:"attestations_head_executed"`
 		AttestationsSourceExecutedSum  int64  `parquet:"attestations_source_executed"`
 		AttestationsTargetExecutedSum  int64  `parquet:"attestations_target_executed"`
-		AttestationsIdealRewardSum     int64  `parquet:"attestations_ideal_reward_sum"`
-		AttestationsRewardsOnlySum     int64  `parquet:"attestations_reward_rewards_only_sum"`
+		AttestationsIdealRewardSum     int64  `parquet:"attestations_ideal_reward"`
+		AttestationsRewardsOnlySum     int64  `parquet:"attestations_reward_rewards_only"`
 		BlocksScheduledSum             int64  `parquet:"blocks_scheduled"`
 		BlocksProposedSum              int64  `parquet:"blocks_proposed"`
 		SyncScheduledSum               int64  `parquet:"sync_scheduled"`
 		SyncExecutedSum                int64  `parquet:"sync_executed"`
-		SlashedInPeriodMax             int64  `parquet:"slashed_in_period_max"`
-		SlashedAmountSum               int64  `parquet:"slashed_amount_sum"`
-		BlocksClMissedMedianRewardSum  int64  `parquet:"blocks_cl_missed_median_reward_sum"`
-		SyncLocalizedMaxRewardSum      int64  `parquet:"sync_localized_max_reward_sum"`
-		SyncRewardRewardsOnlySum       int64  `parquet:"sync_reward_rewards_only_sum"`
+		Slashed                        int64  `parquet:"slashed"`
+		BlocksSlashingCount            int64  `parquet:"blocks_slashing_count"`
+		BlocksClMissedMedianRewardSum  int64  `parquet:"blocks_cl_missed_median_reward"`
+		SyncLocalizedMaxRewardSum      int64  `parquet:"sync_localized_max_reward"`
+		SyncRewardRewardsOnlySum       int64  `parquet:"sync_reward_rewards_only"`
 		InclusionDelaySum              int64  `parquet:"inclusion_delay_sum"`
 	}
 
@@ -197,8 +216,10 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	}
 
 	// aggregation adder
-	addRowToAggregation := func(agg *AggregationValue, row ClickHouseDataRow) {
-		agg.BalanceEndSumGwei += row.BalanceEndGwei
+	addRowToAggregation := func(agg *AggregationValue, row ClickHouseDataRow, validatorSeen bool) {
+		if !validatorSeen {
+			agg.BalanceEndSumGwei += int64(balanceMap[int(row.ValidatorIndex)])
+		}
 		agg.EfficiencyDividend = agg.EfficiencyDividend.Add(decimal.NewFromInt(row.EfficiencyDividend))
 		agg.EfficiencyDivisor = agg.EfficiencyDivisor.Add(decimal.NewFromInt(row.EfficiencyDivisor))
 		agg.RoiDividend = agg.RoiDividend.Add(int128LEToDecimal(row.RoiDividendLE))
@@ -220,10 +241,10 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 		agg.BlocksProposedSum += row.BlocksProposedSum
 		agg.SyncScheduledSum += row.SyncScheduledSum
 		agg.SyncExecutedSum += row.SyncExecutedSum
-		if row.SlashedInPeriodMax > agg.SlashedInPeriodMax {
-			agg.SlashedInPeriodMax = row.SlashedInPeriodMax
+		if row.Slashed > agg.SlashedInPeriodMax {
+			agg.SlashedInPeriodMax = row.Slashed
 		}
-		agg.SlashedAmountSum += row.SlashedAmountSum
+		agg.SlashedAmountSum += row.BlocksSlashingCount
 		agg.BlocksClMissedMedianRewardSum += row.BlocksClMissedMedianRewardSum
 		agg.SyncLocalizedMaxRewardSum += row.SyncLocalizedMaxRewardSum
 		agg.SyncRewardRewardsOnlySum += row.SyncRewardRewardsOnlySum
@@ -234,38 +255,36 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	clickhouseSQL := fmt.Sprintf(`
 		SELECT
 		  validator_index,
-		  sum(efficiency_dividend) AS efficiency_dividend,
-		  sum(efficiency_divisor)  AS efficiency_divisor,
-		  sum(roi_dividend)        AS roi_dividend,
-		  sum(roi_divisor)         AS roi_divisor,
-		  sum(efficiency_attestations_dividend) AS efficiency_attestations_dividend,
-		  sum(efficiency_attestations_divisor)  AS efficiency_attestations_divisor,
-		  sum(efficiency_proposals_dividend)    AS efficiency_proposals_dividend,
-		  sum(efficiency_proposals_divisor)     AS efficiency_proposals_divisor,
-		  sum(efficiency_sync_dividend)         AS efficiency_sync_dividend,
-		  sum(efficiency_sync_divisor)          AS efficiency_sync_divisor,
-		  sum(attestations_scheduled)             AS attestations_scheduled,
-		  sum(attestations_observed)              AS attestations_observed,
-		  sum(attestations_head_executed)         AS attestations_head_executed,
-		  sum(attestations_source_executed)       AS attestations_source_executed,
-		  sum(attestations_target_executed)       AS attestations_target_executed,
-		  sum(attestations_ideal_reward)        AS attestations_ideal_reward_sum,
-		  sum(attestations_reward_rewards_only) AS attestations_reward_rewards_only_sum,
-		  sum(blocks_scheduled)                   AS blocks_scheduled,
-		  sum(blocks_proposed)                    AS blocks_proposed,
-		  sum(sync_scheduled)                     AS sync_scheduled,
-		  sum(sync_executed)                      AS sync_executed,
-		  max(slashed)                            AS slashed_in_period_max,
-		  sum(blocks_slashing_count)              AS slashed_amount_sum,
-		  sum(blocks_cl_missed_median_reward)   AS blocks_cl_missed_median_reward_sum,
-		  sum(sync_localized_max_reward)        AS sync_localized_max_reward_sum,
-		  sum(sync_reward_rewards_only)         AS sync_reward_rewards_only_sum,
-		  sum(inclusion_delay_sum)              AS inclusion_delay_sum,
-		  max(finalizeAggregation(balance_end)) AS balance_end,
-		  min(epoch_start) AS epoch_start,
-		  max(epoch_end) AS epoch_end
+		  efficiency_dividend,
+		  efficiency_divisor,
+		  roi_dividend,
+		  roi_divisor,
+		  efficiency_attestations_dividend,
+		  efficiency_attestations_divisor,
+		  efficiency_proposals_dividend,
+		  efficiency_proposals_divisor,
+		  efficiency_sync_dividend,
+		  efficiency_sync_divisor,
+		  attestations_scheduled,
+		  attestations_observed,
+		  attestations_head_executed,
+		  attestations_source_executed,
+		  attestations_target_executed,
+		  attestations_ideal_reward,
+		  attestations_reward_rewards_only,
+		  blocks_scheduled,
+		  blocks_proposed,
+		  sync_scheduled,
+		  sync_executed,
+		  slashed, -- max
+		  blocks_slashing_count,
+		  blocks_cl_missed_median_reward,
+		  sync_localized_max_reward,
+		  sync_reward_rewards_only,
+		  inclusion_delay_sum,
+		  epoch_start, -- min
+		  epoch_end -- max
 		FROM %s
-		GROUP BY validator_index
 		FORMAT Parquet
 		SETTINGS output_format_parquet_compression_method='zstd'
 	`, spec.RollingTable)
@@ -273,13 +292,12 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	var totalBalanceEndGwei int64
 	epochStart := int64(math.MaxInt64)
 	epochEnd := int64(math.MinInt64)
-	type CHRow = ClickHouseDataRow
-	if err := db.FetchClickhouseParquet[CHRow](ctx, clickhouseSQL, func(row CHRow) bool {
+	validatorsSeen := make(map[uint64]bool) // map to keep track when we see a validator for the first time
+	if err := db.FetchClickhouseParquet[ClickHouseDataRow](ctx, clickhouseSQL, func(row ClickHouseDataRow) bool {
 		mapping, ok := entityByValidatorIndex[row.ValidatorIndex]
 		if !ok {
 			return true
 		}
-		totalBalanceEndGwei += row.BalanceEndGwei
 		if row.EpochStart < epochStart {
 			epochStart = row.EpochStart
 		}
@@ -287,11 +305,15 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 			epochEnd = row.EpochEnd
 		}
 		keyEntityOnly := AggregationKey{Entity: mapping.entity, SubEntity: ""}
-		addRowToAggregation(ensureAggregation(keyEntityOnly), row)
+		addRowToAggregation(ensureAggregation(keyEntityOnly), row, validatorsSeen[row.ValidatorIndex])
 		if mapping.subEntity != "" {
 			keyEntityWithSub := AggregationKey{Entity: mapping.entity, SubEntity: mapping.subEntity}
-			addRowToAggregation(ensureAggregation(keyEntityWithSub), row)
+			addRowToAggregation(ensureAggregation(keyEntityWithSub), row, validatorsSeen[row.ValidatorIndex])
 		}
+		if !validatorsSeen[row.ValidatorIndex] {
+			totalBalanceEndGwei += int64(balanceMap[int(row.ValidatorIndex)])
+		}
+		validatorsSeen[row.ValidatorIndex] = true
 		return true
 	}); err != nil {
 		return fmt.Errorf("fetch clickhouse parquet balances (%s): %w", spec.Label, err)
@@ -360,7 +382,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 			Value    decimal.Decimal `db:"value"`
 		}
 		var elRows []ELRewardRow
-		if err := db.ReaderDb.Select(&elRows, `
+		if err := tx.Select(&elRows, `
 			SELECT proposer, value
 			FROM execution_rewards_finalized
 			WHERE epoch >= $1 AND epoch <= $2
@@ -397,7 +419,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 		values = make([]float64, 0, len(timestamps))
 		for _, ts := range timestamps {
 			bucket := bucketsByTimestamp[ts]
-			values = append(values, calcEfficiency(bucket.Dividend, bucket.Divisor))
+			values = append(values, utils.CalcEfficiency(bucket.Dividend, bucket.Divisor))
 		}
 		return timestamps, values
 	}
@@ -456,12 +478,12 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 			BalanceEndSumGwei:                 value.BalanceEndSumGwei,
 			EfficiencyDividend:                value.EfficiencyDividend,
 			EfficiencyDivisor:                 value.EfficiencyDivisor,
-			Efficiency:                        calcEfficiency(value.EfficiencyDividend, value.EfficiencyDivisor),
+			Efficiency:                        utils.CalcEfficiency(value.EfficiencyDividend, value.EfficiencyDivisor),
 			RoiDividend:                       value.RoiDividend,
 			RoiDivisor:                        value.RoiDivisor,
-			AttestationEfficiency:             calcEfficiency(value.EfficiencyAttestationsDividend, value.EfficiencyAttestationsDivisor),
-			ProposalEfficiency:                calcEfficiency(value.EfficiencyProposalsDividend, value.EfficiencyProposalsDivisor),
-			SyncCommitteeEfficiency:           calcEfficiency(value.EfficiencySyncDividend, value.EfficiencySyncDivisor),
+			AttestationEfficiency:             utils.CalcEfficiency(value.EfficiencyAttestationsDividend, value.EfficiencyAttestationsDivisor),
+			ProposalEfficiency:                utils.CalcEfficiency(value.EfficiencyProposalsDividend, value.EfficiencyProposalsDivisor),
+			SyncCommitteeEfficiency:           utils.CalcEfficiency(value.EfficiencySyncDividend, value.EfficiencySyncDivisor),
 			EfficiencyTimeBucketTimestampsSec: bucketTimestamps,
 			EfficiencyTimeBucketValues:        bucketValues,
 			AttestationsScheduledSum:          value.AttestationsScheduledSum,
@@ -619,7 +641,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	}
 
 	logger.WithField("rows", n).Info("persisting validator_entities_data_periods rows")
-	_, err := db.WriterDb.Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO validator_entities_data_periods (
 			entity, sub_entity, period, last_updated_at,
 			balance_end_sum_gwei,
@@ -731,15 +753,15 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	}
 	logger.WithField("rows", n).Info("persisted validator_entities_data_periods rows for period")
 
-	// After persisting DB, update Redis cache for index treemap for 1d period
-	if spec.Label == "1d" && utils.Config.RedisSessionStoreEndpoint != "" {
+	// After persisting DB, update Redis cache for index treemap for 30d period
+	if utils.Config.RedisSessionStoreEndpoint != "" {
 		ctx := context.Background()
 		rdc, errInit := cache.InitRedisCache(ctx, utils.Config.RedisSessionStoreEndpoint)
 		if errInit != nil {
 			logger.WithError(errInit).Warn("treemap cache: failed to init redis; skipping cache write")
 		} else {
 			var treemapRows []types.EntityTreemapItem
-			if errSel := db.ReaderDb.Select(&treemapRows, `
+			if errSel := tx.Select(&treemapRows, `
 				SELECT entity, efficiency, net_share
 				FROM validator_entities_data_periods
 				WHERE period = $1 AND sub_entity IN ('-','')
@@ -756,16 +778,4 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 		}
 	}
 	return nil
-}
-
-func calcEfficiency(dividend, divisor decimal.Decimal) float64 {
-	if divisor.IsZero() {
-		return -1
-	} // means no data is available (validator is no longer active)
-	eff := dividend.Div(divisor).InexactFloat64()
-	if eff > 1 {
-		validatorTaggerLogger.Errorf("efficiency is greater than 100: %v", eff)
-		eff = 1
-	}
-	return eff
 }

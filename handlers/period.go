@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-// normalizePeriod returns a supported period string or the default "1d".
+// normalizePeriod returns a supported period string or the default "30d".
 // Allowed values are: 1d, 7d, 30d, all
 func normalizePeriod(raw string) string {
 	p := strings.ToLower(strings.TrimSpace(raw))
 	switch p {
-	case "1d", "7d", "30d", "all":
+	case "1d", "7d", "30d", "90d":
 		return p
 	default:
-		return "1d"
+		return "30d"
 	}
 }
 
@@ -27,10 +27,10 @@ func GetRequestedPeriod(r *http.Request) string {
 type PeriodLink struct{ Label, Value, Href string }
 
 // BuildPeriodToggleLinks creates period= links preserving other query params except period.
-// It returns a slice ordered as 1d, 7d, 30d, all.
+// It returns a slice ordered as 1d, 7d, 30d, 90d.
 func BuildPeriodToggleLinks(r *http.Request, basePath string) []PeriodLink {
-	labels := map[string]string{"1d": "1d", "7d": "7d", "30d": "30d", "all": "All time"}
-	values := []string{"1d", "7d", "30d", "all"}
+	labels := map[string]string{"1d": "1d", "7d": "7d", "30d": "30d", "90d": "90d"}
+	values := []string{"1d", "7d", "30d", "90d"}
 
 	// copy query and drop any existing period and page to reset pagination when switching
 	q := r.URL.Query()

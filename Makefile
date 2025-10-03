@@ -7,7 +7,7 @@ LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDat
 CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 CGO_CFLAGS_ALLOW="-O -D__BLST_PORTABLE__"
 
-all: explorer stats frontend-data-updater eth1indexer blobindexer ethstore-exporter rewards-exporter node-jobs-processor signatures notification-sender notification-collector user-service misc validator-tagger
+all: explorer stats frontend-data-updater eth1indexer blobindexer rewards-exporter node-jobs-processor signatures notification-sender notification-collector user-service misc validator-tagger
 
 lint:
 	echo 
@@ -33,9 +33,6 @@ stats:
 
 frontend-data-updater:
 	CGO_CFLAGS=${CGO_CFLAGS} CGO_CFLAGS_ALLOW=${CGO_CFLAGS_ALLOW} go build --ldflags=${LDFLAGS} -o bin/frontend-data-updater cmd/frontend-data-updater/main.go
-
-ethstore-exporter:
-	CGO_CFLAGS=${CGO_CFLAGS} CGO_CFLAGS_ALLOW=${CGO_CFLAGS_ALLOW} go build --ldflags=${LDFLAGS} -o bin/ethstore-exporter cmd/ethstore-exporter/main.go
 
 rewards-exporter:
 	CGO_CFLAGS=${CGO_CFLAGS} CGO_CFLAGS_ALLOW=${CGO_CFLAGS_ALLOW} go build --ldflags=${LDFLAGS} -o bin/rewards-exporter cmd/rewards-exporter/main.go

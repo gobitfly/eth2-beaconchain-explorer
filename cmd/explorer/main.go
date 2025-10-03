@@ -519,7 +519,10 @@ func main() {
 
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			router.HandleFunc("/entities", handlers.Entities).Methods("GET")
+			router.HandleFunc("/entities/data", handlers.EntitiesData).Methods("GET")
 			router.HandleFunc("/entity/{entity}/{subEntity}", handlers.EntityDetail).Methods("GET")
+			router.HandleFunc("/entity/{entity}/{subEntity}/subentities/data", handlers.EntitySubEntitiesData).Methods("GET")
+			router.HandleFunc("/entity/{entity}/{subEntity}/validators/data", handlers.EntityValidatorsData).Methods("GET")
 			router.HandleFunc("/relays", handlers.Relays).Methods("GET")
 			router.HandleFunc("/pools/rocketpool", handlers.PoolsRocketpool).Methods("GET")
 			router.HandleFunc("/pools/rocketpool/data/minipools", handlers.PoolsRocketpoolDataMinipools).Methods("GET")
