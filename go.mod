@@ -43,6 +43,7 @@ require (
 	github.com/juliangruber/go-intersect v1.1.0
 	github.com/kataras/i18n v0.0.5
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/klauspost/pgzip v1.2.6
 	github.com/lib/pq v1.10.7
 	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mitchellh/mapstructure v1.5.0
