@@ -31,13 +31,21 @@ type PeriodSpec struct {
 // precomputeEntityData runs entity precomputation for all supported periods in sequence.
 func precomputeEntityData(ctx context.Context) error {
 	specs := []PeriodSpec{
-		{Label: "1d", RollingTable: "validator_dashboard_data_rolling_24h", HistoryTable: "validator_dashboard_data_hourly", HistoryWhereClause: "t >= now() - INTERVAL 24 HOUR"},
-		{Label: "7d", RollingTable: "validator_dashboard_data_rolling_7d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 7"},
-		{Label: "30d", RollingTable: "validator_dashboard_data_rolling_30d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 30"},
-		{Label: "all", RollingTable: "validator_dashboard_data_rolling_total", HistoryTable: "validator_dashboard_data_monthly", HistoryWhereClause: ""},
+		{Label: "1d", RollingTable: "_final_validator_dashboard_rolling_24h", HistoryTable: "validator_dashboard_data_hourly", HistoryWhereClause: "t >= now() - INTERVAL 24 HOUR"},
+		{Label: "7d", RollingTable: "_final_validator_dashboard_rolling_7d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 7"},
+		{Label: "30d", RollingTable: "_final_validator_dashboard_rolling_30d", HistoryTable: "validator_dashboard_data_daily", HistoryWhereClause: "t >= today() - 30"},
+		{Label: "all", RollingTable: "_final_validator_dashboard_rolling_total", HistoryTable: "validator_dashboard_data_monthly", HistoryWhereClause: ""},
 	}
 
-	// 1) Fetch validator index, status, and entity data
+	// 1) retrieve the current balances for all validators
+	validatorTaggerLogger.Info("Retrieving validator balance data")
+	validatorBalances, err := fetchValidatorBalancesFromMapping()
+	if err != nil {
+		return fmt.Errorf("failed to fetch validator balances from redis: %w", err)
+	}
+	validatorTaggerLogger.Infof("Retrieved %d validator balances", len(validatorBalances))
+
+	// 2) Fetch validator index, status, and entity data
 	// we retrieve this only once and reuse it for all time periods
 	validatorTaggerLogger.Info("Retrieving validator entity and status data")
 	var validatorEntityRows []ValidatorEntityJoinRow
@@ -63,10 +71,10 @@ func precomputeEntityData(ctx context.Context) error {
 	for _, spec := range specs {
 		spec := spec
 		wg.Go(func() error {
-			return precomputeEntityDataForPeriod(ctx, spec, validatorEntityRows)
+			return precomputeEntityDataForPeriod(ctx, spec, validatorEntityRows, validatorBalances)
 		})
 	}
-	err := wg.Wait()
+	err = wg.Wait()
 	if err != nil {
 		return fmt.Errorf("error precomputing entity data: %w", err)
 	}
@@ -80,7 +88,7 @@ type ValidatorEntityJoinRow struct {
 	SubEntity      *string `db:"sub_entity"`
 }
 
-func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validatorEntityStatusMapping []ValidatorEntityJoinRow) error {
+func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validatorEntityStatusMapping []ValidatorEntityJoinRow, balanceMap map[int]uint64) error {
 	logger := validatorTaggerLogger.WithField("period", spec.Label)
 	logger.Info("precomputeEntityDataForPeriod: start")
 
@@ -151,7 +159,6 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	// Parquet row from ClickHouse rolling table
 	type ClickHouseDataRow struct {
 		ValidatorIndex                 uint64 `parquet:"validator_index"`
-		BalanceEndGwei                 int64  `parquet:"balance_end"`
 		EpochStart                     int64  `parquet:"epoch_start"`
 		EpochEnd                       int64  `parquet:"epoch_end"`
 		EfficiencyDividend             int64  `parquet:"efficiency_dividend"`
@@ -175,8 +182,8 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 		BlocksProposedSum              int64  `parquet:"blocks_proposed"`
 		SyncScheduledSum               int64  `parquet:"sync_scheduled"`
 		SyncExecutedSum                int64  `parquet:"sync_executed"`
-		SlashedInPeriodMax             int64  `parquet:"slashed_in_period_max"`
-		SlashedAmountSum               int64  `parquet:"slashed_amount_sum"`
+		Slashed                        int64  `parquet:"slashed"`
+		BlocksSlashingCount            int64  `parquet:"blocks_slashing_count"`
 		BlocksClMissedMedianRewardSum  int64  `parquet:"blocks_cl_missed_median_reward_sum"`
 		SyncLocalizedMaxRewardSum      int64  `parquet:"sync_localized_max_reward_sum"`
 		SyncRewardRewardsOnlySum       int64  `parquet:"sync_reward_rewards_only_sum"`
@@ -198,7 +205,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 
 	// aggregation adder
 	addRowToAggregation := func(agg *AggregationValue, row ClickHouseDataRow) {
-		agg.BalanceEndSumGwei += row.BalanceEndGwei
+		agg.BalanceEndSumGwei += int64(balanceMap[int(row.ValidatorIndex)])
 		agg.EfficiencyDividend = agg.EfficiencyDividend.Add(decimal.NewFromInt(row.EfficiencyDividend))
 		agg.EfficiencyDivisor = agg.EfficiencyDivisor.Add(decimal.NewFromInt(row.EfficiencyDivisor))
 		agg.RoiDividend = agg.RoiDividend.Add(int128LEToDecimal(row.RoiDividendLE))
@@ -220,10 +227,10 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 		agg.BlocksProposedSum += row.BlocksProposedSum
 		agg.SyncScheduledSum += row.SyncScheduledSum
 		agg.SyncExecutedSum += row.SyncExecutedSum
-		if row.SlashedInPeriodMax > agg.SlashedInPeriodMax {
-			agg.SlashedInPeriodMax = row.SlashedInPeriodMax
+		if row.Slashed > agg.SlashedInPeriodMax {
+			agg.SlashedInPeriodMax = row.Slashed
 		}
-		agg.SlashedAmountSum += row.SlashedAmountSum
+		agg.SlashedAmountSum += row.BlocksSlashingCount
 		agg.BlocksClMissedMedianRewardSum += row.BlocksClMissedMedianRewardSum
 		agg.SyncLocalizedMaxRewardSum += row.SyncLocalizedMaxRewardSum
 		agg.SyncRewardRewardsOnlySum += row.SyncRewardRewardsOnlySum
@@ -234,38 +241,36 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	clickhouseSQL := fmt.Sprintf(`
 		SELECT
 		  validator_index,
-		  sum(efficiency_dividend) AS efficiency_dividend,
-		  sum(efficiency_divisor)  AS efficiency_divisor,
-		  sum(roi_dividend)        AS roi_dividend,
-		  sum(roi_divisor)         AS roi_divisor,
-		  sum(efficiency_attestations_dividend) AS efficiency_attestations_dividend,
-		  sum(efficiency_attestations_divisor)  AS efficiency_attestations_divisor,
-		  sum(efficiency_proposals_dividend)    AS efficiency_proposals_dividend,
-		  sum(efficiency_proposals_divisor)     AS efficiency_proposals_divisor,
-		  sum(efficiency_sync_dividend)         AS efficiency_sync_dividend,
-		  sum(efficiency_sync_divisor)          AS efficiency_sync_divisor,
-		  sum(attestations_scheduled)             AS attestations_scheduled,
-		  sum(attestations_observed)              AS attestations_observed,
-		  sum(attestations_head_executed)         AS attestations_head_executed,
-		  sum(attestations_source_executed)       AS attestations_source_executed,
-		  sum(attestations_target_executed)       AS attestations_target_executed,
-		  sum(attestations_ideal_reward)        AS attestations_ideal_reward_sum,
-		  sum(attestations_reward_rewards_only) AS attestations_reward_rewards_only_sum,
-		  sum(blocks_scheduled)                   AS blocks_scheduled,
-		  sum(blocks_proposed)                    AS blocks_proposed,
-		  sum(sync_scheduled)                     AS sync_scheduled,
-		  sum(sync_executed)                      AS sync_executed,
-		  max(slashed)                            AS slashed_in_period_max,
-		  sum(blocks_slashing_count)              AS slashed_amount_sum,
-		  sum(blocks_cl_missed_median_reward)   AS blocks_cl_missed_median_reward_sum,
-		  sum(sync_localized_max_reward)        AS sync_localized_max_reward_sum,
-		  sum(sync_reward_rewards_only)         AS sync_reward_rewards_only_sum,
-		  sum(inclusion_delay_sum)              AS inclusion_delay_sum,
-		  max(finalizeAggregation(balance_end)) AS balance_end,
-		  min(epoch_start) AS epoch_start,
-		  max(epoch_end) AS epoch_end
+		  efficiency_dividend,
+		  efficiency_divisor,
+		  roi_dividend,
+		  roi_divisor,
+		  efficiency_attestations_dividend,
+		  efficiency_attestations_divisor,
+		  efficiency_proposals_dividend,
+		  efficiency_proposals_divisor,
+		  efficiency_sync_dividend,
+		  efficiency_sync_divisor,
+		  attestations_scheduled,
+		  attestations_observed,
+		  attestations_head_executed,
+		  attestations_source_executed,
+		  attestations_target_executed,
+		  attestations_ideal_reward,
+		  attestations_reward_rewards_only,
+		  blocks_scheduled,
+		  blocks_proposed,
+		  sync_scheduled,
+		  sync_executed,
+		  slashed, -- max
+		  blocks_slashing_count,
+		  blocks_cl_missed_median_reward,
+		  sync_localized_max_reward,
+		  sync_reward_rewards_only,
+		  inclusion_delay_sum,
+		  epoch_start, -- min
+		  epoch_end -- max
 		FROM %s
-		GROUP BY validator_index
 		FORMAT Parquet
 		SETTINGS output_format_parquet_compression_method='zstd'
 	`, spec.RollingTable)
@@ -273,13 +278,12 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	var totalBalanceEndGwei int64
 	epochStart := int64(math.MaxInt64)
 	epochEnd := int64(math.MinInt64)
-	type CHRow = ClickHouseDataRow
-	if err := db.FetchClickhouseParquet[CHRow](ctx, clickhouseSQL, func(row CHRow) bool {
+	if err := db.FetchClickhouseParquet[ClickHouseDataRow](ctx, clickhouseSQL, func(row ClickHouseDataRow) bool {
 		mapping, ok := entityByValidatorIndex[row.ValidatorIndex]
 		if !ok {
 			return true
 		}
-		totalBalanceEndGwei += row.BalanceEndGwei
+		totalBalanceEndGwei += int64(balanceMap[int(row.ValidatorIndex)])
 		if row.EpochStart < epochStart {
 			epochStart = row.EpochStart
 		}
