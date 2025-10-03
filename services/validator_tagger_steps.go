@@ -34,6 +34,13 @@ func RunStepLidoCSM(ctx context.Context) (err error) {
 	return indexLidoCSMValidators()
 }
 
+// RunStepLidoSimpleDVT enriches validators from Lido Simple DVT module.
+func RunStepLidoSimpleDVT(ctx context.Context) (err error) {
+	finish := withStepMetrics("validator_tagger_lido_simple_dvt")
+	defer func() { finish(err == nil) }()
+	return indexLidoSimpleDVTValidators()
+}
+
 // RunStepRocketPool sets Rocket Pool sub_entity based on node address.
 func RunStepRocketPool(ctx context.Context) (err error) {
 	finish := withStepMetrics("validator_tagger_rocketpool")

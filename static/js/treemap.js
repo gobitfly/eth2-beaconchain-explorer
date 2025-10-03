@@ -72,7 +72,7 @@
     Highcharts.chart(containerId, {
       chart: { animation: false },
       colorAxis: {
-        min: 0.985,
+        min: 0.98,
         max: 1,
         minColor: "#ffaa31",
         maxColor: "#60be60",

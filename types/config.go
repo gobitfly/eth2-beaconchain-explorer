@@ -448,6 +448,7 @@ type ValidatorTaggerConfig struct {
 		ImportEnabled              *bool `yaml:"importEnabled" envconfig:"VALIDATOR_TAGGER_STEP_IMPORT"`
 		LidoEnabled                *bool `yaml:"lidoEnabled" envconfig:"VALIDATOR_TAGGER_STEP_LIDO"`
 		LidoCSMEnabled             *bool `yaml:"lidoCSMEnabled" envconfig:"VALIDATOR_TAGGER_STEP_LIDO_CSM"`
+		LidoSimpleDVTEnabled       *bool `yaml:"lidoSimpleDVTEnabled" envconfig:"VALIDATOR_TAGGER_STEP_LIDO_SIMPLE_DVT"`
 		RocketPoolSubEntityEnabled *bool `yaml:"rocketPoolSubEntityEnabled" envconfig:"VALIDATOR_TAGGER_STEP_ROCKETPOOL_SUBENTITY"`
 		WithdrawalTaggingEnabled   *bool `yaml:"withdrawalTaggingEnabled" envconfig:"VALIDATOR_TAGGER_STEP_WITHDRAWAL_TAGGING"`
 		DepositTaggingEnabled      *bool `yaml:"depositTaggingEnabled" envconfig:"VALIDATOR_TAGGER_STEP_DEPOSIT_TAGGING"`

@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +16,8 @@ import (
 
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
+	"github.com/gobitfly/eth2-beaconchain-explorer/types"
+	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/gorilla/mux"
 	"github.com/shopspring/decimal"
 )
@@ -52,12 +56,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 	type point struct {
 		TsMs  int64
 		Value float64
-	}
-	// Row for sub-entities list in the view model
-	type SubEntityRow struct {
-		SubEntity   string  `db:"sub_entity"`
-		NetShare    float64 `db:"net_share"`
-		Beaconscore float64 `db:"efficiency"`
 	}
 	effSeries := make([]point, 0, len(row24.EfficiencyTimeBucketValues))
 	for i := range row24.EfficiencyTimeBucketValues {
@@ -122,13 +120,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 
 		EfficiencySeries []point
 
-		// List of sub-entities for the selected entity, sorted by net share desc
-		SubEntities []SubEntityRow
-
-		// Pagination for sub-entities table
-		Page       int
-		TotalPages int
-
 		// Controls whether to render sub-entity table/breadcrumbs
 		HasRealSubEntities bool
 
@@ -186,53 +177,29 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	vm.HasRealSubEntities = hasRealSubs
 
-	// Pagination params for sub-entities table
-	const pageSize = 25
-	page := 1
-	if pStr := strings.TrimSpace(r.URL.Query().Get("page")); pStr != "" {
-		if pv, err := strconv.Atoi(pStr); err == nil && pv > 0 {
-			page = pv
-		}
-	}
+	// Online/Offline counts and tooltips from status_counts JSONB
+	onlineCount, offlineCount, onlineHTML, offlineHTML := buildStatusTooltipsFromRaw(row24.StatusCountsRaw)
+	vm.OnlineCount = onlineCount
+	vm.OfflineCount = offlineCount
+	vm.OnlineBreakdownHTML = onlineHTML
+	vm.OfflineBreakdownHTML = offlineHTML
 
-	// Count total sub-entities for this entity and period
-	totalSubs, err := db.CountSubEntities(entity, period)
-	if err != nil {
-		logger.WithError(err).WithField("entity", entity).Error("EntityDetail: count sub-entities failed")
-	}
-	// Compute pagination bounds
-	totalPages := (totalSubs + pageSize - 1) / pageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-	if page > totalPages {
-		page = totalPages
-	}
-	offset := (page - 1) * pageSize
+	data.Data = vm
 
-	// Load paginated sub-entities for the selected entity and period (sorted by net share desc)
-	subDtos, err := db.GetSubEntitiesPaginated(entity, period, pageSize, offset)
-	if err != nil {
-		logger.WithError(err).WithField("entity", entity).WithField("page", page).Error("EntityDetail: load sub-entities (paged) failed")
-	} else {
-		subRows := make([]SubEntityRow, 0, len(subDtos))
-		for _, s := range subDtos {
-			subRows = append(subRows, SubEntityRow{SubEntity: s.SubEntity, NetShare: s.NetShare, Beaconscore: s.Efficiency})
-		}
-		vm.SubEntities = subRows
+	if handleTemplateError(w, r, "entity_detail.go", "EntityDetail", "Done", entityTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return
 	}
-	vm.Page = page
-	vm.TotalPages = totalPages
+}
 
-	// Derive online/offline validator counts from status_counts JSONB
+// buildStatusTooltipsFromRaw produces online/offline counts and HTML tooltips out of the status_counts JSONB bytes.
+func buildStatusTooltipsFromRaw(statusCountsRaw []byte) (uint64, uint64, template.HTMLAttr, template.HTMLAttr) {
 	var statusCounts map[string]int64
-	if len(row24.StatusCountsRaw) > 0 {
-		_ = json.Unmarshal(row24.StatusCountsRaw, &statusCounts)
+	if len(statusCountsRaw) > 0 {
+		_ = json.Unmarshal(statusCountsRaw, &statusCounts)
 	} else {
 		statusCounts = map[string]int64{}
 	}
 
-	// Helper: order keys for online/offline breakdowns
 	onlineOrder := []string{"active_online", "exiting_online", "slashing_online"}
 	offlineOrder := []string{"active_offline", "exiting_offline", "slashing_offline", "pending_initialized", "pending", "deposited", "exited", "slashed"}
 
@@ -254,7 +221,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Append any unknown keys not in the desired order arrays
 	unknownOnline := make([]string, 0)
 	for k := range onlineMap {
 		found := false
@@ -287,7 +253,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(unknownOffline)
 	offlineOrder = append(offlineOrder, unknownOffline...)
 
-	// Number formatting with thousands separators (used in tooltip)
 	formatUintThousands := func(v uint64) string {
 		s := fmt.Sprintf("%d", v)
 		n := len(s)
@@ -305,7 +270,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		return res
 	}
 
-	// Build multi-line HTML tooltip content with icons and humanized labels (rendered with CSS white-space: pre-line)
 	humanizeStatus := func(k string) string {
 		switch k {
 		case "active_online":
@@ -383,18 +347,208 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		if len(lines) == 0 {
 			return "No breakdown available"
 		}
-		// Join using newline so tooltip shows line breaks via CSS white-space: pre-line
 		return template.HTMLAttr("data-tippy-content='" + strings.Join(lines, "<br>") + "'")
 	}
 
-	vm.OnlineCount = onlineSum
-	vm.OfflineCount = offlineSum
-	vm.OnlineBreakdownHTML = buildTooltip(onlineOrder, onlineMap)
-	vm.OfflineBreakdownHTML = buildTooltip(offlineOrder, offlineMap)
+	return onlineSum, offlineSum, buildTooltip(onlineOrder, onlineMap), buildTooltip(offlineOrder, offlineMap)
+}
 
-	data.Data = vm
+// EntitySubEntitiesData serves DataTables JSON for the sub-entities table on the Entity Detail page.
+func EntitySubEntitiesData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
-	if handleTemplateError(w, r, "entity_detail.go", "EntityDetail", "Done", entityTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+	q := r.URL.Query()
+	// DataTables params
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
 		return
 	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
+		return
+	}
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
+		return
+	}
+	if length > 25 {
+		length = 25
+	}
+
+	vars := mux.Vars(r)
+	entity := vars["entity"]
+	// sub-entity path var is ignored for this table; it is always rendered for "-" in UI
+
+	period := GetRequestedPeriod(r)
+
+	total, err := db.CountSubEntities(entity, period)
+	if err != nil {
+		logger.WithError(err).WithField("entity", entity).Error("entity sub-entities: count failed")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	dtos, err := db.GetSubEntitiesPaginated(entity, period, int(length), int(start))
+	if err != nil {
+		logger.WithError(err).WithFields(map[string]interface{}{"entity": entity, "start": start, "length": length}).Error("entity sub-entities: select failed")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	rows := make([][]interface{}, 0, len(dtos))
+	for _, s := range dtos {
+		link := fmt.Sprintf("<a href=\"/entity/%s/%s?period=%s\">%s</a>", url.PathEscape(entity), url.PathEscape(s.SubEntity), template.HTMLEscapeString(period), template.HTMLEscapeString(s.SubEntity))
+		beaconscore := utils.FormatBeaconscore(s.Efficiency, true)
+		netShare := utils.FormatPercentageWithPrecision(s.NetShare, 2) + "%"
+		rows = append(rows, []interface{}{link, beaconscore, netShare})
+	}
+
+	resp := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    uint64(total),
+		RecordsFiltered: uint64(total),
+		Data:            rows,
+	}
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		logger.WithError(err).Error("entity sub-entities: encode json")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// EntityValidatorsData serves DataTables JSON for the validators table on the Entity Detail page.
+func EntityValidatorsData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+	// DataTables params
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		http.Error(w, "Error: Missing or invalid parameter draw", http.StatusBadRequest)
+		return
+	}
+	// start is ignored for keyset pagination but kept for compatibility with DataTables
+	_, err = strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil && q.Get("start") != "" { // tolerate empty
+		http.Error(w, "Error: Missing or invalid parameter start", http.StatusBadRequest)
+		return
+	}
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		http.Error(w, "Error: Missing or invalid parameter length", http.StatusBadRequest)
+		return
+	}
+	if length > 25 {
+		length = 25
+	}
+
+	vars := mux.Vars(r)
+	entity := vars["entity"]
+	subEntity := vars["subEntity"]
+	if subEntity == "" {
+		subEntity = "-"
+	}
+	period := GetRequestedPeriod(r)
+
+	// Optional paging token for keyset pagination
+	pagingToken := q.Get("pagingToken")
+	var afterIndex *int
+	if pagingToken != "" {
+		if idx, decErr := decodeEntityValidatorsToken(pagingToken); decErr == nil {
+			afterIndex = &idx
+		} else {
+			logger.WithError(decErr).WithField("token", pagingToken).Warn("entity validators: invalid pagingToken; falling back to first page")
+		}
+	}
+
+	total, err := db.CountEntityValidators(entity, subEntity)
+	if err != nil {
+		logger.WithError(err).WithFields(map[string]interface{}{"entity": entity, "sub_entity": subEntity}).Error("entity validators: count failed")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	vr, err := db.GetEntityValidatorsByCursor(entity, subEntity, int(length), afterIndex)
+	if err != nil {
+		logger.WithError(err).WithFields(map[string]interface{}{"entity": entity, "sub_entity": subEntity, "after_index": derefInt(afterIndex), "length": length}).Error("entity validators: select failed")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	indices := make([]int, 0, len(vr))
+	for _, r := range vr {
+		indices = append(indices, r.Index)
+	}
+	eff, err := db.GetValidatorEfficienciesForPeriod(period, indices)
+	if err != nil {
+		logger.WithError(err).WithField("period", period).Warn("entity validators: efficiencies fetch failed")
+	}
+
+	rows := make([][]interface{}, 0, len(vr))
+	minIndex := 0
+	for i, r := range vr {
+		if i == 0 || r.Index < minIndex {
+			minIndex = r.Index
+		}
+		link := fmt.Sprintf("<a href=\"/validator/%d\">%d</a>", r.Index, r.Index)
+		status := utils.FormatValidatorStatus(r.Status)
+		beaconscore := utils.FormatBeaconscore(eff[r.Index], true)
+		rows = append(rows, []interface{}{link, status, beaconscore})
+	}
+
+	// Build next-page token if we returned a full page
+	nextToken := ""
+	if len(vr) > 0 && uint64(len(vr)) == length {
+		nextToken = encodeEntityValidatorsToken(minIndex)
+	}
+
+	resp := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    uint64(total),
+		RecordsFiltered: uint64(total),
+		Data:            rows,
+		PageLength:      uint64(length),
+		DisplayStart:    0,
+		PagingToken:     nextToken,
+	}
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		logger.WithError(err).Error("entity validators: encode json")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// ---- Helpers for entity validators keyset pagination ----
+
+type entityValidatorsToken struct {
+	After int `json:"after"`
+}
+
+func encodeEntityValidatorsToken(index int) string {
+	b, err := json.Marshal(entityValidatorsToken{After: index})
+	if err != nil {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+func decodeEntityValidatorsToken(token string) (int, error) {
+	payload, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return 0, err
+	}
+	var t entityValidatorsToken
+	if err := json.Unmarshal(payload, &t); err != nil {
+		return 0, err
+	}
+	return t.After, nil
+}
+
+func derefInt(p *int) interface{} {
+	if p == nil {
+		return nil
+	}
+	return *p
 }

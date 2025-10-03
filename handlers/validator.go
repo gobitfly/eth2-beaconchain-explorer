@@ -21,6 +21,7 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/templates"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 
 	"github.com/ethereum/go-ethereum/accounts"
@@ -172,7 +173,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// the validator might only have a public key but no index yet
 			var name string
 			err := db.ReaderDb.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
-			if err != nil && err != sql.ErrNoRows {
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				utils.LogError(err, "error getting validator-name from db for pubKey", 0, errFields)
 				validatorNotFound(data, w, r, vars, "")
 				return
@@ -181,18 +182,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.Name = name
 			}
 
-			var pool string
-			err = db.ReaderDb.Get(&pool, `SELECT pool FROM validator_pool WHERE publickey = $1`, pubKey)
-			if err != nil && err != sql.ErrNoRows {
+			var entity string
+			err = db.ReaderDb.Get(&entity, `SELECT entity FROM validator_entities WHERE publickey = $1`, pubKey)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				utils.LogError(err, "error getting validator-pool from db for pubkey", 0, errFields)
 				validatorNotFound(data, w, r, vars, "")
 				return
-				// err == sql.ErrNoRows -> (no pool set)
+				// err == sql.ErrNoRows -> (no entity set)
 			} else {
 				if validatorPageData.Name == "" {
-					validatorPageData.Name = fmt.Sprintf("Pool: %s", pool)
-				} else {
-					validatorPageData.Name += fmt.Sprintf(" / Pool: %s", pool)
+					validatorPageData.Name = fmt.Sprintf("Entity: %s", entity)
+				} else if validatorPageData.Name != entity { // do not write out the entity name twice if they are the same
+					validatorPageData.Name += fmt.Sprintf(" / Entity: %s", entity)
 				}
 			}
 			deposits, err := db.GetValidatorDeposits(pubKey)
@@ -278,7 +279,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					// deposit processing queue
 					pendingDeposit, err := db.GetNextPendingDeposit(validatorPageData.PublicKey)
 					if err != nil {
-						if err == sql.ErrNoRows {
+						if errors.Is(err, sql.ErrNoRows) {
 							var lastPendingDeposit types.PendingDeposit
 							err := db.ReaderDb.Get(&lastPendingDeposit, `SELECT id, est_clear_epoch, amount FROM pending_deposits_queue WHERE id = (select max(id) from pending_deposits_queue)`)
 							if err != nil {
@@ -355,7 +356,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			validators.withdrawalcredentials,
 			COALESCE(validator_names.name, '') AS name,
-			COALESCE(validator_pool.pool, '') AS pool,
+			COALESCE(validator_entities.entity, '') AS entity,
 			COALESCE(validator_performance.rank7d, 0) AS rank7d,
 			COALESCE(validator_performance_count.total_count, 0) AS rank_count,
 			validators.status,
@@ -363,12 +364,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_pool ON validators.pubkey = validator_pool.publickey
+		LEFT JOIN validator_entities ON validators.pubkey = validator_entities.publickey
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex < 2147483647 AND validatorindex >= 0) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		validatorNotFound(data, w, r, vars, "")
 		return
 	} else if err != nil {
@@ -391,12 +392,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	timings.Start = time.Now()
 
-	if validatorPageData.Pool != "" {
-		if validatorPageData.Name == "" {
-			validatorPageData.Name = fmt.Sprintf("Pool: %s", validatorPageData.Pool)
-		} else {
-			validatorPageData.Name += fmt.Sprintf(" / Pool: %s", validatorPageData.Pool)
-		}
+	if strings.HasPrefix(validatorPageData.Entity, "0x") && len(validatorPageData.Entity) == 42 {
+		validatorPageData.Entity = fmt.Sprintf("Whale_0x%s", validatorPageData.Entity[2:8])
+	}
+
+	if validatorPageData.Name != "" && validatorPageData.Entity == "" {
+		validatorPageData.Name = fmt.Sprintf("Name: %s", validatorPageData.Name)
+	} else if validatorPageData.Name == "" && validatorPageData.Entity != "" {
+		validatorPageData.Name = fmt.Sprintf("Entity: %s", validatorPageData.Entity)
+	} else if validatorPageData.Name == validatorPageData.Entity {
+		validatorPageData.Name = fmt.Sprintf("Entity: %s", validatorPageData.Entity)
+	} else {
+		validatorPageData.Name = fmt.Sprintf("Name: %s / Entity: %s", validatorPageData.Name, validatorPageData.Entity)
 	}
 
 	if validatorPageData.Rank7d > 0 && validatorPageData.RankCount > 0 {
@@ -474,6 +481,60 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validatorPageData.ExecutionIncomeHistoryData = executionIncomeHistoryData
+		return nil
+	})
+
+	g.Go(func() error {
+		start := time.Now()
+		defer func() {
+			timings.Charts = time.Since(start)
+		}()
+
+		// Fetch last 30 days of beaconscore (efficiency) history for this validator
+		type chRow struct {
+			Ts       int64   `db:"ts"`
+			Dividend float64 `db:"dividend"`
+			Divisor  float64 `db:"divisor"`
+		}
+		var rows []chRow
+		err := db.ClickhouseReaderDb.Select(&rows, `
+			SELECT toUnixTimestamp(toStartOfDay(t)) AS ts,
+			       sum(efficiency_dividend)        AS dividend,
+			       sum(efficiency_divisor)         AS divisor
+			FROM validator_dashboard_data_daily
+			WHERE validator_index = $1 AND t >= today() - 30
+			GROUP BY ts
+			ORDER BY ts
+		`, index)
+		if err != nil {
+			return fmt.Errorf("error getting validator beaconscore history (30d): %w", err)
+		}
+
+		// Build [timestamp_sec, efficiency] points, skipping rows with zero divisor
+		points := make([][2]float64, 0, len(rows))
+		for _, r := range rows {
+			if r.Divisor <= 0 {
+				continue
+			}
+			eff := r.Dividend / r.Divisor
+			if eff < 0 {
+				eff = 0
+			}
+			if eff > 1 {
+				eff = 1
+			}
+			points = append(points, [2]float64{float64(r.Ts), eff})
+		}
+
+		if isPreGenesis {
+			points = points[:0]
+		}
+
+		b, err := json.Marshal(points)
+		if err != nil {
+			return fmt.Errorf("error marshalling beaconscore history: %w", err)
+		}
+		validatorPageData.BeaconscoreChartData = template.JS(b)
 		return nil
 	})
 
@@ -591,6 +652,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					})
 
 					validatorPageData.NextWithdrawalRow = tableData
+					validatorPageData.NextWithdrawalTs = timeToWithdrawal.Unix()
 				}
 			}
 		}
@@ -806,17 +868,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	})
 
 	g.Go(func() error {
-		eff, err := db.BigtableClient.GetValidatorEffectiveness([]uint64{index}, validatorPageData.Epoch-1)
+		efficiency := struct {
+			Dividend decimal.Decimal `db:"dividend"`
+			Divisor  decimal.Decimal `db:"divisor"`
+		}{}
+
+		err := db.ClickhouseReaderDb.Get(&efficiency, "select sum(efficiency_dividend) AS dividend, SUM(efficiency_divisor) AS divisor from _final_validator_dashboard_rolling_30d where validator_index = $1", index)
 		if err != nil {
 			return fmt.Errorf("error getting validator effectiveness: %w", err)
 		}
-		if len(eff) > 1 {
-			return fmt.Errorf("error getting validator effectiveness: invalid length %v", len(eff))
-		} else if len(eff) == 0 {
-			validatorPageData.AttestationInclusionEffectiveness = 0
-		} else {
-			validatorPageData.AttestationInclusionEffectiveness = eff[0].AttestationEfficiency
-		}
+
+		validatorPageData.Beaconscore = utils.CalcEfficiency(efficiency.Dividend, efficiency.Divisor)
 		return nil
 	})
 

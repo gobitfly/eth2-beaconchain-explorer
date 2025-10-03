@@ -412,6 +412,27 @@
       <script src="/js/clipboard.min.js"></script>
       <script src="/js/requestInterval.js"></script>
 
+      <!-- Tippy.js for interactive tooltips on this page -->
+      <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+      <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+      <script>
+        document.addEventListener("DOMContentLoaded", function () {
+          if (typeof tippy === "function") {
+            // Initialize existing attribute-based tooltips that already provide HTML-safe strings
+            tippy(document.querySelectorAll("[data-tippy-content]"), {
+              allowHTML: true,
+              interactive: true,
+              theme: "bcx",
+              appendTo: document.body,
+              maxWidth: 380,
+              delay: [150, 200],
+              placement: "top",
+              interactiveBorder: 8,
+              arrow: true,
+            })
+          }
+        })
+      </script>
       {{ template "js" .Data }}
       {{ if not .Meta.NoTrack }}
         {{ if ne .Meta.GATag "" }}

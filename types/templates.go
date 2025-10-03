@@ -361,7 +361,7 @@ type ValidatorPageData struct {
 	Index                                    uint64 `db:"index"`
 	LastAttestationSlot                      uint64
 	Name                                     string         `db:"name"`
-	Pool                                     string         `db:"pool"`
+	Entity                                   string         `db:"entity"`
 	Tags                                     pq.StringArray `db:"tags"`
 	WithdrawableTs                           time.Time
 	ActivationEligibilityTs                  time.Time
@@ -401,13 +401,14 @@ type ValidatorPageData struct {
 	RankPercentage                           float64
 	IncomeHistoryChartData                   []*ChartDataPoint
 	ExecutionIncomeHistoryData               []*ChartDataPoint
+	BeaconscoreChartData                     template.JS
 	Deposits                                 *ValidatorDeposits
 	Eth1DepositAddress                       []byte
 	FlashMessage                             string
 	Watchlist                                []*TaggedValidators
 	SubscriptionFlash                        []interface{}
 	User                                     *User
-	AttestationInclusionEffectiveness        float64
+	Beaconscore                              float64
 	CsrfField                                template.HTML
 	NetworkStats                             *IndexPageData
 	ChurnRate                                uint64
@@ -426,6 +427,7 @@ type ValidatorPageData struct {
 	EstimatedNextWithdrawal                  template.HTML
 	AddValidatorWatchlistModal               *AddValidatorWatchlistModal
 	NextWithdrawalRow                        [][]interface{}
+	NextWithdrawalTs                         int64
 	ConsolidationRequests                    []*FrontendConsolidationRequest
 	ExecutionConsolidations                  []*FrontendExecutionConsolidationRequest
 	MoveToCompoundingRequest                 *FrontendMoveToCompoundingRequest

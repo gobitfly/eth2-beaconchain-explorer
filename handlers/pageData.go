@@ -300,7 +300,7 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 						{
 							Label: "Overview",
 							Path:  "/validators",
-							Icon:  "fa-table",
+							Icon:  "fa-user-shield",
 						},
 						{
 							Label: "Slashings",
@@ -550,7 +550,7 @@ func createMenuItemsGnosis(active string, isMain bool, notificationItems []types
 						{
 							Label: "Overview",
 							Path:  "/validators",
-							Icon:  "fa-table",
+							Icon:  "fa-user-shield",
 						},
 						{
 							Label: "Slashings",

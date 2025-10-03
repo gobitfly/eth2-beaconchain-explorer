@@ -1,4 +1,7 @@
 {{ define "js" }}
+  <script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
+  <script type="text/javascript" src="/js/datatable_loader.js"></script>
   <script src="/js/highcharts/v14/highcharts.min.js"></script>
   <script src="/js/highcharts/v14/modules/accessibility.min.js"></script>
   <script src="/js/highcharts/highcharts-global-options.js"></script>
@@ -38,7 +41,7 @@
 
         Highcharts.chart(containerId, {
           chart: { type: "line", zoomType: "x" },
-          title: { text: "Beaconscore", style: { color: "var(--font-color)" } },
+          title: { text: "Beaconscore ({{ .Period }})", style: { color: "var(--font-color)" } },
           xAxis: { type: "datetime", labels: { style: { color: "var(--font-color)" } } },
           yAxis: {
             title: { text: "Beaconscore", style: { color: "var(--font-color)" } },
@@ -149,46 +152,115 @@
       document.addEventListener("DOMContentLoaded", init)
     })()
   </script>
-
-  <!-- Tippy.js for interactive tooltips on this page -->
-  <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
-  <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      var container = document.querySelector("section#entity-detail") || document
-      if (typeof tippy === "function") {
-        // Initialize existing attribute-based tooltips that already provide HTML-safe strings
-        tippy(container.querySelectorAll("[data-tippy-content]"), {
-          allowHTML: true,
-          interactive: true,
-          theme: "bcx",
-          appendTo: document.body,
-          maxWidth: 380,
-          delay: [150, 200],
-          placement: "top",
-          interactiveBorder: 8,
-          arrow: true,
+    $(document).ready(function () {
+      const period = "{{ .Period | js }}"
+      const entity = "{{ .Entity | js }}"
+      const subEntity = "{{ .SubEntity | js }}"
+
+      if ($("#sub-entities-table").length) {
+        $("#sub-entities-table").DataTable({
+          searchDelay: 0,
+          lengthChange: false,
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          searching: false,
+          ajax: dataTableLoader(`/entity/${encodeURIComponent(entity)}/${encodeURIComponent(subEntity)}/subentities/data`, `period=${encodeURIComponent(period)}`),
+          pagingType: "input",
+          stateSave: true,
+          stateSaveCallback: function (settings, data) {
+            data.order = []
+            fetch(`/tables/${settings.sTableId}/state`, { method: "PUT", body: JSON.stringify(data) })
+              .then((res) => res.json())
+              .then(({ status, data }) => {
+                if (status !== "OK") {
+                  console.error("error updating table state, err:", data, "status: ", status)
+                }
+                if (data !== "") {
+                  localStorage.setItem("DataTables_" + settings.sInstance, JSON.stringify(data))
+                } else {
+                  localStorage.removeItem("DataTables_" + settings.sInstance)
+                }
+              })
+              .catch((err) => {
+                console.error("error updating table state, err: ", err)
+              })
+          },
+          pageLength: 25,
+          language: {
+            paginate: { previous: '<i class="fas fa-chevron-left"></i>', next: '<i class="fas fa-chevron-right"></i>' },
+          },
+          preDrawCallback: function () {
+            document.getElementById("header-placeholder-subentities").style.display = "none"
+            document.getElementById("footer-placeholder-subentities").style.display = "none"
+          },
+        })
+      }
+
+      if ($("#entity-validators").length) {
+        var validatorsPagingStack = []
+        var currentPagingToken = ""
+        var nextPagingTokenFromResponse = ""
+        var entityValidatorsUrl = `/entity/${encodeURIComponent(entity)}/${encodeURIComponent(subEntity)}/validators/data`
+
+        var table = $("#entity-validators").DataTable({
+          searchDelay: 0,
+          lengthChange: false,
+          processing: true,
+          serverSide: true,
+          ordering: false,
+          searching: false,
+          pagingType: "simple", // only previous/next
+          pageLength: 25,
+          language: {
+            paginate: { previous: '<i class="fas fa-chevron-left"></i>', next: '<i class="fas fa-chevron-right"></i>' },
+          },
+          ajax: function (data, callback, settings) {
+            // Inject our period and optional paging token into the request
+            data.period = period
+            if (currentPagingToken) {
+              data.pagingToken = currentPagingToken
+            }
+            fetch(`${entityValidatorsUrl}?${$.param(data)}`)
+              .then((response) => response.json())
+              .then((resp) => {
+                nextPagingTokenFromResponse = resp.pagingToken || ""
+                // Toggle prev/next disabled state
+                var prevBtn = document.getElementById('entity-validators_previous')
+                var nextBtn = document.getElementById('entity-validators_next')
+                if (prevBtn) {
+                  if (validatorsPagingStack.length === 0) prevBtn.classList.add('disabled')
+                  else prevBtn.classList.remove('disabled')
+                }
+                if (nextBtn) {
+                  if (!nextPagingTokenFromResponse) nextBtn.classList.add('disabled')
+                  else nextBtn.classList.remove('disabled')
+                }
+                callback(resp)
+              })
+              .catch((err) => {
+                console.error("Failed to fetch validators table: ", err)
+                callback({ draw: data.draw, recordsTotal: 0, recordsFiltered: 0, data: [], pageLength: 25, displayStart: 0, pagingToken: currentPagingToken })
+              })
+          },
+          preDrawCallback: function () {
+            document.getElementById("header-placeholder-validators").style.display = "none"
+            document.getElementById("footer-placeholder-validators").style.display = "none"
+          },
         })
 
-        // Initialize tooltips whose content is sourced from hidden DOM nodes to avoid
-        // html/template escaping in attribute context
-        var idTriggers = container.querySelectorAll("[data-tippy-content-id]")
-        idTriggers.forEach(function (el) {
-          var id = el.getAttribute("data-tippy-content-id")
-          var src = id ? document.getElementById(id) : null
-          if (!src) return
-          tippy(el, {
-            allowHTML: true,
-            interactive: true,
-            theme: "bcx",
-            appendTo: document.body,
-            maxWidth: 380,
-            delay: [150, 200],
-            placement: "top",
-            interactiveBorder: 8,
-            arrow: true,
-            content: src.innerHTML,
-          })
+        // Update paging token stack on prev/next clicks before the next request is sent
+        $(document).on("click", "#entity-validators_previous", function () {
+          // Go back: pop a previous token or reset to first page
+          currentPagingToken = validatorsPagingStack.pop() || ""
+        })
+        $(document).on("click", "#entity-validators_next", function () {
+          // Go forward: push current token and replace with the next token from last response
+          if (nextPagingTokenFromResponse) {
+            validatorsPagingStack.push(currentPagingToken)
+            currentPagingToken = nextPagingTokenFromResponse
+          }
         })
       }
     })
@@ -196,6 +268,7 @@
 {{ end }}
 
 {{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
   <style>
     .kpi-card .label {
       font-size: 12px;
@@ -519,7 +592,7 @@
                   <div class="col-sm-6 mb-2">
                     <div class="stat-heading"><i class="fas fa-hourglass-half mr-1" aria-hidden="true"></i> Avg. Inclusion Delay</div>
                     <div class="stat">{{ formatFloat .Data.AttestationAvgInclDist 3 }}</div>
-                    <div class="stat-label">Attestations</div>
+                    <div class="stat-label">Slots</div>
                   </div>
                 </div>
               </div>
@@ -543,14 +616,14 @@
                     <div class="stat text-warning">
                       {{ formatClCurrency .Data.ClRewardsGWei "ETH" 2 true false false true }}
                     </div>
-                    <div class="stat-label">Cl Layer</div>
+                    <div class="stat-label">Consensus Layer</div>
                   </div>
                   <div class="col-sm-4 mb-2">
                     <div class="stat-heading"></div>
                     <div class="stat text-warning">
                       {{ formatElCurrency .Data.ElRewardsWei "ETH" 2 true false false true }}
                     </div>
-                    <div class="stat-label">El Layer</div>
+                    <div class="stat-label">Execution Layer</div>
                   </div>
                 </div>
                 <hr />
@@ -600,7 +673,7 @@
                     <div class="stat-label">Slashed Validators</div>
                   </div>
                   <div class="col-sm-6 mb-2">
-                    <div class="stat text-danger">{{ formatThousandsInt .Data.SlashedAmountSum }}</div>
+                    <div class="stat text-success">{{ formatThousandsInt .Data.SlashedAmountSum }}</div>
                     <div class="stat-label">Executed Slashings</div>
                   </div>
                 </div>
@@ -608,59 +681,55 @@
             </div>
           </div>
         </div>
-        {{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}
-          <div id="sub-entities" class="card mb-3">
-            <div class="card-body">
-              <div class="section-title mb-2"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Sub-Entities</div>
-              <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                  <thead>
-                    <tr>
-                      <th scope="col">Sub-Entity</th>
-                      <th scope="col" class="text-right">Net Share</th>
-                      <th scope="col" class="text-right">Beaconscore</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {{ range .Data.SubEntities }}
-                      <tr>
-                        <td>
-                          <a href="/entity/{{ $.Data.Entity | urlPathEscape }}/{{ .SubEntity | urlPathEscape }}?period={{ $.Data.Period | urlquery }}">{{ .SubEntity }}</a>
-                        </td>
-                        <td class="text-right">{{ formatPercentageWithPrecision .NetShare 2 }}%</td>
-                        <td class="text-right">{{ formatBeaconscore .Beaconscore true }}</td>
-                      </tr>
-                    {{ else }}
-                      <tr>
-                        <td colspan="3" class="text-muted">No sub-entities available</td>
-                      </tr>
-                    {{ end }}
-                  </tbody>
-                </table>
+        <div class="row">
+          <!-- Sub-Entities (left) -->
+          <div class="{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6 mb-3{{ else }}d-none{{ end }}">
+            {{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}
+              <div id="sub-entities" class="card h-100">
+                <div class="card-body">
+                  <div class="section-title mb-2"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Sub-Entities</div>
+                  <div id="header-placeholder-subentities" style="height:20px;"></div>
+                  <div class="table-responsive px-0 py-1">
+                    <table class="table table-sm table-hover" id="sub-entities-table">
+                      <thead>
+                        <tr>
+                          <th>Sub-Entity</th>
+                          <th>Beaconscore</th>
+                          <th>Net Share</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div id="footer-placeholder-subentities" style="height:10px;"></div>
+                </div>
               </div>
+            {{ end }}
+          </div>
 
-              <!-- Pagination controls for sub-entities -->
-              <nav aria-label="Sub-entities pagination">
-                <ul class="pagination pagination-sm mb-0 justify-content-end">
-                  {{ $page := .Data.Page }}
-                  {{ $total := .Data.TotalPages }}
-                  {{ $period := .Data.Period }}
-                  {{ $entity := .Data.Entity }}
-
-
-                  <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
-                    <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?page={{ sub $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Previous">&laquo;</a>
-                  </li>
-
-                  <li class="page-item {{ if eq $page $total }}disabled{{ end }}">
-                    <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?page={{ add $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Next">&raquo;</a>
-                  </li>
-                  <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
-                </ul>
-              </nav>
+          <!-- Validators (right) -->
+          <div class="{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6{{ else }}col-lg-12{{ end }} mb-3">
+            <div id="validators" class="card h-100">
+              <div class="card-body d-flex flex-column">
+                <div class="section-title mb-2"><i class="fas fa-user-shield mr-1" aria-hidden="true"></i> Validators</div>
+                <div id="header-placeholder-validators" style="height:20px;"></div>
+                <div class="table-responsive px-0 py-1">
+                  <table class="table table-sm table-hover" id="entity-validators">
+                    <thead>
+                      <tr>
+                        <th>Index</th>
+                        <th>Status</th>
+                        <th>Beaconscore</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <div id="footer-placeholder-validators" style="height:10px;"></div>
+              </div>
             </div>
           </div>
-        {{ end }}
+        </div>
         <p class="text-muted text-right font-weight-light">Last updated: {{ .Data.LastUpdatedAt.Unix | formatTimestamp }}</p>
       </div>
     </div>
