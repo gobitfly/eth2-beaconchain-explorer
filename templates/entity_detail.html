@@ -348,7 +348,7 @@
           </ol>
         </nav>
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-          <h1 class="h4 mb-0 mr-2" data-tippy-content="Test <b>Test</b> <a href='https://google.com' target='_blank' rel='noopener'>Test Link</a>">Entity Dashboard</h1>
+          <h1 class="h4 mb-0 mr-2">Entity Dashboard</h1>
           <div class="btn-group btn-group-sm mt-2 mt-md-0" role="group" aria-label="Select period">
             {{ range .Data.PeriodLinks }}
               <a href="{{ .Href }}" class="btn {{ if eq .Value $.Data.Period }}btn-primary{{ else }}btn-outline-primary{{ end }}">{{ .Label }}</a>
