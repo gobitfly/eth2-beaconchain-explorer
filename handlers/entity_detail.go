@@ -117,8 +117,8 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		// Online/Offline counts and tooltips
 		OnlineCount          uint64
 		OfflineCount         uint64
-		OnlineBreakdownHTML  template.HTML
-		OfflineBreakdownHTML template.HTML
+		OnlineBreakdownHTML  template.HTMLAttr
+		OfflineBreakdownHTML template.HTMLAttr
 
 		EfficiencySeries []point
 
@@ -370,7 +370,7 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	buildTooltip := func(order []string, src map[string]uint64) template.HTML {
+	buildTooltip := func(order []string, src map[string]uint64) template.HTMLAttr {
 		lines := make([]string, 0, len(order))
 		for _, k := range order {
 			if c, ok := src[k]; ok && c > 0 {
@@ -384,7 +384,7 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 			return "No breakdown available"
 		}
 		// Join using newline so tooltip shows line breaks via CSS white-space: pre-line
-		return template.HTML(strings.Join(lines, "<br>"))
+		return template.HTMLAttr("data-tippy-content='" + strings.Join(lines, "<br>") + "'")
 	}
 
 	vm.OnlineCount = onlineSum

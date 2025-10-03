@@ -370,14 +370,12 @@
             {{ end }}
           </div>
           <div class="d-flex align-items-center">
-            <span class="badge badge-pill bg-success text-white mr-2 px-2 py-1 validator-chip" data-tippy-content-id="online-breakdown-tt" aria-label="Online validators: {{ formatThousandsInt .Data.OnlineCount }}">
+            <span class="badge badge-pill bg-success text-white mr-2 px-2 py-1 validator-chip" {{ .Data.OnlineBreakdownHTML }} aria-label="Online validators: {{ formatThousandsInt .Data.OnlineCount }}">
               <i class="fas fa-power-off mr-1" aria-hidden="true"></i> {{ formatThousandsInt .Data.OnlineCount }}
             </span>
-            <div id="online-breakdown-tt" class="d-none">{{ .Data.OnlineBreakdownHTML }}</div>
-            <span class="badge badge-pill bg-danger text-white px-2 py-1 validator-chip" data-tippy-content-id="offline-breakdown-tt" aria-label="Offline validators: {{ formatThousandsInt .Data.OfflineCount }}">
+            <span class="badge badge-pill bg-danger text-white px-2 py-1 validator-chip" {{ .Data.OfflineBreakdownHTML }} aria-label="Offline validators: {{ formatThousandsInt .Data.OfflineCount }}">
               <i class="fas fa-power-off mr-1" aria-hidden="true"></i> {{ formatThousandsInt .Data.OfflineCount }}
             </span>
-            <div id="offline-breakdown-tt" class="d-none">{{ .Data.OfflineBreakdownHTML }}</div>
           </div>
         </div>
 
