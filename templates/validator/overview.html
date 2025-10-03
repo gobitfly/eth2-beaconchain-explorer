@@ -203,8 +203,8 @@
       </div>
 
       <div class="m-3 position-relative" style="flex-basis: 4rem; white-space: nowrap;">
-        <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
-        {{ .AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness }}
+        <span style="top:-1.2rem; white-space: nowrap;" class="text-muted font-weight-lighter position-absolute"><small>Beaconscore (30d)</small></span>
+        {{ formatBeaconscore .Beaconscore true }}
       </div>
     </div>
     {{ template "validatorOverviewCount" . }}
@@ -262,11 +262,26 @@
               {{ end }}
 
               {{ if .CappellaHasHappened }}
-                Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
-                >.
+                Eligible for withdrawals after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
+                >. Withdrawals are handled by the protocol’s <a href="https://kb.beaconcha.in/ethereum-staking/how-withdrawals-work" target="_blank" rel="noopener">regular sweep</a> and may take several days to complete.
+                {{ if not .IsWithdrawableAddress }}
+                  <p class="text-center mt-4">
+                    <span class="text-warning ml-1"><i class="fas fa-exclamation-triangle"></i> Withdrawals require 0x01 or 0x02 withdrawal credentials. <a href="https://launchpad.ethereum.org/en/withdrawals" target="_blank" rel="noopener">Learn more</a>.</span>
+                  </p>
+                {{ else }}
+                  {{ if gt .CurrentBalance 0 }}
+                    <p class="text-center mt-4">
+                      We estimate you will receive your final withdrawal {{ formatTimestamp .NextWithdrawalTs }}.
+                      <br />
+                      <small>Note: Due to uncertainty in execution-triggered withdrawals, your withdrawal may take significantly longer to process.</small>
+                    </p>
+                  {{ end }}
+                {{ end }}
+
               {{ else }}
                 <span data-toggle="tooltip" title="Please note that the withdraw functionality has not been implemented by ACD yet.">
-                  Funds will be withdrawable after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span></span
+                  Eligible for withdrawals after epoch <span><a href="/epoch/{{ .WithdrawableEpoch }}">{{ .WithdrawableEpoch }}</a></span
+                  >. Withdrawals are handled by the protocol’s regular sweep and may take several days to complete. </span
                 >.
               {{ end }}
             {{ end }}

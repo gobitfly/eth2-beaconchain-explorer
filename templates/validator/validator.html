@@ -22,10 +22,17 @@
       $(".income-chart-btn").on("click", () => {
         $("#incomeChart").removeClass("d-none")
         $("#proposedChart").addClass("d-none")
+        $("#efficiencyChart").addClass("d-none")
       })
       $(".proposed-chart-btn").on("click", () => {
         $("#incomeChart").addClass("d-none")
         $("#proposedChart").removeClass("d-none")
+        $("#efficiencyChart").addClass("d-none")
+      })
+      $(".efficiency-chart-btn").on("click", () => {
+        $("#incomeChart").addClass("d-none")
+        $("#proposedChart").addClass("d-none")
+        $("#efficiencyChart").removeClass("d-none")
       })
     </script>
   {{ end }}
@@ -169,7 +176,8 @@
               <div id="chartsTabPanel" class="tab-pane fade w-100 h-100" role="tabpanel" aria-labelledby="charts-tab">
                 <div class="btn-group border rounded mt-2 ml-2 charts-btn-group" role="group" aria-label="Charts buttons group">
                   <button type="button" class="btn btn-link btn-sm border-right income-chart-btn nav-link">Income</button>
-                  <button type="button" class="btn btn-link btn-sm proposed-chart-btn nav-link">Proposals</button>
+                  <button type="button" class="btn btn-link btn-sm border-right proposed-chart-btn nav-link">Proposals</button>
+                  <button type="button" class="btn btn-link btn-sm efficiency-chart-btn nav-link">Beaconscore</button>
                 </div>
                 <div id="incomeChart" class="w-100 mb-2" aria-labelledby="incomeChart-tab">
                   {{ template "validatorIncomeChart" $ }}
@@ -177,6 +185,9 @@
                 </div>
                 <div id="proposedChart" class="w-100 mb-2 d-none" aria-labelledby="proposedChart-tab">
                   {{ template "validatorProposedChart" . }}
+                </div>
+                <div id="efficiencyChart" class="w-100 mb-2 d-none" aria-labelledby="efficiencyChart-tab">
+                  {{ template "validatorBeaconscoreChart" . }}
                 </div>
               </div>
               {{ if gt .BlocksCount 0 }}
@@ -213,7 +224,7 @@
               {{ if .IsRocketpool }}
                 <div class="tab-pane fade w-100" id="rocketpoolTabPanel" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-user-shield mr-3 text-muted"></i>Minipool Address</div>
                     <div>
                       {{ formatEth1Address .Rocketpool.MinipoolAddress }}{{ if ne .Rocketpool.RocketscanUrl "" }}<a class="no-highlight" href="https://{{ .Rocketpool.RocketscanUrl }}/minipool/{{ formatEth1AddressStringLowerCase .Rocketpool.MinipoolAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>{{ end }}
                     </div>
@@ -245,7 +256,7 @@
                     {{ end }}
                   </div>
                   <div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-2 text-muted"></i> Node Address</div>
+                    <div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-user-shield mr-2 text-muted"></i> Node Address</div>
                     <div>
                       {{ formatEth1Address .Rocketpool.NodeAddress }}{{ if ne .Rocketpool.RocketscanUrl "" }}<a class="no-highlight" href="https://{{ .Rocketpool.RocketscanUrl }}/node/{{ formatEth1AddressStringLowerCase .Rocketpool.NodeAddress }}" target="_blank"><i class="fas fa-rocket" role="button" data-toggle="tooltip" title="" data-original-title="More infos on Rocketscan"></i></a>{{ end }}
                     </div>

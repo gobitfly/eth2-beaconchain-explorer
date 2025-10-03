@@ -1974,3 +1974,15 @@ func FormatConsolidationStatus(queuedAtEpoch, processedAtEpoch int64, consolidat
 
 	return ""
 }
+
+func CalcEfficiency(dividend, divisor decimal.Decimal) float64 {
+	if divisor.IsZero() {
+		return -1
+	} // means no data is available (validator is no longer active)
+	eff := dividend.Div(divisor).InexactFloat64()
+	if eff > 1 {
+		logger.Errorf("efficiency is greater than 100: %v", eff)
+		eff = 1
+	}
+	return eff
+}

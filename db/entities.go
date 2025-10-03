@@ -103,7 +103,7 @@ func GetEntitiesTreemapData(period string) ([]types.EntityTreemapItem, error) {
 			logger.WithFields(map[string]interface{}{"period": period, "rows": len(cached)}).Debug("treemap: cache hit")
 			return cached, nil
 		}
-		logger.WithField("period", period).Debug("treemap: cache miss")
+		logger.WithField("period", period).Warn("treemap: cache miss")
 	}
 
 	// Fetch from DB (singleflight) and optionally warm cache
@@ -295,4 +295,27 @@ func GetSubEntitiesForEntities(entityNames []string, period string) ([]SubEntity
 		ORDER BY entity ASC, net_share DESC, sub_entity ASC
 	`, pq.Array(entityNames), period)
 	return subEntities, err
+}
+
+// GetSubEntityCountsForEntities returns the number of real sub-entities (sub_entity <> '-') per entity for the given period.
+func GetSubEntityCountsForEntities(entityNames []string, period string) (map[string]int, error) {
+	type countRow struct {
+		Entity string `db:"entity"`
+		Count  int    `db:"cnt"`
+	}
+	var rows []countRow
+	err := ReaderDb.Select(&rows, `
+		SELECT entity, COUNT(*) AS cnt
+		FROM validator_entities_data_periods
+		WHERE period = $2 AND entity = ANY($1) AND sub_entity <> '-'
+		GROUP BY entity
+	`, pq.Array(entityNames), period)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]int, len(rows))
+	for _, r := range rows {
+		result[r.Entity] = r.Count
+	}
+	return result, nil
 }

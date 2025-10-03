@@ -621,7 +621,7 @@ func FormatEth1BlockHash(block []byte) template.HTML {
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
 func FormatEth1TxHash(hash []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(hash))
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-user-shield mr-2"></i><a style="font-family: 'Roboto Mono'" href="/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -1025,8 +1025,7 @@ func FormatPercentageWithGPrecision(percentage float64, precision int) string {
 // FormatPublicKey will return html formatted text for a validator-public-key
 func FormatPublicKey(validator []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(validator))
-	// return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-user-shield mr-2"></i><a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
 }
 
 func FormatMachineName(machineName string) template.HTML {
@@ -1148,9 +1147,9 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 	}
 
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-shield mr-2\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
 	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-shield mr-2\"></i> <a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
 	}
 }
 
@@ -1215,7 +1214,7 @@ func FormatYesNo(yes bool) template.HTML {
 
 func FormatValidatorName(name string) template.HTML {
 	str := strings.Map(fixUtf, template.HTMLEscapeString(name))
-	return template.HTML(fmt.Sprintf("<b><abbr title=\"This name has been set by the owner of this validator. Pool tags have been set by the beaconcha.in team.\">%s</abbr></b>", str))
+	return template.HTML(fmt.Sprintf("<b><abbr title=\"This name has been set by the owner of this validator. Entity tags have been set by the beaconcha.in team.\">%s</abbr></b>", str))
 }
 
 func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
@@ -1235,38 +1234,39 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 
 func FormatBeaconscore(score float64, includeIcon bool) template.HTML {
 	score = score * 100
-	tooltipText := "The Beaconscore is good."
+	tooltipText := ""
+	tooltipAdditionalText := "<br /><br />Read more about how we calculate the Beaconscore in our <a href='https://kb.beaconcha.in/v2beta/metric-validator-efficiency' target='_blank'>docs</a>."
 	if score < 0 {
 		tooltipText = "No active validators found"
 		return `<span class="text-info" data-toggle="tooltip" title="No active validators found">N/A</span>`
 	} else if score >= 99.5 {
-		tooltipText = "A Beaconscore of 99.5% or higher is excellent."
+		tooltipText = "A Beaconscore of 99.5% or higher is exceptional."
 		iconHtml := ` - <i class="fas fa-grin-stars"></i>`
 		if !includeIcon {
 			iconHtml = ""
 		}
-		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
+		return template.HTML(fmt.Sprintf(`<span class="text-success" data-tippy-content="%s"> %.2f%%%s</span>`, tooltipText+tooltipAdditionalText, score, iconHtml))
 	} else if score > 99.0 {
-		tooltipText = "A Beaconscore between 99.0% and 99.5%  is acceptable."
+		tooltipText = "A Beaconscore between 99.0% and 99.5% is excellent."
 		iconHtml := ` - <i class="fas fa-smile"></i>`
 		if !includeIcon {
 			iconHtml = ""
 		}
-		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
-	} else if score > 98.5 {
-		tooltipText = "A Beaconscore between 98.5% and 99.0% is fair."
+		return template.HTML(fmt.Sprintf(`<span class="text-success" data-tippy-content="%s"> %.2f%%%s</span>`, tooltipText+tooltipAdditionalText, score, iconHtml))
+	} else if score > 98.0 {
+		tooltipText = "A Beaconscore between 98.0% and 99.0% is fair."
 		iconHtml := ` - <i class="fas fa-meh"></i>`
 		if !includeIcon {
 			iconHtml = ""
 		}
-		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
+		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-tippy-content="%s"> %.2f%%%s</span>`, tooltipText+tooltipAdditionalText, score, iconHtml))
 	} else {
-		tooltipText = "A Beaconscore below 98.5% is bad."
+		tooltipText = "A Beaconscore below 98.0% is bad."
 		iconHtml := ` - <i class="fas fa-frown"></i>`
 		if !includeIcon {
 			iconHtml = ""
 		}
-		return template.HTML(fmt.Sprintf(`<span class="text-danger" data-toggle="tooltip" title="%s"> %.2f%%%s</span>`, tooltipText, score, iconHtml))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger" data-tippy-content="%s"> %.2f%%%s</span>`, tooltipText+tooltipAdditionalText, score, iconHtml))
 	}
 }
 
