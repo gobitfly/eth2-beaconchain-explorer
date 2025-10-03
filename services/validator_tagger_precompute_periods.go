@@ -204,8 +204,10 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	}
 
 	// aggregation adder
-	addRowToAggregation := func(agg *AggregationValue, row ClickHouseDataRow) {
-		agg.BalanceEndSumGwei += int64(balanceMap[int(row.ValidatorIndex)])
+	addRowToAggregation := func(agg *AggregationValue, row ClickHouseDataRow, validatorSeen bool) {
+		if !validatorSeen {
+			agg.BalanceEndSumGwei += int64(balanceMap[int(row.ValidatorIndex)])
+		}
 		agg.EfficiencyDividend = agg.EfficiencyDividend.Add(decimal.NewFromInt(row.EfficiencyDividend))
 		agg.EfficiencyDivisor = agg.EfficiencyDivisor.Add(decimal.NewFromInt(row.EfficiencyDivisor))
 		agg.RoiDividend = agg.RoiDividend.Add(int128LEToDecimal(row.RoiDividendLE))
@@ -278,12 +280,12 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	var totalBalanceEndGwei int64
 	epochStart := int64(math.MaxInt64)
 	epochEnd := int64(math.MinInt64)
+	validatorsSeen := make(map[uint64]bool) // map to keep track when we see a validator for the first time
 	if err := db.FetchClickhouseParquet[ClickHouseDataRow](ctx, clickhouseSQL, func(row ClickHouseDataRow) bool {
 		mapping, ok := entityByValidatorIndex[row.ValidatorIndex]
 		if !ok {
 			return true
 		}
-		totalBalanceEndGwei += int64(balanceMap[int(row.ValidatorIndex)])
 		if row.EpochStart < epochStart {
 			epochStart = row.EpochStart
 		}
@@ -291,11 +293,15 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 			epochEnd = row.EpochEnd
 		}
 		keyEntityOnly := AggregationKey{Entity: mapping.entity, SubEntity: ""}
-		addRowToAggregation(ensureAggregation(keyEntityOnly), row)
+		addRowToAggregation(ensureAggregation(keyEntityOnly), row, validatorsSeen[row.ValidatorIndex])
 		if mapping.subEntity != "" {
 			keyEntityWithSub := AggregationKey{Entity: mapping.entity, SubEntity: mapping.subEntity}
-			addRowToAggregation(ensureAggregation(keyEntityWithSub), row)
+			addRowToAggregation(ensureAggregation(keyEntityWithSub), row, validatorsSeen[row.ValidatorIndex])
 		}
+		if !validatorsSeen[row.ValidatorIndex] {
+			totalBalanceEndGwei += int64(balanceMap[int(row.ValidatorIndex)])
+		}
+		validatorsSeen[row.ValidatorIndex] = true
 		return true
 	}); err != nil {
 		return fmt.Errorf("fetch clickhouse parquet balances (%s): %w", spec.Label, err)
