@@ -610,7 +610,7 @@
         </div>
         <div class="row">
           <!-- Sub-Entities (left) -->
-          <div class='{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6 mb-3{{ else }}d-none{{ end }}'>
+          <div class="{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6 mb-3{{ else }}d-none{{ end }}">
             {{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}
               <div id="sub-entities" class="card h-100">
                 <div class="card-body">
@@ -650,6 +650,7 @@
                       {{ $period := .Data.Period }}
                       {{ $entity := .Data.Entity }}
 
+
                       <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
                         <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?subs_page={{ sub $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Previous">&laquo;</a>
                       </li>
@@ -666,7 +667,7 @@
           </div>
 
           <!-- Validators (right) -->
-          <div class='{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6{{ else }}col-lg-12{{ end }} mb-3'>
+          <div class="{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6{{ else }}col-lg-12{{ end }} mb-3">
             <div id="validators" class="card h-100">
               <div class="card-body d-flex flex-column">
                 <div class="section-title mb-2"><i class="fas fa-user-shield mr-1" aria-hidden="true"></i> Validators</div>
@@ -702,6 +703,7 @@
                       {{ $period := .Data.Period }}
                       {{ $entity := .Data.Entity }}
                       {{ $sub := .Data.SubEntity }}
+
 
                       <li class="page-item {{ if eq $vp 1 }}disabled{{ end }}">
                         <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/{{ $sub | urlPathEscape }}?validators_page={{ sub $vp 1 }}&period={{ $period | urlquery }}#validators" aria-label="Previous">&laquo;</a>
