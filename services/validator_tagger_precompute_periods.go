@@ -15,9 +15,9 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
+	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
-	"golang.org/x/sync/errgroup"
 )
 
 // PeriodSpec defines ClickHouse sources and labels for a precomputation period.
@@ -47,6 +47,18 @@ func precomputeEntityData(ctx context.Context) error {
 
 	// 2) Fetch validator index, status, and entity data
 	// we retrieve this only once and reuse it for all time periods
+	// first start a db transaction
+	tx, err := db.WriterDb.Beginx()
+	if err != nil {
+		return fmt.Errorf("begin db transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// trucate the existing data table
+	if _, err := tx.Exec("TRUNCATE TABLE validator_entities_data_periods"); err != nil {
+		return fmt.Errorf("truncate validator_entitie_data_periods: %w", err)
+	}
+
 	validatorTaggerLogger.Info("Retrieving validator entity and status data")
 	var validatorEntityRows []ValidatorEntityJoinRow
 	const joinSQL = `
@@ -57,7 +69,7 @@ func precomputeEntityData(ctx context.Context) error {
         FROM validators v
         LEFT JOIN validator_entities ve ON v.pubkey = ve.publickey
     `
-	if err := db.ReaderDb.Select(&validatorEntityRows, joinSQL); err != nil {
+	if err := tx.Select(&validatorEntityRows, joinSQL); err != nil {
 		return fmt.Errorf("join validators and validator_entities: %w", err)
 	}
 	if len(validatorEntityRows) == 0 {
@@ -65,18 +77,14 @@ func precomputeEntityData(ctx context.Context) error {
 		return nil
 	}
 
-	// all 4 periods can be computed in parallel
-	wg := errgroup.Group{}
-	wg.SetLimit(1)
 	for _, spec := range specs {
-		spec := spec
-		wg.Go(func() error {
-			return precomputeEntityDataForPeriod(ctx, spec, validatorEntityRows, validatorBalances)
-		})
+		err = precomputeEntityDataForPeriod(ctx, tx, spec, validatorEntityRows, validatorBalances)
+		if err != nil {
+			return fmt.Errorf("error precomputing entity data for period %s: %w", spec.Label, err)
+		}
 	}
-	err = wg.Wait()
-	if err != nil {
-		return fmt.Errorf("error precomputing entity data: %w", err)
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit db transaction: %w", err)
 	}
 	return nil
 }
@@ -88,7 +96,7 @@ type ValidatorEntityJoinRow struct {
 	SubEntity      *string `db:"sub_entity"`
 }
 
-func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validatorEntityStatusMapping []ValidatorEntityJoinRow, balanceMap map[int]uint64) error {
+func precomputeEntityDataForPeriod(ctx context.Context, tx *sqlx.Tx, spec PeriodSpec, validatorEntityStatusMapping []ValidatorEntityJoinRow, balanceMap map[int]uint64) error {
 	logger := validatorTaggerLogger.WithField("period", spec.Label)
 	logger.Info("precomputeEntityDataForPeriod: start")
 
@@ -370,7 +378,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 			Value    decimal.Decimal `db:"value"`
 		}
 		var elRows []ELRewardRow
-		if err := db.ReaderDb.Select(&elRows, `
+		if err := tx.Select(&elRows, `
 			SELECT proposer, value
 			FROM execution_rewards_finalized
 			WHERE epoch >= $1 AND epoch <= $2
@@ -629,7 +637,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 	}
 
 	logger.WithField("rows", n).Info("persisting validator_entities_data_periods rows")
-	_, err := db.WriterDb.Exec(`
+	_, err := tx.Exec(`
 		INSERT INTO validator_entities_data_periods (
 			entity, sub_entity, period, last_updated_at,
 			balance_end_sum_gwei,
@@ -749,7 +757,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, spec PeriodSpec, validat
 			logger.WithError(errInit).Warn("treemap cache: failed to init redis; skipping cache write")
 		} else {
 			var treemapRows []types.EntityTreemapItem
-			if errSel := db.ReaderDb.Select(&treemapRows, `
+			if errSel := tx.Select(&treemapRows, `
 				SELECT entity, efficiency, net_share
 				FROM validator_entities_data_periods
 				WHERE period = $1 AND sub_entity IN ('-','')
