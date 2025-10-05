@@ -368,7 +368,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance WHERE validatorindex < 2147483647 AND validatorindex >= 0) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		validatorNotFound(data, w, r, vars, "")
 		return
 	} else if err != nil {
