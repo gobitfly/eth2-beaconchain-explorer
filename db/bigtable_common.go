@@ -293,3 +293,111 @@ func (bigtable *Bigtable) ClearByRowRange(table string, family, columns string, 
 
 	return nil
 }
+
+func (bigtable *Bigtable) ClearObsoleteBigtableIndices(chainId, startKey, endKey string, dryRun bool) error {
+	rowRange := gcp_bigtable.NewRange(startKey, endKey)
+
+	btTable := bigtable.tableData
+
+	mutsDelete := types.NewBulkMutations(MAX_BATCH_MUTATIONS)
+
+	keysCount := 0
+
+	lastReportTs := time.Now().Add(-1 * time.Minute)
+	reportKeyCount := uint64(0)
+	deleteFunc := func(row gcp_bigtable.Row) bool {
+		reportKeyCount++
+		row_ := row.Key()
+
+		if time.Since(lastReportTs) > time.Second*10 {
+			logger.Infof("currently at %s, processed %d keys so far", row_, reportKeyCount)
+			lastReportTs = time.Now()
+			reportKeyCount = 0
+		}
+
+		shouldDelete := strings.HasPrefix(row_, chainId+":I:") && !strings.Contains(row_, ":TIME:")
+		if !shouldDelete {
+			return true
+		}
+
+		if dryRun {
+			logger.Infof("would delete key %v", row_)
+			return true
+		}
+
+		mutDelete := gcp_bigtable.NewMutation()
+		mutDelete.DeleteRow()
+
+		mutsDelete.Keys = append(mutsDelete.Keys, row_)
+		mutsDelete.Muts = append(mutsDelete.Muts, mutDelete)
+		keysCount++
+
+		// we still need to commit in batches here (instead of just calling WriteBulk only once) as loading all keys to be deleted in memory first is not feasible as the delete function could be used to delete millions of rows
+		if mutsDelete.Len() == MAX_BATCH_MUTATIONS {
+			logrus.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
+			// retry up to 5 times
+			for i := 0; i < 5; i++ {
+				err := bigtable.WriteBulk(mutsDelete, btTable, DEFAULT_BATCH_INSERTS)
+				if err != nil {
+					logger.Errorf("error writing bulk mutations: %v", err)
+					time.Sleep(5 * time.Second)
+					continue
+				}
+				mutsDelete = types.NewBulkMutations(MAX_BATCH_MUTATIONS)
+				return true
+			}
+			return false
+		}
+		return true
+	}
+	err := btTable.ReadRows(context.Background(), rowRange, deleteFunc, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+	if err != nil {
+		return err
+	}
+
+	if !dryRun && mutsDelete.Len() > 0 {
+		logger.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
+		err := bigtable.WriteBulk(mutsDelete, btTable, DEFAULT_BATCH_INSERTS)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	logger.Infof("deleted %v keys", keysCount)
+
+	return nil
+}
+
+func (bigtable *Bigtable) DeleteAllChainData(chainId string) error {
+	if chainId == "1" {
+		logrus.Fatal("cannot delete all data for chain id 1 (Ethereum mainnet)")
+	}
+
+	logger.Info(utils.Config.Bigtable.Project, "/", utils.Config.Bigtable.Instance)
+	adminClient, err := gcp_bigtable.NewAdminClient(context.Background(), utils.Config.Bigtable.Project, utils.Config.Bigtable.Instance)
+	if err != nil {
+		return err
+	}
+
+	tables := []string{
+		"data",
+		"blocks",
+		"metadata_updates",
+		"metadata",
+		"beaconchain_validators",
+		"beaconchain_validators_history",
+	}
+
+	for _, table := range tables {
+		prefix := chainId + ":"
+		logger.Infof("deleting all data from table %v with prefix %s", table, prefix)
+		if false {
+			err := adminClient.DropRowRange(context.Background(), table, prefix)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
