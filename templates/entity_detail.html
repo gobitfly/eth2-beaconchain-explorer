@@ -608,59 +608,115 @@
             </div>
           </div>
         </div>
-        {{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}
-          <div id="sub-entities" class="card mb-3">
-            <div class="card-body">
-              <div class="section-title mb-2"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Sub-Entities</div>
-              <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                  <thead>
-                    <tr>
-                      <th scope="col">Sub-Entity</th>
-                      <th scope="col" class="text-right">Net Share</th>
-                      <th scope="col" class="text-right">Beaconscore</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {{ range .Data.SubEntities }}
-                      <tr>
-                        <td>
-                          <a href="/entity/{{ $.Data.Entity | urlPathEscape }}/{{ .SubEntity | urlPathEscape }}?period={{ $.Data.Period | urlquery }}">{{ .SubEntity }}</a>
-                        </td>
-                        <td class="text-right">{{ formatPercentageWithPrecision .NetShare 2 }}%</td>
-                        <td class="text-right">{{ formatBeaconscore .Beaconscore true }}</td>
-                      </tr>
-                    {{ else }}
-                      <tr>
-                        <td colspan="3" class="text-muted">No sub-entities available</td>
-                      </tr>
-                    {{ end }}
-                  </tbody>
-                </table>
+        <div class="row">
+          <!-- Sub-Entities (left) -->
+          <div class='{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6 mb-3{{ else }}d-none{{ end }}'>
+            {{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}
+              <div id="sub-entities" class="card h-100">
+                <div class="card-body">
+                  <div class="section-title mb-2"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Sub-Entities</div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th scope="col">Sub-Entity</th>
+                          <th scope="col" class="text-right">Net Share</th>
+                          <th scope="col" class="text-right">Beaconscore</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {{ range .Data.SubEntities }}
+                          <tr>
+                            <td>
+                              <a href="/entity/{{ $.Data.Entity | urlPathEscape }}/{{ .SubEntity | urlPathEscape }}?period={{ $.Data.Period | urlquery }}">{{ .SubEntity }}</a>
+                            </td>
+                            <td class="text-right">{{ formatPercentageWithPrecision .NetShare 2 }}%</td>
+                            <td class="text-right">{{ formatBeaconscore .Beaconscore true }}</td>
+                          </tr>
+                        {{ else }}
+                          <tr>
+                            <td colspan="3" class="text-muted">No sub-entities available</td>
+                          </tr>
+                        {{ end }}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Pagination controls for sub-entities -->
+                  <nav aria-label="Sub-entities pagination">
+                    <ul class="pagination pagination-sm mb-0 justify-content-end">
+                      {{ $page := .Data.SubsPage }}
+                      {{ $total := .Data.SubsTotalPages }}
+                      {{ $period := .Data.Period }}
+                      {{ $entity := .Data.Entity }}
+
+                      <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
+                        <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?subs_page={{ sub $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Previous">&laquo;</a>
+                      </li>
+
+                      <li class="page-item {{ if eq $page $total }}disabled{{ end }}">
+                        <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?subs_page={{ add $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Next">&raquo;</a>
+                      </li>
+                      <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
+                    </ul>
+                  </nav>
+                </div>
               </div>
+            {{ end }}
+          </div>
 
-              <!-- Pagination controls for sub-entities -->
-              <nav aria-label="Sub-entities pagination">
-                <ul class="pagination pagination-sm mb-0 justify-content-end">
-                  {{ $page := .Data.Page }}
-                  {{ $total := .Data.TotalPages }}
-                  {{ $period := .Data.Period }}
-                  {{ $entity := .Data.Entity }}
+          <!-- Validators (right) -->
+          <div class='{{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}col-lg-6{{ else }}col-lg-12{{ end }} mb-3'>
+            <div id="validators" class="card h-100">
+              <div class="card-body d-flex flex-column">
+                <div class="section-title mb-2"><i class="fas fa-user-shield mr-1" aria-hidden="true"></i> Validators</div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover">
+                    <thead>
+                      <tr>
+                        <th scope="col">Index</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-right">Beaconscore</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {{ range .Data.Validators }}
+                        <tr>
+                          <td><a href="/validator/{{ .Index }}">{{ .Index }}</a></td>
+                          <td>{{ .Status | formatValidatorStatus }}</td>
+                          <td class="text-right">{{ formatBeaconscore .Efficiency true }}</td>
+                        </tr>
+                      {{ else }}
+                        <tr>
+                          <td colspan="3" class="text-muted">No validators found</td>
+                        </tr>
+                      {{ end }}
+                    </tbody>
+                  </table>
+                </div>
+                <div class="mt-auto">
+                  <nav aria-label="Validators pagination">
+                    <ul class="pagination pagination-sm mb-0 justify-content-end">
+                      {{ $vp := .Data.ValidatorsPage }}
+                      {{ $vt := .Data.ValidatorsTotalPages }}
+                      {{ $period := .Data.Period }}
+                      {{ $entity := .Data.Entity }}
+                      {{ $sub := .Data.SubEntity }}
 
-
-                  <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
-                    <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?page={{ sub $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Previous">&laquo;</a>
-                  </li>
-
-                  <li class="page-item {{ if eq $page $total }}disabled{{ end }}">
-                    <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?page={{ add $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Next">&raquo;</a>
-                  </li>
-                  <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
-                </ul>
-              </nav>
+                      <li class="page-item {{ if eq $vp 1 }}disabled{{ end }}">
+                        <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/{{ $sub | urlPathEscape }}?validators_page={{ sub $vp 1 }}&period={{ $period | urlquery }}#validators" aria-label="Previous">&laquo;</a>
+                      </li>
+                      <li class="page-item {{ if eq $vp $vt }}disabled{{ end }}">
+                        <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/{{ $sub | urlPathEscape }}?validators_page={{ add $vp 1 }}&period={{ $period | urlquery }}#validators" aria-label="Next">&raquo;</a>
+                      </li>
+                      <li class="page-item disabled"><span class="page-link">Page {{ $vp }} of {{ $vt }}</span></li>
+                    </ul>
+                  </nav>
+                </div>
+              </div>
             </div>
           </div>
-        {{ end }}
+        </div>
         <p class="text-muted text-right font-weight-light">Last updated: {{ .Data.LastUpdatedAt.Unix | formatTimestamp }}</p>
       </div>
     </div>
