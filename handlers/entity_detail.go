@@ -125,9 +125,18 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		// List of sub-entities for the selected entity, sorted by net share desc
 		SubEntities []SubEntityRow
 
-		// Pagination for sub-entities table
-		Page       int
-		TotalPages int
+		// Pagination for sub-entities table (renamed to subs_page)
+		SubsPage       int
+		SubsTotalPages int
+
+		// Validators table and pagination
+		Validators []struct {
+			Index      int
+			Status     string
+			Efficiency float64
+		}
+		ValidatorsPage       int
+		ValidatorsTotalPages int
 
 		// Controls whether to render sub-entity table/breadcrumbs
 		HasRealSubEntities bool
@@ -186,21 +195,59 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	vm.HasRealSubEntities = hasRealSubs
 
-	// Pagination params for sub-entities table
-	const pageSize = 25
-	page := 1
-	if pStr := strings.TrimSpace(r.URL.Query().Get("page")); pStr != "" {
-		if pv, err := strconv.Atoi(pStr); err == nil && pv > 0 {
-			page = pv
-		}
+	// Sub-Entities table (server-side pagination)
+	rows, subsPage, subsTotalPages := buildSubEntitiesSection(entity, period, r)
+	vm.SubEntities = make([]SubEntityRow, 0, len(rows))
+	for _, s := range rows {
+		vm.SubEntities = append(vm.SubEntities, SubEntityRow{SubEntity: s.SubEntity, NetShare: s.NetShare, Beaconscore: s.Beaconscore})
 	}
+	vm.SubsPage = subsPage
+	vm.SubsTotalPages = subsTotalPages
 
-	// Count total sub-entities for this entity and period
+	// Validators table (server-side pagination)
+	vm.Validators, vm.ValidatorsPage, vm.ValidatorsTotalPages = buildValidatorsSection(entity, subEntity, period, r)
+
+	// Online/Offline counts and tooltips from status_counts JSONB
+	onlineCount, offlineCount, onlineHTML, offlineHTML := buildStatusTooltipsFromRaw(row24.StatusCountsRaw)
+	vm.OnlineCount = onlineCount
+	vm.OfflineCount = offlineCount
+	vm.OnlineBreakdownHTML = onlineHTML
+	vm.OfflineBreakdownHTML = offlineHTML
+
+	data.Data = vm
+
+	if handleTemplateError(w, r, "entity_detail.go", "EntityDetail", "Done", entityTemplate.ExecuteTemplate(w, "layout", data)) != nil {
+		return
+	}
+}
+
+// getPageParam returns a positive integer from the given query parameter or the provided default.
+// It ignores legacy aliases; callers should pass the final param name.
+func getPageParam(r *http.Request, name string, defaultVal int) int {
+	pStr := strings.TrimSpace(r.URL.Query().Get(name))
+	if pStr == "" {
+		return defaultVal
+	}
+	if pv, err := strconv.Atoi(pStr); err == nil && pv > 0 {
+		return pv
+	}
+	return defaultVal
+}
+
+// buildSubEntitiesSection loads paginated sub-entities for an entity and period.
+// Returns rows formatted for the template along with current page and total pages.
+func buildSubEntitiesSection(entity string, period string, r *http.Request) ([]struct {
+	SubEntity   string
+	NetShare    float64
+	Beaconscore float64
+}, int, int) {
+	const pageSize = 25
+	page := getPageParam(r, "subs_page", 1)
+
 	totalSubs, err := db.CountSubEntities(entity, period)
 	if err != nil {
 		logger.WithError(err).WithField("entity", entity).Error("EntityDetail: count sub-entities failed")
 	}
-	// Compute pagination bounds
 	totalPages := (totalSubs + pageSize - 1) / pageSize
 	if totalPages == 0 {
 		totalPages = 1
@@ -210,29 +257,86 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * pageSize
 
-	// Load paginated sub-entities for the selected entity and period (sorted by net share desc)
-	subDtos, err := db.GetSubEntitiesPaginated(entity, period, pageSize, offset)
+	dtos, err := db.GetSubEntitiesPaginated(entity, period, pageSize, offset)
+	rows := make([]struct {
+		SubEntity   string
+		NetShare    float64
+		Beaconscore float64
+	}, 0, len(dtos))
 	if err != nil {
-		logger.WithError(err).WithField("entity", entity).WithField("page", page).Error("EntityDetail: load sub-entities (paged) failed")
+		logger.WithError(err).WithFields(map[string]interface{}{"entity": entity, "subs_page": page}).Error("EntityDetail: load sub-entities (paged) failed")
 	} else {
-		subRows := make([]SubEntityRow, 0, len(subDtos))
-		for _, s := range subDtos {
-			subRows = append(subRows, SubEntityRow{SubEntity: s.SubEntity, NetShare: s.NetShare, Beaconscore: s.Efficiency})
+		for _, s := range dtos {
+			rows = append(rows, struct {
+				SubEntity   string
+				NetShare    float64
+				Beaconscore float64
+			}{SubEntity: s.SubEntity, NetShare: s.NetShare, Beaconscore: s.Efficiency})
 		}
-		vm.SubEntities = subRows
 	}
-	vm.Page = page
-	vm.TotalPages = totalPages
+	return rows, page, totalPages
+}
 
-	// Derive online/offline validator counts from status_counts JSONB
+// buildValidatorsSection loads a page of validators and joins efficiency from ClickHouse for the selected period.
+// Returns rows formatted for the template along with current page and total pages.
+func buildValidatorsSection(entity string, subEntity string, period string, r *http.Request) ([]struct {
+	Index      int
+	Status     string
+	Efficiency float64
+}, int, int) {
+	const pageSize = 25
+	page := getPageParam(r, "validators_page", 1)
+
+	total, err := db.CountEntityValidators(entity, subEntity)
+	if err != nil {
+		logger.WithError(err).WithFields(map[string]interface{}{"entity": entity, "sub_entity": subEntity}).Error("EntityDetail: count validators failed")
+	}
+	totalPages := (total + pageSize - 1) / pageSize
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if page > totalPages {
+		page = totalPages
+	}
+	offset := (page - 1) * pageSize
+
+	rows := make([]struct {
+		Index      int
+		Status     string
+		Efficiency float64
+	}, 0, pageSize)
+	validatorRows, err := db.GetEntityValidatorsPaginated(entity, subEntity, pageSize, offset)
+	if err != nil {
+		logger.WithError(err).WithFields(map[string]interface{}{"entity": entity, "sub_entity": subEntity, "validators_page": page}).Error("EntityDetail: load validators page failed")
+		return rows, page, totalPages
+	}
+	indices := make([]int, 0, len(validatorRows))
+	for _, vr := range validatorRows {
+		indices = append(indices, vr.Index)
+	}
+	effMap, err := db.GetValidatorEfficienciesForPeriod(period, indices)
+	if err != nil {
+		logger.WithError(err).WithField("period", period).Warn("EntityDetail: fetch validator efficiencies failed")
+	}
+	for _, vr := range validatorRows {
+		rows = append(rows, struct {
+			Index      int
+			Status     string
+			Efficiency float64
+		}{Index: vr.Index, Status: vr.Status, Efficiency: effMap[vr.Index]})
+	}
+	return rows, page, totalPages
+}
+
+// buildStatusTooltipsFromRaw produces online/offline counts and HTML tooltips out of the status_counts JSONB bytes.
+func buildStatusTooltipsFromRaw(statusCountsRaw []byte) (uint64, uint64, template.HTMLAttr, template.HTMLAttr) {
 	var statusCounts map[string]int64
-	if len(row24.StatusCountsRaw) > 0 {
-		_ = json.Unmarshal(row24.StatusCountsRaw, &statusCounts)
+	if len(statusCountsRaw) > 0 {
+		_ = json.Unmarshal(statusCountsRaw, &statusCounts)
 	} else {
 		statusCounts = map[string]int64{}
 	}
 
-	// Helper: order keys for online/offline breakdowns
 	onlineOrder := []string{"active_online", "exiting_online", "slashing_online"}
 	offlineOrder := []string{"active_offline", "exiting_offline", "slashing_offline", "pending_initialized", "pending", "deposited", "exited", "slashed"}
 
@@ -254,7 +358,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Append any unknown keys not in the desired order arrays
 	unknownOnline := make([]string, 0)
 	for k := range onlineMap {
 		found := false
@@ -287,7 +390,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(unknownOffline)
 	offlineOrder = append(offlineOrder, unknownOffline...)
 
-	// Number formatting with thousands separators (used in tooltip)
 	formatUintThousands := func(v uint64) string {
 		s := fmt.Sprintf("%d", v)
 		n := len(s)
@@ -305,7 +407,6 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		return res
 	}
 
-	// Build multi-line HTML tooltip content with icons and humanized labels (rendered with CSS white-space: pre-line)
 	humanizeStatus := func(k string) string {
 		switch k {
 		case "active_online":
@@ -383,18 +484,8 @@ func EntityDetail(w http.ResponseWriter, r *http.Request) {
 		if len(lines) == 0 {
 			return "No breakdown available"
 		}
-		// Join using newline so tooltip shows line breaks via CSS white-space: pre-line
 		return template.HTMLAttr("data-tippy-content='" + strings.Join(lines, "<br>") + "'")
 	}
 
-	vm.OnlineCount = onlineSum
-	vm.OfflineCount = offlineSum
-	vm.OnlineBreakdownHTML = buildTooltip(onlineOrder, onlineMap)
-	vm.OfflineBreakdownHTML = buildTooltip(offlineOrder, offlineMap)
-
-	data.Data = vm
-
-	if handleTemplateError(w, r, "entity_detail.go", "EntityDetail", "Done", entityTemplate.ExecuteTemplate(w, "layout", data)) != nil {
-		return
-	}
+	return onlineSum, offlineSum, buildTooltip(onlineOrder, onlineMap), buildTooltip(offlineOrder, offlineMap)
 }
