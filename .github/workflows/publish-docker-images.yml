@@ -8,6 +8,7 @@ on:
       - master
       - staging
       - publish-docker
+  workflow_dispatch:
 
 jobs:
   build:
