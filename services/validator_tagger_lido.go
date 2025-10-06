@@ -91,7 +91,6 @@ func indexLidoValidators() error {
 
 	// now process each node operator one by one
 	for nodeOperatorIndex := int64(0); nodeOperatorIndex < nodeOperatorsCounterInt64; nodeOperatorIndex++ {
-		lidoLogger.Infof("processing node operator %d", nodeOperatorIndex)
 		nodeOperatorIndexBig := big.NewInt(nodeOperatorIndex)
 		// retrieve details on the node operator
 		nodeOperatorDetails, err := operatorRegistry.GetNodeOperator(nil, nodeOperatorIndexBig, true)
@@ -117,6 +116,8 @@ func indexLidoValidators() error {
 			TotalDeposited:  int64(nodeOperatorDetails.TotalDepositedValidators),
 			SigningKeyCount: operatorSigningKeyCountInt64,
 		})
+
+		lidoLogger.Infof("processed node operator %s (%d)", nodeOperatorDetails.Name, nodeOperatorIndex)
 
 	}
 
