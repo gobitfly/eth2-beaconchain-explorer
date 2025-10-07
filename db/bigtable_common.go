@@ -297,8 +297,7 @@ func (bigtable *Bigtable) ClearByRowRange(table string, family, columns string, 
 func (bigtable *Bigtable) ClearObsoleteBigtableIndices(chainId, startKey, endKey string, dryRun bool) error {
 	rowRange := gcp_bigtable.NewRange(startKey, endKey)
 
-	var btTable *gcp_bigtable.Table
-	btTable = bigtable.tableData
+	btTable := bigtable.tableData
 
 	mutsDelete := types.NewBulkMutations(MAX_BATCH_MUTATIONS)
 
