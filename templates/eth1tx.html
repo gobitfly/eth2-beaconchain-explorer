@@ -262,9 +262,30 @@
                         {{ if and (not .Reverted) (not .Advanced) }}
                           <li class="mb-1">
                             <i class="fa-li fas fa-long-arrow-alt-right"></i>
-                            <span>Transfer</span>
-                            <span>{{ .Amount }}</span>
-                            <span>From</span>
+                            {{ if .Advanced }}
+                              <span>Call From</span>
+                              <span>{{ .From }}</span>
+                              <span>To</span>
+                              <span>{{ .To }}</span>
+                            {{ else }}
+                              <span>Transfer</span>
+                              <span>{{ .Amount }}</span>
+                              <span>From</span>
+                              <span>{{ .From }}</span>
+                              <span>To</span>
+                              <span>{{ .To }}</span>
+                            {{ end }}
+                          </li>
+                        {{ end }}
+                      {{ end }}
+                    </ul>
+                    <a class="btn btn-link" data-toggle="collapse" href="#collapseAdvancedIdx" role="button" aria-expanded="false" aria-controls="collapseAdvancedIdx">Advanced Info</a>
+                    <ul class="collapse fa-ul mb-0 mt-2" id="collapseAdvancedIdx">
+                      {{ range $i, $row := .InternalTxns }}
+                        {{ if .Advanced }}
+                          <li class="mb-1">
+                            <i class="fa-li fas fa-long-arrow-alt-right"></i>
+                            <span>Call From</span>
                             <span>{{ .From }}</span>
                             <span>To</span>
                             <span>{{ .To }}</span>
@@ -308,7 +329,7 @@
                           <span>{{ formatBytesAmount $deposit.Amount config.Frontend.ElCurrency 8 }}</span>
                           <span>to Validator</span>
                           <span>{{ formatPublicKey $deposit.ValidatorPubkey }}</span>
-                          <span>with withdrawal credentials</span>
+                          <span>with Withdrawal Credentials</span>
                           <span>{{ formatWithdawalCredentials $deposit.WithdrawalCreds true }}</span>
                         </li>
                       {{ end }}
@@ -333,7 +354,6 @@
                             <span>to validator </span>
                             <span>{{ formatPublicKey $con.TargetValidatorPubkey }}</span>
                           {{ end }}
-
                         </li>
                       {{ end }}
                     </ul>
