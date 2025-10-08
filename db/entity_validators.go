@@ -63,10 +63,12 @@ func GetValidatorEfficienciesForPeriod(period string, indices []int) (map[int]fl
 	if len(indices) == 0 {
 		return result, nil
 	}
-	if ClickhouseReaderDb == nil {
-		// ClickHouse not enabled; leave map empty
-		return result, nil
+
+	// seed the result with -1 to account for validators not yet present in the rolling table
+	for _, index := range indices {
+		result[index] = -1
 	}
+
 	var table string
 	switch period {
 	case "1d":

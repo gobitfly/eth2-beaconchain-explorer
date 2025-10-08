@@ -54,11 +54,6 @@ func precomputeEntityData(ctx context.Context) error {
 	}
 	defer tx.Rollback()
 
-	// trucate the existing data table
-	if _, err := tx.Exec("TRUNCATE TABLE validator_entities_data_periods"); err != nil {
-		return fmt.Errorf("truncate validator_entitie_data_periods: %w", err)
-	}
-
 	validatorTaggerLogger.Info("Retrieving validator entity and status data")
 	var validatorEntityRows []ValidatorEntityJoinRow
 	const joinSQL = `
@@ -99,6 +94,15 @@ type ValidatorEntityJoinRow struct {
 func precomputeEntityDataForPeriod(ctx context.Context, tx *sqlx.Tx, spec PeriodSpec, validatorEntityStatusMapping []ValidatorEntityJoinRow, balanceMap map[int]uint64) error {
 	logger := validatorTaggerLogger.WithField("period", spec.Label)
 	logger.Info("precomputeEntityDataForPeriod: start")
+
+	// Clear old rows for this period within the transaction to avoid TRUNCATE locks
+	res, err := tx.Exec(`DELETE FROM validator_entities_data_periods WHERE period = $1`, spec.Label)
+	if err != nil {
+		return fmt.Errorf("delete old rows for period %s: %w", spec.Label, err)
+	}
+	if rows, errRA := res.RowsAffected(); errRA == nil {
+		logger.WithField("deleted_rows", rows).Info("cleared old rows for period")
+	}
 
 	// Aggregation scaffolding
 	type AggregationKey struct{ Entity, SubEntity string }
@@ -184,17 +188,17 @@ func precomputeEntityDataForPeriod(ctx context.Context, tx *sqlx.Tx, spec Period
 		AttestationsHeadExecutedSum    int64  `parquet:"attestations_head_executed"`
 		AttestationsSourceExecutedSum  int64  `parquet:"attestations_source_executed"`
 		AttestationsTargetExecutedSum  int64  `parquet:"attestations_target_executed"`
-		AttestationsIdealRewardSum     int64  `parquet:"attestations_ideal_reward_sum"`
-		AttestationsRewardsOnlySum     int64  `parquet:"attestations_reward_rewards_only_sum"`
+		AttestationsIdealRewardSum     int64  `parquet:"attestations_ideal_reward"`
+		AttestationsRewardsOnlySum     int64  `parquet:"attestations_reward_rewards_only"`
 		BlocksScheduledSum             int64  `parquet:"blocks_scheduled"`
 		BlocksProposedSum              int64  `parquet:"blocks_proposed"`
 		SyncScheduledSum               int64  `parquet:"sync_scheduled"`
 		SyncExecutedSum                int64  `parquet:"sync_executed"`
 		Slashed                        int64  `parquet:"slashed"`
 		BlocksSlashingCount            int64  `parquet:"blocks_slashing_count"`
-		BlocksClMissedMedianRewardSum  int64  `parquet:"blocks_cl_missed_median_reward_sum"`
-		SyncLocalizedMaxRewardSum      int64  `parquet:"sync_localized_max_reward_sum"`
-		SyncRewardRewardsOnlySum       int64  `parquet:"sync_reward_rewards_only_sum"`
+		BlocksClMissedMedianRewardSum  int64  `parquet:"blocks_cl_missed_median_reward"`
+		SyncLocalizedMaxRewardSum      int64  `parquet:"sync_localized_max_reward"`
+		SyncRewardRewardsOnlySum       int64  `parquet:"sync_reward_rewards_only"`
 		InclusionDelaySum              int64  `parquet:"inclusion_delay_sum"`
 	}
 
@@ -637,7 +641,7 @@ func precomputeEntityDataForPeriod(ctx context.Context, tx *sqlx.Tx, spec Period
 	}
 
 	logger.WithField("rows", n).Info("persisting validator_entities_data_periods rows")
-	_, err := tx.Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO validator_entities_data_periods (
 			entity, sub_entity, period, last_updated_at,
 			balance_end_sum_gwei,
