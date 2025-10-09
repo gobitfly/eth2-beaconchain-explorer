@@ -1,0 +1,49 @@
+get:
+  tags:
+    - ETH.Store®
+  summary: Get ETH.Store® day
+  description: >-
+    ETH.STORE® represents the average financial return validators on the
+    Ethereum network have achieved in a 24-hour period.
+
+    For each 24-hour period the datapoint is denoted by the number of days that
+    have passed since genesis for that period (= beaconchain-day)
+
+    See https://github.com/gobitfly/eth.store for further information.
+  parameters:
+    - name: day
+      in: path
+      description: >-
+        The beaconchain-day (periods of <(24 * 60 * 60) // SlotsPerEpoch //
+        SecondsPerSlot> epochs) to get the the ETH.STORE® for. Must be a number
+        or the string 'latest'.
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.APIEthStoreResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

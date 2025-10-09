@@ -1,0 +1,4 @@
+properties:
+  beaconchain_entering: {}
+  beaconchain_exiting: {}
+  validators_count: {}

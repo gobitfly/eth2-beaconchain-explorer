@@ -1,0 +1,24 @@
+get:
+  tags:
+    - Network
+  summary: Get network state
+  description: Returns information on the current state of the network
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.LatestState.yaml
+    '400':
+      description: Failure
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

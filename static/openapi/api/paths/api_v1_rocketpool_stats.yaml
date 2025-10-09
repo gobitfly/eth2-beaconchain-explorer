@@ -1,0 +1,23 @@
+get:
+  tags:
+    - Rocketpool
+  summary: Get rocketpool statistics
+  description: Returns statistics about the Rocketpool protocol
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: >-
+                      ../components/schemas/types.APIRocketpoolStatsResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

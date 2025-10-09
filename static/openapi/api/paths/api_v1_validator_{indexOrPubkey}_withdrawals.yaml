@@ -1,0 +1,39 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator withdrawal history
+  description: Retrieve validator withdrawal history by index or pubkey (up to 100).
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Up to 100 validator indicesOrPubkeys, comma separated
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: epoch
+      in: query
+      description: 'the start epoch for the withdrawal history (default: latest epoch)'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorWithdrawalResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

@@ -1,0 +1,57 @@
+get:
+  tags:
+    - Blocks
+  summary: Get proposed blocks by address, proposer index or proposer pubkey
+  description: >-
+    Get a list of proposed or mined blocks from a given fee recipient address,
+    proposer index or proposer pubkey.
+
+    Mixed use of recipient addresses and proposer indexes or proposer pubkeys
+    with an offset is discouraged as it can lead to skipped entries.
+  parameters:
+    - name: addressIndexOrPubkey
+      in: path
+      description: >-
+        Either the fee recipient address, the proposer index or proposer pubkey.
+        You can provide multiple by separating them with ','. Max allowed index
+        or pubkeys are 100, max allowed user addresses are 20.
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: offset
+      in: query
+      description: Offset
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: limit
+      in: query
+      description: 'Limit the amount of entries you wish to receive (Maximum: 100)'
+      required: false
+      style: form
+      explode: true
+      schema:
+        maximum: 100
+    - name: sort
+      in: query
+      description: Sort via the block number either by 'asc' or 'desc'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            items:
+              $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

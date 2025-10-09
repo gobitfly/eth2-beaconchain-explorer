@@ -1,0 +1,18 @@
+properties:
+  claimed_smoothing_pool: {}
+  index: {}
+  minipool_address: {}
+  minipool_deposit_type: {}
+  minipool_node_fee: {}
+  minipool_status: {}
+  minipool_status_time: {}
+  node_address: {}
+  node_max_rpl_stake: {}
+  node_min_rpl_stake: {}
+  node_rpl_stake: {}
+  node_timezone_location: {}
+  penalty_count: {}
+  rpl_cumulative_rewards: {}
+  smoothing_pool_opted_in: {}
+  unclaimed_rpl_rewards: {}
+  unclaimed_smoothing_pool: {}

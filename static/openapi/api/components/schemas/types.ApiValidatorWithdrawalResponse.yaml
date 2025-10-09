@@ -1,0 +1,8 @@
+properties:
+  address: {}
+  amount: {}
+  blockroot: {}
+  epoch: {}
+  slot: {}
+  validatorindex: {}
+  withdrawalindex: {}

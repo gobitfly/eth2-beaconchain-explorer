@@ -1,0 +1,33 @@
+get:
+  tags:
+    - Validator deposits
+  summary: Get deposits by tx
+  description: Returns all deposits for a specified transaction hash
+  parameters:
+    - name: txhash
+      in: path
+      description: Eth1 transaction hash
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.APIEth1TxDepositResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

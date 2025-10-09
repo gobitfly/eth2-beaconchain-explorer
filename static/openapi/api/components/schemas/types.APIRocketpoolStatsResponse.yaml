@@ -1,0 +1,16 @@
+properties:
+  claim_interval_time: {}
+  claim_interval_time_start: {}
+  current_node_demand: {}
+  current_node_fee: {}
+  effective_rpl_staked: {}
+  minipool_count: {}
+  node_count: {}
+  node_operator_rewards: {}
+  odao_member_count: {}
+  reth_apr: {}
+  reth_exchange_rate: {}
+  reth_supply: {}
+  rpl_price: {}
+  total_eth_balance: {}
+  total_eth_staking: {}

@@ -1,0 +1,16 @@
+properties:
+  attestation_head_reward: {}
+  attestation_source_penalty: {}
+  attestation_source_reward: {}
+  attestation_target_penalty: {}
+  attestation_target_reward: {}
+  finality_delay_penalty: {}
+  proposals_missed: {}
+  proposer_attestation_inclusion_reward: {}
+  proposer_slashing_inclusion_reward: {}
+  proposer_sync_inclusion_reward: {}
+  slashing_penalty: {}
+  slashing_reward: {}
+  sync_committee_penalty: {}
+  sync_committee_reward: {}
+  tx_fee_reward_wei: {}

@@ -1,0 +1,59 @@
+properties:
+  blockHash:
+    type: string
+    example: "0x160a5ea46dcbaca7fce7bbeef3a3448197c021af6c3e258150ab017629794678"
+  blockNumber:
+    type: integer
+    example: 23540530
+  timestamp:
+    type: integer
+    example: 1760017151
+  blockReward:
+    type: integer
+    example: 15027635123493132
+  blockMevReward:
+    type: integer
+    example: 11268157891595494
+  producerReward:
+    type: integer
+    example: 11268157891595494
+  feeRecipient:
+    type: string
+    example: "0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97"
+  gasLimit:
+    type: integer
+    example: 44999957
+  gasUsed:
+    type: integer
+    example: 26436568
+  baseFee:
+    type: integer
+    example: 473717334
+  txCount:
+    type: integer
+    example: 235
+  internalTxCount:
+    type: integer
+    example: 725
+  uncleCount:
+    type: integer
+    example: 0
+  parentHash:
+    type: string
+    example: "0x57ddc629098d3a47ddf8c2a554c75c4d9ab0a8bd740c1e86b0f1da324a425953"
+  uncleHash:
+    type: string
+    example: "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"
+  difficulty:
+    type: integer
+    example: 0
+  posConsensus:
+    $ref: ./types.ExecBlockProposer.yaml
+  relay:
+    $ref: ./types.RelayDataApiResponse.yaml
+  consensusAlgorithm:
+    type: string
+    enum:
+      - pos
+      - pow
+    example: "pos"

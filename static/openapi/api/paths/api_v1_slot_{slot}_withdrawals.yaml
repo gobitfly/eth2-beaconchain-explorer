@@ -1,0 +1,26 @@
+get:
+  tags:
+    - Slots
+  summary: Get slot withdrawals
+  description: Returns the withdrawals included in a specific slot
+  parameters:
+    - name: slot
+      in: path
+      description: Block slot
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

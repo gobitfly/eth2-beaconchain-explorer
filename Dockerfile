@@ -3,7 +3,6 @@ FROM golang:1.23.5 AS build-env
 COPY go.mod go.sum /src/
 WORKDIR /src
 RUN go mod download
-RUN go install github.com/swaggo/swag/cmd/swag@v1.8.3
 ADD . /src
 ARG target=all
 RUN make -B $target

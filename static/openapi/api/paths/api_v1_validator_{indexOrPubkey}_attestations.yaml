@@ -1,0 +1,49 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator attestations
+  description: Get all attestations during the last 100 epochs for up to 100 validators
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Up to 100 validator indicesOrPubkeys, comma separated
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: startEpoch
+      in: query
+      description: 'Start epoch for the query (default: latest epoch - 99)'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: endEpoch
+      in: query
+      description: 'End epoch for the query (default: latest epoch)'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: slim
+      in: query
+      description: >-
+        If true, drops rarely used week and committee index fields from the
+        response
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

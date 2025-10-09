@@ -1,0 +1,38 @@
+get:
+  tags:
+    - Epochs
+  summary: Get epoch
+  description: >-
+    Returns information for a specified epoch by the epoch number or an epoch
+    tag (can be latest or finalized)
+  parameters:
+    - name: epoch
+      in: path
+      description: Epoch number, the string latest or the string finalized
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: Success
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: ../components/schemas/types.APIEpochResponse.yaml
+    '400':
+      description: Failure
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

@@ -1,0 +1,37 @@
+post:
+  tags:
+    - Validators
+  summary: Get validator (POST)
+  description: Retrieve validator information by index or pubkey (up to 100).
+  requestBody:
+    description: Up to 100 validator indicesOrPubkeys, comma separated
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/types.DashboardRequest.yaml
+    required: true
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    oneOf:
+                      - title: Multiple validators
+                        type: array
+                        items:
+                          $ref: >-
+                            ../components/schemas/types.APIValidatorResponse.yaml
+                      - title: Single validator
+                        $ref: ../components/schemas/types.APIValidatorResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

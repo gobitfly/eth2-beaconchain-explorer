@@ -1,0 +1,10 @@
+properties:
+  address: {}
+  blockroot: {}
+  bls_pubkey: {}
+  bls_signature: {}
+  epoch: {}
+  slot: {}
+  validatorindex: {}
+  withdrawalcredentials_0x00: {}
+  withdrawalcredentials_0x01: {}

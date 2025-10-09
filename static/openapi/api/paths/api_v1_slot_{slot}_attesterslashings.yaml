@@ -1,0 +1,41 @@
+get:
+  tags:
+    - Slots
+  summary: Get slot attestation slashings
+  description: Returns the attester slashings included in a specific slot
+  parameters:
+    - name: slot
+      in: path
+      description: The slot number or "latest"
+      required: true
+      schema:
+        oneOf:
+          - type: integer
+            minimum: 0
+            description: Slot number
+          - type: string
+            enum:
+              - latest
+            description: Latest slot
+      example: latest
+  responses:
+    '200':
+      description: Success
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    title: Attestations
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.APIAttesterSlashingResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

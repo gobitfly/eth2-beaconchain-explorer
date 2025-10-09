@@ -1,0 +1,10 @@
+properties:
+  tag:
+    type: string
+    example: "ultrasound-relay"
+  builderPubkey:
+    type: string
+    example: "0xa3523967a7955c0244910f23b7b1fc59636f03bec437286b622815408d51389f7f6cd54617733b93926b7860e1f6afb0"
+  producerFeeRecipient:
+    type: string
+    example: "0xa27cef8af2b6575903b676e5644657fae96f491f"

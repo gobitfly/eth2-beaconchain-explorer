@@ -1,0 +1,78 @@
+get:
+  tags:
+    - Misc
+  summary: Get graffiti wall
+  description: >-
+    Returns the most recent pixels that have been painted during the last 10000
+    slots.
+
+    Optionally set the slot query parameter to look back further.
+
+    Boundary coordinates are included.
+
+    X = 0 and Y = 0 start at the upper left corner.
+
+    Returns an error if an invalid area is provided by the coordinates.
+  parameters:
+    - name: startx
+      in: query
+      description: Start X offset
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: starty
+      in: query
+      description: Start Y offset
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: endx
+      in: query
+      description: End X limit
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: endy
+      in: query
+      description: End Y limit
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: startSlot
+      in: query
+      description: Start slot to query (end slot - 10000 if empty)
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: slot
+      in: query
+      description: End slot to query
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: summarize
+      in: query
+      description: Only return end state of each pixel
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

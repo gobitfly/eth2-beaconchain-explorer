@@ -1,0 +1,40 @@
+get:
+  tags:
+    - Sync Committees
+  summary: Get sync committee
+  description: >-
+    Returns the sync-committee for a sync-period. Validators are sorted by
+    sync-committee-index.
+
+    Sync committees where introduced in the Altair hardfork. Peroids before the
+    hardfork do not contain sync-committees.
+
+    For mainnet sync-committes first started after epoch 74240 (period 290) and
+    each sync-committee is active for 256 epochs.
+  parameters:
+    - name: period
+      in: path
+      description: >-
+        Period ('latest' for latest period or 'next' for next period in the
+        future)
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: ../components/schemas/types.APISyncCommitteeResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

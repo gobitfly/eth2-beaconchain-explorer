@@ -1,0 +1,40 @@
+get:
+  tags:
+    - Slots
+  summary: Get slot deposits
+  description: Returns the deposits included in a specific block
+  parameters:
+    - name: slot
+      in: path
+      description: Block slot
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: limit
+      in: query
+      description: Limit the number of results
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: offset
+      in: query
+      description: Offset the number of results
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

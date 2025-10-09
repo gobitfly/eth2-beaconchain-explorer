@@ -1,0 +1,26 @@
+properties:
+  clCurrency: {}
+  clCurrencyKFormatted: {}
+  clCurrencyPrice: {}
+  clCurrencyPriceFormatted: {}
+  clCurrencySymbol: {}
+  elCurrency: {}
+  elCurrencyKFormatted: {}
+  elCurrencyPrice: {}
+  elCurrencyPriceFormatted: {}
+  elCurrencySymbol: {}
+  mainCurrency: {}
+  mainCurrencyKFormatted: {}
+  mainCurrencyPrice: {}
+  mainCurrencyPriceFormatted: {}
+  mainCurrencySymbol: {}
+  mainCurrencyTickerPrice: {}
+  mainCurrencyTickerPriceFormatted: {}
+  mainCurrencyTickerPriceKFormatted: {}
+  mainCurrencyTickerPrices:
+    additionalProperties:
+      $ref: ./types.RatesPrice.yaml
+  selectedCurrency: {}
+  selectedCurrencySymbol: {}
+  tickerCurrency: {}
+  tickerCurrencySymbol: {}

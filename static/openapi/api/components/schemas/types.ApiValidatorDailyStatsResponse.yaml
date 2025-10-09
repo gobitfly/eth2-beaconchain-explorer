@@ -1,0 +1,27 @@
+properties:
+  attester_slashings: {}
+  day: {}
+  day_end: {}
+  day_start: {}
+  deposits: {}
+  deposits_amount: {}
+  end_balance: {}
+  end_effective_balance: {}
+  max_balance: {}
+  max_effective_balance: {}
+  min_balance: {}
+  min_effective_balance: {}
+  missed_attestations: {}
+  missed_blocks: {}
+  missed_sync: {}
+  orphaned_attestations: {}
+  orphaned_blocks: {}
+  orphaned_sync: {}
+  participated_sync: {}
+  proposed_blocks: {}
+  proposer_slashings: {}
+  start_balance: {}
+  start_effective_balance: {}
+  validatorindex: {}
+  withdrawals: {}
+  withdrawals_amount: {}

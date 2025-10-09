@@ -1,0 +1,24 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator queue
+  description: >-
+    Returns the current number of validators entering and exiting the beacon
+    chain
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: ../components/schemas/types.ApiValidatorQueueResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

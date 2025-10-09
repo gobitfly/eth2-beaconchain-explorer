@@ -1,0 +1,8 @@
+properties:
+  balance: {}
+  performance1d: {}
+  performance31d: {}
+  performance365d: {}
+  performance7d: {}
+  rank7d: {}
+  validatorindex: {}

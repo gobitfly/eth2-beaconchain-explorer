@@ -1,0 +1,80 @@
+properties:
+  attestation1_beaconblockroot:
+    type: string
+    example: '0x4b50f7112f30b4fe9ff61324d9282308b8104874991f796f181cd58511fc67d5'
+  attestation1_index:
+    type: integer
+    example: 0
+  attestation1_indices:
+    type: array
+    items:
+      type: integer
+      minimum: 0
+    description: Array of validator indices
+    example:
+      - 0
+      - 1
+      - 2
+      - 3
+  attestation1_signature:
+    type: string
+    example: '0xaa'
+  attestation1_slot:
+    type: integer
+    example: 12571716
+  attestation1_source_epoch:
+    type: integer
+    example: 392865
+  attestation1_source_root:
+    type: string
+    example: '0x1b3891944d7c2fdac53dff9410f18992487e31b1f68d995c1429548effa47268'
+  attestation1_target_epoch:
+    type: integer
+    example: 392866
+  attestation1_target_root:
+    type: string
+    example: '0x1898ff52ee440f1ac1ed328becaaa2672c6c50976203d42f672beb5c495c8116'
+  attestation2_beaconblockroot:
+    type: string
+    example: '0x2c262c5cdbddd4b4a673c3a112b8a0d1ca539c15cac2a95e0094c0d28a008e88'
+  attestation2_index:
+    type: integer
+    example: 0
+  attestation2_indices:
+    type: array
+    items:
+      type: integer
+      minimum: 0
+    description: Array of validator indices
+    example:
+      - 0
+      - 1
+      - 2
+      - 3
+  attestation2_signature:
+    type: string
+    example: '0xaa'
+  attestation2_slot:
+    type: integer
+    example: 12571716
+  attestation2_source_epoch:
+    type: integer
+    example: 392865
+  attestation2_source_root:
+    type: string
+    example: '0x1b3891944d7c2fdac53dff9410f18992487e31b1f68d995c1429548effa47268'
+  attestation2_target_epoch:
+    type: integer
+    example: 392866
+  attestation2_target_root:
+    type: string
+    example: '0x1898ff52ee440f1ac1ed328becaaa2672c6c50976203d42f672beb5c495c8116'
+  block_index:
+    type: integer
+    example: 0
+  block_root:
+    type: string
+    example: '0x3381dd071cb6a020144bb980758a3a844129a62d74146b0fcdd82c4125cc8d66'
+  block_slot:
+    type: integer
+    example: 12571718

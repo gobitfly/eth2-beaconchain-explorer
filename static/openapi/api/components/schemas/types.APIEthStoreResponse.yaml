@@ -1,0 +1,72 @@
+properties:
+  apr:
+    type: number
+    example: 0.0527609790864113
+  avgapr31d:
+    type: number
+    example: 0.053351525019046164
+  avgapr7d:
+    type: number
+    example: 0.052764308760676414
+  avgconsensus_rewards31d_wei:
+    type: number
+    example: 1.3378170064684515e+21
+  avgconsensus_rewards7d_wei:
+    type: number
+    example: 1.345081426021e+21
+  avgtx_fees31d_wei:
+    type: number
+    nullable: true
+    example: null
+  avgtx_fees7d_wei:
+    type: number
+    nullable: true
+    example: null
+  cl_apr:
+    type: number
+    example: 0.0527609790864113
+  cl_avgapr31d:
+    type: number
+    example: 0.053351525019046164
+  cl_avgapr7d:
+    type: number
+    example: 0.052764308760676414
+  consensus_rewards_sum_wei:
+    type: number
+    example: 1.349850765807e+21
+  day:
+    type: integer
+    example: 435
+  day_end:
+    type: string
+    example: '2022-02-10T12:00:23Z'
+  day_start:
+    type: string
+    example: '2022-02-09T12:00:23Z'
+  deposits_sum_wei:
+    type: number
+    example: 0
+  effective_balances_sum_wei:
+    type: number
+    example: 9.338256e+24
+  el_apr:
+    type: number
+    example: 0.0063633204373217
+  el_avgapr31d:
+    type: number
+    example: 0.005679846878640752
+  el_avgapr7d:
+    type: number
+    example: 0.005195252974383372
+  end_balances_sum_wei:
+    type: number
+    example: 9.7843966127337e+24
+  start_balances_sum_wei:
+    type: number
+    example: 9.783046761967892e+24
+  total_rewards_wei:
+    type: number
+    example: 1.349850765807e+21
+  tx_fees_sum_wei:
+    type: number
+    example: 503073827859422400000

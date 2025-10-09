@@ -1,0 +1,45 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator statistics
+  parameters:
+    - name: index
+      in: path
+      description: Validator index
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: end_day
+      in: query
+      description: 'End day (default: latest day)'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: start_day
+      in: query
+      description: 'Start day (default: 0)'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorDailyStatsResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

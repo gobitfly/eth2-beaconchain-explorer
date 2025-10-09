@@ -1,0 +1,8 @@
+properties:
+  status:
+    type: string
+    example: 'ERROR: <Message>'
+  data:
+    type: string
+    nullable: true
+    default: null

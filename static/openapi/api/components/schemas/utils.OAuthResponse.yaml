@@ -1,0 +1,5 @@
+properties:
+  access_token: {}
+  expires_in: {}
+  refresh_token: {}
+  token_type: {}

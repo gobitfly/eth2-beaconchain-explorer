@@ -1,0 +1,64 @@
+properties:
+  attestationscount:
+    type: integer
+    example: 3458
+  attesterslashingscount:
+    type: integer
+    example: 0
+  averagevalidatorbalance:
+    type: integer
+    example: 33827474537
+  blockscount:
+    type: integer
+    example: 32
+  depositscount:
+    type: integer
+    example: 12
+  eligibleether:
+    type: integer
+    example: 13982056000000000
+  epoch:
+    type: integer
+    example: 15000
+  finalized:
+    type: boolean
+    example: true
+  globalparticipationrate:
+    type: number
+    example: 0.9885170459747314
+  missedblocks:
+    type: integer
+    example: 1
+  orphanedblocks:
+    type: integer
+    example: 0
+  proposedblocks:
+    type: integer
+    example: 31
+  proposerslashingscount:
+    type: integer
+    example: 1
+  rewards_exported:
+    type: boolean
+    example: true
+  scheduledblocks:
+    type: integer
+    example: 0
+  totalvalidatorbalance:
+    type: integer
+    example: 14780678206789428
+  ts:
+    type: string
+    example: '2022-09-29T04:00:23Z'
+  validatorscount:
+    type: integer
+    example: 436943
+  voluntaryexitscount:
+    type: integer
+    example: 2
+  votedether:
+    type: integer
+    example: 13821500000000000
+  withdrawalcount:
+    type: integer
+    example: 16

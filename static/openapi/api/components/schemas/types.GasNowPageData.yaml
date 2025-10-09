@@ -1,0 +1,16 @@
+properties:
+  code: {}
+  data:
+    properties:
+      currency: {}
+      fast:
+        $ref: ./big.Int.yaml
+      price: {}
+      priceUSD: {}
+      rapid:
+        $ref: ./big.Int.yaml
+      slow:
+        $ref: ./big.Int.yaml
+      standard:
+        $ref: ./big.Int.yaml
+      timestamp: {}

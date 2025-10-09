@@ -1,0 +1,46 @@
+get:
+  tags:
+    - Addresses
+  summary: Get ERC20 token balances for address
+  description: >-
+    Returns the ERC20 token balances for a given Ethereum address. Supports
+    pagination.
+  parameters:
+    - name: address
+      in: path
+      description: >-
+        provide an Ethereum address consists of an optional 0x prefix followed
+        by 40 hexadecimal characters
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: offset
+      in: query
+      description: data offset
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: limit
+      in: query
+      description: data limit (ranging from 1 to 200)
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            items:
+              $ref: >-
+                ../components/schemas/types.ApiEth1AddressERC20TokenResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

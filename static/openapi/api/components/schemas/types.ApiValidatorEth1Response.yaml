@@ -1,0 +1,4 @@
+properties:
+  public_key: {}
+  valid_signature: {}
+  validator_index: {}

@@ -1,0 +1,33 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator
+  description: >-
+    Retrieve validator information by index or pubkey (up to 100). Use the POST
+    endpoint if you get URL too long errors.
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Up to 100 validator indicesOrPubkeys, comma separated
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    items:
+                      $ref: ../components/schemas/types.APIValidatorResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

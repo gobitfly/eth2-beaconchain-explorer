@@ -1,0 +1,32 @@
+get:
+  tags:
+    - Epochs
+  summary: Get epoch slots
+  description: Returns all slots for a specified epoch
+  parameters:
+    - name: epoch
+      in: path
+      description: Epoch number, the string latest or string finalized
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.APISlotResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

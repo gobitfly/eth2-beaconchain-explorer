@@ -1,0 +1,53 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator balance history
+  description: Retrieve the validator balance history by index or pubkey (up to 100).
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Up to 100 validator indicesOrPubkeys, comma separated
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: latest_epoch
+      in: query
+      description: The latest epoch to consider in the query
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: offset
+      in: query
+      description: Number of items to skip
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: limit
+      in: query
+      description: Maximum number of items to return, up to 100
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorBalanceHistoryResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

@@ -1,0 +1,29 @@
+get:
+  tags:
+    - Blocks
+  summary: Get blocks by number
+  description: Get execution blocks by execution block number
+  parameters:
+    - name: blockNumber
+      in: path
+      description: >-
+        Provide one or more execution block numbers. Coma separated up to max
+        100.
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            items:
+              $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

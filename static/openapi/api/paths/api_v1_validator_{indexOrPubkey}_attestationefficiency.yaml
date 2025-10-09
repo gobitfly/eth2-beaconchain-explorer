@@ -1,0 +1,26 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator attestation efficiency
+  description: Retrieve validator attestation efficiency by index or pubkey (up to 100).
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Up to 100 validator indicesOrPubkeys, comma separated
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

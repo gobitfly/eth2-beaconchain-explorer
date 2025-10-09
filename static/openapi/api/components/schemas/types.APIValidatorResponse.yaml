@@ -1,0 +1,44 @@
+properties:
+  activation_eligibility_epoch:
+    type: integer
+    example: 289892
+  activation_epoch:
+    type: integer
+    example: 290297
+  balance:
+    type: integer
+    example: 32014494648
+  effective_balance:
+    type: integer
+    example: 32000000000
+  exit_epoch:
+    type: integer
+    example: 9223372036854776000
+  last_attestation_slot:
+    type: integer
+    example: 12766062
+  name:
+    type: string
+    example: "name"
+  pubkey:
+    type: string
+    example: "0xb73ecd964c9779506a3209ec40dd40d765b0464fef281d77ac8a559fa9e2a9cff8b6b2e09b8f6360b119ba7a963c5b81"
+  slashed:
+    type: boolean
+    example: false
+  status:
+    type: string
+    enum: ['active_online', 'exiting_online', 'slashing_online', 'active_offline', 'exiting_offline', 'slashing_offline', 'pending_initialized', 'pending', 'deposited', 'exited', 'slashed']
+    example: 'active_online'
+  validator_index:
+    type: integer
+    example: 1435245
+  withdrawable_epoch:
+    type: integer
+    example: 9223372036854776000
+  withdrawal_credentials:
+    type: string
+    example: "0x0100000000000000000000005d652886f0b4ae0b1b7d6be5b7e2d555aafdc812"
+  total_withdrawals:
+    type: integer
+    example: 1072078769

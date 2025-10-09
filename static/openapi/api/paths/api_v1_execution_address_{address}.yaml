@@ -1,0 +1,40 @@
+get:
+  tags:
+    - Addresses
+  summary: Get address balances
+  description: >-
+    Returns the ether balance and any token balances for a given Ethereum
+    address. Amount of different ECR20 tokens is limited to 200. If you need
+    more, use the /execution/address/{address}/erc20tokens endpoint.
+  parameters:
+    - name: address
+      in: path
+      description: >-
+        provide an Ethereum address consists of an optional 0x prefix followed
+        by 40 hexadecimal characters
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: token
+      in: query
+      description: >-
+        filter for a specific token by providing a ethereum token contract
+        address
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiEth1AddressResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

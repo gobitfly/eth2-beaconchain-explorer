@@ -1,0 +1,9 @@
+properties:
+  currentEpoch: {}
+  currentFinalizedEpoch: {}
+  currentSlot: {}
+  finalityDelay: {}
+  lastProposedSlot: {}
+  rates:
+    $ref: ./types.Rates.yaml
+  syncing: {}

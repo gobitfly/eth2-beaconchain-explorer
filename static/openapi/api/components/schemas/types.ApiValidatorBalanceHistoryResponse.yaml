@@ -1,0 +1,8 @@
+properties:
+  balance: {}
+  effectivebalance: {}
+  epoch: {}
+  validatorindex: {}
+  week: {}
+  week_end: {}
+  week_start: {}

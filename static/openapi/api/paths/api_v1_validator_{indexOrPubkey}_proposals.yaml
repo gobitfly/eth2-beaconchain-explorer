@@ -1,0 +1,41 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator proposals
+  description: >-
+    Get all proposed blocks during the last 100 epochs for up to 100 validators.
+    Optionally set the epoch query parameter to look back further.
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Up to 100 validator indicesOrPubkeys, comma separated
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: epoch
+      in: query
+      description: Page the result by epoch
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorProposalsResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

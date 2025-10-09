@@ -1,0 +1,13 @@
+properties:
+  createdEpoch: {}
+  createdTime:
+    description: Channels        pq.StringArray `db:"channels"`
+  eventFilter: {}
+  eventName: {}
+  eventThreshold: {}
+  id: {}
+  lastEpoch: {}
+  lastSent: {}
+  state: {}
+  unsubscribeHash: {}
+  userID: {}

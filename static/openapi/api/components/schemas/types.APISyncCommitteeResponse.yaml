@@ -1,0 +1,6 @@
+properties:
+  end_epoch: {}
+  period: {}
+  start_epoch: {}
+  validators:
+    items: {}

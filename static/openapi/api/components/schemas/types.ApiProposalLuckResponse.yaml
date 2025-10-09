@@ -1,0 +1,11 @@
+properties:
+  average_proposal_interval:
+    description: >-
+      The average slot interval between proposals for the given set of
+      validators
+  next_proposal_estimate_ts:
+    description: The estimated timestamp of the next proposal
+  proposal_luck:
+    description: The proposal luck for the given set of validators as a percentage
+  time_frame_name:
+    description: The timeframe for which the luck is calculated

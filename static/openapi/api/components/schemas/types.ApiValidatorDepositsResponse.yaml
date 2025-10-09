@@ -1,0 +1,14 @@
+properties:
+  amount: {}
+  block_number: {}
+  block_ts: {}
+  from_address: {}
+  merkletree_index: {}
+  publickey: {}
+  removed: {}
+  signature: {}
+  tx_hash: {}
+  tx_index: {}
+  tx_input: {}
+  valid_signature: {}
+  withdrawal_credentials: {}

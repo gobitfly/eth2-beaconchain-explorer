@@ -1,0 +1,16 @@
+properties:
+  executionBlockNumber:
+    type: integer
+    example: 23540530
+  proposerIndex:
+    type: integer
+    example: 1843949
+  slot:
+    type: integer
+    example: 12766094
+  epoch:
+    type: integer
+    example: 398940
+  finalized:
+    type: boolean
+    example: false

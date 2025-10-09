@@ -1,0 +1,7 @@
+properties:
+  block_index: {}
+  block_root: {}
+  block_slot: {}
+  epoch: {}
+  signature: {}
+  validatorindex: {}

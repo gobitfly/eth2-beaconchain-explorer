@@ -1,0 +1,8 @@
+properties:
+  epoch: {}
+  income:
+    $ref: ./types.ApiValidatorIncomeHistory.yaml
+  validatorindex: {}
+  week: {}
+  week_end: {}
+  week_start: {}

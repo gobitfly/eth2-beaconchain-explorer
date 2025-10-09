@@ -1,0 +1,48 @@
+properties:
+  aggregationbits:
+    type: string
+    example: '0xff'
+  beaconblockroot:
+    type: string
+    example: '0x94677296757527ccfd5849a6c07d179a9ed783a771c7bb305b9b9350fffd97d0'
+  block_index:
+    type: integer
+    example: 1
+  block_root:
+    type: string
+    example: '0xfa4349ae9843b52cd7e9ff42e43deaf3a9220c0ae3f3dd64da9c2c97544dfd4c'
+  block_slot:
+    type: integer
+    example: 12751688
+  committeeindex:
+    type: integer
+    example: 1
+  signature:
+    type: string
+    example: '0xaa'
+  slot:
+    type: integer
+    example: 12751687
+  source_epoch:
+    type: integer
+    example: 398489
+  source_root:
+    type: string
+    example: 2.0207338449908758e+76
+  target_epoch:
+    type: integer
+    example: 398490
+  target_root:
+    type: string
+    example: '0x88f88f748227a397a09a7b8cbe13dab1d0411950993e618fc7a6d76d1d7d0c76'
+  validators:
+    type: array
+    items:
+      type: integer
+      minimum: 0
+    description: Array of validator indices
+    example:
+      - 0
+      - 1
+      - 2
+      - 3

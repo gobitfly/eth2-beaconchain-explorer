@@ -1,0 +1,9 @@
+properties:
+  event_filters:
+    items: {}
+  event_names:
+    items: {}
+  join_validator: {}
+  limit: {}
+  offset: {}
+  search: {}

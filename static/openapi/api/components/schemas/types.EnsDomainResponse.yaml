@@ -1,0 +1,10 @@
+type: object
+properties:
+  address:
+    type: string
+    description: Ethereum address in hex format with 0x prefix
+    example: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'
+  domain:
+    type: string
+    description: ENS domain name; may be empty if reverse record is not set
+    example: vitalik.eth

@@ -1,0 +1,32 @@
+get:
+  tags:
+    - Slots
+  summary: Get slot
+  description: >-
+    Returns a slot by its slot number or root hash, the latest slot with string
+    latest or the slot containing the head block with string head
+  parameters:
+    - name: slotOrHash
+      in: path
+      description: Slot or root hash or the string latest or head
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: ../components/schemas/types.APISlotResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

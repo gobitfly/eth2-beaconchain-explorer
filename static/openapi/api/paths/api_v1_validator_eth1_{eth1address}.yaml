@@ -1,0 +1,46 @@
+get:
+  tags:
+    - Validators
+  summary: Get validator information by eth1 address
+  description: Retrieve validator information by eth1 address
+  parameters:
+    - name: eth1address
+      in: path
+      description: Eth1 address from which the validator deposits were sent
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+    - name: limit
+      in: query
+      description: 'Limit the number of results (default: 2000)'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+    - name: offset
+      in: query
+      description: 'Offset the results (default: 0)'
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorEth1Response.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
