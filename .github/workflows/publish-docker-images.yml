@@ -7,7 +7,7 @@ on:
     branches:
       - master
       - staging
-      - publish-docker
+      - deploy-*
   workflow_dispatch:
 
 jobs:
