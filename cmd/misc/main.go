@@ -62,6 +62,9 @@ var opts = struct {
 	ValidatorNameRanges string
 	Email               string
 	Name                string
+	StartKey            string
+	EndKey              string
+	ChainId             string
 	DryRun              bool
 	Yes                 bool
 }{}
@@ -86,6 +89,11 @@ func main() {
 	flag.StringVar(&opts.Table, "table", "", "big table table")
 	flag.StringVar(&opts.Family, "family", "", "big table family")
 	flag.StringVar(&opts.Key, "key", "", "big table key")
+
+	flag.StringVar(&opts.StartKey, "start-key", "", "big table range start key")
+	flag.StringVar(&opts.EndKey, "end-key", "", "big table range end key")
+	flag.StringVar(&opts.ChainId, "chain-id", "", "chain id")
+
 	flag.Uint64Var(&opts.StartBlock, "blocks.start", 0, "Block to start indexing")
 	flag.Uint64Var(&opts.EndBlock, "blocks.end", 0, "Block to finish indexing")
 	flag.Uint64Var(&opts.DataConcurrency, "data.concurrency", 30, "Concurrency to use when indexing data from bigtable")
@@ -316,6 +324,10 @@ func main() {
 		err = debugBlocks()
 	case "clear-bigtable":
 		clearBigtable(opts.Table, opts.Family, opts.Columns, opts.Key, opts.DryRun, bt)
+	case "clear-obsolete-bigtable-indices":
+		clearObsoleteBigtableIndices(opts.ChainId, opts.StartKey, opts.EndKey, bt, opts.DryRun)
+	case "delete-all-chain-data":
+		deleteAllChainData(opts.ChainId, bt)
 	case "index-old-eth1-blocks":
 		indexOldEth1Blocks(opts.StartBlock, opts.EndBlock, opts.BatchSize, opts.DataConcurrency, opts.Transformers, bt, erigonClient)
 	case "update-aggregation-bits":
@@ -1574,6 +1586,36 @@ func clearBigtable(table string, family string, columns string, key string, dryR
 
 	if err != nil {
 		logrus.Fatalf("error deleting from bigtable: %v", err)
+	}
+	logrus.Info("delete completed")
+}
+
+func clearObsoleteBigtableIndices(chainId, startKey, endKey string, bt *db.Bigtable, dryRun bool) {
+	if startKey == "" || endKey == "" || chainId == "" {
+		logrus.Fatalf("invalid chainid, startKey or endKey")
+	}
+	if !strings.Contains(startKey, ":") {
+		logrus.Fatalf("provided invalid prefix: %s", startKey)
+	}
+	if !strings.Contains(endKey, ":") {
+		logrus.Fatalf("provided invalid prefix: %s", endKey)
+	}
+	if startKey > endKey {
+		logrus.Fatalf("startKey [%v] must be smaller than endKey [%v]", startKey, endKey)
+	}
+	logrus.Infof("clearing obsolete bigtable indices")
+	err := bt.ClearObsoleteBigtableIndices(chainId, startKey, endKey, dryRun)
+	if err != nil {
+		logrus.Fatalf("error deleting obsolete bigtable indices: %v", err)
+	}
+	logrus.Info("delete completed")
+}
+
+func deleteAllChainData(chainId string, bt *db.Bigtable) {
+	logrus.Infof("deleting all chain data for chain %s", chainId)
+	err := bt.DeleteAllChainData(chainId)
+	if err != nil {
+		logrus.Fatalf("error deleting all chain data: %v", err)
 	}
 	logrus.Info("delete completed")
 }
