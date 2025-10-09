@@ -609,18 +609,17 @@ func main() {
 			authRouter.Use(utils.CORSMiddleware)
 
 			if utils.Config.Frontend.Debug {
-				// serve files from local directory when debugging, instead of from go embed file
+				logrus.Infof("serving frontend file from static/ directory")
+				// serve files from the local filesystem when debugging, instead of the go embedded file system
 				templatesHandler := http.FileServer(http.Dir("templates"))
 				router.PathPrefix("/templates").Handler(http.StripPrefix("/templates/", templatesHandler))
 
-				cssHandler := http.FileServer(http.Dir("static/css"))
-				router.PathPrefix("/css").Handler(http.StripPrefix("/css/", cssHandler))
-
-				jsHandler := http.FileServer(http.Dir("static/js"))
-				router.PathPrefix("/js").Handler(http.StripPrefix("/js/", jsHandler))
+				staticHandler := http.FileServer(http.Dir("static/"))
+				router.PathPrefix("/").Handler(http.StripPrefix("/", staticHandler))
+			} else {
+				fileSys := http.FS(static.Files)
+				router.PathPrefix("/").Handler(handlers.CustomFileServer(http.FileServer(fileSys), fileSys, handlers.NotFound))
 			}
-			fileSys := http.FS(static.Files)
-			router.PathPrefix("/").Handler(handlers.CustomFileServer(http.FileServer(fileSys), fileSys, handlers.NotFound))
 
 		}
 
