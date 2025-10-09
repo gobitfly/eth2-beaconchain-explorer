@@ -32,16 +32,27 @@ func GetTemplate(files ...string) *template.Template {
 	name := strings.Join(files, "-")
 
 	if utils.Config.Frontend.Debug {
-		templateFiles := make([]string, len(files))
-		copy(templateFiles, files)
-		for i := range files {
-			if strings.HasPrefix(files[i], "templates") {
-				templateFiles[i] = files[i]
+		templateFiles := make([]string, 0, len(files))
+		for _, file := range files {
+			if strings.Contains(file, "*") {
+				if !strings.HasPrefix(file, "templates") {
+					file = "templates/" + file
+				}
+				matches, err := filepath.Glob(file)
+				if err != nil {
+					logger.Errorf("error globbing template files: %s", err)
+					continue
+				}
+				for _, match := range matches {
+					templateFiles = append(templateFiles, match)
+				}
+			} else if strings.HasPrefix(file, "templates") {
+				templateFiles = append(templateFiles, file)
 			} else {
-				templateFiles[i] = "templates/" + files[i]
+				templateFiles = append(templateFiles, "templates/"+file)
 			}
 		}
-		return template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFiles(templateFiles...))
+		return template.Must(template.New(name).Funcs(templateFuncs).ParseFiles(templateFiles...))
 	}
 
 	templateCacheMux.RLock()
@@ -51,7 +62,7 @@ func GetTemplate(files ...string) *template.Template {
 	}
 	templateCacheMux.RUnlock()
 
-	tmpl := template.Must(template.New(name).Funcs(template.FuncMap(templateFuncs)).ParseFS(Files, files...))
+	tmpl := template.Must(template.New(name).Funcs(templateFuncs).ParseFS(Files, files...))
 	templateCacheMux.Lock()
 	defer templateCacheMux.Unlock()
 	templateCache[name] = tmpl
