@@ -43,9 +43,7 @@ func GetTemplate(files ...string) *template.Template {
 					logger.Errorf("error globbing template files: %s", err)
 					continue
 				}
-				for _, match := range matches {
-					templateFiles = append(templateFiles, match)
-				}
+				templateFiles = append(templateFiles, matches...)
 			} else if strings.HasPrefix(file, "templates") {
 				templateFiles = append(templateFiles, file)
 			} else {
