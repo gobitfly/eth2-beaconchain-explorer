@@ -2505,7 +2505,7 @@ func GetValidatorsWithdrawals(validators []uint64, fromEpoch uint64, toEpoch uin
 	AND (w.block_slot / $4) >= $2 AND (w.block_slot / $4) <= $3 
 	ORDER BY w.withdrawalindex`, pq.Array(validators), fromEpoch, toEpoch, utils.Config.Chain.ClConfig.SlotsPerEpoch)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return withdrawals, nil
 		}
 		return nil, fmt.Errorf("error getting blocks_withdrawals for validators: %+v: %w", validators, err)

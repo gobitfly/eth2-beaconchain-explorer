@@ -1,0 +1,140 @@
+get:
+  tags:
+    - Validators
+  summary: Validator income detail history
+  description: >-
+    Retrieve a per-epoch income breakdown for one or more validators over a
+    bounded epoch window. Provide validator identifiers as a comma-separated
+    list in the path parameter (indices or 0x-prefixed BLS pubkeys, up to the
+    server-enforced limit; default 100).
+
+    The window ends at `latest_epoch` (defaults to the latest finalized epoch)
+    and spans `limit` epochs backwards. You can shift the window back in time by
+    setting `offset`, which reduces `latest_epoch` by the given number of
+    epochs. The response includes consensus-layer rewards/penalties in gwei and
+    execution tips in wei (`tx_fee_reward_wei`).
+  operationId: listValidatorIncomeDetailHistory
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+    - name: latest_epoch
+      in: query
+      description: >-
+        Most recent epoch to include (inclusive). Defaults to the latest
+        finalized epoch. Must be less than or equal to the latest finalized
+        epoch at request time.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 399359
+    - name: offset
+      in: query
+      description: >-
+        Number of epochs to skip backwards from `latest_epoch` before starting
+        the window. Must be non-negative and not exceed `latest_epoch`.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
+    - name: limit
+      in: query
+      description: Number of epochs to return in the window. Allowed range is 1 to 100. Defaults to 100.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 100
+        example: 50
+  responses:
+    '200':
+      description: >-
+        Income details were retrieved successfully. The `data` array contains
+        one entry per validator per epoch within the requested window. Items are
+        sorted by epoch (descending) and then by validator index (ascending).
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorIncomeHistoryResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifiers or invalid query parameters).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            unresolvedPubkeys:
+              summary: Pubkey did not resolve to an index
+              value:
+                status: "ERROR: invalid validator argument, pubkey(s) did not resolve to a validator index"
+                data: null
+            noValidators:
+              summary: No validators provided
+              value:
+                status: "ERROR: no validators provided"
+                data: null
+            invalidLatestEpoch:
+              summary: Invalid latest_epoch parameter
+              value:
+                status: "ERROR: invalid latest epoch parameter"
+                data: null
+            invalidOffset:
+              summary: Invalid offset parameter
+              value:
+                status: "ERROR: invalid offset parameter"
+                data: null
+            invalidLimit:
+              summary: Invalid limit parameter
+              value:
+                status: "ERROR: invalid limit parameter"
+                data: null
+            dbError:
+              summary: Database retrieval error
+              value:
+                status: "ERROR: could not retrieve db results"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

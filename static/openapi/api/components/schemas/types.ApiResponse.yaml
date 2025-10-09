@@ -1,0 +1,12 @@
+type: object
+description: Standard success envelope used by all API endpoints.
+properties:
+  status:
+    type: string
+    description: HTTP-independent status of the API operation. For successful responses this is always "OK".
+    enum:
+      - OK
+  data:
+    description: Response payload specific to the endpoint.
+    nullable: true
+    x-omitempty: true

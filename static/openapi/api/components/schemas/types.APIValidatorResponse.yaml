@@ -1,0 +1,63 @@
+type: object
+description: State and metadata for a single validator, including status, balances, epochs, and withdrawal summary.
+properties:
+  activation_eligibility_epoch:
+    type: integer
+    description: Epoch at which the validator became eligible for activation. Set to the FAR_FUTURE_EPOCH sentinel when not yet eligible.
+    example: 289892
+  activation_epoch:
+    type: integer
+    description: Epoch at which the validator entered the active set. FAR_FUTURE_EPOCH when not yet active.
+    example: 290297
+  balance:
+    type: integer
+    description: Current validator balance in gwei at the latest processed epoch for this response.
+    example: 32014494648
+  effective_balance:
+    type: integer
+    description: Effective balance used for reward/penalty calculations in gwei (capped at 32,000,000,000 gwei).
+    example: 32000000000
+  exit_epoch:
+    type: integer
+    description: Epoch at which the validator begins exiting. FAR_FUTURE_EPOCH when no exit is scheduled.
+    example: 9223372036854776000
+  last_attestation_slot:
+    type: integer
+    description: Most recent slot at which an attestation from this validator was observed in a canonical block.
+    example: 12766062
+  name:
+    type: string
+    description: Optional human-readable label associated with the validator. Empty string when not set.
+    example: "name"
+  pubkey:
+    type: string
+    description: BLS12-381 validator public key (48 bytes; 0x-prefixed hex with 96 hex characters).
+    example: "0xb73ecd964c9779506a3209ec40dd40d765b0464fef281d77ac8a559fa9e2a9cff8b6b2e09b8f6360b119ba7a963c5b81"
+  slashed:
+    type: boolean
+    description: True when the validator has been slashed.
+    example: false
+  status:
+    type: string
+    description: >-
+      Current validator state. One of: active_online, exiting_online, slashing_online, active_offline,
+      exiting_offline, slashing_offline, pending_initialized, pending, deposited, exited, slashed.
+    enum: ['active_online', 'exiting_online', 'slashing_online', 'active_offline', 'exiting_offline', 'slashing_offline', 'pending_initialized', 'pending', 'deposited', 'exited', 'slashed']
+    example: 'active_online'
+  validator_index:
+    type: integer
+    description: Validator index (>= 0).
+    minimum: 0
+    example: 1435245
+  withdrawable_epoch:
+    type: integer
+    description: Epoch at which the validator’s balance becomes withdrawable after exit or slashing. FAR_FUTURE_EPOCH when not yet withdrawable.
+    example: 9223372036854776000
+  withdrawal_credentials:
+    type: string
+    description: 32-byte withdrawal credentials (0x-prefixed hex). Prefix 0x01 encodes an execution address; 0x00 indicates BLS withdrawal credentials.
+    example: "0x0100000000000000000000005d652886f0b4ae0b1b7d6be5b7e2d555aafdc812"
+  total_withdrawals:
+    type: integer
+    description: Cumulative amount withdrawn by this validator in gwei, including the latest exported day and canonical blocks of the current day.
+    example: 1072078769

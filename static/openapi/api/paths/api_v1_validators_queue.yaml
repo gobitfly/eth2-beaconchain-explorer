@@ -1,0 +1,47 @@
+get:
+  tags:
+    - Validators
+  summary: Validator activation and exit queue
+  description: >-
+    Retrieve current queue metrics for validators awaiting activation (entering)
+    and validators scheduled to exit (exiting). The response includes the number
+    of validators in each queue, the total effective balance in gwei for each
+    queue, and the total validator count known to the explorer. No parameters are
+    required.
+  operationId: getValidatorsQueue
+  responses:
+    '200':
+      description: Queue metrics retrieved successfully. The `data` object contains counts and balances for entering and exiting validators.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.ApiValidatorQueueResponse.yaml
+    '400':
+      description: The request is invalid or results could not be retrieved.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            badRequest:
+              summary: Failed to retrieve results
+              value:
+                status: "ERROR: could not retrieve db results"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

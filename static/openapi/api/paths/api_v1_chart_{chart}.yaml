@@ -1,0 +1,65 @@
+get:
+  tags:
+    - Misc
+  summary: Chart
+  description: Returns charts from the page https://beaconcha.in/charts as PNG
+  parameters:
+    - name: chart
+      in: path
+      description: Chart Names
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        enum:
+          - blocks
+          - validators
+          - staked_ether
+          - average_balance
+          - network_liveness
+          - participation_rate
+          - stake_effectiveness
+          - balance_distribution
+          - effective_balance_distribution
+          - performance_distribution_365d
+          - deposits
+          - withdrawals
+          - graffiti_wordcloud
+          - pools_distribution
+          - historic_pool_performance
+          - avg_gas_used_chart_data
+          - execution_burned_fees
+          - block_gas_used
+          - block_count_chart_data
+          - block_time_avg_chart_data
+          - avg_gas_limit_chart_data
+          - avg_block_util_chart_data
+          - tx_count_chart_data
+        example: validators
+  responses:
+    '200':
+      description: Chart PNG image generated successfully
+      content:
+        image/png:
+          schema:
+            type: string
+            format: binary
+            description: PNG image file containing the requested chart
+    '400':
+      description: Bad Request - Invalid chart name or no data available
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalid_chart:
+              summary: Invalid chart name
+              value:
+                status: 'ERROR: invalid chart name'
+                data: null
+            no_data:
+              summary: No data available
+              value:
+                status: 'ERROR: no data available for the requested chart'
+                data: null

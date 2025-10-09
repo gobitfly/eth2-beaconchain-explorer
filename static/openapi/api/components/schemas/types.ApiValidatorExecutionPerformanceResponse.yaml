@@ -1,0 +1,36 @@
+type: object
+description: >-
+  Execution-layer reward totals for a single validator over multiple lookback
+  windows. Values represent net ETH earned from priority fees and MEV payments
+  attributed to the validator’s proposals and are expressed in wei.
+properties:
+  performance1d:
+    type: integer
+    description: Net execution-layer rewards over the last 1 day, in wei.
+    minimum: 0
+    example: 470167509840
+  performance7d:
+    type: integer
+    description: Net execution-layer rewards over the last 7 days, in wei.
+    minimum: 0
+    example: 7470167509840
+  performance31d:
+    type: integer
+    description: Net execution-layer rewards over the last 31 days, in wei.
+    minimum: 0
+    example: 357470167509840
+  performance365d:
+    type: integer
+    description: Net execution-layer rewards over the last 365 days, in wei.
+    minimum: 0
+    example: 10357470167509840
+  performanceTotal:
+    type: integer
+    description: Cumulative execution-layer rewards since genesis (when available), in wei.
+    minimum: 0
+    example: 438451008639390900
+  validatorindex:
+    type: integer
+    description: Validator index (>= 0).
+    minimum: 0
+    example: 20

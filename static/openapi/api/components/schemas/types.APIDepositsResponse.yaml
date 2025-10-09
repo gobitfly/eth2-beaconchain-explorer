@@ -1,0 +1,36 @@
+type: object
+description: Validator deposit included in a beacon block, with block inclusion metadata and deposit data fields.
+properties:
+  amount:
+    type: integer
+    description: Deposited amount in gwei (1 gwei = 1e9 wei).
+    example: 32000000000
+  block_index:
+    type: integer
+    description: Zero-based index of this deposit within the including block’s deposits list.
+    example: 1
+  block_root:
+    type: string
+    description: Root of the beacon block that included this deposit (0x-prefixed, 32-byte hex).
+    example: "0x538d7fba9f4ed29d396d18c225e91e35a5c5bd0aa9a51bd53f18df8fffaf0e4c"
+  block_slot:
+    type: integer
+    description: Slot number of the block that included this deposit.
+    example: 11648084
+  proof:
+    type: string
+    nullable: true
+    description: SSZ Merkle proof for the deposit inclusion as 0x-prefixed hex; null when not recorded.
+    example: null
+  publickey:
+    type: string
+    description: BLS12-381 validator public key (48 bytes; 0x-prefixed hex with 96 hex characters).
+    example: "0x88527b5e326c4837d765e522995e2937aaa945e79a1183a53fc369db70097484c656efa1cf216c57d88b9d2551c97ce9"
+  signature:
+    type: string
+    description: BLS signature over the deposit message (96 bytes; 0x-prefixed hex with 192 hex characters).
+    example: "0xa8c663fa0386ba988a5916a76b10bc5922ce4e2d03b1baf852e138316c0b296df1ef46aba5063b8fdc2ab7c7163fdd5d05733f7ec334009fddec1f02d78f5f7324f4d696577ef453d29937b2fd1b5b2d610edaa253a8423dd1f17e621f3493cf"
+  withdrawalcredentials:
+    type: string
+    description: 32-byte withdrawal credentials (0x-prefixed hex). Values beginning with 0x01 encode an ETH1 address; values beginning with 0x00 indicate BLS withdrawal credentials.
+    example: "0x01000000000000000000000096fb413349cb4ec17410df929898ae9c0e56ae40"

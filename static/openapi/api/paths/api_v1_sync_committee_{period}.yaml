@@ -1,0 +1,75 @@
+get:
+  tags:
+    - Sync Committees
+  summary: Sync committee for a period
+  description: >-
+    Retrieve the sync committee membership for a given sync period. The sync
+    committee contains 512 validator indices that participate in light-client
+    finality via sync committee signatures. The validators in the response are
+    ordered by the sync-committee index (the position used when interpreting
+    syncaggregate_bits in blocks).
+
+    A sync period spans 256 consecutive epochs. Sync committees were introduced
+    with the Altair upgrade. Requests for periods before Altair return an error
+    because no sync committee exists for those periods. On Ethereum mainnet,
+    Altair activated at epoch 74240 (period 290).
+  operationId: getSyncCommittee
+  parameters:
+    - name: period
+      in: path
+      description: >-
+        The sync period to fetch. Provide a non-negative integer period index,
+        or use one of the special tags: `latest` (current period) or `next`
+        (the upcoming period if available).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        oneOf:
+          - type: string
+            description: Special tags for convenience.
+            enum: [latest, next]
+            example: latest
+          - type: integer
+            description: Sync period index (>= 0)
+            minimum: 0
+            example: 500
+  responses:
+    '200':
+      description: >-
+        The sync committee for the requested period was found. The `data` object
+        contains the period index, the start and end epochs, and the list of
+        512 validator indices in committee order.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.APISyncCommitteeResponse.yaml
+    '400':
+      description: The request is invalid (for example, a malformed period or a period before Altair).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidPeriod:
+              summary: Invalid period parameter
+              value:
+                status: "ERROR: invalid period parameter"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

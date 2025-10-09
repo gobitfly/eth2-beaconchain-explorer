@@ -1,0 +1,76 @@
+get:
+  tags:
+    - ETH.Store®
+  summary: ETH.Store daily aggregates
+  description: >-
+    Retrieve ETH.Store® daily aggregate metrics that represent the average
+    financial return validators achieved over a 24-hour period. A
+    "beaconchain-day" is defined as the number of full days elapsed since
+    chain genesis, computed as blocks grouped into periods of
+    `(24 * 60 * 60) // SlotsPerEpoch // SecondsPerSlot` epochs.
+
+    Use this endpoint to analyze validator returns, moving averages, and reward
+    composition (consensus-layer vs. execution-layer fees) on a per-day basis.
+
+    See https://github.com/gobitfly/eth.store for additional context.
+  operationId: getEthStoreByDay
+  parameters:
+    - name: day
+      in: path
+      description: >-
+        The beaconchain-day to fetch. Provide an integer day index (>= 0), or the
+        keyword `latest` for the most recently computed day.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        oneOf:
+          - type: string
+            description: Special tag for convenience.
+            enum: [latest]
+            example: latest
+          - type: integer
+            description: Day index since genesis (>= 0)
+            minimum: 0
+            example: 541
+  responses:
+    '200':
+      description: >-
+        The requested day was found and ETH.Store® aggregates are returned in the
+        `data` array. This array contains a single record for the
+        requested day.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.APIEthStoreResponse.yaml
+    '400':
+      description: The request is invalid (for example, an out-of-range day or malformed tag).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidDay:
+              summary: Invalid day parameter
+              value:
+                status: "ERROR: invalid day parameter"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

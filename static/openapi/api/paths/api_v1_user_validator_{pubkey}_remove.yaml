@@ -1,0 +1,32 @@
+post:
+  tags:
+    - User
+  summary: Remove validator subscription
+  description: Unsubscribes a user from a specific validator
+  parameters:
+    - name: pubkey
+      in: path
+      description: Public Key of validator you want to subscribe to
+      required: true
+      style: simple
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

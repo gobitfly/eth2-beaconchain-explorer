@@ -1,0 +1,64 @@
+type: object
+description: Detailed per-epoch income breakdown for a validator. Unless noted otherwise, all amounts are in gwei.
+properties:
+  attestation_head_reward:
+    type: integer
+    description: Reward from correct head vote in the attestation, in gwei.
+    example: 1024
+  attestation_source_penalty:
+    type: integer
+    description: Penalty from incorrect/missed source vote, in gwei (non-positive; represented as unsigned magnitude when stored by some backends).
+    example: 0
+  attestation_source_reward:
+    type: integer
+    description: Reward from correct source vote in the attestation, in gwei.
+    example: 2048
+  attestation_target_penalty:
+    type: integer
+    description: Penalty from incorrect/missed target vote, in gwei (non-positive; represented as unsigned magnitude when stored by some backends).
+    example: 0
+  attestation_target_reward:
+    type: integer
+    description: Reward from correct target vote in the attestation, in gwei.
+    example: 3072
+  finality_delay_penalty:
+    type: integer
+    description: Penalty due to finality delays in the network (applies during periods with no finality), in gwei.
+    example: 0
+  proposals_missed:
+    type: integer
+    description: Number of scheduled block proposals the validator missed during this epoch.
+    minimum: 0
+    example: 0
+  proposer_attestation_inclusion_reward:
+    type: integer
+    description: Proposer reward for including attestations, in gwei.
+    example: 512
+  proposer_slashing_inclusion_reward:
+    type: integer
+    description: Proposer reward for including a proposer slashing, in gwei.
+    example: 0
+  proposer_sync_inclusion_reward:
+    type: integer
+    description: Proposer reward for including a sync committee signature set, in gwei.
+    example: 0
+  slashing_penalty:
+    type: integer
+    description: Penalty due to being slashed or due to correlations, in gwei.
+    example: 0
+  slashing_reward:
+    type: integer
+    description: Reward earned from participating in a slashing (as whistleblower/aggregator), in gwei.
+    example: 0
+  sync_committee_penalty:
+    type: integer
+    description: Penalty from missed/incorrect sync committee participation, in gwei.
+    example: 0
+  sync_committee_reward:
+    type: integer
+    description: Reward from participating in the sync committee for the epoch, in gwei.
+    example: 0
+  tx_fee_reward_wei:
+    type: string
+    description: Execution-layer fee reward (priority fees and/or MEV payment) attributed to the validator for this epoch, as a decimal string in wei.
+    example: "470167509840"

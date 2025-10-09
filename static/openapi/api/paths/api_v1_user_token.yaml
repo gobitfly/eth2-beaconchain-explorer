@@ -1,0 +1,49 @@
+post:
+  tags:
+    - User
+  summary: OAUTH API token
+  description: Exchange your oauth code for an access token or refresh your access token
+  requestBody:
+    content:
+      application/x-www-form-urlencoded:
+        schema:
+          required:
+            - grant_type
+          properties:
+            grant_type:
+              description: >-
+                grant_type use authorization_code for oauth code or
+                refresh_token if you wish to refresh an token
+            code:
+              description: >-
+                Only required when using authorization_code grant type. Code
+                received via oauth redirect_uri
+            redirect_uri:
+              description: >-
+                Only required when using authorization_code grant type. Must
+                match the redirect_uri from your oauth flow.
+            refresh_token:
+              description: >-
+                Only required when using refresh_token grant type. The
+                refresh_token you received during authorization_code flow.
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/utils.OAuthResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/utils.OAuthErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/utils.OAuthErrorResponse.yaml
+  security:
+    - OAuthAccessCode: []
