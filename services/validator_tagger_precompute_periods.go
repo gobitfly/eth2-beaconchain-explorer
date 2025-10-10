@@ -753,8 +753,8 @@ func precomputeEntityDataForPeriod(ctx context.Context, tx *sqlx.Tx, spec Period
 	}
 	logger.WithField("rows", n).Info("persisted validator_entities_data_periods rows for period")
 
-	// After persisting DB, update Redis cache for index treemap for 1d period
-	if spec.Label == "1d" && utils.Config.RedisSessionStoreEndpoint != "" {
+	// After persisting DB, update Redis cache for index treemap for 30d period
+	if utils.Config.RedisSessionStoreEndpoint != "" {
 		ctx := context.Background()
 		rdc, errInit := cache.InitRedisCache(ctx, utils.Config.RedisSessionStoreEndpoint)
 		if errInit != nil {
