@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator queue
+  summary: Queue
   description: >-
     Returns the current number of validators entering and exiting the beacon
     chain

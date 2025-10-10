@@ -1,7 +1,7 @@
 get:
   tags:
     - Validator deposits
-  summary: Get deposits by tx
+  summary: Deposits by tx hash
   description: Returns all deposits for a specified transaction hash
   parameters:
     - name: txhash

@@ -1,7 +1,7 @@
 get:
   tags:
     - Rocketpool
-  summary: Get rocketpool statistics
+  summary: Statistics
   description: Returns statistics about the Rocketpool protocol
   responses:
     '200':

@@ -1,7 +1,7 @@
 get:
   tags:
     - Network
-  summary: Get network state
+  summary: Latest state
   description: Returns information on the current state of the network
   responses:
     '200':

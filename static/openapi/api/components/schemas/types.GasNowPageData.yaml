@@ -1,16 +1,27 @@
 properties:
-  code: {}
+  code:
+    type: number
+    enum: [200]
   data:
     properties:
-      currency: {}
-      fast:
-        $ref: ./big.Int.yaml
-      price: {}
-      priceUSD: {}
       rapid:
-        $ref: ./big.Int.yaml
-      slow:
-        $ref: ./big.Int.yaml
+        type: number
+        example: 141086566
+      fast:
+        type: number
+        example: 141086542
       standard:
-        $ref: ./big.Int.yaml
-      timestamp: {}
+        type: number
+        example: 141086518
+      slow:
+        type: number
+        example: 141086044
+      timestamp:
+        type: number
+        example: 1760076662742
+      price:
+        type: number
+        example: 4366.60356702
+      priceUSD:
+        type: number
+        example: 4366.60356702

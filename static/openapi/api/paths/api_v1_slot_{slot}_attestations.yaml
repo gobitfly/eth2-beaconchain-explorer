@@ -1,7 +1,7 @@
 get:
   tags:
     - Slots
-  summary: Get slot attestations
+  summary: Attestations
   description: Returns the attestations included in a specific slot
   parameters:
     - name: slot

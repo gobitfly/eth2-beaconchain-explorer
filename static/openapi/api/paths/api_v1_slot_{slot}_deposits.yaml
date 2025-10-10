@@ -1,7 +1,7 @@
 get:
   tags:
     - Slots
-  summary: Get slot deposits
+  summary: Deposits
   description: Returns the deposits included in a specific block
   parameters:
     - name: slot
@@ -31,7 +31,15 @@ get:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/types.ApiResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    title: Deposits
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.APIDepositsResponse.yaml
     '400':
       description: Bad Request
       content:

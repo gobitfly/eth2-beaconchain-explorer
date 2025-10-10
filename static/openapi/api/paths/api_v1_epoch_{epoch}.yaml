@@ -1,7 +1,7 @@
 get:
   tags:
     - Epochs
-  summary: Get epoch
+  summary: Overview
   description: >-
     Returns information for a specified epoch by the epoch number or an epoch
     tag (can be latest or finalized)

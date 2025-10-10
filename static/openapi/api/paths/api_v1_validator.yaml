@@ -1,7 +1,7 @@
 post:
   tags:
     - Validators
-  summary: Get validator (POST)
+  summary: Overview (POST)
   description: Retrieve validator information by index or pubkey (up to 100).
   requestBody:
     description: Up to 100 validator indicesOrPubkeys, comma separated

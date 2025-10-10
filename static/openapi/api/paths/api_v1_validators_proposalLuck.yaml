@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator proposal luck
+  summary: Proposal luck
   description: Returns the proposal luck of a validator or a list of validators
   parameters:
     - name: validators

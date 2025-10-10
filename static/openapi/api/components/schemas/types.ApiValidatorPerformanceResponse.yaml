@@ -1,8 +1,25 @@
 properties:
-  balance: {}
-  performance1d: {}
-  performance31d: {}
-  performance365d: {}
-  performance7d: {}
-  rank7d: {}
-  validatorindex: {}
+  balance:
+    type: integer
+    example: 2011101824120
+  performance1d:
+    type: integer
+    example: 126585316
+  performance7d:
+    type: integer
+    example: 1467804126
+  performance31d:
+    type: integer
+    example: 5128497140
+  performance365d:
+    type: integer
+    example: 11101824120
+  performancetotal:
+    type: integer
+    example: 11101824120
+  rank7d:
+    type: integer
+    example: 1
+  validatorindex:
+    type: integer
+    example: 2030996

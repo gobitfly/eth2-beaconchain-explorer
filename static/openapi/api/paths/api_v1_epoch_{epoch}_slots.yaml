@@ -1,7 +1,7 @@
 get:
   tags:
     - Epochs
-  summary: Get epoch slots
+  summary: Slots
   description: Returns all slots for a specified epoch
   parameters:
     - name: epoch

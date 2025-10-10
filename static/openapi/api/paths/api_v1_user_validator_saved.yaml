@@ -1,7 +1,7 @@
 get:
   tags:
     - User
-  summary: Get tagged validators
+  summary: Tagged validators
   description: Get all your tagged validators
   responses:
     '200':
@@ -27,5 +27,3 @@ get:
         application/json:
           schema:
             $ref: ../components/schemas/types.ApiErrorResponse.yaml
-  security:
-    - ApiKeyAuth: []

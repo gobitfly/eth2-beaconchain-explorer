@@ -1,0 +1,16 @@
+properties:
+  address:
+    type: string
+    example: "0xb10edd6fa6067dba8d4326f1c8f0d1c791594f13"
+  amount:
+    type: integer
+    example: 18429837
+  block_slot:
+    type: integer
+    example: 12771160
+  validatorindex:
+    type: integer
+    example: 1120967
+  withdrawalindex:
+    type: integer
+    example: 104169659

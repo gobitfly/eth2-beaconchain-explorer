@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator withdrawal history
+  summary: Withdrawals
   description: Retrieve validator withdrawal history by index or pubkey (up to 100).
   parameters:
     - name: indexOrPubkey

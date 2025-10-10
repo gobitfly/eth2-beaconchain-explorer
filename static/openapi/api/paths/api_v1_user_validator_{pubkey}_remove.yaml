@@ -4,11 +4,11 @@ post:
   summary: Remove validator subscription
   description: Unsubscribes a user from a specific validator
   parameters:
-    - name: pubKey
-      in: query
+    - name: pubkey
+      in: path
       description: Public Key of validator you want to subscribe to
       required: true
-      style: form
+      style: simple
       explode: true
       schema: {}
   responses:
@@ -30,5 +30,3 @@ post:
         application/json:
           schema:
             $ref: ../components/schemas/types.ApiErrorResponse.yaml
-  security:
-    - ApiKeyAuth: []

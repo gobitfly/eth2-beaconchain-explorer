@@ -1,16 +1,46 @@
 properties:
-  claim_interval_time: {}
-  claim_interval_time_start: {}
-  current_node_demand: {}
-  current_node_fee: {}
-  effective_rpl_staked: {}
-  minipool_count: {}
-  node_count: {}
-  node_operator_rewards: {}
-  odao_member_count: {}
-  reth_apr: {}
-  reth_exchange_rate: {}
-  reth_supply: {}
-  rpl_price: {}
-  total_eth_balance: {}
-  total_eth_staking: {}
+  claim_interval_time:
+    type: string
+    example: "672:00:00"
+  claim_interval_time_start:
+    type: integer
+    example: 1758778539
+  current_node_demand:
+    type: number
+    example: -3.983366338292163e+21
+  current_node_fee:
+    type: number
+    example: 0.05
+  effective_rpl_staked:
+    type: number
+    example: 9.325076691110913e+24
+  minipool_count:
+    type: integer
+    example: 42248
+  node_count:
+    type: integer
+    example: 4024
+  node_operator_rewards:
+    type: number
+    example: 5.719242908397718e+22
+  odao_member_count:
+    type: integer
+    example: 13
+  reth_apr:
+    type: number
+    example: 0.0384304813
+  reth_exchange_rate:
+    type: number
+    example: 1.1476800133
+  reth_supply:
+    type: number
+    example: 3.9133933672076725e+23
+  rpl_price:
+    type: integer
+    example: 1114711058888101
+  total_eth_balance:
+    type: number
+    example: 4.4913233519356025e+23
+  total_eth_staking:
+    type: number
+    example: 4.471319830044493e+23

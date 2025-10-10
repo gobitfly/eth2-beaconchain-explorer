@@ -1,18 +1,73 @@
 properties:
-  claimed_smoothing_pool: {}
-  index: {}
-  minipool_address: {}
-  minipool_deposit_type: {}
-  minipool_node_fee: {}
-  minipool_status: {}
-  minipool_status_time: {}
-  node_address: {}
-  node_max_rpl_stake: {}
-  node_min_rpl_stake: {}
-  node_rpl_stake: {}
-  node_timezone_location: {}
-  penalty_count: {}
-  rpl_cumulative_rewards: {}
-  smoothing_pool_opted_in: {}
-  unclaimed_rpl_rewards: {}
-  unclaimed_smoothing_pool: {}
+  claimed_smoothing_pool:
+    type: integer
+    example: 2558507058679352300
+  effective_rpl_stake:
+    type: number
+    example: 0
+  index:
+    type: integer
+    example: 652648
+  is_vacant:
+    type: boolean
+    example: false
+  minipool_address:
+    type: string
+    example: "0xc20eb9eca73be78a523aad5a4d9b70c797ff58a1"
+  minipool_deposit_type:
+    type: string
+    example: "Variable"
+  minipool_node_fee:
+    type: number
+    example: 0.14
+  minipool_status:
+    type: string
+    example: "Staking"
+  minipool_status_time:
+    type: integer
+    example: 1684570331
+  node_address:
+    type: string
+    example: "0xfff1f570f09c073b6621c032b6072847fe9d6fac"
+  node_deposit_balance:
+    type: integer
+    example: 8000000000000000000
+  node_deposit_credit:
+    type: number
+    example: 0
+  node_max_rpl_stake:
+    type: number
+    example: 0
+  node_min_rpl_stake:
+    type: number
+    example: 0
+  node_refund_balance:
+    type: integer
+    example: 0
+  node_rpl_stake:
+    type: number
+    example: 0
+  node_timezone_location:
+    type: string
+    example: "Etc/UTC"
+  penalty_count:
+    type: integer
+    example: 0
+  rpl_cumulative_rewards:
+    type: integer
+    example: 487854676781293300000
+  smoothing_pool_opted_in:
+    type: boolean
+    example: false
+  unclaimed_rpl_rewards:
+    type: integer
+    example: 0
+  unclaimed_smoothing_pool:
+    type: integer
+    example: 0
+  user_deposit_balance:
+    type: integer
+    example: 24000000000000000000
+  version:
+    type: integer
+    example: 3

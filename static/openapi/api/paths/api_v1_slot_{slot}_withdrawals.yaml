@@ -1,7 +1,7 @@
 get:
   tags:
     - Slots
-  summary: Get slot withdrawals
+  summary: Withdrawals
   description: Returns the withdrawals included in a specific slot
   parameters:
     - name: slot
@@ -17,7 +17,15 @@ get:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/types.ApiResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    title: Withdrawals
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.APIWithdrawalResponse.yaml
     '400':
       description: Bad Request
       content:

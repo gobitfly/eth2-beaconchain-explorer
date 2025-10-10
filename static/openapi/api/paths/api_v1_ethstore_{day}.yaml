@@ -1,7 +1,7 @@
 get:
   tags:
     - ETH.Store®
-  summary: Get ETH.Store® day
+  summary: ETH.Store® Day
   description: >-
     ETH.STORE® represents the average financial return validators on the
     Ethereum network have achieved in a 24-hour period.

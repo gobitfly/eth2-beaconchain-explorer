@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator execution layer deposits
+  summary: Execution layer deposits
   description: Get all eth1 deposits for up to 100 validators
   parameters:
     - name: indexOrPubkey

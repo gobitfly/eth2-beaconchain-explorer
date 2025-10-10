@@ -1,7 +1,7 @@
 get:
   tags:
     - Misc
-  summary: Get chart
+  summary: Chart
   description: Returns charts from the page https://beaconcha.in/charts as PNG
   parameters:
     - name: chart

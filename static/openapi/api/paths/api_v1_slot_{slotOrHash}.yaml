@@ -1,7 +1,7 @@
 get:
   tags:
     - Slots
-  summary: Get slot
+  summary: Slot Overview
   description: >-
     Returns a slot by its slot number or root hash, the latest slot with string
     latest or the slot containing the head block with string head

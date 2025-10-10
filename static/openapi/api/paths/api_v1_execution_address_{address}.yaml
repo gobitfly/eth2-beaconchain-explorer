@@ -1,7 +1,7 @@
 get:
   tags:
     - Addresses
-  summary: Get address balances
+  summary: Balances
   description: >-
     Returns the ether balance and any token balances for a given Ethereum
     address. Amount of different ECR20 tokens is limited to 200. If you need

@@ -1,7 +1,7 @@
 get:
   tags:
     - Rewards
-  summary: Get validator execution layer rewards
+  summary: Execution layer rewards
   description: Retrieve validator execution rewards by index or pubkey (up to 100).
   parameters:
     - name: indexOrPubkey

@@ -1,0 +1,25 @@
+properties:
+  amount:
+    type: integer
+    example: 32000000000
+  block_index:
+    type: integer
+    example: 1
+  block_root:
+    type: string
+    example: "0x538d7fba9f4ed29d396d18c225e91e35a5c5bd0aa9a51bd53f18df8fffaf0e4c"
+  block_slot:
+    type: integer
+    example: 11648084
+  proof:
+    type: string
+    nullable: true
+  publickey:
+    type: string
+    example: "0x88527b5e326c4837d765e522995e2937aaa945e79a1183a53fc369db70097484c656efa1cf216c57d88b9d2551c97ce9"
+  signature:
+    type: string
+    example: "0xa8c663fa0386ba988a5916a76b10bc5922ce4e2d03b1baf852e138316c0b296df1ef46aba5063b8fdc2ab7c7163fdd5d05733f7ec334009fddec1f02d78f5f7324f4d696577ef453d29937b2fd1b5b2d610edaa253a8423dd1f17e621f3493cf"
+  withdrawalcredentials:
+    type: string
+    example: "0x01000000000000000000000096fb413349cb4ec17410df929898ae9c0e56ae40"

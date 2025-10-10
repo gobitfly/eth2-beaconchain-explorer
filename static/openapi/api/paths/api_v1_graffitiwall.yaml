@@ -1,7 +1,7 @@
 get:
   tags:
     - Misc
-  summary: Get graffiti wall
+  summary: Graffiti wall
   description: >-
     Returns the most recent pixels that have been painted during the last 10000
     slots.
@@ -20,56 +20,69 @@ get:
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
     - name: starty
       in: query
       description: Start Y offset
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
     - name: endx
       in: query
       description: End X limit
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
     - name: endy
       in: query
       description: End Y limit
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
     - name: startSlot
       in: query
       description: Start slot to query (end slot - 10000 if empty)
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
     - name: slot
       in: query
       description: End slot to query
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
     - name: summarize
       in: query
       description: Only return end state of each pixel
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: boolean
   responses:
     '200':
       description: OK
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/types.ApiResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.GraffitiwallResponse.yaml
     '400':
       description: Bad Request
       content:

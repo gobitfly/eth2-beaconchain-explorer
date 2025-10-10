@@ -1,9 +1,21 @@
 properties:
-  currentEpoch: {}
-  currentFinalizedEpoch: {}
-  currentSlot: {}
-  finalityDelay: {}
-  lastProposedSlot: {}
+  lastProposedSlot:
+    type: integer
+    example: 12771116
+  currentSlot:
+    type: integer
+    example: 12771115
+  currentEpoch:
+    type: integer
+    example: 399097
+  currentFinalizedEpoch:
+    type: integer
+    example: 399094
+  finalityDelay:
+    type: integer
+    example: 3
+  syncing:
+    type: boolean
+    example: false
   rates:
     $ref: ./types.Rates.yaml
-  syncing: {}

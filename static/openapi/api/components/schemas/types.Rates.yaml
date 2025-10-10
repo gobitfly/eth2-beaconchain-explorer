@@ -1,26 +1,70 @@
 properties:
-  clCurrency: {}
-  clCurrencyKFormatted: {}
-  clCurrencyPrice: {}
-  clCurrencyPriceFormatted: {}
-  clCurrencySymbol: {}
-  elCurrency: {}
-  elCurrencyKFormatted: {}
-  elCurrencyPrice: {}
-  elCurrencyPriceFormatted: {}
-  elCurrencySymbol: {}
-  mainCurrency: {}
-  mainCurrencyKFormatted: {}
-  mainCurrencyPrice: {}
-  mainCurrencyPriceFormatted: {}
-  mainCurrencySymbol: {}
-  mainCurrencyTickerPrice: {}
-  mainCurrencyTickerPriceFormatted: {}
-  mainCurrencyTickerPriceKFormatted: {}
+  tickerCurrency:
+    type: string
+    example: USD
+  tickerCurrencySymbol:
+    type: string
+    example: $
+  selectedCurrency:
+    type: string
+    example: ETH
+  selectedCurrencySymbol:
+    type: string
+    example: ETH
+  mainCurrency:
+    type: string
+    example: ETH
+  mainCurrencySymbol:
+    type: string
+    example: ETH
+  mainCurrencyPrice:
+    type: number
+    example: 1
+  mainCurrencyPriceFormatted:
+    type: string
+    example: "1"
+  mainCurrencyKFormatted:
+    type: string
+    example: "1"
+  mainCurrencyTickerPrice:
+    type: number
+    example: 4366.60356702
+  mainCurrencyTickerPriceFormatted:
+    type: string
+    example: "4<span class=\"thousands-separator\"></span>366"
+  mainCurrencyTickerPriceKFormatted:
+    type: string
+    example: "4<span class=\"thousands-separator\"></span>366"
+  elCurrency:
+    type: string
+    example: ETH
+  elCurrencySymbol:
+    type: string
+    example: ETH
+  elCurrencyPrice:
+    type: number
+    example: 1
+  elCurrencyPriceFormatted:
+    type: string
+    example: "1"
+  elCurrencyKFormatted:
+    type: string
+    example: "1"
+  clCurrency:
+    type: string
+    example: ETH
+  clCurrencySymbol:
+    type: string
+    example: ETH
+  clCurrencyPrice:
+    type: number
+    example: 1
+  clCurrencyPriceFormatted:
+    type: string
+    example: "1"
+  clCurrencyKFormatted:
+    type: string
+    example: "1"
   mainCurrencyTickerPrices:
     additionalProperties:
       $ref: ./types.RatesPrice.yaml
-  selectedCurrency: {}
-  selectedCurrencySymbol: {}
-  tickerCurrency: {}
-  tickerCurrencySymbol: {}

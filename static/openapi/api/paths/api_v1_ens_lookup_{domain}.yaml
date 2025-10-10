@@ -1,7 +1,7 @@
 get:
   tags:
     - ENS
-  summary: Resolve an ens name or address
+  summary: Resolve ens name or address
   description: >-
     Get the address for an ens name and vice versa. Returns and object with the
     ens name and address - if found.

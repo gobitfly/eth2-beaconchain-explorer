@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator attestation efficiency
+  summary: Attestation efficiency
   description: Retrieve validator attestation efficiency by index or pubkey (up to 100).
   parameters:
     - name: indexOrPubkey

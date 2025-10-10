@@ -1,7 +1,7 @@
 get:
   tags:
     - Slots
-  summary: Get slot attestation slashings
+  summary: Attester slashings
   description: Returns the attester slashings included in a specific slot
   parameters:
     - name: slot

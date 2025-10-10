@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator
+  summary: Overview
   description: >-
     Retrieve validator information by index or pubkey (up to 100). Use the POST
     endpoint if you get URL too long errors.
@@ -21,10 +21,17 @@ get:
           schema:
             allOf:
               - $ref: ../components/schemas/types.ApiResponse.yaml
-              - properties:
+              - type: object
+                properties:
                   data:
-                    items:
-                      $ref: ../components/schemas/types.APIValidatorResponse.yaml
+                    oneOf:
+                      - title: Multiple validators
+                        type: array
+                        items:
+                          $ref: >-
+                            ../components/schemas/types.APIValidatorResponse.yaml
+                      - title: Single validator
+                        $ref: ../components/schemas/types.APIValidatorResponse.yaml
     '400':
       description: Bad Request
       content:

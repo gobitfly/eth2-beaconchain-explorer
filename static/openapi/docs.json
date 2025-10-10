@@ -30,6 +30,12 @@
                 "expanded": false,
                 "pages": [
                   {
+                    "group": "Network",
+                    "pages": [
+                      "GET /api/v1/latestState"
+                    ]
+                  },
+                  {
                     "group": "Epochs",
                     "pages": [
                       "GET /api/v1/epoch/{epoch}",
@@ -66,7 +72,6 @@
                       "GET /api/v1/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}",
                       "GET /api/v1/validators/proposalLuck",
                       "GET /api/v1/validators/queue",
-                      "GET /api/v1/rocketpool/validator/{indexOrPubkey}",
                       "GET /api/v1/eth1deposit/{txhash}"
                     ]
                   },
@@ -79,7 +84,7 @@
                     ]
                   },
                   {
-                    "group": "Symc Committees",
+                    "group": "Sync Committees",
                     "pages": [
                       "GET /api/v1/sync_committee/{period}"
                     ]
@@ -87,7 +92,8 @@
                   {
                     "group": "Rocketpool",
                     "pages": [
-                      "GET /api/v1/rocketpool/stats"
+                      "GET /api/v1/rocketpool/stats",
+                      "GET /api/v1/rocketpool/validator/{indexOrPubkey}"
                     ]
                   },
                   {
@@ -122,12 +128,6 @@
                     ]
                   },
                   {
-                    "group": "Network",
-                    "pages": [
-                      "GET /api/v1/latestState"
-                    ]
-                  },
-                  {
                     "group": "ENS",
                     "pages": [
                       "GET /api/v1/ens/lookup/{domain}"
@@ -136,22 +136,6 @@
                 ]
               },
               {
-                "group": "User",
-                "pages": [
-                  "POST /api/v1/client/metrics",
-                  "POST /api/v1/mobile/notify/register",
-                  "POST /api/v1/user/dashboard/remove",
-                  "POST /api/v1/user/dashboard/save",
-                  "GET /api/v1/user/mobile/settings",
-                  "POST /api/v1/user/mobile/settings",
-                  "POST /api/v1/user/notifications",
-                  "GET /api/v1/user/stats/{offset}/{limit}",
-                  "POST /api/v1/user/token",
-                  "POST /api/v1/user/validator/{pubkey}/add",
-                  "POST /api/v1/user/validator/{pubkey}/remove",
-                  "GET /api/v1/user/validator/saved"
-                ]
-              },                  {
                 "group": "Misc",
                 "pages": [
                   "GET /api/healthz",

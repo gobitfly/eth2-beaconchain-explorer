@@ -1,7 +1,7 @@
 get:
   tags:
     - Addresses
-  summary: Get ERC20 token balances for address
+  summary: ERC20 token balances
   description: >-
     Returns the ERC20 token balances for a given Ethereum address. Supports
     pagination.

@@ -1,6 +1,9 @@
 openapi: 3.0.4
 info:
   title: beaconcha.in API Documentation
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.en.html
   description: |-
     ## Introduction
     **Advanced and reliable API for accessing comprehensive Ethereum blockchain data.**
@@ -57,13 +60,15 @@ tags:
   - name: Network
     description: Network data
   - name: Misc
+    description: Miscellaneous data
   - name: User
+    description: User data
 paths:
   /api/healthz:
     get:
       tags:
         - Misc
-      summary: Get explorer Health
+      summary: Explorer Health
       description: |-
         Provides the health status of all modules of the explorer. This endpoint is useful for monitoring the availability and functionality of the explorer's components.
         - **Modules Monitored:** Includes monitoring of services such as `monitoring_app`, `monitoring_el_data`, `monitoring_services`, `monitoring_cl_data`, `monitoring_api`, `monitoring_redis`.
@@ -89,6 +94,15 @@ paths:
                 module monitoring_api: OK
                 module monitoring_services: OK
                 module monitoring_app: OK
+        '400':
+          description: |-
+            Invalid request. Response format:
+            ```
+            Bad request
+            ```
+          content:
+            text/plain:
+              example: Bad request
         '500':
           description: |-
             Some modules are unhealthy. Response format:
@@ -113,7 +127,7 @@ paths:
     get:
       tags:
         - Misc
-      summary: Get explorer Availability
+      summary: Explorer Availability
       description: Health endpoint to monitor the operational status of the explorer (used for load balancer health checks)
       responses:
         '200':
@@ -125,6 +139,15 @@ paths:
           content:
             text/plain:
               example: OK. Last epoch is from 1m ago
+        '400':
+          description: |-
+            Invalid request. Response format:
+            ```
+            Bad request
+            ```
+          content:
+            text/plain:
+              example: Bad request
         '500':
           description: |-
             Explorer is unhealthy. Response format:
@@ -138,7 +161,7 @@ paths:
     get:
       tags:
         - Misc
-      summary: Get chart
+      summary: Chart
       description: Returns charts from the page https://beaconcha.in/charts as PNG
       parameters:
         - name: chart
@@ -200,51 +223,11 @@ paths:
                   value:
                     status: 'ERROR: no data available for the requested chart'
                     data: null
-  /api/v1/client/metrics:
-    post:
-      tags:
-        - User
-      summary: Submit client stats
-      description: Used in consensus layer clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
-      parameters:
-        - name: apikey
-          in: query
-          description: User API key, can be found on https://beaconcha.in/user/settings
-          required: true
-          style: form
-          explode: true
-          schema: {}
-        - name: machine
-          in: query
-          description: Name your device if you have multiple devices you want to monitor
-          required: false
-          style: form
-          explode: true
-          schema: {}
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
   /api/v1/ens/lookup/{domain}:
     get:
       tags:
         - ENS
-      summary: Resolve an ens name or address
+      summary: Resolve ens name or address
       description: Get the address for an ens name and vice versa. Returns and object with the ens name and address - if found.
       parameters:
         - name: domain
@@ -276,7 +259,7 @@ paths:
     get:
       tags:
         - Epochs
-      summary: Get epoch
+      summary: Overview
       description: Returns information for a specified epoch by the epoch number or an epoch tag (can be latest or finalized)
       parameters:
         - name: epoch
@@ -313,7 +296,7 @@ paths:
     get:
       tags:
         - Epochs
-      summary: Get epoch slots
+      summary: Slots
       description: Returns all slots for a specified epoch
       parameters:
         - name: epoch
@@ -346,7 +329,7 @@ paths:
     get:
       tags:
         - Validator deposits
-      summary: Get deposits by tx
+      summary: Deposits by tx hash
       description: Returns all deposits for a specified transaction hash
       parameters:
         - name: txhash
@@ -379,7 +362,7 @@ paths:
     get:
       tags:
         - ETH.Store®
-      summary: Get ETH.Store® day
+      summary: ETH.Store® Day
       description: |-
         ETH.STORE® represents the average financial return validators on the Ethereum network have achieved in a 24-hour period.
         For each 24-hour period the datapoint is denoted by the number of days that have passed since genesis for that period (= beaconchain-day)
@@ -421,7 +404,7 @@ paths:
     get:
       tags:
         - Addresses
-      summary: Get address balances
+      summary: Balances
       description: Returns the ether balance and any token balances for a given Ethereum address. Amount of different ECR20 tokens is limited to 200. If you need more, use the /execution/address/{address}/erc20tokens endpoint.
       parameters:
         - name: address
@@ -455,7 +438,7 @@ paths:
     get:
       tags:
         - Addresses
-      summary: Get ERC20 token balances for address
+      summary: ERC20 token balances
       description: Returns the ERC20 token balances for a given Ethereum address. Supports pagination.
       parameters:
         - name: address
@@ -497,7 +480,7 @@ paths:
     get:
       tags:
         - Blocks
-      summary: Get blocks by number
+      summary: Overview
       description: Get execution blocks by execution block number
       parameters:
         - name: blockNumber
@@ -525,7 +508,7 @@ paths:
     get:
       tags:
         - Gas
-      summary: Get current gas prices
+      summary: Current gas prices
       description: Gets the current estimation for gas prices in GWei.. The response is split into four estimated inclusion speeds rapid (15 seconds), fast (1 minute), standard (3 minutes) and slow (> 10 minutes).
       responses:
         '200':
@@ -544,7 +527,7 @@ paths:
     get:
       tags:
         - Blocks
-      summary: Get proposed blocks by address, proposer index or proposer pubkey
+      summary: Proposed blocks by address, proposer index or proposer pubkey
       description: |-
         Get a list of proposed or mined blocks from a given fee recipient address, proposer index or proposer pubkey.
         Mixed use of recipient addresses and proposer indexes or proposer pubkeys with an offset is discouraged as it can lead to skipped entries.
@@ -580,12 +563,17 @@ paths:
           schema: {}
       responses:
         '200':
-          description: OK
+          description: Success
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/types.ExecutionBlockApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/types.ApiResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/types.ExecutionBlockApiResponse'
         '400':
           description: Bad Request
           content:
@@ -596,7 +584,7 @@ paths:
     get:
       tags:
         - Misc
-      summary: Get graffiti wall
+      summary: Graffiti wall
       description: |-
         Returns the most recent pixels that have been painted during the last 10000 slots.
         Optionally set the slot query parameter to look back further.
@@ -610,56 +598,69 @@ paths:
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
         - name: starty
           in: query
           description: Start Y offset
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
         - name: endx
           in: query
           description: End X limit
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
         - name: endy
           in: query
           description: End Y limit
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
         - name: startSlot
           in: query
           description: Start slot to query (end slot - 10000 if empty)
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
         - name: slot
           in: query
           description: End slot to query
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
         - name: summarize
           in: query
           description: Only return end state of each pixel
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: boolean
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/types.ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/types.ApiResponse'
+                  - properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/types.GraffitiwallResponse'
         '400':
           description: Bad Request
           content:
@@ -670,7 +671,7 @@ paths:
     get:
       tags:
         - Network
-      summary: Get network state
+      summary: Latest state
       description: Returns information on the current state of the network
       responses:
         '200':
@@ -722,13 +723,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
   /api/v1/rocketpool/stats:
     get:
       tags:
         - Rocketpool
-      summary: Get rocketpool statistics
+      summary: Statistics
       description: Returns statistics about the Rocketpool protocol
       responses:
         '200':
@@ -750,8 +749,8 @@ paths:
   /api/v1/rocketpool/validator/{indexOrPubkey}:
     get:
       tags:
-        - Validators
-      summary: Get rocketpool validators
+        - Rocketpool
+      summary: Validators
       description: Returns information about Rocketpool validators
       parameters:
         - name: indexOrPubkey
@@ -782,7 +781,7 @@ paths:
     get:
       tags:
         - Slots
-      summary: Get slot
+      summary: Slot Overview
       description: Returns a slot by its slot number or root hash, the latest slot with string latest or the slot containing the head block with string head
       parameters:
         - name: slotOrHash
@@ -813,7 +812,7 @@ paths:
     get:
       tags:
         - Slots
-      summary: Get slot attestations
+      summary: Attestations
       description: Returns the attestations included in a specific slot
       parameters:
         - name: slot
@@ -858,7 +857,7 @@ paths:
     get:
       tags:
         - Slots
-      summary: Get slot attestation slashings
+      summary: Attester slashings
       description: Returns the attester slashings included in a specific slot
       parameters:
         - name: slot
@@ -899,7 +898,7 @@ paths:
     get:
       tags:
         - Slots
-      summary: Get slot deposits
+      summary: Deposits
       description: Returns the deposits included in a specific block
       parameters:
         - name: slot
@@ -929,7 +928,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/types.ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/types.ApiResponse'
+                  - properties:
+                      data:
+                        title: Deposits
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/types.APIDepositsResponse'
         '400':
           description: Bad Request
           content:
@@ -940,7 +946,7 @@ paths:
     get:
       tags:
         - Slots
-      summary: Get slot proposer slashings
+      summary: Proposer slashings
       description: Returns the proposer slashings included in a specific slot
       parameters:
         - name: slot
@@ -960,6 +966,8 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        title: ProposerSlashings
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.APIProposerSlashingResponse'
         '400':
@@ -972,7 +980,7 @@ paths:
     get:
       tags:
         - Slots
-      summary: Get slot voluntary exits
+      summary: Voluntary exits
       description: Returns the voluntary exits included in a specific slot
       parameters:
         - name: slot
@@ -992,6 +1000,8 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        title: VoluntaryExits
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.APIVoluntaryExitResponse'
         '400':
@@ -1004,7 +1014,7 @@ paths:
     get:
       tags:
         - Slots
-      summary: Get slot withdrawals
+      summary: Withdrawals
       description: Returns the withdrawals included in a specific slot
       parameters:
         - name: slot
@@ -1020,7 +1030,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/types.ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/types.ApiResponse'
+                  - properties:
+                      data:
+                        title: Withdrawals
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/types.APIWithdrawalResponse'
         '400':
           description: Bad Request
           content:
@@ -1031,11 +1048,11 @@ paths:
     get:
       tags:
         - Sync Committees
-      summary: Get sync committee
+      summary: Overview
       description: |-
         Returns the sync-committee for a sync-period. Validators are sorted by sync-committee-index.
-        Sync committees where introduced in the Altair hardfork. Peroids before the hardfork do not contain sync-committees.
-        For mainnet sync-committes first started after epoch 74240 (period 290) and each sync-committee is active for 256 epochs.
+        Sync committees where introduced in the Altair hardfork. Periods before the hardfork do not contain sync-committees.
+        For mainnet sync-committees first started after epoch 74240 (period 290) and each sync-committee is active for 256 epochs.
       parameters:
         - name: period
           in: path
@@ -1061,79 +1078,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/types.ApiErrorResponse'
-  /api/v1/user/dashboard/remove:
-    post:
-      tags:
-        - User
-      summary: Remove validator subscription
-      description: Unsubscribes a user from a specific validator via index from both watchlist and notification events
-      requestBody:
-        description: Index of validator you want to unsubscribe from
-        content:
-          application/json:
-            schema:
-              items: {}
-        required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
-  /api/v1/user/dashboard/save:
-    post:
-      tags:
-        - User
-      summary: Save validator subscription
-      description: Subscribes a user to get notifications from a specific validator via index
-      requestBody:
-        description: Index of validator you want to subscribe to
-        content:
-          application/json:
-            schema:
-              items: {}
-        required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
   /api/v1/user/mobile/settings:
     get:
       tags:
         - User
-      summary: Get device settings
+      summary: Device settings
       description: Get your device settings, currently only whether to enable mobile notifcations or not
       responses:
         '200':
@@ -1158,8 +1107,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
     post:
       tags:
         - User
@@ -1194,247 +1141,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
-  /api/v1/user/notifications:
-    post:
-      tags:
-        - User
-      summary: Get user subscriptions
-      description: Get a set of events a user is subscribed to
-      requestBody:
-        description: An object that filters through the active subscriptions
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/types.UsersNotificationsRequest'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/types.ApiResponse'
-                  - properties:
-                      data:
-                        items:
-                          $ref: '#/components/schemas/types.Subscription'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
-  /api/v1/user/stats/{offset}/{limit}:
-    get:
-      tags:
-        - User
-      summary: Get client stats
-      description: Get your client submitted stats
-      parameters:
-        - name: offset
-          in: path
-          description: Data offset, default 0
-          required: false
-          style: simple
-          explode: false
-          schema: {}
-        - name: limit
-          in: path
-          description: Data limit, default 180 (~3h).
-          required: false
-          style: simple
-          explode: false
-          schema: {}
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/types.ApiResponse'
-                  - properties:
-                      data:
-                        items:
-                          $ref: '#/components/schemas/types.StatsDataStruct'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
-  /api/v1/user/token:
-    post:
-      tags:
-        - User
-      summary: Get OAUTH API token
-      description: Exchange your oauth code for an access token or refresh your access token
-      requestBody:
-        content:
-          application/x-www-form-urlencoded:
-            schema:
-              required:
-                - grant_type
-              properties:
-                grant_type:
-                  description: grant_type use authorization_code for oauth code or refresh_token if you wish to refresh an token
-                code:
-                  description: Only required when using authorization_code grant type. Code received via oauth redirect_uri
-                redirect_uri:
-                  description: Only required when using authorization_code grant type. Must match the redirect_uri from your oauth flow.
-                refresh_token:
-                  description: Only required when using refresh_token grant type. The refresh_token you received during authorization_code flow.
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/utils.OAuthResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/utils.OAuthErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/utils.OAuthErrorResponse'
-      security:
-        - OAuthAccessCode: []
-  /api/v1/user/validator/saved:
-    get:
-      tags:
-        - User
-      summary: Get tagged validators
-      description: Get all your tagged validators
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/types.ApiResponse'
-                  - properties:
-                      data:
-                        items:
-                          $ref: '#/components/schemas/types.MinimalTaggedValidators'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
-  /api/v1/user/validator/{pubkey}/add:
-    post:
-      tags:
-        - User
-      summary: Add validator subscription
-      description: Subscribes a user to get notifications from a specific validator
-      parameters:
-        - name: pubKey
-          in: query
-          description: Public Key of validator you want to subscribe to
-          required: true
-          style: form
-          explode: true
-          schema: {}
-      requestBody:
-        description: Submit \
-        content:
-          application/json:
-            schema: {}
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
-  /api/v1/user/validator/{pubkey}/remove:
-    post:
-      tags:
-        - User
-      summary: Remove validator subscription
-      description: Unsubscribes a user from a specific validator
-      parameters:
-        - name: pubKey
-          in: query
-          description: Public Key of validator you want to subscribe to
-          required: true
-          style: form
-          explode: true
-          schema: {}
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/types.ApiErrorResponse'
-      security:
-        - ApiKeyAuth: []
   /api/v1/validator:
     post:
       tags:
         - Validators
-      summary: Get validator (POST)
+      summary: Overview (POST)
       description: Retrieve validator information by index or pubkey (up to 100).
       requestBody:
         description: Up to 100 validator indicesOrPubkeys, comma separated
@@ -1471,7 +1182,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator information by eth1 address
+      summary: Validators by deposit address
       description: Retrieve validator information by eth1 address
       parameters:
         - name: eth1address
@@ -1505,6 +1216,8 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        title: Validators
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorEth1Response'
         '400':
@@ -1517,7 +1230,7 @@ paths:
     get:
       tags:
         - Rewards
-      summary: Get validator leaderboard
+      summary: Validator leaderboard
       description: Get the current top 100 performing validators (using the income over the last 7 days)
       responses:
         '200':
@@ -1529,6 +1242,8 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
+                        title: ValidatorPerformances
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorPerformanceResponse'
         '400':
@@ -1541,7 +1256,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator statistics
+      summary: Validator statistics
       parameters:
         - name: index
           in: path
@@ -1574,6 +1289,8 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
+                        title: DailyStats
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorDailyStatsResponse'
         '400':
@@ -1586,8 +1303,8 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validators by credentials or address
-      description: Returns the validator indexes and pubkeys of a withdrawal credential or eth1 address
+      summary: Validators by withdrawal address / credentials
+      description: Returns the validator indexes and pubkeys of a withdrawal credential or eth address
       parameters:
         - name: withdrawalCredentialsOrEth1address
           in: path
@@ -1632,7 +1349,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator
+      summary: Overview
       description: Retrieve validator information by index or pubkey (up to 100). Use the POST endpoint if you get URL too long errors.
       parameters:
         - name: indexOrPubkey
@@ -1650,10 +1367,16 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/types.ApiResponse'
-                  - properties:
+                  - type: object
+                    properties:
                       data:
-                        items:
-                          $ref: '#/components/schemas/types.APIValidatorResponse'
+                        oneOf:
+                          - title: Multiple validators
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/types.APIValidatorResponse'
+                          - title: Single validator
+                            $ref: '#/components/schemas/types.APIValidatorResponse'
         '400':
           description: Bad Request
           content:
@@ -1664,7 +1387,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator attestation efficiency
+      summary: Attestation efficiency
       description: Retrieve validator attestation efficiency by index or pubkey (up to 100).
       parameters:
         - name: indexOrPubkey
@@ -1691,7 +1414,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator attestations
+      summary: Attestations
       description: Get all attestations during the last 100 epochs for up to 100 validators
       parameters:
         - name: indexOrPubkey
@@ -1739,7 +1462,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator balance history
+      summary: Balance history
       description: Retrieve the validator balance history by index or pubkey (up to 100).
       parameters:
         - name: indexOrPubkey
@@ -1792,7 +1515,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator bls change history
+      summary: Bls credential changes
       description: Retrieve validator BLS change history by index or pubkey (up to 100).
       parameters:
         - name: indexOrPubkey
@@ -1824,7 +1547,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator execution layer deposits
+      summary: Execution layer deposits
       description: Get all eth1 deposits for up to 100 validators
       parameters:
         - name: indexOrPubkey
@@ -1856,7 +1579,7 @@ paths:
     get:
       tags:
         - Rewards
-      summary: Get validator execution layer rewards
+      summary: Execution layer rewards
       description: Retrieve validator execution rewards by index or pubkey (up to 100).
       parameters:
         - name: indexOrPubkey
@@ -1888,7 +1611,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator income detail history
+      summary: Income detail history
       description: Retrieve validator income detail history by index or pubkey (up to 100).
       parameters:
         - name: indexOrPubkey
@@ -1941,7 +1664,7 @@ paths:
     get:
       tags:
         - Rewards
-      summary: Get validator consensus layer rewards
+      summary: Consensus layer rewards
       description: Retrieve validator consensus layer rewards by index or pubkey (up to 100).
       parameters:
         - name: indexOrPubkey
@@ -1973,7 +1696,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator proposals
+      summary: Proposals
       description: Get all proposed blocks during the last 100 epochs for up to 100 validators. Optionally set the epoch query parameter to look back further.
       parameters:
         - name: indexOrPubkey
@@ -2012,7 +1735,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator withdrawal history
+      summary: Withdrawals
       description: Retrieve validator withdrawal history by index or pubkey (up to 100).
       parameters:
         - name: indexOrPubkey
@@ -2051,7 +1774,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator proposal luck
+      summary: Proposal luck
       description: Returns the proposal luck of a validator or a list of validators
       parameters:
         - name: validators
@@ -2089,7 +1812,7 @@ paths:
     get:
       tags:
         - Validators
-      summary: Get validator queue
+      summary: Queue
       description: Returns the current number of validators entering and exiting the beacon chain
       responses:
         '200':
@@ -2608,102 +2331,277 @@ components:
             - pos
             - pow
           example: pos
-    big.Int: {}
     types.GasNowPageData:
       properties:
-        code: {}
+        code:
+          type: number
+          enum:
+            - 200
         data:
           properties:
-            currency: {}
-            fast:
-              $ref: '#/components/schemas/big.Int'
-            price: {}
-            priceUSD: {}
             rapid:
-              $ref: '#/components/schemas/big.Int'
-            slow:
-              $ref: '#/components/schemas/big.Int'
+              type: number
+              example: 141086566
+            fast:
+              type: number
+              example: 141086542
             standard:
-              $ref: '#/components/schemas/big.Int'
-            timestamp: {}
+              type: number
+              example: 141086518
+            slow:
+              type: number
+              example: 141086044
+            timestamp:
+              type: number
+              example: 1760076662742
+            price:
+              type: number
+              example: 4366.60356702
+            priceUSD:
+              type: number
+              example: 4366.60356702
+    types.GraffitiwallResponse:
+      properties:
+        color:
+          type: string
+          example: C3423F
+        slot:
+          type: number
+          example: 12764598
+        validator:
+          type: number
+          example: 1843949
+        x:
+          type: number
+          example: 203
+        'y':
+          type: number
+          example: 420
     types.RatesPrice:
       properties:
-        roundPrice: {}
-        symbol: {}
-        truncPrice: {}
+        symbol:
+          type: string
+          example: $
+        roundPrice:
+          type: integer
+          example: 4366
+        truncPrice:
+          type: string
+          example: 4.3k
     types.Rates:
       properties:
-        clCurrency: {}
-        clCurrencyKFormatted: {}
-        clCurrencyPrice: {}
-        clCurrencyPriceFormatted: {}
-        clCurrencySymbol: {}
-        elCurrency: {}
-        elCurrencyKFormatted: {}
-        elCurrencyPrice: {}
-        elCurrencyPriceFormatted: {}
-        elCurrencySymbol: {}
-        mainCurrency: {}
-        mainCurrencyKFormatted: {}
-        mainCurrencyPrice: {}
-        mainCurrencyPriceFormatted: {}
-        mainCurrencySymbol: {}
-        mainCurrencyTickerPrice: {}
-        mainCurrencyTickerPriceFormatted: {}
-        mainCurrencyTickerPriceKFormatted: {}
+        tickerCurrency:
+          type: string
+          example: USD
+        tickerCurrencySymbol:
+          type: string
+          example: $
+        selectedCurrency:
+          type: string
+          example: ETH
+        selectedCurrencySymbol:
+          type: string
+          example: ETH
+        mainCurrency:
+          type: string
+          example: ETH
+        mainCurrencySymbol:
+          type: string
+          example: ETH
+        mainCurrencyPrice:
+          type: number
+          example: 1
+        mainCurrencyPriceFormatted:
+          type: string
+          example: '1'
+        mainCurrencyKFormatted:
+          type: string
+          example: '1'
+        mainCurrencyTickerPrice:
+          type: number
+          example: 4366.60356702
+        mainCurrencyTickerPriceFormatted:
+          type: string
+          example: 4<span class="thousands-separator"></span>366
+        mainCurrencyTickerPriceKFormatted:
+          type: string
+          example: 4<span class="thousands-separator"></span>366
+        elCurrency:
+          type: string
+          example: ETH
+        elCurrencySymbol:
+          type: string
+          example: ETH
+        elCurrencyPrice:
+          type: number
+          example: 1
+        elCurrencyPriceFormatted:
+          type: string
+          example: '1'
+        elCurrencyKFormatted:
+          type: string
+          example: '1'
+        clCurrency:
+          type: string
+          example: ETH
+        clCurrencySymbol:
+          type: string
+          example: ETH
+        clCurrencyPrice:
+          type: number
+          example: 1
+        clCurrencyPriceFormatted:
+          type: string
+          example: '1'
+        clCurrencyKFormatted:
+          type: string
+          example: '1'
         mainCurrencyTickerPrices:
           additionalProperties:
             $ref: '#/components/schemas/types.RatesPrice'
-        selectedCurrency: {}
-        selectedCurrencySymbol: {}
-        tickerCurrency: {}
-        tickerCurrencySymbol: {}
     types.LatestState:
       properties:
-        currentEpoch: {}
-        currentFinalizedEpoch: {}
-        currentSlot: {}
-        finalityDelay: {}
-        lastProposedSlot: {}
+        lastProposedSlot:
+          type: integer
+          example: 12771116
+        currentSlot:
+          type: integer
+          example: 12771115
+        currentEpoch:
+          type: integer
+          example: 399097
+        currentFinalizedEpoch:
+          type: integer
+          example: 399094
+        finalityDelay:
+          type: integer
+          example: 3
+        syncing:
+          type: boolean
+          example: false
         rates:
           $ref: '#/components/schemas/types.Rates'
-        syncing: {}
     types.APIRocketpoolStatsResponse:
       properties:
-        claim_interval_time: {}
-        claim_interval_time_start: {}
-        current_node_demand: {}
-        current_node_fee: {}
-        effective_rpl_staked: {}
-        minipool_count: {}
-        node_count: {}
-        node_operator_rewards: {}
-        odao_member_count: {}
-        reth_apr: {}
-        reth_exchange_rate: {}
-        reth_supply: {}
-        rpl_price: {}
-        total_eth_balance: {}
-        total_eth_staking: {}
+        claim_interval_time:
+          type: string
+          example: '672:00:00'
+        claim_interval_time_start:
+          type: integer
+          example: 1758778539
+        current_node_demand:
+          type: number
+          example: -3.983366338292163e+21
+        current_node_fee:
+          type: number
+          example: 0.05
+        effective_rpl_staked:
+          type: number
+          example: 9.325076691110913e+24
+        minipool_count:
+          type: integer
+          example: 42248
+        node_count:
+          type: integer
+          example: 4024
+        node_operator_rewards:
+          type: number
+          example: 5.719242908397718e+22
+        odao_member_count:
+          type: integer
+          example: 13
+        reth_apr:
+          type: number
+          example: 0.0384304813
+        reth_exchange_rate:
+          type: number
+          example: 1.1476800133
+        reth_supply:
+          type: number
+          example: 3.9133933672076725e+23
+        rpl_price:
+          type: integer
+          example: 1114711058888101
+        total_eth_balance:
+          type: number
+          example: 4.4913233519356025e+23
+        total_eth_staking:
+          type: number
+          example: 4.471319830044493e+23
     types.ApiRocketpoolValidatorResponse:
       properties:
-        claimed_smoothing_pool: {}
-        index: {}
-        minipool_address: {}
-        minipool_deposit_type: {}
-        minipool_node_fee: {}
-        minipool_status: {}
-        minipool_status_time: {}
-        node_address: {}
-        node_max_rpl_stake: {}
-        node_min_rpl_stake: {}
-        node_rpl_stake: {}
-        node_timezone_location: {}
-        penalty_count: {}
-        rpl_cumulative_rewards: {}
-        smoothing_pool_opted_in: {}
-        unclaimed_rpl_rewards: {}
-        unclaimed_smoothing_pool: {}
+        claimed_smoothing_pool:
+          type: integer
+          example: 2558507058679352300
+        effective_rpl_stake:
+          type: number
+          example: 0
+        index:
+          type: integer
+          example: 652648
+        is_vacant:
+          type: boolean
+          example: false
+        minipool_address:
+          type: string
+          example: '0xc20eb9eca73be78a523aad5a4d9b70c797ff58a1'
+        minipool_deposit_type:
+          type: string
+          example: Variable
+        minipool_node_fee:
+          type: number
+          example: 0.14
+        minipool_status:
+          type: string
+          example: Staking
+        minipool_status_time:
+          type: integer
+          example: 1684570331
+        node_address:
+          type: string
+          example: '0xfff1f570f09c073b6621c032b6072847fe9d6fac'
+        node_deposit_balance:
+          type: integer
+          example: 8000000000000000000
+        node_deposit_credit:
+          type: number
+          example: 0
+        node_max_rpl_stake:
+          type: number
+          example: 0
+        node_min_rpl_stake:
+          type: number
+          example: 0
+        node_refund_balance:
+          type: integer
+          example: 0
+        node_rpl_stake:
+          type: number
+          example: 0
+        node_timezone_location:
+          type: string
+          example: Etc/UTC
+        penalty_count:
+          type: integer
+          example: 0
+        rpl_cumulative_rewards:
+          type: integer
+          example: 487854676781293300000
+        smoothing_pool_opted_in:
+          type: boolean
+          example: false
+        unclaimed_rpl_rewards:
+          type: integer
+          example: 0
+        unclaimed_smoothing_pool:
+          type: integer
+          example: 0
+        user_deposit_balance:
+          type: integer
+          example: 24000000000000000000
+        version:
+          type: integer
+          example: 3
     types.APIAttestationResponse:
       properties:
         aggregationbits:
@@ -2834,83 +2732,136 @@ components:
         block_slot:
           type: integer
           example: 12571718
+    types.APIDepositsResponse:
+      properties:
+        amount:
+          type: integer
+          example: 32000000000
+        block_index:
+          type: integer
+          example: 1
+        block_root:
+          type: string
+          example: '0x538d7fba9f4ed29d396d18c225e91e35a5c5bd0aa9a51bd53f18df8fffaf0e4c'
+        block_slot:
+          type: integer
+          example: 11648084
+        proof:
+          type: string
+          nullable: true
+        publickey:
+          type: string
+          example: '0x88527b5e326c4837d765e522995e2937aaa945e79a1183a53fc369db70097484c656efa1cf216c57d88b9d2551c97ce9'
+        signature:
+          type: string
+          example: '0xa8c663fa0386ba988a5916a76b10bc5922ce4e2d03b1baf852e138316c0b296df1ef46aba5063b8fdc2ab7c7163fdd5d05733f7ec334009fddec1f02d78f5f7324f4d696577ef453d29937b2fd1b5b2d610edaa253a8423dd1f17e621f3493cf'
+        withdrawalcredentials:
+          type: string
+          example: '0x01000000000000000000000096fb413349cb4ec17410df929898ae9c0e56ae40'
     types.APIProposerSlashingResponse:
       properties:
-        block_index: {}
-        block_root: {}
-        block_slot: {}
-        header1_bodyroot: {}
-        header1_parentroot: {}
-        header1_signature: {}
-        header1_slot: {}
-        header1_stateroot: {}
-        header2_bodyroot: {}
-        header2_parentroot: {}
-        header2_signature: {}
-        header2_slot: {}
-        header2_stateroot: {}
-        proposerindex: {}
+        block_index:
+          type: integer
+          example: 0
+        block_root:
+          type: string
+          nullable: true
+        block_slot:
+          type: integer
+          example: 138164
+        header1_bodyroot:
+          type: string
+          example: '0xf44039d2cc6c46ebee262c1484bc47db10516425a49e81f123505329562256d9'
+        header1_parentroot:
+          type: string
+          example: '0x2415ce3a054b0d3f23226a4665fba92efe63c93063680b16ff1e491a73dd5b0c'
+        header1_signature:
+          type: string
+          example: '0xa632f1c085234ef94ef4d1252fb5d9960f373471e5c266aa626c89d1db91302b4ace4fde93a4a5b79b29263b5b90d42f0d1df8f6b534666cd7750e8781d3af962b55656625f9464cf68305ff7e1185dc11955b8bc8273de30cd88c834860b0bc'
+        header1_slot:
+          type: integer
+          example: 138163
+        header1_stateroot:
+          type: string
+          example: '0x0d86b0b4fd08302b87b84983243b688d7cffb81a311d327bd4cbd04b73c806ce'
+        header2_bodyroot:
+          type: string
+          example: '0xef23edd026b330949abfd2063aa48eb420a912294f73e8168e644d6bb603f187'
+        header2_parentroot:
+          type: string
+          example: '0x2415ce3a054b0d3f23226a4665fba92efe63c93063680b16ff1e491a73dd5b0c'
+        header2_signature:
+          type: string
+          example: '0xa805e609614fa2bd108ae47ea3b4474fac5241f7cde40470a022eeca2a242ea15669834713168bd3137118486c8b966a036f8e8c81329c332f459a32437967bf8fa2cc7631bb2507aa9173170470ef47739e792de9c78e3fde3c6e095f6d6faf'
+        header2_slot:
+          type: integer
+          example: 138163
+        header2_stateroot:
+          type: string
+          example: '0xf8e7fbb7df067101f6e85700d0413c63b509b164ee9cd15d310c397447caf4fd'
+        proposerindex:
+          type: integer
+          example: 38069
     types.APIVoluntaryExitResponse:
       properties:
-        block_index: {}
-        block_root: {}
-        block_slot: {}
-        epoch: {}
-        signature: {}
-        validatorindex: {}
+        block_index:
+          type: integer
+          example: 0
+        block_root:
+          type: string
+          example: '0xf3fe4ac2ddab3c97ff4565e305c4451b18ff027559e0e520e884fd3de12c67a4'
+        block_slot:
+          type: integer
+          example: 12771160
+        epoch:
+          type: integer
+          example: 399098
+        signature:
+          type: string
+          example: '0xa6a17864596beee0c650ce582d50'
+        validatorindex:
+          type: integer
+          example: 1815428
+    types.APIWithdrawalResponse:
+      properties:
+        address:
+          type: string
+          example: '0xb10edd6fa6067dba8d4326f1c8f0d1c791594f13'
+        amount:
+          type: integer
+          example: 18429837
+        block_slot:
+          type: integer
+          example: 12771160
+        validatorindex:
+          type: integer
+          example: 1120967
+        withdrawalindex:
+          type: integer
+          example: 104169659
     types.APISyncCommitteeResponse:
       properties:
-        end_epoch: {}
-        period: {}
-        start_epoch: {}
+        end_epoch:
+          type: integer
+          example: 128255
+        period:
+          type: integer
+          example: 500
+        start_epoch:
+          type: integer
+          example: 128000
         validators:
-          items: {}
+          type: array
+          items:
+            type: integer
+          example:
+            - 383220
+            - 12142
+            - 265015
+            - 260079
     types.MobileSettingsData:
       properties:
         notify_token: {}
-    types.UsersNotificationsRequest:
-      properties:
-        event_filters:
-          items: {}
-        event_names:
-          items: {}
-        join_validator: {}
-        limit: {}
-        offset: {}
-        search: {}
-    types.Subscription:
-      properties:
-        createdEpoch: {}
-        createdTime:
-          description: Channels        pq.StringArray `db:"channels"`
-        eventFilter: {}
-        eventName: {}
-        eventThreshold: {}
-        id: {}
-        lastEpoch: {}
-        lastSent: {}
-        state: {}
-        unsubscribeHash: {}
-        userID: {}
-    types.StatsDataStruct:
-      properties:
-        node: {}
-        system: {}
-        validator: {}
-    utils.OAuthResponse:
-      properties:
-        access_token: {}
-        expires_in: {}
-        refresh_token: {}
-        token_type: {}
-    utils.OAuthErrorResponse:
-      properties:
-        error: {}
-        error_description: {}
-    types.MinimalTaggedValidators:
-      properties:
-        index: {}
-        pubKey: {}
     types.DashboardRequest:
       properties:
         indicesOrPubkey: {}
@@ -2972,18 +2923,41 @@ components:
           example: 1072078769
     types.ApiValidatorEth1Response:
       properties:
-        public_key: {}
-        valid_signature: {}
-        validator_index: {}
+        public_key:
+          type: string
+          example: '0x95580e83db20386fd675c'
+        valid_signature:
+          type: boolean
+          example: true
+        validator_index:
+          type: number
+          example: 1071937
     types.ApiValidatorPerformanceResponse:
       properties:
-        balance: {}
-        performance1d: {}
-        performance31d: {}
-        performance365d: {}
-        performance7d: {}
-        rank7d: {}
-        validatorindex: {}
+        balance:
+          type: integer
+          example: 2011101824120
+        performance1d:
+          type: integer
+          example: 126585316
+        performance7d:
+          type: integer
+          example: 1467804126
+        performance31d:
+          type: integer
+          example: 5128497140
+        performance365d:
+          type: integer
+          example: 11101824120
+        performancetotal:
+          type: integer
+          example: 11101824120
+        rank7d:
+          type: integer
+          example: 1
+        validatorindex:
+          type: integer
+          example: 2030996
     types.ApiValidatorDailyStatsResponse:
       properties:
         attester_slashings: {}

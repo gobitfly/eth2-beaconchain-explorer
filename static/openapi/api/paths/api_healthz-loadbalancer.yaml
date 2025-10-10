@@ -1,7 +1,7 @@
 get:
   tags:
     - Misc
-  summary: Get explorer Availability
+  summary: Explorer Availability
   description: >-
     Health endpoint to monitor the operational status of the explorer (used for
     load balancer health checks)
@@ -15,6 +15,15 @@ get:
       content:
         text/plain:
           example: OK. Last epoch is from 1m ago
+    '400':
+      description: |-
+        Invalid request. Response format:
+        ```
+        Bad request
+        ```
+      content:
+        text/plain:
+          example: 'Bad request'
     '500':
       description: |-
         Explorer is unhealthy. Response format:

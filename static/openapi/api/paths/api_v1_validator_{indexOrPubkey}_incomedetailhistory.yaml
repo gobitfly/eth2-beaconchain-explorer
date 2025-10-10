@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator income detail history
+  summary: Income detail history
   description: Retrieve validator income detail history by index or pubkey (up to 100).
   parameters:
     - name: indexOrPubkey

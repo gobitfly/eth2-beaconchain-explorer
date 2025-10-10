@@ -1,7 +1,7 @@
 get:
   tags:
     - Gas
-  summary: Get current gas prices
+  summary: Current gas prices
   description: >-
     Gets the current estimation for gas prices in GWei.. The response is split
     into four estimated inclusion speeds rapid (15 seconds), fast (1 minute),

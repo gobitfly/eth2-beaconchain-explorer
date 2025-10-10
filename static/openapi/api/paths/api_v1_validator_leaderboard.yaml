@@ -1,7 +1,7 @@
 get:
   tags:
     - Rewards
-  summary: Get validator leaderboard
+  summary: Validator leaderboard
   description: >-
     Get the current top 100 performing validators (using the income over the
     last 7 days)
@@ -15,6 +15,8 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    type: array
+                    title: ValidatorPerformances
                     items:
                       $ref: >-
                         ../components/schemas/types.ApiValidatorPerformanceResponse.yaml

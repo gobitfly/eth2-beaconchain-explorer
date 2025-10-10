@@ -1,7 +1,7 @@
 get:
   tags:
     - Misc
-  summary: Get explorer Health
+  summary: Explorer Health
   description: >-
     Provides the health status of all modules of the explorer. This endpoint is
     useful for monitoring the availability and functionality of the explorer's
@@ -35,6 +35,15 @@ get:
             module monitoring_api: OK
             module monitoring_services: OK
             module monitoring_app: OK
+    '400':
+      description: |-
+        Invalid request. Response format:
+        ```
+        Bad request
+        ```
+      content:
+        text/plain:
+          example: 'Bad request'
     '500':
       description: |-
         Some modules are unhealthy. Response format:

@@ -1,7 +1,19 @@
 properties:
-  block_index: {}
-  block_root: {}
-  block_slot: {}
-  epoch: {}
-  signature: {}
-  validatorindex: {}
+  block_index:
+    type: integer
+    example: 0
+  block_root:
+    type: string
+    example: "0xf3fe4ac2ddab3c97ff4565e305c4451b18ff027559e0e520e884fd3de12c67a4"
+  block_slot:
+    type: integer
+    example: 12771160
+  epoch:
+    type: integer
+    example: 399098
+  signature:
+    type: string
+    example: "0xa6a17864596beee0c650ce582d50"
+  validatorindex:
+    type: integer
+    example: 1815428

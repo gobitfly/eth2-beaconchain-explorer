@@ -1,7 +1,7 @@
 post:
   tags:
     - User
-  summary: Get user subscriptions
+  summary: User subscriptions
   description: Get a set of events a user is subscribed to
   requestBody:
     description: An object that filters through the active subscriptions
@@ -33,5 +33,3 @@ post:
         application/json:
           schema:
             $ref: ../components/schemas/types.ApiErrorResponse.yaml
-  security:
-    - ApiKeyAuth: []

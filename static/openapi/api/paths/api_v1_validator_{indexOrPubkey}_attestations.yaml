@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator attestations
+  summary: Attestations
   description: Get all attestations during the last 100 epochs for up to 100 validators
   parameters:
     - name: indexOrPubkey

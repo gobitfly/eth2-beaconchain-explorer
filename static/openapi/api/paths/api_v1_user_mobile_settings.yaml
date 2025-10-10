@@ -1,7 +1,7 @@
 get:
   tags:
     - User
-  summary: Get device settings
+  summary: Device settings
   description: >-
     Get your device settings, currently only whether to enable mobile
     notifcations or not
@@ -28,8 +28,6 @@ get:
         application/json:
           schema:
             $ref: ../components/schemas/types.ApiErrorResponse.yaml
-  security:
-    - ApiKeyAuth: []
 post:
   tags:
     - User
@@ -66,5 +64,3 @@ post:
         application/json:
           schema:
             $ref: ../components/schemas/types.ApiErrorResponse.yaml
-  security:
-    - ApiKeyAuth: []

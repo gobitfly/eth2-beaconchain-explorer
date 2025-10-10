@@ -1,7 +1,7 @@
 get:
   tags:
     - Slots
-  summary: Get slot proposer slashings
+  summary: Proposer slashings
   description: Returns the proposer slashings included in a specific slot
   parameters:
     - name: slot
@@ -21,6 +21,8 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    title: ProposerSlashings
+                    type: array
                     items:
                       $ref: >-
                         ../components/schemas/types.APIProposerSlashingResponse.yaml

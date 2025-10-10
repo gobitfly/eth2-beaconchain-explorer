@@ -1,7 +1,7 @@
 get:
   tags:
-    - Validators
-  summary: Get rocketpool validators
+    - Rocketpool
+  summary: Validators
   description: Returns information about Rocketpool validators
   parameters:
     - name: indexOrPubkey

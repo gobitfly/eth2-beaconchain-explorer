@@ -1,7 +1,7 @@
 get:
   tags:
     - Rewards
-  summary: Get validator consensus layer rewards
+  summary: Consensus layer rewards
   description: Retrieve validator consensus layer rewards by index or pubkey (up to 100).
   parameters:
     - name: indexOrPubkey

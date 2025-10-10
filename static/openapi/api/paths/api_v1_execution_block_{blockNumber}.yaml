@@ -1,7 +1,7 @@
 get:
   tags:
     - Blocks
-  summary: Get blocks by number
+  summary: Overview
   description: Get execution blocks by execution block number
   parameters:
     - name: blockNumber

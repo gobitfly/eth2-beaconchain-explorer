@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator bls change history
+  summary: Bls credential changes
   description: Retrieve validator BLS change history by index or pubkey (up to 100).
   parameters:
     - name: indexOrPubkey

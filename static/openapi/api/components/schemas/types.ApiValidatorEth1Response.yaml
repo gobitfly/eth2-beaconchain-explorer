@@ -1,4 +1,10 @@
 properties:
-  public_key: {}
-  valid_signature: {}
-  validator_index: {}
+  public_key:
+    type: string
+    example: "0x95580e83db20386fd675c"
+  valid_signature:
+    type: boolean
+    example: true
+  validator_index:
+    type: number
+    example: 1071937

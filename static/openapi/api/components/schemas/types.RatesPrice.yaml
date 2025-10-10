@@ -1,4 +1,10 @@
 properties:
-  roundPrice: {}
-  symbol: {}
-  truncPrice: {}
+  symbol:
+    type: string
+    example: "$"
+  roundPrice:
+    type: integer
+    example: 4366
+  truncPrice:
+    type: string
+    example: "4.3k"

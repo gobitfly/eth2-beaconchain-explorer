@@ -28,5 +28,3 @@ post:
         application/json:
           schema:
             $ref: ../components/schemas/types.ApiErrorResponse.yaml
-  security:
-    - ApiKeyAuth: []

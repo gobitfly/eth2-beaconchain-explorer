@@ -1,6 +1,19 @@
 properties:
-  end_epoch: {}
-  period: {}
-  start_epoch: {}
+  end_epoch:
+    type: integer
+    example: 128255
+  period:
+    type: integer
+    example: 500
+  start_epoch:
+    type: integer
+    example: 128000
   validators:
-    items: {}
+    type: array
+    items:
+      type: integer
+    example:
+      - 383220
+      - 12142
+      - 265015
+      - 260079

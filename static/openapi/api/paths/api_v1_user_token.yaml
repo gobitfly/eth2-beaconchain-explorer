@@ -1,7 +1,7 @@
 post:
   tags:
     - User
-  summary: Get OAUTH API token
+  summary: OAUTH API token
   description: Exchange your oauth code for an access token or refresh your access token
   requestBody:
     content:

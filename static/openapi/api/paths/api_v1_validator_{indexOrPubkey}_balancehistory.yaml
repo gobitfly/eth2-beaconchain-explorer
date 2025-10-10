@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator balance history
+  summary: Balance history
   description: Retrieve the validator balance history by index or pubkey (up to 100).
   parameters:
     - name: indexOrPubkey

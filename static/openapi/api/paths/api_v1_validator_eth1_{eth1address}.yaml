@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator information by eth1 address
+  summary: Validators by deposit address
   description: Retrieve validator information by eth1 address
   parameters:
     - name: eth1address
@@ -35,6 +35,8 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    title: Validators
+                    type: array
                     items:
                       $ref: >-
                         ../components/schemas/types.ApiValidatorEth1Response.yaml

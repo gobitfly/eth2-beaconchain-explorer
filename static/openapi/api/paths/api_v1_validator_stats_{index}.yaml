@@ -1,7 +1,7 @@
 get:
   tags:
     - Validators
-  summary: Get validator statistics
+  summary: Validator statistics
   parameters:
     - name: index
       in: path
@@ -34,6 +34,8 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    type: array
+                    title: DailyStats
                     items:
                       $ref: >-
                         ../components/schemas/types.ApiValidatorDailyStatsResponse.yaml

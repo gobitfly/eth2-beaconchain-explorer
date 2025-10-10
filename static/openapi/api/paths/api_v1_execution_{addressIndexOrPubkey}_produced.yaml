@@ -1,7 +1,7 @@
 get:
   tags:
     - Blocks
-  summary: Get proposed blocks by address, proposer index or proposer pubkey
+  summary: Proposed blocks by address, proposer index or proposer pubkey
   description: >-
     Get a list of proposed or mined blocks from a given fee recipient address,
     proposer index or proposer pubkey.
@@ -43,12 +43,17 @@ get:
       schema: {}
   responses:
     '200':
-      description: OK
+      description: Success
       content:
         application/json:
           schema:
-            items:
-              $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
     '400':
       description: Bad Request
       content:

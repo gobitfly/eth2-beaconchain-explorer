@@ -1,7 +1,7 @@
 get:
   tags:
     - Slots
-  summary: Get slot voluntary exits
+  summary: Voluntary exits
   description: Returns the voluntary exits included in a specific slot
   parameters:
     - name: slot
@@ -21,6 +21,8 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    title: VoluntaryExits
+                    type: array
                     items:
                       $ref: >-
                         ../components/schemas/types.APIVoluntaryExitResponse.yaml

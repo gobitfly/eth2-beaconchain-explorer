@@ -1,0 +1,16 @@
+properties:
+  color:
+    type: string
+    example: "C3423F"
+  slot:
+    type: number
+    example: 12764598
+  validator:
+    type: number
+    example: 1843949
+  x:
+    type: number
+    example: 203
+  y:
+    type: number
+    example: 420
