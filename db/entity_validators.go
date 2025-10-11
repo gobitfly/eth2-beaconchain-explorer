@@ -16,20 +16,27 @@ type EntityValidatorRow struct {
 }
 
 // CountEntityValidators returns the total number of validators belonging to the given
-// entity and sub-entity. When subEntity is "-" (or empty), validators across all sub-entities
-// of the entity are counted.
+// entity and sub-entity. It now uses precomputed aggregates from validator_entities_data_periods
+// and sums all values in the status_counts JSONB field for period '1d'.
+// When subEntity is "-" (or empty), the function counts validators for the entity aggregate row
+// where sub_entity is either '-' or ”. Otherwise, it counts for the specific sub-entity row.
 func CountEntityValidators(entity string, subEntity string) (int, error) {
 	var count int
-	// Sub-entity filtering: if subEntity is '-', we include all sub-entities (including NULL/empty)
+	// Use jsonb_each_text to iterate key/value pairs and sum numeric values safely
+	// We always use the '1d' period per requirements
 	query := `
-		SELECT COUNT(*)
-		FROM validator_entities ve
-		JOIN validators v ON v.pubkey = ve.publickey
-		WHERE ve.entity = $1
-		  AND ($2 = '-' OR COALESCE(ve.sub_entity, '') = $2)
+		SELECT COALESCE(SUM((kv.value)::bigint), 0) AS total
+		FROM validator_entities_data_periods vedp
+		JOIN LATERAL jsonb_each_text(vedp.status_counts) AS kv(key, value) ON TRUE
+		WHERE vedp.period = '1d'
+		  AND vedp.entity = $1
+		  AND ((($2 = '-') AND vedp.sub_entity IN ('-','')) OR (($2 <> '-') AND vedp.sub_entity = $2))
 	`
+	if subEntity == "" { // treat empty the same as '-'
+		subEntity = "-"
+	}
 	if err := ReaderDb.Get(&count, query, entity, subEntity); err != nil {
-		return 0, fmt.Errorf("count entity validators: %w", err)
+		return 0, fmt.Errorf("count entity validators (precomputed): %w", err)
 	}
 	return count, nil
 }
