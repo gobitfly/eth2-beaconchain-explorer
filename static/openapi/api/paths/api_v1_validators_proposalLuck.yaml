@@ -10,7 +10,8 @@ get:
       required: true
       style: form
       explode: true
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
   responses:
     '200':
       description: OK
@@ -21,6 +22,7 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    type: array
                     items:
                       $ref: ../components/schemas/types.ApiProposalLuckResponse.yaml
     '400':

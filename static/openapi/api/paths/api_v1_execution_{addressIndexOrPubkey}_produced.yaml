@@ -34,7 +34,9 @@ get:
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 0
     - name: limit
       in: query
       description: 'Limit the amount of entries you wish to receive (Maximum: 100)'
@@ -42,6 +44,8 @@ get:
       style: form
       explode: true
       schema:
+        type: integer
+        example: 20
         maximum: 100
     - name: sort
       in: query
@@ -49,7 +53,10 @@ get:
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: string
+        enum: [asc, desc]
+        example: desc
   responses:
     '200':
       description: Success

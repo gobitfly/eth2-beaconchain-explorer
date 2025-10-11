@@ -35,7 +35,8 @@ get:
           schema:
             allOf:
               - $ref: ../components/schemas/types.ApiResponse.yaml
-              - properties:
+              - type: object
+                properties:
                   data:
                     $ref: ../components/schemas/types.ApiEth1AddressResponse.yaml
     '400':

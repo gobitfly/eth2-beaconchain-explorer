@@ -1,16 +1,46 @@
 properties:
-  attestation_head_reward: {}
-  attestation_source_penalty: {}
-  attestation_source_reward: {}
-  attestation_target_penalty: {}
-  attestation_target_reward: {}
-  finality_delay_penalty: {}
-  proposals_missed: {}
-  proposer_attestation_inclusion_reward: {}
-  proposer_slashing_inclusion_reward: {}
-  proposer_sync_inclusion_reward: {}
-  slashing_penalty: {}
-  slashing_reward: {}
-  sync_committee_penalty: {}
-  sync_committee_reward: {}
-  tx_fee_reward_wei: {}
+  attestation_head_reward:
+    type: integer
+    example: 1
+  attestation_source_penalty:
+    type: integer
+    example: 1
+  attestation_source_reward:
+    type: integer
+    example: 1
+  attestation_target_penalty:
+    type: integer
+    example: 1
+  attestation_target_reward:
+    type: integer
+    example: 1
+  finality_delay_penalty:
+    type: integer
+    example: 1
+  proposals_missed:
+    type: integer
+    example: 1
+  proposer_attestation_inclusion_reward:
+    type: integer
+    example: 1
+  proposer_slashing_inclusion_reward:
+    type: integer
+    example: 1
+  proposer_sync_inclusion_reward:
+    type: integer
+    example: 1
+  slashing_penalty:
+    type: integer
+    example: 1
+  slashing_reward:
+    type: integer
+    example: 1
+  sync_committee_penalty:
+    type: integer
+    example: 1
+  sync_committee_reward:
+    type: integer
+    example: 1
+  tx_fee_reward_wei:
+    type: number
+    example: 1

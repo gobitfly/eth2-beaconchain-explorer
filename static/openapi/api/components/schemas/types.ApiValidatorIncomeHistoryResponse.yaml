@@ -1,8 +1,18 @@
 properties:
-  epoch: {}
+  epoch:
+    type: integer
+    example: 398940
   income:
     $ref: ./types.ApiValidatorIncomeHistory.yaml
-  validatorindex: {}
-  week: {}
-  week_end: {}
-  week_start: {}
+  validatorindex:
+    type: integer
+    example: 1815428
+  week:
+    type: integer
+    example: 1
+  week_end:
+    type: string
+    example: "2025-10-14T12:00:23Z"
+  week_start:
+    type: string
+    example: "2025-10-07T12:00:23Z"

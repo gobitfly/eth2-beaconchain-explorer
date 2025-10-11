@@ -10,14 +10,17 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
     - name: epoch
       in: query
       description: 'the start epoch for the withdrawal history (default: latest epoch)'
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 54656
   responses:
     '200':
       description: OK
@@ -28,6 +31,7 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    type: array
                     items:
                       $ref: >-
                         ../components/schemas/types.ApiValidatorWithdrawalResponse.yaml

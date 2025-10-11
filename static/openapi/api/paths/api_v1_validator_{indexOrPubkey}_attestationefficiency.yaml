@@ -10,7 +10,8 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
   responses:
     '200':
       description: OK

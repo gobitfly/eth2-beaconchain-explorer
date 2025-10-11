@@ -9,21 +9,27 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        type: integer
+        example: 49949
     - name: end_day
       in: query
       description: 'End day (default: latest day)'
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 100
     - name: start_day
       in: query
       description: 'Start day (default: 0)'
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 0
   responses:
     '200':
       description: OK

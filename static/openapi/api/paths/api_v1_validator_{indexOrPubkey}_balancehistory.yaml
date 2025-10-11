@@ -10,28 +10,35 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
     - name: latest_epoch
       in: query
       description: The latest epoch to consider in the query
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 54656
     - name: offset
       in: query
       description: Number of items to skip
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 0
     - name: limit
       in: query
       description: Maximum number of items to return, up to 100
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 10
   responses:
     '200':
       description: OK
@@ -42,6 +49,7 @@ get:
               - $ref: ../components/schemas/types.ApiResponse.yaml
               - properties:
                   data:
+                    type: array
                     items:
                       $ref: >-
                         ../components/schemas/types.ApiValidatorBalanceHistoryResponse.yaml

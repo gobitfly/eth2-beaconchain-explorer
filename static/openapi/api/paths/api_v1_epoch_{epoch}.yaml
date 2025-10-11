@@ -29,7 +29,8 @@ get:
           schema:
             allOf:
               - $ref: ../components/schemas/types.ApiResponse.yaml
-              - properties:
+              - type: object
+                properties:
                   data:
                     $ref: ../components/schemas/types.APIEpochResponse.yaml
     '400':

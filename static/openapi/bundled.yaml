@@ -289,7 +289,8 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/types.ApiResponse'
-                  - properties:
+                  - type: object
+                    properties:
                       data:
                         $ref: '#/components/schemas/types.APIEpochResponse'
         '400':
@@ -456,7 +457,8 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/types.ApiResponse'
-                  - properties:
+                  - type: object
+                    properties:
                       data:
                         $ref: '#/components/schemas/types.ApiEth1AddressResponse'
         '400':
@@ -539,8 +541,12 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/types.ExecutionBlockApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/types.ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/types.ExecutionBlockApiResponse'
         '400':
           description: Bad Request
           content:
@@ -597,7 +603,9 @@ paths:
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 0
         - name: limit
           in: query
           description: 'Limit the amount of entries you wish to receive (Maximum: 100)'
@@ -605,6 +613,8 @@ paths:
           style: form
           explode: true
           schema:
+            type: integer
+            example: 20
             maximum: 100
         - name: sort
           in: query
@@ -612,7 +622,12 @@ paths:
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            example: desc
       responses:
         '200':
           description: Success
@@ -731,7 +746,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/types.LatestState'
+                allOf:
+                  - $ref: '#/components/schemas/types.ApiResponse'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/types.LatestState'
         '400':
           description: Failure
           content:
@@ -811,7 +830,8 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
       responses:
         '200':
           description: OK
@@ -1243,21 +1263,26 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.EthAddress'
         - name: limit
           in: query
           description: 'Limit the number of results (default: 2000)'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 100
         - name: offset
           in: query
           description: 'Offset the results (default: 0)'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 0
       responses:
         '200':
           description: OK
@@ -1316,21 +1341,27 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            type: integer
+            example: 49949
         - name: end_day
           in: query
           description: 'End day (default: latest day)'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 100
         - name: start_day
           in: query
           description: 'Start day (default: 0)'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 0
       responses:
         '200':
           description: OK
@@ -1364,21 +1395,27 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            type: string
+            example: '0x0000000000000000000000000000000000000000'
         - name: limit
           in: query
           description: 'Limit the number of results, maximum: 200'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 100
         - name: offset
           in: query
           description: Offset the number of results
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 0
       responses:
         '200':
           description: OK
@@ -1389,6 +1426,7 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiWithdrawalCredentialsResponse'
         '400':
@@ -1410,7 +1448,9 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            type: string
+            example: '1'
       responses:
         '200':
           description: OK
@@ -1448,7 +1488,8 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
       responses:
         '200':
           description: OK
@@ -1475,28 +1516,35 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
         - name: startEpoch
           in: query
           description: 'Start epoch for the query (default: latest epoch - 99)'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 10
         - name: endEpoch
           in: query
           description: 'End epoch for the query (default: latest epoch)'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 20
         - name: slim
           in: query
           description: If true, drops rarely used week and committee index fields from the response
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: boolean
+            example: true
       responses:
         '200':
           description: OK
@@ -1523,28 +1571,35 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
         - name: latest_epoch
           in: query
           description: The latest epoch to consider in the query
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 54656
         - name: offset
           in: query
           description: Number of items to skip
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 0
         - name: limit
           in: query
           description: Maximum number of items to return, up to 100
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 10
       responses:
         '200':
           description: OK
@@ -1555,6 +1610,7 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorBalanceHistoryResponse'
         '400':
@@ -1576,7 +1632,8 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
       responses:
         '200':
           description: OK
@@ -1608,7 +1665,8 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
       responses:
         '200':
           description: OK
@@ -1640,7 +1698,8 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
       responses:
         '200':
           description: OK
@@ -1672,28 +1731,35 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
         - name: latest_epoch
           in: query
           description: The latest epoch to consider in the query
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 54656
         - name: offset
           in: query
           description: Number of items to skip
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 0
         - name: limit
           in: query
           description: Maximum number of items to return, up to 100
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 10
       responses:
         '200':
           description: OK
@@ -1704,6 +1770,7 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorIncomeHistoryResponse'
         '400':
@@ -1725,7 +1792,8 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
       responses:
         '200':
           description: OK
@@ -1736,6 +1804,7 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorPerformanceResponse'
         '400':
@@ -1757,14 +1826,17 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
         - name: epoch
           in: query
           description: Page the result by epoch
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 54656
       responses:
         '200':
           description: OK
@@ -1775,6 +1847,7 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorProposalsResponse'
         '400':
@@ -1796,14 +1869,17 @@ paths:
           required: true
           style: simple
           explode: false
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
         - name: epoch
           in: query
           description: 'the start epoch for the withdrawal history (default: latest epoch)'
           required: false
           style: form
           explode: true
-          schema: {}
+          schema:
+            type: integer
+            example: 54656
       responses:
         '200':
           description: OK
@@ -1814,6 +1890,7 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiValidatorWithdrawalResponse'
         '400':
@@ -1835,7 +1912,8 @@ paths:
           required: true
           style: form
           explode: true
-          schema: {}
+          schema:
+            $ref: '#/components/schemas/primitives.indicesOrPubkeys'
       responses:
         '200':
           description: OK
@@ -1846,6 +1924,7 @@ paths:
                   - $ref: '#/components/schemas/types.ApiResponse'
                   - properties:
                       data:
+                        type: array
                         items:
                           $ref: '#/components/schemas/types.ApiProposalLuckResponse'
         '400':
@@ -2588,6 +2667,9 @@ components:
         total_eth_staking:
           type: number
           example: 4.471319830044493e+23
+    primitives.indicesOrPubkeys:
+      type: string
+      example: 1,2,3
     types.ApiRocketpoolValidatorResponse:
       properties:
         claimed_smoothing_pool:
@@ -3093,30 +3175,70 @@ components:
         validatorindex: {}
     types.ApiValidatorIncomeHistory:
       properties:
-        attestation_head_reward: {}
-        attestation_source_penalty: {}
-        attestation_source_reward: {}
-        attestation_target_penalty: {}
-        attestation_target_reward: {}
-        finality_delay_penalty: {}
-        proposals_missed: {}
-        proposer_attestation_inclusion_reward: {}
-        proposer_slashing_inclusion_reward: {}
-        proposer_sync_inclusion_reward: {}
-        slashing_penalty: {}
-        slashing_reward: {}
-        sync_committee_penalty: {}
-        sync_committee_reward: {}
-        tx_fee_reward_wei: {}
+        attestation_head_reward:
+          type: integer
+          example: 1
+        attestation_source_penalty:
+          type: integer
+          example: 1
+        attestation_source_reward:
+          type: integer
+          example: 1
+        attestation_target_penalty:
+          type: integer
+          example: 1
+        attestation_target_reward:
+          type: integer
+          example: 1
+        finality_delay_penalty:
+          type: integer
+          example: 1
+        proposals_missed:
+          type: integer
+          example: 1
+        proposer_attestation_inclusion_reward:
+          type: integer
+          example: 1
+        proposer_slashing_inclusion_reward:
+          type: integer
+          example: 1
+        proposer_sync_inclusion_reward:
+          type: integer
+          example: 1
+        slashing_penalty:
+          type: integer
+          example: 1
+        slashing_reward:
+          type: integer
+          example: 1
+        sync_committee_penalty:
+          type: integer
+          example: 1
+        sync_committee_reward:
+          type: integer
+          example: 1
+        tx_fee_reward_wei:
+          type: number
+          example: 1
     types.ApiValidatorIncomeHistoryResponse:
       properties:
-        epoch: {}
+        epoch:
+          type: integer
+          example: 398940
         income:
           $ref: '#/components/schemas/types.ApiValidatorIncomeHistory'
-        validatorindex: {}
-        week: {}
-        week_end: {}
-        week_start: {}
+        validatorindex:
+          type: integer
+          example: 1815428
+        week:
+          type: integer
+          example: 1
+        week_end:
+          type: string
+          example: '2025-10-14T12:00:23Z'
+        week_start:
+          type: string
+          example: '2025-10-07T12:00:23Z'
     types.ApiValidatorProposalsResponse:
       properties:
         attestationscount: {}

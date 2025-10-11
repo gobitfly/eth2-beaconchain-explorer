@@ -10,21 +10,26 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
     - name: startEpoch
       in: query
       description: 'Start epoch for the query (default: latest epoch - 99)'
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 10
     - name: endEpoch
       in: query
       description: 'End epoch for the query (default: latest epoch)'
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 20
     - name: slim
       in: query
       description: >-
@@ -33,7 +38,9 @@ get:
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: boolean
+        example: true
   responses:
     '200':
       description: OK

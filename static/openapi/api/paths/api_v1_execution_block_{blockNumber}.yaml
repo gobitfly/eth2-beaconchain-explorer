@@ -21,8 +21,12 @@ get:
       content:
         application/json:
           schema:
-            items:
-              $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
     '400':
       description: Bad Request
       content:

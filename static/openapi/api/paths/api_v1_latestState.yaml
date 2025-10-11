@@ -9,7 +9,11 @@ get:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/types.LatestState.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: ../components/schemas/types.LatestState.yaml
     '400':
       description: Failure
       content:
