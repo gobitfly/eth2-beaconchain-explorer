@@ -22,7 +22,7 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file, if empty string defaults will be used")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	scheduleFlag := flag.Bool("schedule", false, "Start scheduler loop (daily 10:00 UTC and hourly precompute)")
-	runFlag := flag.String("run", "", "Comma-separated steps to run on demand (import,lido,lido_csm,rocketpool,withdrawal_tagging,deposit_tagging,populate_validator_names,precompute,all)")
+	runFlag := flag.String("run", "", "Comma-separated steps to run on demand (import,lido,lido_csm,lido_simple_dvt,rocketpool,withdrawal_tagging,deposit_tagging,populate_validator_names,precompute,all)")
 	flag.Parse()
 
 	if *versionFlag {

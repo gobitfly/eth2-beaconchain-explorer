@@ -50,7 +50,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	calculateChurn(pageData)
 
 	// Populate treemap data for index page (entity rows only)
-	treemapRows, err := db.GetEntitiesTreemapData("1d")
+	treemapRows, err := db.GetEntitiesTreemapData("30d")
 	if err != nil {
 		utils.LogError(err, "select index treemap data", 0)
 	} else {

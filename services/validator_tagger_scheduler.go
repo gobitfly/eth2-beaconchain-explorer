@@ -94,6 +94,9 @@ func runDailyChain(ctx context.Context, scheduledAt time.Time, runGroupID string
 	if stepEnabled(cfg.Steps.LidoCSMEnabled) {
 		steps = append(steps, namedStep{"lido_csm", func(ctx context.Context) error { return RunStepLidoCSM(ctx) }})
 	}
+	if stepEnabled(cfg.Steps.LidoSimpleDVTEnabled) {
+		steps = append(steps, namedStep{"lido_simple_dvt", func(ctx context.Context) error { return RunStepLidoSimpleDVT(ctx) }})
+	}
 	if stepEnabled(cfg.Steps.RocketPoolSubEntityEnabled) {
 		steps = append(steps, namedStep{"rocketpool", func(ctx context.Context) error { return RunStepRocketPool(ctx) }})
 	}
@@ -177,6 +180,10 @@ func RunValidatorTaggerOnDemand(ctx context.Context, stepsCSV string) error {
 			if err := runScheduledJob(ctx, name, scheduledAt, &runGroup, "manual", func() error { return RunStepLidoCSM(ctx) }); err != nil {
 				return err
 			}
+		case "lido_simple_dvt":
+			if err := runScheduledJob(ctx, name, scheduledAt, &runGroup, "manual", func() error { return RunStepLidoSimpleDVT(ctx) }); err != nil {
+				return err
+			}
 		case "rocketpool":
 			if err := runScheduledJob(ctx, name, scheduledAt, &runGroup, "manual", func() error { return RunStepRocketPool(ctx) }); err != nil {
 				return err
@@ -209,13 +216,13 @@ func expandAndValidateSteps(names []string) ([]string, error) {
 	for _, n := range names {
 		if n == "all" {
 			// Expand to daily steps only (no precompute) as "all" is intended for the daily chain
-			for _, s := range []string{"import", "lido", "lido_csm", "rocketpool", "withdrawal_tagging", "deposit_tagging", "populate_validator_names"} {
+			for _, s := range []string{"import", "lido", "lido_csm", "lido_simple_dvt", "rocketpool", "withdrawal_tagging", "deposit_tagging", "populate_validator_names"} {
 				set[s] = struct{}{}
 			}
 			continue
 		}
 		switch n {
-		case "import", "lido", "lido_csm", "rocketpool", "withdrawal_tagging", "deposit_tagging", "populate_validator_names", "precompute":
+		case "import", "lido", "lido_csm", "lido_simple_dvt", "rocketpool", "withdrawal_tagging", "deposit_tagging", "populate_validator_names", "precompute":
 			set[n] = struct{}{}
 		default:
 			return nil, fmt.Errorf("invalid step name: %s", n)
@@ -230,10 +237,11 @@ func expandAndValidateSteps(names []string) ([]string, error) {
 		"import":                   1,
 		"lido":                     2,
 		"lido_csm":                 3,
-		"rocketpool":               4,
-		"withdrawal_tagging":       5,
-		"deposit_tagging":          6,
-		"populate_validator_names": 7,
+		"lido_simple_dvt":          4,
+		"rocketpool":               5,
+		"withdrawal_tagging":       6,
+		"deposit_tagging":          7,
+		"populate_validator_names": 8,
 		"precompute":               100,
 	}
 	sort.Slice(out, func(i, j int) bool { return order[out[i]] < order[out[j]] })

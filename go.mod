@@ -24,7 +24,6 @@ require (
 	github.com/evanw/esbuild v0.8.23
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gobitfly/eth-rewards v0.1.2-0.20230403064929-411ddc40a5f7
-	github.com/gobitfly/eth.store v0.0.0-20250125090903-cce1f5e601a4
 	github.com/gobitfly/scs/v2 v2.0.0-20240516120302-8754831e6b9b
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.1
@@ -43,6 +42,7 @@ require (
 	github.com/juliangruber/go-intersect v1.1.0
 	github.com/kataras/i18n v0.0.5
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/klauspost/pgzip v1.2.6
 	github.com/lib/pq v1.10.7
 	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mitchellh/mapstructure v1.5.0
@@ -151,7 +151,6 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
-	github.com/huandu/go-clone v1.6.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/boxo v0.8.0 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
@@ -258,8 +257,6 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/r3labs/sse/v2 v2.10.0 // indirect
-	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/supranational/blst v0.3.14 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
@@ -270,7 +267,6 @@ require (
 	golang.org/x/oauth2 v0.25.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

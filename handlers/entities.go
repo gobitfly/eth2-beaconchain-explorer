@@ -174,7 +174,6 @@ func Entities(w http.ResponseWriter, r *http.Request) {
 
 		// If truncated, append a remark row
 		if len(subList) > maxSubEntities {
-			logger.WithFields(logrus.Fields{"entity": er.Entity, "sub_entities_total": len(subList), "capped_at": maxSubEntities}).Info("entities: capped sub-entities")
 			view = append(view, row{Entity: er.Entity, Remark: "More than 100 sub entities. Use search to filter."})
 		}
 	}
