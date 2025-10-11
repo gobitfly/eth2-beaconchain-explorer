@@ -1,10 +1,28 @@
 properties:
-  address: {}
-  blockroot: {}
-  bls_pubkey: {}
-  bls_signature: {}
-  epoch: {}
-  slot: {}
-  validatorindex: {}
-  withdrawalcredentials_0x00: {}
-  withdrawalcredentials_0x01: {}
+  epoch:
+    type: integer
+    example: 200820
+  slot:
+    type: integer
+    example: 6426248
+  blockroot:
+    type: string
+    example: "0x387e15e80bfce46c2217cd149ec0a03a5f82ce393de12936ca243e076517148b"
+  validatorindex:
+    type: integer
+    example: 20
+  bls_pubkey:
+    type: string
+    example: "0x8b84918f955498cd0f6f44537cd0745d29ceffe16a37a353da746ad6879ec1c5992520708aad13b2333ce562faef083c"
+  bls_signature:
+    type: string
+    example: "0xb735398d821c5eb6356c71e35d59dd29ee56429d03dd443746d3de1bffb9049ed1bd45ab115de42ee3c6d0b69017d9b11413e1c7a0640553c14f8d2076369d51301720f3861c9b824a8a486d116c9bfe38c53747b33d3f1e664ce5ead157ec16"
+  address:
+    type: string
+    example: "0x23a64e36ae03d85a6121e55e48f6b8eb63d72f76"
+  withdrawalcredentials_0x00:
+    type: string
+    example: "0x009081da37d4f11d87592b89734db953de64fcb381436b235551b209f3fac343"
+  withdrawalcredentials_0x01:
+    type: string
+    example: "0x01000000000000000000000023a64e36ae03d85a6121e55e48f6b8eb63d72f76"

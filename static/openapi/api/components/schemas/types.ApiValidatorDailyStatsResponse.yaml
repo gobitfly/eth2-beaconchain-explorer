@@ -1,27 +1,81 @@
 properties:
-  attester_slashings: {}
-  day: {}
-  day_end: {}
-  day_start: {}
-  deposits: {}
-  deposits_amount: {}
-  end_balance: {}
-  end_effective_balance: {}
-  max_balance: {}
-  max_effective_balance: {}
-  min_balance: {}
-  min_effective_balance: {}
-  missed_attestations: {}
-  missed_blocks: {}
-  missed_sync: {}
-  orphaned_attestations: {}
-  orphaned_blocks: {}
-  orphaned_sync: {}
-  participated_sync: {}
-  proposed_blocks: {}
-  proposer_slashings: {}
-  start_balance: {}
-  start_effective_balance: {}
-  validatorindex: {}
-  withdrawals: {}
-  withdrawals_amount: {}
+  attester_slashings:
+    type: integer
+    example: 0
+  day:
+    type: integer
+    example: 1774
+  day_end:
+    type: string
+    format: date-time
+    example: "2025-10-11T12:00:23Z"
+  day_start:
+    type: string
+    format: date-time
+    example: "2025-10-10T12:00:23Z"
+  deposits:
+    type: integer
+    example: 0
+  deposits_amount:
+    type: integer
+    example: 0
+  end_balance:
+    type: integer
+    example: 32009280345
+  end_effective_balance:
+    type: integer
+    example: 32000000000
+  max_balance:
+    type: integer
+    example: 0
+  max_effective_balance:
+    type: integer
+    example: 0
+  min_balance:
+    type: integer
+    example: 0
+  min_effective_balance:
+    type: integer
+    example: 0
+  missed_attestations:
+    type: integer
+    example: 0
+  missed_blocks:
+    type: integer
+    example: 0
+  missed_sync:
+    type: integer
+    example: 0
+  orphaned_attestations:
+    type: integer
+    example: 0
+  orphaned_blocks:
+    type: integer
+    example: 0
+  orphaned_sync:
+    type: integer
+    example: 0
+  participated_sync:
+    type: integer
+    example: 0
+  proposed_blocks:
+    type: integer
+    example: 0
+  proposer_slashings:
+    type: integer
+    example: 0
+  start_balance:
+    type: integer
+    example: 32007258984
+  start_effective_balance:
+    type: integer
+    example: 32000000000
+  validatorindex:
+    type: integer
+    example: 20
+  withdrawals:
+    type: integer
+    example: 0
+  withdrawals_amount:
+    type: integer
+    example: 0

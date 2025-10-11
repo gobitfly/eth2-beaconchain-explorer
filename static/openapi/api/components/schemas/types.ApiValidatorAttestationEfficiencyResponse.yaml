@@ -1,0 +1,7 @@
+properties:
+  validatorindex:
+    type: integer
+    example: 21
+  attestation_efficiency:
+    type: number
+    example: 1.0175

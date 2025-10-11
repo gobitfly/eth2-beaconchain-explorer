@@ -1,8 +1,22 @@
 properties:
-  address: {}
-  amount: {}
-  blockroot: {}
-  epoch: {}
-  slot: {}
-  validatorindex: {}
-  withdrawalindex: {}
+  epoch:
+    type: integer
+    example: 399379
+  slot:
+    type: integer
+    example: 12780154
+  blockroot:
+    type: string
+    example: "0xf5068b6240d2ca8d77b6924a4397263fda4647b09c7d767865637643a7be421d"
+  withdrawalindex:
+    type: integer
+    example: 104312607
+  validatorindex:
+    type: integer
+    example: 1440116
+  address:
+    type: string
+    example: "0x4c66c2055f6a7a01e102bde8d8d71d1d36667e21"
+  amount:
+    type: integer
+    example: 18402466

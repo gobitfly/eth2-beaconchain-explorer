@@ -1,8 +1,24 @@
 properties:
-  balance: {}
-  effectivebalance: {}
-  epoch: {}
-  validatorindex: {}
-  week: {}
-  week_end: {}
-  week_start: {}
+  balance:
+    type: integer
+    example: 48498484
+  effectivebalance:
+    type: integer
+    example: 32000000
+  epoch:
+    type: integer
+    example: 399359
+  validatorindex:
+    type: integer
+    example: 34523
+  week:
+    type: integer
+    example: 253
+  week_start:
+    type: string
+    format: date-time
+    example: "2025-10-07T12:00:23Z"
+  week_end:
+    type: string
+    format: date-time
+    example: "2025-10-14T12:00:23Z"

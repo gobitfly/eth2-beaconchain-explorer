@@ -47,7 +47,14 @@ get:
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/types.ApiResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorAttestationsResponse.yaml
     '400':
       description: Bad Request
       content:

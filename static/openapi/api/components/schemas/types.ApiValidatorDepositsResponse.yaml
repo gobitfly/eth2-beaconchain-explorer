@@ -1,14 +1,40 @@
 properties:
-  amount: {}
-  block_number: {}
-  block_ts: {}
-  from_address: {}
-  merkletree_index: {}
-  publickey: {}
-  removed: {}
-  signature: {}
-  tx_hash: {}
-  tx_index: {}
-  tx_input: {}
-  valid_signature: {}
-  withdrawal_credentials: {}
+  amount:
+    type: integer
+    example: 32000000000
+  block_number:
+    type: integer
+    example: 17111875
+  block_ts:
+    type: integer
+    example: 1682287571
+  from_address:
+    type: string
+    example: "0xd3db01ad737f2b41676e96ad75a6368cfe7a878e"
+  merkletree_index:
+    type: string
+    example: "0xd660090000000000"
+  publickey:
+    type: string
+    example: "0x96dcc8a539e26dba7604356711abde2c2f1cd0f59a3405d11d1f029bd7e89062a09c5a7a47f9095f428fc1aff092871e"
+  removed:
+    type: boolean
+    example: false
+  signature:
+    type: string
+    example: "0x8a186b85f9afd69c5d256c8364577a797b38e7d2f8f4ede4c570343c28427e8795fd4a940cdbacbaef8d1a22f1ecb1501824dcb791def49938b213827f5a65e58bf531174da556410e3d6480f8d129795eb8c0c3e31f8b6b7ce679d32cca1431"
+  tx_hash:
+    type: string
+    example: "0x3b1ba13da5892cfeb80f1f1ccf09505214d5564a65b9d3fd413181348dfafdde"
+  tx_index:
+    type: integer
+    example: 199
+  tx_input:
+    type: string
+    example: "0x00"
+  valid_signature:
+    type: boolean
+    example: true
+  withdrawal_credentials:
+    type: string
+    example: "0x0100000000000000000000009ba848a47a796b18de48b6dc7c4327ac9c06740e"

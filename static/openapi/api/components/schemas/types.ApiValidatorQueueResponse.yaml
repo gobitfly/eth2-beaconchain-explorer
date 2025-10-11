@@ -1,4 +1,16 @@
 properties:
-  beaconchain_entering: {}
-  beaconchain_exiting: {}
-  validators_count: {}
+  beaconchain_entering:
+    type: integer
+    example: 7493
+  beaconchain_exiting:
+    type: integer
+    example: 55869
+  validatorscount:
+    type: integer
+    example: 1031945
+  beaconchain_entering_balance:
+    type: integer
+    example: 1363143622559455
+  beaconchain_exiting_balance:
+    type: integer
+    example: 2365910000000000

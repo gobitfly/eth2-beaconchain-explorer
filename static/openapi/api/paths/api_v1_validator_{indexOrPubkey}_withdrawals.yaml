@@ -2,7 +2,9 @@ get:
   tags:
     - Validators
   summary: Withdrawals
-  description: Retrieve validator withdrawal history by index or pubkey (up to 100).
+  description: >-
+    Get all withdrawals during the last 100 epochs for up to 100 validators.
+    Optionally set the epoch query parameter to look back further.
   parameters:
     - name: indexOrPubkey
       in: path
