@@ -20,7 +20,9 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        type: integer
+        example: 541
   responses:
     '200':
       description: OK

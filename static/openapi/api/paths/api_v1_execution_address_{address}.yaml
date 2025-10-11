@@ -10,28 +10,34 @@ get:
     - name: address
       in: path
       description: >-
-        provide an Ethereum address consists of an optional 0x prefix followed
+        Provide an Ethereum address consists of an 0x prefix followed
         by 40 hexadecimal characters
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.EthAddress.yaml"
     - name: token
       in: query
       description: >-
-        filter for a specific token by providing a ethereum token contract
+        Filter for a specific token by providing a ethereum token contract
         address
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.EthAddress.yaml"
   responses:
     '200':
       description: OK
       content:
         application/json:
           schema:
-            $ref: ../components/schemas/types.ApiEth1AddressResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: ../components/schemas/types.ApiEth1AddressResponse.yaml
     '400':
       description: Bad Request
       content:

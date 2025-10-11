@@ -10,7 +10,15 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        oneOf:
+          - type: string
+            description: Latest or finalized epoch
+            enum: [latest, finalized]
+            example: latest
+          - type: integer
+            description: Epoch number
+            example: 1564648
   responses:
     '200':
       description: OK

@@ -1,0 +1,3 @@
+type: string
+pattern: ^0x[a-fA-F0-9]{40}$
+example: "0xdAC17F958D2ee523a2206206994597C13D831ec7"

@@ -12,7 +12,9 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        type: string
+        example: 'vitalik.eth'
   responses:
     '200':
       description: OK

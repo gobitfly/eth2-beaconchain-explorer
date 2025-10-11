@@ -6,11 +6,12 @@ get:
   parameters:
     - name: txhash
       in: path
-      description: Eth1 transaction hash
+      description: Eth transaction hash
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.EthTxHash.yaml"
   responses:
     '200':
       description: OK

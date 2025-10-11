@@ -9,35 +9,45 @@ get:
     - name: address
       in: path
       description: >-
-        provide an Ethereum address consists of an optional 0x prefix followed
+        Provide an Ethereum address consisting of an optional 0x prefix followed
         by 40 hexadecimal characters
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        $ref: "../components/schemas/primitives.EthAddress.yaml"
     - name: offset
       in: query
-      description: data offset
+      description: Data offset
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 0
     - name: limit
       in: query
-      description: data limit (ranging from 1 to 200)
+      description: Data limit (ranging from 1 to 200)
       required: false
       style: form
       explode: true
-      schema: {}
+      schema:
+        type: integer
+        example: 20
   responses:
     '200':
       description: OK
       content:
         application/json:
           schema:
-            items:
-              $ref: >-
-                ../components/schemas/types.ApiEth1AddressERC20TokenResponse.yaml
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiEth1AddressERC20TokenResponse.yaml
     '400':
       description: Bad Request
       content:

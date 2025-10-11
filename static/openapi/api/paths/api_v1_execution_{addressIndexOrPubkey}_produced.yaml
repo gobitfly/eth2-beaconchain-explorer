@@ -18,7 +18,16 @@ get:
       required: true
       style: simple
       explode: false
-      schema: {}
+      schema:
+        oneOf:
+          - $ref: '../components/schemas/primitives.EthAddress.yaml'
+            description: "Fee recipient address"
+          - type: integer
+            example: 325
+            description: Proposer index
+          - type: string
+            description: Proposer pubkey
+            example: "0xa6831544f1e9fb1086b023f0852fe7feb7ed6606bf57c76d26a5dbf0027c125e8f7b76b000d99b676205d7721c1baf81"
     - name: offset
       in: query
       description: Offset
