@@ -3154,8 +3154,8 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 
 	names := make(map[string]string)
 	for _, trace := range traces {
-		names[trace.From.String()] = ""
-		names[trace.To.String()] = ""
+		names[string(trace.From.Bytes())] = ""
+		names[string(trace.To.Bytes())] = ""
 	}
 
 	err := bigtable.GetAddressNames(names)
@@ -3181,10 +3181,10 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 		from := traces[i].From.Bytes()
 		to := traces[i].To.Bytes()
 		value := common.FromHex(traces[i].Value)
-		tx_type := traces[i].Type
-		if tx_type == "suicide" {
+		txType := traces[i].Type
+		if txType == "suicide" {
 			// erigon's "suicide" might be misleading for users
-			tx_type = "selfdestruct"
+			txType = "selfdestruct"
 		}
 		input := make([]byte, 0)
 		if len(traces[i].Input) > 2 {
@@ -3194,21 +3194,21 @@ func (bigtable *Bigtable) GetInternalTransfersForTransaction(transaction []byte,
 			}
 		}
 
-		var from_contractInteraction, to_contractInteraction types.ContractInteractionType
+		var fromContractInteraction, toContractInteraction types.ContractInteractionType
 		if len(contractInteractionTypes) > i {
-			from_contractInteraction = contractInteractionTypes[i][0]
-			to_contractInteraction = contractInteractionTypes[i][1]
+			fromContractInteraction = contractInteractionTypes[i][0]
+			toContractInteraction = contractInteractionTypes[i][1]
 		}
 
-		fromName := BigtableClient.GetAddressLabel(names[string(from)], from_contractInteraction)
-		toName := BigtableClient.GetAddressLabel(names[string(to)], to_contractInteraction)
+		fromName := BigtableClient.GetAddressLabel(names[string(from)], fromContractInteraction)
+		toName := BigtableClient.GetAddressLabel(names[string(to)], toContractInteraction)
 
 		itx := types.ITransaction{
-			From:      utils.FormatAddress(from, nil, fromName, false, from_contractInteraction != types.CONTRACT_NONE, true),
-			To:        utils.FormatAddress(to, nil, toName, false, to_contractInteraction != types.CONTRACT_NONE, true),
+			From:      utils.FormatAddress(from, nil, fromName, false, fromContractInteraction != types.CONTRACT_NONE, true),
+			To:        utils.FormatAddress(to, nil, toName, false, toContractInteraction != types.CONTRACT_NONE, true),
 			Amount:    utils.FormatElCurrency(value, currency, 8, true, false, false, true),
-			TracePath: utils.FormatGethTracePath(tx_type, paths[traces[i]], !reverted, bigtable.GetMethodLabel(input, from_contractInteraction)),
-			Advanced:  tx_type == "delegatecall" || string(value) == "\x00",
+			TracePath: utils.FormatGethTracePath(txType, paths[traces[i]], !reverted, bigtable.GetMethodLabel(input, fromContractInteraction)),
+			Advanced:  (strings.ToLower(txType) == "delegatecall" || strings.ToLower(txType) == "call" || strings.ToLower(txType) == "staticcall") && (string(value) == "\x00" || string(value) == ""),
 			Reverted:  reverted,
 		}
 

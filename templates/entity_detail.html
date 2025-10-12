@@ -1,0 +1,668 @@
+{{ define "js" }}
+  <script src="/js/highcharts/v14/highcharts.min.js"></script>
+  <script src="/js/highcharts/v14/modules/accessibility.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script>
+    ;(function () {
+      function renderEfficiencyChart() {
+        const containerId = "efficiency-chart"
+        const el = document.getElementById(containerId)
+        if (!el || typeof Highcharts === "undefined") return
+
+        // build points from hidden DOM to avoid inline template in JS
+        const container = document.getElementById("efficiency-series")
+        const spans = container ? Array.from(container.querySelectorAll("span[data-ts][data-val]")) : []
+        const rawPoints = spans.map(function (s) {
+          return [parseInt(s.getAttribute("data-ts")), parseFloat(s.getAttribute("data-val"))]
+        })
+        if (rawPoints.length === 0) {
+          el.innerHTML = '<div class="text-muted">No data</div>'
+          return
+        }
+        // Clamp values to [0,1] and compute dynamic bounds
+        var yMinVal = 1,
+          yMaxVal = 0
+        const clampedPoints = rawPoints.map(function (p) {
+          var y = Math.max(0, Math.min(1, p[1]))
+          if (y < yMinVal) yMinVal = y
+          if (y > yMaxVal) yMaxVal = y
+          return [p[0], y]
+        })
+        var range = yMaxVal - yMinVal
+        if (!isFinite(range) || range <= 0) {
+          range = 0.01
+        }
+        var padding = range * 0.1
+        var yMin = Math.max(0, yMinVal - padding)
+        var yMax = 1 // always include 100% as reference and never exceed it
+
+        Highcharts.chart(containerId, {
+          chart: { type: "line", zoomType: "x" },
+          title: { text: "Beaconscore", style: { color: "var(--font-color)" } },
+          xAxis: { type: "datetime", labels: { style: { color: "var(--font-color)" } } },
+          yAxis: {
+            title: { text: "Beaconscore", style: { color: "var(--font-color)" } },
+            labels: {
+              formatter: function () {
+                return (this.value * 100).toFixed(2) + "%"
+              },
+              style: { color: "var(--font-color)" },
+            },
+            min: yMin,
+            max: yMax,
+            plotLines: [
+              {
+                value: 1,
+                color: "var(--secondary-font-color)",
+                dashStyle: "ShortDash",
+                width: 1,
+                zIndex: 3,
+                label: { text: "100%", align: "right", x: 0, style: { color: "var(--secondary-font-color)" } },
+              },
+            ],
+          },
+          tooltip: {
+            xDateFormat: "%e %b, %H:%M",
+            valueDecimals: 4,
+            pointFormatter: function () {
+              return '<span style="color:' + this.color + '">●</span> ' + (this.y * 100).toFixed(2) + "%<br/>"
+            },
+          },
+          legend: { enabled: false },
+          series: [{ name: "Efficiency", data: clampedPoints, color: "#2ecc71", lineWidth: 2 }],
+          credits: { enabled: false },
+        })
+      }
+
+      document.addEventListener("DOMContentLoaded", renderEfficiencyChart)
+    })()
+  </script>
+  <script>
+    ;(function () {
+      function formatNumber(value) {
+        try {
+          return Number(value).toLocaleString(undefined)
+        } catch (e) {
+          return String(value)
+        }
+      }
+
+      function setActivityMode(percentMode) {
+        var pairNodes = document.querySelectorAll(".activity-pair")
+        var missedNodes = document.querySelectorAll(".activity-missed")
+        var sepNodes = document.querySelectorAll(".activity-sep")
+        var labelNodes = document.querySelectorAll(".activity-label")
+
+        if (pairNodes) {
+          pairNodes.forEach(function (el) {
+            var observed = parseFloat(el.getAttribute("data-observed") || "0")
+            var scheduled = parseFloat(el.getAttribute("data-scheduled") || "0")
+            if (percentMode) {
+              if (scheduled > 0) {
+                var pct = (observed / scheduled) * 100
+                el.textContent = pct.toFixed(2) + "%"
+              } else {
+                el.textContent = "-"
+              }
+            } else {
+              el.textContent = formatNumber(observed)
+            }
+          })
+        }
+
+        if (missedNodes) {
+          missedNodes.forEach(function (el) {
+            var scheduled = parseFloat(el.getAttribute("data-scheduled") || "0")
+            var proposed = parseFloat(el.getAttribute("data-proposed") || "0")
+            var missed = Math.max(0, scheduled - proposed)
+            if (percentMode) {
+              el.style.display = "none"
+            } else {
+              el.style.display = "inline"
+              el.textContent = formatNumber(missed)
+            }
+          })
+        }
+
+        if (sepNodes) {
+          sepNodes.forEach(function (el) {
+            el.style.display = percentMode ? "none" : "inline"
+          })
+        }
+
+        if (labelNodes) {
+          labelNodes.forEach(function (el) {
+            el.style.visibility = percentMode ? "hidden" : "visible"
+          })
+        }
+      }
+
+      function init() {
+        var toggle = document.getElementById("activity-percent-toggle")
+        if (!toggle) return
+        setActivityMode(false)
+        toggle.addEventListener("change", function () {
+          setActivityMode(toggle.checked)
+        })
+      }
+
+      document.addEventListener("DOMContentLoaded", init)
+    })()
+  </script>
+
+  <!-- Tippy.js for interactive tooltips on this page -->
+  <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+  <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var container = document.querySelector("section#entity-detail") || document
+      if (typeof tippy === "function") {
+        // Initialize existing attribute-based tooltips that already provide HTML-safe strings
+        tippy(container.querySelectorAll("[data-tippy-content]"), {
+          allowHTML: true,
+          interactive: true,
+          theme: "bcx",
+          appendTo: document.body,
+          maxWidth: 380,
+          delay: [150, 200],
+          placement: "top",
+          interactiveBorder: 8,
+          arrow: true,
+        })
+
+        // Initialize tooltips whose content is sourced from hidden DOM nodes to avoid
+        // html/template escaping in attribute context
+        var idTriggers = container.querySelectorAll("[data-tippy-content-id]")
+        idTriggers.forEach(function (el) {
+          var id = el.getAttribute("data-tippy-content-id")
+          var src = id ? document.getElementById(id) : null
+          if (!src) return
+          tippy(el, {
+            allowHTML: true,
+            interactive: true,
+            theme: "bcx",
+            appendTo: document.body,
+            maxWidth: 380,
+            delay: [150, 200],
+            placement: "top",
+            interactiveBorder: 8,
+            arrow: true,
+            content: src.innerHTML,
+          })
+        })
+      }
+    })
+  </script>
+{{ end }}
+
+{{ define "css" }}
+  <style>
+    .kpi-card .label {
+      font-size: 12px;
+      color: var(--secondary-font-color);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kpi-card .value {
+      font-size: 22px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--secondary-font-color);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .stat-heading {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--secondary-font-color);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--secondary-font-color);
+    }
+
+    .activity-label {
+      min-height: 18px;
+    }
+
+    /* Activity toggle switch */
+    .activity-toggle {
+      display: inline-block;
+    }
+
+    .activity-toggle .toggle-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .activity-toggle .toggle-label {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 72px;
+      height: 32px;
+      box-sizing: border-box;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(128, 128, 128, 0.35);
+      background: rgba(127, 127, 127, 0.08);
+      color: var(--secondary-font-color);
+      cursor: pointer;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .activity-toggle .toggle-symbol {
+      font-size: 14px;
+      opacity: 0.5;
+      transition: opacity 0.15s ease;
+    }
+
+    .activity-toggle .toggle-handle {
+      position: absolute;
+      top: 50%;
+      left: 2px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--font-color);
+      opacity: 0.12;
+      transform: translateY(-50%);
+      transition: left 0.2s ease;
+    }
+
+    .activity-toggle .toggle-input:not(:checked) + .toggle-label .hash {
+      opacity: 1;
+    }
+
+    .activity-toggle .toggle-input:checked + .toggle-label .percent {
+      opacity: 1;
+    }
+
+    .activity-toggle .toggle-input:checked + .toggle-label .toggle-handle {
+      left: calc(100% - 30px);
+    }
+
+    /* Validator status chips (medium emphasis) */
+    .validator-chip {
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.1;
+    }
+
+    .validator-chip i {
+      margin-right: 0.35rem;
+    }
+
+    @media (max-width: 576px) {
+      .validator-chip {
+        font-size: 0.85rem;
+      }
+    }
+
+    /* High-contrast badges for Entity/Sub-Entity */
+    .badge-entity {
+      background-color: #2c7be5; /* vivid blue */
+      color: #ffffff;
+    }
+
+    .badge-subentity {
+      background-color: #6f42c1; /* purple */
+      color: #ffffff;
+    }
+  </style>
+{{ end }}
+
+{{ define "content" }}
+  <section id="entity-detail">
+    <div class="container">
+      <div class="h-100 py-4">
+        <nav aria-label="Breadcrumb">
+          <ol class="breadcrumb bg-transparent p-0 mb-2 justify-content-end">
+            <li class="breadcrumb-item"><a href="/entities">Entities</a></li>
+            {{ if .Data.HasRealSubEntities }}
+              <li class="breadcrumb-item"><a href="/entity/{{ .Data.Entity | urlPathEscape }}/-">{{ .Data.Entity }}</a></li>
+              <li class="breadcrumb-item active" aria-current="page">{{ .Data.SubEntity }}</li>
+            {{ else }}
+              <li class="breadcrumb-item active" aria-current="page">{{ .Data.Entity }}</li>
+            {{ end }}
+          </ol>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+          <h1 class="h4 mb-0 mr-2">Entity Dashboard</h1>
+          <div class="btn-group btn-group-sm mt-2 mt-md-0" role="group" aria-label="Select period">
+            {{ range .Data.PeriodLinks }}
+              <a href="{{ .Href }}" class="btn {{ if eq .Value $.Data.Period }}btn-primary{{ else }}btn-outline-primary{{ end }}">{{ .Label }}</a>
+            {{ end }}
+          </div>
+        </div>
+        <div class="mb-2 d-flex align-items-center justify-content-between">
+          <div>
+            <span class="badge badge-entity"><i class="fas fa-building mr-1" aria-hidden="true"></i> Entity</span>
+            {{ if and .Data.HasRealSubEntities (ne .Data.SubEntity "-") }}
+              <a class="ml-2 font-weight-bold" href="/entity/{{ .Data.Entity | urlPathEscape }}/-">{{ .Data.Entity }}</a>
+            {{ else }}
+              <span class="ml-2 font-weight-bold">{{ .Data.Entity }}</span>
+            {{ end }}
+            {{ if .Data.HasRealSubEntities }}
+              <span class="mx-2">/</span>
+              <span class="badge badge-subentity"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Sub-Entity</span>
+              <span class="ml-2 font-weight-bold">{{ .Data.SubEntity }}</span>
+            {{ end }}
+          </div>
+          <div class="d-flex align-items-center">
+            <span class="badge badge-pill bg-success text-white mr-2 px-2 py-1 validator-chip" {{ .Data.OnlineBreakdownHTML }} aria-label="Online validators: {{ formatThousandsInt .Data.OnlineCount }}">
+              <i class="fas fa-power-off mr-1" aria-hidden="true"></i> {{ formatThousandsInt .Data.OnlineCount }}
+            </span>
+            <span class="badge badge-pill bg-danger text-white px-2 py-1 validator-chip" {{ .Data.OfflineBreakdownHTML }} aria-label="Offline validators: {{ formatThousandsInt .Data.OfflineCount }}">
+              <i class="fas fa-power-off mr-1" aria-hidden="true"></i> {{ formatThousandsInt .Data.OfflineCount }}
+            </span>
+          </div>
+        </div>
+
+        <!-- KPI row -->
+        <div class="row mt-3">
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card kpi-card h-100">
+              <div class="card-body">
+                <div class="label"><i class="fas fa-tachometer-alt mr-1" aria-hidden="true"></i> Beaconscore</div>
+                <div class="value">{{ formatBeaconscore .Data.Efficiency true }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card kpi-card h-100">
+              <div class="card-body">
+                <div class="label"><i class="fas fa-chart-pie mr-1" aria-hidden="true"></i> Net Share</div>
+                <div class="value">{{ formatPercentageWithPrecision .Data.NetShare 2 }}%</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card kpi-card h-100">
+              <div class="card-body">
+                <div class="label"><i class="fas fa-coins mr-1" aria-hidden="true"></i> Total Balance</div>
+                <div class="value">{{ formatClCurrency .Data.BalanceEndSumGwei "ETH" 2 true false false true }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card kpi-card h-100">
+              <div class="card-body">
+                <div class="label"><i class="fas fa-check-circle mr-1" aria-hidden="true"></i> Attestation Eff.</div>
+                <div class="value">{{ formatEfficiency .Data.AttestationEfficiency }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card kpi-card h-100">
+              <div class="card-body">
+                <div class="label"><i class="fas fa-bolt mr-1" aria-hidden="true"></i> Proposal Eff.</div>
+                <div class="value">{{ formatEfficiency .Data.ProposalEfficiency }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card kpi-card h-100">
+              <div class="card-body">
+                <div class="label"><i class="fas fa-users mr-1" aria-hidden="true"></i> Sync Comm. Eff.</div>
+                <div class="value">{{ formatEfficiency .Data.SyncCommitteeEfficiency }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="card mb-3">
+          <div class="card-body">
+            <div id="efficiency-chart" style="height: 320px; width: 100%"></div>
+            <div id="efficiency-series" style="display:none;">
+              {{- range .Data.EfficiencySeries -}}
+                <span data-ts="{{ .TsMs }}" data-val="{{ .Value }}"></span>
+              {{- end -}}
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <!-- Activity -->
+          <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div class="section-title mb-0"><i class="fas fa-chart-line mr-1" aria-hidden="true"></i> Duties</div>
+                  <div class="small d-flex align-items-center">
+                    <div class="activity-toggle" title="Toggle between raw counts (#) and percentages (%)">
+                      <input type="checkbox" id="activity-percent-toggle" class="toggle-input" aria-label="Toggle display between counts and percentage" />
+                      <label class="toggle-label" for="activity-percent-toggle">
+                        <span class="toggle-symbol hash">#</span>
+                        <span class="toggle-symbol percent">%</span>
+                        <span class="toggle-handle" aria-hidden="true"></span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"><i class="fas fa-check-circle mr-1" aria-hidden="true"></i> Attestations</div>
+                    <div class="stat">
+                      <span class="activity-pair" data-observed="{{ .Data.AttestationsObservedSum }}" data-scheduled="{{ .Data.AttestationsScheduledSum }}"></span>
+                      <span class="activity-sep">/</span>
+                      <span class="activity-missed text-danger" data-scheduled="{{ .Data.AttestationsScheduledSum }}" data-proposed="{{ .Data.AttestationsObservedSum }}"></span>
+                    </div>
+                    <div class="stat-label activity-label">Executed / Missed</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Head Votes</div>
+                    <div class="stat">
+                      <span class="activity-pair" data-observed="{{ .Data.AttestationsHeadExecutedSum }}" data-scheduled="{{ .Data.AttestationsScheduledSum }}"></span>
+                      <span class="activity-sep">/</span>
+                      <span class="activity-missed text-danger" data-scheduled="{{ .Data.AttestationsScheduledSum }}" data-proposed="{{ .Data.AttestationsHeadExecutedSum }}"></span>
+                    </div>
+                    <div class="stat-label activity-label">Executed / Missed</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"><i class="fas fa-compass mr-1" aria-hidden="true"></i> Source Votes</div>
+                    <div class="stat">
+                      <span class="activity-pair" data-observed="{{ .Data.AttestationsSourceExecutedSum }}" data-scheduled="{{ .Data.AttestationsScheduledSum }}"></span>
+                      <span class="activity-sep">/</span>
+                      <span class="activity-missed text-danger" data-scheduled="{{ .Data.AttestationsScheduledSum }}" data-proposed="{{ .Data.AttestationsSourceExecutedSum }}"></span>
+                    </div>
+                    <div class="stat-label activity-label">Executed / Missed</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"><i class="fas fa-bullseye mr-1" aria-hidden="true"></i> Target Votes</div>
+                    <div class="stat">
+                      <span class="activity-pair" data-observed="{{ .Data.AttestationsTargetExecutedSum }}" data-scheduled="{{ .Data.AttestationsScheduledSum }}"></span>
+                      <span class="activity-sep">/</span>
+                      <span class="activity-missed text-danger" data-scheduled="{{ .Data.AttestationsScheduledSum }}" data-proposed="{{ .Data.AttestationsTargetExecutedSum }}"></span>
+                    </div>
+                    <div class="stat-label activity-label">Executed / Missed</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"><i class="fas fa-cube mr-1" aria-hidden="true"></i> Blocks</div>
+                    <div class="stat">
+                      <span class="activity-pair" data-observed="{{ .Data.BlocksProposedSum }}" data-scheduled="{{ .Data.BlocksScheduledSum }}"></span>
+                      <span class="activity-sep">/</span>
+                      <span class="activity-missed text-danger" data-scheduled="{{ .Data.BlocksScheduledSum }}" data-proposed="{{ .Data.BlocksProposedSum }}"></span>
+                    </div>
+                    <div class="stat-label activity-label">Proposed / Missed</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"><i class="fas fa-sync-alt mr-1" aria-hidden="true"></i> Sync Duties</div>
+                    <div class="stat">
+                      <span class="activity-pair" data-observed="{{ .Data.SyncExecutedSum }}" data-scheduled="{{ .Data.SyncScheduledSum }}"></span>
+                      <span class="activity-sep">/</span>
+                      <span class="activity-missed text-danger" data-scheduled="{{ .Data.SyncScheduledSum }}" data-proposed="{{ .Data.SyncExecutedSum }}"></span>
+                    </div>
+                    <div class="stat-label activity-label">Executed / Missed</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"><i class="fas fa-hourglass-half mr-1" aria-hidden="true"></i> Avg. Inclusion Delay</div>
+                    <div class="stat">{{ formatFloat .Data.AttestationAvgInclDist 3 }}</div>
+                    <div class="stat-label">Attestations</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Penalties & Delays -->
+          <div class="col-lg-6 mb-3">
+            <div class="card h-100">
+              <div class="card-body">
+                <div class="section-title mb-3"><i class="fas fa-coins mr-1" aria-hidden="true"></i> Income</div>
+                <div class="row">
+                  <div class="col-sm-4 mb-2">
+                    <div class="stat text-warning">
+                      {{ formatElCurrency .Data.TotalRewardsWei "ETH" 2 true false false true }}
+                    </div>
+                    <div class="stat-label">Total</div>
+                  </div>
+                  <div class="col-sm-4 mb-2">
+                    <div class="stat-heading"></div>
+                    <div class="stat text-warning">
+                      {{ formatClCurrency .Data.ClRewardsGWei "ETH" 2 true false false true }}
+                    </div>
+                    <div class="stat-label">Cl Layer</div>
+                  </div>
+                  <div class="col-sm-4 mb-2">
+                    <div class="stat-heading"></div>
+                    <div class="stat text-warning">
+                      {{ formatElCurrency .Data.ElRewardsWei "ETH" 2 true false false true }}
+                    </div>
+                    <div class="stat-label">El Layer</div>
+                  </div>
+                </div>
+                <hr />
+                <div class="section-title mb-3"><i class="fas fa-times-circle mr-1" aria-hidden="true"></i> Missed Rewards</div>
+                <div class="row">
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat text-warning">
+                      {{ formatClCurrency .Data.TotalMissedClRewards "ETH" 2 true false false
+                        true
+                      }}
+                    </div>
+                    <div class="stat-label">Total</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"></div>
+                    <div class="stat text-warning">
+                      {{ formatClCurrency .Data.BlocksClMissedMedianRewardSum "ETH" 2 true
+                        false false true
+                      }}
+                    </div>
+                    <div class="stat-label">Blocks</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"></div>
+                    <div class="stat text-warning">
+                      {{ formatClCurrency .Data.AttestationsMissedRewardsSum "ETH" 2 true
+                        false false true
+                      }}
+                    </div>
+                    <div class="stat-label">Attestations</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat-heading"></div>
+                    <div class="stat text-warning">
+                      {{ formatClCurrency .Data.MissedSyncRewardsSum "ETH" 2 true false false
+                        true
+                      }}
+                    </div>
+                    <div class="stat-label">Sync Comm.</div>
+                  </div>
+                </div>
+                <hr />
+                <div class="section-title mb-3"><i class="fas fa-gavel mr-1" aria-hidden="true"></i> Slashings</div>
+                <div class="row">
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat text-danger">{{ formatThousandsInt .Data.SlashedInPeriodMax }}</div>
+                    <div class="stat-label">Slashed Validators</div>
+                  </div>
+                  <div class="col-sm-6 mb-2">
+                    <div class="stat text-danger">{{ formatThousandsInt .Data.SlashedAmountSum }}</div>
+                    <div class="stat-label">Executed Slashings</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {{ if and .Data.HasRealSubEntities (eq .Data.SubEntity "-") }}
+          <div id="sub-entities" class="card mb-3">
+            <div class="card-body">
+              <div class="section-title mb-2"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Sub-Entities</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr>
+                      <th scope="col">Sub-Entity</th>
+                      <th scope="col" class="text-right">Net Share</th>
+                      <th scope="col" class="text-right">Beaconscore</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {{ range .Data.SubEntities }}
+                      <tr>
+                        <td>
+                          <a href="/entity/{{ $.Data.Entity | urlPathEscape }}/{{ .SubEntity | urlPathEscape }}?period={{ $.Data.Period | urlquery }}">{{ .SubEntity }}</a>
+                        </td>
+                        <td class="text-right">{{ formatPercentageWithPrecision .NetShare 2 }}%</td>
+                        <td class="text-right">{{ formatBeaconscore .Beaconscore true }}</td>
+                      </tr>
+                    {{ else }}
+                      <tr>
+                        <td colspan="3" class="text-muted">No sub-entities available</td>
+                      </tr>
+                    {{ end }}
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pagination controls for sub-entities -->
+              <nav aria-label="Sub-entities pagination">
+                <ul class="pagination pagination-sm mb-0 justify-content-end">
+                  {{ $page := .Data.Page }}
+                  {{ $total := .Data.TotalPages }}
+                  {{ $period := .Data.Period }}
+                  {{ $entity := .Data.Entity }}
+
+
+                  <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
+                    <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?page={{ sub $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Previous">&laquo;</a>
+                  </li>
+
+                  <li class="page-item {{ if eq $page $total }}disabled{{ end }}">
+                    <a class="page-link" href="/entity/{{ $entity | urlPathEscape }}/-?page={{ add $page 1 }}&period={{ $period | urlquery }}#sub-entities" aria-label="Next">&raquo;</a>
+                  </li>
+                  <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
+                </ul>
+              </nav>
+            </div>
+          </div>
+        {{ end }}
+        <p class="text-muted text-right font-weight-light">Last updated: {{ .Data.LastUpdatedAt.Unix | formatTimestamp }}</p>
+      </div>
+    </div>
+  </section>
+{{ end }}

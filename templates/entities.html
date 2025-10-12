@@ -1,0 +1,166 @@
+{{ define "js" }}
+  <script src="/js/highcharts/v14/highcharts.min.js"></script>
+  <script src="/js/highcharts/v14/modules/treemap.min.js"></script>
+  <script src="/js/highcharts/v14/modules/heatmap.min.js"></script>
+  <script src="/js/highcharts/v14/modules/accessibility.min.js"></script>
+  <script src="/js/highcharts/highcharts-global-options.js"></script>
+  <script src="/js/highcharts/v14/highcharts-extensions.min.js"></script>
+  <script src="/js/treemap.js"></script>
+  <script src="/js/entities.js"></script>
+{{ end }}
+
+{{ define "css" }}
+  <link rel="stylesheet" type="text/css" href="/css/entities.css" />
+{{ end }}
+
+{{ define "content" }}
+  <section>
+    <div class="container">
+      <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+          <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-building mr-1" aria-hidden="true"></i> Ethereum Staking Ecosystem Overview</h1>
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+              <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+              <li class="breadcrumb-item"><a href="/entities" title="Entities Overview">Entities</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Overview</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+      <div class="h-100 py-4">
+        <div class="d-flex justify-content-end mb-2">
+          <div class="btn-group btn-group-sm" role="group" aria-label="Select period">
+            {{ range .Data.PeriodLinks }}
+              <a href="{{ .Href }}" class="btn {{ if eq .Value $.Data.Period }}btn-primary{{ else }}btn-outline-primary{{ end }}">{{ .Label }}</a>
+            {{ end }}
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <div class="card mb-3">
+              <div class="card-body">
+                <div id="entities-treemap" style="min-height: 600px;"></div>
+              <script id="treemap-data" type="application/json">[
+                {{- $len := len .Data.Treemap -}}
+                {{- range $i, $t := .Data.Treemap -}}
+                  {{- if $i }},{{ end -}}
+                  {"entity":"{{ $t.Entity | js }}","efficiency":{{ printf "%.6f" $t.Efficiency }},"netShare":{{ printf "%.8f" $t.NetShare }}}
+                {{- end -}}
+              ]</script>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row mt-4">
+          <div class="col-md-12">
+            <!-- Search form (prefix, case-insensitive) -->
+            <form method="GET" action="/entities" class="form-inline mb-2">
+              <input type="hidden" name="period" value="{{ .Data.Period }}" />
+              <div class="input-group input-group-sm mr-2" style="max-width: 360px;">
+                <input type="text" class="form-control" name="q" placeholder="Search entity or sub-entity..." value="{{ .Data.Query }}" />
+                <div class="input-group-append">
+                  <button class="btn btn-primary text-white" type="submit">Search</button>
+                </div>
+              </div>
+              {{ if .Data.Query }}
+                <a class="btn btn-sm btn-link" href="/entities?period={{ .Data.Period }}">Clear</a>
+              {{ end }}
+            </form>
+
+            <div id="poolTable" class="table-responsive card px-0 pb-1 mb-2">
+              <table class="table" id="staking-pool-table">
+                <colgroup>
+                  <col style="width:38%" />
+                  <col style="width:38%" />
+                  <col style="width:12%" />
+                  <col style="width:12%" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Entity</th>
+                    <th>Sub Entity</th>
+                    <th title="Beaconscore (a.k.a. Validator Efficiency) is a holistic performance indicator combining rewards from attestations, block proposals, and sync committee duties over a timeframe. Higher is better. Click the icon to learn more.">Beaconscore <a class="beaconscore-help" href="https://kb.beaconcha.in/v2beta/metric-validator-efficiency" target="_blank" rel="noopener" title="Beaconscore (a.k.a. Validator Efficiency) is a holistic performance indicator combining rewards from attestations, block proposals, and sync committee duties over a timeframe. Higher is better. Click to learn more.">i</a></th>
+                    <th>Net Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{ range .Data.Rows }}
+                    <tr data-entity="{{ .Entity }}" data-sub-entity="{{ if .Remark }}__remark__{{ else }}{{ .SubEntity }}{{ end }}" data-efficiency="{{ .Efficiency }}" data-net-share="{{ .NetShare }}" {{ if .Remark }}data-remark="true"{{ end }}>
+                      <td>{{ if and (not .SubEntity) (not .Remark) }}<a href="/entity/{{ .Entity }}/-">{{ .Entity }}</a>{{ end }}</td>
+                      <td>{{ if .Remark }}{{ .Remark }}{{ else if .SubEntity }}<a href="/entity/{{ .Entity }}/{{ .SubEntity }}">{{ .SubEntity }}</a>{{ end }}</td>
+                      {{ $eff := .Efficiency }}
+                      <td>
+                        {{ if not .Remark }}{{ formatBeaconscore .Efficiency false }}{{ end }}
+                      </td>
+                      <td>{{ if not .Remark }}{{ formatPercentageWithPrecision .NetShare 2 }}%{{ end }}</td>
+                    </tr>
+                  {{ end }}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination controls and attribution -->
+            <div class="d-flex justify-content-between align-items-center">
+              <nav aria-label="Entities pagination">
+                <ul class="pagination pagination-sm mb-0">
+                  {{ $q := .Data.Query }}
+                  {{ $page := .Data.Page }}
+                  {{ $total := .Data.TotalPages }}
+                  {{ $period := .Data.Period }}
+
+
+                  <li class="page-item {{ if eq $page 1 }}disabled{{ end }}">
+                    <a class="page-link" href="/entities?page={{ sub $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}" aria-label="Previous">&laquo;</a>
+                  </li>
+
+                  <!-- First page -->
+                  {{ if gt $page 3 }}
+                    <li class="page-item"><a class="page-link" href="/entities?page=1{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">1</a></li>
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                  {{ else if gt $total 1 }}
+                    <li class="page-item {{ if eq $page 1 }}active{{ end }}"><a class="page-link" href="/entities?page=1{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">1</a></li>
+                  {{ end }}
+
+
+                  <!-- Previous neighbor -->
+                  {{ if and (gt $page 2) (le (sub $page 1) $total) }}
+                    <li class="page-item"><a class="page-link" href="/entities?page={{ sub $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ sub $page 1 }}</a></li>
+                  {{ end }}
+
+
+                  <!-- Current page -->
+                  {{ if and (gt $page 1) (lt $page $total) }}
+                    <li class="page-item active"><a class="page-link" href="#">{{ $page }}</a></li>
+                  {{ end }}
+
+
+                  <!-- Next neighbor -->
+                  {{ if and (lt $page (sub $total 1)) (ge (add $page 1) 1) }}
+                    <li class="page-item"><a class="page-link" href="/entities?page={{ add $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ add $page 1 }}</a></li>
+                  {{ end }}
+
+
+                  <!-- Last page -->
+                  {{ if lt $page (sub $total 2) }}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                    <li class="page-item"><a class="page-link" href="/entities?page={{ $total }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ $total }}</a></li>
+                  {{ else if and (gt $total 1) (ne $page $total) }}
+                    <li class="page-item {{ if eq $page $total }}active{{ end }}"><a class="page-link" href="/entities?page={{ $total }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}">{{ $total }}</a></li>
+                  {{ end }}
+
+
+                  <li class="page-item {{ if eq $page $total }}disabled{{ end }}">
+                    <a class="page-link" href="/entities?page={{ add $page 1 }}{{ if $q }}&q={{ $q | urlquery }}{{ end }}&period={{ $period }}" aria-label="Next">&raquo;</a>
+                  </li>
+                  <li class="page-item disabled"><span class="page-link">Page {{ $page }} of {{ $total }}</span></li>
+                </ul>
+              </nav>
+              <p class="small text-muted mb-0 ml-auto">Entity tagging data provided by <a href="https://x.com/hildobby" target="_blank" rel="noopener">@hildobby</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{{ end }}

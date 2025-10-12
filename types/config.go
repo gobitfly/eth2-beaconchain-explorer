@@ -123,7 +123,8 @@ type Config struct {
 		ApiKey                          string                           `yaml:"apiKey" envconfig:"MONITORING_API_KEY"`
 		ServiceMonitoringConfigurations []ServiceMonitoringConfiguration `yaml:"serviceMonitoringConfigurations" envconfig:"SERVICE_MONITORING_CONFIGURATIONS"`
 	} `yaml:"monitoring"`
-	GithubApiHost string `yaml:"githubApiHost" envconfig:"GITHUB_API_HOST"`
+	ValidatorTagger ValidatorTaggerConfig `yaml:"validatorTagger"`
+	GithubApiHost   string                `yaml:"githubApiHost" envconfig:"GITHUB_API_HOST"`
 }
 
 type Chain struct {
@@ -142,12 +143,21 @@ type Chain struct {
 }
 
 type Bigtable struct {
-	Project             string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
-	Instance            string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
-	Emulator            bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
-	EmulatorPort        int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
-	EmulatorHost        string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
-	V2SchemaCutOffEpoch uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
+	Project                    string `yaml:"project" envconfig:"BIGTABLE_PROJECT"`
+	Instance                   string `yaml:"instance" envconfig:"BIGTABLE_INSTANCE"`
+	Emulator                   bool   `yaml:"emulator" envconfig:"BIGTABLE_EMULATOR"`
+	EmulatorPort               int    `yaml:"emulatorPort" envconfig:"BIGTABLE_EMULATOR_PORT"`
+	EmulatorHost               string `yaml:"emulatorHost" envconfig:"BIGTABLE_EMULATOR_HOST"`
+	V2SchemaCutOffEpoch        uint64 `yaml:"v2SchemaCutOffEpoch" envconfig:"BIGTABLE_V2_SCHEMA_CUTT_OFF_EPOCH"`
+	TableNameBeaconchain       string `yaml:"tableNameBeaconchain" env:"BIGTABLE_TABLE_NAME_BEACONCHAIN"`
+	TableNameValidators        string `yaml:"tableNameBeaconchainValidators" env:"BIGTABLE_TABLE_NAME_BEACONCHAIN_VALIDATORS"`
+	TableNameValidatorsHistory string `yaml:"tableNameBeaconchainValidatorsHistory" env:"BIGTABLE_TABLE_NAME_BEACONCHAIN_VALIDATORS_HISTORY"`
+	TableNameBlocks            string `yaml:"tableNameBlocks" env:"BIGTABLE_TABLE_NAME_BLOCKS"`
+	TableNameData              string `yaml:"tableNameData" env:"BIGTABLE_TABLE_NAME_DATA"`
+	TableNameMachineMetrics    string `yaml:"tableNameMachineMetrics" env:"BIGTABLE_TABLE_NAME_MACHINE_METRICS"`
+	TableNameMetadata          string `yaml:"tableNameMetadata" env:"BIGTABLE_TABLE_NAME_METADATA"`
+	TableNameMetadataUpdates   string `yaml:"tableNameMetadataUpdates" env:"BIGTABLE_TABLE_NAME_METADATA_UPDATES"`
+	TableNameBlocksRaw         string `yaml:"tableNameBlocksRaw" env:"BIGTABLE_TABLE_NAME_BLOCKS_RAW"`
 }
 
 type Frontend struct {
@@ -418,4 +428,30 @@ type ConfigJsonResponse struct {
 		MaxPendingDepositsPerEpoch              string `json:"MAX_PENDING_DEPOSITS_PER_EPOCH"`
 		MaxEffectiveBalanceElectra              string `json:"MAX_EFFECTIVE_BALANCE_ELECTRA"`
 	} `json:"data"`
+}
+
+// ValidatorTaggerConfig controls the daily validator naming refresh.
+// If LocalCSVPath is set, the service will import from that CSV instead of querying Dune.
+// The local CSV will never be deleted by the service.
+type ValidatorTaggerConfig struct {
+	Enabled          bool   `yaml:"enabled" envconfig:"VALIDATOR_TAGGER_ENABLED"`
+	SchedulerEnabled bool   `yaml:"schedulerEnabled" envconfig:"VALIDATOR_TAGGER_SCHEDULER_ENABLED"`
+	LocalCSVPath     string `yaml:"localCSVPath" envconfig:"VALIDATOR_TAGGER_LOCAL_CSV_PATH"`
+	Dune             struct {
+		ApiKey    string        `yaml:"apiKey" envconfig:"DUNE_API_KEY"`
+		QueryID   int           `yaml:"queryId" envconfig:"DUNE_QUERY_ID"`
+		Timeout   time.Duration `yaml:"timeout" envconfig:"DUNE_TIMEOUT"`
+		LimitRows int           `yaml:"limitRows" envconfig:"DUNE_LIMIT_ROWS"`
+	} `yaml:"dune"`
+	Steps struct {
+		// If a flag is nil, the step defaults to enabled (true) for backward compatibility.
+		ImportEnabled              *bool `yaml:"importEnabled" envconfig:"VALIDATOR_TAGGER_STEP_IMPORT"`
+		LidoEnabled                *bool `yaml:"lidoEnabled" envconfig:"VALIDATOR_TAGGER_STEP_LIDO"`
+		LidoCSMEnabled             *bool `yaml:"lidoCSMEnabled" envconfig:"VALIDATOR_TAGGER_STEP_LIDO_CSM"`
+		RocketPoolSubEntityEnabled *bool `yaml:"rocketPoolSubEntityEnabled" envconfig:"VALIDATOR_TAGGER_STEP_ROCKETPOOL_SUBENTITY"`
+		WithdrawalTaggingEnabled   *bool `yaml:"withdrawalTaggingEnabled" envconfig:"VALIDATOR_TAGGER_STEP_WITHDRAWAL_TAGGING"`
+		DepositTaggingEnabled      *bool `yaml:"depositTaggingEnabled" envconfig:"VALIDATOR_TAGGER_STEP_DEPOSIT_TAGGING"`
+		PopulateNamesEnabled       *bool `yaml:"populateNamesEnabled" envconfig:"VALIDATOR_TAGGER_STEP_POPULATE_NAMES"`
+		PrecomputeEnabled          *bool `yaml:"precomputeEnabled" envconfig:"VALIDATOR_TAGGER_STEP_PRECOMPUTE"`
+	} `yaml:"steps"`
 }

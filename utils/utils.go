@@ -85,6 +85,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"includeHTML":                             IncludeHTML,
 		"includeSvg":                              IncludeSvg,
 		"formatHTML":                              FormatMessageToHtml,
+		"safeHTML":                                SafeHTML,
 		"formatBalance":                           FormatBalance,
 		"formatNotificationChannel":               FormatNotificationChannel,
 		"formatBalanceSql":                        FormatBalanceSql,
@@ -127,6 +128,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
 		"formatPercentageWithGPrecision":          FormatPercentageWithGPrecision,
 		"formatPercentageColoredEmoji":            FormatPercentageColoredEmoji,
+		"formatBeaconscore":                       FormatBeaconscore,
+		"formatEfficiency":                        FormatEfficiency,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
@@ -182,7 +185,7 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%v\n", i)
 		},
-		"formatThousandsInt": func(i int) string {
+		"formatThousandsInt": func(i any) string {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%d", i)
 		},
@@ -249,6 +252,8 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return dict, nil
 		},
+		// URL helpers for correct path encoding in templates (spaces -> %20, not +)
+		"urlPathEscape": func(s string) string { return url.PathEscape(s) },
 	}
 }
 
@@ -260,6 +265,22 @@ func IncludeHTML(path string) template.HTML {
 		return ""
 	}
 	return template.HTML(string(b))
+}
+
+// SafeHTML marks a value as trusted HTML so it won't be escaped by the template engine.
+// It accepts either a string, template.HTML, or []byte and returns template.HTML.
+// WARNING: Only use this with content that is already sanitized or fully trusted.
+func SafeHTML(v interface{}) template.HTML {
+	switch t := v.(type) {
+	case template.HTML:
+		return t
+	case string:
+		return template.HTML(t)
+	case []byte:
+		return template.HTML(string(t))
+	default:
+		return template.HTML(fmt.Sprint(t))
+	}
 }
 
 func GraffitiToString(graffiti []byte) string {
@@ -811,6 +832,34 @@ func ReadConfig(cfg *types.Config, path string) error {
 	if cfg.RedisSessionStoreEndpoint == "" && cfg.RedisCacheEndpoint != "" {
 		logrus.Infof("using RedisCacheEndpoint %s as RedisSessionStoreEndpoint as no dedicated RedisSessionStoreEndpoint was provided", cfg.RedisCacheEndpoint)
 		cfg.RedisSessionStoreEndpoint = cfg.RedisCacheEndpoint
+	}
+
+	if cfg.Bigtable.TableNameBeaconchain == "" {
+		cfg.Bigtable.TableNameBeaconchain = "beaconchain"
+	}
+	if cfg.Bigtable.TableNameValidators == "" {
+		cfg.Bigtable.TableNameValidators = "beaconchain_validators"
+	}
+	if cfg.Bigtable.TableNameValidatorsHistory == "" {
+		cfg.Bigtable.TableNameValidatorsHistory = "beaconchain_validators_history"
+	}
+	if cfg.Bigtable.TableNameBlocks == "" {
+		cfg.Bigtable.TableNameBlocks = "blocks"
+	}
+	if cfg.Bigtable.TableNameData == "" {
+		cfg.Bigtable.TableNameData = "data"
+	}
+	if cfg.Bigtable.TableNameMachineMetrics == "" {
+		cfg.Bigtable.TableNameMachineMetrics = "machine_metrics"
+	}
+	if cfg.Bigtable.TableNameMetadata == "" {
+		cfg.Bigtable.TableNameMetadata = "metadata"
+	}
+	if cfg.Bigtable.TableNameMetadataUpdates == "" {
+		cfg.Bigtable.TableNameMetadataUpdates = "metadata_updates"
+	}
+	if cfg.Bigtable.TableNameBlocksRaw == "" {
+		cfg.Bigtable.TableNameBlocksRaw = "blocks-raw"
 	}
 
 	logrus.WithFields(logrus.Fields{

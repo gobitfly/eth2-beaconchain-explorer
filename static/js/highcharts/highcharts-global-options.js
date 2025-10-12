@@ -73,6 +73,13 @@ Highcharts.setOptions({
     },
     gridLineColor: "var(--border-color-transparent)",
   },
+  colorAxis: {
+    labels: {
+      style: {
+        color: "var(--font-color)",
+      },
+    },
+  },
   navigation: {
     menuStyle: {
       border: "1px solid var(--border-color-transparent)",
