@@ -1,0 +1,215 @@
+/*!
+ * Bootstrap v4.5.0 (https://getbootstrap.com/)
+ * Copyright 2011-2020 The Bootstrap Authors
+ * Copyright 2011-2020 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ */
+
+// Dark color scheme
+
+$white: #000;
+$gray-50: #E5E5E5;
+$gray-100: #D6D6D6;
+$gray-200: #BDBDBD;
+$gray-300: #A8A8A8;
+$gray-400: #888888;
+$gray-500: #666666;
+$gray-600: #4C4C4C;
+$gray-700: #3B3B3B;
+$gray-800: #2F2F2F;
+$gray-900: #262626;
+$gray-950: #1A1919;
+$black: #fff;
+
+$branded: #1E46D6;
+$secondary: #bdbdbd;
+$black_v3: #101010;
+$white_v3: #FAFAFA;
+$bg-surface-1: $gray-950;
+$bg-surface-2: $gray-900;
+$bg-surface-3: $gray-700;
+
+$blue: #3498db;
+$indigo: #6610f2;
+$purple: #693a39;
+$pink: #aa2869;
+$red: #f3454a;
+$orange: #ffaa31;
+$yellow: #f8c988;
+$green: #7dc382;
+$teal: #37f0f0;
+$cyan: #7fd8e6;
+$bg: $black_v3;
+$bg-color: $black_v3;
+$shadow-color: #1e1c1f;
+$bg-color-nav: #413938;
+$shadow-light: rgba(151, 152, 155, .2);
+$shadow-only-light: rgba(0, 0, 0, 0);
+$shadow-dark: rgba(159, 162, 177, .8);
+$highlight: rgba(248, 184, 139, .2);
+$linear-gradient: linear-gradient(to right top, #444359, #403f55, #3c3b50, #38374c, #343348, #313045, #2f2e42, #2c2b3f, #2a293d, #27263a, #252438, #232236);
+$rhino: #274253 !default;
+$terracotta: #dd765e !default;
+$manhattan: #f5b498 !default;
+$charade: #2f2e42 !default;
+$link-color: #66bce9;
+$link-hover-color: #166a96;
+$bg-color-light: #5c4e4e55;
+$card-border-color: rgba($black, .125);
+$border-color: #5c4e4e;
+$border-color-transparent: #5c4e4e80;
+$mask-fill-color: #1473e631;
+$transparent-font-color: #f5f3f380;
+$bg-color-secondary: #24201f;
+$body-color: $white_v3;
+$banner-background: $black_v3 !default;
+$banner-text: $manhattan !default;
+
+
+
+$navbar-light-color: rgba($black, .5);
+$navbar-light-hover-color: rgba($black, .7);
+$navbar-light-active-color: rgba($black, .9);
+$navbar-light-disabled-color: rgba($black, .3);
+
+$colors: (
+  "shadow-light": $shadow-light,
+  "shadow-dark": $shadow-dark,
+  "font-color": $black,
+  "body-color": $body-color,
+  "charade": $charade,
+  "manhattan": $manhattan,
+  "rhino": $rhino,
+  "terracotta": $terracotta,
+  "linear-gradient": $linear-gradient,
+  "shadow-only-light": $shadow-only-light,
+
+  "navbar-light-color": $navbar-light-color,
+  "navbar-light-hover-color": $navbar-light-hover-color,
+  "navbar-light-active-color": $navbar-light-active-color,
+  "navbar-light-disabled-color": $navbar-light-disabled-color
+);
+
+$primary: $branded;
+$secondary: $secondary;
+$success: $green;
+$info: $cyan;
+$warning: $yellow;
+$danger: $red;
+$light: $gray-900;
+$dark: $gray-200;
+$body-bg: $bg-color;
+$input-color: $gray-700;
+$input-border-color: $gray-400;
+
+$theme-colors: (
+  "primary": $primary,
+  "secondary": $secondary,
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger,
+  "light": $dark,
+  "dark": $light,
+  "bg": $bg,
+  "bg-color": $bg-color,
+  "shadow-color": $shadow-color,
+  "bg-color-light": $bg-color-light,
+  "bg-color-nav": $bg-color-nav,
+  "bg-color-secondary": $bg-color-secondary,
+  "card-border-color": $card-border-color,
+  "link-color": $link-color,
+  "link-hover-color": $link-hover-color,
+  "input-color": $gray-700,
+  "input-border-color": $gray-400,
+  "border-color": $border-color,
+  "border-color-transparent": $border-color-transparent,
+  "mask-fill-color": $mask-fill-color,
+  "transparent-font-color": $transparent-font-color,
+  "banner-background": $banner-background,
+  "banner-text": $banner-text,
+  "highlight": $highlight,
+
+  "inverted-body-color": $black_v3,
+  "bg-surface-1": $bg-surface-1,
+  "bg-surface-2": $bg-surface-2,
+  "bg-surface-3": $bg-surface-3,
+);
+
+// swap darken for lighten
+$popover-bg: $white;
+$popover-header-bg: lighten($popover-bg, 3%);
+$dropdown-link-hover-color: lighten($gray-900, 5%);
+// $emphasized-link-hover-darken-percentage: 5%;
+$table-dark-bg: $gray-800;
+$component-active-bg: $primary;
+
+$table-dark-border-color: darken($table-dark-bg, 7.5%);
+$input-focus-border-color: darken($component-active-bg, 25%);
+$custom-control-indicator-active-bg: darken($component-active-bg, 35%);
+$custom-range-thumb-active-bg: darken($component-active-bg, 35%);
+
+// prefer white
+$yiq-contrasted-threshold: 50;
+
+
+// common beacon chain styles
+@import "mixins-dark";
+@import "custom/beacon";
+
+[data-theme='light'] {
+  --blue: #0d6efd;
+  --indigo: #6610f2;
+  --purple: #693a39;
+  --pink: #aa2869;
+  --red: #f82e2e;
+  --orange: #ee7112;
+  --yellow: #f0952d;
+  --green: #2d7533;
+  --teal: #143226;
+  --cyan: #17a2b8;
+  --white: #fff;
+  --gray: #6c757d;
+  --gray-dark: #343a40;
+  --shadow-light: rgba(159, 162, 177, .3);
+  --shadow-dark: rgba(159, 162, 177, .8);
+  --font-color: #000;
+  --body-color: #343a40;
+  --charade: #2f2e42;
+  --manhattan: #f5b498;
+  --rhino: #274253;
+  --terracotta: #dd765e;
+  --linear-gradient: linear-gradient(to right bottom, #ffc0b6, #ffbdb0, #ffbba9, #ffb8a2, #ffb69b, #ffb495, #feb18e, #fdaf88, #fdad81, #fdaa79, #fca871, #fba669);
+  --shadow-only-light: 0 1px 4px rgba(159, 162, 177, .3);
+  --primary: #ee7112;
+  --secondary: #5e6d64;
+  --success: #2d7533;
+  --info: #17a2b8;
+  --warning: #f0952d;
+  --danger: #f82e2e;
+  --light: #e7e1d7;
+  --dark: #343a40;
+  --bg: #fbf0e822;
+  --bg-color: #fdfdfd;
+  --shadow-color: rgba(99, 99, 99, .2);
+  --bg-color-light: #e5e1e166;
+  --bg-color-nav: #e1d8d8;
+  --card-border-color: rgba(0, 0, 0, .125);
+  --link-color: #3870a8;
+  --link-hover-color: #2e5c89;
+  --bg-color-secondary: #fff;
+  --input-color: #5e6d64;
+  --input-border-color: #c4c4ba;
+  --border-color: #e5e1e1;
+  --border-color-transparent: #e5e1e180;
+  --mask-fill-color: #1473e631;
+  --transparent-font-color: #26232780;
+  --banner-background: $black_v3;
+  --banner-text: #f5b498;
+  --highlight: rgba(251, 166, 105, .5);
+  --navbar-light-color: rgba(0, 0, 0, .5);
+  --navbar-light-hover-color: rgba(0, 0, 0, .7);
+  --navbar-light-active-color: rgba(0, 0, 0, .9);
+  --navbar-light-disabled-color: rgba(0, 0, 0, .3);
+}
+

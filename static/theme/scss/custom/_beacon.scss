@@ -1,0 +1,332 @@
+@import "../fonts/barlow";
+@import "../fonts/inter";
+@import "../fonts/roboto";
+@import "../fonts/urbanist";
+
+$enable-responsive-font-sizes: true;
+
+$grid-breakpoints: (
+  xs: 0,
+  sm: 640px,
+  md: 820px,
+  lg: 1140px,
+  xl: 1440px
+);
+
+$container-max-widths: (
+  sm: 620px,
+  md: 790px,
+  lg: 1110px,
+  xl: 1400px
+);
+
+$font-family-sans-serif: 'Urbanist', sans-serif;
+$font-family-monospace: 'Roboto Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+$table-cell-padding: .5rem;
+$table-cell-padding-sm: .25rem;
+
+$input-bg: $bg-color;
+
+$input-color: $input-color;
+$input-border-color: $input-border-color;
+$input-focus-border-color: $border-color-transparent;
+
+$card-border-color: $card-border-color;
+$card-bg: $bg-color;
+
+@import "../functions";
+@import "../variables";
+@import "../root";
+@import "../reboot";
+@import "../type";
+@import "../images";
+@import "../code";
+@import "../grid";
+@import "../tables";
+@import "../forms";
+@import "../buttons";
+@import "../transitions";
+@import "../dropdown";
+@import "../button-group";
+@import "../input-group";
+@import "../custom-forms";
+@import "../nav";
+@import "../navbar";
+@import "../card";
+@import "../breadcrumb";
+@import "../pagination";
+@import "../badge";
+@import "../jumbotron";
+@import "../alert";
+@import "../progress";
+@import "../media";
+@import "../list-group";
+@import "../close";
+@import "../toasts";
+@import "../modal";
+@import "../tooltip";
+@import "../popover";
+@import "../carousel";
+@import "../spinners";
+@import "../utilities";
+@import "../print";
+
+// Overwriting bootstrap styles
+body {
+  background: var(--bg-color);
+}
+
+h1, h2 {
+  font-family: 'Barlow', sans-serif;
+  font-weight: 600;
+  font-style: normal;
+  font-stretch: normal;
+}
+
+h3, h4 {
+  font-family: 'Barlow', sans-serif;
+  font-weight: 500;
+  font-style: normal;
+  font-stretch: normal;
+}
+
+h5, h6 {
+  /* font-family: 'Roboto', sans-serif; */
+  font-weight: 400;
+  font-style: normal;
+  font-stretch: normal;
+}
+
+a:not(.nav-link) {
+  text-decoration: none !important;
+  background-repeat: no-repeat;
+  background-image: linear-gradient(180deg, transparent 65%, var(--highlight, $highlight) 0);
+  transition: background-size .25s ease;
+  background-size: 0% 100%;
+}
+
+main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-highlight):hover {
+  background-size: 100% 100%;
+  background-image: linear-gradient(180deg, transparent 65%, var(--highlight, $highlight) 0);
+}
+
+body main {
+  min-height: calc(100vh - 56px) !important;
+}
+
+input[type="range"] {
+  padding: 0 !important;
+}
+
+main > div > .my-3 {
+  padding: 1rem 0;
+}
+
+.card {
+  background-color: var(--bg-surface-1);
+  border-radius: 8px;
+  box-shadow: 0px 2px 8px 0px var(--shadow-color);
+}
+
+.card-body {
+  padding: 1rem;
+}
+
+.card-header {
+  background: none;
+}
+
+.dropdown-menu {
+  background-color: var(--bg-color);
+  box-shadow: none;
+  border-radius: 4px;
+}
+
+.dropdown-menu > a > i {
+  width: 20px;
+}
+
+.dropdown-item {
+  color: var(--body-color);
+  margin: .5rem 0;
+}
+
+.fa-search {
+  position: absolute;
+  right: 10px;
+  color: grey;
+  z-index: 99;
+}
+
+.form-check-input {
+  border: 1px solid var(--input-border-color);
+}
+
+.paginate_button {
+  background-color: transparent;
+}
+
+.paginate_input {
+  text-align: center;
+}
+
+.navbar {
+  background-color: none;
+  padding-top: calc(82px + .5rem);
+  position: relative;
+  z-index: 99;
+  box-shadow: 0 1px 4px var(--shadow-light, $shadow-light);
+}
+
+.navbar-brand {
+  margin-right: 1rem;
+}
+
+.nav-item {
+  position: relative;
+}
+
+.nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {
+  border-color: var(--border-color, $border-color);
+}
+
+.nav-tabs .nav-link:focus, .nav-tabs .nav-link:hover {
+  border-color: var(--border-color, $border-color);
+}
+
+.nav-tabs {
+  border-bottom: 1px solid var(--border-color, $border-color);
+}
+
+.search-container {
+  flex: 1 1 auto;
+}
+
+.search-container form {
+  width: 100%;
+  justify-content: flex-end;
+  padding: 5px 0;
+  position: relative;
+}
+
+.text-monospace {
+  font-family: 'Roboto Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+// Custom tables styles
+.table {
+  width: 100% !important;
+  white-space: nowrap !important;
+  margin-bottom: 0;
+  font-size: .94rem;
+  line-height: 1.2;
+}
+
+.table td, .table th {
+  padding: .8rem;
+  border-top: 1px solid var(--border-color, $border-color);
+  border-bottom: none;
+}
+
+.table thead th::before, .table thead th::after {
+  font-weight: 500;
+}
+
+.table thead th {
+  color: var(--body-color);
+  border-top: none;
+  border-bottom: 1px solid var(--border-color, $border-color);
+  background-color: var(--bg-color-light, $bg-color-light);
+  border-bottom-color: var(--border-color, $border-color);
+}
+
+table.dataTable>tbody>tr.child ul.dtr-details>li {
+  border-bottom: 0 !important;
+}
+
+.dataTables_info {
+  padding-top: 2.15rem !important;
+  padding-left: 1rem !important;
+  font-size: .9rem;
+}
+
+div.dataTables_length {
+  padding-left: 1rem !important;
+  font-size: .9rem;
+  text-align: left !important;
+}
+
+div.table-responsive>div.dataTables_wrapper>div.row:nth-child(3) {
+  margin: 0;
+  margin-bottom: .5rem;
+  align-items: end;
+}
+
+.dataTables_filter input { 
+  width: 265px !important;
+  padding-top: .1rem;
+  padding-right: .1rem;
+}
+
+.dataTables_paginate, .dataTables_filter {
+  padding-right: 1rem !important;
+}
+
+table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
+table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
+  top: 1.8rem !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  line-height: 1.1rem !important;
+  color: var(--dark) !important;
+}
+
+@media (max-width: 960px) {
+  .nav-link.dropdown-toggle::after {
+    float: right;
+  }
+
+  .nav-link.dropdown-toggle::after {
+    transition: transform .3s ease-out;
+  }
+
+  .nav-link.dropdown-toggle[aria-expanded=true]::after {
+    transform: rotate(-180deg);
+  }
+}
+
+@media (max-width: 1140px) {
+  .dropdown-menu {
+    border: none;
+  }
+
+  .nav-indicator {
+    display: none;
+  }
+
+  .navbar-nav {
+    margin-top: .5rem;
+    margin-left: .5rem;
+  }
+
+  .nav-item {
+    margin: .2rem 0;
+  }
+}
+
+@media (min-width: 1140px) and (max-width: 1440px) {
+  .navbar .nav-item i {
+    display: none;
+  }
+
+  .navbar .nav-item svg {
+    display: none;
+  }
+
+  .navbar-brand i {
+    display: initial;
+  }
+}
+
+

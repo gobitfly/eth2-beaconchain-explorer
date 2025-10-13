@@ -1,0 +1,159 @@
+chain:
+  name: hoodi
+  clConfigPath: node
+  pectraWithdrawalRequestContractAddress: "0x00000961Ef480Eb55e80D19ad83579A64c007002"
+  pectraConsolidationRequestContractAddress: "0x0000BBdDc7CE488642fb579F8B00f3a590007251"
+readerDatabase:
+  name: "hoodi"
+  host: "127.0.0.1"
+  port: 15432
+  user: "beaconchain"
+  password: "projects/staging-468813/secrets/beaconchain_password_postgres_chain_hoodi/versions/latest"
+  ssl: true
+  maxOpenConns: 5
+  maxIdleConns: 25
+writerDatabase:
+  name: "hoodi"
+  host: "127.0.0.1"
+  port: 15432
+  user: "beaconchain"
+  password: "projects/staging-468813/secrets/beaconchain_password_postgres_chain_hoodi/versions/latest"
+  ssl: true
+  maxOpenConns: 5
+  maxIdleConns: 25
+bigtable:
+  project: "staging-468813"
+  instance: "beaconchain-indexed"
+  v2SchemaCutOffEpoch: 0
+  tableNameBeaconchain: hoodi_beaconchain
+  tableNameBeaconchainValidators: hoodi_beaconchain_validators
+  tableNameBeaconchainValidatorsHistory: hoodi_beaconchain_validators_history
+  tableNameBlocks: hoodi_blocks
+  tableNameData: hoodi_data
+  tableNameMetadata: hoodi_metadata
+  tableNameMetadataUpdates: hoodi_metadata_updates
+clickHouseEnabled: true
+clickhouse:
+  readerDatabase:
+    name: hoodi
+    host: lep4884r9u.us-central1.p.gcp.clickhouse.cloud
+    port: "9440"
+    user: "default"
+    password: "projects/staging-468813/secrets/beaconchain_password_clickhouse/versions/latest"
+    ssl: true
+  writerDatabase:
+    name: hoodi
+    host: lep4884r9u.us-central1.p.gcp.clickhouse.cloud
+    port: "9440"
+    user: "default"
+    password: "projects/staging-468813/secrets/beaconchain_password_clickhouse/versions/latest"
+    ssl: true
+eth1ErigonEndpoint: http://127.0.0.1:8004
+eth1GethEndpoint: http://127.0.0.1:8004
+redisCacheEndpoint: "127.0.0.1:16379"
+redisSessionStoreEndpoint: "127.0.0.1:26379"
+tieredCacheProvider: "redis"
+reportServiceStatus: true
+indexer:
+  enabled: false
+  node:
+    type: lighthouse
+    host: 127.0.0.1
+    port: 4004
+frontend:
+  enabled: true
+  debug: true
+  server:
+    host: 0.0.0.0
+    port: 8080
+  readerDatabase:
+    name: admin
+    host: "127.0.0.1"
+    port: 25432
+    user: "beaconchain"
+    password: "projects/staging-468813/secrets/beaconchain_password_postgres_admin/versions/latest"
+    ssl: true
+  writerDatabase:
+    name: admin
+    host: "127.0.0.1"
+    port: 25432
+    user: "beaconchain"
+    password: "projects/staging-468813/secrets/beaconchain_password_postgres_admin/versions/latest"
+    ssl: true
+  stripe:
+    webhook: "projects/staging-468813/secrets/stripe_webhook/versions/latest"
+    secretKey: "projects/staging-468813/secrets/stripe_secret_key/versions/latest"
+    publicKey: pk_test_51S8KSNPmaLLmKUd2UGMvE4SRuMxwzM902LBkehUycGQFxVCFZMmZTJX0FmrsXG92LKNN0cGj6vIlGeiyUISvCVuN00yaalF9J8
+    sapphire: plan_T4rooBzklestqB
+    emerald: plan_T4roauv2fHSLh3
+    diamond: plan_T4roPSVQKotc2X
+    whale: plan_T4rngaTgVzS512
+    goldfish: plan_T4rnE8AkW11MGy
+    plankton: plan_T4rnV4VHXGrWGe
+    guppy: plan_T4rmPGJ8rYL2Ca
+    guppyYearly: plan_T4rmDMJ7y4Nqm3
+    dolphin: plan_T4rmm2alntN8TU
+    dolphinYearly: plan_T4rmOeLxDLiBzI
+    orca: plan_T4rmTuEFMquBdT
+    orcaYearly: plan_T4rnhlFa3oZjWK
+    vdbAddon1k: plan_T4rmfyfj6It7gM
+    vdbAddon1kYearly: plan_T4rmJ5GFJ63uBB
+    vdbAddon10k: plan_T4rmRbM3p3J6e1
+    vdbAddon10kYearly: plan_T4rmFPyujMN4Eq
+  siteDomain: hoodi.staging-beaconcha.in
+  siteName: "STAGING hoodi explorer"
+  siteTitle: "STAGING hoodi explorer"
+  csrfAuthKey: "projects/staging-468813/secrets/beaconchain_csrf_key/versions/latest"
+  sessionSecret: "projects/staging-468813/secrets/beaconchain_session_secret/versions/latest"
+  sessionSameSiteNone: true
+  sessionCookieDomain: ".staging-beaconcha.in"
+  sessionCookieDeriveDomainFromRequest: true
+  jwtSigningSecret: "projects/staging-468813/secrets/beaconchain_jwt_secret/versions/latest"
+  jwtIssuer: "staging-beaconcha.in"
+  jwtValidityInMinutes: 30
+  maxMailsPerEmailPerDay: 10
+  httpIdleTimeout: 620s
+  mail:
+    contact:
+      supportEmail: "support@staging-beaconcha.in"
+      inquiryEmail: "inquiries@staging-beaconcha.in"
+    mailgun:
+      domain: "mg.staging-beaconcha.in"
+      privateKey: "projects/staging-468813/secrets/mailgun_key/versions/latest"
+      sender: "staging-beaconcha.in <no-reply@staging-beaconcha.in>"
+      useEUApi: true
+  gatag: "UA-139026501-2"
+  # apple:
+  #   appSubsAppleSecret: "projects/staging-468813/secrets/beaconchain_app_subs_apple_secret/versions/latest"
+  #   keyID: "projects/staging-468813/secrets/beaconchain_apple_app_key_id/versions/latest"
+  #   issueID: "projects/staging-468813/secrets/beaconchain_apple_issue_id/versions/latest"
+  #   certificate: "projects/staging-468813/secrets/beaconchain_apple_purchase_verify_p8/versions/latest" 
+  # appSubsGoogleJsonPath: "projects/staging-468813/secrets/beaconchain_firebase_json/versions/latest" 
+  recaptchaSiteKey: ""
+  recaptchaSecretKey: ""
+corsAllowedHosts:
+  - 'http://localhost:.*'
+  - 'https://beaconcha\.in'
+  - 'https://.*\.beaconcha\.in'
+  - 'https://staging-beaconcha\.in'
+  - 'https://.*\.staging-beaconcha\.in'
+  - 'https://mainnet\.staging-beaconcha\.in'
+  - 'https://gnosis\.staging-beaconcha\.in'
+  - 'https://hoodi\.staging-beaconcha\.in'
+validatorTagger: # must be added to the root section of the config file
+  enabled: true # enable / disable the validator tagger
+  schedulerEnabled: true # enable / disable the scheduler that runs the precomputation step every hour and the tag import / update once per day at 10am UTC
+  dune:
+    apiKey: "projects/staging-468813/secrets/dune_api_key/versions/latest"
+    queryId: 5798724 # dune query id, must be set to 5798724
+    timeout: "10m" # timeout for importing the dune data
+    limitRows: 0 # option to limit the request rows for dune, should be set to 0 to import all rows
+  # localCSVPath: "cmd/validator-tagger/xxx.csv" # optionally instead of querying the dune api for the validator tags csv data, we can also provide a local file, not required for production
+  steps: # for production use, all steps must be enabled
+    importEnabled: false # dune data import step, must be enabled for mainnet, disabled for all other networks
+    lidoEnabled: false # tag lido curated module validators, must be enabled for mainnet, disabled for all other networks
+    lidoCSMEnabled: false # tag lido csm validators, must be enabled for mainnet, disabled for all other networks
+    rocketPoolSubEntityEnabled: false # tag rocketpool sub entities, must be enabled for mainnet, disabled for all other networks
+    withdrawalTaggingEnabled: true # tag whales (>320 ETH) by clustering their withdrawal credentials (0x01, 0x02), must be enabled for all networks
+    depositTaggingEnabled: true # tag whales (>320 ETH) by clustering their deposit address, must be enabled for all networks
+    precomputeEnabled: true # precompute dashboards for each entity, must be enabled for all networks

@@ -1,6 +1,6 @@
 .info-banner-container {
   position: fixed;
-  height: 46px;
+  padding: 1.25rem;
   z-index: 999;
   width: 100%;
   min-width: 320px;
@@ -81,9 +81,6 @@
   font-size: 90%;
 }
 
-.info-banner-container a {
-  color: inherit;
-}
 
 .info-banner-container .item-icon {
   display: none;
@@ -297,9 +294,6 @@ color: var(--banner-text);
   .info-banner-content.container {
     padding-right: 0;
     padding-left: 0;
-  }
-  .info-banner-container {
-    padding: 0 1rem;
   }
 }
 

@@ -31,7 +31,7 @@
       <link rel="preload" as="font" href="https://fonts.gstatic.com/s/robotomono/v7/L0x5DF4xlVMF-BfR8bXMIjhLq38.woff2" crossorigin />
       <link rel="preload" as="font" href="https://fonts.gstatic.com/s/barlow/v4/7cHqv4kjgoGqM7E3_-gs51os.woff2" crossorigin />
       <link rel="preload" as="font" href="/fonts/Inter-Regular.woff2" crossorigin />
-      <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css" />
+      <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.css" />
       <link id="app-style" rel="stylesheet" href="/css/layout.css" />
       <link rel="stylesheet" href="/css/layout/toggle.css" />
       <link rel="stylesheet" href="/css/layout/banner.css" />
@@ -57,7 +57,7 @@
         localStorage.setItem("theme", currentTheme)
 
         if (currentTheme === "dark") {
-          d1.insertAdjacentHTML("beforebegin", '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-' + currentTheme + '.min.css" onload="document.documentElement.style.display = ``">')
+          d1.insertAdjacentHTML("beforebegin", '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-' + currentTheme + '.css" onload="document.documentElement.style.display = ``">')
           window.addEventListener("load", function () {
             document.getElementById("app-style-initial").remove()
           })
@@ -208,9 +208,8 @@
                 </div>
               </div>
               <a href="/login" class="mr-3 d-none d-md-flex"><span>Log in</span></a>
-              <a href="/register" class="btn btn-primary btn-sm d-none d-md-flex"
-                ><span class="text-white"><b>Sign Up</b></span></a
-              >
+              <a href="/register" class="btn btn-secondary d-none d-md-flex"
+                >Sign Up</a>
             {{ end }}
           </div>
         </div>

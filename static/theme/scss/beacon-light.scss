@@ -1,0 +1,182 @@
+/*!
+ * Bootstrap v4.5.0 (https://getbootstrap.com/)
+ * Copyright 2011-2020 The Bootstrap Authors
+ * Copyright 2011-2020 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ */
+
+// Light color scheme
+$white: #fff;
+$gray-100: #e7e1d7;
+$gray-200: #e9ecef;
+$gray-300: #dee2e6;
+$gray-400: #c4c4ba;
+$gray-500: #adb5bd;
+$gray-600: #6c757d;
+$gray-700: #5e6d64;
+$gray-800: #343a40;
+$gray-900: #212529;
+$black: #000;
+
+$blue: #0d6efd;
+$indigo: #6610f2;
+$purple: #693a39;
+$pink: #aa2869;
+$red: #f82e2e;
+$orange: purple;
+$yellow: #f0952d;
+$green: #2d7533;
+$teal: #143226;
+$cyan: #17a2b8;
+$bg: #fbf0e822;
+$bg-color: #fdfdfd;
+$shadow-color: rgba(99, 99, 99, .2);
+$bg-color-nav: #e1d8d8;
+$shadow-light: rgba(159, 162, 177, .3);
+$shadow-only-light: 0 1px 4px $shadow-light;
+$shadow-dark: rgba(159, 162, 177, .8);
+$highlight: rgba(251, 166, 105, .5);
+$linear-gradient: linear-gradient(to right bottom, #ffc0b6, #ffbdb0, #ffbba9, #ffb8a2, #ffb69b, #ffb495, #feb18e, #fdaf88, #fdad81, #fdaa79, #fca871, #fba669);
+$rhino: #274253 !default;
+$terracotta: #dd765e !default;
+$manhattan: #f5b498 !default;
+$charade: #2f2e42 !default;
+$link-color:#3870a8;
+$link-hover-color: #2e5c89;
+$bg-color-light: #e5e1e166;
+$card-border-color: rgba($black, .125);
+$border-color: #e5e1e1;
+$border-color-transparent: #e5e1e180;
+$mask-fill-color:#1473e631;
+$transparent-font-color: #26232780;
+$bg-color-secondary: $white;
+$body-color: $gray-800;
+$banner-background: $charade !default;
+$banner-text: $manhattan !default;
+
+$branded: #1E46D6;
+
+$navbar-light-color:          rgba($black, .5);
+$navbar-light-hover-color:    rgba($black, .7);
+$navbar-light-active-color:   rgba($black, .9);
+$navbar-light-disabled-color: rgba($black, .3);
+
+$colors: ( 
+  "shadow-light": $shadow-light,
+  "shadow-dark": $shadow-dark,
+  "font-color": $black,
+  "body-color": $body-color,
+  "charade": $charade,
+  "manhattan": $manhattan,
+  "rhino": $rhino,
+  "terracotta": $terracotta,
+  "linear-gradient": $linear-gradient,
+  "shadow-only-light": $shadow-only-light,
+  "navbar-light-color": $navbar-light-color,
+  "navbar-light-hover-color": $navbar-light-hover-color,
+  "navbar-light-active-color": $navbar-light-active-color,
+  "navbar-light-disabled-color": $navbar-light-disabled-color
+  );
+
+$primary: $orange;
+$secondary: #5e6d64;
+$success: $green;
+$info: $cyan;
+$warning: $yellow;
+$danger: $red;
+$light: $gray-100;
+$dark: $gray-800;
+$body-bg: $bg-color;
+$input-color: $gray-700;
+$input-border-color: $gray-400;
+
+$theme-colors: (
+    "primary": $branded,
+    "secondary": $secondary,
+    "success": $success,
+    "info": $info,
+    "warning": $warning,
+    "danger": $danger,
+    "light": $light,
+    "dark": $dark,
+    "bg": $bg,
+    "bg-color": $bg-color,
+    "shadow-color": $shadow-color,
+    "bg-color-light": $bg-color-light,
+    "bg-color-nav": $bg-color-nav,
+    "card-border-color": $card-border-color,
+    "link-color": $link-color,
+    "link-hover-color": $link-hover-color,
+    "bg-color-secondary": $bg-color-secondary,
+    "input-color": $gray-700,
+    "input-border-color": $gray-400,
+    "border-color": $border-color,
+    "border-color-transparent": $border-color-transparent,
+    "mask-fill-color": $mask-fill-color,
+    "transparent-font-color": $transparent-font-color,
+    "banner-background": $banner-background,
+    "banner-text": $banner-text,
+    "highlight": $highlight,
+  );
+
+$enable-shadows: true;
+
+// common beacon chain styles
+@import "mixins";
+@import "custom/beacon";
+
+[data-theme='dark'] {
+    --blue: #3498db;
+    --indigo: #6610f2;
+    --purple: #693a39;
+    --pink: #aa2869;
+    --red: #f3454a;
+    --orange: #ffaa31;
+    --yellow: #f8c988;
+    --green: #7dc382;
+    --teal: #37f0f0;
+    --cyan: #7fd8e6;
+    --white: #000;
+    --gray: #c4c4ba;
+    --gray-dark: #e9ecef;
+    --shadow-light: rgba(151, 152, 155, .2);
+    --shadow-dark: rgba(159, 162, 177, .8);
+    --font-color: #fff;
+    --body-color: #dee2e6;
+    --charade: #2f2e42;
+    --manhattan: #f5b498;
+    --rhino: #274253;
+    --terracotta: #dd765e;
+    --linear-gradient: linear-gradient(to right top, #444359, #403f55, #3c3b50, #38374c, #343348, #313045, #2f2e42, #2c2b3f, #2a293d, #27263a, #252438, #232236);
+    --shadow-only-light: rgba(0, 0, 0, 0);
+    --primary: #ffaa31;
+    --secondary: #c4c4ba;
+    --success: #7dc382;
+    --info: #7fd8e6;
+    --warning: #f8c988;
+    --danger: #f3454a;
+    --light: #343a40;
+    --dark: #e7e1d7;
+    --bg: #1e1c1f;
+    --bg-color: #232024;
+    --shadow-color: #1e1c1f;
+    --bg-color-light: #5c4e4e55;
+    --bg-color-nav: #413938;
+    --bg-color-secondary: #24201f;
+    --card-border-color: rgba(255, 255, 255, .125);
+    --link-color: #66bce9;
+    --link-hover-color: #166a96;
+    --input-color: #dee2e6;
+    --input-border-color: #6c757d;
+    --border-color: #5c4e4e;
+    --border-color-transparent: #5c4e4e80;
+    --mask-fill-color: #1473e631;
+    --transparent-font-color: #f5f3f380;
+    --banner-background: $black_v3;
+    --banner-text: #f5b498;
+    --highlight: rgba(248, 184, 139, .2);
+    --navbar-light-color: rgba(255, 255, 255, .5);
+    --navbar-light-hover-color: rgba(255, 255, 255, .7);
+    --navbar-light-active-color: rgba(255, 255, 255, .9);
+    --navbar-light-disabled-color: rgba(255, 255, 255, .3);
+}

@@ -4,13 +4,13 @@ ins[data-revive-zoneid] > a > img {
   height: auto;
 }
 
-a:not(.nav-link) {
+/* a:not(.nav-link) {
   text-decoration: none !important;
   background-repeat: no-repeat;
   background-image: linear-gradient(180deg, transparent 65%, var(--highlight) 0);
   transition: background-size 0.25s ease;
   background-size: 0% 100%;
-}
+} */
 
 main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-highlight):hover {
   background-size: 100% 100%;

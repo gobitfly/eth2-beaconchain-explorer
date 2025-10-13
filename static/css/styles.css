@@ -24,7 +24,6 @@
   --charade: #2f2e42;
   --bg: #fbf0e822;
 
-  --banner-background: var(--charade);
   --banner-text: var(--manhattan);
   --highlight: rgba(251, 166, 105, 0.5);
   --shadow-only-light: 0 1px 4px var(--shadow-light);
@@ -46,7 +45,6 @@
     #252438,
     #232236
   );
-  --banner-background: var(--charade);
   --banner-text: var(--manhattan);
   --highlight: rgba(248, 184, 139, 0.2);
   --bg: var(--bg-color);
