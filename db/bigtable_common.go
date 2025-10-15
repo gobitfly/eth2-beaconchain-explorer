@@ -350,15 +350,32 @@ func (bigtable *Bigtable) ClearObsoleteBigtableIndices(chainId, startKey, endKey
 		}
 		return true
 	}
-	err := btTable.ReadRows(context.Background(), rowRange, deleteFunc, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+	var err error
+	for i := 0; i < 5; i++ {
+		err = btTable.ReadRows(context.Background(), rowRange, deleteFunc, gcp_bigtable.RowFilter(gcp_bigtable.StripValueFilter()))
+		if err != nil {
+			logger.Errorf("error reading rows: %v", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		break
+	}
 	if err != nil {
 		return err
 	}
 
 	if !dryRun && mutsDelete.Len() > 0 {
 		logger.Infof("deleting %v keys (first key %v, last key %v)", len(mutsDelete.Keys), mutsDelete.Keys[0], mutsDelete.Keys[len(mutsDelete.Keys)-1])
-		err := bigtable.WriteBulk(mutsDelete, btTable, DEFAULT_BATCH_INSERTS)
-
+		var err error
+		for i := 0; i < 5; i++ {
+			err = bigtable.WriteBulk(mutsDelete, btTable, DEFAULT_BATCH_INSERTS)
+			if err != nil {
+				logger.Errorf("error writing last bulk mutations: %v", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+			break
+		}
 		if err != nil {
 			return err
 		}
