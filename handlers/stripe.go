@@ -712,7 +712,7 @@ func emailCustomerAboutPlanChange(email, plan string) {
 	} else if plan == utils.Config.Frontend.Stripe.OrcaYearly {
 		p = "Orca (yearly)"
 	}
-	page := "/user/settings#api"
+	page := "/user/api-key-management"
 	if !isApi {
 		page = "/premium"
 	}

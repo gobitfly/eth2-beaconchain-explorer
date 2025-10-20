@@ -569,6 +569,9 @@ func main() {
 			authRouter.HandleFunc("/mobile/delete", handlers.MobileDeviceDeletePOST).Methods("POST", "OPTIONS")
 			authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 			authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
+
+			authRouter.HandleFunc("/api-key-management", handlers.APIKeyManagement).Methods("GET")
+
 			authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
 			authRouter.HandleFunc("/settings/flags", handlers.UserUpdateFlagsPost).Methods("POST")
 			authRouter.HandleFunc("/settings/delete", handlers.UserDeletePost).Methods("POST")
@@ -596,6 +599,7 @@ func main() {
 
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
+
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			authRouter.HandleFunc("/webhooks", handlers.NotificationWebhookPage).Methods("GET")
 			authRouter.HandleFunc("/webhooks/add", handlers.UsersAddWebhook).Methods("POST")

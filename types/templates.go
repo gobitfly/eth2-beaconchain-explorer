@@ -1356,6 +1356,15 @@ type UserSettingsPageData struct {
 	IsUserDeleteDisabled bool
 }
 
+type ApiKeyManagementPageData struct {
+	CsrfField 					template.HTML
+	Subscription        UserSubscription
+	Sapphire            *string
+	Emerald             *string
+	Diamond             *string
+	ApiStatistics       *ApiStatistics
+}
+
 type PairedDevice struct {
 	ID            uint      `json:"id"`
 	DeviceName    string    `json:"device_name"`
