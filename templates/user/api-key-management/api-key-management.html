@@ -1,0 +1,28 @@
+{{ define "js" }}
+{{ end }}
+
+{{ define "css" }}
+{{ end }}
+
+{{ define "content" }}
+  {{ with .Data }}
+  <div class="container mt-2">
+    <div class="my-3">
+      <div class="d-md-flex py-2 justify-content-md-between">
+        <h1 class="h4 mb-1 mb-md-0">
+          <i class="mr-2 fas fa-key"></i>API Key Management
+          <small class="d-block">Manage your API keys for secure access to our services. Keep your keys safe and never share them publicly.</small>
+        </h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb font-size-1 mb-0 flex-nowrap text-nowrap" style="padding:0; background-color:transparent;">
+            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">API Keys</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+
+    {{ template "user/api-key-management/statistics" . }}
+  </div>
+  {{ end }}
+{{ end }}
