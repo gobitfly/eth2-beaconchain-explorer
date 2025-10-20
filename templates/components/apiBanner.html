@@ -1,0 +1,144 @@
+{{ define "apiBanner" }}
+<section class="api-banner position-relative w-100 d-flex flex-nowrap flex-column align-items-center my-3">
+  <div class="api-banner__bg-image position-absolute w-100 h-100"></div>
+
+  <div class="api-banner__text-container d-flex flex-column flex-sm-row align-items-md-center">
+    <div class="api-banner__text">
+      <h1>Power Your Ethereum Insights with Beaconcha.in APIs</h1>
+      <p>Unified, real-time, and developer-first access to validator and network performance data.</p>
+    </div>
+    <ul class="api-banner__feature-list fa-ul position-relative d-flex flex-column m-0 py-4 pr-2">
+      <li>
+        <span class="fa-li"><i class="fas fa-check"></i></span>
+        Measure validator performance with BeaconScore
+      </li>
+      <li>
+        <span class="fa-li"><i class="fas fa-check"></i></span>
+        Real time Ethereum data using only one API
+      </li>
+      <li>
+        <span class="fa-li"><i class="fas fa-check"></i></span>
+        Dedicated endpoints keep your validator data accurate, from queues to rewards
+      </li>
+    </ul>
+  </div>
+
+  <div class="api-banner__buttons d-flex flex-column w-100 align-items-center flex-sm-row">
+    <a class="btn btn-primary w-100 text-white" href="/user/api-key-management">
+      Get your API Key<i style="transform: rotate(45deg);" class="fas fa-arrow-up ml-2"></i>
+    </a>
+    <a href="https://docs.beaconcha.in/">
+      View API Docs<i style="transform: rotate(45deg);" class="fas fa-arrow-up ml-2"></i>
+    </a>
+  </div>
+</section>
+{{ end }}
+
+
+<a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
+
+{{ define "css"}}
+<style>
+  .api-banner {
+    padding: 2rem 0;
+    gap: 1.5rem;
+  }
+
+  .api-banner__text-container {
+    text-wrap: pretty;
+    gap: 0.5rem;
+  }
+
+  .api-banner__buttons {
+    gap: 1rem;
+  }
+
+  .api-banner__feature-list {
+    gap: 0.5rem;
+    padding-left: 3rem;
+        height: fit-content;
+
+    &::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      z-index: -1;
+      background-color: var(--bg-color);
+      opacity: 0.9;
+      border: 1px solid var(--card-border-color);
+      border-radius: 0.5rem;
+    }
+  }
+
+  [data-theme="dark"] .api-banner__feature-list {
+    &::before {
+      opacity: 0.8;
+    }
+  }
+
+  .api-banner__bg-image {
+    inset: 0;
+    z-index: -1;
+    opacity: 0.3;
+    background:
+      linear-gradient(to top, var(--bg-color) 0%, transparent 15%),
+      url("img/keyvisual.webp") bottom center / cover no-repeat;
+  }
+
+  [data-theme="dark"] .api-banner__bg-image {
+    opacity: 0.25;
+  }
+
+  @media (min-width: 640px) {
+    .api-banner {
+      padding: 5rem 1rem;
+    }
+
+    .api-banner__text-container {
+      width: 100%;
+      gap: 1.5rem;
+    }
+
+    .api-banner__buttons a {
+      width: auto !important;
+    }
+  }
+
+  @media (min-width: 820px) {
+    .api-banner {
+      padding: 6rem 2rem;
+    }
+
+    [data-theme="dark"] .api-banner__bg-image {
+      opacity: 0.3;
+    }
+
+    .api-banner__text,
+    .api-banner__feature-list {
+      width: 50%;
+      justify-content: center;
+    }
+
+    .api-banner__bg-image {
+      opacity: 0.7;
+    }
+  }
+
+  @media (min-width: 1140px) {
+    .api-banner {
+      padding: 6rem;
+    }
+
+    .api-banner__text-container {
+      gap: 4rem;
+    }
+
+    .api-banner__bg-image {
+      background-position: top 35% right;
+    }
+  }
+</style>
+{{ end }}
