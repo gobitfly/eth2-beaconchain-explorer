@@ -1,1 +1,3 @@
 *.min.js
+*.ts
+*.tsx
