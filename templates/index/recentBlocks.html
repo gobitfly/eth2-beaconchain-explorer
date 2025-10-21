@@ -37,7 +37,7 @@
               </td>
               <td v-else v-html="block.status_formatted"></td>
               <td><span data-toggle="tooltip" data-placement="top" v-bind:data-original-title="block.ts | timestampTooltip">${block.ts | fromNow}</span></td>
-              <td v-if="block.slot !== 0" v-html="block.proposer_formatted"></td>
+              <td v-if="block.slot !== 0"><span class="p-0 m-0" style="display: block; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: inherit;" v-html="block.proposer_formatted"></span></td>
               <td v-else>N/A</td>
               <!-- <td class="text-monospace">
             <a v-if="block.status === 1 || block.status === 3" v-bind:href="'/block/' + block.block_root_formatted">0x${ block.block_root_formatted.substr(0, 6) }...</a>

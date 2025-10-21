@@ -216,7 +216,7 @@ func expandAndValidateSteps(names []string) ([]string, error) {
 	for _, n := range names {
 		if n == "all" {
 			// Expand to daily steps only (no precompute) as "all" is intended for the daily chain
-			for _, s := range []string{"import", "lido", "lido_csm", "lido_simple_dvt", "rocketpool", "withdrawal_tagging", "deposit_tagging", "populate_validator_names"} {
+			for _, s := range []string{"import", "lido", "lido_csm", "lido_simple_dvt", "rocketpool", "withdrawal_tagging", "deposit_tagging", "populate_validator_names", "precompute"} {
 				set[s] = struct{}{}
 			}
 			continue
