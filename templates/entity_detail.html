@@ -143,9 +143,28 @@
       function init() {
         var toggle = document.getElementById("activity-percent-toggle")
         if (!toggle) return
-        setActivityMode(false)
+        var storageKey = "entity_activity_display_mode"
+        var initialPercentMode = false
+        try {
+          var saved = localStorage.getItem(storageKey)
+          if (saved === "percent" || saved === "true" || saved === "1") {
+            initialPercentMode = true
+          } else if (saved === "absolute" || saved === "false" || saved === "0") {
+            initialPercentMode = false
+          }
+        } catch (e) {
+          // ignore storage errors
+        }
+        toggle.checked = initialPercentMode
+        setActivityMode(initialPercentMode)
         toggle.addEventListener("change", function () {
-          setActivityMode(toggle.checked)
+          var newMode = toggle.checked
+          try {
+            localStorage.setItem(storageKey, newMode ? "percent" : "absolute")
+          } catch (e) {
+            // ignore storage errors
+          }
+          setActivityMode(newMode)
         })
       }
 
@@ -202,6 +221,7 @@
         var validatorsPagingStack = []
         var currentPagingToken = ""
         var nextPagingTokenFromResponse = ""
+        var lastStart = 0
         var entityValidatorsUrl = `/entity/${encodeURIComponent(entity)}/${encodeURIComponent(subEntity)}/validators/data`
 
         var table = $("#entity-validators").DataTable({
@@ -217,6 +237,18 @@
             paginate: { previous: '<i class="fas fa-chevron-left"></i>', next: '<i class="fas fa-chevron-right"></i>' },
           },
           ajax: function (data, callback, settings) {
+            // Determine paging direction from DataTables' requested start offset
+            var requestedStart = typeof data.start === "number" ? data.start : 0
+            if (requestedStart > lastStart) {
+              // moving forward
+              if (nextPagingTokenFromResponse) {
+                validatorsPagingStack.push(currentPagingToken)
+                currentPagingToken = nextPagingTokenFromResponse
+              }
+            } else if (requestedStart < lastStart) {
+              // moving backward
+              currentPagingToken = validatorsPagingStack.pop() || ""
+            }
             // Inject our period and optional paging token into the request
             data.period = period
             if (currentPagingToken) {
@@ -226,6 +258,8 @@
               .then((response) => response.json())
               .then((resp) => {
                 nextPagingTokenFromResponse = resp.pagingToken || ""
+                // Update lastStart after successful response
+                lastStart = requestedStart
                 // Toggle prev/next disabled state
                 var prevBtn = document.getElementById('entity-validators_previous')
                 var nextBtn = document.getElementById('entity-validators_next')
@@ -248,19 +282,6 @@
             document.getElementById("header-placeholder-validators").style.display = "none"
             document.getElementById("footer-placeholder-validators").style.display = "none"
           },
-        })
-
-        // Update paging token stack on prev/next clicks before the next request is sent
-        $(document).on("click", "#entity-validators_previous", function () {
-          // Go back: pop a previous token or reset to first page
-          currentPagingToken = validatorsPagingStack.pop() || ""
-        })
-        $(document).on("click", "#entity-validators_next", function () {
-          // Go forward: push current token and replace with the next token from last response
-          if (nextPagingTokenFromResponse) {
-            validatorsPagingStack.push(currentPagingToken)
-            currentPagingToken = nextPagingTokenFromResponse
-          }
         })
       }
     })
@@ -402,6 +423,16 @@
       background-color: #6f42c1; /* purple */
       color: #ffffff;
     }
+    /* Keep two columns in Duties, Income, Missed Rewards and Slashings grids even on smallest screens */
+    @media (max-width: 575.98px) {
+      .duties-grid > [class*="col-"],
+      .income-grid > [class*="col-"],
+      .missed-grid > [class*="col-"],
+      .slashings-grid > [class*="col-"] {
+        flex: 0 0 50%;
+        max-width: 50%;
+      }
+    }
   </style>
 {{ end }}
 
@@ -429,20 +460,20 @@
           </div>
         </div>
         <div class="mb-2 d-flex align-items-center justify-content-between">
-          <div>
-            <span class="badge badge-entity"><i class="fas fa-building mr-1" aria-hidden="true"></i> Entity</span>
+          <div class="d-flex align-items-center" style="flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap;">
+            <span class="badge badge-entity"><i class="fas fa-building" aria-hidden="true"></i> <span class="d-none d-sm-inline">Entity</span></span>
             {{ if and .Data.HasRealSubEntities (ne .Data.SubEntity "-") }}
-              <a class="ml-2 font-weight-bold" href="/entity/{{ .Data.Entity | urlPathEscape }}/-">{{ .Data.Entity }}</a>
+              <a class="font-weight-bold ml-2" href="/entity/{{ .Data.Entity | urlPathEscape }}/-" style="display: inline-block; max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;" title="{{ .Data.Entity }}">{{ .Data.Entity }}</a>
             {{ else }}
-              <span class="ml-2 font-weight-bold">{{ .Data.Entity }}</span>
+              <span class="font-weight-bold ml-2" style="display: inline-block; max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;" title="{{ .Data.Entity }}">{{ .Data.Entity }}</span>
             {{ end }}
             {{ if .Data.HasRealSubEntities }}
               <span class="mx-2">/</span>
-              <span class="badge badge-subentity"><i class="fas fa-sitemap mr-1" aria-hidden="true"></i> Sub-Entity</span>
-              <span class="ml-2 font-weight-bold">{{ .Data.SubEntity }}</span>
+              <span class="badge badge-subentity"><i class="fas fa-sitemap" aria-hidden="true"></i> <span class="d-none d-sm-inline">Sub-Entity</span></span>
+              <span class="font-weight-bold ml-2" style="display: inline-block; max-width: 50%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;" title="{{ .Data.SubEntity }}">{{ .Data.SubEntity }}</span>
             {{ end }}
           </div>
-          <div class="d-flex align-items-center">
+          <div class="d-flex align-items-center" style="flex: 0 0 auto;">
             <span class="badge badge-pill bg-success text-white mr-2 px-2 py-1 validator-chip" {{ .Data.OnlineBreakdownHTML }} aria-label="Online validators: {{ formatThousandsInt .Data.OnlineCount }}">
               <i class="fas fa-power-off mr-1" aria-hidden="true"></i> {{ formatThousandsInt .Data.OnlineCount }}
             </span>
@@ -534,7 +565,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="row">
+                <div class="row duties-grid">
                   <div class="col-sm-6 mb-2">
                     <div class="stat-heading"><i class="fas fa-check-circle mr-1" aria-hidden="true"></i> Attestations</div>
                     <div class="stat">
@@ -604,7 +635,7 @@
             <div class="card h-100">
               <div class="card-body">
                 <div class="section-title mb-3"><i class="fas fa-coins mr-1" aria-hidden="true"></i> Income</div>
-                <div class="row">
+                <div class="row income-grid">
                   <div class="col-sm-4 mb-2">
                     <div class="stat text-warning">
                       {{ formatElCurrency .Data.TotalRewardsWei "ETH" 2 true false false true }}
@@ -628,7 +659,7 @@
                 </div>
                 <hr />
                 <div class="section-title mb-3"><i class="fas fa-times-circle mr-1" aria-hidden="true"></i> Missed Rewards</div>
-                <div class="row">
+                <div class="row missed-grid">
                   <div class="col-sm-6 mb-2">
                     <div class="stat text-warning">
                       {{ formatClCurrency .Data.TotalMissedClRewards "ETH" 2 true false false
@@ -667,7 +698,7 @@
                 </div>
                 <hr />
                 <div class="section-title mb-3"><i class="fas fa-gavel mr-1" aria-hidden="true"></i> Slashings</div>
-                <div class="row">
+                <div class="row slashings-grid">
                   <div class="col-sm-6 mb-2">
                     <div class="stat text-danger">{{ formatThousandsInt .Data.SlashedInPeriodMax }}</div>
                     <div class="stat-label">Slashed Validators</div>
