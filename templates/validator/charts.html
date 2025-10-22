@@ -251,10 +251,10 @@
     if (!points || points.length === 0) return;
     Highcharts.chart('beaconscore-chart', {
       chart: { type: 'line', zoomType: 'x', height: '535px' },
-      title: { text: 'Beaconscore' },
+      title: { text: 'BeaconScore' },
       xAxis: { type: 'datetime', labels: { style: { color: 'var(--font-color)' } } },
       yAxis: {
-        title: { text: 'Beaconscore', style: { color: 'var(--font-color)' } },
+        title: { text: 'BeaconScore', style: { color: 'var(--font-color)' } },
         max: 1,
         labels: {
           formatter: function () { return (this.value * 100).toFixed(2) + '%'; },
@@ -264,7 +264,7 @@
       },
       legend: { enabled: false },
       tooltip: { xDateFormat: '%e %b, %H:%M', valueDecimals: 4, pointFormatter: function () { return '<span style="color:' + this.color + '">●</span> ' + (this.y * 100).toFixed(2) + '%<br/>'; } },
-      series: [{ name: 'Beaconscore', data: points, color: '#2ecc71', lineWidth: 2 }],
+      series: [{ name: 'BeaconScore', data: points, color: '#2ecc71', lineWidth: 2 }],
       credits: { enabled: false }
     });
   });
