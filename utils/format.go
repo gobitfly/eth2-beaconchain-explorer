@@ -1235,33 +1235,33 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 func FormatBeaconscore(score float64, includeIcon bool) template.HTML {
 	score = score * 100
 	tooltipText := ""
-	tooltipAdditionalText := "<br /><br />Read more about how we calculate the Beaconscore in our <a href='https://kb.beaconcha.in/v2beta/metric-validator-efficiency' target='_blank'>docs</a>."
+	tooltipAdditionalText := "<br /><br />Read more about how we calculate the BeaconScore in our <a href='https://kb.beaconcha.in/v2beta/metric-validator-efficiency' target='_blank'>docs</a>."
 	if score < 0 {
 		tooltipText = "No active validators found"
 		return `<span class="text-info" data-toggle="tooltip" title="No active validators found">N/A</span>`
 	} else if score >= 99.5 {
-		tooltipText = "A Beaconscore of 99.5% or higher is exceptional."
+		tooltipText = "A BeaconScore of 99.5% or higher is exceptional."
 		iconHtml := ` - <i class="fas fa-grin-stars"></i>`
 		if !includeIcon {
 			iconHtml = ""
 		}
 		return template.HTML(fmt.Sprintf(`<span class="text-success" data-tippy-content="%s"> %.2f%%%s</span>`, tooltipText+tooltipAdditionalText, score, iconHtml))
 	} else if score > 99.0 {
-		tooltipText = "A Beaconscore between 99.0% and 99.5% is excellent."
+		tooltipText = "A BeaconScore between 99.0% and 99.5% is excellent."
 		iconHtml := ` - <i class="fas fa-smile"></i>`
 		if !includeIcon {
 			iconHtml = ""
 		}
 		return template.HTML(fmt.Sprintf(`<span class="text-success" data-tippy-content="%s"> %.2f%%%s</span>`, tooltipText+tooltipAdditionalText, score, iconHtml))
 	} else if score > 98.0 {
-		tooltipText = "A Beaconscore between 98.0% and 99.0% is fair."
+		tooltipText = "A BeaconScore between 98.0% and 99.0% is fair."
 		iconHtml := ` - <i class="fas fa-meh"></i>`
 		if !includeIcon {
 			iconHtml = ""
 		}
 		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-tippy-content="%s"> %.2f%%%s</span>`, tooltipText+tooltipAdditionalText, score, iconHtml))
 	} else {
-		tooltipText = "A Beaconscore below 98.0% is bad."
+		tooltipText = "A BeaconScore below 98.0% is bad."
 		iconHtml := ` - <i class="fas fa-frown"></i>`
 		if !includeIcon {
 			iconHtml = ""

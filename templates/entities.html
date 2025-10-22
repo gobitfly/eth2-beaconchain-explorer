@@ -109,7 +109,7 @@
           <div class="col-md-12">
             <div class="card mb-3">
               <div class="card-body">
-                <div class="text-center">Staking Entities Overview ({{ .Data.Period }})<i class="ml-1 fas fa-info-circle" data-tippy-content="To improve performance, only the 25 largest entities are shown in this chart. Values of hidden entities are still included in aggregate calculations.<br /><br />Read more about how we calculate the Beaconscore in our <a href='https://kb.beaconcha.in/v2beta/metric-validator-efficiency' target='_blank'>docs</a>."></i></div>
+                <div class="text-center">Staking Entities Overview ({{ .Data.Period }})<i class="ml-1 fas fa-info-circle" data-tippy-content="To improve performance, only the 25 largest entities are shown in this chart. Values of hidden entities are still included in aggregate calculations.<br /><br />Read more about how we calculate the BeaconScore in our <a href='https://kb.beaconcha.in/v2beta/metric-validator-efficiency' target='_blank'>docs</a>."></i></div>
                 <div id="entities-treemap" style="min-height: 600px;"></div>
               <script id="treemap-data" type="application/json">[
                 {{- $len := len .Data.Treemap -}}
@@ -132,7 +132,7 @@
                     <tr>
                       <th>Entity</th>
                       <th>Sub Entities</th>
-                      <th>Beaconscore<span class="ml-1 fas fa-info-circle" data-tippy-content="Read more about how we calculate the Beaconscore in our <a href='https://kb.beaconcha.in/v2beta/metric-validator-efficiency' target='_blank'>docs</a>."></span></th>
+                      <th>BeaconScore<span class="ml-1 fas fa-info-circle" data-tippy-content="Read more about how we calculate the BeaconScore in our <a href='https://kb.beaconcha.in/v2beta/metric-validator-efficiency' target='_blank'>docs</a>."></span></th>
                       <th>Net Share</th>
                     </tr>
                   </thead>
