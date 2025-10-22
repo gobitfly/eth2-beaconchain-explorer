@@ -106,7 +106,7 @@
           var name = this.name || ""
           var sharePct = typeof this.value === "number" ? (this.value * 100).toFixed(2) + "%" : "N/A"
           var effPct = typeof this.colorValue === "number" ? (this.colorValue * 100).toFixed(2) + "%" : "N/A"
-          return '<span style="font-size:11px">' + name + "</span><br/>" + "<span>Net share: <b>" + sharePct + "</b></span><br/>" + "<span>Beaconscore: <b>" + effPct + "</b></span>"
+          return '<span style="font-size:11px">' + name + "</span><br/>" + "<span>Net share: <b>" + sharePct + "</b></span><br/>" + "<span>BeaconScore: <b>" + effPct + "</b></span>"
         },
       },
     })
