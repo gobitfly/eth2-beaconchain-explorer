@@ -829,11 +829,32 @@
                             <i class="fas fa-key"></i>
                           </span>
                           <span style="font-size: 90%;">
-                            <span style="user-select: all;">{{ .Subscription.ApiKey }}</span>
+                            <span id="user-api-key" style="user-select: all;" data-api-key="{{ .Subscription.ApiKey }}"> <span class="api-key-start" style="user-select: all;"></span><span class="api-key-middle" style="user-select: all; filter: blur(4px);"></span><span class="api-key-end" style="user-select: all;"></span> </span>
                             <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip" data-original-title="Copy API Key" data-clipboard-text="{{ .Subscription.ApiKey }}" class="btn btn-primary mb-1 btn-icon-inside">
                               <span class="fa fa-copy icon-inside text-white"></span>
                             </a>
                           </span>
+                          <script>
+                            ;(function () {
+                              var container = document.getElementById("user-api-key")
+                              if (!container) {
+                                return
+                              }
+                              var key = container.getAttribute("data-api-key") || ""
+                              if (!key) {
+                                return
+                              }
+                              var start = key.slice(0, 4)
+                              var end = key.slice(-4)
+                              var middle = key.slice(4, Math.max(4, key.length - 4))
+                              var startEl = container.querySelector(".api-key-start")
+                              var midEl = container.querySelector(".api-key-middle")
+                              var endEl = container.querySelector(".api-key-end")
+                              if (startEl) startEl.textContent = start
+                              if (midEl) midEl.textContent = middle
+                              if (endEl) endEl.textContent = end
+                            })()
+                          </script>
                         </div>
                       {{ else }}
                         <div class="my-2">
