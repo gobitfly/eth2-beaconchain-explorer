@@ -1,6 +1,9 @@
+
+GITREF=`git describe --always --tags`
+GITDATE=`TZ=UTC0 git show --quiet --date='format-local:%Y%m%d%H%M%S' --format="%cd"`
 GITCOMMIT=`git describe --always`
-VERSION=`git describe --always --tags`
-GITDATE=`TZ=UTC git show -s --date=iso-strict-local --format=%cd HEAD`
+#VERSION=`git describe --always --tags`
+#GITDATE=`TZ=UTC git show -s --date=iso-strict-local --format=%cd HEAD`
 BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=github.com/gobitfly/eth2-beaconchain-explorer
 LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILDDATE} -X ${PACKAGE}/version.GitCommit=${GITCOMMIT} -X ${PACKAGE}/version.GitDate=${GITDATE} -s -w"
@@ -77,3 +80,7 @@ playground:
 
 addhooks:
 	git config core.hooksPath hooks
+
+docker-cached:
+#	docker buildx build -f Dockerfile.dev --platform linux/amd64,linux/arm64 -t test:latest --cache-to=type=local,dest=/tmp/.buildx-cache --cache-from=type=local,src=/tmp/.buildx-cache .
+	docker buildx build -f Dockerfile.dev --platform linux/arm64 -t test:latest --cache-to=type=local,dest=/tmp/.buildx-cache --cache-from=type=local,src=/tmp/.buildx-cache .

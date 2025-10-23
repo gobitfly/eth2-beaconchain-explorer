@@ -1,0 +1,21 @@
+FROM --platform=${BUILDPLATFORM} golang:1.25.1 AS build
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG VERSION
+RUN echo "TARGETOS: ${TARGETOS}, TARGETARCH: ${TARGETARCH}, TARGETPLATFORM: ${TARGETPLATFORM}, BUILDPLATFORM: ${BUILDPLATFORM}, VERSION: ${VERSION}"
+WORKDIR /go/src/app
+ENV GOCACHE=/root/.cache/go-cache
+ENV GOMODCACHE=/root/.cache/gomod-cache
+COPY go.mod go.sum /go/src/app/
+ADD . /go/src/app
+RUN --mount=type=cache,target=/root/.cache/go-cache \
+    --mount=type=cache,target=/root/.cache/gomod-cache \
+    make all
+
+FROM gcr.io/distroless/base-debian12
+WORKDIR /app
+COPY --from=build /go/src/app/bin /app/
+COPY --from=build /go/src/app/config /app/config
+CMD ["./explorer", "--config", "./config/default.config.yml"]
