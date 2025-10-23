@@ -15,7 +15,7 @@
             {{ $numberOfGroups := (len .Groups) }}
             <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }} {{ if .IsHighlighted }}mr-lg-1{{ end }}">
               {{ if len .Groups }}
-                <a class="nav-link dropdown-toggle px-2 py-1 m-1{{ if .IsHighlighted }}btn btn-primary text-white{{ end }}" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <a class="nav-link dropdown-toggle px-2 py-1 m-1 {{ if .IsHighlighted }}btn btn-primary text-white{{ end }}" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   {{ .Label }}
                 </a>
 
