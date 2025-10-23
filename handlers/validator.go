@@ -232,7 +232,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 			// check if an invalid deposit exists
 			for _, deposit := range deposits.Eth1Deposits {
-				if !deposit.ValidSignature {
+				if !deposit.Valid { // the valid flag takes into account all the unique cases with EL deposits
 					validatorPageData.Status = "deposited_invalid"
 					break
 				}
