@@ -45,8 +45,9 @@ table {
   width: 1rem;
 }
 
-.main-navigation .nav-link:focus {
-  outline: none;
+.main-navigation .nav-link:focus-visible {
+  outline: 2px solid var(--highlight);
+  border-radius: 2px;
 }
 
 .main-navigation .dropdown-menu.dropdown-menu-right.show {
