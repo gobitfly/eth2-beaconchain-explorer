@@ -245,6 +245,32 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 
 	composed := []types.MainMenuItem{
 		{
+			Label:         "API",
+			IsActive:      active == "API",
+			IsHighlighted: true,
+			Groups: []types.NavigationGroup{
+				{
+					Links: []types.NavigationLink{
+						{
+							Label: "Get API Key",
+							Path:  "/user/settings#api",
+							Icon:  "fa-key",
+						},
+						{
+							Label: "Docs",
+							Path:  "/api/v1/docs",
+							Icon:  "fa-book-reader",
+						},
+						{
+							Label: "Pricing",
+							Path:  "/pricing",
+							Icon:  "fa-coins",
+						},
+					},
+				},
+			},
+		},
+		{
 			Label:    "Blockchain",
 			IsActive: active == "blockchain",
 			Groups: []types.NavigationGroup{
@@ -429,16 +455,6 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 						Label:      "Webhooks",
 						Path:       "/user/webhooks",
 						CustomIcon: "webhook_logo_svg",
-					},
-					{
-						Label: "API Docs",
-						Path:  "/api/v1/docs",
-						Icon:  "fa-book-reader",
-					},
-					{
-						Label: "API Pricing",
-						Path:  "/pricing",
-						Icon:  "fa-laptop-code",
 					},
 					{
 						Label: "Unit Converter",

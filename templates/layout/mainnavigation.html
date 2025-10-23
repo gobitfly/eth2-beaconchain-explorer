@@ -13,13 +13,13 @@
           {{ range . }}
             {{ $hasBigGroups := .HasBigGroups }}
             {{ $numberOfGroups := (len .Groups) }}
-            <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }}">
+            <li class="nav-item {{ if .IsActive }}active{{ end }} {{ if $numberOfGroups }}dropdown{{ end }} {{ if .IsHighlighted }}mr-lg-1{{ end }}">
               {{ if len .Groups }}
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <span class="nav-text">{{ .Label }}</span>
+                <a class="nav-link dropdown-toggle px-2 py-1 m-1{{ if .IsHighlighted }}btn btn-primary text-white{{ end }}" href="#" id="navbarDropdown{{ .Label }}" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  {{ .Label }}
                 </a>
 
-                <div class="dropdown-menu {{ if $hasBigGroups }}dropdown-menu-right p-sm-2 p-md-4 px-lg-2 align-content-between flex-wrap flex-lg-nowrap{{ end }}" aria-labelledby="navbarDropdown{ .Label }}">
+                <div class="dropdown-menu {{ if $hasBigGroups }}dropdown-menu-right p-sm-2 p-md-4 px-lg-2 align-content-between flex-wrap flex-lg-nowrap{{ end }}" aria-labelledby="navbarDropdown{{ .Label }}">
                   {{ range $groupIndex, $group := .Groups }}
                     {{ if $hasBigGroups }}
                       <div class="mx-lg-2 mt-2" style="flex: 1 1 240px;">
@@ -40,8 +40,8 @@
                   {{ end }}
                 </div>
               {{ else }}
-                <a class="nav-link" href="{{ .Path }}">
-                  <span class="nav-text">{{ .Label }}</span>
+                <a class="nav-link pl-2" href="{{ .Path }}">
+                  {{ .Label }}
                 </a>
               {{ end }}
             </li>
