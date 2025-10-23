@@ -32,10 +32,20 @@
   "dependencies": {
     "eslint": "^8.18.0",
     "eslint-plugin-html": "^6.2.0",
+    "openapi-fetch": "^0.15.0",
     "prettier-plugin-go-template": "^0.0.13"
   },
   "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "@types/datatables.net": "^1.10.28",
+    "@types/popper.js": "^1.10.1",
     "espree": "^9.3.2",
+    "msw": "^2.11.5",
     "prettier": "^2.8.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "static"
+    ]
   }
 }
