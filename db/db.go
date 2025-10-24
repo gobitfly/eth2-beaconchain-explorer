@@ -2548,16 +2548,45 @@ func GetAddressWithdrawalsTotal(address []byte) (uint64, error) {
 	}
 	var total uint64
 
-	err := ReaderDb.Get(&total, `
-	/*+
-	BitmapScan(w)
-	NestLoop(b w)
-	*/
-	SELECT 
-		COALESCE(sum(w.amount), 0) as total
-	FROM blocks_withdrawals w
-	INNER JOIN blocks b ON b.blockroot = w.block_root AND b.status = '1'
-	WHERE w.address = $1`, address)
+	tx, err := ReaderDb.Beginx()
+	if err != nil {
+		return total, err
+	}
+	defer tx.Rollback()
+
+	maxDay := uint64(0)
+	err = tx.Get(&maxDay, `SELECT COALESCE(MAX(day), 0) FROM validator_stats`)
+	if err != nil {
+		return total, err
+	}
+
+	if len(address) != 20 {
+		return 0, fmt.Errorf("invalid address length (!=20): %d", len(address))
+	}
+
+	withdrawalCredentials := make([]byte, 32)
+	withdrawalCredentials[0] = 0x01
+	copy(withdrawalCredentials[12:], address)
+
+	slotThreshold := (maxDay + 1) * utils.Config.Chain.ClConfig.SlotsPerEpoch * utils.EpochsPerDay()
+
+	err = tx.Get(&total, `
+		WITH 
+			stats AS (
+				SELECT coalesce(sum(vs.withdrawals_amount_total),0) AS total
+				FROM vars, validators v
+				INNER JOIN validator_stats vs ON v.validatorindex = vs.validatorindex
+				WHERE v.withdrawalcredentials = $1 AND day = $2
+			),
+			today AS (
+				SELECT COALESCE(sum(w.amount), 0) AS total
+				FROM vars, blocks_withdrawals w
+				INNER JOIN blocks b ON b.slot > $4 AND b.blockroot = w.block_root AND b.status = '1'
+				WHERE w.address = $3
+			)
+			SELECT stats.total + today.total
+			FROM stats, today`,
+		withdrawalCredentials, maxDay, address, slotThreshold)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil
