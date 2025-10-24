@@ -778,13 +778,11 @@ func (bigtable *Bigtable) getMaxValidatorindexForEpochV2(epoch uint64) (uint64, 
 
 // Clickhouse port: Done
 func (bigtable *Bigtable) GetValidatorBalanceHistory(validators []uint64, startEpoch uint64, endEpoch uint64) (map[uint64][]*types.ValidatorBalance, error) {
-	// Disable balance fetching from clickhouse until we have a compatible data set available
-	// endEpochTs := utils.EpochToTime(endEpoch)
-	// if utils.Config.ClickHouseEnabled && time.Since(endEpochTs) > utils.Config.ClickhouseDelay { // fetch data from clickhouse instead
-	// 	logger.Infof("fetching validator balance history from clickhouse for validators %v, epochs %v - %v", validators, startEpoch, endEpoch)
-	// 	return bigtable.getValidatorBalanceHistoryClickhouse(validators, startEpoch, endEpoch)
-	// } else
-	if endEpoch < bigtable.v2SchemaCutOffEpoch {
+	endEpochTs := utils.EpochToTime(endEpoch)
+	if utils.Config.ClickHouseEnabled && time.Since(endEpochTs) > utils.Config.ClickhouseDelay { // fetch data from clickhouse instead
+		logger.Infof("fetching validator balance history from clickhouse for validators %v, epochs %v - %v", validators, startEpoch, endEpoch)
+		return bigtable.getValidatorBalanceHistoryClickhouse(validators, startEpoch, endEpoch)
+	} else if endEpoch < bigtable.v2SchemaCutOffEpoch {
 		return bigtable.getValidatorBalanceHistoryV1(validators, startEpoch, endEpoch)
 	} else {
 		return bigtable.getValidatorBalanceHistoryV2(validators, startEpoch, endEpoch)
@@ -797,24 +795,20 @@ func (bigtable *Bigtable) getValidatorBalanceHistoryClickhouse(validators []uint
 	endEpochTs := utils.EpochToTime(endEpoch)
 
 	type row struct {
-		ValidatorIndex        uint64 `db:"validator_index"`
-		Epoch                 uint64 `db:"epoch"`
-		BalanceStart          int64  `db:"balance_start"`
-		EffectiveBalanceStart int64  `db:"balance_effective_start"`
-		BalanceEnd            int64  `db:"balance_end"`
-		EffectiveBalanceEnd   int64  `db:"balance_effective_end"`
+		ValidatorIndex   uint64    `db:"validator_index"`
+		EpochTimestamp   time.Time `db:"epoch_timestamp"`
+		Balance          uint64    `db:"balance_start"`
+		EffectiveBalance uint64    `db:"effective_balance"`
 	}
 	rows := []*row{}
 
 	query := `
 			SELECT 
 				validator_index, 
-				epoch AS epoch, 
-				balance_start, 
-				balance_effective_start,
-				balance_end, 
-				balance_effective_end
-			FROM validator_dashboard_data_epoch FINAL WHERE epoch_timestamp >= ? AND epoch_timestamp <= ? AND validator_index IN (?) ORDER BY epoch ASC`
+				epoch_timestamp, 
+				balance, 
+				effective_balance
+			FROM legacy_validator_epoch_balances FINAL WHERE epoch_timestamp >= ? AND epoch_timestamp <= ? AND validator_index IN (?) ORDER BY epoch_timestamp ASC`
 
 	err := ClickhouseReaderDb.Select(&rows, query, startEpochTs, endEpochTs, validators)
 	if err != nil {
@@ -824,13 +818,14 @@ func (bigtable *Bigtable) getValidatorBalanceHistoryClickhouse(validators []uint
 
 	res := make(map[uint64][]*types.ValidatorBalance, len(validators))
 	for _, r := range rows {
+		epoch := uint64(utils.TimeToEpoch(r.EpochTimestamp))
 		if res[r.ValidatorIndex] == nil {
 			res[r.ValidatorIndex] = make([]*types.ValidatorBalance, 0)
 		}
 		balance := &types.ValidatorBalance{
-			Epoch:            r.Epoch,
-			Balance:          uint64(r.BalanceEnd),
-			EffectiveBalance: uint64(r.EffectiveBalanceEnd),
+			Epoch:            epoch,
+			Balance:          r.Balance,
+			EffectiveBalance: r.EffectiveBalance,
 			Index:            r.ValidatorIndex,
 			PublicKey:        []byte{},
 		}
