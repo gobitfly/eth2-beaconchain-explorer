@@ -1,0 +1,3 @@
+type: string
+pattern: ^0x[a-fA-F0-9]{64}$
+example: "0x3629639fe74ef981ff72ba2678130c700b779964e6c22fe42201445084e9d343"

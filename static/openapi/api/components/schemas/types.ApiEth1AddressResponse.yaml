@@ -1,0 +1,16 @@
+type: object
+description: Asset balances for a single execution-layer address, including native ETH and up to 200 ERC-20 token balances.
+properties:
+  address:
+    type: string
+    description: Ethereum account address (0x-prefixed, 20-byte hex; 40 hex characters after 0x).
+    example: '0x388c818ca8b9251b393131c08a736a67ccb19297'
+  ether:
+    type: string
+    description: Native ETH balance as a decimal string in ETH units with up to 18 decimal places (non-negative, no scientific notation).
+    example: '2.472194030644794345'
+  tokens:
+    type: array
+    description: List of ERC-20 token balances associated with the address. The list is limited to the first 200 tokens; use the dedicated tokens endpoint for larger result sets.
+    items:
+      $ref: ./types.ApiEth1AddressERC20TokenResponse.yaml

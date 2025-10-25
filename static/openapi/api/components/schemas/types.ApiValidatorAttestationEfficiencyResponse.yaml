@@ -1,0 +1,23 @@
+type: object
+description: >-
+  Attestation inclusion effectiveness for a validator expressed as a normalized score.
+  The score is computed from the underlying inclusion percentage as:
+  score = 1 + (1 − percentage/100) = 2 − percentage/100.
+  A score of 1.0 indicates perfect effectiveness (100% inclusion in the most
+  recently completed epoch); a score approaching 2.0 indicates poor effectiveness
+  (0% inclusion).
+properties:
+  validatorindex:
+    type: integer
+    description: Validator index (>= 0).
+    minimum: 0
+    example: 21
+  attestation_efficiency:
+    type: number
+    description: >-
+      Normalized attestation effectiveness score (1.0 = best, 2.0 = worst). See
+      top-level description for the formula. Computed for the most recently
+      completed epoch.
+    minimum: 1
+    maximum: 2
+    example: 1.0175

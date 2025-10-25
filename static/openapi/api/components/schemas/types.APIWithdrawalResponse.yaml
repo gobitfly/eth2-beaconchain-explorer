@@ -1,0 +1,27 @@
+type: object
+description: Withdrawal included in a beacon block's execution payload, with recipient, amount, and provenance.
+properties:
+  address:
+    type: string
+    description: Recipient execution-layer address (0x-prefixed, 20-byte hex; 40 hex characters after 0x).
+    example: '0xb10edd6fa6067dba8d4326f1c8f0d1c791594f13'
+  amount:
+    type: integer
+    description: Withdrawn amount in gwei (1 gwei = 1e9 wei).
+    minimum: 0
+    example: 18429837
+  block_slot:
+    type: integer
+    description: Slot number of the block that included this withdrawal.
+    minimum: 0
+    example: 12771160
+  validatorindex:
+    type: integer
+    description: Index of the validator whose balance was withdrawn (>= 0).
+    minimum: 0
+    example: 1120967
+  withdrawalindex:
+    type: integer
+    description: Global sequential index assigned to this withdrawal (>= 0).
+    minimum: 0
+    example: 104169659

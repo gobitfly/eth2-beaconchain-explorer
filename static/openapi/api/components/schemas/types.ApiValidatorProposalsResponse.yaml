@@ -1,0 +1,167 @@
+type: object
+description: >-
+  Beacon block proposed by one of the specified validators, including consensus
+  metadata (roots, proposer, operation counts) and execution payload fields when
+  available. Execution fields are null for pre-Merge slots or blocks without an
+  execution payload.
+properties:
+  attestationscount:
+    type: integer
+    description: Number of attestations included in this block.
+    example: 8
+  attesterslashingscount:
+    type: integer
+    description: Number of attester slashing operations included in this block.
+    example: 0
+  blockroot:
+    type: string
+    description: Hash tree root of the beacon block header (0x-prefixed hex).
+    example: "0x2569c0972196fcb151b6c3ce6fbb4dba54b38f570296e67811c01f2d5d41287c"
+  depositscount:
+    type: integer
+    description: Number of deposit operations included in this block.
+    example: 0
+  epoch:
+    type: integer
+    description: Beacon chain epoch that contains this slot.
+    example: 399361
+  eth1data_blockhash:
+    type: string
+    description: Execution-layer block hash voted in the Eth1Data of this block (0x-prefixed hex).
+    example: "0x0958d83550263ff0d9f9a0bc5ea3cd2a136e0933b6f43cbb17f36e4da8d809b1"
+  eth1data_depositcount:
+    type: integer
+    description: Cumulative number of deposits as reported in Eth1Data.
+    example: 2045305
+  eth1data_depositroot:
+    type: string
+    description: Deposit tree root as reported in Eth1Data (0x-prefixed hex).
+    example: "0x2ebc563cabdbbacbc56f0de1d2d1c2d5315a4b071fcd8566aabbf0a45161c64e"
+  exec_base_fee_per_gas:
+    allOf:
+      - $ref: ./primitives.NullableInteger.yaml
+    description: EIP-1559 base fee per gas for the execution payload (wei per gas); null if no payload.
+    example: 594721803
+  exec_block_hash:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: Hash of the execution-layer block included as the payload; null if no payload.
+    example: "0x03d9906c696b81da13be84d4daaca6b98d863582170cc59c7eab84df78460065"
+  exec_block_number:
+    allOf:
+      - $ref: ./primitives.NullableInteger.yaml
+    description: Number of the execution-layer block included as the payload; null if no payload.
+    example: 23553917
+  exec_extra_data:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: Extra data field from the execution block header (0x-prefixed hex); null if no payload.
+    example: "0x546974616e2028746974616e6275696c6465722e78797a29"
+  exec_fee_recipient:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: Fee recipient (coinbase) address of the execution payload; null if no payload.
+    example: "0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97"
+  exec_gas_limit:
+    allOf:
+      - $ref: ./primitives.NullableInteger.yaml
+    description: Gas limit of the execution payload block; null if no payload.
+    example: 44912069
+  exec_gas_used:
+    allOf:
+      - $ref: ./primitives.NullableInteger.yaml
+    description: Gas used by the execution payload block; null if no payload.
+    example: 35509020
+  exec_logs_bloom:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: Logs bloom filter from the execution block header; null if no payload.
+    example: "0x7ffd777ef37f3df774ff777fffc9ffbff7fb1f6df6d6b7ff36ff93697ffff89f9effdf7ff0fbfd5ff777fadbffabfdfbfff7ee7ffeeefdbbdfff7ff7ffbfefaff7ffff38ef79bafbda73bf6ec3fbbef7cdef5ffb9f7d73b4ff67fdffff2d7bf9dff7edaf7f7f9376b4eff7df7eeb3fefff7bfd6ef6cce76f7ffdfdf7d97f3ffb77783ffbfdaaeffe6cff9ffd3abfccd3ded2dfb5ffddfbffefedfde7e3fefffbfff7a5eabfbdbbf33f7d7fefdfffbffd3eefcffd31beffefb7fffe2dffedebffef9fdb7efdfbdf7badfbad75f7fdfff69ffdfeffff6cabdd6fffbdae7f7fefff77febcedf7bdfb23f6f7daedfcfbd9bcefbeff506f7ed5da5cbdf9bff7def7ff"
+  exec_parent_hash:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: Parent hash of the execution payload block; null if no payload.
+    example: "0xc6cd20028f88f95bbbe4a0c5efa11b6912e19e52f6d85fd085274356ba398665"
+  exec_random:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: prevRandao (mixHash) value in the execution block header; null if no payload.
+    example: "0xad0676fd78bae6edb5492c7fba3a38381a18e727a80df4b4e3e266de342958c9"
+  exec_receipts_root:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: Receipts root of the execution payload block; null if no payload.
+    example: "0x22353d888a943233ccf6a9866625571b469a7c50b53971b31358d097089ac478"
+  exec_state_root:
+    allOf:
+      - $ref: ./primitives.NullableString.yaml
+    description: State root of the execution payload block; null if no payload.
+    example: "0x123a8fdd8ff60b95c4b5118aef4ec9e1ba768b0be601ae1e33585c0ad6219764"
+  exec_timestamp:
+    allOf:
+      - $ref: ./primitives.NullableInteger.yaml
+    description: Timestamp of the execution payload block (Unix seconds); null if no payload.
+    example: 1760178851
+  exec_transactions_count:
+    allOf:
+      - $ref: ./primitives.NullableInteger.yaml
+    description: Number of transactions included in the execution payload; null if no payload.
+    example: 347
+  graffiti:
+    type: string
+    description: 32-byte graffiti field from the beacon block body as 0x-prefixed hex.
+    example: "0x5800000000000000000000000000000000000000000000000000000000000000"
+  graffiti_text:
+    type: string
+    description: Graffiti rendered as UTF-8 text when printable; may be empty if not decodable.
+    example: "X"
+  parentroot:
+    type: string
+    description: Root of the parent beacon block header (0x-prefixed hex).
+    example: "0x1a6b6a0ae64ee46e6dab6929f5bcb0a34e051496e82bf6233e324f9024c10731"
+  proposer:
+    type: integer
+    description: Index of the validator that proposed this block.
+    example: 341240
+  proposerslashingscount:
+    type: integer
+    description: Number of proposer slashing operations included in this block.
+    example: 0
+  randaoreveal:
+    type: string
+    description: Proposer's RANDAO reveal (BLS signature) contributing to beacon chain randomness (0x-prefixed hex).
+    example: "0x8dc36dbf1f926e2bcb5d7978971398324307a09d5a95f14d24d1954c7f92711e1264fbfd8061f95336bf6a87a83668901987b22acb60a2fc3baf0f1a12bc33ea6825062b4d4a04123ff5c03aaff66a7b5b4e25c2aedda5c2ba96e475856e6981"
+  signature:
+    type: string
+    description: BLS signature of the beacon block header (0x-prefixed hex).
+    example: "0xae1c866040219da4da2b4e71d0721a3aa7843dd4b39af3c8e8efe04a448184e4c216d71b99062dc39e0922d7b352033015b6c7fe5816de9d2316444fb7063e7e1f66e79ecfd99ec9828a3c31a7db38b7d59a5771e761b507f1562a600759cc31"
+  slot:
+    type: integer
+    description: Beacon slot number of this block.
+    example: 12779569
+  stateroot:
+    type: string
+    description: Root of the beacon state in the block header (0x-prefixed hex).
+    example: "0x53f155484c3261c490d63ea8245c4937744b9328c94e29c49e90c971312a1811"
+  status:
+    type: string
+    description: >-
+      Block status code: '0' scheduled, '1' proposed (canonical), '2' missed,
+      '3' orphaned.
+    example: "1"
+  syncaggregate_bits:
+    type: string
+    description: 512-bit bitfield (0x-prefixed hex) indicating which sync committee members participated; one bit per member.
+    example: "0xfffffffffdfffffffffffffffffffffffffbffffffffffffffffdffffdffffffffffffefffffffffffffffffffffffffffffffbfffffffffffffffffffffffff"
+  syncaggregate_participation:
+    type: number
+    description: Participation ratio of the sync committee for this block (0..1).
+    example: 0.98828125
+  syncaggregate_signature:
+    type: string
+    description: Aggregated BLS signature of the sync committee for this block (0x-prefixed hex).
+    example: "0xa4da2b867397442ee4744be9c22a2ff0c0a97d021741038d1921d2065e6ff8d94730025711007f7b7626efbf98e0a523000357a5f8a708b8926fc1e989daed25cc26008cfe945e30dcf0ea9ed34ea4238b62697775f0ad0b639d2240fc048857"
+  voluntaryexitscount:
+    type: integer
+    description: Number of voluntary exit operations included in this block.
+    example: 0

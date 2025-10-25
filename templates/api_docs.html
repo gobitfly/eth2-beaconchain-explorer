@@ -4,10 +4,9 @@
     %s
   </script>
   <script>
-    console.log(localStorage.getItem("theme"))
     Scalar.createApiReference("#app", {
       // The URL of the OpenAPI/Swagger document
-      url: "/swagger/swagger.json",
+      url: "/openapi/bundled.yaml",
       forceDarkModeState: localStorage.getItem("theme"),
       hideDarkModeToggle: true,
       customCss: `

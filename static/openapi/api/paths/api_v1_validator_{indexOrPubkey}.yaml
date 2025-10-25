@@ -1,0 +1,70 @@
+get:
+  tags:
+    - Validators
+  summary: Validators overview
+  description: >-
+    Retrieve validator information by index or public key using a comma-separated list in the
+    path parameter. Provide up to 100 identifiers (higher limits may apply to authenticated
+    premium users). Each identifier must be either a validator index (base-10 integer) or a
+    48-byte BLS public key as 0x-prefixed hex (96 hex characters after 0x) or without the 0x
+    prefix. Use the POST variant (`/api/v1/validator`) when the list is too long for a URL.
+  operationId: getValidators
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+  responses:
+    '200':
+      description: >-
+        Matching validators were retrieved successfully. The `data` field contains either a single
+        validator object (when one identifier is provided/resolved) or an array of validator objects
+        (when multiple identifiers are provided/resolved).
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    oneOf:
+                      - title: Multiple validators
+                        type: array
+                        items:
+                          $ref: ../components/schemas/types.APIValidatorResponse.yaml
+                      - title: Single validator
+                        $ref: ../components/schemas/types.APIValidatorResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifier, too many identifiers, or unresolved pubkeys).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

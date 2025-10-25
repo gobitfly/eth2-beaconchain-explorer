@@ -1,0 +1,7 @@
+type: object
+description: Validator lookup request specifying validator indices and/or public keys.
+properties:
+  indicesOrPubkey:
+    $ref: ./primitives.indicesOrPubkeys.yaml
+required:
+  - indicesOrPubkey

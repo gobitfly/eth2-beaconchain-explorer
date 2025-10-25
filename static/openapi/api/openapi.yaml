@@ -1,0 +1,239 @@
+openapi: 3.0.4
+info:
+  title: beaconcha.in API Documentation
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.en.html
+  description: >-
+    ## Introduction
+
+    **Advanced and reliable API for accessing comprehensive Ethereum blockchain
+    data.**
+
+
+    - **Free Usage Policy:** The API is free to use under a fair use policy,
+    with rate limits of 10 requests per minute per IP.
+
+    - **Caching:** All responses are cached for 1 minute.
+
+    - **Higher Usage Plans:** For higher usage plans, visit:
+    [https://beaconcha.in/pricing](https://beaconcha.in/pricing). An API key is
+    required to use these plans.
+
+
+    ### API Key Usage
+
+    API keys can be obtained at
+    [/user/settings](https://beaconcha.in/user/settings) and must be included in
+    requests either as a query string parameter or in the request header.
+
+
+    #### Example: Query String Parameter
+
+    ```bash
+
+    curl https://beaconcha.in/api/v1/slot/1?apikey=<your_key>
+
+    ```
+
+
+    #### Example: Request Header
+
+    ```bash
+
+    curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/slot/1
+
+    ```
+  contact: {}
+  version: '1.1'
+servers:
+  - url: https://beaconcha.in
+    description: Ethereum mainnet
+  - url: https://hoodi.beaconcha.in
+    description: Hoodi Ethereum testnet
+security:
+  - ApiKeyAuthQuery: []
+  - ApiKeyAuthHeader: []
+tags:
+  - name: Epoch
+    description: Data related to consensus layer epochs
+  - name: Slots
+    description: Data related to consensus layer slots
+  - name: Validators
+    description: Data related to consensus layer validators
+  - name: Rewards
+    description: Data related to validator rewards
+  - name: Sync Committees
+    description: Data related to sync committees
+  - name: Rocketpool
+    description: Data related to the rocketpool protocol
+  - name: ETH.Store®
+    description: Data related to the ETH.Store® metric
+  - name: Validator deposits
+    description: Data related to execution layer validator deposits
+  - name: Blocks
+    description: Data related to execution layer blocks
+  - name: Gas
+    description: Data related to gas prices
+  - name: Address
+    description: Data related to ethereum addresses
+  - name: Network
+    description: Network data
+  - name: Misc
+    description: Miscellaneous data
+  - name: User
+    description: User data
+paths:
+  /api/healthz:
+    $ref: paths/api_healthz.yaml
+  /api/healthz-loadbalancer:
+    $ref: paths/api_healthz-loadbalancer.yaml
+  /api/v1/chart/{chart}:
+    $ref: paths/api_v1_chart_{chart}.yaml
+  /api/v1/client/metrics:
+    x-internal: true
+    $ref: paths/api_v1_client_metrics.yaml
+  /api/v1/ens/lookup/{domain}:
+    $ref: paths/api_v1_ens_lookup_{domain}.yaml
+  /api/v1/epoch/{epoch}:
+    $ref: paths/api_v1_epoch_{epoch}.yaml
+  /api/v1/epoch/{epoch}/slots:
+    $ref: paths/api_v1_epoch_{epoch}_slots.yaml
+  /api/v1/eth1deposit/{txhash}:
+    $ref: paths/api_v1_eth1deposit_{txhash}.yaml
+  /api/v1/ethstore/{day}:
+    $ref: paths/api_v1_ethstore_{day}.yaml
+  /api/v1/execution/address/{address}:
+    $ref: paths/api_v1_execution_address_{address}.yaml
+  /api/v1/execution/address/{address}/erc20tokens:
+    $ref: paths/api_v1_execution_address_{address}_erc20tokens.yaml
+  /api/v1/execution/block/{blockNumber}:
+    $ref: paths/api_v1_execution_block_{blockNumber}.yaml
+  /api/v1/execution/gasnow:
+    $ref: paths/api_v1_execution_gasnow.yaml
+  /api/v1/execution/{addressIndexOrPubkey}/produced:
+    $ref: paths/api_v1_execution_{addressIndexOrPubkey}_produced.yaml
+  /api/v1/graffitiwall:
+    $ref: paths/api_v1_graffitiwall.yaml
+  /api/v1/latestState:
+    $ref: paths/api_v1_latestState.yaml
+  /api/v1/mobile/notify/register:
+    x-internal: true
+    $ref: paths/api_v1_mobile_notify_register.yaml
+  /api/v1/rocketpool/stats:
+    $ref: paths/api_v1_rocketpool_stats.yaml
+  /api/v1/rocketpool/validator/{indexOrPubkey}:
+    $ref: paths/api_v1_rocketpool_validator_{indexOrPubkey}.yaml
+  /api/v1/slot/{slotOrHash}:
+    $ref: paths/api_v1_slot_{slotOrHash}.yaml
+  /api/v1/slot/{slot}/attestations:
+    $ref: paths/api_v1_slot_{slot}_attestations.yaml
+  /api/v1/slot/{slot}/attesterslashings:
+    $ref: paths/api_v1_slot_{slot}_attesterslashings.yaml
+  /api/v1/slot/{slot}/deposits:
+    $ref: paths/api_v1_slot_{slot}_deposits.yaml
+  /api/v1/slot/{slot}/proposerslashings:
+    $ref: paths/api_v1_slot_{slot}_proposerslashings.yaml
+  /api/v1/slot/{slot}/voluntaryexits:
+    $ref: paths/api_v1_slot_{slot}_voluntaryexits.yaml
+  /api/v1/slot/{slot}/withdrawals:
+    $ref: paths/api_v1_slot_{slot}_withdrawals.yaml
+  /api/v1/sync_committee/{period}:
+    $ref: paths/api_v1_sync_committee_{period}.yaml
+  /api/v1/user/dashboard/remove:
+    x-internal: true
+    $ref: paths/api_v1_user_dashboard_remove.yaml
+  /api/v1/user/dashboard/save:
+    x-internal: true
+    $ref: paths/api_v1_user_dashboard_save.yaml
+  /api/v1/user/mobile/settings:
+    x-internal: true
+    $ref: paths/api_v1_user_mobile_settings.yaml
+  /api/v1/user/notifications:
+    x-internal: true
+    $ref: paths/api_v1_user_notifications.yaml
+  /api/v1/user/stats/{offset}/{limit}:
+    x-internal: true
+    $ref: paths/api_v1_user_stats_{offset}_{limit}.yaml
+  /api/v1/user/token:
+    x-internal: true
+    $ref: paths/api_v1_user_token.yaml
+  /api/v1/user/validator/saved:
+    x-internal: true
+    $ref: paths/api_v1_user_validator_saved.yaml
+  /api/v1/user/validator/{pubkey}/add:
+    x-internal: true
+    $ref: paths/api_v1_user_validator_{pubkey}_add.yaml
+  /api/v1/user/validator/{pubkey}/remove:
+    x-internal: true
+    $ref: paths/api_v1_user_validator_{pubkey}_remove.yaml
+  /api/v1/validator:
+    $ref: paths/api_v1_validator.yaml
+  /api/v1/validator/eth1/{eth1address}:
+    $ref: paths/api_v1_validator_eth1_{eth1address}.yaml
+  /api/v1/validator/leaderboard:
+    $ref: paths/api_v1_validator_leaderboard.yaml
+  /api/v1/validator/stats/{index}:
+    $ref: paths/api_v1_validator_stats_{index}.yaml
+  /api/v1/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}:
+    $ref: >-
+      paths/api_v1_validator_withdrawalCredentials_{withdrawalCredentialsOrEth1address}.yaml
+  /api/v1/validator/{indexOrPubkey}:
+    $ref: paths/api_v1_validator_{indexOrPubkey}.yaml
+  /api/v1/validator/{indexOrPubkey}/attestationefficiency:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_attestationefficiency.yaml
+  /api/v1/validator/{indexOrPubkey}/attestations:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_attestations.yaml
+  /api/v1/validator/{indexOrPubkey}/balancehistory:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_balancehistory.yaml
+  /api/v1/validator/{indexOrPubkey}/blsChange:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_blsChange.yaml
+  /api/v1/validator/{indexOrPubkey}/deposits:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_deposits.yaml
+  /api/v1/validator/{indexOrPubkey}/execution/performance:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_execution_performance.yaml
+  /api/v1/validator/{indexOrPubkey}/incomedetailhistory:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_incomedetailhistory.yaml
+  /api/v1/validator/{indexOrPubkey}/performance:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_performance.yaml
+  /api/v1/validator/{indexOrPubkey}/proposals:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_proposals.yaml
+  /api/v1/validator/{indexOrPubkey}/withdrawals:
+    $ref: paths/api_v1_validator_{indexOrPubkey}_withdrawals.yaml
+  /api/v1/validators/proposalLuck:
+    $ref: paths/api_v1_validators_proposalLuck.yaml
+  /api/v1/validators/queue:
+    $ref: paths/api_v1_validators_queue.yaml
+components:
+  securitySchemes:
+    ApiKeyAuthQuery:
+      type: apiKey
+      in: query
+      name: apikey
+      description: 'Authorization header with value: `Bearer <token>`'
+    ApiKeyAuthHeader:
+      type: apiKey
+      in: header
+      name: apikey
+      description: 'Authorization header with value: `Bearer <token>`'
+x-tagGroups:
+  - name: Consensus Layer
+    tags:
+      - Epochs
+      - Slots
+      - Validators
+      - Rewards
+      - Sync Committees
+      - Rocketpool
+      - ETH.Store®
+  - name: Execution Layer
+    tags:
+      - Validator Deposits
+      - Blocks
+      - Addresses
+      - Gas
+  - name: Other
+    tags:
+      - Network
+      - User
+      - Misc

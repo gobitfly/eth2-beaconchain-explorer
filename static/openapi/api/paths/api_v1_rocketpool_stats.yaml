@@ -1,0 +1,45 @@
+get:
+  tags:
+    - Rocketpool
+  summary: Rocket Pool network statistics
+  description: >-
+    Retrieve current Rocket Pool protocol statistics as observed by the explorer backend. Use this endpoint to monitor network-level metrics including node and minipool counts, rETH supply, rETH exchange rate and APR, claim interval timing, and protocol balances.
+
+    Responses are cached for one minute and subject to the API's standard rate limits. You do not provide any request parameters for this endpoint.
+  operationId: getRocketpoolStats
+  responses:
+    '200':
+      description: Rocket Pool statistics retrieved successfully. The `data` object contains current Rocket Pool network metrics.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.APIRocketpoolStatsResponse.yaml
+    '400':
+      description: The request is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidRequest:
+              summary: Invalid request
+              value:
+                status: "ERROR: invalid request"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

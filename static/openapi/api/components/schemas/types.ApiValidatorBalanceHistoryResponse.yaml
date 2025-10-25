@@ -1,0 +1,38 @@
+type: object
+description: Per-epoch balance snapshot for a validator, including effective balance and week grouping metadata.
+properties:
+  balance:
+    type: integer
+    description: Validator balance in gwei at the end of the epoch.
+    minimum: 0
+    example: 32014494648
+  effectivebalance:
+    type: integer
+    description: Effective balance in gwei used for rewards/penalties (capped at 32,000,000,000 gwei when fully effective).
+    minimum: 0
+    example: 32000000000
+  epoch:
+    type: integer
+    description: Epoch number corresponding to this balance snapshot (>= 0).
+    minimum: 0
+    example: 399359
+  validatorindex:
+    type: integer
+    description: Validator index to whom this balance snapshot applies (>= 0).
+    minimum: 0
+    example: 34523
+  week:
+    type: integer
+    description: Epoch-based week number computed as `epoch / (EpochsPerDay * 7)`.
+    minimum: 0
+    example: 253
+  week_start:
+    type: string
+    format: date-time
+    description: Start timestamp (UTC, RFC 3339) of the week containing `epoch`.
+    example: "2025-10-07T12:00:23Z"
+  week_end:
+    type: string
+    format: date-time
+    description: End timestamp (UTC, RFC 3339) of the week containing `epoch`.
+    example: "2025-10-14T12:00:23Z"

@@ -1,0 +1,93 @@
+get:
+  tags:
+    - Validators
+  summary: Validators by deposit address
+  description: >-
+    Retrieve validators that have made deposits from a specific execution-layer
+    address. The service inspects DepositContract events where the `from_address`
+    equals the provided address and groups results by validator public key.
+
+    Use this endpoint to identify validators funded by an address. ENS names are
+    supported for the path parameter when they resolve to a 0x-prefixed address
+    at request time.
+  operationId: getValidatorsByEth1Address
+  parameters:
+    - name: eth1address
+      in: path
+      description: >-
+        Execution-layer address whose deposit transactions you want to inspect.
+        Provide a 0x-prefixed, 20-byte hex string (40 hex characters after 0x).
+        ENS names are accepted and resolved server-side when provided.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.EthAddress.yaml"
+    - name: limit
+      in: query
+      description: Maximum number of records to return. Allowed range is 1 to 2000. Defaults to 2000.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2000
+        default: 2000
+        example: 100
+    - name: offset
+      in: query
+      description: Number of items to skip from the start of the result set. Use 0 for the first page.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
+  responses:
+    '200':
+      description: >-
+        Matching validators were found. The `data` array contains one entry per
+        unique validator public key that deposited from the specified address.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ApiValidatorEth1Response.yaml
+    '400':
+      description: The request is invalid (for example, a malformed address or out-of-range pagination parameters).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidAddress:
+              summary: Invalid address parameter
+              value:
+                status: "ERROR: invalid eth1 address provided"
+                data: null
+            invalidPagination:
+              summary: Invalid pagination parameters
+              value:
+                status: "ERROR: invalid pagination parameters"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

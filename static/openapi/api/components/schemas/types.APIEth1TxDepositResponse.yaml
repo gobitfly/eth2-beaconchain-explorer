@@ -1,0 +1,61 @@
+type: object
+description: Details of a single validator deposit decoded from an execution-layer transaction.
+properties:
+  amount:
+    type: integer
+    description: Deposited amount in gwei (1 gwei = 1e9 wei).
+    example: 32000000000
+  block_number:
+    type: integer
+    description: Execution-layer block number that included the transaction.
+    example: 23537869
+  block_ts:
+    type: integer
+    description: Block timestamp as Unix time in seconds (UTC).
+    example: 1759985003
+  from_address:
+    type: string
+    description: Sender address funding the deposit (0x-prefixed, 20-byte hex Ethereum address).
+    example: '0x26e8ce0d6c1424566ff8d584d1409b9fe651f27d'
+  merkletree_index:
+    type: string
+    description: >-
+      Merkle tree index of the deposit within the Ethereum deposit contract; 0x-prefixed
+      hex-encoded uint64 as emitted in the DepositEvent log.
+    example: '0xfab3220000000000'
+  publickey:
+    type: string
+    description: BLS12-381 validator public key (48 bytes; 0x-prefixed hex with 96 hex characters).
+    example: >-
+      0x8bcf64d7f36af7e4c642ff02bc8ecdef72593762538a86f6eeda6375d35302d4d307f9d2a11f2ff6c5483a5d1c8c81a1
+  removed:
+    type: boolean
+    description: True if the associated log was removed due to an execution chain reorganization.
+    example: false
+  signature:
+    type: string
+    description: BLS signature over the deposit message (96 bytes; 0x-prefixed hex with 192 hex characters).
+    example: >-
+      0xb70208d62803c7695d8eb47fff79ac0273711191d0b1fc3b8bcaca649affba83b77cc8dad73cf5bfe2771918a1f767400bb0603e690294c9b8ffb73072f734cc8131e59b4ce4240aa8377dcd4388d1beaaea495b4b603432e83b46126d7575cb
+  tx_hash:
+    type: string
+    description: Hash of the execution transaction that carried the deposit (0x-prefixed 32-byte hex).
+    example: '0x5ddaf424a46ab378967ce45c72b8532386cbd558ddb3b5ddb8a828000ad57895'
+  tx_index:
+    type: integer
+    description: Index of the transaction within its block (0-based).
+    example: 90
+  tx_input:
+    type: string
+    description: Raw calldata of the transaction (0x-prefixed hex), containing the deposit payload for the DepositContract.
+    example: '0x00'
+  valid_signature:
+    type: boolean
+    description: Indicates whether the deposit signature is valid for the provided public key and deposit message.
+    example: true
+  withdrawal_credentials:
+    type: string
+    description: >-
+      32-byte withdrawal credentials (0x-prefixed hex). Usually starts with 0x01 for
+      ETH1 address withdrawals or 0x00 for BLS withdrawals.
+    example: '0x01000000000000000000000026e8ce0d6c1424566ff8d584d1409b9fe651f27d'

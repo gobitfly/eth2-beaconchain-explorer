@@ -1,0 +1,31 @@
+post:
+  tags:
+    - User
+  summary: Save validator subscription
+  description: Subscribes a user to get notifications from a specific validator via index
+  requestBody:
+    description: Index of validator you want to subscribe to
+    content:
+      application/json:
+        schema:
+          items: {}
+    required: true
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

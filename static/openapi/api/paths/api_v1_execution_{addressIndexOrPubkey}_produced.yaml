@@ -1,0 +1,121 @@
+get:
+  tags:
+    - Blocks
+  summary: Execution blocks produced by fee recipient, proposer index, or pubkey
+  description: >-
+    Retrieve execution-layer blocks attributed to one or more producers. You can
+    filter by fee recipient address (execution coinbase), beacon-chain proposer
+    index, or validator public key. Provide one or more identifiers as a
+    comma-separated list in the `addressIndexOrPubkey` path segment.
+
+    You may mix identifiers, but mixing with a non-zero `offset` can skip items
+    because pagination is applied after merging results. Limits: up to 20 fee
+    recipient addresses and up to 100 proposer indices or pubkeys per request.
+    ENS names are supported for addresses.
+  operationId: listExecutionProducedBlocks
+  parameters:
+    - name: addressIndexOrPubkey
+      in: path
+      description: >-
+        Comma-separated list of producers to query. Each item may be:
+        - a fee recipient address (0x-prefixed, 20-byte hex, or a valid ENS name),
+        - a proposer index (non-negative integer), or
+        - a validator public key (0x-prefixed, 48-byte BLS pubkey: 96 hex characters).
+
+        Provide multiple items by separating them with commas. A maximum of 20
+        addresses and 100 indices/pubkeys is accepted per request.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: array
+        items:
+          oneOf:
+            - $ref: '../components/schemas/primitives.EthAddress.yaml'
+            - type: integer
+              minimum: 0
+              description: Proposer index (>= 0)
+            - type: string
+              pattern: '^0x[a-fA-F0-9]{96}$'
+              description: Validator public key (48 bytes; 0x-prefixed hex with 96 hex characters)
+      example: 0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97,325,0xa6831544f1e9fb1086b023f0852fe7feb7ed6606bf57c76d26a5dbf0027c125e8f7b76b000d99b676205d7721c1baf81
+    - name: offset
+      in: query
+      description: Number of items to skip from the start of the merged result set. Use 0 for the first page.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
+    - name: limit
+      in: query
+      description: Maximum number of blocks to return. Allowed range is 1 to 100.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 20
+    - name: sort
+      in: query
+      description: Sort order by execution block number.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+        example: desc
+  responses:
+    '200':
+      description: >-
+        Blocks were retrieved successfully. The `data` array contains one
+        item per execution block produced by any of the specified producers,
+        sorted according to the `sort` parameter.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
+    '400':
+      description: The request is invalid (for example, a malformed address/pubkey or too many addresses provided).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid address, validator index, or pubkey
+              value:
+                status: "ERROR: invalid address, validator index or pubkey parameter"
+                data: null
+            tooManyAddresses:
+              summary: Too many addresses
+              value:
+                status: "ERROR: you are only allowed to query up to max 20 addresses"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

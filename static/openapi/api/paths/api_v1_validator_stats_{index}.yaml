@@ -1,0 +1,102 @@
+get:
+  tags:
+    - Validators
+  summary: Daily validator statistics
+  description: >-
+    Retrieve per-day statistics for a single validator by index. Use this endpoint to
+    obtain balance snapshots (in gwei), duty counts (attestations, block proposals,
+    sync committee), and deposit/withdrawal activity aggregated per beaconchain-day.
+    When `start_day` is omitted, the API returns all days up to `end_day` (which
+    defaults to the latest exported day).
+  operationId: getValidatorDailyStats
+  parameters:
+    - name: index
+      in: path
+      description: Validator index to query (>= 0).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: integer
+        minimum: 0
+        example: 49949
+    - name: end_day
+      in: query
+      description: Last day index to include (inclusive). Defaults to the latest exported day.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 1774
+    - name: start_day
+      in: query
+      description: >-
+        First day index to include (inclusive). Must be less than or equal to `end_day`.
+        When omitted, the API returns all days up to `end_day`.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 1700
+  responses:
+    '200':
+      description: >-
+        Matching daily records were retrieved successfully. The `data` array contains
+        one entry per day, ordered from newest to oldest.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    title: DailyStats
+                    items:
+                      $ref: ../components/schemas/types.ApiValidatorDailyStatsResponse.yaml
+    '400':
+      description: >-
+        The request is invalid (for example, a malformed index, invalid `start_day` or
+        `end_day`, or `start_day > end_day`).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidIndex:
+              summary: Invalid validator index
+              value:
+                status: "ERROR: invalid validator index"
+                data: null
+            invalidEndDay:
+              summary: Invalid end_day parameter
+              value:
+                status: "ERROR: invalid end_day parameter"
+                data: null
+            invalidStartDay:
+              summary: Invalid start_day parameter
+              value:
+                status: "ERROR: invalid start_day parameter"
+                data: null
+            startAfterEnd:
+              summary: start_day must be <= end_day
+              value:
+                status: "ERROR: start_day must be less than end_day"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

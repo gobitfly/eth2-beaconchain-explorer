@@ -1,0 +1,217 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "palm",
+  "name": "beaconcha.in Docs",
+  "colors": {
+    "primary": "#3771d5",
+    "light": "#3771d5",
+    "dark": "#3771d5"
+  },
+  "fonts": {
+    "family": "Urbanist",
+    "weight": 600,
+    "heading": {
+      "family": "Urbanist",
+      "weight": 700
+    }
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  },
+  "favicon": "/favicon.ico",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "API Docs",
+        "groups": [
+          {
+            "group": "V1 API docs",
+            "openapi": "bundled.yaml",
+            "pages": [
+              {
+                "group": "Consensus Layer",
+                "expanded": false,
+                "pages": [
+                  {
+                    "group": "Network",
+                    "pages": [
+                      "GET /api/v1/latestState"
+                    ]
+                  },
+                  {
+                    "group": "Epochs",
+                    "pages": [
+                      "GET /api/v1/epoch/{epoch}",
+                      "GET /api/v1/epoch/{epoch}/slots"
+                    ]
+                  },
+                  {
+                    "group": "Slots",
+                    "pages": [
+                      "GET /api/v1/slot/{slotOrHash}",
+                      "GET /api/v1/slot/{slot}/attestations",
+                      "GET /api/v1/slot/{slot}/attesterslashings",
+                      "GET /api/v1/slot/{slot}/deposits",
+                      "GET /api/v1/slot/{slot}/proposerslashings",
+                      "GET /api/v1/slot/{slot}/voluntaryexits",
+                      "GET /api/v1/slot/{slot}/withdrawals"
+                    ]
+                  },
+                  {
+                    "group": "Validators",
+                    "pages": [
+                      "GET /api/v1/validator/{indexOrPubkey}",
+                      "POST /api/v1/validator",
+                      "GET /api/v1/validator/{indexOrPubkey}/attestationefficiency",
+                      "GET /api/v1/validator/{indexOrPubkey}/attestations",
+                      "GET /api/v1/validator/{indexOrPubkey}/balancehistory",
+                      "GET /api/v1/validator/{indexOrPubkey}/blsChange",
+                      "GET /api/v1/validator/{indexOrPubkey}/deposits",
+                      "GET /api/v1/validator/{indexOrPubkey}/incomedetailhistory",
+                      "GET /api/v1/validator/{indexOrPubkey}/proposals",
+                      "GET /api/v1/validator/{indexOrPubkey}/withdrawals",
+                      "GET /api/v1/validator/eth1/{eth1address}",
+                      "GET /api/v1/validator/stats/{index}",
+                      "GET /api/v1/validator/withdrawalCredentials/{withdrawalCredentialsOrEth1address}",
+                      "GET /api/v1/validators/proposalLuck",
+                      "GET /api/v1/validators/queue",
+                      "GET /api/v1/eth1deposit/{txhash}"
+                    ]
+                  },
+                  {
+                    "group": "Rewards",
+                    "pages": [
+                      "GET /api/v1/validator/{indexOrPubkey}/execution/performance",
+                      "GET /api/v1/validator/{indexOrPubkey}/performance",
+                      "GET /api/v1/validator/leaderboard"
+                    ]
+                  },
+                  {
+                    "group": "Sync Committees",
+                    "pages": [
+                      "GET /api/v1/sync_committee/{period}"
+                    ]
+                  },
+                  {
+                    "group": "Rocketpool",
+                    "pages": [
+                      "GET /api/v1/rocketpool/stats",
+                      "GET /api/v1/rocketpool/validator/{indexOrPubkey}"
+                    ]
+                  },
+                  {
+                    "group": "ETH.Store®",
+                    "pages": [
+                      "GET /api/v1/ethstore/{day}"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Execution Layer",
+                "pages": [
+                  {
+                    "group": "Blocks",
+                    "pages": [
+                      "GET /api/v1/execution/{addressIndexOrPubkey}/produced",
+                      "GET /api/v1/execution/block/{blockNumber}"
+                    ]
+                  },
+                  {
+                    "group": "Addresses",
+                    "pages": [
+                      "GET /api/v1/execution/address/{address}",
+                      "GET /api/v1/execution/address/{address}/erc20tokens"
+                    ]
+                  },
+                  {
+                    "group": "Gas",
+                    "pages": [
+                      "GET /api/v1/execution/gasnow"
+                    ]
+                  },
+                  {
+                    "group": "ENS",
+                    "pages": [
+                      "GET /api/v1/ens/lookup/{domain}"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Misc",
+                "pages": [
+                  "GET /api/healthz",
+                  "GET /api/healthz-loadbalancer",
+                  "GET /api/v1/chart/{chart}",
+                  "GET /api/v1/graffitiwall"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Pricing",
+          "href": "https://mintlify.com/community",
+          "icon": "gem"
+        },
+        {
+          "anchor": "SLA Policy",
+          "href": "https://beaconcha.in",
+          "icon": "newspaper"
+        },
+        {
+          "anchor": "Support",
+          "href": "https://beaconcha.in",
+          "icon": "Discord"
+        }
+      ]
+    }
+  },
+  "api": {
+    "params": {
+      "expanded": "all"
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "appearance": "system",
+    "links": [
+      {
+        "icon": "discord",
+        "label": "Get help",
+        "href": "https://dashboard.mintlify.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get API Key",
+      "href": "https://dashboard.mintlify.com"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/beaconcha_in",
+      "github": "https://github.com/gobitfly"
+    }
+  }
+}

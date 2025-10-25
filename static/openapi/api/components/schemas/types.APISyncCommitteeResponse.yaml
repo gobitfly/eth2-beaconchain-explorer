@@ -1,0 +1,37 @@
+type: object
+description: >-
+  Sync committee membership for a single sync period. Includes the period index,
+  the start and end epochs, and the 512 validator indices ordered by
+  sync-committee index. The ordering matches the bit positions in
+  `syncaggregate_bits` found in blocks.
+properties:
+  period:
+    type: integer
+    description: Sync period index (>= 0). Each period spans 256 consecutive epochs.
+    minimum: 0
+    example: 500
+  start_epoch:
+    type: integer
+    description: Epoch at which the sync period begins. On Ethereum mainnet this equals `period * 256`.
+    minimum: 0
+    example: 128000
+  end_epoch:
+    type: integer
+    description: Epoch at which the sync period ends (inclusive). On Ethereum mainnet this equals `start_epoch + 255`.
+    minimum: 0
+    example: 128255
+  validators:
+    type: array
+    description: >-
+      List of validator indices that form the sync committee for this period,
+      ordered by sync-committee index (length 512 as per the consensus spec).
+    items:
+      type: integer
+      minimum: 0
+    minItems: 512
+    maxItems: 512
+    example:
+      - 383220
+      - 12142
+      - 265015
+      - 260079

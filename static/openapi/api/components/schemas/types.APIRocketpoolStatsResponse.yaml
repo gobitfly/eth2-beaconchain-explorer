@@ -1,0 +1,65 @@
+type: object
+description: Network-level Rocket Pool statistics as observed by the explorer backend.
+properties:
+  claim_interval_time:
+    type: string
+    description: Duration of the current Rocket Pool rewards claim interval, formatted as HH:MM:SS. Represents the length of the interval during which rewards accrue before the next checkpoint.
+    example: "672:00:00"
+  claim_interval_time_start:
+    type: integer
+    format: int64
+    description: Unix timestamp in seconds (UTC) when the current rewards claim interval started.
+    example: 1758778539
+  current_node_demand:
+    type: number
+    description: Signed metric indicating current node demand in the Rocket Pool network. Positive values indicate demand for additional node capacity; negative values indicate surplus capacity. This value is provided by Rocket Pool contracts and is unitless.
+    example: -3.983366338292163e+21
+  current_node_fee:
+    type: number
+    description: Current node commission fee as a fractional rate. For example, 0.05 equals a 5% node fee.
+    example: 0.05
+  effective_rpl_staked:
+    type: number
+    description: Total effective RPL stake across node operators, expressed in RPL token units with 18 decimals.
+    example: 9.325076691110913e+24
+  minipool_count:
+    type: integer
+    description: Total number of Rocket Pool minipools tracked by the explorer.
+    example: 42248
+  node_count:
+    type: integer
+    description: Total number of Rocket Pool node operators tracked by the explorer.
+    example: 4024
+  node_operator_rewards:
+    type: number
+    description: Amount of RPL allocated to node operators for the current claim interval, expressed in RPL token units with 18 decimals.
+    example: 5.719242908397718e+22
+  odao_member_count:
+    type: integer
+    description: Number of Rocket Pool Oracle DAO (oDAO) members.
+    example: 13
+  reth_apr:
+    type: number
+    description: Annualized percentage rate for rETH based on the change in the rETH exchange rate over the last 168 hours (7 days). Expressed as a fraction; for example, 0.0384 equals 3.84% APR.
+    example: 0.0384304813
+  reth_exchange_rate:
+    type: number
+    description: Current rETH-to-ETH exchange rate. A value greater than 1.0 indicates that 1 rETH can be redeemed for more than 1 ETH.
+    example: 1.1476800133
+  reth_supply:
+    type: number
+    description: Total rETH token supply in token units with 18 decimals.
+    example: 3.9133933672076725e+23
+  rpl_price:
+    type: integer
+    format: int64
+    description: Current RPL price quoted in ETH, represented as a fixed-point integer with 18 decimals (wei per RPL).
+    example: 1114711058888101
+  total_eth_balance:
+    type: number
+    description: Total ETH held by the Rocket Pool protocol (including staking and buffer), denominated in wei (1e18 wei = 1 ETH). Large values may not fit into 53-bit JavaScript integers.
+    example: 4.4913233519356025e+23
+  total_eth_staking:
+    type: number
+    description: Total ETH currently staked through Rocket Pool validators, denominated in wei (1e18 wei = 1 ETH). Large values may not fit into 53-bit JavaScript integers.
+    example: 4.471319830044493e+23

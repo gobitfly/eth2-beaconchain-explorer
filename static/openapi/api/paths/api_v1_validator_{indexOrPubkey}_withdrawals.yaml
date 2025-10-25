@@ -1,0 +1,94 @@
+get:
+  tags:
+    - Validators
+  summary: Validator withdrawal history
+  description: >-
+    Retrieve withdrawal operations attributed to one or more validators within a
+    bounded epoch window. By default, the service returns data for the last 100
+    epochs ending at the latest processed epoch. You can set the optional
+    `epoch` query parameter to move the 100-epoch window back in time (the window
+    becomes `[epoch-99, epoch]`, clamped at 0 when `epoch < 99`).
+
+    Each item includes the epoch and slot of inclusion, the canonical block
+    root, the global withdrawal index, the validator index, the recipient
+    execution address, and the amount in gwei.
+  operationId: listValidatorWithdrawals
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+    - name: epoch
+      in: query
+      description: >-
+        Upper bound (inclusive) for the 100-epoch window used to fetch withdrawals.
+        Defaults to the latest processed epoch when omitted. Must be a non-negative integer.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 399359
+  responses:
+    '200':
+      description: >-
+        Matching withdrawals were retrieved successfully. The `data` array
+        contains one item per withdrawal observed for any of the specified
+        validators within the requested epoch window. If no withdrawals are
+        found, the array is empty.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorWithdrawalResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifiers, too many identifiers, or no valid indices).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            unresolvedPubkeys:
+              summary: Pubkey did not resolve to an index
+              value:
+                status: "ERROR: invalid validator argument, pubkey(s) did not resolve to a validator index"
+                data: null
+            empty:
+              summary: No or invalid indices provided
+              value:
+                status: "ERROR: no or invalid validator indicies provided"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

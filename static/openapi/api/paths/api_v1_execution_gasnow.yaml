@@ -1,0 +1,45 @@
+get:
+  tags:
+    - Gas
+  summary: Current gas price recommendations
+  description: >-
+    Retrieve current execution-layer fee recommendations and ETH price snapshot.
+    The response provides four fee tiers expressed as wei per gas, each
+    corresponding to a target inclusion time:
+    rapid (≈15 seconds), fast (≈1 minute), standard (≈3 minutes), and slow
+    (>10 minutes). The payload also includes a Unix millisecond timestamp and an
+    ETH/USD price snapshot.
+  operationId: getExecutionGasNow
+  responses:
+    '200':
+      description: >-
+        Current fee recommendations and price snapshot were retrieved
+        successfully.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.GasNowPageData.yaml
+    '400':
+      description: The request is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            notAvailable:
+              summary: Gasnow data not available
+              value:
+                status: "ERROR: gasnow data is currently not available"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

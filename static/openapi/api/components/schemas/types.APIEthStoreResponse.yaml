@@ -1,0 +1,106 @@
+type: object
+description: Daily ETH.Store® aggregates for a single beaconchain-day.
+properties:
+  day:
+    type: integer
+    description: Beaconchain-day index since genesis (>= 0). Typically one record per day.
+    example: 435
+  day_start:
+    type: string
+    format: date-time
+    description: Start timestamp (UTC) of the 24-hour period in RFC 3339 format.
+    example: '2022-02-09T12:00:23Z'
+  day_end:
+    type: string
+    format: date-time
+    description: End timestamp (UTC) of the 24-hour period in RFC 3339 format.
+    example: '2022-02-10T12:00:23Z'
+
+  apr:
+    type: number
+    description: Total annualized percentage rate for the day as a fraction (0..1), combining consensus-layer rewards and execution-layer fees.
+    example: 0.0527609790864113
+  avgapr7d:
+    type: number
+    description: 7-day trailing average of total APR (0..1), centered on or including this day.
+    example: 0.052764308760676414
+  avgapr31d:
+    type: number
+    description: 31-day trailing average of total APR (0..1), centered on or including this day.
+    example: 0.053351525019046164
+
+  cl_apr:
+    type: number
+    description: Consensus-layer APR component only (0..1) for the day (attestations, proposals, sync committee, etc.).
+    example: 0.0527609790864113
+  cl_avgapr7d:
+    type: number
+    description: 7-day trailing average of consensus-layer APR (0..1).
+    example: 0.052764308760676414
+  cl_avgapr31d:
+    type: number
+    description: 31-day trailing average of consensus-layer APR (0..1).
+    example: 0.053351525019046164
+
+  el_apr:
+    type: number
+    description: Execution-layer APR component only (0..1) for the day (e.g., priority fees, MEV). 0 for pre-Merge periods.
+    example: 0.0063633204373217
+  el_avgapr7d:
+    type: number
+    description: 7-day trailing average of execution-layer APR (0..1).
+    example: 0.005195252974383372
+  el_avgapr31d:
+    type: number
+    description: 31-day trailing average of execution-layer APR (0..1).
+    example: 0.005679846878640752
+
+  consensus_rewards_sum_wei:
+    type: number
+    description: Total consensus-layer rewards accrued during the day across all validators, in wei.
+    example: 1.349850765807e+21
+  avgconsensus_rewards7d_wei:
+    type: number
+    description: 7-day trailing average of the daily consensus rewards sum, in wei.
+    example: 1.345081426021e+21
+  avgconsensus_rewards31d_wei:
+    type: number
+    description: 31-day trailing average of the daily consensus rewards sum, in wei.
+    example: 1.3378170064684515e+21
+
+  tx_fees_sum_wei:
+    type: number
+    description: Total execution-layer transaction fees (including priority fees and MEV tips) accrued during the day across all validators, in wei. 0 for pre-Merge periods.
+    example: 503073827859422400000
+  avgtx_fees7d_wei:
+    type: number
+    nullable: true
+    description: 7-day trailing average of the daily transaction fees sum, in wei; null when not applicable (e.g., pre-Merge).
+    example: null
+  avgtx_fees31d_wei:
+    type: number
+    nullable: true
+    description: 31-day trailing average of the daily transaction fees sum, in wei; null when not applicable (e.g., pre-Merge).
+    example: null
+
+  deposits_sum_wei:
+    type: number
+    description: Total amount of ETH deposited into the validator deposit contract during the day, in wei.
+    example: 0
+  effective_balances_sum_wei:
+    type: number
+    description: Sum of effective balances across all active validators at the end of the day, in wei.
+    example: 9.338256e+24
+  start_balances_sum_wei:
+    type: number
+    description: Sum of actual validator balances at the start of the day, in wei.
+    example: 9.783046761967892e+24
+  end_balances_sum_wei:
+    type: number
+    description: Sum of actual validator balances at the end of the day, in wei.
+    example: 9.7843966127337e+24
+
+  total_rewards_wei:
+    type: number
+    description: Total rewards earned during the day (consensus + execution), in wei.
+    example: 1.349850765807e+21

@@ -1,0 +1,73 @@
+get:
+  tags:
+    - Blocks
+  summary: Execution block overview
+  description: >-
+    Retrieve one or more execution-layer blocks by block number. Provide block
+    numbers as a comma-separated list in the `blockNumber` path segment (up to
+    100 values). The response includes per-block metadata, rewards, consensus
+    linkage, and relay information when available.
+  operationId: getExecutionBlocksByNumber
+  parameters:
+    - name: blockNumber
+      in: path
+      description: >-
+        One or more execution block numbers as a comma-separated list. Each item
+        must be a non-negative integer. A maximum of 100 block numbers is
+        allowed per request.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: array
+        items:
+          type: integer
+          minimum: 0
+        maxItems: 100
+      example: 17000000,17000001,17000002
+  responses:
+    '200':
+      description: >-
+        Matching blocks were found. The `data` array contains one item per
+        retrieved block. If a provided block number is not found, it is omitted
+        from the result.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ExecutionBlockApiResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed numbers or more than 100 values).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidBlockNumber:
+              summary: Invalid block number
+              value:
+                status: "ERROR: invalid block number"
+                data: null
+            tooManyBlockNumbers:
+              summary: Too many values
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

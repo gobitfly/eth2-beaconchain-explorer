@@ -1,0 +1,52 @@
+type: object
+description: >-
+  On-chain record of a validator’s BLS-to-execution credential change. Includes
+  consensus-layer inclusion metadata, the validator’s BLS pubkey and signature
+  over the change message, the original 0x00 withdrawal credentials, and the new
+  0x01 credentials derived from the execution address.
+properties:
+  epoch:
+    type: integer
+    description: Epoch containing the block that included the credential change (>= 0).
+    minimum: 0
+    example: 200820
+  slot:
+    type: integer
+    description: Slot number of the beacon block that included the credential change (>= 0).
+    minimum: 0
+    example: 6426248
+  blockroot:
+    type: string
+    description: 0x-prefixed 32-byte root of the including beacon block.
+    pattern: '^0x[a-fA-F0-9]{64}$'
+    example: "0x387e15e80bfce46c2217cd149ec0a03a5f82ce393de12936ca243e076517148b"
+  validatorindex:
+    type: integer
+    description: Index of the validator that submitted the credential change (>= 0).
+    minimum: 0
+    example: 20
+  bls_pubkey:
+    type: string
+    description: BLS12-381 validator public key (48 bytes; 0x-prefixed hex with 96 hex characters).
+    pattern: '^0x[a-fA-F0-9]{96}$'
+    example: "0x8b84918f955498cd0f6f44537cd0745d29ceffe16a37a353da746ad6879ec1c5992520708aad13b2333ce562faef083c"
+  bls_signature:
+    type: string
+    description: BLS signature over the change message (96 bytes; 0x-prefixed hex with 192 hex characters).
+    pattern: '^0x[a-fA-F0-9]{192}$'
+    example: "0xb735398d821c5eb6356c71e35d59dd29ee56429d03dd443746d3de1bffb9049ed1bd45ab115de42ee3c6d0b69017d9b11413e1c7a0640553c14f8d2076369d51301720f3861c9b824a8a486d116c9bfe38c53747b33d3f1e664ce5ead157ec16"
+  address:
+    type: string
+    description: Execution-layer address encoded in the new 0x01 withdrawal credentials (0x-prefixed, 20-byte hex).
+    pattern: '^0x[a-fA-F0-9]{40}$'
+    example: "0x23a64e36ae03d85a6121e55e48f6b8eb63d72f76"
+  withdrawalcredentials_0x00:
+    type: string
+    description: Original withdrawal credentials prior to the change (32 bytes; 0x-prefixed hex, starts with 0x00).
+    pattern: '^0x[a-fA-F0-9]{64}$'
+    example: "0x009081da37d4f11d87592b89734db953de64fcb381436b235551b209f3fac343"
+  withdrawalcredentials_0x01:
+    type: string
+    description: New withdrawal credentials after the change (32 bytes; 0x-prefixed hex, starts with 0x01 = 0x01 || 0x00..00 || address).
+    pattern: '^0x[a-fA-F0-9]{64}$'
+    example: "0x01000000000000000000000023a64e36ae03d85a6121e55e48f6b8eb63d72f76"

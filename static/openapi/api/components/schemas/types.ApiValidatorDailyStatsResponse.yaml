@@ -1,0 +1,111 @@
+type: object
+description: Daily statistics for a single validator aggregated over a beaconchain-day. Includes balance snapshots (gwei), duty counts, and deposit/withdrawal sums.
+properties:
+  validatorindex:
+    type: integer
+    description: Validator index (>= 0).
+    minimum: 0
+    example: 20
+  day:
+    type: integer
+    description: Beaconchain-day index since genesis (>= 0). A day spans 24 hours derived from chain time (SlotsPerEpoch × SecondsPerSlot).
+    minimum: 0
+    example: 1774
+  day_start:
+    type: string
+    format: date-time
+    description: Start timestamp (UTC) of the day in RFC 3339 format.
+    example: "2025-10-10T12:00:23Z"
+  day_end:
+    type: string
+    format: date-time
+    description: End timestamp (UTC) of the day in RFC 3339 format.
+    example: "2025-10-11T12:00:23Z"
+  start_balance:
+    type: integer
+    description: Validator balance at the start of the day, in gwei.
+    example: 32007258984
+  end_balance:
+    type: integer
+    description: Validator balance at the end of the day, in gwei.
+    example: 32009280345
+  min_balance:
+    type: integer
+    description: Minimum observed validator balance during the day, in gwei.
+    example: 0
+  max_balance:
+    type: integer
+    description: Maximum observed validator balance during the day, in gwei.
+    example: 0
+  start_effective_balance:
+    type: integer
+    description: Effective balance at the start of the day, in gwei.
+    example: 32000000000
+  end_effective_balance:
+    type: integer
+    description: Effective balance at the end of the day, in gwei.
+    example: 32000000000
+  min_effective_balance:
+    type: integer
+    description: Minimum observed effective balance during the day, in gwei.
+    example: 0
+  max_effective_balance:
+    type: integer
+    description: Maximum observed effective balance during the day, in gwei.
+    example: 0
+  proposed_blocks:
+    type: integer
+    description: Number of blocks proposed by this validator and included in the canonical chain during the day.
+    example: 0
+  missed_blocks:
+    type: integer
+    description: Number of scheduled block proposals this validator missed during the day.
+    example: 0
+  orphaned_blocks:
+    type: integer
+    description: Number of blocks proposed by this validator that were not part of the canonical chain (reorged/orphaned) during the day.
+    example: 0
+  missed_attestations:
+    type: integer
+    description: Number of attestation duties missed by this validator during the day.
+    example: 0
+  orphaned_attestations:
+    type: integer
+    description: Number of attestations from this validator recorded in non-canonical blocks during the day.
+    example: 0
+  attester_slashings:
+    type: integer
+    description: Number of attester slashing events attributed to this validator during the day.
+    example: 0
+  proposer_slashings:
+    type: integer
+    description: Number of proposer slashing events attributed to this validator during the day.
+    example: 0
+  deposits:
+    type: integer
+    description: Number of deposit operations recorded for this validator during the day.
+    example: 0
+  deposits_amount:
+    type: integer
+    description: Total amount deposited for this validator during the day, in gwei.
+    example: 0
+  withdrawals:
+    type: integer
+    description: Number of withdrawals credited to this validator during the day.
+    example: 0
+  withdrawals_amount:
+    type: integer
+    description: Total amount withdrawn from this validator during the day, in gwei.
+    example: 0
+  participated_sync:
+    type: integer
+    description: Number of sync committee signatures from this validator recorded during the day.
+    example: 0
+  missed_sync:
+    type: integer
+    description: Number of expected sync committee signatures that were not recorded during the day.
+    example: 0
+  orphaned_sync:
+    type: integer
+    description: Number of sync committee signatures from this validator recorded in non-canonical blocks during the day.
+    example: 0

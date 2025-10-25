@@ -1,0 +1,96 @@
+type: object
+description: Currency and price metadata used by the UI to display values and perform conversions.
+properties:
+  tickerCurrency:
+    type: string
+    description: Fiat currency code used for the price ticker (ISO 4217 code, e.g., USD, EUR).
+    example: USD
+  tickerCurrencySymbol:
+    type: string
+    description: Symbol of the ticker fiat currency.
+    example: $
+  selectedCurrency:
+    type: string
+    description: Primary asset selected for display in the UI (usually ETH).
+    example: ETH
+  selectedCurrencySymbol:
+    type: string
+    description: Symbol used for the selected currency.
+    example: ETH
+  mainCurrency:
+    type: string
+    description: Primary asset used for conversions and price displays (same as selectedCurrency in most deployments).
+    example: ETH
+  mainCurrencySymbol:
+    type: string
+    description: Symbol used for the primary asset.
+    example: ETH
+  mainCurrencyPrice:
+    type: number
+    description: Conversion rate of the primary asset to itself. This is 1 when mainCurrency equals the base asset (ETH).
+    example: 1
+  mainCurrencyPriceFormatted:
+    type: string
+    description: Formatted string representation of mainCurrencyPrice for UI display (may include separators or HTML markup).
+    example: "1"
+  mainCurrencyKFormatted:
+    type: string
+    description: Abbreviated (thousands) representation of mainCurrencyPrice for compact displays.
+    example: "1"
+  mainCurrencyTickerPrice:
+    type: number
+    description: Spot price of the primary asset in the ticker fiat currency.
+    example: 4366.60356702
+  mainCurrencyTickerPriceFormatted:
+    type: string
+    description: Formatted string representation of mainCurrencyTickerPrice for UI display (may include thousands separators or HTML markup).
+    example: "4<span class=\"thousands-separator\"></span>366"
+  mainCurrencyTickerPriceKFormatted:
+    type: string
+    description: Abbreviated (thousands) representation of mainCurrencyTickerPrice for compact displays.
+    example: "4<span class=\"thousands-separator\"></span>366"
+  elCurrency:
+    type: string
+    description: Asset used when displaying values originating from the execution layer (typically ETH).
+    example: ETH
+  elCurrencySymbol:
+    type: string
+    description: Symbol used for the execution-layer asset.
+    example: ETH
+  elCurrencyPrice:
+    type: number
+    description: Conversion rate of the execution-layer asset to itself. This is 1 when elCurrency equals ETH.
+    example: 1
+  elCurrencyPriceFormatted:
+    type: string
+    description: Formatted string representation of elCurrencyPrice.
+    example: "1"
+  elCurrencyKFormatted:
+    type: string
+    description: Abbreviated (thousands) representation of elCurrencyPrice.
+    example: "1"
+  clCurrency:
+    type: string
+    description: Asset used when displaying values originating from the consensus layer (typically ETH).
+    example: ETH
+  clCurrencySymbol:
+    type: string
+    description: Symbol used for the consensus-layer asset.
+    example: ETH
+  clCurrencyPrice:
+    type: number
+    description: Conversion rate of the consensus-layer asset to itself. This is 1 when clCurrency equals ETH.
+    example: 1
+  clCurrencyPriceFormatted:
+    type: string
+    description: Formatted string representation of clCurrencyPrice.
+    example: "1"
+  clCurrencyKFormatted:
+    type: string
+    description: Abbreviated (thousands) representation of clCurrencyPrice.
+    example: "1"
+  mainCurrencyTickerPrices:
+    type: object
+    description: Map of fiat currency codes to compact price representations for the primary asset.
+    additionalProperties:
+      $ref: ./types.RatesPrice.yaml

@@ -1,0 +1,23 @@
+type: object
+description: Consensus-layer proposer information for the execution block.
+properties:
+  executionBlockNumber:
+    type: integer
+    description: Execution block number associated with this proposer record.
+    example: 23540530
+  proposerIndex:
+    type: integer
+    description: Index of the beacon chain validator that proposed the corresponding block.
+    example: 1843949
+  slot:
+    type: integer
+    description: Beacon slot at which the block was proposed.
+    example: 12766094
+  epoch:
+    type: integer
+    description: Beacon epoch containing the proposer slot.
+    example: 398940
+  finalized:
+    type: boolean
+    description: Indicates whether the epoch containing this block has been finalized on the consensus layer.
+    example: false

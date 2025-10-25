@@ -1,0 +1,73 @@
+get:
+  tags:
+    - Addresses
+  summary: Execution address balances
+  description: >-
+    Retrieve the native ETH balance and ERC-20 token balances for an Ethereum
+    address. The response includes at most 200 distinct ERC-20 tokens. To fetch
+    all tokens beyond this limit, call `/api/v1/execution/address/{address}/erc20tokens`.
+  operationId: getExecutionAddressBalances
+  parameters:
+    - name: address
+      in: path
+      description: >-
+        Ethereum account address to query. Provide a 0x-prefixed, 20-byte hex
+        string (40 hexadecimal characters after 0x).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.EthAddress.yaml"
+    - name: token
+      in: query
+      description: >-
+        Optional ERC-20 contract address to filter the result to a single token.
+        Provide a 0x-prefixed, 20-byte hex address.
+      required: false
+      style: form
+      explode: true
+      schema:
+        $ref: "../components/schemas/primitives.EthAddress.yaml"
+  responses:
+    '200':
+      description: >-
+        Balances were retrieved successfully. The `data` object contains the
+        address, native ETH balance, and a list of ERC-20 token balances.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.ApiEth1AddressResponse.yaml
+    '400':
+      description: The request is invalid (for example, a malformed address or token filter).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidAddress:
+              summary: Invalid address parameter
+              value:
+                status: "ERROR: invalid address parameter"
+                data: null
+            invalidToken:
+              summary: Invalid token filter parameter
+              value:
+                status: "ERROR: invalid token parameter"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

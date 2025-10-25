@@ -1,0 +1,15 @@
+type: object
+description: Compact price representation used in UI tickers for a specific fiat currency.
+properties:
+  symbol:
+    type: string
+    description: Fiat currency symbol corresponding to the price (e.g., $, €).
+    example: "$"
+  roundPrice:
+    type: integer
+    description: Price rounded to the nearest integer amount in the fiat currency.
+    example: 4366
+  truncPrice:
+    type: string
+    description: Abbreviated string representation (e.g., 4.3k) for compact displays.
+    example: "4.3k"

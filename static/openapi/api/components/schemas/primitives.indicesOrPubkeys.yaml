@@ -1,0 +1,11 @@
+type: string
+description: |
+  Comma-separated list (no spaces) of validator identifiers. Each identifier must be either:
+  - A validator index as a base-10 integer (for example, 652648)
+  - A BLS public key as a 96-hex-character string with or without the 0x prefix (case-insensitive)
+
+  Resolution and limits:
+  - The server resolves public keys to validator indices before querying data.
+  - The total number of identifiers must not exceed the server-enforced limit (default 100).
+  - Identifiers that cannot be parsed or resolved result in HTTP 400.
+example: '1,2,3'

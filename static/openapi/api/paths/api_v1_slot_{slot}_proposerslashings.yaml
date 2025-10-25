@@ -1,0 +1,34 @@
+get:
+  tags:
+    - Slots
+  summary: Proposer slashings
+  description: Returns the proposer slashings included in a specific slot
+  parameters:
+    - name: slot
+      in: path
+      description: Slot
+      required: true
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    title: ProposerSlashings
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.APIProposerSlashingResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

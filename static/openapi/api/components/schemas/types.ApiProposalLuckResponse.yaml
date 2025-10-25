@@ -1,0 +1,19 @@
+properties:
+  average_proposal_interval:
+    type: number
+    description: >-
+      The average slot interval between proposals for the given set of
+      validators
+    example: 1115586.53125
+  next_proposal_estimate_ts:
+    type: integer
+    description: The estimated timestamp of the next proposal
+    example: 1767606011
+  proposal_luck:
+    type: number
+    description: The proposal luck for the given set of validators as a percentage
+    example: 0.43039603829089507
+  time_frame_name:
+    type: string
+    description: The timeframe for which the luck is calculated
+    example: "year"

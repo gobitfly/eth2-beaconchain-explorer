@@ -1,0 +1,48 @@
+get:
+  tags:
+    - Rewards
+  summary: Validator performance leaderboard
+  description: >-
+    Retrieve the current top 100 validators ranked by 7-day consensus-layer rewards.
+    This endpoint does not accept query parameters.
+  operationId: getValidatorLeaderboard
+  responses:
+    '200':
+      description: >-
+        Leaderboard retrieved successfully. The `data` array contains one entry
+        per validator with performance metrics.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ApiValidatorPerformanceResponse.yaml
+    '400':
+      description: The request is invalid or results could not be retrieved.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            badRequest:
+              summary: Failed to retrieve results
+              value:
+                status: "ERROR: could not retrieve db results"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

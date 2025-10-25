@@ -1,0 +1,55 @@
+get:
+  tags:
+    - Rocketpool
+  summary: Get Rocket Pool validator metadata by index or pubkey
+  description: |
+    Retrieve Rocket Pool–specific metadata for one or more Ethereum consensus validators.
+
+    You provide a comma-separated list of validator identifiers in the path parameter. The
+    server resolves each identifier to a validator index and returns the corresponding
+    Rocket Pool minipool and node data.
+
+    Response shape:
+    - If you request a single validator, the response data field is a single object.
+    - If you request multiple validators, the data field is an array of objects in no
+      guaranteed order.
+
+    Use this endpoint to answer questions such as:
+    - What is the current minipool status and node fee for a validator?
+    - Has the node opted into the smoothing pool, and how much has been claimed or remains unclaimed?
+    - What are the node’s RPL stake metrics (effective, min, max)?
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: |
+        Comma-separated list (no spaces) of validator identifiers to query. Each identifier may be either:
+        - A validator index as a base-10 integer (for example, 652648)
+        - A BLS public key as a 96-hex-character string with or without the 0x prefix (case-insensitive)
+
+        Limits and resolution behavior:
+        - You can pass up to a server-enforced per-request limit. The default limit is 100.
+        - Public keys that cannot be resolved to an existing validator index cause the request to fail with HTTP 400.
+        - Duplicate identifiers are de-duplicated internally.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+  responses:
+    '200':
+      description: Successful response with Rocket Pool validator data.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    $ref: >-
+                      ../components/schemas/types.ApiRocketpoolValidatorResponse.yaml
+    '400':
+      description: The request is invalid. This occurs when the identifier list exceeds the allowed limit or contains values that cannot be parsed or resolved to validator indices.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

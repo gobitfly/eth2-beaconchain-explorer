@@ -1,0 +1,17 @@
+type: object
+description: Validator derived from deposit events funded by a specific execution-layer address.
+properties:
+  public_key:
+    type: string
+    description: BLS12-381 validator public key (48 bytes; 0x-prefixed hex with 96 hex characters).
+    example: "0xb73ecd964c9779506a3209ec40dd40d765b0464fef281d77ac8a559fa9e2a9cff8b6b2e09b8f6360b119ba7a963c5b81"
+  valid_signature:
+    type: boolean
+    description: True when the deposit signature validates against the public key and deposit message.
+    example: true
+  validator_index:
+    type: integer
+    description: Validator index (>= 0) resolved from the public key; null when the public key has no assigned index.
+    minimum: 0
+    nullable: true
+    example: 1071937

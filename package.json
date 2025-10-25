@@ -16,7 +16,8 @@
     "check-js": "prettier -c static/js",
     "format": "npm run format-html && npm run format-js",
     "format-html": "prettier -w templates/",
-    "format-js": "prettier -w static/js"
+    "format-js": "prettier -w static/js",
+    "bundle-api-docs": "redocly bundle external@latest -o static/openapi/bundled.yaml --config static/openapi/redocly.yaml"
   },
   "repository": {
     "type": "git",
@@ -30,6 +31,7 @@
   },
   "homepage": "https://github.com/gobitfly/eth2-beaconchain-explorer#readme",
   "dependencies": {
+    "@redocly/cli": "^2.8.0",
     "eslint": "^8.18.0",
     "eslint-plugin-html": "^6.2.0",
     "prettier-plugin-go-template": "^0.0.13"

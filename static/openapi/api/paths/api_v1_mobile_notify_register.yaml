@@ -1,0 +1,30 @@
+post:
+  tags:
+    - User
+  summary: Change mobile notification token
+  description: Register or update your mobile notification token
+  requestBody:
+    description: Your device`s firebase notification token
+    content:
+      application/json:
+        schema: {}
+    required: true
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

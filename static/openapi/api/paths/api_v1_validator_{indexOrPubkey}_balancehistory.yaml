@@ -1,0 +1,127 @@
+get:
+  tags:
+    - Validators
+  summary: Validator balance history
+  description: >-
+    Retrieve per-epoch balance history for one or more validators. Provide a
+    comma-separated list of validator indices or 0x-prefixed BLS pubkeys in the
+    path parameter (up to the server-enforced limit; default 100).
+
+    Use the optional query parameters to control the time window:
+    - latest_epoch: the most recent epoch to include (defaults to the latest processed epoch)
+    - offset: number of epochs to step back from latest_epoch before starting the window
+    - limit: number of epochs to return (1..100, defaults to 100)
+
+    The response contains one item per validator per epoch within the window,
+    including the balance and effective balance in gwei, and week grouping
+    metadata for downstream charting.
+  operationId: listValidatorBalanceHistory
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+    - name: latest_epoch
+      in: query
+      description: >-
+        Most recent epoch to include (inclusive). Defaults to the latest processed epoch.
+        Must be less than or equal to the latest processed epoch.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 54656
+    - name: offset
+      in: query
+      description: >-
+        Number of epochs to skip backwards from `latest_epoch` before starting the window.
+        Must be non-negative and not exceed `latest_epoch`.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
+    - name: limit
+      in: query
+      description: >-
+        Number of epochs to return in the window. Allowed range is 1 to 100.
+        Defaults to 100.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 100
+        example: 50
+  responses:
+    '200':
+      description: >-
+        Balance history retrieved successfully. The `data` array contains one
+        entry per validator per epoch within the requested window.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorBalanceHistoryResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifiers or invalid query parameters).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            invalidLatestEpoch:
+              summary: Invalid latest_epoch parameter
+              value:
+                status: "ERROR: invalid latest epoch parameter"
+                data: null
+            invalidOffset:
+              summary: Invalid offset parameter
+              value:
+                status: "ERROR: invalid offset parameter"
+                data: null
+            invalidLimit:
+              summary: Invalid limit parameter
+              value:
+                status: "ERROR: invalid limit parameter"
+                data: null
+            dbError:
+              summary: Database retrieval error
+              value:
+                status: "ERROR: could not retrieve db results"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

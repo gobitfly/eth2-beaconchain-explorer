@@ -1,0 +1,92 @@
+get:
+  tags:
+    - Validators
+  summary: Validator proposed blocks
+  description: >-
+    Retrieve beacon chain blocks proposed by one or more validators within a
+    bounded epoch window. By default, the service returns proposals from the last
+    100 epochs ending at the latest processed epoch. You can page the window by
+    setting the optional `epoch` query parameter to an upper bound (inclusive).
+
+    The response includes per-block consensus metadata (roots, proposer, counts)
+    and execution payload details when available. Execution fields are null for
+    pre-Merge slots or blocks without an execution payload.
+  operationId: listValidatorProposals
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: >-
+        Comma-separated validator indices and/or public keys (maximum 100 items
+        by default). Each identifier must be either a validator index (base-10
+        integer) or a 48-byte BLS public key as 0x-prefixed hex (96 hex
+        characters after 0x) or without the 0x prefix.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+    - name: epoch
+      in: query
+      description: >-
+        Upper bound for the epoch window (inclusive). Results include proposals
+        from epochs in the range `[epoch-100, epoch]`. Defaults to the latest
+        processed epoch when omitted. Must be a non-negative integer.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 399359
+  responses:
+    '200':
+      description: >-
+        Matching proposals were retrieved successfully. The `data` array contains
+        one item per block proposed by any of the specified validators within the
+        requested epoch window.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorProposalsResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifiers, too many identifiers, or invalid epoch).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            dbError:
+              summary: Database retrieval error
+              value:
+                status: "ERROR: could not retrieve db results"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

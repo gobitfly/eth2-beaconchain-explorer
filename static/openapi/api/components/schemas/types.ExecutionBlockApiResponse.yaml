@@ -1,0 +1,84 @@
+type: object
+description: Overview of an execution-layer block, including rewards, gas, parent links, and optional consensus/relay metadata.
+properties:
+  blockHash:
+    type: string
+    description: 0x-prefixed 32-byte Keccak hash of the execution block.
+    example: "0x160a5ea46dcbaca7fce7bbeef3a3448197c021af6c3e258150ab017629794678"
+  blockNumber:
+    type: integer
+    description: Execution block number (>= 0).
+    example: 23540530
+  timestamp:
+    type: integer
+    description: Block timestamp as Unix time in seconds (UTC).
+    example: 1760017151
+  blockReward:
+    type: integer
+    description: Total block reward attributed to the block in wei (sum of priority fees and any MEV reward considered in this API).
+    example: 15027635123493132
+  blockMevReward:
+    type: integer
+    description: MEV payment amount attributed to this block in wei; 0 when no relay/bribe data is recorded.
+    example: 11268157891595494
+  producerReward:
+    type: integer
+    description: Reward paid to the fee recipient (coinbase) in wei. Equals blockMevReward when present; otherwise equals blockReward.
+    example: 11268157891595494
+  feeRecipient:
+    type: string
+    description: Fee recipient (coinbase) address that received the block’s reward (0x-prefixed, 20-byte hex address).
+    example: "0x4838b106fce9647bdf1e7877bf73ce8b0bad5f97"
+  gasLimit:
+    type: integer
+    description: Gas limit set for the block.
+    example: 44999957
+  gasUsed:
+    type: integer
+    description: Total gas used by all transactions in the block.
+    example: 26436568
+  baseFee:
+    type: integer
+    description: EIP-1559 base fee per gas in wei. 0 for pre-London blocks.
+    example: 473717334
+  txCount:
+    type: integer
+    description: Number of transactions included in the block.
+    example: 235
+  internalTxCount:
+    type: integer
+    description: Number of internal transactions (traces) attributed to the block.
+    example: 725
+  uncleCount:
+    type: integer
+    description: Number of ommers (uncles) referenced by the block. 0 for post-Merge PoS blocks.
+    example: 0
+  parentHash:
+    type: string
+    description: 0x-prefixed 32-byte Keccak hash of the parent execution block.
+    example: "0x57ddc629098d3a47ddf8c2a554c75c4d9ab0a8bd740c1e86b0f1da324a425953"
+  uncleHash:
+    type: string
+    description: 0x-prefixed Keccak hash of the block’s ommers list (ommersHash).
+    example: "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"
+  difficulty:
+    type: integer
+    description: Difficulty field from the execution header. 0 for PoS blocks, non-zero for PoW blocks.
+    example: 0
+  posConsensus:
+    $ref: ./types.ExecBlockProposer.yaml
+    description: Consensus-layer proposer linkage for this execution block.
+    nullable: true
+  relay:
+    $ref: ./types.RelayDataApiResponse.yaml
+    description: MEV relay metadata when the block was delivered via a relay.
+    nullable: true
+  consensusAlgorithm:
+    type: string
+    description: >-
+      Consensus algorithm in effect for this block: "pos" for proof-of-stake (post-Merge) or
+      "pow" for proof-of-work (pre-Merge).
+    enum:
+      - pos
+      - pow
+    example: "pos"

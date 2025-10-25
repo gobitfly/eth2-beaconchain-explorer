@@ -1,0 +1,70 @@
+type: object
+description: Aggregated attestation included in a beacon block, with committee and checkpoint metadata.
+properties:
+  aggregationbits:
+    type: string
+    description: >-
+      Bitfield indicating which committee members participated in this
+      attestation. Encoded as 0x-prefixed hexadecimal representing the SSZ
+      bitlist; one bit per member (1 = participated).
+    example: '0xff'
+  beaconblockroot:
+    type: string
+    description: >-
+      Root of the beacon block being voted on (head block) as referenced by the
+      attestation data (0x-prefixed, 32-byte hex).
+    example: '0x94677296757527ccfd5849a6c07d179a9ed783a771c7bb305b9b9350fffd97d0'
+  block_index:
+    type: integer
+    description: Zero-based index of this attestation within the including block’s attestation list.
+    example: 1
+  block_root:
+    type: string
+    description: Root of the beacon block that included this attestation (0x-prefixed, 32-byte hex).
+    example: '0xfa4349ae9843b52cd7e9ff42e43deaf3a9220c0ae3f3dd64da9c2c97544dfd4c'
+  block_slot:
+    type: integer
+    description: Slot number of the block that included this attestation.
+    example: 12751688
+  committeeindex:
+    type: integer
+    description: Committee index within the epoch for the attestation’s slot (>= 0).
+    minimum: 0
+    example: 1
+  signature:
+    type: string
+    description: Aggregated BLS signature over the attestation data (96 bytes; 0x-prefixed hex with 192 hex characters).
+    example: '0xaa'
+  slot:
+    type: integer
+    description: Slot that this attestation attests to (attestation data slot).
+    example: 12751687
+  source_epoch:
+    type: integer
+    description: Source checkpoint epoch of the attestation (>= 0).
+    minimum: 0
+    example: 398489
+  source_root:
+    type: string
+    description: Root of the source checkpoint (0x-prefixed, 32-byte hex).
+    example: '0x1c2bfaa61c0f5f7a8f8e3a16f6d0f1d4b3f2a1c0b9a8d7c6e5f4d3c2b1a0f9e8'
+  target_epoch:
+    type: integer
+    description: Target checkpoint epoch of the attestation (>= 0).
+    minimum: 0
+    example: 398490
+  target_root:
+    type: string
+    description: Root of the target checkpoint (0x-prefixed, 32-byte hex).
+    example: '0x88f88f748227a397a09a7b8cbe13dab1d0411950993e618fc7a6d76d1d7d0c76'
+  validators:
+    type: array
+    description: List of validator indices whose signatures are included in this aggregated attestation.
+    items:
+      type: integer
+      minimum: 0
+    example:
+      - 0
+      - 1
+      - 2
+      - 3

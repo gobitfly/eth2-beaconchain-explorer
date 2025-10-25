@@ -1,0 +1,43 @@
+properties:
+  block_index:
+    type: integer
+    example: 0
+  block_root:
+    type: string
+    nullable: true
+  block_slot:
+    type: integer
+    example: 138164
+  header1_bodyroot:
+    type: string
+    example: "0xf44039d2cc6c46ebee262c1484bc47db10516425a49e81f123505329562256d9"
+  header1_parentroot:
+    type: string
+    example: "0x2415ce3a054b0d3f23226a4665fba92efe63c93063680b16ff1e491a73dd5b0c"
+  header1_signature:
+    type: string
+    example: "0xa632f1c085234ef94ef4d1252fb5d9960f373471e5c266aa626c89d1db91302b4ace4fde93a4a5b79b29263b5b90d42f0d1df8f6b534666cd7750e8781d3af962b55656625f9464cf68305ff7e1185dc11955b8bc8273de30cd88c834860b0bc"
+  header1_slot:
+    type: integer
+    example: 138163
+  header1_stateroot:
+    type: string
+    example: "0x0d86b0b4fd08302b87b84983243b688d7cffb81a311d327bd4cbd04b73c806ce"
+  header2_bodyroot:
+    type: string
+    example: "0xef23edd026b330949abfd2063aa48eb420a912294f73e8168e644d6bb603f187"
+  header2_parentroot:
+    type: string
+    example: "0x2415ce3a054b0d3f23226a4665fba92efe63c93063680b16ff1e491a73dd5b0c"
+  header2_signature:
+    type: string
+    example: "0xa805e609614fa2bd108ae47ea3b4474fac5241f7cde40470a022eeca2a242ea15669834713168bd3137118486c8b966a036f8e8c81329c332f459a32437967bf8fa2cc7631bb2507aa9173170470ef47739e792de9c78e3fde3c6e095f6d6faf"
+  header2_slot:
+    type: integer
+    example: 138163
+  header2_stateroot:
+    type: string
+    example: "0xf8e7fbb7df067101f6e85700d0413c63b509b164ee9cd15d310c397447caf4fd"
+  proposerindex:
+    type: integer
+    example: 38069

@@ -1,0 +1,28 @@
+type: object
+description: Current validator activation and exit queue metrics at the time of the request.
+properties:
+  beaconchain_entering:
+    type: integer
+    description: Number of validators currently in the activation queue (awaiting entry into the active set).
+    minimum: 0
+    example: 7493
+  beaconchain_exiting:
+    type: integer
+    description: Number of validators that have initiated exit and are in the exit queue.
+    minimum: 0
+    example: 55869
+  validatorscount:
+    type: integer
+    description: Total number of validators known to the explorer (active + pending + exiting), not limited to either queue.
+    minimum: 0
+    example: 1031945
+  beaconchain_entering_balance:
+    type: integer
+    description: Sum of effective balances for validators in the activation queue, in gwei.
+    minimum: 0
+    example: 1363143622559455
+  beaconchain_exiting_balance:
+    type: integer
+    description: Sum of effective balances for validators in the exit queue, in gwei.
+    minimum: 0
+    example: 2365910000000000

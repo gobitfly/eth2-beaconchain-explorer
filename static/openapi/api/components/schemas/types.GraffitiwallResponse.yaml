@@ -1,0 +1,28 @@
+type: object
+description: One painted pixel on the graffiti wall, including coordinates, color, and provenance.
+properties:
+  x:
+    type: integer
+    description: X coordinate of the pixel (>= 0). The origin (0,0) is the top-left corner of the canvas.
+    minimum: 0
+    example: 203
+  y:
+    type: integer
+    description: Y coordinate of the pixel (>= 0). The origin (0,0) is the top-left corner of the canvas.
+    minimum: 0
+    example: 420
+  color:
+    type: string
+    description: RGB color encoded as a 6-character uppercase hexadecimal string without a leading '#'.
+    pattern: '^[A-F0-9]{6}$'
+    example: "C3423F"
+  slot:
+    type: integer
+    description: Beacon chain slot number at which this pixel was painted.
+    minimum: 0
+    example: 12764598
+  validator:
+    type: integer
+    description: Index of the validator who painted the pixel (the block proposer for the corresponding slot).
+    minimum: 0
+    example: 1843949

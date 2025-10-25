@@ -1,0 +1,127 @@
+get:
+  tags:
+    - Validators
+  summary: Validator attestations history
+  description: >-
+    Retrieve attestations observed for one or more validators within a bounded
+    epoch window. By default, the service returns data for the last 100 epochs
+    ending at the latest processed epoch. You can narrow the range with
+    `startEpoch` and `endEpoch`, which must lie within `[latest-99, latest]` and
+    satisfy `startEpoch <= endEpoch`.
+
+    Each item represents a scheduled attestation duty for a validator and
+    includes the slot attested to, the inclusion slot when observed, a status
+    flag, and convenience week boundaries for grouping in UI charts.
+
+    When `slim=true`, the response omits the `week`, `week_start`, `week_end`,
+    and `committeeindex` properties from each item to reduce payload size.
+  operationId: listValidatorAttestations
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+    - name: startEpoch
+      in: query
+      description: >-
+        Start epoch for the query window. Defaults to `latest - 99`. Must be
+        within `[latest-99, latest]` and less than or equal to `endEpoch` when
+        provided.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 399260
+    - name: endEpoch
+      in: query
+      description: >-
+        End epoch for the query window. Defaults to `latest`. Must be within
+        `[startEpoch, latest]` when provided.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 399359
+    - name: slim
+      in: query
+      description: >-
+        When true, return a slimmed response that excludes `week`, `week_start`,
+        `week_end`, and `committeeindex` fields from each item.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: boolean
+        default: false
+        example: true
+  responses:
+    '200':
+      description: >-
+        Matching attestations were retrieved successfully. The `data` array
+        contains one entry per scheduled attestation for the specified
+        validators within the requested epoch window. Items are sorted by epoch
+        (descending) and then by validator index (ascending).
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorAttestationsResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifiers, out-of-range epochs, or too many identifiers).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            invalidStartEpoch:
+              summary: Invalid startEpoch
+              value:
+                status: "ERROR: invalid start epoch parameter"
+                data: null
+            invalidEndEpoch:
+              summary: Invalid endEpoch
+              value:
+                status: "ERROR: invalid end epoch parameter"
+                data: null
+            unresolvedPubkeys:
+              summary: Pubkey did not resolve to an index
+              value:
+                status: "ERROR: invalid validator argument, pubkey(s) did not resolve to a validator index"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

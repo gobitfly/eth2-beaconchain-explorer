@@ -1,0 +1,33 @@
+post:
+  tags:
+    - User
+  summary: Remove validator subscription
+  description: >-
+    Unsubscribes a user from a specific validator via index from both watchlist
+    and notification events
+  requestBody:
+    description: Index of validator you want to unsubscribe from
+    content:
+      application/json:
+        schema:
+          items: {}
+    required: true
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

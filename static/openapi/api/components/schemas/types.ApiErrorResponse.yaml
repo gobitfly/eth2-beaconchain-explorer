@@ -1,0 +1,12 @@
+type: object
+description: Standard error envelope returned when a request fails.
+properties:
+  status:
+    type: string
+    description: Human-readable error indicator and message. The value begins with "ERROR:" followed by details.
+    example: 'ERROR: <Message>'
+  data:
+    type: string
+    description: Optional additional context for the error. Null in most cases.
+    nullable: true
+    default: null

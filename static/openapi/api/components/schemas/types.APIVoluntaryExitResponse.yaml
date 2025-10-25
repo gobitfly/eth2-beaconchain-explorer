@@ -1,0 +1,30 @@
+type: object
+description: Voluntary exit operation included in a beacon block, with block inclusion metadata and exit message fields.
+properties:
+  block_index:
+    type: integer
+    description: Zero-based index of this voluntary exit within the including block’s voluntary_exits list.
+    example: 0
+  block_root:
+    type: string
+    description: Root of the beacon block that included this voluntary exit (0x-prefixed, 32-byte hex).
+    example: "0xf3fe4ac2ddab3c97ff4565e305c4451b18ff027559e0e520e884fd3de12c67a4"
+  block_slot:
+    type: integer
+    description: Slot number of the block that included this voluntary exit.
+    example: 12771160
+  epoch:
+    type: integer
+    description: Exit epoch declared by the validator in the voluntary exit message (>= 0).
+    minimum: 0
+    example: 399098
+  signature:
+    type: string
+    description: BLS signature over the voluntary exit message (96 bytes; 0x-prefixed hex with 192 hex characters).
+    example: >-
+      0xab6b6d826c14b6141e3406c5227ead15b133993195e96edc05fdeba998d0e0fd96e4ec5f47f6c9eec1558a59042c03d1016e679faf7300bc14737c7178c5cc01b2ea5f345e13cc2e29eeeefaf18cdcde6c0a99d80923ecf8ff8619a4d2511f6e
+  validatorindex:
+    type: integer
+    description: Index of the validator that submitted the voluntary exit (>= 0).
+    minimum: 0
+    example: 1815428

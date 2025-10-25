@@ -1,0 +1,39 @@
+get:
+  tags:
+    - Validators
+  summary: Proposal luck
+  description: Returns the proposal luck of a validator or a list of validators
+  parameters:
+    - name: validators
+      in: query
+      description: Provide a comma separated list of validator indices or pubkeys
+      required: true
+      style: form
+      explode: true
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ApiProposalLuckResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

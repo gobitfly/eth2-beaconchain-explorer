@@ -1,0 +1,42 @@
+type: object
+description: Fee recommendations and ETH price snapshot used by the GasNow view and API.
+properties:
+  code:
+    type: integer
+    description: Application-level status code. 200 indicates success.
+    enum: [200]
+  data:
+    type: object
+    description: Container for gas price tiers and market data at the time of computation.
+    properties:
+      rapid:
+        type: integer
+        description: Recommended max fee per gas for rapid inclusion (≈15s), in wei per gas.
+        example: 141086566
+      fast:
+        type: integer
+        description: Recommended max fee per gas for fast inclusion (≈1m), in wei per gas.
+        example: 141086542
+      standard:
+        type: integer
+        description: Recommended max fee per gas for standard inclusion (≈3m), in wei per gas.
+        example: 141086518
+      slow:
+        type: integer
+        description: Recommended max fee per gas for slow inclusion (>10m), in wei per gas.
+        example: 141086044
+      timestamp:
+        type: integer
+        description: Unix timestamp in milliseconds (UTC) when the recommendation set was computed.
+        example: 1760076662742
+      price:
+        type: number
+        format: float
+        nullable: true
+        description: Price of ETH in the fiat currency identified by `currency` at `timestamp`.
+        example: 4366.60356702
+      priceUSD:
+        type: number
+        format: float
+        description: Price of ETH in USD at `timestamp`.
+        example: 4366.60356702

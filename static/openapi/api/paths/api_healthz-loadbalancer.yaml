@@ -1,0 +1,35 @@
+get:
+  tags:
+    - Misc
+  summary: Explorer Availability
+  description: >-
+    Health endpoint to monitor the operational status of the explorer (used for
+    load balancer health checks)
+  responses:
+    '200':
+      description: |-
+        Explorer is healthy. Response format:
+        ```
+        OK. Last epoch is from 1m ago
+        ```
+      content:
+        text/plain:
+          example: OK. Last epoch is from 1m ago
+    '400':
+      description: |-
+        Invalid request. Response format:
+        ```
+        Bad request
+        ```
+      content:
+        text/plain:
+          example: 'Bad request'
+    '500':
+      description: |-
+        Explorer is unhealthy. Response format:
+        ```
+        Internal server error: could not retrieve latest epoch from the db
+        ```
+      content:
+        text/plain:
+          example: 'Internal server error: could not retrieve latest epoch from the db'

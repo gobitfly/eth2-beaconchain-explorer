@@ -1,0 +1,73 @@
+get:
+  tags:
+    - Rewards
+  summary: Execution layer rewards
+  description: >-
+    Retrieve execution-layer rewards (priority fees and MEV payments) for one or
+    more validators over multiple lookback windows. Provide validator identifiers
+    as a comma-separated list in the path parameter. The service accepts
+    validator indices and 0x-prefixed BLS pubkeys (up to the server-enforced
+    limit; default 100). Values are reported in wei.
+  operationId: getValidatorExecutionPerformance
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+  responses:
+    '200':
+      description: >-
+        Matching validators were retrieved successfully. The `data` array
+        contains one item per validator with execution-layer reward totals for
+        the last 1, 7, and 31 days, the last 365 days, and the cumulative sum
+        since genesis when available.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorExecutionPerformanceResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifier, too many identifiers, or unresolved pubkeys).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            unresolvedPubkeys:
+              summary: Pubkey did not resolve to an index
+              value:
+                status: "ERROR: invalid validator argument, pubkey(s) did not resolve to a validator index"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null
