@@ -28,6 +28,8 @@ import (
 	"github.com/gobitfly/eth2-beaconchain-explorer/types"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 	"github.com/gobitfly/eth2-beaconchain-explorer/version"
+	"github.com/phyber/negroni-gzip/gzip"
+	"github.com/zesik/proxyaddr"
 
 	"github.com/sirupsen/logrus"
 
@@ -36,10 +38,8 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/stripe/stripe-go/v72"
 	"github.com/urfave/negroni"
-	"github.com/zesik/proxyaddr"
 )
 
 func initStripe(http *mux.Router) error {
@@ -640,7 +640,23 @@ func main() {
 		_ = pa.Init(proxyaddr.CIDRLoopback)
 		n.Use(pa)
 
-		n.UseHandler(utils.SessionStore.SCS.LoadAndSave(router))
+		// Apply session middleware to dynamic pages only; skip for static font assets
+		// to avoid sending "Vary: Cookie" on cacheable static resources.
+		n.Use(negroni.HandlerFunc(func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+			p := r.URL.Path
+			if strings.HasPrefix(p, "/fonts/") ||
+				strings.HasPrefix(p, "/webfonts/") ||
+				strings.HasPrefix(p, "/img/") ||
+				strings.HasPrefix(p, "/css/") ||
+				strings.HasPrefix(p, "/theme/") ||
+				strings.HasPrefix(p, "/js/") {
+				next(w, r)
+				return
+			}
+			utils.SessionStore.SCS.LoadAndSave(next).ServeHTTP(w, r)
+		}))
+
+		n.UseHandler(router)
 
 		if utils.Config.Frontend.HttpWriteTimeout == 0 {
 			utils.Config.Frontend.HttpWriteTimeout = time.Second * 15
