@@ -45,5 +45,3 @@ post:
         application/json:
           schema:
             $ref: ../components/schemas/utils.OAuthErrorResponse.yaml
-  security:
-    - OAuthAccessCode: []
