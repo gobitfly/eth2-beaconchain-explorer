@@ -2,16 +2,168 @@ package main
 
 import (
 	"crypto/md5"
+	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
+
+var tsSourceMap = flag.Bool("ts-sourcemap", false, "emit inline sourcemaps for TS (dev)")
+
+// buildTypeScript compiles all TS/TSX under static/ into static/js/[name].js
+func buildTypeScript(staticDir string) error {
+	// Only explicit entry files; imports will be bundled into those outputs.
+	isEntry := func(p string) bool {
+		return strings.HasSuffix(p, ".entry.ts") || strings.HasSuffix(p, ".entry.tsx")
+	}
+
+	var entries []string
+	err := filepath.WalkDir(staticDir, func(p string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			switch d.Name() {
+			case "js", "bundle", "node_modules":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(p, ".d.ts") {
+			return nil
+		}
+		if (strings.HasSuffix(p, ".ts") || strings.HasSuffix(p, ".tsx")) && isEntry(p) {
+			entries = append(entries, p)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+
+	opts := api.BuildOptions{
+		EntryPoints: entries,
+		Outdir:      path.Join(staticDir, "js"),
+		Outbase:     staticDir,
+		Bundle:      true,
+		Format:      api.FormatESModule,
+		Platform:    api.PlatformBrowser,
+		Loader: map[string]api.Loader{
+			".ts":   api.LoaderTS,
+			".tsx":  api.LoaderTSX,
+			".json": api.LoaderJSON,
+		},
+		// Add source maps (inline for dev only)
+		Sourcemap: func() api.SourceMap {
+				if tsSourceMap != nil && *tsSourceMap {
+						return api.SourceMapInline
+				}
+				return api.SourceMapNone
+		}(),
+		Write:    true,
+		LogLevel: api.LogLevelInfo,
+	}
+
+	result := api.Build(opts)
+	if len(result.Errors) > 0 {
+		return fmt.Errorf("ts build failed: %v", result.Errors)
+	}
+
+	return nil
+}
+
+// Very small watcher for .ts/.tsx that calls buildTypeScript once per change.
+func watchTypeScript(staticDir string) error {
+	// initial build
+	if err := buildTypeScript(staticDir); err != nil {
+		return err
+	}
+
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("watcher init: %w", err)
+	}
+	defer w.Close()
+
+	// watch all subdirs under static/, except outputs to avoid loops
+	err = filepath.WalkDir(staticDir, func(p string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		if d.IsDir() {
+			base := filepath.Base(p)
+			switch base {
+			case "js", "bundle", "node_modules":
+				return filepath.SkipDir
+			}
+			_ = w.Add(p)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("walk watch dirs: %w", err)
+	}
+
+	isOutput := func(p string) bool {
+		sep := string(filepath.Separator)
+		return strings.Contains(p, sep+"js"+sep) || strings.Contains(p, sep+"bundle"+sep)
+	}
+	okExt := func(p string) bool {
+		ext := strings.ToLower(filepath.Ext(p))
+		return ext == ".ts" || ext == ".tsx"
+	}
+
+	// debounce rapid events
+	var timer *time.Timer
+	trigger := func() {
+		if timer != nil {
+			timer.Stop()
+		}
+		timer = time.AfterFunc(200*time.Millisecond, func() {
+			if err := buildTypeScript(staticDir); err != nil {
+				log.Printf("TS rebuild failed: %v", err)
+			} else {
+				log.Println("TS rebuilt")
+			}
+		})
+	}
+
+	log.Println("Watching TypeScript for changes...")
+	for {
+		select {
+		case ev := <-w.Events:
+			if ev.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Rename|fsnotify.Remove) == 0 {
+				continue
+			}
+			if isOutput(ev.Name) || !okExt(ev.Name) {
+				continue
+			}
+
+			if ev.Op&fsnotify.Create != 0 {
+				if fi, e := os.Stat(ev.Name); e == nil && fi.IsDir() {
+					_ = w.Add(ev.Name)
+				}
+			}
+			trigger()
+
+		case e := <-w.Errors:
+			log.Printf("watch error: %v", e)
+		}
+	}
+}
 
 func bundle(staticDir string) (map[string]string, error) {
 
@@ -32,7 +184,7 @@ func bundle(staticDir string) (map[string]string, error) {
 
 	bundleDir := path.Join(staticDir, "bundle")
 	if _, err := os.Stat(bundleDir); os.IsNotExist(err) {
-		os.Mkdir(bundleDir, 0755)
+		os.MkdirAll(bundleDir, 0755)
 	} else if err != nil {
 		return nameMapping, fmt.Errorf("error getting stats about the bundle dir: %v", err)
 	}
@@ -72,9 +224,9 @@ func bundle(staticDir string) (map[string]string, error) {
 		}
 
 		for _, match := range matches {
-			code, err := os.ReadFile(match)
-			if err != nil {
-				return nameMapping, fmt.Errorf("error reading file %v", err)
+			code, readErr := os.ReadFile(match)
+			if readErr != nil {
+				return nameMapping, fmt.Errorf("error reading file %v", readErr)
 			}
 			if !strings.Contains(match, ".min") {
 				content := string(code)
@@ -87,7 +239,7 @@ func bundle(staticDir string) (map[string]string, error) {
 			matchBundle := strings.Replace(match, typeDir, bundleTypeDir, -1)
 
 			if _, err := os.Stat(path.Dir(matchBundle)); os.IsNotExist(err) {
-				os.Mkdir(path.Dir(matchBundle), 0755)
+				os.MkdirAll(path.Dir(matchBundle), 0755)
 			}
 
 			codeHash := fmt.Sprintf("%x", md5.Sum([]byte(code)))
@@ -135,12 +287,30 @@ func replaceFilesNames(files map[string]string) error {
 }
 
 func main() {
-	files, err := bundle("./static")
-	if err != nil {
-		log.Fatalf("error bundling: %v", err)
-	}
+    staticDir := flag.String("static", "./static", "path to static directory")
+    watchTS := flag.Bool("watch-ts", false, "watch and rebuild TypeScript on changes (dev only)")
+    compileTS := flag.Bool("compile-ts", false, "compile TypeScript assets before bundling (dev only)")
+    flag.Parse()
 
-	if err := replaceFilesNames(files); err != nil {
-		log.Fatalf("error replacing dependencies err: %v", err)
-	}
+    if *watchTS {
+        if err := watchTypeScript(*staticDir); err != nil {
+            log.Fatal(err)
+        }
+        return
+    }
+
+    if *compileTS {
+        if err := buildTypeScript(*staticDir); err != nil {
+            log.Fatalf("error compiling typescript: %v", err)
+        }
+    }
+
+    files, err := bundle(*staticDir)
+    if err != nil {
+        log.Fatalf("error bundling: %v", err)
+    }
+
+    if err := replaceFilesNames(files); err != nil {
+        log.Fatalf("error replacing dependencies err: %v", err)
+    }
 }
