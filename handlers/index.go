@@ -21,7 +21,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		"index/depositProgress.html",
 		"index/depositChart.html",
 		"index/genesis.html",
-		"index/hero.html",
 		"index/networkStats.html",
 		"index/postGenesis.html",
 		"index/preGenesis.html",
@@ -32,6 +31,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		"svg/bricks.html",
 		"svg/professor.html",
 		"svg/timeline.html",
+		"components/apiBanner.html",
 		"components/rocket.html",
 		"slotViz.html",
 	)
