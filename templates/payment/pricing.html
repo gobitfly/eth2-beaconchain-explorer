@@ -138,6 +138,7 @@
     .box-shadow {
       border: 1px solid var(--shadow-light);
     }
+
     .hot-box {
       border: 1px solid #ee7112;
     }
@@ -158,6 +159,14 @@
       appearance: none;
       -moz-appearance: none;
       -webkit-appearance: none;
+    }
+
+    .pricing__enterprise-plan-feature {
+      background: var(--bg-color-light);
+
+      p {
+        font-size: 0.875rem;
+      }
     }
   </style>
 {{ end }}
@@ -193,7 +202,7 @@
 
     <div class="container mt-2 container-pricing">
       <section class="my-5">
-        <div class="card-deck mb-3 justify-content-center text-center position-relative">
+        <div class="card-deck mb-3 justify-content-center text-center position-relative mb-5">
           <div style="margin: 0" class="row justify-content-center">
             <div class="card mx-2 mb-4 box-shadow">
               <div class="card-header">
@@ -262,7 +271,6 @@
                 {{ else }}
                   <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
                 {{ end }}
-
               </div>
             </div>
           </div>
@@ -356,8 +364,46 @@
             </div>
           </div>
         </div>
+
+        <div class="card-deck justify-content-center">
+          <div class="row justify-content-center">
+              <div class="card container-lg mx-3 mx-lg-0">
+                <div class="card-header text-center">
+                  <h2 class="my-0 font-weight-normal">Enterprise Plan</h2>
+                </div>
+                <div class="card-body text-center pt-4">
+                  <p class="col-md-8 mx-auto mb-4">Custom solutions for large-scale operations. Get dedicated support, custom rate limits, and enterprise-grade SLA.</p>
+                  <a href="#contact-sales" class="btn btn-lg btn-outline-primary mb-4">Contact Sales</a>
+                  <div class="row px-3">
+                    <div class="col-md-4 p-2">
+                      <div class="pricing__enterprise-plan-feature rounded p-3 h-100">
+                        <i class="fas fa-infinity fa-2x mb-3 text-muted"></i>
+                        <h3 class="h6 font-weight-bold">Unlimited API calls</h3>
+                        <p class="mb-0">Custom rate limits</p>
+                      </div>
+                    </div>
+                    <div class="col-md-4 p-2">
+                      <div class="pricing__enterprise-plan-feature rounded p-3 h-100">
+                        <i class="fas fa-headset fa-2x mb-3 text-muted"></i>
+                        <h3 class="h6 font-weight-bold">Dedicated support</h3>
+                        <p class="mb-0">24/7 priority assistance</p>
+                      </div>
+                    </div>
+                    <div class="col-md-4 p-2">
+                      <div class="pricing__enterprise-plan-feature rounded p-3 h-100">
+                        <i class="fas fa-shield-alt fa-2x mb-3 text-muted"></i>
+                        <h3 class="h6 font-weight-bold">99.99% SLA</h3>
+                        <p class="mb-0">Enterprise-grade reliability</p>
+                      </div>
+                    </div>
+                  </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
-      <section class="my-5">
+
+      <section class="my-5" id="contact-sales">
         <div class="row">
           <div class="col-md-12">
             <div class="row justify-content-center">
