@@ -1,9 +1,29 @@
 {{ define "js" }}
+<script>
+  // NOTE: in this block, dot is the page data for this view (APIKeyManagementPageData)
+  window.__APIKEYMANAGEMENT_CONFIG__ = { apiBaseUrl: "{{ .APIKeyMngBaseURL }}" };
+</script>
+<script type="text/javascript" src="/js/datatables.min.js"></script>
+<script type="module" src="/js/api-key-management/api-key-management.entry.js"></script>
 {{ end }}
-
 {{ define "css" }}
+<link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+<style>
+#apiKeysList{ margin: 0 !important; }
+.bg-emphasis {
+  background-color: var(--bg-color-light);
+}
+[data-validate-rule]:not(text-danger):not(text-success) i.fa:before {
+  content: "\2219";
+}
+[data-validate-rule].text-danger i.fa:before {
+  content: "\2717";
+}
+[data-validate-rule].text-success i.fa:before {
+  content: "\2713";
+}
+</style>
 {{ end }}
-
 {{ define "content" }}
   {{ with .Data }}
   <div class="container mt-2">
@@ -22,7 +42,11 @@
       </div>
     </div>
 
-    {{ template "user/api-key-management/statistics" . }}
+    {{ template "createKey" . }}
+    {{ template "listKeys" . }}
+    {{ template "disableKey" . }}
+    {{ template "deleteKey" . }}
+    {{ template "apiStatistics" . }}
   </div>
   {{ end }}
 {{ end }}

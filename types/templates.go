@@ -1363,6 +1363,7 @@ type ApiKeyManagementPageData struct {
 	Emerald             *string
 	Diamond             *string
 	ApiStatistics       *ApiStatistics
+	APIKeyMngBaseURL		string
 }
 
 type PairedDevice struct {

@@ -299,6 +299,9 @@ type Frontend struct {
 	ElCurrencyDecimals int64         `yaml:"elCurrencyDecimals" envconfig:"FRONTEND_EL_CURRENCY_DECIMALS"`
 	MainCurrency       string        `yaml:"mainCurrency" envconfig:"FRONTEND_MAIN_CURRENCY"`
 	V2NotificationURL  string        `yaml:"v2NotificationUrl" envconfig:"FRONTEND_V2_NOTIFICATION_URL"`
+	APIKeyManagement   struct {
+		BaseURL string `yaml:"baseURL" envconfig:"FRONTEND_API_KEY_MANAGEMENT_BASEURL"`
+	} `yaml:"apiKeyManagement"`
 }
 
 type DatabaseConfig struct {

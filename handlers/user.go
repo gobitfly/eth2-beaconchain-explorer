@@ -175,7 +175,11 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 func APIKeyManagement(w http.ResponseWriter, r *http.Request) {
   templateFiles := append(layoutTemplateFiles,
     "user/api-key-management/api-key-management.html",
-    "user/api-key-management/statistics.html",
+    "user/api-key-management/create-key.html",
+    "user/api-key-management/list-keys.html",
+    "user/api-key-management/disable-key.html",
+    "user/api-key-management/delete-key.html",
+		"user/api-key-management/api-statistics.html",
   )
   t := templates.GetTemplate(templateFiles...)
 
@@ -184,6 +188,7 @@ func APIKeyManagement(w http.ResponseWriter, r *http.Request) {
 
   user := getUser(r)
 
+  apiKeyManagementData.APIKeyMngBaseURL = utils.Config.Frontend.APIKeyManagement.BaseURL
 
   subscription, err := db.StripeGetUserSubscription(user.UserID, utils.GROUP_API)
   if err != nil && err != sql.ErrNoRows {

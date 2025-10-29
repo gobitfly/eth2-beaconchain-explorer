@@ -1,0 +1,45 @@
+{{ define "listKeys" }}
+<div id="apiKeysListContainer">
+  <div class="card my-3">
+    <div class="card-header p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+      <div>
+        <h3 class="h5 m-0">Your API Keys</h3>
+        <div class="small d-flex justify-content-start text-muted" style="gap: 0.5rem;">
+          <div><span data-role="active-keys-count">-</span> out of <span data-role="active-keys-limit">10</span> active keys limit</div>
+          |
+          <div><span data-role="total-keys-count">-</span> total keys</div>
+        </div>
+
+      </div>
+      <div class="ml-md-auto d-flex flex-column-reverse flex-md-row mt-3 mt-md-0">
+        <div class="align-self-end d-flex justify-content-between text-nowrap align-items-center mr-md-4 mt-3 mt-md-0">
+          <div class="mr-3 d-md-none d-lg-block small">Need more API keys?</div>
+          <a href="/pricing" class="btn btn-primary">Upgrade plan</a>
+        </div>
+        <div class="input-group">
+          <input type="text" class="form-control pr-5 rounded" id="apiKeysListSearchfield" placeholder="Search by name or key" aria-label="Search by name or key" />
+          <div class="input-group-append position-absolute" style="right:0; height:100%;">
+            <span class="input-group-text bg-transparent border-left-0"><i class="fa fa-search position-static"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body px-0 pt-0 py-0">
+      <div class="table-responsive px-0 pb-1" style="min-height: 300px;">
+        <table class="table" id="apiKeysList">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Key</th>
+              <th>Created</th>
+              <th>Last used</th>
+              <th>Disabled</th>
+              <th></th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}
