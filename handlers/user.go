@@ -172,6 +172,71 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
 }
 
+func APIKeyManagement(w http.ResponseWriter, r *http.Request) {
+  templateFiles := append(layoutTemplateFiles,
+    "user/api-key-management/api-key-management.html",
+    "user/api-key-management/create-key.html",
+    "user/api-key-management/list-keys.html",
+    "user/api-key-management/disable-key.html",
+    "user/api-key-management/delete-key.html",
+		"user/api-key-management/api-statistics.html",
+  )
+  t := templates.GetTemplate(templateFiles...)
+
+  w.Header().Set("Content-Type", "text/html")
+  apiKeyManagementData := &types.ApiKeyManagementPageData{}
+
+  user := getUser(r)
+
+  apiKeyManagementData.APIKeyMngBaseURL = utils.Config.Frontend.APIKeyManagement.BaseURL
+
+  subscription, err := db.StripeGetUserSubscription(user.UserID, utils.GROUP_API)
+  if err != nil && err != sql.ErrNoRows {
+    logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
+    utils.SetFlash(w, r, "", "Error: Something went wrong.")
+    http.Redirect(w, r, "/user/api-key-management", http.StatusSeeOther)
+    return
+  }
+
+  rl, err := ratelimit.DBGetUserApiRateLimit(int64(user.UserID))
+  if err != nil {
+    logger.Errorf("Error retrieving the api-ratelimit for user: %v %v", user.UserID, err)
+    utils.SetFlash(w, r, "", "Error: Something went wrong.")
+    http.Redirect(w, r, "/user/api-key-management", http.StatusSeeOther)
+    return
+  }
+  maxDaily := int(rl.Second * 24 * 3600)
+  maxMonthly := int(rl.Month)
+  if maxDaily > maxMonthly {
+    maxDaily = maxMonthly
+  }
+
+  apiKeyManagementData.ApiStatistics = &types.ApiStatistics{}
+  if subscription.ApiKey != nil && len(*subscription.ApiKey) > 0 {
+    apiStats, err := db.GetUserAPIKeyStatistics(subscription.ApiKey)
+    if err != nil {
+      logger.Errorf("Error retrieving user api key usage: %v %v", user.UserID, err)
+    }
+    if apiStats != nil {
+      apiKeyManagementData.ApiStatistics = apiStats
+    }
+  }
+  apiKeyManagementData.ApiStatistics.MaxDaily = &maxDaily
+  apiKeyManagementData.ApiStatistics.MaxMonthly = &maxMonthly
+
+	apiKeyManagementData.Subscription = subscription
+	apiKeyManagementData.Sapphire = &utils.Config.Frontend.Stripe.Sapphire
+	apiKeyManagementData.Emerald = &utils.Config.Frontend.Stripe.Emerald
+	apiKeyManagementData.Diamond = &utils.Config.Frontend.Stripe.Diamond
+
+  data := InitPageData(w, r, "user", "/user/api-key-management", "API Management", templateFiles)
+  data.Data = apiKeyManagementData
+
+  if handleTemplateError(w, r, "user.go", "APIKeyManagement", "", t.ExecuteTemplate(w, "layout", data)) != nil {
+    return
+  }
+}
+
 // UserAuthorizeConfirm renders the user-authorize template
 func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	templateFiles := append(layoutTemplateFiles, "user/authorize.html")

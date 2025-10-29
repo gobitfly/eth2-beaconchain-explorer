@@ -323,6 +323,18 @@
               </div>
             {{ end }}
           {{ end }}
+          
+          <div class="alert alert-info alert-dismissible fade show my-3 p-3 d-flex " role="status">
+            <i class="fas fa-info-circle mr-3 mt-2" aria-hidden="true"></i>
+            <div class="flex-fill pr-5">
+              The API settings have moved to a dedicated page. Manage your API keys and usage at
+              <a href="/user/api-key-management" class="alert-link d-inline-block">API Key Management</a>.
+            </div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+
           <div class="user__settings-container">
             <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="dashChartTabs" role="tablist">
               <li class="nav-item">
@@ -330,9 +342,6 @@
               </li>
               <li class="nav-item">
                 <a class="nav-link" id="app-tab" data-toggle="tab" href="#app" role="tab" aria-controls="app" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-mobile-alt"></i><span class="tab-text" style="margin-left: 6px;">Mobile App</span></a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" id="api-tab" data-toggle="tab" href="#api" role="tab" aria-controls="api" aria-selected="false"><i class="tab-icon mr-md-1 fas fas fa-drafting-compass"></i><span class="tab-text" style="margin-left: 6px;">API</span></a>
               </li>
             </ul>
 
@@ -786,127 +795,6 @@
                 {{ end }}
               </div>
 
-              <div id="apiTabPanel" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="api-tab">
-                <!-- User Api Key -->
-                <div class="card my-3">
-                  <div class="card-header justify-content-between d-flex align-items-center">
-                    <h3 class="h5">
-                      <span>Api Key</span> <span class="mx-1">|</span>
-                      <span style="font-size: 80%;" class="font-weight-light">
-                        {{ if not .Subscription.Active }}
-                          Free Tier
-                          {{ if .Subscription.SubscriptionID }}(waiting on payment){{ end }}
-                        {{ else }}
-                          {{ if eqsp .Subscription.PriceID .Sapphire }}
-                            Sapphire <i style="color: #0f52ba" class="fas fa-gem"></i>
-                          {{ else }}
-                            {{ if eqsp .Subscription.PriceID .Emerald }}
-                              Emerald <i style="color: #50c878;" class="fas fa-gem"></i>
-                            {{ else }}
-                              {{ if eqsp .Subscription.PriceID .Diamond }}Diamond <i style="color: #b9f2ff" class="fas fa-gem"></i>{{ end }}
-                            {{ end }}
-                          {{ end }}
-                        {{ end }}
-                      </span>
-                    </h3>
-                    {{ if .Subscription.SubscriptionID }}
-                      <form class="manage-billing-form">
-                        {{ .CsrfField }}
-                        <button class="btn btn-outline-primary">Manage Subscription</button>
-                      </form>
-                    {{ else }}
-                      <a href="/pricing" class="btn btn-outline-primary">Upgrade Plan</a>
-                    {{ end }}
-                  </div>
-                  <div class="card-body">
-                    <div class="text-center">
-                      {{ if .Subscription.ApiKey }}
-                        <div class="my-2">
-                          <span class="text-muted"> Warning, everybody can access your account with this key. KEEP IT SAFE! </span>
-                        </div>
-                        <div class="my-2">
-                          <span style="font-weight:bold">
-                            <i class="fas fa-key"></i>
-                          </span>
-                          <span style="font-size: 90%;">
-                            <span id="user-api-key" style="user-select: all;" data-api-key="{{ .Subscription.ApiKey }}"> <span class="api-key-start" style="user-select: all;"></span><span class="api-key-middle" style="user-select: all; filter: blur(4px);"></span><span class="api-key-end" style="user-select: all;"></span> </span>
-                            <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip" data-original-title="Copy API Key" data-clipboard-text="{{ .Subscription.ApiKey }}" class="btn btn-primary mb-1 btn-icon-inside">
-                              <span class="fa fa-copy icon-inside text-white"></span>
-                            </a>
-                          </span>
-                          <script>
-                            ;(function () {
-                              var container = document.getElementById("user-api-key")
-                              if (!container) {
-                                return
-                              }
-                              var key = container.getAttribute("data-api-key") || ""
-                              if (!key) {
-                                return
-                              }
-                              var start = key.slice(0, 4)
-                              var end = key.slice(-4)
-                              var middle = key.slice(4, Math.max(4, key.length - 4))
-                              var startEl = container.querySelector(".api-key-start")
-                              var midEl = container.querySelector(".api-key-middle")
-                              var endEl = container.querySelector(".api-key-end")
-                              if (startEl) startEl.textContent = start
-                              if (midEl) midEl.textContent = middle
-                              if (endEl) endEl.textContent = end
-                            })()
-                          </script>
-                        </div>
-                      {{ else }}
-                        <div class="my-2">
-                          <span class="text-muted"> No API key found for this account. </span>
-                        </div>
-                        <div class="my-2">
-                          <button onclick="generateApiKey()" id="generate-api-key" class="btn btn-outline-primary">Generate Key</button>
-                        </div>
-                      {{ end }}
-                    </div>
-                  </div>
-                </div>
-                {{ if .Subscription.ApiKey }}
-                  <div class="card my-3">
-                    <div class="card-header justify-content-between d-flex align-items-center">
-                      <h3 class="h5">
-                        <span
-                          >Usage <span class="mx-1">|</span> <a style="font-size: 80%;" class="font-weight-light" href="/api/v1/docs">docs <i style="font-size: 80%;" class="fas fa-laptop-code"></i></a
-                        ></span>
-                      </h3>
-                    </div>
-                    <div class="card-body">
-                      {{ if not (eqsp .Subscription.PriceID .Diamond) }}
-                        <div class="my-3">
-                          <div class="d-flex justify-content-between">
-                            <div>Daily:</div>
-                            <div>{{ formatThousandsInt .ApiStatistics.Daily }} / {{ formatThousandsInt .ApiStatistics.MaxDaily }}</div>
-                          </div>
-                          {{ if .ApiStatistics.Daily }}
-                            <div style="white-space: nowrap;" class="progress">
-                              {{ $percentageDaily := formatPercentage (divInt .ApiStatistics.Daily .ApiStatistics.MaxDaily) }}
-                              <div class="progress-bar" role="progressbar" style="width: {{ $percentageDaily }}%; white-space: no-wrap;" aria-valuenow="{{ .ApiStatistics.Daily }}" aria-valuemin="0" aria-valuemax="{{ .ApiStatistics.MaxDaily }}">{{ $percentageDaily }} %</div>
-                            </div>
-                          {{ end }}
-                        </div>
-                      {{ end }}
-                      <div class="my-3">
-                        <div class="d-flex justify-content-between">
-                          <div>Monthly:</div>
-                          <div>{{ formatThousandsInt .ApiStatistics.Monthly }} / {{ formatThousandsInt .ApiStatistics.MaxMonthly }}</div>
-                        </div>
-                        {{ if .ApiStatistics.Monthly }}
-                          <div style="white-space: nowrap;" class="progress">
-                            {{ $percentageMonthly := formatPercentage (divInt .ApiStatistics.Monthly .ApiStatistics.MaxMonthly) }}
-                            <div class="progress-bar" role="progressbar" style="width: {{ $percentageMonthly }}%; white-space: nowrap;" aria-valuenow="{{ .ApiStatistics.Monthly }}" aria-valuemin="0" aria-valuemax="{{ .ApiStatistics.MaxMonthly }}">{{ $percentageMonthly }} %</div>
-                          </div>
-                        {{ end }}
-                      </div>
-                    </div>
-                  </div>
-                {{ end }}
-              </div>
             </div>
           </div>
         </div>
