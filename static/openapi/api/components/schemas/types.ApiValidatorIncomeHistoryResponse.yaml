@@ -1,0 +1,30 @@
+type: object
+description: Per-epoch income detail entry for a validator, including consensus-layer reward/penalty breakdown and execution tips, with week grouping metadata.
+properties:
+  epoch:
+    type: integer
+    description: Epoch number this income record belongs to (>= 0).
+    minimum: 0
+    example: 398940
+  income:
+    $ref: ./types.ApiValidatorIncomeHistory.yaml
+  validatorindex:
+    type: integer
+    description: Validator index (>= 0).
+    minimum: 0
+    example: 1815428
+  week:
+    type: integer
+    description: Epoch-based week number computed as `epoch / (EpochsPerDay * 7)`.
+    minimum: 0
+    example: 253
+  week_start:
+    type: string
+    format: date-time
+    description: Start timestamp (UTC, RFC 3339) of the week containing `epoch`.
+    example: "2025-10-07T12:00:23Z"
+  week_end:
+    type: string
+    format: date-time
+    description: End timestamp (UTC, RFC 3339) of the week containing `epoch`.
+    example: "2025-10-14T12:00:23Z"

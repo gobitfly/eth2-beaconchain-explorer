@@ -1,0 +1,69 @@
+get:
+  tags:
+    - Slots
+  summary: Slot overview
+  description: >-
+    Retrieve a beacon chain slot by slot number or block root. You can also use
+    the keywords `latest` (most recently processed slot) or `head` (slot of the
+    current head block).
+  operationId: getSlot
+  parameters:
+    - name: slotOrHash
+      in: path
+      description: >-
+        The slot to fetch. Provide an integer slot number (>= 0), the special
+        tags `latest` or `head`, or a 0x-prefixed 32-byte block root hash (64 hex
+        characters after 0x).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        oneOf:
+          - type: integer
+            minimum: 0
+            description: Slot number (>= 0)
+            example: 12751457
+          - type: string
+            description: Special tag for convenience.
+            enum: [latest, head]
+            example: latest
+          - type: string
+            description: Beacon block root (32 bytes; 0x-prefixed hex with 64 hex characters)
+            pattern: '^0x[a-fA-F0-9]{64}$'
+            example: '0xeb64c069b979ef8eed41993ec0563f1ed0e935b95fcbe9ed26de4c904c94aeb3'
+  responses:
+    '200':
+      description: The slot was found and details are returned in the `data` field.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.APISlotResponse.yaml
+    '400':
+      description: The request is invalid (for example, a malformed hash or negative slot).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidSlotOrHash:
+              summary: Invalid slot or hash parameter
+              value:
+                status: "ERROR: invalid slot or hash parameter"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

@@ -1,0 +1,44 @@
+get:
+  tags:
+    - User
+  summary: Client stats
+  description: Get your client submitted stats
+  parameters:
+    - name: offset
+      in: path
+      description: Data offset, default 0
+      required: false
+      style: simple
+      explode: false
+      schema: {}
+    - name: limit
+      in: path
+      description: Data limit, default 180 (~3h).
+      required: false
+      style: simple
+      explode: false
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - properties:
+                  data:
+                    items:
+                      $ref: ../components/schemas/types.StatsDataStruct.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

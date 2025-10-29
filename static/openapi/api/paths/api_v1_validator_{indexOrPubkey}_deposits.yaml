@@ -1,0 +1,75 @@
+get:
+  tags:
+    - Validators
+  summary: Validator deposits (execution layer)
+  description: >-
+    Retrieve execution-layer deposit events associated with one or more
+    validators. Provide a comma-separated list of validator indices or
+    0x-prefixed BLS pubkeys (up to the server-enforced limit; default 100).
+
+    The response lists every DepositContract event observed for the specified
+    validators, including deposit amount (gwei), validator public key,
+    withdrawal credentials, and signature verification status. Use this endpoint
+    to audit funding transactions for validators.
+  operationId: listValidatorDeposits
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+  responses:
+    '200':
+      description: >-
+        Matching deposits were retrieved successfully. The `data` array contains
+        one entry per deposit event associated with any of the specified
+        validators. If no deposits are found, the array is empty.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorDepositsResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifier, too many identifiers, or unresolved pubkeys).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            unresolvedPubkeys:
+              summary: Pubkey did not resolve to an index
+              value:
+                status: "ERROR: invalid validator argument, pubkey(s) did not resolve to a validator index"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

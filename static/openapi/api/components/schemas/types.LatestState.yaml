@@ -1,0 +1,35 @@
+type: object
+description: Snapshot of the latest beacon chain state along with pricing metadata used by the UI.
+properties:
+  lastProposedSlot:
+    type: integer
+    description: Highest slot number for which a block proposal has been observed and indexed.
+    minimum: 0
+    example: 12771116
+  currentSlot:
+    type: integer
+    description: Latest processed slot number based on chain time as observed by the backend.
+    minimum: 0
+    example: 12771115
+  currentEpoch:
+    type: integer
+    description: Epoch number corresponding to the current slot.
+    minimum: 0
+    example: 399097
+  currentFinalizedEpoch:
+    type: integer
+    description: Most recent epoch that has been finalized by the consensus protocol.
+    minimum: 0
+    example: 399094
+  finalityDelay:
+    type: integer
+    description: Number of epochs between the current epoch and the latest finalized epoch (currentEpoch - currentFinalizedEpoch). Always non-negative.
+    minimum: 0
+    example: 3
+  syncing:
+    type: boolean
+    description: Indicates whether the backend is still catching up to the network head. When true, some values may lag behind real time.
+    example: false
+  rates:
+    $ref: ./types.Rates.yaml
+    description: Currency settings and price data used for value conversions in the UI.

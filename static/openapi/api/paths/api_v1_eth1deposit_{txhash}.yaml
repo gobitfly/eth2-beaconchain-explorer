@@ -1,0 +1,62 @@
+get:
+  tags:
+    - Validator deposits
+  summary: Deposits by execution transaction hash
+  description: >-
+    Retrieve all beacon chain validator deposit events associated with a specific
+    execution-layer transaction hash. This endpoint returns every deposit log
+    decoded from the transaction, including deposit amount, validator public key,
+    withdrawal credentials, and signature verification status.
+  operationId: getEth1DepositsByTxHash
+  parameters:
+    - name: txhash
+      in: path
+      description: >-
+        Execution-layer transaction hash to inspect. Provide tx
+        hash as a 0x-prefixed hex string (64 hex characters after 0x).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.EthTxHash.yaml"
+  responses:
+    '200':
+      description: >-
+        The transaction was found and any associated deposit events are returned
+        in the `data` array. If the transaction contains no deposit events, the
+        array is empty.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.APIEth1TxDepositResponse.yaml
+    '400':
+      description: The request is invalid (for example, a malformed or non-hex transaction hash).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidTxHash:
+              summary: Invalid transaction hash
+              value:
+                status: "ERROR: invalid tx hash parameter"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

@@ -1,0 +1,92 @@
+get:
+  tags:
+    - Slots
+  summary: Deposits for a slot
+  description: >-
+    Retrieve all validator deposit operations included in the beacon block for a specific slot.
+    Deposits include the validator public key, withdrawal credentials, amount (gwei), and signature.
+    Use pagination parameters to page through results when many deposits are present.
+  operationId: listSlotDeposits
+  parameters:
+    - name: slot
+      in: path
+      description: >-
+        The slot to fetch. Provide an integer slot number (>= 0) or the special
+        tag `latest` for the most recently processed slot.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        oneOf:
+          - type: integer
+            minimum: 0
+            description: Slot number (>= 0)
+            example: 12751688
+          - type: string
+            enum: [latest]
+            description: Latest processed slot
+            example: latest
+    - name: offset
+      in: query
+      description: Number of items to skip from the start of the result set. Use 0 for the first page.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+        example: 0
+    - name: limit
+      in: query
+      description: >-
+        Upper bound for the range of items to return. The effective page size is computed as
+        min(100, limit - offset). Must be greater than `offset`. To request N items, set
+        limit = offset + N. When omitted or out of range, the service uses offset + 100.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 1
+        example: 40
+  responses:
+    '200':
+      description: >-
+        The slot was found and its deposits are returned in the `data` array.
+        If the slot has no deposits, the array is empty.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.APIDepositsResponse.yaml
+    '400':
+      description: The request is invalid (for example, a negative slot or malformed parameters).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidSlot:
+              summary: Invalid slot parameter
+              value:
+                status: "ERROR: invalid block slot provided"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

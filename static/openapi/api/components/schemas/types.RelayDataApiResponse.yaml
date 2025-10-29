@@ -1,0 +1,15 @@
+type: object
+description: MEV relay metadata associated with an execution block built via a relay.
+properties:
+  tag:
+    type: string
+    description: Identifier of the relay that delivered the block.
+    example: "ultrasound-relay"
+  builderPubkey:
+    type: string
+    description: 0x-prefixed hex-encoded public key of the block builder as reported by the relay.
+    example: "0xa3523967a7955c0244910f23b7b1fc59636f03bec437286b622815408d51389f7f6cd54617733b93926b7860e1f6afb0"
+  producerFeeRecipient:
+    type: string
+    description: Execution address designated to receive the builder’s fee (0x-prefixed, 20-byte hex address).
+    example: "0xa27cef8af2b6575903b676e5644657fae96f491f"

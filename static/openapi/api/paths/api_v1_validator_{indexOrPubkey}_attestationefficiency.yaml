@@ -1,0 +1,75 @@
+get:
+  tags:
+    - Validators
+  summary: Attestation efficiency
+  description: >-
+    Retrieve normalized attestation inclusion effectiveness for one or more
+    validators. Provide a comma-separated list of validator indices or
+    0x-prefixed BLS pubkeys (up to the server-enforced limit; default 100).
+
+    The score is computed for the most recently completed epoch and defined as:
+    `score = 1 + (1 − percentage/100) = 2 − percentage/100`. A score of 1.0
+    indicates perfect effectiveness (100% inclusion); scores approach 2.0 as
+    effectiveness worsens (0% inclusion).
+  operationId: getValidatorAttestationEfficiency
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+  responses:
+    '200':
+      description: >-
+        Matching validators were retrieved successfully. The `data` array
+        contains one entry per validator with the normalized attestation
+        effectiveness score.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: >-
+                        ../components/schemas/types.ApiValidatorAttestationEfficiencyResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifier, too many identifiers, or unresolved pubkeys).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            unresolvedPubkeys:
+              summary: Pubkey did not resolve to an index
+              value:
+                status: "ERROR: invalid validator argument, pubkey(s) did not resolve to a validator index"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

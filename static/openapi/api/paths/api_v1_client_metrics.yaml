@@ -1,0 +1,41 @@
+post:
+  tags:
+    - User
+  summary: Submit client stats
+  description: >-
+    Used in consensus layer clients to submit stats to your beaconcha.in
+    account. This data can be accessed by the app or the user stats api call.
+  parameters:
+    - name: apikey
+      in: query
+      description: User API key, can be found on https://beaconcha.in/user/settings
+      required: true
+      style: form
+      explode: true
+      schema: {}
+    - name: machine
+      in: query
+      description: Name your device if you have multiple devices you want to monitor
+      required: false
+      style: form
+      explode: true
+      schema: {}
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+    '500':
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

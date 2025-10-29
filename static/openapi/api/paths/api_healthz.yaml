@@ -1,0 +1,66 @@
+get:
+  tags:
+    - Misc
+  summary: Explorer Health
+  description: >-
+    Provides the health status of all modules of the explorer. This endpoint is
+    useful for monitoring the availability and functionality of the explorer's
+    components.
+
+    - **Modules Monitored:** Includes monitoring of services such as
+    `monitoring_app`, `monitoring_el_data`, `monitoring_services`,
+    `monitoring_cl_data`, `monitoring_api`, `monitoring_redis`.
+
+    - **Response Details:** Returns the status of each module. If all modules
+    are operational, the response will indicate success. Otherwise, it will
+    return an error with details about the failing modules.
+  responses:
+    '200':
+      description: |-
+        All modules are healthy. Response format:
+        ```
+        module monitoring_el_data: OK
+        module monitoring_cl_data: OK
+        module monitoring_redis: OK
+        module monitoring_api: OK
+        module monitoring_services: OK
+        module monitoring_app: OK
+        ```
+      content:
+        text/plain:
+          example: |-
+            module monitoring_el_data: OK
+            module monitoring_cl_data: OK
+            module monitoring_redis: OK
+            module monitoring_api: OK
+            module monitoring_services: OK
+            module monitoring_app: OK
+    '400':
+      description: |-
+        Invalid request. Response format:
+        ```
+        Bad request
+        ```
+      content:
+        text/plain:
+          example: 'Bad request'
+    '500':
+      description: |-
+        Some modules are unhealthy. Response format:
+        ```
+        module monitoring_el_data: ERROR
+        module monitoring_cl_data: OK
+        module monitoring_redis: ERROR
+        module monitoring_api: OK
+        module monitoring_services: OK
+        module monitoring_app: ERROR
+        ```
+      content:
+        text/plain:
+          example: |-
+            module monitoring_el_data: ERROR
+            module monitoring_cl_data: OK
+            module monitoring_redis: ERROR
+            module monitoring_api: OK
+            module monitoring_services: OK
+            module monitoring_app: ERROR
