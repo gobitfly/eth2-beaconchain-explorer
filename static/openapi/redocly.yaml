@@ -1,0 +1,12 @@
+extends:
+  - recommended
+
+rules:
+  operation-operationId: off
+  no-ambiguous-paths: off
+
+apis:
+  external@latest:
+    root: ./api/openapi.yaml
+    decorators:
+      remove-x-internal: on

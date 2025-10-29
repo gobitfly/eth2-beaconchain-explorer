@@ -1,0 +1,73 @@
+get:
+  tags:
+    - Slots
+  summary: Withdrawals for a slot
+  description: >-
+    Retrieve all withdrawal operations included in the execution payload of the
+    beacon block for a specific slot. A withdrawal moves ETH from the beacon
+    chain to an execution-layer address after a validator has eligible balance.
+
+    Provide a slot number or use the keyword `latest` to fetch from the most
+    recently processed slot. The response lists each withdrawal with the
+    recipient address, amount in gwei, the originating validator index, and the
+    global withdrawal index.
+  operationId: listSlotWithdrawals
+  parameters:
+    - name: slot
+      in: path
+      description: >-
+        The slot to fetch. Provide an integer slot number (>= 0) or the special
+        tag `latest` for the most recently processed slot.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        oneOf:
+          - type: integer
+            minimum: 0
+            description: Slot number (>= 0)
+            example: 12751688
+          - type: string
+            enum: [latest]
+            description: Latest processed slot
+            example: latest
+  responses:
+    '200':
+      description: >-
+        The slot was found and its withdrawals are returned in the `data` array.
+        If the slot has no withdrawals, the array is empty.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.APIWithdrawalResponse.yaml
+    '400':
+      description: The request is invalid (for example, a negative slot or a slot in the future).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidSlot:
+              summary: Invalid slot parameter
+              value:
+                status: "ERROR: invalid block slot provided"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

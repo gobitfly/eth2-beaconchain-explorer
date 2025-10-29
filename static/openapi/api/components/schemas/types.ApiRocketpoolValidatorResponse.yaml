@@ -1,0 +1,97 @@
+properties:
+  claimed_smoothing_pool:
+    type: integer
+    description: Total ETH from the smoothing pool that the node has already claimed across all intervals, in wei.
+    example: 2558507058679352300
+  effective_rpl_stake:
+    type: number
+    description: Effective RPL stake for the node after applying protocol caps, expressed in RPL tokens.
+    example: 0
+  index:
+    type: integer
+    description: Consensus validator index that this entry refers to.
+    example: 652648
+  is_vacant:
+    type: boolean
+    description: Indicates that the minipool currently has no active validator assigned (vacant).
+    example: false
+  minipool_address:
+    type: string
+    description: Ethereum address of the Rocket Pool minipool contract associated with the validator.
+    example: "0xc20eb9eca73be78a523aad5a4d9b70c797ff58a1"
+  minipool_deposit_type:
+    type: string
+    description: Minipool deposit configuration. One of "Full", "Half", or "Variable".
+    example: "Variable"
+  minipool_node_fee:
+    type: number
+    description: Node commission rate for this minipool as a decimal fraction in the range [0, 1]. For example, 0.14 means 14%.
+    example: 0.14
+  minipool_status:
+    type: string
+    description: Current on-chain minipool status. Possible values include "Initialized", "Prelaunch", "Staking", "Withdrawable", and "Dissolved".
+    example: "Staking"
+  minipool_status_time:
+    type: integer
+    description: Unix timestamp (seconds) when the minipool entered the current status.
+    example: 1684570331
+  node_address:
+    type: string
+    description: Ethereum address of the Rocket Pool node operator that owns the minipool.
+    example: "0xfff1f570f09c073b6621c032b6072847fe9d6fac"
+  node_deposit_balance:
+    type: integer
+    description: Amount of ETH contributed by the node to the minipool deposit, in wei.
+    example: 8000000000000000000
+  node_deposit_credit:
+    type: number
+    description: Node’s available ETH deposit credit used to form or expand minipools, in wei.
+    example: 0
+  node_max_rpl_stake:
+    type: number
+    description: Maximum RPL stake permitted for the node under protocol rules, in RPL tokens.
+    example: 0
+  node_min_rpl_stake:
+    type: number
+    description: Minimum required RPL stake for the node to remain compliant, in RPL tokens.
+    example: 0
+  node_refund_balance:
+    type: integer
+    description: ETH refundable to the node from the minipool, in wei.
+    example: 0
+  node_rpl_stake:
+    type: number
+    description: Current RPL stake held by the node, in RPL tokens.
+    example: 0
+  node_timezone_location:
+    type: string
+    description: IANA time zone identifier configured for the node (for example, "Etc/UTC").
+    example: "Etc/UTC"
+  penalty_count:
+    type: integer
+    description: Number of penalties that have been recorded for this minipool.
+    example: 0
+  rpl_cumulative_rewards:
+    type: integer
+    description: Total RPL token rewards the node has already claimed across all intervals, in base units (10^18).
+    example: 487854676781293300000
+  smoothing_pool_opted_in:
+    type: boolean
+    description: Indicates whether the node is registered to receive smoothing pool distributions.
+    example: false
+  unclaimed_rpl_rewards:
+    type: integer
+    description: RPL token rewards accrued by the node that have not yet been claimed, in base units (10^18).
+    example: 0
+  unclaimed_smoothing_pool:
+    type: integer
+    description: ETH from the smoothing pool that is currently unclaimed by the node, in wei.
+    example: 0
+  user_deposit_balance:
+    type: integer
+    description: Amount of ETH contributed by rETH users to the minipool deposit, in wei.
+    example: 24000000000000000000
+  version:
+    type: integer
+    description: Minipool contract version.
+    example: 3

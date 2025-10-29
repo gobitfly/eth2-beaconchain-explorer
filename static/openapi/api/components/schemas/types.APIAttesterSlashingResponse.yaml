@@ -1,0 +1,114 @@
+type: object
+description: >-
+  Attester slashing operation included in a beacon block. Contains two
+  conflicting attestations (attestation1 and attestation2) that prove a
+  slashable offense, plus block inclusion metadata.
+properties:
+  attestation1_beaconblockroot:
+    type: string
+    description: Root of the beacon block being voted on by attestation1 (0x-prefixed, 32-byte hex).
+    example: '0x4b50f7112f30b4fe9ff61324d9282308b8104874991f796f181cd58511fc67d5'
+  attestation1_index:
+    type: integer
+    description: Committee index within the epoch for attestation1 (>= 0).
+    minimum: 0
+    example: 0
+  attestation1_indices:
+    type: array
+    description: List of validator indices whose signatures are included in attestation1.
+    items:
+      type: integer
+      minimum: 0
+    example:
+      - 0
+      - 1
+      - 2
+      - 3
+  attestation1_signature:
+    type: string
+    description: Aggregated BLS signature over the attestation1 data (96 bytes; 0x-prefixed hex with 192 hex characters).
+    example: '0xaa'
+  attestation1_slot:
+    type: integer
+    description: Slot that attestation1 attests to.
+    minimum: 0
+    example: 12571716
+  attestation1_source_epoch:
+    type: integer
+    description: Source checkpoint epoch of attestation1 (>= 0).
+    minimum: 0
+    example: 392865
+  attestation1_source_root:
+    type: string
+    description: Root of the source checkpoint referenced by attestation1 (0x-prefixed, 32-byte hex).
+    example: '0x1b3891944d7c2fdac53dff9410f18992487e31b1f68d995c1429548effa47268'
+  attestation1_target_epoch:
+    type: integer
+    description: Target checkpoint epoch of attestation1 (>= 0).
+    minimum: 0
+    example: 392866
+  attestation1_target_root:
+    type: string
+    description: Root of the target checkpoint referenced by attestation1 (0x-prefixed, 32-byte hex).
+    example: '0x1898ff52ee440f1ac1ed328becaaa2672c6c50976203d42f672beb5c495c8116'
+  attestation2_beaconblockroot:
+    type: string
+    description: Root of the beacon block being voted on by attestation2 (0x-prefixed, 32-byte hex).
+    example: '0x2c262c5cdbddd4b4a673c3a112b8a0d1ca539c15cac2a95e0094c0d28a008e88'
+  attestation2_index:
+    type: integer
+    description: Committee index within the epoch for attestation2 (>= 0).
+    minimum: 0
+    example: 0
+  attestation2_indices:
+    type: array
+    description: List of validator indices whose signatures are included in attestation2.
+    items:
+      type: integer
+      minimum: 0
+    example:
+      - 0
+      - 1
+      - 2
+      - 3
+  attestation2_signature:
+    type: string
+    description: Aggregated BLS signature over the attestation2 data (96 bytes; 0x-prefixed hex with 192 hex characters).
+    example: '0xaa'
+  attestation2_slot:
+    type: integer
+    description: Slot that attestation2 attests to.
+    minimum: 0
+    example: 12571716
+  attestation2_source_epoch:
+    type: integer
+    description: Source checkpoint epoch of attestation2 (>= 0).
+    minimum: 0
+    example: 392865
+  attestation2_source_root:
+    type: string
+    description: Root of the source checkpoint referenced by attestation2 (0x-prefixed, 32-byte hex).
+    example: '0x1b3891944d7c2fdac53dff9410f18992487e31b1f68d995c1429548effa47268'
+  attestation2_target_epoch:
+    type: integer
+    description: Target checkpoint epoch of attestation2 (>= 0).
+    minimum: 0
+    example: 392866
+  attestation2_target_root:
+    type: string
+    description: Root of the target checkpoint referenced by attestation2 (0x-prefixed, 32-byte hex).
+    example: '0x1898ff52ee440f1ac1ed328becaaa2672c6c50976203d42f672beb5c495c8116'
+  block_index:
+    type: integer
+    description: Zero-based index of this attester slashing within the including block’s attester_slashings list.
+    minimum: 0
+    example: 0
+  block_root:
+    type: string
+    description: Root of the beacon block that included this attester slashing (0x-prefixed, 32-byte hex).
+    example: '0x3381dd071cb6a020144bb980758a3a844129a62d74146b0fcdd82c4125cc8d66'
+  block_slot:
+    type: integer
+    description: Slot number of the block that included this attester slashing.
+    minimum: 0
+    example: 12571718

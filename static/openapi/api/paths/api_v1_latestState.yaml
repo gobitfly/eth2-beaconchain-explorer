@@ -1,0 +1,46 @@
+get:
+  tags:
+    - Network
+  summary: Latest consensus and execution state
+  description: >-
+    Retrieve the latest known network state as observed by the explorer backend. The
+    payload includes current slot and epoch numbers, the most recent finalized epoch,
+    a finality delay indicator, a syncing flag, and display rates used for price
+    conversions in the UI.
+  operationId: getLatestState
+  responses:
+    '200':
+      description: Latest state was retrieved successfully. The `data` object contains the current chain status and pricing context.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.LatestState.yaml
+    '400':
+      description: The request is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidRequest:
+              summary: Invalid request
+              value:
+                status: "ERROR: invalid request"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

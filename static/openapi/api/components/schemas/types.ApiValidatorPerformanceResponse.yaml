@@ -1,0 +1,35 @@
+type: object
+description: Consensus-layer performance metrics for a single validator over multiple lookback windows.
+properties:
+  balance:
+    type: integer
+    description: Current validator balance in gwei at the time of computation.
+    example: 2011101824120
+  performance1d:
+    type: integer
+    description: Net consensus-layer rewards over the last 1 day, in gwei. Negative values indicate net penalties.
+    example: 126585316
+  performance7d:
+    type: integer
+    description: Net consensus-layer rewards over the last 7 days, in gwei. Used for leaderboard ranking by default.
+    example: 1467804126
+  performance31d:
+    type: integer
+    description: Net consensus-layer rewards over the last 31 days, in gwei.
+    example: 5128497140
+  performance365d:
+    type: integer
+    description: Net consensus-layer rewards over the last 365 days, in gwei.
+    example: 11101824120
+  performancetotal:
+    type: integer
+    description: Cumulative consensus-layer rewards since genesis (if available), in gwei. May be omitted by some endpoints.
+    example: 11101824120
+  rank7d:
+    type: integer
+    description: Leaderboard rank computed using the 7-day performance window (1 = best).
+    example: 1
+  validatorindex:
+    type: integer
+    description: Validator index (>= 0).
+    example: 2030996

@@ -1,0 +1,35 @@
+get:
+  tags:
+    - ENS
+  summary: Resolve ens name or address
+  description: >-
+    Get the address for an ens name and vice versa. Returns and object with the
+    ens name and address - if found.
+  parameters:
+    - name: domain
+      in: path
+      description: domain can either be an ens name or an Etherum address
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        example: 'vitalik.eth'
+  responses:
+    '200':
+      description: OK
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.EnsDomainResponse.yaml
+    '400':
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml

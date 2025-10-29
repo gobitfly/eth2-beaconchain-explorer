@@ -1,0 +1,15 @@
+type: object
+description: ERC-20 token balance for the specified address.
+properties:
+  address:
+    type: string
+    description: ERC-20 token contract address (0x-prefixed, 20-byte hex).
+    example: '0xdac17f958d2ee523a2206206994597c13d831ec7'
+  balance:
+    type: string
+    description: Token balance as a decimal string in token units; non-negative, no scientific notation. Precision follows the token's decimals.
+    example: '122100'
+  symbol:
+    type: string
+    description: Token symbol as defined by the ERC-20 contract.
+    example: 'TOKEN1'

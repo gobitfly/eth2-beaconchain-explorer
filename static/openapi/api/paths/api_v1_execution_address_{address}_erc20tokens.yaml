@@ -1,0 +1,89 @@
+get:
+  tags:
+    - Addresses
+  summary: ERC-20 token balances for an address
+  description: >-
+    Retrieve a paginated list of ERC-20 token balances for a specific Ethereum
+    address. Use this endpoint to list all token balances when the number of
+    tokens exceeds the 200-token limit returned by the summary endpoint
+    `/api/v1/execution/address/{address}`. Use the `offset` and `limit` query
+    parameters to paginate through the complete set.
+  operationId: listExecutionAddressERC20Tokens
+  parameters:
+    - name: address
+      in: path
+      description: >-
+        Ethereum account address to query. Provide a 0x-prefixed, 20-byte hex
+        string (40 hexadecimal characters after 0x).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.EthAddress.yaml"
+    - name: offset
+      in: query
+      description: Number of items to skip from the start of the result set. Use 0 for the first page.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 0
+        default: 0
+    - name: limit
+      in: query
+      description: Maximum number of tokens to return per page. Allowed range is 1 to 200.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        example: 50
+  responses:
+    '200':
+      description: >-
+        Tokens were retrieved successfully. The `data` array contains one entry
+        per ERC-20 token for which a balance is available for the address.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ApiEth1AddressERC20TokenResponse.yaml
+    '400':
+      description: The request is invalid (for example, a malformed address or out-of-range pagination parameters).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidAddress:
+              summary: Invalid address parameter
+              value:
+                status: "ERROR: invalid address parameter"
+                data: null
+            invalidPagination:
+              summary: Invalid pagination parameters
+              value:
+                status: "ERROR: invalid pagination parameters"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

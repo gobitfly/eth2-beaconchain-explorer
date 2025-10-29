@@ -1,0 +1,56 @@
+type: object
+description: >-
+  Per-validator attestation record within an epoch window. Each item corresponds
+  to a scheduled attestation duty for a specific validator and includes the slot
+  attested to, the observed inclusion slot (when included), a status flag, and
+  week-based grouping metadata used in UI charts.
+properties:
+  attesterslot:
+    type: integer
+    description: Slot number that the validator attested to (the source of the vote). Always non-negative.
+    minimum: 0
+    example: 12779525
+  committeeindex:
+    type: integer
+    description: Committee index within the epoch for this attestation (>= 0). May be 0 when not recorded in this dataset.
+    minimum: 0
+    example: 0
+  epoch:
+    type: integer
+    description: Epoch containing the attestation duty (>= 0).
+    minimum: 0
+    example: 399360
+  inclusionslot:
+    type: integer
+    description: >-
+      Slot number of the beacon block that included the attestation when it was
+      observed on-chain. Set to 0 when the attestation was not observed/included
+      (missed).
+    minimum: 0
+    example: 12779526
+  status:
+    type: integer
+    description: >-
+      Attestation status flag. 1 indicates the attestation was observed and
+      included on-chain; 0 indicates it was missed.
+    example: 1
+  validatorindex:
+    type: integer
+    description: Validator index (>= 0) to whom this attestation duty applies.
+    minimum: 0
+    example: 20
+  week:
+    type: integer
+    description: Epoch-based week number computed as `epoch / (EpochsPerDay * 7)`.
+    minimum: 0
+    example: 253
+  week_start:
+    type: string
+    format: date-time
+    description: Start timestamp (UTC, RFC 3339) of the week containing `epoch`.
+    example: "2025-10-07T12:00:23Z"
+  week_end:
+    type: string
+    format: date-time
+    description: End timestamp (UTC, RFC 3339) of the week containing `epoch`.
+    example: "2025-10-14T12:00:23Z"

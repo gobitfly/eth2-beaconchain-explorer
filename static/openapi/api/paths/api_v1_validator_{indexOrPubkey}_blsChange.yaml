@@ -1,0 +1,85 @@
+get:
+  tags:
+    - Validators
+  summary: BLS-to-execution credential changes
+  description: >-
+    Retrieve on-chain BLS-to-execution credential change messages (EIP-4881
+    style) for one or more validators. Each item includes the slot and epoch of
+    inclusion, the canonical block root, the validator’s BLS pubkey and
+    signature over the change message, the original 0x00 withdrawal credentials,
+    and the resulting 0x01 credentials (derived from the execution address).
+
+    Provide validator identifiers as a comma-separated list in the path. The
+    service accepts validator indices and 0x-prefixed BLS pubkeys (up to the
+    server-enforced limit; default 100). If a provided pubkey does not resolve
+    to a known validator index, the request fails with HTTP 400.
+  operationId: listValidatorBlsChanges
+  parameters:
+    - name: indexOrPubkey
+      in: path
+      description: Comma-separated validator indices and/or public keys (maximum 100 items by default).
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: "../components/schemas/primitives.indicesOrPubkeys.yaml"
+  responses:
+    '200':
+      description: >-
+        Matching BLS credential changes were retrieved successfully. The `data`
+        array contains one entry per observed change event.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.ApiValidatorBlsChangeResponse.yaml
+    '400':
+      description: The request is invalid (for example, malformed identifiers, too many identifiers, unresolved pubkeys, or database error).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidParam:
+              summary: Invalid validator identifier
+              value:
+                status: "ERROR: invalid validator-parameter"
+                data: null
+            tooMany:
+              summary: Too many identifiers
+              value:
+                status: "ERROR: only a maximum of 100 query parameters are allowed"
+                data: null
+            unresolvedPubkeys:
+              summary: Pubkey did not resolve to an index
+              value:
+                status: "ERROR: invalid validator argument, pubkey(s) did not resolve to a validator index"
+                data: null
+            empty:
+              summary: No or invalid indices provided
+              value:
+                status: "ERROR: no or invalid validator indicies provided"
+                data: null
+            dbError:
+              summary: Database retrieval error
+              value:
+                status: "ERROR: could not retrieve db results"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

@@ -1,0 +1,137 @@
+get:
+  tags:
+    - Misc
+  summary: Graffiti wall pixels
+  description: >-
+    Retrieve pixels painted on the community graffiti wall within a rectangular
+    area and a slot range. Coordinates are expressed in pixels with the origin
+    at the top-left corner (x = 0, y = 0). Boundary coordinates are inclusive.
+
+    If you do not provide a slot, the service returns pixels from the most
+    recent 10,000 slots. You can expand the time window by setting `slot` (end
+    of range) and optionally `startSlot` (start of range). When `startSlot` is
+    omitted, it defaults to `slot - 10000`.
+
+    Use `summarize=true` to receive only the final color per pixel within the
+    requested slot range (end state). When `summarize=false` or omitted, the API
+    returns the full sequence of changes within the range.
+  operationId: getGraffitiWall
+  parameters:
+    - name: startx
+      in: query
+      description: Inclusive start X coordinate (>= 0). If omitted, the full X range is used.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 0
+    - name: starty
+      in: query
+      description: Inclusive start Y coordinate (>= 0). If omitted, the full Y range is used.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 0
+    - name: endx
+      in: query
+      description: Inclusive end X coordinate (>= startx). If omitted, the full X range is used.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 511
+    - name: endy
+      in: query
+      description: Inclusive end Y coordinate (>= starty). If omitted, the full Y range is used.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 511
+    - name: startSlot
+      in: query
+      description: Start of the slot range (inclusive). Defaults to `slot - 10000` when omitted.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 12754598
+    - name: slot
+      in: query
+      description: End of the slot range (inclusive). Defaults to the latest processed slot when omitted.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: integer
+        minimum: 0
+        example: 12764598
+    - name: summarize
+      in: query
+      description: >-
+        When true, return only the final state for each pixel within the requested
+        rectangle and slot range. When false (default), return every change to
+        pixels within the range.
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: boolean
+        default: false
+    
+  responses:
+    '200':
+      description: >-
+        Pixels were retrieved successfully. The `data` array contains one entry
+        per painted pixel event (or one per pixel when `summarize=true`).
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.GraffitiwallResponse.yaml
+    '400':
+      description: The request is invalid (for example, coordinates out of bounds or malformed slot parameters).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidArea:
+              summary: Invalid coordinate rectangle
+              value:
+                status: "ERROR: invalid area coordinates"
+                data: null
+            invalidSlot:
+              summary: Invalid slot parameters
+              value:
+                status: "ERROR: invalid slot parameter"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

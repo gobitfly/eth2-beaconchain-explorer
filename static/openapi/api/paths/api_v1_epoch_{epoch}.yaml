@@ -1,0 +1,65 @@
+get:
+  tags:
+    - Epochs
+  summary: Epoch overview
+  description: >-
+    Retrieve aggregate metrics and status for a beacon chain epoch. You can specify
+    the epoch by number, or use the keywords `latest` (most recently processed epoch)
+    or `finalized` (most recent epoch finalized by the consensus).
+  operationId: getEpoch
+  parameters:
+    - name: epoch
+      in: path
+      description: >-
+        The epoch to fetch. Provide an integer epoch number (>= 0), or one of the
+        keywords `latest` or `finalized`.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        oneOf:
+          - type: string
+            description: Special tags for convenience.
+            enum: [latest, finalized]
+            example: latest
+          - type: integer
+            description: Epoch number (>= 0)
+            minimum: 0
+            example: 1564648
+  responses:
+    '200':
+      description: >-
+        The epoch was found and aggregate information is returned in the `data` field.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    $ref: ../components/schemas/types.APIEpochResponse.yaml
+    '400':
+      description: The request is invalid (for example, an out-of-range epoch or malformed tag).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidEpoch:
+              summary: Invalid epoch number
+              value:
+                status: "ERROR: invalid epoch parameter"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

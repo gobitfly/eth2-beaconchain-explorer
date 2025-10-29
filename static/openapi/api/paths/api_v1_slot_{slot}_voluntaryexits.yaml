@@ -1,0 +1,77 @@
+get:
+  tags:
+    - Slots
+  summary: Voluntary exits for a slot
+  description: >-
+    Retrieve all voluntary exit operations included in the beacon block for a
+    specific slot. A voluntary exit is a signed message from a validator
+    indicating the epoch at which they choose to exit the active set.
+
+    Provide a slot number or use the keyword `latest` to fetch from the most
+    recently processed slot. The response lists each voluntary exit along with
+    block inclusion metadata.
+  operationId: listSlotVoluntaryExits
+  parameters:
+    - name: slot
+      in: path
+      description: >-
+        The slot to fetch. Provide an integer slot number (>= 0) or the special
+        tag `latest` for the most recently processed slot.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        oneOf:
+          - type: integer
+            minimum: 0
+            description: Slot number (>= 0)
+            example: 12751688
+          - type: string
+            enum: [latest]
+            description: Latest processed slot
+            example: latest
+  responses:
+    '200':
+      description: >-
+        The slot was found and its voluntary exits are returned in the `data`
+        array. If the slot has no voluntary exits, the array is empty.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../components/schemas/types.ApiResponse.yaml
+              - type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: ../components/schemas/types.APIVoluntaryExitResponse.yaml
+    '400':
+      description: The request is invalid (for example, a negative slot or a slot in the future).
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            invalidSlot:
+              summary: Invalid slot parameter
+              value:
+                status: "ERROR: invalid slot parameter"
+                data: null
+            slotInFuture:
+              summary: Slot in the future
+              value:
+                status: "ERROR: slot is in the future"
+                data: null
+    '500':
+      description: An unexpected server error occurred while processing your request.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/types.ApiErrorResponse.yaml
+          examples:
+            serverError:
+              summary: Internal error
+              value:
+                status: "ERROR: internal server error"
+                data: null

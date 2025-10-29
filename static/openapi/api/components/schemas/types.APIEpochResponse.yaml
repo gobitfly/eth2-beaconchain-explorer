@@ -1,0 +1,89 @@
+type: object
+description: Aggregate metrics, counts, and status for a single beacon chain epoch.
+properties:
+  epoch:
+    type: integer
+    description: Epoch number you requested. An epoch groups a fixed number of consecutive slots (see chain config).
+    example: 15000
+  ts:
+    type: string
+    format: date-time
+    description: The UTC timestamp at which this epoch started, in RFC 3339 format.
+    example: '2022-09-29T04:00:23Z'
+  finalized:
+    type: boolean
+    description: Indicates whether this epoch has been finalized by the consensus protocol. Finalized epochs will not be reverted under normal network operation.
+    example: true
+  validatorscount:
+    type: integer
+    description: Total number of active validators in this epoch.
+    example: 436943
+  averagevalidatorbalance:
+    type: integer
+    description: Average validator balance during this epoch, in gwei.
+    example: 33827474537
+  totalvalidatorbalance:
+    type: integer
+    description: Sum of balances of all active validators during this epoch, in gwei.
+    example: 14780678206789428
+  globalparticipationrate:
+    type: number
+    format: float
+    description: Share of eligible stake that attested on time in this epoch, as a fraction between 0 and 1.
+    example: 0.9885170459747314
+  eligibleether:
+    type: integer
+    description: Total effective stake eligible to vote in this epoch, in gwei.
+    example: 13982056000000000
+  votedether:
+    type: integer
+    description: Total amount of stake that actually voted in this epoch, in gwei.
+    example: 13821500000000000
+  blockscount:
+    type: integer
+    description: Total number of slots in the epoch that contained a block (proposed, including orphaned).
+    example: 32
+  proposedblocks:
+    type: integer
+    description: Number of blocks proposed and included in the canonical chain during this epoch.
+    example: 31
+  missedblocks:
+    type: integer
+    description: Number of scheduled proposals that were missed (no block proposed) in this epoch.
+    example: 1
+  orphanedblocks:
+    type: integer
+    description: Number of blocks proposed but not part of the canonical chain (reorged/orphaned) in this epoch.
+    example: 0
+  scheduledblocks:
+    type: integer
+    description: Number of scheduled block proposals in this epoch. Typically equals the number of slots in an epoch.
+    example: 0
+  attestationscount:
+    type: integer
+    description: Number of attestation operations included across all blocks in this epoch.
+    example: 3458
+  attesterslashingscount:
+    type: integer
+    description: Number of attester slashing operations included in this epoch.
+    example: 0
+  proposerslashingscount:
+    type: integer
+    description: Number of proposer slashing operations included in this epoch.
+    example: 1
+  depositscount:
+    type: integer
+    description: Number of validator deposit operations processed in this epoch.
+    example: 12
+  withdrawalcount:
+    type: integer
+    description: Number of withdrawal operations processed in this epoch.
+    example: 16
+  voluntaryexitscount:
+    type: integer
+    description: Number of voluntary exit operations processed in this epoch.
+    example: 2
+  rewards_exported:
+    type: boolean
+    description: Indicates whether per-validator reward details for this epoch have been exported and are available for querying.
+    example: true
