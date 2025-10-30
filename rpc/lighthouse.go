@@ -943,18 +943,20 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 	}
 
 	if len(parsedBlock.Message.Body.BlobKZGCommitments) > 0 {
-		res, err := lc.GetBlobSidecars(fmt.Sprintf("%#x", block.BlockRoot))
-		if err != nil {
-			return nil, err
-		}
-		if len(res.Data) != len(parsedBlock.Message.Body.BlobKZGCommitments) {
-			return nil, fmt.Errorf("error constructing block at slot %v: len(blob_sidecars) != len(block.blob_kzg_commitments): %v != %v", block.Slot, len(res.Data), len(parsedBlock.Message.Body.BlobKZGCommitments))
-		}
-		for i, d := range res.Data {
-			if !bytes.Equal(d.KzgCommitment, block.BlobKZGCommitments[i]) {
-				return nil, fmt.Errorf("error constructing block at slot %v: unequal kzg_commitments at index %v: %#x != %#x", block.Slot, i, d.KzgCommitment, block.BlobKZGCommitments[i])
+		if false {
+			res, err := lc.GetBlobSidecars(fmt.Sprintf("%#x", block.BlockRoot))
+			if err != nil {
+				return nil, err
 			}
-			block.BlobKZGProofs[i] = d.KzgProof
+			if len(res.Data) != len(parsedBlock.Message.Body.BlobKZGCommitments) {
+				return nil, fmt.Errorf("error constructing block at slot %v: len(blob_sidecars) != len(block.blob_kzg_commitments): %v != %v", block.Slot, len(res.Data), len(parsedBlock.Message.Body.BlobKZGCommitments))
+			}
+			for i, d := range res.Data {
+				if !bytes.Equal(d.KzgCommitment, block.BlobKZGCommitments[i]) {
+					return nil, fmt.Errorf("error constructing block at slot %v: unequal kzg_commitments at index %v: %#x != %#x", block.Slot, i, d.KzgCommitment, block.BlobKZGCommitments[i])
+				}
+				block.BlobKZGProofs[i] = d.KzgProof
+			}
 		}
 	}
 

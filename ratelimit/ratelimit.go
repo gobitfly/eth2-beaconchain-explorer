@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gobitfly/eth2-beaconchain-explorer/apikey"
 	"github.com/gobitfly/eth2-beaconchain-explorer/db"
 	"github.com/gobitfly/eth2-beaconchain-explorer/metrics"
 	"github.com/gobitfly/eth2-beaconchain-explorer/utils"
@@ -602,11 +603,13 @@ func updateRateLimits() error {
 	dbApiKeys := []struct {
 		UserID     int64     `db:"user_id"`
 		ApiKey     string    `db:"api_key"`
-		ValidUntil time.Time `db:"valid_until"`
-		ChangedAt  time.Time `db:"changed_at"`
+		CreatedAt  time.Time `db:"created_at"`
+		DisabledAt time.Time `db:"disabled_at"`
+		DeletedAt  time.Time `db:"deleted_at"`
 	}{}
 
-	err = tx.Select(&dbApiKeys, `SELECT user_id, api_key, valid_until, changed_at FROM api_keys WHERE changed_at > $1 OR valid_until < NOW()`, lastTKeys)
+	//err = tx.Select(&dbApiKeys, `SELECT user_id, api_key, valid_until, changed_at FROM api_keys WHERE changed_at > $1 OR valid_until < NOW()`, lastTKeys)
+	err = tx.Select(&dbApiKeys, `SELECT user_id, api_key, created_at, coalesce(disabled_at,'9999-12-31 23:59:59'), coalesce(deleted_at,'9999-12-31 23:59:59') FROM api_keys WHERE created_at > $1 OR disabled_at > $1 OR deleted_at > $1`, lastTKeys)
 	if err != nil {
 		return fmt.Errorf("error getting api_keys: %w", err)
 	}
@@ -644,10 +647,13 @@ func updateRateLimits() error {
 	rateLimitsMu.Lock()
 	now := time.Now()
 	for _, dbKey := range dbApiKeys {
-		if dbKey.ChangedAt.After(lastTKeys) {
-			lastTKeys = dbKey.ChangedAt
+		if dbKey.DisabledAt.After(lastTKeys) {
+			lastTKeys = dbKey.DisabledAt
 		}
-		if dbKey.ValidUntil.Before(now) {
+		if dbKey.DeletedAt.After(lastTKeys) {
+			lastTKeys = dbKey.DeletedAt
+		}
+		if dbKey.DisabledAt.Before(now) || !dbKey.DeletedAt.Before(now) {
 			delete(userIdByApiKey, dbKey.ApiKey)
 			continue
 		}
@@ -923,17 +929,29 @@ func getKey(r *http.Request) (key, ip string) {
 	ip = getIP(r)
 	key = r.URL.Query().Get("apikey")
 	if key != "" {
-		return key, ip
+		return getApiKeyHash(key), ip
 	}
 	key = r.Header.Get("apikey")
 	if key != "" {
-		return key, ip
+		return getApiKeyHash(key), ip
 	}
 	key = r.Header.Get("X-API-KEY")
 	if key != "" {
-		return key, ip
+		return getApiKeyHash(key), ip
+	}
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return getApiKeyHash(strings.TrimPrefix(authHeader, "Bearer ")), ip
 	}
 	return "nokey", ip
+}
+
+func getApiKeyHash(raw string) string {
+	apiKey, err := apikey.RawFromBase62(raw)
+	if err != nil {
+		return "nokey"
+	}
+	return fmt.Sprintf("%x", apiKey.Hash())
 }
 
 // getWeight returns the weight of an endpoint. if the weight of the endpoint is not defined, it returns 1.
