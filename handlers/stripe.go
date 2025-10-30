@@ -404,7 +404,6 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error parsing stripe webhook JSON", http.StatusInternalServerError)
 			return
 		}
-
 		if subscription.Items == nil {
 			utils.LogError(nil, fmt.Errorf("error updating subscription no items found %v", subscription), 0)
 			http.Error(w, "error updating subscription no items found", http.StatusBadRequest)
@@ -419,7 +418,6 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		priceID := subscription.Items.Data[0].Price.ID
 
 		currSub, err := db.StripeGetSubscription(subscription.ID)
-
 		if err != nil {
 			logger.WithError(err).Error("error getting subscription from database with id ", subscription.ID)
 			http.Error(w, "error updating subscription could not get current subscription err:"+err.Error(), http.StatusInternalServerError)
@@ -436,16 +434,46 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 		err = db.StripeUpdateSubscription(tx, priceID, subscription.ID, event.Data.Raw)
 		if err != nil {
-			logger.WithError(err).Error("error updating user subscription", subscription.ID)
+			logger.WithError(err).WithField("subscription.ID", subscription.ID).Error("error updating user subscription")
 			http.Error(w, "error updating user subscription, customer: "+subscription.Customer.ID, http.StatusInternalServerError)
 			return
 		}
 
 		if utils.GetPurchaseGroup(priceID) == utils.GROUP_MOBILE || utils.GetPurchaseGroup(priceID) == utils.GROUP_ADDON {
-			err := db.ChangeProductIDFromStripe(tx, subscription.ID, utils.PriceIdToProductId(priceID))
+			appSubID, err := db.GetUserSubscriptionIDByStripe(subscription.ID)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					// subscription changed from nonmobile to mobile, insert mobile subscription
+					err = insertMobileSubscription(tx, subscription)
+					if err != nil {
+						logger.WithError(err).WithField("subscription.ID", subscription.ID).Error("error updating stripe mobile subscription, no users_app_subs id found for subscription id")
+						http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+subscription.Customer.ID, http.StatusInternalServerError)
+						return
+					}
+				} else {
+					logger.WithError(err).WithField("subscription.ID", subscription.ID).Error("error updating user subscription, calling db.GetUserSubscriptionIDByStripe")
+					http.Error(w, "error updating user subscription, customer: "+subscription.Customer.ID, http.StatusInternalServerError)
+					return
+				}
+			}
+			err = db.ChangeProductIDFromStripe(tx, subscription.ID, utils.PriceIdToProductId(priceID))
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription", subscription.ID)
 				http.Error(w, "error updating stripe mobile subscription customer: "+subscription.Customer.ID, http.StatusInternalServerError)
+				return
+			}
+			err = db.UpdateUserSubscription(tx, appSubID, true, 0, "")
+			if err != nil {
+				logger.WithError(err).Error("error updating stripe mobile subscription (sub updated)", subscription.ID)
+				http.Error(w, "error updating subscription", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			// make sure to delete all mobile subscriptions with the same subID
+			err = db.DeleteMobileSubscriptionBySubscriptionID(tx, subscription.ID)
+			if err != nil {
+				logger.WithError(err).Error("error updating stripe mobile subscription (sub updated)", subscription.ID)
+				http.Error(w, "error updating subscription", http.StatusInternalServerError)
 				return
 			}
 		}
@@ -627,31 +655,40 @@ func createNewStripeSubscription(subscription stripe.Subscription, event stripe.
 	if err != nil {
 		return err
 	}
-
 	if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE || utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_ADDON {
-		userID, err := db.StripeGetCustomerUserId(subscription.Customer.ID)
-		if err != nil {
-			return err
-		}
-		details := types.MobileSubscription{
-			ProductID:   utils.PriceIdToProductId(subscription.Items.Data[0].Price.ID),
-			PriceMicros: uint64(subscription.Items.Data[0].Price.UnitAmount),
-			Currency:    string(subscription.Items.Data[0].Price.Currency),
-			Transaction: types.MobileSubscriptionTransactionGeneric{
-				Type:    "stripe",
-				Receipt: subscription.ID,
-				ID:      subscription.Items.Data[0].Price.ID,
-			},
-			Valid: false,
-		}
-		err = db.InsertMobileSubscription(tx, userID, details, details.Transaction.Type, details.Transaction.Receipt, 0, "", subscription.ID)
+		err = insertMobileSubscription(tx, subscription)
 		if err != nil {
 			return err
 		}
 	}
 	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-	return err
+func insertMobileSubscription(tx *sql.Tx, subscription stripe.Subscription) error {
+	userID, err := db.StripeGetCustomerUserId(subscription.Customer.ID)
+	if err != nil {
+		return err
+	}
+	details := types.MobileSubscription{
+		ProductID:   utils.PriceIdToProductId(subscription.Items.Data[0].Price.ID),
+		PriceMicros: uint64(subscription.Items.Data[0].Price.UnitAmount),
+		Currency:    string(subscription.Items.Data[0].Price.Currency),
+		Transaction: types.MobileSubscriptionTransactionGeneric{
+			Type:    "stripe",
+			Receipt: subscription.ID,
+			ID:      subscription.Items.Data[0].Price.ID,
+		},
+		Valid: false,
+	}
+	err = db.InsertMobileSubscription(tx, userID, details, details.Transaction.Type, details.Transaction.Receipt, 0, "", subscription.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func emailCustomerAboutFailedPayment(email string) {
