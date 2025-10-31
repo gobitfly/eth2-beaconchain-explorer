@@ -101,3 +101,43 @@ Install golint. (see https://github.com/golang/lint)
 
 The explorer uses Highsoft charts which are not free for commercial and governmental use. If you plan to use the explorer for commercial purposes you currently need to purchase an appropriate HighSoft license.
 We are planning to switch out the Highsoft chart library with a less restrictive charting library (suggestions are welcome).
+
+
+# TypeScript development
+TypeScript development support is provided via esbuild. The existing build pipeline and project structure is mostly unchanged; TypeScript files are compiled to JavaScript files which are then picked up by the existing build pipeline.
+Bundling is done by esbuild via the Go server (no Node build step required).
+
+### Guidelines
+- Place feature code under `static/<feature>/` with a small entry module (e.g., `<feature>.entry.ts`), then reference the emitted JS from the template.
+- You may separate the code in different files, only `.entry.ts` files are compiled.
+- Templates load ESM bundles via `<script type="module" src="/js/.../<feature>.entry.js"></script>`.
+- If you add a new `<feature>.entry.ts`, restart the server so esbuild picks it up.
+
+#### Compiling + Watch + sourcemaps
+Install first `npm` dependencies:
+```bash
+npm install
+```
+To compile TS files, run:
+```bash
+go run ./cmd/bundle -compile-ts
+```
+For continuous rebuilding while editing TypeScript:
+```bash
+go run ./cmd/bundle -watch-ts
+```
+to enable sourcemaps during development, run with the `-ts-sourcemap` flag:
+```bash
+go run ./cmd/bundle -watch-ts -ts-sourcemap
+```
+- `-compile-ts` compiles all `.entry.ts` files once.
+- `-watch-ts` enables incremental rebuilds on file change.
+- `-ts-sourcemap` emits sourcemaps so DevTools shows original `.ts` sources. Use external maps for prod-like dev; inline maps are fine for quick local debugging.
+
+#### Typed globals (jQuery, Bootstrap, DataTables)
+- Make sure to run: `npm install` in order to install ambient types so you get IntelliSense on globals: @types/jquery, @types/bootstrap, @types/datatables.net
+- You can use $ / jQuery, bootstrap namespace, and DataTables without imports; the editor knows their types.
+- These libraries are considered to be provided as globals by the templates at runtime; do not import them in TS.
+
+### Notes
+- No ESLint for TS yet; Solution for now relies on the editor to provide TypeScript diagnostics.

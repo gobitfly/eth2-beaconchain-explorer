@@ -253,7 +253,7 @@ func createMenuItems(active string, isMain bool, hasV1Notifications types.UserV1
 					Links: []types.NavigationLink{
 						{
 							Label: "Get API Key",
-							Path:  "/user/settings#api",
+							Path:  "/user/api-key-management",
 							Icon:  "fa-key",
 						},
 						{

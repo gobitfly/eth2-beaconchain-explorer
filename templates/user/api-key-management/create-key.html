@@ -1,0 +1,141 @@
+{{ define "createKey" }}
+  <div id="createApiKeyContainer">
+    <div class="card my-3">
+      <div class="card-header p-3">
+        <h3 class="h5 m-0">Create New API Key</h3>
+      </div>
+      <div class="card-body">
+        <form id="createKeyForm" action="javascript:void(0)">
+          <div class="form-row">
+            <div class="col-12 col-md-auto col-lg-8">
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <div class="input-group-text">
+                    <i class="fa fa-key"></i>
+                  </div>
+                </div>
+                <input type="text" class="form-control" id="newApiKeyField" placeholder="Enter key name*" aria-label="New key name" value="" />
+              </div>
+              <ul class="list-unstyled small mt-2 mb-0">
+                <li data-validate-rule="length" class="d-flex justify-content-start">
+                  <i class="fa fa-fw mr-1 mt-1"></i>
+                  <span class="w-100">Name must be 3–35 characters long</span>
+                </li>
+                <li data-validate-rule="chars" class="d-flex justify-content-start">
+                  <i class="fa fa-fw mr-1 mt-1"></i>
+                  <span class="w-100">No special characters except underscores, periods and hyphens</span>
+                </li>
+                <li data-validate-rule="spaces" class="d-flex justify-content-start">
+                  <i class="fa fa-fw mr-1 mt-1"></i>
+                  <span class="w-100">No spaces</span>
+                </li>
+              </ul>
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-outline-primary float-right mt-3 mt-md-0">Generate key</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Creation Modal -->
+    <div class="modal fade" id="createKeyModal" tabindex="-1" aria-labelledby="createKeyModalTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <!-- Modal title -->
+          <div class="modal-header">
+            <h6 id="createKeyModalTitle" class="modal-title"></h6>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+
+          <!-- Loading state -->
+          <div id="createKeyModalLoading" class="modal-body">
+            <div class="d-flex flex-column align-items-center text-center">
+              <div class="spinner-border text-secondary mb-3" role="status" aria-hidden="true"></div>
+              <h5 class="mb-1">Generating new API Key</h5>
+              <p class="text-muted mb-0">This may take a few seconds…</p>
+            </div>
+          </div>
+
+          <!-- Success state -->
+          <div id="createKeyModalSuccess">
+            <div class="modal-body">
+              <div class="d-flex flex-column align-items-center text-center text-success" role="alert">
+                <i class="fa fa-check-circle fa-3x" aria-hidden="true"></i>
+                <h5 class="mt-2 mb-0">Your API key has been created!</h5>
+                <div class="small text-muted">Your new API key is ready to use</div>
+              </div>
+              <div class="bg-emphasis p-3 border rounded mt-3">
+                <div class="mb-2 d-flex align-items-center">
+                  <label for="createdApiKeyRaw" class="small text-muted mb-0">Key Name</label>
+                  <div data-key-prop="name" class="font-weight-bold ml-auto"></div>
+                </div>
+  
+                <div class="d-flex align-items-center">
+                  <label for="createdApiKeyRaw" class="small text-muted mb-0">Created</label>
+                  <div data-key-prop="created_at" class="font-weight-bold ml-auto">—</div>
+                </div>
+  
+                <div class="mt-3">
+                  <label for="createdApiKeyRaw" class="small text-muted mb-1">API Key</label>
+                  <div class="input-group">
+                    <input id="createdApiKeyRaw" type="password" class="form-control text-truncate" readonly value="" />
+                    <div class="input-group-append">
+                      <button data-toggle-api-key class="btn btn-outline-secondary" type="button" title="Toggle visibility" data-toggle="tooltip">
+                        <i class="fa fa-fw fa-eye"></i>
+                      </button>
+                    </div>
+                    <div class="input-group-append">
+                      <button data-copy-api-key class="btn btn-outline-secondary" type="button" title="Copy to clipboard" data-toggle="tooltip">
+                        <i class="fa fa-fw fa-copy"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <small id="copyCreatedApiKeyFeedback" class="text-success d-none">Copied!</small>
+                </div>
+              </div>
+
+              <div class="alert alert-info bg-transparent small p-3 mt-3" role="alert">
+                <div class="d-flex">
+                  <i class="fa fa-2x fa-exclamation-circle mr-3" aria-hidden="true"></i>
+                  <div class="flex-fill">
+                    <h6 class="alert-heading font-weight-bold m-0">Important security notice:</h6>
+                    <p class="m-0">
+                      This key will only be shown <strong>once</strong>. Please copy and store it securely. If you lose this key, you'll need to generate a new one.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex flex-column flex-md-row" style="gap: 1rem;">
+                <button type="button" data-copy-api-key class="btn btn-primary w-100">
+                  <i class="fa fa-copy mr-2"></i>Copy API Key
+                </button>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary mr-2" data-dismiss="modal" id="createKeyCancelBtn">Close</button>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div id="createKeyModalError" style="display: none;">
+            <div class="modal-body">
+              <div class="d-flex flex-column align-items-center text-center text-danger" role="alert">
+                <i class="fa fa-exclamation-circle fa-3x"></i>
+                <h5 class="mt-2 mb-0">We couldn’t create your API key.</h5>
+                <div class="small text-muted mb-3">Please try again. If the problem persists, try a different name or check your network connection.</div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary mr-2" data-dismiss="modal" id="createKeyErrorBackBtn">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{{ end }}

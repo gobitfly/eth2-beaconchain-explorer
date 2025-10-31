@@ -1,0 +1,87 @@
+{{ define "deleteKey" }}
+<!-- Delete Key Modal -->
+<div class="modal fade" id="deleteKeyModal" tabindex="-1" aria-labelledby="deleteKeyModalTitle" aria-hidden="true"
+  data-validation-missing-name="Please enter the API Key name to confirm."
+  data-validation-name-mismatch="API Key name does not match."
+  data-validation-checkbox-unchecked="You must confirm to delete the API key."
+  data-action-text="delete"
+  data-success-message="API key has been deleted successfully."
+  data-error-message="Failed to delete API key. Please try again."
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle bg-danger text-white text-center p-2 mr-3" style="aspect-ratio: 1/1; width: 40px;">
+            <i class="fa fa-trash"></i>
+          </div>
+          <h6 id="deleteKeyModalTitle" class="modal-title font-weight-bold">
+            Delete API Key
+            <small class="d-block">This action cannot be undone.</small>
+          </h6>
+        </div>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form data-key-form>
+          <div class="bg-emphasis border p-3 rounded position-relative">
+            <div class="rounded border border-warning text-warning px-2 py-1 small position-absolute m-3" style="top: 0; right: 0">DISABLED</div>
+            <div class="small text-muted">Key Name</div>
+            <div data-key-prop="name" class="font-weight-bold">—</div>
+            <div class="small text-muted mt-2">Key</div>
+            <div data-key-prop="short_key" class="font-weight-bold">—</div>
+            <div class="mt-2 d-flex align-items-center justify-content-start flex-wrap">
+              <div class="small text-muted">Created</div>
+              <div data-key-prop="created_at" class="font-weight-bold small ml-1">—</div>
+            </div>
+            <div class="mt-2 d-flex align-items-center justify-content-start flex-wrap">
+              <div class="small text-muted">Disabled</div>
+              <div data-key-prop="disabled_at" class="font-weight-bold small ml-1">—</div>
+            </div>
+          </div>
+          <div>
+            <div class="mt-3">
+              <strong class="text-danger">ARE YOU SURE YOU WANT TO DELETE THIS API KEY?</strong>
+              <p class="small mt-2">Deleting this API key will permanently remove it from your account. Any applications or services currently using this key will receive authentication errors.</p>
+            </div>
+          </div>
+          <div class="alert alert-danger small p-3 mt-3" role="alert">
+            <div class="d-flex">
+              <i class="fa fa-2x fa-exclamation-triangle mr-3" aria-hidden="true"></i>
+              <div class="flex-fill">
+                <h6 class="alert-heading font-weight-bold m-0">This action will:</h6>
+                <ul class="pl-3 mb-0">
+                  <li>Permanently delete the API key</li>
+                  <li>Stop all API requests using this key</li>
+                  <li>Prevent access to your services</li>
+                  <li><strong>Cannot be undone or recovered</strong></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="deleteKeyConfirmName" class="small">Type the name of the key name to confirm:</label>
+            <input id="deleteKeyConfirmName" type="text" data-key-confirm-name class="form-control" placeholder="Production API Key">
+          </div>
+          <div class="form-group form-check">
+            <input id="deleteKeyConfirmCheck" type="checkbox" data-key-confirm-checkbox class="form-check-input">
+            <label for="deleteKeyConfirmCheck" class="form-check-label small pl-2">
+              I understand that deleting this API key will permanently remove it and cannot be undone.
+            </label>
+          </div>
+
+          <div data-key-submit-errors class="text-danger"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="fa fa-trash mr-1"></i> Delete API Key
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{{ end }}
