@@ -130,6 +130,18 @@
             }
         }
         setupStripe()
+
+        function toggleBilling(setAnnual) {
+          const toggleSwitch = document.getElementById('billing-toggle');
+          const isAnnual = setAnnual ?? toggleSwitch.checked;
+          if(setAnnual !== undefined) {
+            toggleSwitch.checked = setAnnual;
+          }
+          toggleSwitch.setAttribute('aria-checked', isAnnual ? 'false' : 'true');
+          toggleSwitch.setAttribute('aria-label', isAnnual ? 'Annual billing' : 'Monthly billing');
+          const pricingContainer = document.querySelector('.container-pricing');
+          pricingContainer.setAttribute('data-billing', isAnnual ? 'annual' : 'monthly');
+        }
     </script>
 {{ end }}
 
@@ -168,6 +180,54 @@
         font-size: 0.875rem;
       }
     }
+    /****** Pricing toggle *******/
+    .pricing-toggle { gap:.5rem; user-select:none; }
+    .pricing-toggle .toggle-option {
+      transition: color .2s, opacity .2s;
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      border: 0; background: transparent; padding: 0; color: inherit;
+      cursor: pointer;
+    }
+    .pricing-toggle .toggle-option:focus-visible {
+      outline: 3px solid var(--primary); outline-offset: 3px; border-radius: 4px;
+    }
+    .pricing-toggle .label-month { text-align:right; }
+
+    /* Visual switch acts as the checkbox label */
+    .pricing-toggle .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px; min-width:48px; height: 26px;
+      cursor: pointer;
+    }
+    .pricing-toggle .slider {
+      position:absolute; inset:0; border-radius:999px;
+      background: var(--card-border-color, #6c757d);
+      transition: .2s;
+    }
+    .pricing-toggle .slider:before {
+      content:""; position:absolute; top:3px; left:3px; width:20px; height:20px;
+      border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2);
+      transition:.2s;
+    }
+    .pricing-toggle #billing-toggle:checked + .switch .slider { background: var(--primary); }
+    .pricing-toggle #billing-toggle:checked + .switch .slider:before { transform: translateX(22px); }
+    .pricing-toggle #billing-toggle:focus-visible + .switch {
+      outline: 3px solid var(--primary);
+      outline-offset: 4px;
+      border-radius: 6px;
+    }
+
+    /* Label emphasis and savings note via :has() (no JS) */
+    .pricing-toggle .option-label { font-weight:600; opacity:.6; }
+    .pricing-toggle:not(:has(#billing-toggle:checked)) .label-month .option-label { opacity:1; }
+    .pricing-toggle:has(#billing-toggle:checked) .label-annual .option-label { opacity:1; }
+
+    .pricing-toggle:not(:has(#billing-toggle:checked)) #billing-annual-note { display:none; }
+
+    [data-billing="monthly"]  .price-annual { display: none !important; }
+    [data-billing="annual"]   .price-monthly { display: none !important; }
+
   </style>
 {{ end }}
 
@@ -200,7 +260,36 @@
       </div>
     </section>
 
-    <div class="container mt-2 container-pricing">
+    <div class="container mt-2 container-pricing" data-billing="{{ .DefaultBilling }}">
+      <!-- Pricing toggle switch -->
+      <section class="my-5">
+        <div class="d-flex justify-content-center align-items-start pricing-toggle" aria-label="Billing period">
+          <button type="button" class="label-month toggle-option h5 mb-0" aria-controls="billing-toggle"
+            onclick="toggleBilling(false);">
+            <span class="option-label">Monthly Payment</span>
+          </button>
+
+          <input
+            id="billing-toggle"
+            class="sr-only"
+            type="checkbox"
+            role="switch"
+            aria-label="Yearly billing"
+            {{ if eq .DefaultBilling "annual" }}checked{{ end }}
+            onchange="toggleBilling()"
+          />
+          <label for="billing-toggle" class="switch mx-2 mb-0" tabindex="-1">
+            <span class="slider" aria-hidden="true"></span>
+          </label>
+
+          <button type="button" class="label-annual toggle-option h5 mb-0" aria-controls="billing-toggle"
+            onclick="toggleBilling(true);">
+            <span class="option-label">Annual Payment</span>
+            <small id="billing-annual-note" class="mt-2 text-warning d-block">😍 You win 15%</small>
+          </button>
+        </div>
+      </section>
+      <!-- Pricing cards -->
       <section class="my-5">
         <div class="card-deck mb-3 justify-content-center text-center position-relative mb-5">
           <div style="margin: 0" class="row justify-content-center">

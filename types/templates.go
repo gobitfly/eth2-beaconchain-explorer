@@ -1424,15 +1424,16 @@ type AdvertiseWithUsPageData struct {
 }
 
 type ApiPricing struct {
-	FlashMessage string
-	User         *User
-	CsrfField    template.HTML
-	RecaptchaKey string
-	Subscription UserSubscription
-	StripePK     string
-	Sapphire     string
-	Emerald      string
-	Diamond      string
+	FlashMessage 		string
+	User         		*User
+	CsrfField    		template.HTML
+	RecaptchaKey 		string
+	Subscription 		UserSubscription
+	StripePK     		string
+	Sapphire     		string
+	Emerald      		string
+	Diamond      		string
+	DefaultBilling	string
 }
 
 type MobilePricing struct {

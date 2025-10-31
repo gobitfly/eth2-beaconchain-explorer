@@ -51,6 +51,8 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	pageData.Emerald = utils.Config.Frontend.Stripe.Emerald
 	pageData.Diamond = utils.Config.Frontend.Stripe.Diamond
 
+	pageData.DefaultBilling = "annual" // `monthly` or `annual`
+
 	data.Data = pageData
 
 	if handleTemplateError(w, r, "pricing.go", "Pricing", "", pricingTemplate.ExecuteTemplate(w, "layout", data)) != nil {
