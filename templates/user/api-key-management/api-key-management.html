@@ -1,7 +1,7 @@
 {{ define "js" }}
 <script>
   // NOTE: in this block, dot is the page data for this view (APIKeyManagementPageData)
-  window.__APIKEYMANAGEMENT_CONFIG__ = { apiBaseUrl: "{{ .APIKeyMngBaseURL }}" };
+  window.__APIKEYMANAGEMENT_CONFIG__ = { apiBaseUrl: "/api/i2" };
 </script>
 <script type="text/javascript" src="/js/datatables.min.js"></script>
 <script type="module" src="/js/api-key-management/api-key-management.entry.js"></script>
