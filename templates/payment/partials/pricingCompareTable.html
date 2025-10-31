@@ -1,0 +1,182 @@
+{{ define "pricingCompareTable" }}
+  <section class="my-5 d-none d-md-block" id="compare-plans">
+    <div class="card container-lg border-0 shadow-none bg-transparent">
+      <div class="card-body">
+        <h2 class="text-center mb-2 mt-2">Compare plans</h2>
+        <p class="text-center text-muted mb-4">beaconcha.in pricing plans are designed to meet your needs as they grow</p>
+
+        <table class="table table-striped compare-table">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col" class="text-center">
+                <div class="h5 mb-2">Free</div>
+                <div class="h3">
+                  € 0
+                </div>
+              </th>
+              <th scope="col" class="text-center">
+                <div class="h5 mb-2">Hobbyist</div>
+                <!-- Monthly pricing -->
+                <div class="price-monthly">
+                  <div class="h3">
+                    € 49
+                  </div>
+                  <div class="text-muted font-weight-normal d-block">per month</div>
+                  <div class="pricing-info">You would save €88.2/ year with annual payment</div>
+                </div>
+                <!-- Annual pricing -->
+                <div class="price-annual">
+                  <div class="h3">
+                    € 41.65
+                  </div>
+                  <div class="text-muted font-weight-normal d-block">per month - billed annually</div>
+                  <div class="pricing-info">You save €88,2/year</div>
+                </div>
+              </th>
+              <th scope="col" class="text-center">
+                <div class="h5 mb-2">Business</div>
+                <!-- Monthly pricing -->
+                <div class="price-monthly">
+                  <div class="h3">
+                    € 349
+                  </div>
+                  <div class="text-muted font-weight-normal d-block">per month</div>
+                  <div class="pricing-info">You would save €628.2/year with annual payment</div>
+                </div>
+                <!-- Annual pricing -->
+                <div class="price-annual">
+                  <div class="h3">
+                    € 296.55
+                  </div>
+                  <div class="text-muted font-weight-normal d-block">per month - billed annually</div>
+                  <div class="pricing-info">You save €628.2/year</div>
+                </div>
+              </th>
+              <th scope="col" class="text-center">
+                <div class="h5 mb-2">Scale</div>
+                <!-- Monthly pricing -->
+                <div class="price-monthly">
+                  <div class="h3">
+                    € 849
+                  </div>
+                  <div class="text-muted font-weight-normal d-block">per month</div>
+                  <div class="pricing-info">You would save €1,528.2/year with annual payment</div>
+                </div>
+                <!-- Annual pricing -->
+                <div class="price-annual">
+                  <div class="h3">
+                    € 707.55
+                  </div>
+                  <div class="text-muted font-weight-normal d-block">per month - billed annually</div>
+                  <div class="pricing-info">You save €1,528.2/year</div>
+                </div>
+              </th>
+              <th scope="col" class="text-center align-top">
+                <div class="h5 mb-1">Enterprise</div>
+                <div class="mt-3 text-muted">
+                  <a href="#contact-sales" class="text-muted">Contact Sales</a>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" class="text-left">Ad‑free experience</th>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">Support us</th>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">Attribution required</th>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center">Custom</td>
+            </tr>
+
+            <tr class="compare-section">
+              <th scope="row" colspan="6" class="text-muted">API Features</th>
+            </tr>
+
+            <tr>
+              <th scope="row" class="text-left">API Access</th>
+              <td class="text-center">Standard</td>
+              <td class="text-center">Standard</td>
+              <td class="text-center">Premium</td>
+              <td class="text-center">Premium</td>
+              <td class="text-center">Premium</td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">Global rate limit (per second)</th>
+              <td class="text-center">Low</td>
+              <td class="text-center">Medium</td>
+              <td class="text-center">High</td>
+              <td class="text-center">Higher</td>
+              <td class="text-center">Custom</td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">Rate limit (per API)</th>
+              <td class="text-center">Low</td>
+              <td class="text-center">Medium</td>
+              <td class="text-center">High</td>
+              <td class="text-center">Higher</td>
+              <td class="text-center">Custom</td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">Configure notifications via API</th>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">Manage dashboard via API</th>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">Access dashboard data via API</th>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">SLA</th>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-times text-danger"></i></td>
+              <td class="text-center"><i class="fas fa-check-circle text-success"></i></td>
+            </tr>
+            <tr>
+              <th scope="row" class="text-left">API Keys</th>
+              <td class="text-center">1</td>
+              <td class="text-center">2</td>
+              <td class="text-center">5</td>
+              <td class="text-center">10</td>
+              <td class="text-center">Custom</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+{{ end }}

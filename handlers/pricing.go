@@ -16,7 +16,12 @@ import (
 )
 
 func Pricing(w http.ResponseWriter, r *http.Request) {
-	templateFiles := append(layoutTemplateFiles, "payment/pricing.html", "svg/pricing.html")
+	templateFiles := append(
+		layoutTemplateFiles,
+		"payment/pricing.html",
+		"payment/partials/pricingCompareTable.html",
+		"svg/pricing.html",
+	)
 	var pricingTemplate = templates.GetTemplate(templateFiles...)
 	var err error
 

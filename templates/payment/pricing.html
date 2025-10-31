@@ -228,6 +228,39 @@
     [data-billing="monthly"]  .price-annual { display: none !important; }
     [data-billing="annual"]   .price-monthly { display: none !important; }
 
+    /****** compare-table *******/
+    .compare-table thead th{
+      background: transparent;
+      vertical-align: top;
+      /* Sticky header row */
+      position: sticky !important;
+      top: 46px;
+      z-index: 5;
+      background: var(--bg-color) !important;
+    }
+    .compare-table tbody th{
+      width: 200px;
+      white-space: normal;
+      padding: 1rem;
+    }
+    .compare-table tbody td{
+      width: 20%;
+      vertical-align: middle;
+    }
+    .compare-table tbody td .fas{
+      font-size: 1.25rem;
+    }
+    .compare-table .compare-section th{
+      padding-block: 2rem;
+    }
+    .compare-table .pricing-info{
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      white-space: normal;
+      font-weight: normal;
+      opacity: 0.6;
+    }
   </style>
 {{ end }}
 
@@ -491,6 +524,8 @@
           </div>
         </div>
       </section>
+
+      {{ template "pricingCompareTable" }}
 
       <section class="my-5" id="contact-sales">
         <div class="row">
