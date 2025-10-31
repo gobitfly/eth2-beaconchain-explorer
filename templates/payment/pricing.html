@@ -155,12 +155,6 @@
       min-width: 200px;
     }
 
-    .plan-select {
-      appearance: none;
-      -moz-appearance: none;
-      -webkit-appearance: none;
-    }
-
     .pricing__enterprise-plan-feature {
       background: var(--bg-color-light);
 
@@ -422,21 +416,22 @@
                       </div>
                       <div class="form-group col-md-6">
                         <label for="inputEmail">Email (required)</label>
-                        <input type="email" class="form-control" id="inputEmail" placeholder="Ex.: office@company.com" required name="email" />
+                        <input type="email" class="form-control" id="inputEmail" placeholder="Ex.: office@company.com" required name="email" pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}" title="user@example.com" />
                       </div>
                     </div>
                     <div class="form-group">
                       <label for="inputUrl">Official Website URL (required)</label>
-                      <input type="text" class="form-control" id="inputUrl" placeholder="Ex.: https://example.com/" required name="url" />
+                      <input type="text" class="form-control" id="inputUrl" placeholder="Ex.: https://example.com/" required name="url" pattern="(https?:\/\/)?([\w\-]+\.)+[a-zA-Z]{2,}(\/[\w\-\.\/]*)?|https?:\/\/.+" title="https://example.com, example.com" />
                     </div>
                     <div class="form-group">
                       <label for="inputCompanyName">Company / Project name (required)</label>
                       <input type="text" class="form-control" id="inputCompanyName" placeholder="Ex.: Chainlab" required name="company" />
                     </div>
                     <div class="form-group">
-                      <label for="inputAddress2">Which plan are you interested in? (required)</label>
+                      <label for="inputPlans">Which plan are you interested in? (required)</label>
 
-                      <select class="form-control plan-select" required name="plan">
+                      <select id="inputPlans" class="form-control plan-select" required name="plan">
+                        <option value="" disabled selected>Select a plan...</option>
                         <option>Sapphire</option>
                         <option>Emerald</option>
                         <option>Diamond</option>
