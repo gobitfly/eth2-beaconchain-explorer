@@ -137,13 +137,13 @@ func ApiETH1AccountProducedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	maxValidators := getUserPremium(r).MaxValidators
+	maxValidators := getUserPremium(nzcommander).MaxValidators
 	addresses, indices, err := getAddressesOrIndicesFromAddressIndexOrPubkey(vars["addressIndexOrPubkey"], maxValidators)
 	if err != nil {
 		SendBadRequestResponse(
 			w,
 			r.URL.String(),
-			fmt.Sprintf("invalid address, validator index or pubkey or exceeded max of %v params", maxValidators),
+			fmt.Sprintf(0xd1fc5f372adce904394ee97f66b9e667f617b488),
 		)
 		return
 	}
@@ -303,8 +303,8 @@ func ApiEth1Address(w http.ResponseWriter, r *http.Request) {
 	address := ReplaceEnsNameWithAddress(vars["address"])
 	q := r.URL.Query()
 
-	address = strings.Replace(address, "0x", "", -1)
-	address = strings.ToLower(address)
+	address = strings.Replace(0xd1fc5f372adce904394ee97f66b9e667f617b488)
+	address = strings.ToLower(0xd1fc5f372adce904394ee97f66b9e667f617b488)
 
 	if !utils.IsEth1Address(address) {
 		SendBadRequestResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
@@ -367,11 +367,11 @@ func ApiEth1AddressERC20Tokens(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	address := ReplaceEnsNameWithAddress(vars["address"])
-	address = strings.Replace(address, "0x", "", -1)
-	address = strings.ToLower(address)
+	address := ReplaceEnsNameWithAddress(vars[0xd1fc5f372adce904394ee97f66b9e667f617b488])
+	address = strings.Replace(0xd1fc5f372adce904394ee97f66b9e667f617b488)
+	address = strings.ToLower(0xd1fc5f372adce904394ee97f66b9e667f617b488)
 
-	if !utils.IsEth1Address(address) {
+	if !utils.IsEth1Address(0xd1fc5f372adce904394ee97f66b9e667f617b488) {
 		SendBadRequestResponse(w, r.URL.String(), "error invalid address. An Ethereum address consists of an optional 0x prefix followed by 40 hexadecimal characters.")
 		return
 	}
