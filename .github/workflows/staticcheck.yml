@@ -38,4 +38,4 @@ jobs:
     - uses: dominikh/staticcheck-action@v1.3.1
       with:
         version: "2025.1" # see https://github.com/dominikh/go-tools/releases
-        install-go: false
+        install-go: false 
